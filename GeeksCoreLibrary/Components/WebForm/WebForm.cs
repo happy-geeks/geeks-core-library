@@ -1,0 +1,418 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.WebForm.Models;
+using GeeksCoreLibrary.Core.Cms;
+using GeeksCoreLibrary.Core.Cms.Attributes;
+using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Core.Interfaces;
+using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Communication.Interfaces;
+using GeeksCoreLibrary.Modules.Communication.Models;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
+using GeeksCoreLibrary.Modules.Languages.Interfaces;
+using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Models;
+using Microsoft.AspNetCore.Html;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
+using RestSharp;
+
+namespace GeeksCoreLibrary.Components.WebForm
+{
+    public class WebForm : CmsComponent<WebFormCmsSettingsModel, WebForm.ComponentModes>
+    {
+        private readonly GclSettings gclSettings;
+        private readonly IWiserItemsService wiserItemsService;
+        private readonly ICommunicationsService communicationsService;
+        private readonly ILanguagesService languagesService;
+        private readonly IObjectsService objectsService;
+
+        #region Internal variables
+
+        private bool allowLegacyEmailTemplateGeneration;
+
+        #endregion
+
+        #region Enums
+
+        public enum ComponentModes
+        {
+            BasicForm = 1,
+
+            /// <summary>
+            /// Legacy support for the JCL Sendform component.
+            /// </summary>
+            [CmsEnum(HideInCms = true)]
+            Legacy = 2
+        }
+
+        #endregion
+
+        #region Constructor
+
+        public WebForm(ILogger<WebForm> logger, IOptions<GclSettings> gclSettings, IStringReplacementsService stringReplacementsService, IWiserItemsService wiserItemsService, ICommunicationsService communicationsService, ILanguagesService languagesService, ITemplatesService templatesService, IObjectsService objectsService)
+        {
+            this.gclSettings = gclSettings.Value;
+            this.wiserItemsService = wiserItemsService;
+            this.communicationsService = communicationsService;
+            this.languagesService = languagesService;
+            this.objectsService = objectsService;
+
+            Logger = logger;
+            StringReplacementsService = stringReplacementsService;
+            TemplatesService = templatesService;
+
+            Settings = new WebFormCmsSettingsModel();
+        }
+
+        #endregion
+
+        #region Rendering
+
+        /// <inheritdoc />
+        public override async Task<HtmlString> InvokeAsync(DynamicContent dynamicContent, string callMethod, int? forcedComponentMode, Dictionary<string, string> extraData)
+        {
+            if (Request == null)
+            {
+                throw new Exception("WebForm component requires an http context, but it's null, so can't continue!");
+            }
+
+            ComponentId = dynamicContent.Id;
+            if (dynamicContent.Name is "JuiceControlLibrary.Sendform" && !forcedComponentMode.HasValue)
+            {
+                // Force component mode to Legacy mode if it was created through the JCL.
+                Settings.ComponentMode = ComponentModes.Legacy;
+                allowLegacyEmailTemplateGeneration = true;
+            }
+            ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
+
+            if (forcedComponentMode.HasValue)
+            {
+                Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            }
+
+            var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
+            if (!renderHtml)
+            {
+                ViewBag.Html = debugInformation;
+                return new HtmlString(debugInformation);
+            }
+
+            // Check if we need to call a specific method and then do so. Skip everything else, because we don't want to render the entire component then.
+            if (!String.IsNullOrWhiteSpace(callMethod))
+            {
+                TempData["InvokeMethodResult"] = await InvokeMethodAsync(callMethod);
+                return new HtmlString(String.Empty);
+            }
+
+            var resultHtml = new StringBuilder();
+            if (!Request.HasFormContentType || !await ValidateFormSubmitAsync())
+            {
+                resultHtml.Append(await CreateFormHtml());
+            }
+            else
+            {
+                resultHtml.Append(await SubmitForm());
+            }
+
+            if (!String.IsNullOrWhiteSpace(Settings.TemplateJavaScript))
+            {
+                var javascript = Settings.TemplateJavaScript.ReplaceCaseInsensitive("{contentId}", ComponentId.ToString());
+                resultHtml.Append($"<script>{javascript}</script>");
+            }
+
+            Logger.LogDebug("WebForm - End generating HTML.");
+
+            return new HtmlString(resultHtml.ToString());
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Creates the form HTML based on the form HTML template as set in the settings.
+        /// </summary>
+        /// <returns>The generated form HTML as a string.</returns>
+        public async Task<string> CreateFormHtml()
+        {
+            if (String.IsNullOrWhiteSpace(Settings.FormHtmlTemplate))
+            {
+                return String.Empty;
+            }
+
+            var formHtml = Settings.FormHtmlTemplate;
+            formHtml = await TemplatesService.DoReplacesAsync(formHtml, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, handleRequest: Settings.HandleRequest, removeUnknownVariables: Settings.RemoveUnknownVariables);
+
+            formHtml = formHtml.ReplaceCaseInsensitive("{contentId}", ComponentId.ToString())
+                .ReplaceCaseInsensitive("<jform", "<form")
+                .ReplaceCaseInsensitive("</jform", "</form");
+
+            // Check if reCAPTCHA should be placed.
+            if (formHtml.Contains("{recaptcha"))
+            {
+                formHtml = await PlaceReCaptchaInHtml(formHtml);
+            }
+
+            // Place some hidden fields at the end of the form.
+            var endTagIndex = formHtml.LastIndexOf("</form>", StringComparison.Ordinal);
+            if (endTagIndex > -1)
+            {
+                var hiddenInputs = $"<input type=\"hidden\" name=\"__WebForm{ComponentId}\" value=\"{ComponentId}\" /><input type=\"hidden\" name=\"__WebFormCheck{ComponentId}\" value=\"\" />";
+                formHtml = formHtml.Insert(endTagIndex, hiddenInputs);
+            }
+
+            return formHtml;
+        }
+
+        /// <summary>
+        /// Attempts to place the required reCAPTCHA in the HTML.
+        /// </summary>
+        /// <param name="input">The HTML to update.</param>
+        /// <returns>The input HTML with the reCAPTCHA variable replaced.</returns>
+        private async Task<string> PlaceReCaptchaInHtml(string input)
+        {
+            var regexMatches = Regex.Matches(input, @"\{recaptcha_v(?<version>\d)\}");
+            if (regexMatches.Count == 0)
+            {
+                Logger.LogWarning("Couldn't place reCAPTCHA in the form. The variable is malformed.");
+                return input;
+            }
+
+            var siteKey = await objectsService.FindSystemObjectByDomainNameAsync("google_recaptcha_sitekey");
+            var updatedHtml = input;
+            foreach (Match regexMatch in regexMatches)
+            {
+                // The version of reCAPTCHA to use.
+                var version = Int32.Parse(regexMatch.Groups["version"].Value);
+
+                switch (version)
+                {
+                    case 2:
+                        updatedHtml = updatedHtml.Replace(regexMatch.Value, $"<div class=\"g-recaptcha\" data-sitekey=\"{siteKey}\"></div>");
+                        AddExternalJavaScriptLibrary("https://www.google.com/recaptcha/api.js", true, true);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException($"Unknown or unsupported reCAPTCHA version: {version}");
+                }
+            }
+
+            return updatedHtml;
+        }
+
+        /// <summary>
+        /// Submits the form, and returns either the HTML of the success template or the HTML of the failed template.
+        /// </summary>
+        /// <returns>The HTML of the success template or the HTML of the failed template.</returns>
+        public async Task<string> SubmitForm()
+        {
+            var communication = new SingleCommunicationModel();
+
+            // Check if there are files to upload.
+            if (Request.Form.Files.Count > 0)
+            {
+                communication.WiserItemFiles = new List<ulong>(Request.Form.Files.Count);
+
+                foreach (var formFile in Request.Form.Files)
+                {
+                    await using var stream = new MemoryStream();
+                    await formFile.CopyToAsync(stream);
+
+                    var itemFile = new WiserItemFileModel
+                    {
+                        ContentType = formFile.ContentType,
+                        Content = stream.ToArray(),
+                        FileName = Path.GetFileName(formFile.FileName),
+                        Extension = Path.GetExtension(formFile.FileName),
+                        Title = Path.GetFileNameWithoutExtension(formFile.FileName),
+                        PropertyName = "form_attachment"
+                    };
+                    communication.WiserItemFiles.Add(await wiserItemsService.AddItemFileAsync(itemFile));
+                }
+            }
+
+            if (Settings.EmailTemplateItemId > 0)
+            {
+                var wiserItem = await wiserItemsService.GetItemDetailsAsync(Settings.EmailTemplateItemId, languageCode: languagesService.CurrentLanguageCode);
+                if (wiserItem is { Id: > 0 })
+                {
+                    communication.Content = await StringReplacementsService.DoAllReplacementsAsync(wiserItem.GetDetailValue("template"), handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
+                    communication.Subject = await StringReplacementsService.DoAllReplacementsAsync(wiserItem.GetDetailValue("subject"), handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
+                }
+            }
+            else if (!String.IsNullOrWhiteSpace(Settings.EmailBodyTemplate))
+            {
+                communication.Content = await StringReplacementsService.DoAllReplacementsAsync(Settings.EmailBodyTemplate, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
+                communication.Subject = await StringReplacementsService.DoAllReplacementsAsync(Settings.EmailSubjectTemplate, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
+            }
+            else if (allowLegacyEmailTemplateGeneration)
+            {
+                // Legacy allows a mail body to be generated based on details in the Form values.
+                communication.Content = CreateMailBodyFromFormValues();
+                communication.Subject = await StringReplacementsService.DoAllReplacementsAsync(Settings.EmailSubjectTemplate, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
+            }
+
+            if (String.IsNullOrWhiteSpace(communication.Content))
+            {
+                Logger.LogError("WebForm: Cannot send Form due to there being no valid template for the email set.");
+                throw new Exception("WebForm: Cannot send Form due to there being no valid template for the email set.");
+            }
+
+            communication.Sender = Settings.SenderAddress;
+            communication.SenderName = Settings.SenderName;
+            communication.Receivers = Settings.ReceiverAddresses.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(receiver => new CommunicationReceiverModel { Address = receiver, DisplayName = Settings.SenderName }).ToList();
+            communication.Bcc = Settings.Bcc.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            communication.ReplyTo = Settings.ReplyToAddress;
+            communication.ReplyToName = Settings.ReplyToName;
+
+            try
+            {
+                if (gclSettings.SmtpSettings != null && await communicationsService.SendEmailDirectlyAsync(communication, 2000))
+                {
+                    communication.ProcessedDate = DateTime.Now;
+                }
+
+                // Save the email in the Wiser communication table, regardless if it was successful.
+                await communicationsService.SendEmailAsync(communication);
+
+                if (Settings.SaveFormInDatabase)
+                {
+                    // Save the form as a Wiser item, and all form values as the item's details.
+                    await SaveFormInDatabaseAsync();
+                }
+
+                return await StringReplacementsService.DoAllReplacementsAsync(Settings.SuccessHtmlTemplate);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"WebForm - Error while trying to submit form: {ex}");
+                return await StringReplacementsService.DoAllReplacementsAsync(Settings.FailureHtmlTemplate);
+            }
+        }
+
+        /// <summary>
+        /// Validates whether the submitted form belongs to this WebForm.
+        /// </summary>
+        /// <returns>Whether the form clear to submit.</returns>
+        public async Task<bool> ValidateFormSubmitAsync()
+        {
+            if (!Request.HasFormContentType || Request.Form.Count == 0)
+            {
+                return false;
+            }
+
+            if (Settings.FormHtmlTemplate.Contains("{recaptcha") && (!Request.Form.TryGetValue("g-recaptcha-response", out var recaptchaResponse) || String.IsNullOrWhiteSpace(recaptchaResponse.ToString()) || !await ValidateRecaptchaResponseAsync(recaptchaResponse.ToString())))
+            {
+                return false;
+            }
+
+            return Request.Form.TryGetValue($"__WebForm{ComponentId}", out var value1) && value1.Equals(ComponentId.ToString())
+                && Request.Form.TryGetValue($"__WebFormCheck{ComponentId}", out var value2) && value2.Equals(String.Empty);
+        }
+
+        private async Task<bool> ValidateRecaptchaResponseAsync(string response)
+        {
+            var secret = await objectsService.FindSystemObjectByDomainNameAsync("google_recaptcha_secretkey");
+
+            var restClient = new RestClient("https://www.google.com");
+            var restRequest = new RestRequest("/recaptcha/api/siteverify", Method.POST);
+            restRequest.AddParameter("secret", secret, ParameterType.GetOrPost);
+            restRequest.AddParameter("response", response, ParameterType.GetOrPost);
+
+            var restResult = await restClient.ExecuteAsync(restRequest);
+            if (!restResult.IsSuccessful)
+            {
+                return false;
+            }
+
+            var dataObject = JObject.Parse(restResult.Content);
+            return dataObject.Value<bool>("success");
+        }
+
+        /// <summary>
+        /// Creates an email body based on values in the Form collection. This is only for Legacy mode, as the Sendform component in the JCL also did this.
+        /// </summary>
+        /// <returns>A standardized mail body, based purely on the data in the form collection.</returns>
+        private string CreateMailBodyFromFormValues()
+        {
+            var emailBodyBuilder = new StringBuilder();
+
+            emailBodyBuilder.Append("<table>");
+
+            foreach (var formKey in Request.Form.Keys)
+            {
+                if (formKey.StartsWith("__"))
+                {
+                    continue;
+                }
+
+                emailBodyBuilder.Append("<tr><td style=\"font-family: Arial; font-size: 11px;\" valign=\"top\">");
+                emailBodyBuilder.Append($"<strong>{formKey}:</strong>");
+                emailBodyBuilder.Append("</td><td width=\"10\"></td>");
+                emailBodyBuilder.Append("<td style=\"font-family: Arial; font-size: 11px;\" valign=\"top\">");
+                emailBodyBuilder.Append(Request.Form[formKey].ToString().Replace("\r", "").Replace("\n", "<br />"));
+                emailBodyBuilder.Append("</td></tr>");
+            }
+
+            emailBodyBuilder.Append("</table>");
+
+            return emailBodyBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Saves a submitted form as an item.
+        /// </summary>
+        /// <returns></returns>
+        private async Task SaveFormInDatabaseAsync()
+        {
+            var wiserItem = new WiserItemModel
+            {
+                EntityType = "web-form"
+            };
+
+            foreach (var formKey in Request.Form.Keys)
+            {
+                wiserItem.SetDetail(formKey, Request.Form[formKey].ToString());
+            }
+
+            await wiserItemsService.SaveAsync(wiserItem);
+        }
+
+        #region Handling settings
+
+        /// <inheritdoc />
+        public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
+        {
+            Settings = Settings.ComponentMode == ComponentModes.Legacy
+                ? Newtonsoft.Json.JsonConvert.DeserializeObject<WebFormLegacySettingsModel>(settingsJson)?.ToSettingsModel()
+                : Newtonsoft.Json.JsonConvert.DeserializeObject<WebFormCmsSettingsModel>(settingsJson);
+
+            if (Settings == null)
+            {
+                return;
+            }
+
+            if (forcedComponentMode.HasValue)
+            {
+                Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            }
+
+            HandleDefaultSettingsFromComponentMode();
+        }
+
+        /// <inheritdoc />
+        public override string GetSettingsJson()
+        {
+            return Settings.ComponentMode == ComponentModes.Legacy
+                ? Newtonsoft.Json.JsonConvert.SerializeObject(WebFormLegacySettingsModel.FromSettingsModel(Settings))
+                : Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
+        }
+
+        #endregion
+    }
+}

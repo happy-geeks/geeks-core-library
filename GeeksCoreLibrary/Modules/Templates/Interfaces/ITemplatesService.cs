@@ -1,0 +1,152 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Text;
+using System.Threading.Tasks;
+using GeeksCoreLibrary.Modules.Templates.Enums;
+using GeeksCoreLibrary.Modules.Templates.Models;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Newtonsoft.Json.Linq;
+
+namespace GeeksCoreLibrary.Modules.Templates.Interfaces
+{
+    public interface ITemplatesService
+    {
+        /// <summary>
+        /// Search for a template and returns it. Must supply either an ID or a name.
+        /// </summary>
+        /// <param name="id">Optional: The ID of the template to get.</param>
+        /// <param name="name">Optional: The name of the template to get.</param>
+        /// <param name="type">Optional: The type of template that is being searched for. Only used in combination with name. Default value is html.</param>
+        /// <param name="parentId">Optional: The ID of the parent of the template to get.</param>
+        /// <param name="parentName">Optional: The name of the parent of template to get.</param>
+        /// <returns></returns>
+        Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "");
+
+        /// <summary>
+        /// Gets the last changed date of general templates of a specific type. This can be used for generating the URL for gcl_general.css for example.
+        /// </summary>
+        /// <param name="templateType">Optional: The template type to get the last change date of. Default is Css.</param>
+        /// <returns>Null if there are no general templates of the specified type, or the date of the most recent change in all the general templates of the specified type.</returns>
+        Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType);
+
+        /// <summary>
+        /// Get the content for the general CSS or javascript file that needs to be loaded on every page.
+        /// </summary>
+        /// <param name="templateType">The type of content to get.</param>
+        /// <returns></returns>
+        Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType);
+
+        /// <summary>
+        /// Get one or more templates.
+        /// </summary>
+        /// <param name="templateIds">The IDs of templates to get.</param>
+        /// <param name="includeContent">Set to true to also get the complete content of the template, false to only get the meta data.</param>
+        /// <returns>A list of <see cref="Template"/>s.</returns>
+        Task<List<Template>> GetTemplatesAsync(ICollection<int> templateIds, bool includeContent);
+        
+        /// <summary>
+        /// Get the content for multiple templates and combine them into one string.
+        /// </summary>
+        /// <param name="templateIds">The IDs of the templates to get.</param>
+        /// <param name="templateType">The type of content to get.</param>
+        /// <returns></returns>
+        Task<TemplateResponse> GetCombinedTemplateValueAsync(ICollection<int> templateIds, TemplateTypes templateType);
+
+        /// <summary>
+        /// Adds a single template to the response for a combined template response.
+        /// </summary>
+        /// <param name="idsLoaded">A list of IDs, to keep track of </param>
+        /// <param name="template"></param>
+        /// <param name="currentUrl"></param>
+        /// <param name="resultBuilder"></param>
+        /// <param name="templateResponse"></param>
+        /// <returns></returns>
+        Task AddTemplateToResponseAsync(ICollection<int> idsLoaded, Template template, string currentUrl, StringBuilder resultBuilder, TemplateResponse templateResponse);
+
+        /// <summary>
+        /// Gets the content for resources that are loaded from the Wiser CDN.
+        /// </summary>
+        /// <param name="fileNames">The list of file names to load.</param>
+        /// <returns></returns>
+        Task<string> GetWiserCdnFilesAsync(ICollection<string> fileNames);
+
+        /// <summary>
+        /// Do all replaces on a template. If you don't need to replace includes, please use IStringReplacementsService.DoAllReplacements() instead.
+        /// This function will call IStringReplacementsService.DoAllReplacements() and then handle includes after.
+        /// For example:
+        /// Replaces template names (syntaxed as: &lt;[templatename]&gt;) with template from cache (easy-templates)
+        /// For backward compatibility reasons also: replaces templates (syntax as: &lt;[parentTemplateName\templateName]&gt;) with template from cache (easy-templates)
+        /// </summary>
+        /// <param name="input">The original content to be replaced</param>
+        /// <param name="handleStringReplacements">Optional: Whether string replacements should be performed on the template.</param>
+        /// <param name="handleDynamicContent">Optional: Whether or not to replace dynamic content blocks in the template. Disabling this improves performance. Default value is true.</param>
+        /// <param name="evaluateLogicSnippets">Optional: Whether or not to evaluate any logic snippets in the template. Disabling this improves performance. Default value is true.</param>
+        /// <param name="dataRow">Optional: All values from this <see cref="DataRow"/> will also be replaced in the output.</param>
+        /// <param name="handleRequest">Optional: Whether or not to replace values from the request (such as query string, cookies and session). Default value is true.</param>
+        /// <param name="removeUnknownVariables">Optional: Whether ot not to remove all left over variables after all replacements have been done. Default value is true.</param>
+        /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+        /// <returns></returns>
+        Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false);
+
+        /// <summary>
+        /// Replaces [include[x]] with a template called 'x'.
+        /// </summary>
+        /// <param name="input">The string that might have an include.</param>
+        /// <param name="handleStringReplacements">Optional: Whether string replacements should be performed on the included template(s).</param>
+        /// <param name="dataRow">Optional: All values from this <see cref="DataRow"/> will also be replaced in the output in the included template(s).</param>
+        /// <param name="handleRequest">Optional: Whether or not to replace values from the request (such as query string, cookies and session) in the included template(s). Default value is true.</param>
+        /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+        /// <returns>The replaced string.</returns>
+        Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false);
+
+
+        /// <summary>
+        /// Generates the HTML for dynamic content, based on the content ID.
+        /// </summary>
+        /// <param name="componentId">The ID of the dynamic content.</param>
+        /// <param name="forcedComponentMode">Optional: If you want to overwrite the component mode of the component. Default is <see langword="null" />.</param>
+        /// <param name="callMethod">Optional: If you want to call a specific method in the component, enter the name of that method here.</param>
+        /// <param name="extraData">Optional: Any extra data to be used in all replacements in the component.</param>
+        /// <returns>A Tuple with the HTML and the component instance (if applicable).</returns>
+        Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
+
+        /// <summary>
+        /// Generates the HTML for dynamic content, based on the content ID.
+        /// </summary>
+        /// <param name="dynamicContent">The data of the dynamic content.</param>
+        /// <param name="forcedComponentMode">Optional: If you want to overwrite the component mode of the component. Default is <see langword="null" />.</param>
+        /// <param name="callMethod">Optional: If you want to call a specific method in the component, enter the name of that method here.</param>
+        /// <param name="extraData">Optional: Any extra data to be used in all replacements in the component.</param>
+        /// <returns>A Tuple with the HTML and the component instance (if applicable).</returns>
+        Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
+        
+        Task<string> HandleImageTemplating(string input);
+        Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "");
+
+        /// <summary>
+        /// Gets the data for dynamic content, from easy_dynamiccontent.
+        /// </summary>
+        /// <param name="contentId">The ID of the dynamic content.</param>
+        /// <returns>A Tuple with the content type and settings JSON.</returns>
+        Task<DynamicContent> GetDynamicContentData(int contentId);
+
+        /// <summary>
+        /// Replaces all dynamic content in the given template and returns the new template.
+        /// </summary>
+        /// <param name="template">The template to replace the dynamic content in.</param>
+        /// <returns>The new template with all dynamic content.</returns>
+        Task<string> ReplaceAllDynamicContentAsync(string template);
+
+        /// <summary>
+        /// Executes a query and converts the results into an JSON object.
+        /// </summary>
+        /// <param name="queryTemplate">The query to execute with the grouping settings for if and how to group the results in the JSON.</param>
+        /// <param name="encryptionKey">Optional: The key to encrypt/decrypt values in the results. Default is the key from the app settings.</param>
+        /// <param name="skipNullValues">Optional: Whether to skip values that are <see langword="null"/> and not add them to the JSON. Default value is <see langword="false"/>.</param>
+        /// <param name="allowValueDecryption">Optional: Set to <see langword="true"/> to allow values to be decrypted (for columns that contain the _decrypt suffix for example), otherwise values will be added in the <see cref="JObject"/> as is. Default value is <see langword="false"/>.</param>
+        /// <param name="recursive">TODO</param>
+        /// <returns></returns>
+        Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false);
+    }
+}

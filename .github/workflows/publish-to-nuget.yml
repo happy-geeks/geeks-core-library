@@ -1,0 +1,26 @@
+name: Publish to nuget
+on:
+  push:
+    tags:
+    - v*
+    
+jobs:
+  publish:
+    name: build, pack & publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+          
+      - name: Build with dotnet
+        run: dotnet build --configuration Release
+        working-directory: ./
+      - name: Pack with dotnet
+        run: dotnet pack --output nuget-packages --configuration Release
+      #- name: Run ls
+      #  run: ls 
+      - name: Push with dotnet
+        run: dotnet nuget push ./nuget-packages/*.nupkg -k ${{secrets.HAPPYGEEKSNUGET}} --source https://nuget.pkg.github.com/happy-geeks/index.json

@@ -1,0 +1,130 @@
+﻿@model GeeksCoreLibrary.Modules.Templates.ViewModels.PageViewModel
+@* ReSharper disable Razor.SectionNotResolved *@
+@section HeaderStyles {
+    @{
+        if (Model?.Css?.ExternalCss != null)
+        {
+            foreach (var css in Model.Css.ExternalCss)
+            {
+                @:<link rel="stylesheet" href="@Html.Raw(css)" />
+            }
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Css?.GeneralCssFileName))
+        {
+            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.GeneralCssFileName)" />
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Css?.PageStandardCssFileName))
+        {
+            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.PageStandardCssFileName)" />
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Css?.PageInlineHeadCss))
+        {
+            @:<style>@Html.Raw(Model.Css.PageInlineHeadCss)</style>
+        }
+    }
+}
+
+@section HeaderScripts {
+    @{
+        if (Model?.Javascript?.ExternalJavascript != null)
+        {
+            foreach (var javascript in Model.Javascript.ExternalJavascript)
+            {
+                @:<script src="@Html.Raw(javascript.Uri.ToString())" @Html.Raw(javascript.Async ? "async" : "") @Html.Raw(javascript.Defer ? "defer" : "")></script>
+            }
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralJavascriptFileName))
+        {
+            @:<script src="@Html.Raw(Model.Javascript.GeneralJavascriptFileName)"></script>
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageStandardJavascriptFileName))
+        {
+            @:<script src="@Html.Raw(Model.Javascript.PageStandardJavascriptFileName)"></script>
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageInlineHeadJavascript))
+        {
+            @:<script>@Html.Raw(Model.Javascript.PageInlineHeadJavascript)</script>
+        }
+    }
+}
+
+@section FooterStyles {
+    @{
+        if (!String.IsNullOrWhiteSpace(Model?.Css?.PageAsyncFooterCssFileName))
+        {
+            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.PageAsyncFooterCssFileName)" async />
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Css?.PageSyncFooterCssFileName))
+        {
+            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.PageSyncFooterCssFileName)" />
+        }
+    }
+}
+
+@section FooterScripts {
+    @{
+        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralFooterJavascriptFileName))
+        {
+            @:<script src="@Html.Raw(Model.Javascript.GeneralFooterJavascriptFileName)"></script>
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageAsyncFooterJavascriptFileName))
+        {
+            @:<script src="@Html.Raw(Model.Javascript.PageAsyncFooterJavascriptFileName)" async></script>
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageSyncFooterJavascriptFileName))
+        {
+            @:<script src="@Html.Raw(Model.Javascript.PageSyncFooterJavascriptFileName)"></script>
+        }
+        if (Model?.Javascript?.PagePluginInlineJavascriptSnippets != null)
+        {
+            foreach (var javascript in Model.Javascript.PagePluginInlineJavascriptSnippets)
+            {
+                @:<script>@Html.Raw(javascript)</script>
+            }
+        }
+    }
+}
+
+@section MetaData {
+    @{
+        if (Model?.MetaData?.MetaTags != null)
+        {
+            foreach (var (name, content) in Model.MetaData.MetaTags)
+            {
+                @:<meta name="@name" content="@content" />
+            }
+        }
+
+        if (!String.IsNullOrWhiteSpace(Model?.MetaData?.Canonical))
+        {
+            @:<link href="@Model.MetaData.Canonical" rel="canonical" />
+        }
+    }
+}
+
+@section HeaderGoogleAnalyticsScripts {
+    @{
+        if (Model?.GoogleAnalytics?.HeadJavaScriptResources != null)
+        {
+            foreach (var javascript in Model.GoogleAnalytics.HeadJavaScriptResources)
+            {
+                @:<script src="@Html.Raw(javascript.Uri.ToString())" @Html.Raw(javascript.Async ? "async" : "") @Html.Raw(javascript.Defer ? "defer" : "")></script>
+            }
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.GoogleAnalytics?.InlineHeadJavaScript))
+        {
+            @:<script>@Html.Raw(Model.GoogleAnalytics.InlineHeadJavaScript)</script>
+        }
+    }
+}
+
+@section BodyGoogleAnalyticsScripts {
+    @{
+        if (!String.IsNullOrWhiteSpace(Model?.GoogleAnalytics?.InlineBodyNoScript))
+        {
+            @:<noscript>@Html.Raw(Model.GoogleAnalytics.InlineBodyNoScript)</noscript>
+        }
+    }
+}
+
+@Html.Raw(Model.Body)

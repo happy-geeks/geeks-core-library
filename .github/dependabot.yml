@@ -1,0 +1,12 @@
+# Test door Rinus 03-11-2021
+# See: https://docs.github.com/en/code-security/supply-chain-security/keeping-your-dependencies-updated-automatically/enabling-and-disabling-version-updates
+
+version: 2
+updates:
+  # Enable version updates for nuget
+  - package-ecosystem: "nuget"
+    # Look for `package.json` and `lock` files in the `root` directory
+    directory: "/"
+    # Check the nuget registry for updates every day (weekdays)
+    schedule:
+      interval: "daily"
