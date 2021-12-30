@@ -1,5 +1,5 @@
 # GeeksCoreLibrary
-[![Build and test](https://github.com/happy-geeks/GeeksCoreLibrary/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/happy-geeks/GeeksCoreLibrary/actions/workflows/build-and-test.yml)
+[![Build and test](https://github.com/happy-geeks/geeks-core-library/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/happy-geeks/geeks-core-library/actions/workflows/build-and-test.yml)
 ## Requirements
 1. Install .NET Hosting bundle on the server that is running the GCL: https://dotnet.microsoft.com/download/dotnet/5.0
 
