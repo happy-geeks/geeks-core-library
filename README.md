@@ -36,7 +36,7 @@ For the GCL to work, you need to set some values in the `appSettings.json`:
 ```json
 {
   "GCL": {
-    "connectionString": "", // The connection string to the main database for Wiser.
+    "connectionString": "", // The connection string to the database for this project.
     "DefaultEncryptionKey": "", // The default encryption key that should be used for encrypting values with AES when no encryption key is given.
     "DefaultEncryptionKeyTripleDes": "",  // The default encryption key that should be used for encrypting values with Tripe DES when no encryption key is given.
     "evoPdfLicenseKey": "" // If you're going to use the PdfService, you need a license key for Evo PDF, or make your own implementation.
