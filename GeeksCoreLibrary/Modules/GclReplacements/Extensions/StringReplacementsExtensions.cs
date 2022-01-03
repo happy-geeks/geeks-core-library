@@ -13,7 +13,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string Seo(this string input)
         {
             return input?.ConvertToSeo();
@@ -24,7 +23,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string HtmlEncode(this string input)
         {
             return String.IsNullOrEmpty(input) ? input : System.Text.Encodings.Web.HtmlEncoder.Default.Encode(input);
@@ -35,7 +33,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string UrlEncode(this string input)
         {
             return input == null ? null : Uri.EscapeDataString(input);
@@ -48,7 +45,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <param name="maxLength"></param>
         /// <param name="suffix"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string CutString(this string input, int maxLength, string suffix = "")
         {
             if (String.IsNullOrEmpty(input) || input.Length <= maxLength)
@@ -79,21 +75,27 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <param name="numberFormat">The number format. Defaults to N2.</param>
         /// <param name="cultureName">The culture name. Defaults to nl-NL.</param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string FormatNumber(this decimal input, string numberFormat = "N2", string cultureName = "nl-NL")
         {
             return input.ToString(numberFormat, CultureInfo.CreateSpecificCulture(cultureName));
         }
-
         /// <summary>
-        /// Converts a <see cref="decimal"/> to a currency representation without the currency symbol. This will the use default culture of the application instance.
+        /// Converts a <see cref="decimal"/> to a currency representation. This will the use default culture of the application instance.
         /// </summary>
         /// <param name="input"></param>
+        /// <param name="includeCurrencySymbol"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
-        public static string Valuta(this decimal input)
+        public static string Currency(this decimal input, bool includeCurrencySymbol = true)
         {
-            return input.ToString("F2", CultureInfo.CurrentCulture);
+            var culture = CultureInfo.CurrentCulture;
+            var output = input.ToString(includeCurrencySymbol ? "C" : $"N{culture.NumberFormat.CurrencyDecimalDigits}", culture);
+
+            if (culture.Name.Equals("nl", StringComparison.OrdinalIgnoreCase) || culture.Name.Equals("nl-NL", StringComparison.OrdinalIgnoreCase))
+            {
+                output = output.Replace(",00", ",-");
+            }
+
+            return output;
         }
 
         /// <summary>
@@ -103,8 +105,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <param name="includeCurrencySymbol"></param>
         /// <param name="cultureString"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
-        public static string ValutaSup(this decimal input, bool includeCurrencySymbol = true, string cultureString = null)
+        public static string CurrencySup(this decimal input, bool includeCurrencySymbol = true, string cultureString = null)
         {
             var culture = !String.IsNullOrWhiteSpace(cultureString) ? new CultureInfo(cultureString) : CultureInfo.CurrentCulture;
 
@@ -120,31 +121,10 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         }
 
         /// <summary>
-        /// Converts a <see cref="decimal"/> to a currency representation. This will the use default culture of the application instance.
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="includeCurrencySymbol"></param>
-        /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
-        public static string Currency(this decimal input, bool includeCurrencySymbol = true)
-        {
-            var culture = CultureInfo.CurrentCulture;
-            var output = input.ToString(includeCurrencySymbol ? "C" : $"N{culture.NumberFormat.CurrencyDecimalDigits}", culture);
-
-            if (culture.Name.Equals("nl", StringComparison.OrdinalIgnoreCase) || culture.Name.Equals("nl-NL", StringComparison.OrdinalIgnoreCase))
-            {
-                output = output.Replace(",00", ",-");
-            }
-
-            return output;
-        }
-
-        /// <summary>
         /// Returns a string with the first character in upper-case.
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string UppercaseFirst(this string input)
         {
             if (String.IsNullOrEmpty(input))
@@ -170,7 +150,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string LowercaseFirst(this string input)
         {
             if (String.IsNullOrEmpty(input))
@@ -196,7 +175,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string StripHtml(this string input)
         {
             var tagRegex = new Regex("<(.|\\n)*?>");
@@ -209,7 +187,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string JsonSafe(this string input)
         {
             return String.IsNullOrEmpty(input) ? input : input.Replace("\"", "\\\"");
@@ -220,7 +197,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string StripInlineStyle(this string input)
         {
             var regex = new Regex(" ?style=\".*?\"");
@@ -233,7 +209,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <param name="input"></param>
         /// <param name="withDateTime"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string Encrypt(this string input, bool withDateTime = false)
         {
             return input?.EncryptWithAesWithSalt(withDateTime: withDateTime);
@@ -245,7 +220,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <param name="input"></param>
         /// <param name="withDateTime"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string Decrypt(this string input, bool withDateTime = false)
         {
             return input?.DecryptWithAesWithSalt(withDateTime: withDateTime);
@@ -256,7 +230,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string Base64(this string input)
         {
             return input == null ? null : Convert.ToBase64String(Encoding.UTF8.GetBytes(input));
@@ -268,7 +241,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <param name="input"></param>
         /// <param name="format"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string DateTime(this DateTime input, string format)
         {
             return input.ToString(format);
@@ -279,7 +251,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        // ReSharper disable once UnusedMember.Global
         public static string Sha512(this string input)
         {
             return input?.ToSha512ForPasswords();
