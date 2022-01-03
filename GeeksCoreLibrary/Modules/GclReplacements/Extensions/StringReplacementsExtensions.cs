@@ -220,10 +220,11 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <param name="withDateTime"></param>
+        /// <param name="minutesValidOverride"></param>
         /// <returns></returns>
-        public static string Decrypt(this string input, bool withDateTime = false)
+        public static string Decrypt(this string input, bool withDateTime = false, int minutesValidOverride = 0)
         {
-            return input?.DecryptWithAesWithSalt(withDateTime: withDateTime);
+            return input?.DecryptWithAesWithSalt(withDateTime: withDateTime, minutesValidOverride: minutesValidOverride);
         }
 
         /// <summary>

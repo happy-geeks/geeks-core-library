@@ -82,9 +82,9 @@ namespace GeeksCoreLibrary.Core.Models
         public string AccountUserIdEncryptionKey { get; set; }
 
         /// <summary>
-        /// The encryption key used when encrypting and decrypting query templates that the Wiser API uses.
+        /// The amount of hours an encrypted value is valid when it was encrypted with a date and time.
         /// </summary>
-        public string QueryTemplatesDecryptionKey { get; set; }
+        public string ExpiringEncryptionKey { get; set; }
 
         /// <summary>
         /// The amount of hours an encrypted value is valid when it was encrypted with a date and time.

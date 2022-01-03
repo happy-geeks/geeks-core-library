@@ -180,10 +180,10 @@ namespace GeeksCoreLibrary.Core.Extensions
                 // Custom secret key passed in the parameters.
                 encryptionKey = key;
             }
-            else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.QueryTemplatesDecryptionKey))
+            else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
             {
                 // Wiser 2.0 secret key for customer.
-                encryptionKey = GclSettings.Current.QueryTemplatesDecryptionKey;
+                encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
             }
             else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
             {
@@ -230,10 +230,11 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// Decrypts a value with AES.
         /// </summary>
         /// <param name="input">The string to decrypt.</param>
-        /// <param name="key">Optional: The encryption key to use. Default value is the value of "QueryTemplatesDecryptionKey" from the app settings.</param>
+        /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" from the app settings.</param>
         /// <param name="withDateTime">Optional: Set the <see langword="true"/> if the value contains a validation date and time. Default is <see langword="false"/>.</param>
+        /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the appsettings, you can change that here.</param>
         /// <returns>The decrypted string.</returns>
-        public static string DecryptWithAes(this string input, string key = "", bool withDateTime = false)
+        public static string DecryptWithAes(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0)
         {
             string encryptionKey;
             if (!String.IsNullOrWhiteSpace(key))
@@ -241,10 +242,10 @@ namespace GeeksCoreLibrary.Core.Extensions
                 // Custom secret key passed in the parameters.
                 encryptionKey = key;
             }
-            else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.QueryTemplatesDecryptionKey))
+            else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
             {
                 // Wiser 2.0 secret key for customer.
-                encryptionKey = GclSettings.Current.QueryTemplatesDecryptionKey;
+                encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
             }
             else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
             {
@@ -294,8 +295,18 @@ namespace GeeksCoreLibrary.Core.Extensions
             var separatorIndex = output.LastIndexOf("~", StringComparison.Ordinal);
             var date = DateTime.ParseExact(output[(separatorIndex + 1)..], "yyyyMMddHHmmss", CultureInfo.InvariantCulture);
             var hoursValid = GclSettings.Current.TemporaryEncryptionHoursValid;
+            var minutesValid = minutesValidOverride;
+            if (minutesValid <= 0 && hoursValid > 0)
+            {
+                minutesValid = hoursValid * 60;
+            }
 
-            if (Math.Abs(DateTime.Now.Subtract(date).TotalHours) > hoursValid)
+            if (minutesValid <= 0)
+            {
+                minutesValid = 24 * 60;
+            }
+
+            if (date.AddMinutes(minutesValid) < DateTime.Now)
             {
                 throw new Exception("GCL DecryptWithAes: The encrypted value has expired.");
             }
@@ -320,10 +331,10 @@ namespace GeeksCoreLibrary.Core.Extensions
                 // Custom secret key passed in the parameters.
                 encryptionKey = key;
             }
-            else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.QueryTemplatesDecryptionKey))
+            else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
             {
                 // Wiser 2.0 secret key for customer.
-                encryptionKey = GclSettings.Current.QueryTemplatesDecryptionKey;
+                encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
             }
             else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
             {
@@ -381,11 +392,12 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <summary>
         /// Decrypts a value with AES. This method uses a salt, so it can decrypt values encrypted with <see cref="EncryptWithAesWithSalt"/>.
         /// </summary>
-        /// <param name="input"></param>
-        /// <param name="key"></param>
-        /// <param name="withDateTime"></param>
-        /// <returns></returns>
-        public static string DecryptWithAesWithSalt(this string input, string key = "", bool withDateTime = false)
+        /// <param name="input">The string to decrypt.</param>
+        /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" from the app settings.</param>
+        /// <param name="withDateTime">Optional: Set the <see langword="true"/> if the value contains a validation date and time. Default is <see langword="false"/>.</param>
+        /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the appsettings, you can change that here.</param>
+        /// <returns>The decrypted string.</returns>
+        public static string DecryptWithAesWithSalt(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0)
         {
             string encryptionKey;
             var stringToDecrypt = new StringBuilder(input);
@@ -395,10 +407,10 @@ namespace GeeksCoreLibrary.Core.Extensions
                 // Custom secret key passed in the parameters.
                 encryptionKey = key;
             }
-            else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.QueryTemplatesDecryptionKey))
+            else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
             {
                 // Wiser 2.0 secret key for customer.
-                encryptionKey = GclSettings.Current.QueryTemplatesDecryptionKey;
+                encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
             }
             else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
             {
@@ -455,8 +467,18 @@ namespace GeeksCoreLibrary.Core.Extensions
             var separatorIndex = output.LastIndexOf("~", StringComparison.Ordinal);
             var date = DateTime.ParseExact(output[(separatorIndex + 1)..], "yyyyMMddHHmmss", CultureInfo.InvariantCulture);
             var hoursValid = GclSettings.Current.TemporaryEncryptionHoursValid;
+            var minutesValid = minutesValidOverride;
+            if (minutesValid <= 0 && hoursValid > 0)
+            {
+                minutesValid = hoursValid * 60;
+            }
 
-            if (Math.Abs(DateTime.Now.Subtract(date).TotalHours) > hoursValid)
+            if (minutesValid <= 0)
+            {
+                minutesValid = 24 * 60;
+            }
+
+            if (date.AddMinutes(minutesValid) < DateTime.Now)
             {
                 throw new Exception("GCL DecryptWithAes: The encrypted value has expired.");
             }

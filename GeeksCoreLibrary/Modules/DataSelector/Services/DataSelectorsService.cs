@@ -1681,7 +1681,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
         /// <returns></returns>
         private string ValidateHash(DataSelectorRequestModel data)
         {
-            if (String.IsNullOrWhiteSpace(gclSettings.QueryTemplatesDecryptionKey))
+            if (String.IsNullOrWhiteSpace(gclSettings.ExpiringEncryptionKey))
             {
                 return "No decryption key found";
             }
@@ -1724,7 +1724,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 stringToHash.Append(key.ToLowerInvariant()).Append(value);
             }
 
-            stringToHash.Append("secret").Append(gclSettings.QueryTemplatesDecryptionKey);
+            stringToHash.Append("secret").Append(gclSettings.ExpiringEncryptionKey);
 
             return !stringToHash.ToString().VerifySha512(data.Hash)
                 ? "Invalid hash"
