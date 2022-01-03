@@ -3,6 +3,7 @@ using System;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Web;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
 {
@@ -189,7 +190,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <returns></returns>
         public static string JsonSafe(this string input)
         {
-            return String.IsNullOrEmpty(input) ? input : input.Replace("\"", "\\\"");
+            return String.IsNullOrEmpty(input) ? input : HttpUtility.JavaScriptStringEncode(input);
         }
 
         /// <summary>
