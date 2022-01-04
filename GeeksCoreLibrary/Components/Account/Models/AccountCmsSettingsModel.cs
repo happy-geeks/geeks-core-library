@@ -722,7 +722,7 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string UpdateAccountQuery { get; set; }
 
         /// <summary>
-        /// The query for updating a new account.
+        /// The query for deleting a(n) (sub) account.
         /// </summary>
         [CmsProperty(
             PrettyName = "Delete account query",
