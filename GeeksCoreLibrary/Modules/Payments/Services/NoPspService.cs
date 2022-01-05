@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
+    /// <inheritdoc cref="IPaymentServiceProviderService" />
     public class NoPspService : IPaymentServiceProviderService, IScopedService
     {
         /// <inheritdoc />

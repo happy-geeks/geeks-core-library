@@ -7,6 +7,7 @@
         Buckaroo,
         MultiSafepay,
         CM,
-        RaboOmniKassa
+        RaboOmniKassa,
+        AfterPay
     }
 }

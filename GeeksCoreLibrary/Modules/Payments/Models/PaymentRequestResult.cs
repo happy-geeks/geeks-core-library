@@ -19,5 +19,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Models
         /// Gets or sets the data that accompanies the <see cref="Action"/>, like a URL in the case of a redirect.
         /// </summary>
         public string ActionData { get; set; }
+
+        /// <summary>
+        /// Gets or sets the error message, if the request was not successful.
+        /// </summary>
+        public string ErrorMessage { get; set; }
     }
 }

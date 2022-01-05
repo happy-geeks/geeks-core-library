@@ -84,6 +84,20 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null);
 
         Task<decimal> GetPriceAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, string lineType = "", int onlyIfVatRate = -1, bool includeDiscountGettingVat = true);
+        
+        /// <summary>
+        /// Gets the total price of a single basket line.
+        /// </summary>
+        /// <param name="shoppingBasket"></param>
+        /// <param name="line"></param>
+        /// <param name="settings"></param>
+        /// <param name="priceType"></param>
+        /// <param name="singlePrice"></param>
+        /// <param name="round"></param>
+        /// <param name="onlyIfVatRate"></param>
+        /// <param name="withoutFactor"></param>
+        /// <returns></returns>
+        Task<decimal> GetLinePriceAsync(WiserItemModel shoppingBasket, WiserItemModel line, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, bool singlePrice = false, bool round = false, int onlyIfVatRate = -1, bool withoutFactor = false);
 
         /// <summary>
         /// Function to recalculate the shipping-costs, re-evaluate the coupon, etc. after changing quantities, adding or removing products, etc.
@@ -161,5 +175,16 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// </summary>
         /// <returns>A <see cref="ShoppingBasketCmsSettingsModel"/> object.</returns>
         Task<ShoppingBasketCmsSettingsModel> GetSettingsAsync();
+
+        Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate);
+        
+        /// <summary>
+        /// Function returns the VAT rule by given VAT rate, depending on the actual information and requirements of the rule.
+        /// </summary>
+        /// <param name="shoppingBasket"></param>
+        /// <param name="settings"></param>
+        /// <param name="vatRate"></param>
+        /// <returns></returns>
+        Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate);
     }
 }

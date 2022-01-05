@@ -31,6 +31,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
+    /// <inheritdoc cref="IPaymentServiceProviderService" />
     public class BuckarooService : IPaymentServiceProviderService, IScopedService
     {
         public bool LogPaymentActions { get; set; }
@@ -114,7 +115,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     {
                         Action = PaymentRequestActions.Redirect,
                         ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
-                        Successful = false
+                        Successful = false,
+                        ErrorMessage = $"Unknown or unsupported payment method '{paymentMethod:G}'"
                     };
             }
 

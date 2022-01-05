@@ -34,7 +34,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Controllers
                     Response.Redirect(paymentRequestResult.ActionData);
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new ArgumentOutOfRangeException(nameof(paymentRequestResult.Action), paymentRequestResult.Action.ToString());
             }
 
             return Content("", "text/html");
