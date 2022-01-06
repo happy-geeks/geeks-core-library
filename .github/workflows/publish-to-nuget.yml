@@ -20,7 +20,6 @@ jobs:
         working-directory: ./
       - name: Pack with dotnet
         run: dotnet pack --output nuget-packages --configuration Release
-      #- name: Run ls
-      #  run: ls 
+
       - name: Push with dotnet
-        run: dotnet nuget push ./nuget-packages/*.nupkg -k ${{secrets.HAPPYGEEKSNUGET}} --source https://nuget.pkg.github.com/happy-geeks/index.json
+        run: dotnet nuget push ./nuget-packages/*.nupkg -k ${{secrets.HAPPYGEEKSNUGET}} --source https://api.nuget.org/v3/index.json
