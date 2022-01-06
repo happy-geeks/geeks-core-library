@@ -413,7 +413,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                 if (Settings.EnableOciLogin && !String.IsNullOrWhiteSpace(ociUsername) && !String.IsNullOrWhiteSpace(ociPassword))
                 {
-                    await LogoutUserAsync();
+                    await AccountsService.LogoutUserAsync(Settings);
                     var loginResult = await LoginUserAsync(stepNumber, ociUsername, ociPassword, (int)ComponentModes.LoginSingleStep);
                     userId = loginResult.UserId;
 
@@ -441,7 +441,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
                 else if (Settings.EnableWiserLogin && !String.IsNullOrWhiteSpace(encryptedWiserUserId))
                 {
-                    await LogoutUserAsync();
+                    await AccountsService.LogoutUserAsync(Settings);
                     var loginResult = await LoginUserAsync(stepNumber, overrideComponentMode: (int)ComponentModes.LoginSingleStep, encryptedUserId: encryptedWiserUserId);
                     userId = loginResult.UserId;
 
@@ -491,7 +491,7 @@ namespace GeeksCoreLibrary.Components.Account
                     if (String.Equals(request?.Query[$"{Constants.LogoutQueryStringKey}{ComponentId}"], "true", StringComparison.OrdinalIgnoreCase))
                     {
                         // User is logging out.
-                        await LogoutUserAsync();
+                        await AccountsService.LogoutUserAsync(Settings);
                     }
                     else if (request == null)
                     {
@@ -1710,91 +1710,6 @@ namespace GeeksCoreLibrary.Components.Account
             DatabaseConnection.AddParameter("value", googleClientId);
 
             await RenderAndExecuteQueryAsync($"INSERT INTO {WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)");
-        }
-
-        /// <summary>
-        /// Attempts to log off the user. This will delete the user's cookie from their browser and our database.
-        /// </summary>
-        private async Task LogoutUserAsync()
-        {
-            // Do some initial checks, to make sure we have everything we need and the user is actually still logged in.
-            var currentContext = HttpContext;
-            if (currentContext == null)
-            {
-                WriteToTrace("HttpContext is null, can't log out the user!", true);
-                return;
-            }
-
-            var cookieValue = currentContext.Request.Cookies[Constants.CookieName];
-            if (String.IsNullOrWhiteSpace(cookieValue))
-            {
-                return;
-            }
-
-            var cookieValueParts = cookieValue.Split(':');
-            if (cookieValueParts.Length != 3)
-            {
-                WriteToTrace($"User has an invalid cookie: '{cookieValue}'", true);
-                return;
-            }
-
-            var ociUrl = currentContext.Request.Cookies[Constants.OciHookUrlCookieName];
-
-            // Delete the cookie(s).
-            currentContext.Response.Cookies.Delete(Constants.CookieName);
-            if (!String.IsNullOrWhiteSpace(ociUrl))
-            {
-                currentContext.Response.Cookies.Delete(Constants.OciHookUrlCookieName);
-            }
-
-            var cookiesToDelete = (Settings.CookiesToDeleteAfterLogout ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-            var basketCookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName");
-            if (!String.IsNullOrWhiteSpace(basketCookieName) && !cookiesToDelete.Contains(basketCookieName))
-            {
-                cookiesToDelete.Add(basketCookieName);
-            }
-
-            foreach (var cookieToDelete in cookiesToDelete)
-            {
-                currentContext.Response.Cookies.Delete(cookieToDelete);
-            }
-
-            // Remove session values.
-            var punchOutSessionPrefix = await objectsService.FindSystemObjectByDomainNameAsync("CXmlPunchOutSessionPrefix");
-            currentContext.Session.Remove($"{punchOutSessionPrefix}session_token");
-            currentContext.Session.Remove($"{punchOutSessionPrefix}organisatie_id");
-            currentContext.Session.Remove($"{punchOutSessionPrefix}user_id");
-            currentContext.Session.Remove($"{punchOutSessionPrefix}hook_url");
-            currentContext.Session.Remove($"{punchOutSessionPrefix}buyer_cookie");
-            currentContext.Session.Remove($"{punchOutSessionPrefix}duns_from");
-            currentContext.Session.Remove($"{punchOutSessionPrefix}duns_to");
-            currentContext.Session.Remove($"{punchOutSessionPrefix}duns_sender");
-
-            // Remove any session extra values from the setting SessionKeysToDeleteAfterLogout.
-            var sessionsToDelete = (Settings.SessionKeysToDeleteAfterLogout ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var sessionToDelete in sessionsToDelete)
-            {
-                currentContext.Session.Remove(sessionToDelete);
-            }
-
-            // Remove any session values that might have been added via Wiser login.
-            var extraSessionKeysToRemove = HttpContext.Session.Keys.Where(s => s.StartsWith("WiserLogin_", StringComparison.OrdinalIgnoreCase));
-            foreach (var sessionToDelete in extraSessionKeysToRemove)
-            {
-                HttpContext.Session.Remove(sessionToDelete);
-            }
-
-            await AccountsService.RemoveCookieTokenAsync(cookieValueParts[0]);
-
-            if (!String.IsNullOrWhiteSpace(ociUrl))
-            {
-                currentContext.Response.Headers.Add($"x-{Settings.OciHookUrlKey}", ociUrl);
-
-                if (Settings.EnableOciLogin)
-                {
-                    currentContext.Response.Redirect(ociUrl);
-                }
-            }
         }
 
         /// <summary>

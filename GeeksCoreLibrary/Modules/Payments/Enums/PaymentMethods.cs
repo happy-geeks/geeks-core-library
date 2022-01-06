@@ -63,6 +63,7 @@
         /// Payment will be wired manually by the customer.
         /// </summary>
         WireTransfer = 201,
+        /// <summary>
         /// The goods will be paid later.
         /// </summary>
         Afterpay = 75,
@@ -73,6 +74,28 @@
         /// <summary>
         /// The goods will be paid with a Single Euro Payments Area debit card.
         /// </summary>
-        Vpay = 87
+        Vpay = 87,
+        /// <summary>
+        /// Flexible payments where the shopper can control the amount they are willing to pay per month (with a minimum that is decided by the PSP).
+        /// This is used in AfterPay (and possibly others in the future).
+        /// </summary>
+        FlexPayment = 202,
+        /// <summary>
+        /// The customer will pay a fixed amount per month, for a duration of X months.
+        /// This is used in AfterPay (and possibly others in the future).
+        /// </summary>
+        FixedInstallments = 203,
+        /// <summary>
+        /// Providing convenience for shoppers who frequently make small purchases, AfterPay can consolidate all these purchases into a single invoice.
+        /// The most common use case is a monthly invoice, which is typically suitable for transportation tickets or digital streaming services, but the frequency of the invoicing can be agreed separately.
+        /// While the actual purchases are made on different dates, the payment terms of 14 days start from the date on which the consolidated invoice is issued.
+        /// </summary>
+        ConsolidatedInvoice = 204,
+        /// <summary>
+        /// During peak seasons, such as Christmas, merchants may use campaign invoicing, which allows shoppers extended payment terms per purchase or a fixed due date.
+        /// AfterPay offers standard campaigns depending on the season. Merchants are able to set up specific campaigns through separate agreements. All campaigns can be retrieved by calling the AfterPay API.
+        /// For example, Christmas campaign A would be displayed at checkout as “Buy now, pay after Christmas” and payment is due by January 31, regardless of the actual purchase date.
+        /// </summary>
+        CampaignInvoice = 205
     }
 }

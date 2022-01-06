@@ -102,9 +102,9 @@ namespace GeeksCoreLibrary.Components.Repeater
             Settings = LegacyMode switch
             {
                 LegacyComponentMode.NonLegacy => JsonConvert.DeserializeObject<RepeaterCmsSettingsModel>(settingsJson),
-                LegacyComponentMode.SimpleMenu => JsonConvert.DeserializeObject<SimpleMenuLegacySettingsModel>(settingsJson).ToSettingsModel(),
-                LegacyComponentMode.MlSimpleMenu => JsonConvert.DeserializeObject<MlSimpleMenuLegacySettingsModel>(settingsJson).ToSettingsModel(),
-                LegacyComponentMode.ProductModule => JsonConvert.DeserializeObject<ProductModuleLegacySettingsModel>(settingsJson).ToSettingsModel(),
+                LegacyComponentMode.SimpleMenu => JsonConvert.DeserializeObject<SimpleMenuLegacySettingsModel>(settingsJson)?.ToSettingsModel(),
+                LegacyComponentMode.MlSimpleMenu => JsonConvert.DeserializeObject<MlSimpleMenuLegacySettingsModel>(settingsJson)?.ToSettingsModel(),
+                LegacyComponentMode.ProductModule => JsonConvert.DeserializeObject<ProductModuleLegacySettingsModel>(settingsJson)?.ToSettingsModel(),
                 _ => throw new ArgumentOutOfRangeException()
             };
 

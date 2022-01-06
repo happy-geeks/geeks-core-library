@@ -250,6 +250,89 @@ namespace GeeksCoreLibrary.Components.Account.Services
             databaseConnection.AddParameter("selector", selector);
             await databaseConnection.ExecuteAsync($"DELETE FROM {Constants.AuthenticationTokensTableName} WHERE selector = ?selector");
         }
+
+        /// <inheritdoc />
+        public async Task LogoutUserAsync(AccountCmsSettingsModel settings)
+        {
+            // Do some initial checks, to make sure we have everything we need and the user is actually still logged in.
+            var currentContext = httpContextAccessor.HttpContext;
+            if (currentContext == null)
+            {
+                logger.LogError("HttpContext is null, can't log out the user!");
+                return;
+            }
+
+            var cookieValue = currentContext.Request.Cookies[Constants.CookieName];
+            if (String.IsNullOrWhiteSpace(cookieValue))
+            {
+                return;
+            }
+
+            var cookieValueParts = cookieValue.Split(':');
+            if (cookieValueParts.Length != 3)
+            {
+                logger.LogWarning($"User has an invalid cookie: '{cookieValue}'");
+                return;
+            }
+
+            var ociUrl = currentContext.Request.Cookies[Constants.OciHookUrlCookieName];
+
+            // Delete the cookie(s).
+            currentContext.Response.Cookies.Delete(Constants.CookieName);
+            if (!String.IsNullOrWhiteSpace(ociUrl))
+            {
+                currentContext.Response.Cookies.Delete(Constants.OciHookUrlCookieName);
+            }
+
+            var cookiesToDelete = (settings.CookiesToDeleteAfterLogout ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            var basketCookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName");
+            if (!String.IsNullOrWhiteSpace(basketCookieName) && !cookiesToDelete.Contains(basketCookieName))
+            {
+                cookiesToDelete.Add(basketCookieName);
+            }
+
+            foreach (var cookieToDelete in cookiesToDelete)
+            {
+                currentContext.Response.Cookies.Delete(cookieToDelete);
+            }
+
+            // Remove session values.
+            var punchOutSessionPrefix = await objectsService.FindSystemObjectByDomainNameAsync("CXmlPunchOutSessionPrefix");
+            currentContext.Session.Remove($"{punchOutSessionPrefix}session_token");
+            currentContext.Session.Remove($"{punchOutSessionPrefix}organisatie_id");
+            currentContext.Session.Remove($"{punchOutSessionPrefix}user_id");
+            currentContext.Session.Remove($"{punchOutSessionPrefix}hook_url");
+            currentContext.Session.Remove($"{punchOutSessionPrefix}buyer_cookie");
+            currentContext.Session.Remove($"{punchOutSessionPrefix}duns_from");
+            currentContext.Session.Remove($"{punchOutSessionPrefix}duns_to");
+            currentContext.Session.Remove($"{punchOutSessionPrefix}duns_sender");
+
+            // Remove any session extra values from the setting SessionKeysToDeleteAfterLogout.
+            var sessionsToDelete = (settings.SessionKeysToDeleteAfterLogout ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var sessionToDelete in sessionsToDelete)
+            {
+                currentContext.Session.Remove(sessionToDelete);
+            }
+
+            // Remove any session values that might have been added via Wiser login.
+            var extraSessionKeysToRemove = currentContext.Session.Keys.Where(s => s.StartsWith("WiserLogin_", StringComparison.OrdinalIgnoreCase));
+            foreach (var sessionToDelete in extraSessionKeysToRemove)
+            {
+                currentContext.Session.Remove(sessionToDelete);
+            }
+
+            await RemoveCookieTokenAsync(cookieValueParts[0]);
+
+            if (!String.IsNullOrWhiteSpace(ociUrl))
+            {
+                currentContext.Response.Headers.Add($"x-{settings.OciHookUrlKey}", ociUrl);
+
+                if (settings.EnableOciLogin)
+                {
+                    currentContext.Response.Redirect(ociUrl);
+                }
+            }
+        }
         
         /// <inheritdoc />
         public async Task<string> DoAccountReplacementsAsync(string input, bool forQuery = false)

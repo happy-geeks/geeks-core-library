@@ -101,6 +101,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
+        public async Task<decimal> GetLinePriceAsync(WiserItemModel shoppingBasket, WiserItemModel line, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, bool singlePrice = false, bool round = false, int onlyIfVatRate = -1, bool withoutFactor = false)
+        {
+            return await shoppingBasketsService.GetLinePriceAsync(shoppingBasket, line, settings, priceType, singlePrice, round, onlyIfVatRate, withoutFactor);
+        }
+
+        /// <inheritdoc />
         public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null)
         {
             await shoppingBasketsService.RecalculateVariablesAsync(shoppingBasket, basketLines, settings, skipType);
@@ -198,6 +204,18 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         public async Task<ShoppingBasketCmsSettingsModel> GetSettingsAsync()
         {
             return await shoppingBasketsService.GetSettingsAsync();
+        }
+
+        /// <inheritdoc />
+        public async Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
+        {
+            return await shoppingBasketsService.GetVatFactorByRateAsync(shoppingBasket, settings, vatRate);
+        }
+
+        /// <inheritdoc />
+        public async Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
+        {
+            return await shoppingBasketsService.GetVatRuleByRateAsync(shoppingBasket, settings, vatRate);
         }
     }
 }

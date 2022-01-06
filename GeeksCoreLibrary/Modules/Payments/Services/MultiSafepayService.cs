@@ -24,6 +24,7 @@ using ArgumentException = System.ArgumentException;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
+    /// <inheritdoc cref="IPaymentServiceProviderService" />
     public class MultiSafepayService : IPaymentServiceProviderService, IScopedService
     {
         /// <inheritdoc />
@@ -91,11 +92,12 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 {
                     Action = PaymentRequestActions.Redirect,
                     ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
-                    Successful = false
+                    Successful = false,
+                    ErrorMessage = $"Unknown or unsupported payment method '{paymentMethod:G}'"
                 };
             }
 
-            var order = new Order()
+            var order = new Order
             {
                 Type = OrderType.Redirect,
                 OrderId = invoiceNumber,
@@ -114,20 +116,21 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             {
                 var response = client.CustomOrder(order);
 
-                return new PaymentRequestResult()
+                return new PaymentRequestResult
                 {
                     Successful = true,
                     Action = PaymentRequestActions.Redirect,
                     ActionData = response.PaymentUrl
                 };
             }
-            catch (MultiSafepayException)
+            catch (MultiSafepayException exception)
             {
                 return new PaymentRequestResult
                 {
                     Action = PaymentRequestActions.Redirect,
                     ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
-                    Successful = false
+                    Successful = false,
+                    ErrorMessage = exception.Message
                 };
             }
         }

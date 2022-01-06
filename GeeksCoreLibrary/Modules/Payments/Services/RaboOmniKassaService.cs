@@ -28,6 +28,7 @@ using OmniKassa.Model.Response.Notification;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
+    /// <inheritdoc cref="IPaymentServiceProviderService" />
     public class RaboOmniKassaService : IPaymentServiceProviderService, ITransientService
     {
         /// <inheritdoc />
@@ -107,7 +108,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 {
                     Action = PaymentRequestActions.Redirect,
                     ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
-                    Successful = false
+                    Successful = false,
+                    ErrorMessage = $"Unknown or unsupported payment method '{paymentMethod:G}'"
                 };
             }
 
@@ -131,7 +133,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 {
                     Action = PaymentRequestActions.Redirect,
                     ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
-                    Successful = false
+                    Successful = false,
+                    ErrorMessage = "Failed to authenticate with Rabo omni kassa API"
                 };
             }
 
@@ -156,9 +159,9 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             {
                 foreach (var line in lines)
                 {
-                    //Get the title of the product. If it is a coupon no title is provided and description will be used instead.
+                    // Get the title of the product. If it is a coupon no title is provided and description will be used instead.
                     var name = line.GetDetailValue("title");
-                    if (name == string.Empty)
+                    if (String.IsNullOrWhiteSpace(name))
                     {
                         name = line.GetDetailValue("description");
                     }
@@ -188,11 +191,11 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private Address CreateAddress(WiserItemModel userDetails, string detailKeyPrefix = "")
         {
             //If a prefix is given but any of the required values doesn't contain a value return null.
-            if (detailKeyPrefix != String.Empty && 
-                (userDetails.GetDetailValue($"{detailKeyPrefix}street") == String.Empty)
-                || userDetails.GetDetailValue($"{detailKeyPrefix}zipcode") == String.Empty
-                || userDetails.GetDetailValue($"{detailKeyPrefix}city") == String.Empty
-                || userDetails.GetDetailValue($"{detailKeyPrefix}country") == String.Empty)
+            if (!String.IsNullOrWhiteSpace(detailKeyPrefix) && 
+                (String.IsNullOrWhiteSpace(userDetails.GetDetailValue($"{detailKeyPrefix}street")))
+                 || String.IsNullOrWhiteSpace(userDetails.GetDetailValue($"{detailKeyPrefix}zipcode"))
+                 || String.IsNullOrWhiteSpace(userDetails.GetDetailValue($"{detailKeyPrefix}city"))
+                 || String.IsNullOrWhiteSpace(userDetails.GetDetailValue($"{detailKeyPrefix}country")))
             {
                 return null;
             }
@@ -207,16 +210,18 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             //Add house number if provided to Wiser.
             var houseNumber = userDetails.GetDetailValue($"{detailKeyPrefix}housenumber");
-            if (houseNumber != String.Empty)
+            if (String.IsNullOrWhiteSpace(houseNumber))
             {
-                addressBuilder.WithHouseNumber(houseNumber);
+                return addressBuilder.Build();
+            }
 
-                //Add house number addition if an addition has been provided to Wiser.
-                var houseNumberAddition = userDetails.GetDetailValue($"{detailKeyPrefix}housenumber_suffix");
-                if (houseNumberAddition != String.Empty)
-                {
-                    addressBuilder.WithHouseNumberAddition(houseNumberAddition);
-                }
+            addressBuilder.WithHouseNumber(houseNumber);
+
+            //Add house number addition if an addition has been provided to Wiser.
+            var houseNumberAddition = userDetails.GetDetailValue($"{detailKeyPrefix}housenumber_suffix");
+            if (!String.IsNullOrWhiteSpace(houseNumberAddition))
+            {
+                addressBuilder.WithHouseNumberAddition(houseNumberAddition);
             }
 
             return addressBuilder.Build();

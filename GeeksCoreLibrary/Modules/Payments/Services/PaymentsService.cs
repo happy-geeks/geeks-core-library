@@ -156,7 +156,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 {
                     Action = PaymentRequestActions.Redirect,
                     ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
-                    Successful = false
+                    Successful = false,
+                    ErrorMessage = "No http context found."
                 };
             }
 
@@ -215,7 +216,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 {
                     Successful = false,
                     Action = PaymentRequestActions.Redirect,
-                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed")
+                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                    ErrorMessage = $"Invalid payment method '{paymentMethodData}'"
                 };
             }
 
@@ -235,7 +237,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     {
                         Successful = false,
                         Action = PaymentRequestActions.Redirect,
-                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed")
+                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                        ErrorMessage = "Unknown PSP"
                     };
                 }
             }
@@ -253,7 +256,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     {
                         Successful = false,
                         Action = PaymentRequestActions.Redirect,
-                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed")
+                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                        ErrorMessage = "Unknown payment method"
                     };
                 }
             }
@@ -305,7 +309,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     {
                         Successful = false,
                         Action = PaymentRequestActions.Redirect,
-                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed")
+                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                        ErrorMessage = "This user is not allowed to pay"
                     };
                 }
             }

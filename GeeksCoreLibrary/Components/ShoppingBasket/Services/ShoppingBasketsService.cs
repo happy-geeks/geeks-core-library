@@ -2121,14 +2121,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
         }
 
-        /// <summary>
-        /// Function returns the VAT rule by given VAT rate, depending on the actual information and requirements of the rule.
-        /// </summary>
-        /// <param name="shoppingBasket"></param>
-        /// <param name="settings"></param>
-        /// <param name="vatRate"></param>
-        /// <returns></returns>
-        private async Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
+        /// <inheritdoc />
+        public async Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
         {
             var httpContext = httpContextAccessor.HttpContext;
 
@@ -2202,19 +2196,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             return new VatRule();
         }
 
-        /// <summary>
-        /// Gets the total price of a single basket line.
-        /// </summary>
-        /// <param name="shoppingBasket"></param>
-        /// <param name="line"></param>
-        /// <param name="settings"></param>
-        /// <param name="priceType"></param>
-        /// <param name="singlePrice"></param>
-        /// <param name="round"></param>
-        /// <param name="onlyIfVatRate"></param>
-        /// <param name="withoutFactor"></param>
-        /// <returns></returns>
-        private async Task<decimal> GetLinePriceAsync(WiserItemModel shoppingBasket, WiserItemModel line, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, bool singlePrice = false, bool round = false, int onlyIfVatRate = -1, bool withoutFactor = false)
+        /// <inheritdoc />
+        public async Task<decimal> GetLinePriceAsync(WiserItemModel shoppingBasket, WiserItemModel line, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, bool singlePrice = false, bool round = false, int onlyIfVatRate = -1, bool withoutFactor = false)
         {
             var output = 0M;
             var quantity = 1M;
@@ -2311,7 +2294,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             return round ? Math.Round(output, 2, MidpointRounding.AwayFromZero) : output;
         }
 
-        private async Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
+        public async Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
         {
             vatFactorsByRate ??= new SortedList<int, decimal>();
 
