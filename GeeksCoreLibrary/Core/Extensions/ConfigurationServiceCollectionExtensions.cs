@@ -224,6 +224,7 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             // Decorate cached services, to use caching.
             services.Decorate<IDatabaseConnection, CachedDatabaseConnection>();
+            services.Decorate<IDatabaseHelpersService, CachedDatabaseHelpersService>();
             services.Decorate<ITemplatesService, CachedTemplatesService>();
             services.Decorate<ILanguagesService, CachedLanguagesService>();
             services.Decorate<IObjectsService, CachedObjectsService>();
