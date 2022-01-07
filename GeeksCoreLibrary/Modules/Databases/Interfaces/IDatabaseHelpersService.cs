@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Databases.Models;
 
@@ -98,5 +99,19 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="characterSet">Optional: The default character set for the new database. Default value is 'utf8mb4'.</param>
         /// <param name="collation">Optional: The default collation for the new database. Default value is 'utf8mb4_general_ci'.</param>
         Task CreateDatabaseAsync(string databaseName, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci");
+
+        /// <summary>
+        /// Gets when all Wiser tables have been updated last.
+        /// </summary>
+        /// <returns>A Dictionary with table name and last update datetime.</returns>
+        Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync();
+
+        /// <summary>
+        /// Check if certain Wiser tables are up-to-date and update them if they're not.
+        /// </summary>
+        /// <param name="tablesToUpdate">A list of one or more tables to check and update when needed.</param>
+        /// <param name="tableChanges">Optional: If you already have a cached Dictionary of the last update dates of the tables, you can add that here. Otherwise this list will be retrieved from database. Default value is <see langword="null"/>.</param>
+        /// <returns></returns>
+        Task CheckAndUpdateTablesAsync(List<string> tablesToUpdate, Dictionary<string, DateTime> tableChanges = null);
     }
 }

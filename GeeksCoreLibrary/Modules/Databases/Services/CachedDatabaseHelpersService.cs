@@ -127,5 +127,29 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             await databaseHelpersService.CreateDatabaseAsync(databaseName, characterSet, collation);
         }
+
+        /// <inheritdoc />
+        public Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync()
+        {
+            var cacheName = "CachedDatabaseHelpersService_GetLastTableUpdates";
+            return cache.GetOrAddAsync(cacheName,
+                async cacheEntry =>
+                {
+                    cacheEntry.SlidingExpiration = gclSettings.DefaultQueryCacheDuration;
+                    return await databaseHelpersService.GetLastTableUpdatesAsync();
+                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+        }
+
+        /// <inheritdoc />
+        public async Task CheckAndUpdateTablesAsync(List<string> tablesToUpdate, Dictionary<string, DateTime> tableChanges = null)
+        {
+            tableChanges ??= await GetLastTableUpdatesAsync();
+
+            await databaseHelpersService.CheckAndUpdateTablesAsync(tablesToUpdate, tableChanges);
+
+            // Remove the cache for last table updates, so that they will be retrieved from database next time.
+            // Otherwise we will get problems that we try to do the same changes multiple times, because the cache will have old dates then.
+            cache.Remove("CachedDatabaseHelpersService_GetLastTableUpdates");
+        }
     }
 }

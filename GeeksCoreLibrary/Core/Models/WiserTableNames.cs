@@ -109,6 +109,10 @@
         /// </summary>
         public const string WiserGrantStore = "wiser_grant_store";
         /// <summary>
+        /// This table is used to keep track of when all other table definitions have been updated last. Wiser can then use this to make sure table definitions for all customers will be automatically kept up-to-date.
+        /// </summary>
+        public const string WiserTableChanges = "wiser_table_changes";
+        /// <summary>
         /// All deleted items will be moved to archive tables, this is the suffix for those archive tables.
         /// </summary>
         public const string ArchiveSuffix = "_archive";

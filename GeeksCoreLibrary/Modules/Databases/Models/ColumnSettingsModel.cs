@@ -9,6 +9,30 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
     /// </summary>
     public class ColumnSettingsModel
     {
+        public ColumnSettingsModel()
+        {
+        }
+
+        public ColumnSettingsModel(string name, MySqlDbType type, int length = 0, int decimals = 2, string defaultValue = null, bool notNull = false, bool addIndex = false, IndexTypes indexType = IndexTypes.Normal, bool autoIncrement = false, IList<string> enumValues = null, string comment = null, string addAfterColumnName = null, bool updateTimeStampOnChange = false, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", bool isPrimaryKey = false)
+        {
+            Name = name;
+            Type = type;
+            Length = length;
+            Decimals = decimals;
+            DefaultValue = defaultValue;
+            NotNull = notNull;
+            AddIndex = addIndex;
+            IndexType = indexType;
+            AutoIncrement = autoIncrement;
+            EnumValues = enumValues;
+            Comment = comment;
+            AddAfterColumnName = addAfterColumnName;
+            UpdateTimeStampOnChange = updateTimeStampOnChange;
+            CharacterSet = characterSet;
+            Collation = collation;
+            IsPrimaryKey = isPrimaryKey;
+        }
+
         /// <summary>
         /// Gets or sets the name.
         /// </summary>

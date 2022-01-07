@@ -5,6 +5,18 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
 {
     public class IndexSettingsModel
     {
+        public IndexSettingsModel()
+        {
+        }
+
+        public IndexSettingsModel(string tableName , string name, IndexTypes type = IndexTypes.Normal, List<string> fields = null)
+        {
+            Name = name;
+            Type = type;
+            TableName = tableName;
+            Fields = fields ?? new List<string>();
+        }
+
         /// <summary>
         /// Gets or sets the name of the index.
         /// </summary>
