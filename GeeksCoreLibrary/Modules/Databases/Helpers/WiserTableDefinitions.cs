@@ -11,6 +11,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
     {
         public static readonly List<WiserTableDefinitionModel> TablesToUpdate = new()
         {
+            // wiser_item
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserItem,
@@ -39,6 +40,30 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new (WiserTableNames.WiserItem, "idx_unique_uuid", IndexTypes.Normal, new List<string> { "unique_uuid" }),
                     new (WiserTableNames.WiserItem, "idx_original_item_id", IndexTypes.Normal, new List<string> { "original_item_id" }),
                     new (WiserTableNames.WiserItem, "idx_parent", IndexTypes.Normal, new List<string> { "parent_item_id", "entity_type" })
+                }
+            },
+
+            // wiser_grant_store
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserGrantStore,
+                LastUpdate = new DateTime(2022, 1, 1),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new ("key", MySqlDbType.VarChar, 512, notNull: true),
+                    new ("type", MySqlDbType.VarChar, 255, notNull: true),
+                    new ("client_id", MySqlDbType.VarChar, 50, notNull: true),
+                    new ("data", MySqlDbType.MediumText),
+                    new ("subject_id", MySqlDbType.VarChar, 255, notNull: true),
+                    new ("description", MySqlDbType.VarChar, 512),
+                    new ("creation_time", MySqlDbType.DateTime, notNull: true),
+                    new ("expiration", MySqlDbType.DateTime, notNull: true),
+                    new ("session_id", MySqlDbType.VarChar, 255)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new (WiserTableNames.WiserGrantStore, "idx_key", IndexTypes.Unique, new List<string> { "key" })
                 }
             }
         };

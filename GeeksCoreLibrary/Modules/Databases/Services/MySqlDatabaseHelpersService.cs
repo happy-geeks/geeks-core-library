@@ -59,7 +59,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             databaseConnection.AddParameter("columnName", settings.Name);
             databaseConnection.AddParameter("defaultValue", settings.DefaultValue);
             
-            if (!await ColumnExistsAsync(tableName, settings.Name))
+            if (await ColumnExistsAsync(tableName, settings.Name))
             {
                 if (throwExceptionIfColumnAlreadyExists)
                 {
@@ -77,7 +77,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 var indexTypeName = settings.IndexType.ToMySqlString();
 
-                queryBuilder.Append($"CREATE {indexTypeName} INDEX ?columnName ON `{tableName.ToMySqlSafeValue()}` (?columnName);");
+                var name = settings.Name;
+                if (name.Length > 60)
+                {
+                    name = name[..64];
+                }
+
+                queryBuilder.Append($"CREATE {indexTypeName} INDEX `idx_{name.ToMySqlSafeValue()}` ON `{tableName.ToMySqlSafeValue()}` (?columnName);");
             }
 
             await databaseConnection.ExecuteAsync(queryBuilder.ToString());
@@ -93,7 +99,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async Task CreateTableAsync(string tableName, IList<ColumnSettingsModel> primaryKeys, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci")
         {
-            var queryBuilder = new StringBuilder($"CREATE TABLE IS NOT EXISTS `{tableName.ToMySqlSafeValue()}`");
+            var queryBuilder = new StringBuilder($"CREATE TABLE IF NOT EXISTS `{tableName.ToMySqlSafeValue()}`");
             if (primaryKeys != null && primaryKeys.Any())
             {
                 queryBuilder.AppendLine(" (");
@@ -106,16 +112,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 queryBuilder.AppendLine(")");
             }
 
-            queryBuilder.AppendLine("ENGINE = AUTO");
+            queryBuilder.AppendLine("ENGINE = INNODB");
             if (!String.IsNullOrWhiteSpace(characterSet))
             {
                 databaseConnection.AddParameter("characterSet", characterSet);
-                queryBuilder.Append("DEFAULT CHARACTER SET = ?characterSet");
+                queryBuilder.Append("CHARACTER SET ?characterSet");
 
                 if (!String.IsNullOrWhiteSpace(collation))
                 {
                     databaseConnection.AddParameter("collation", collation);
-                    queryBuilder.Append(" COLLATE = ?collation");
+                    queryBuilder.Append(" COLLATE ?collation");
                 }
 
                 queryBuilder.AppendLine();
@@ -346,7 +352,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private StringBuilder GenerateColumnQueryPart(string tableName, ColumnSettingsModel settings)
         {
             var parameterSuffix = $"_{settings.Name}";
-            databaseConnection.AddParameter($"columnName{parameterSuffix}", settings.CharacterSet);
             var (databaseType, unsigned) = MySqlDbTypeToDatabaseValue(settings.Type);
             var queryBuilder = new StringBuilder();
             switch (settings.Type)
@@ -355,7 +360,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 case MySqlDbType.Decimal:
                 case MySqlDbType.Float:
                     var columnLength = settings.Length == 0 ? "" : $"({settings.Length}, {settings.Decimals})";
-                    queryBuilder.Append($"?columnName{parameterSuffix} {databaseType}{columnLength}");
+                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue()}` {databaseType}{columnLength}");
                     break;
                 case MySqlDbType.Time:
                 case MySqlDbType.Timestamp:
@@ -364,7 +369,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 case MySqlDbType.TinyBlob:
                 case MySqlDbType.Blob:
                 case MySqlDbType.MediumBlob:
-                    queryBuilder.Append($"?columnName{parameterSuffix} {databaseType}");
+                case MySqlDbType.TinyText:
+                case MySqlDbType.MediumText:
+                case MySqlDbType.Text:
+                case MySqlDbType.LongText:
+                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue()}` {databaseType}");
                     break;
                 case MySqlDbType.Enum:
                     if (settings.EnumValues == null || !settings.EnumValues.Any())
@@ -372,11 +381,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         throw new DatabaseColumnMissingEnumValuesException(tableName, settings.Name);
                     }
 
-                    queryBuilder.Append($"?columnName{parameterSuffix} {databaseType}({String.Join(",", settings.EnumValues.Select(v => v.ToMySqlSafeValue(true)))})");
+                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue()}` {databaseType}({String.Join(",", settings.EnumValues.Select(v => v.ToMySqlSafeValue(true)))})");
 
                     break;
                 default:
-                    queryBuilder.Append($"?columnName{parameterSuffix} {databaseType}({settings.Length})");
+                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue()}` {databaseType}");
+                    if (settings.Length > 0)
+                    {
+                        queryBuilder.Append($"({settings.Length})");
+                    }
+
                     break;
             }
 
@@ -385,12 +399,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 if (!String.IsNullOrWhiteSpace(settings.CharacterSet))
                 {
                     databaseConnection.AddParameter($"characterSet{parameterSuffix}", settings.CharacterSet);
-                    queryBuilder.Append($" DEFAULT CHARACTER SET = ?characterSet{parameterSuffix}");
+                    queryBuilder.Append($" CHARACTER SET ?characterSet{parameterSuffix}");
 
                     if (!String.IsNullOrWhiteSpace(settings.Collation))
                     {
                         databaseConnection.AddParameter($"collation{parameterSuffix}", settings.Collation);
-                        queryBuilder.Append($" COLLATE = ?collation{parameterSuffix}");
+                        queryBuilder.Append($" COLLATE ?collation{parameterSuffix}");
                     }
                 }
             }
