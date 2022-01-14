@@ -6,31 +6,16 @@ namespace GeeksCoreLibrary.Modules.Payments.Interfaces
 {
     public interface IPaymentFunctionsService
     {
-        async Task<bool> TransactionStartedAsync(string invoiceNumber, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders)
-        {
-            return true;
-        }
+        Task<bool> TransactionStartedAsync(string invoiceNumber, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders);
 
-        async Task<bool> TransactionFinishedAsync(string invoiceNumber, bool successful, bool orderSetToFinished, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders)
-        {
-            return true;
-        }
+        Task<bool> TransactionFinishedAsync(string invoiceNumber, bool successful, bool orderSetToFinished, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders);
 
-        async Task<bool> TransactionUpdateAsync(string invoiceNumber, string pspAction, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders, object extraData)
-        {
-            return true;
-        }
+        Task<bool> TransactionUpdateAsync(string invoiceNumber, string pspAction, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders, object extraData);
 
-        async Task TransactionReturnAsync(string invoiceNumber, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders)
-        {
-        }
+        Task TransactionReturnAsync(string invoiceNumber, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders);
 
-        async Task TransactionBeforeOutAsync(string invoiceNumber, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders)
-        {
-        }
+        Task TransactionBeforeOutAsync(string invoiceNumber, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders);
 
-        async Task TransactionBeforeOutRedirectAsync(string invoiceNumber, string url, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders)
-        {
-        }
+        Task TransactionBeforeOutRedirectAsync(string invoiceNumber, string url, IList<(WiserItemModel Main, List<WiserItemModel> Lines)> orders);
     }
 }
