@@ -82,7 +82,6 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
 
                 try
                 {
-                    databaseConnection.ClearParameters();
                     databaseConnection.AddParameter("languageCode", languageCode);
                     databaseConnection.AddParameter("groupName", Wiser2TranslationsGroupName);
                     databaseConnection.AddParameter("translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));

@@ -100,8 +100,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
             }
-
-            databaseConnection.ClearParameters();
+            
             var joinPart = gclSettings.Environment switch
             {
                 Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
@@ -187,7 +186,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
         {
-            databaseConnection.ClearParameters();
             var joinPart = gclSettings.Environment switch
             {
                 Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
@@ -230,7 +228,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
         {
-            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("templateType", templateType.ToString());
 
             var joinPart = gclSettings.Environment switch
@@ -318,7 +315,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<List<Template>> GetTemplatesAsync(ICollection<int> templateIds, bool includeContent)
         {
             var results = new List<Template>();
-            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("includeContent", includeContent);
 
             var joinPart = gclSettings.Environment switch
@@ -599,7 +595,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 imageIndex = imageIndex == 0 ? 1 : imageIndex;
                  
                 // Get the image from the database
-                databaseConnection.ClearParameters();
                 databaseConnection.AddParameter("itemId", imageItemIdOrFilename);
                 databaseConnection.AddParameter("filename", imageItemIdOrFilename);
                 databaseConnection.AddParameter("propertyName", propertyName);
@@ -839,8 +834,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         WHERE d.version = 1 
                         AND d.itemid = 0
                         AND d.id = ?contentId";
-
-            databaseConnection.ClearParameters();
+            
             databaseConnection.AddParameter("contentId", contentId);
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)

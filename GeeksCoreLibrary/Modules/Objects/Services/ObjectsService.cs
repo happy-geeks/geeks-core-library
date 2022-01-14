@@ -142,7 +142,6 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
         /// <inheritdoc />
         public async Task<string> GetObjectValueAsync(string key, int typeNumber = -100)
         {
-            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("key", key);
 
             string query;

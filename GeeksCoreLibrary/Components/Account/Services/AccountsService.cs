@@ -26,14 +26,16 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IObjectsService objectsService;
         private readonly ILogger<AccountsService> logger;
+        private readonly IDatabaseHelpersService databaseHelpersService;
 
-        public AccountsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<AccountsService> logger)
+        public AccountsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<AccountsService> logger, IDatabaseHelpersService databaseHelpersService)
         {
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
             this.httpContextAccessor = httpContextAccessor;
             this.objectsService = objectsService;
             this.logger = logger;
+            this.databaseHelpersService = databaseHelpersService;
         }
         
         /// <inheritdoc />
@@ -76,6 +78,8 @@ namespace GeeksCoreLibrary.Components.Account.Services
                     return defaultAnonymousUserModel;
                 }
 
+                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> { Constants.AuthenticationTokensTableName });
+
                 // Note: Added the word 'update' to the query force the GCL to use the write connection string.
                 // Note: This is done because sometimes the sync to a read database is not instant and then the cookie cannot be found immediately after creating it.
                 var query = $@"# UPDATE
@@ -93,8 +97,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                                 WHERE selector = ?selector
                                 AND entity_type = ?entityType
                                 AND expires > NOW()";
-
-                databaseConnection.ClearParameters();
+                
                 databaseConnection.AddParameter("selector", cookieValueParts[0]);
                 databaseConnection.AddParameter("entityType", cookieValueParts[2]);
                 var result = await databaseConnection.GetAsync(query);
@@ -142,7 +145,6 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 {
                     try
                     {
-                        databaseConnection.ClearParameters();
                         result = await databaseConnection.GetAsync(extraDataQuery
                             .Replace("{Account_UserId}", output.UserId.ToString())
                             .Replace("{AccountWiser2_UserId}", output.UserId.ToString())
@@ -219,6 +221,8 @@ namespace GeeksCoreLibrary.Components.Account.Services
             {
                 mainUserId = userId;
             }
+            
+            await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> { Constants.AuthenticationTokensTableName });
 
             // Delete all expired token, there is no point in keeping them.
             await databaseConnection.ExecuteAsync($"DELETE FROM {Constants.AuthenticationTokensTableName} WHERE expires <= NOW()");
@@ -248,6 +252,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         public async Task RemoveCookieTokenAsync(string selector)
         {
             databaseConnection.AddParameter("selector", selector);
+            await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> { Constants.AuthenticationTokensTableName });
             await databaseConnection.ExecuteAsync($"DELETE FROM {Constants.AuthenticationTokensTableName} WHERE selector = ?selector");
         }
 

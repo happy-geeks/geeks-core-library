@@ -65,6 +65,32 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 {
                     new (WiserTableNames.WiserGrantStore, "idx_key", IndexTypes.Unique, new List<string> { "key" })
                 }
+            },
+
+            // wiser_grant_store
+            new WiserTableDefinitionModel
+            {
+                Name = Components.Account.Models.Constants.AuthenticationTokensTableName,
+                LastUpdate = new DateTime(2022, 1, 1),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new ("selector", MySqlDbType.VarChar, 32, notNull: true),
+                    new ("hashed_validator", MySqlDbType.VarChar, 150, notNull: true),
+                    new ("user_id", MySqlDbType.Int64, notNull: true),
+                    new ("main_user_id", MySqlDbType.Int64, notNull: true),
+                    new ("entity_type", MySqlDbType.VarChar, 255, notNull: true),
+                    new ("main_user_entity_type", MySqlDbType.VarChar, 255, notNull: true),
+                    new ("role", MySqlDbType.VarChar, 255),
+                    new ("ip_address", MySqlDbType.VarChar, 255, notNull: true),
+                    new ("user_agent", MySqlDbType.VarChar, 2000),
+                    new ("login_date", MySqlDbType.DateTime, notNull: true),
+                    new ("expires", MySqlDbType.DateTime, notNull: true)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new (Components.Account.Models.Constants.AuthenticationTokensTableName, "idx_selector", IndexTypes.Unique, new List<string> { "selector", "entity_type" })
+                }
             }
         };
     }

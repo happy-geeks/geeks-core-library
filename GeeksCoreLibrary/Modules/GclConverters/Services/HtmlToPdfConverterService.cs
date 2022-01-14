@@ -268,7 +268,6 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
 
         private async Task<string> RetrieveBackgroundImageAsync(ulong itemId, string backgroundPropertyName)
         {
-            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("itemId", itemId);
             databaseConnection.AddParameter("propertyName", backgroundPropertyName);
             var getImageResult = await databaseConnection.GetAsync($@"

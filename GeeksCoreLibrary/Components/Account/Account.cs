@@ -258,7 +258,7 @@ namespace GeeksCoreLibrary.Components.Account
         /// <inheritdoc />
         public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
         {
-            Settings = JsonConvert.DeserializeObject<AccountCmsSettingsModel>(settingsJson);
+            Settings = JsonConvert.DeserializeObject<AccountCmsSettingsModel>(settingsJson) ?? new AccountCmsSettingsModel();
             if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
@@ -1665,7 +1665,7 @@ namespace GeeksCoreLibrary.Components.Account
                 await SaveGoogleClientIdAsync(loggedInUserId);
             }
 
-            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : new DateTimeOffset(DateTime.Now, new TimeSpan(amountOfDaysToRememberCookie.Value, 0, 0));
+            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
             HttpContextHelpers.WriteCookie(HttpContext, Constants.CookieName, cookieValue, offset, isEssential: true);
 
             if (decryptedUserId == 0)

@@ -72,7 +72,7 @@ namespace GeeksCoreLibrary.Core.Cms
             HideInCms = false,
             ReadOnlyInCms = false
         )]
-        public bool EvaluateIfElseInTemplates { get; set; } = false;
+        public bool EvaluateIfElseInTemplates { get; set; } = true;
 
         /// <summary>
         /// If this is set to true, all left over variables after all replacements will be removed from the string.

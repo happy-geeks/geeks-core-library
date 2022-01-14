@@ -26,7 +26,6 @@ namespace GeeksCoreLibrary.Modules.Redirect.Services
         public async Task<RedirectModel> GetRedirectAsync(Uri uri)
         {
             var result = new RedirectModel();
-            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("url1", uri.ToString()); // With host and query-strings
             databaseConnection.AddParameter("url2", uri.PathAndQuery); // Without host and query-strings
             if (!String.IsNullOrEmpty(uri.Query))

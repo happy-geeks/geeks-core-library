@@ -28,7 +28,6 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
         public async Task<PageMetaDataModel> GetSeoDataForPageAsync(Uri pageUri)
         {
             var result = new PageMetaDataModel();
-            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("url", pageUri.AbsolutePath);
 
             var query = $@"SELECT

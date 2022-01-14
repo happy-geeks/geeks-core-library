@@ -55,8 +55,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             try
             {
                 languageCode ??= await GetLanguageCodeAsync();
-
-                databaseConnection.ClearParameters();
+                
                 databaseConnection.AddParameter("languageCode", languageCode);
                 databaseConnection.AddParameter("original", original);
                 databaseConnection.AddParameter("groupName", Wiser2TranslationsGroupName);

@@ -2250,8 +2250,7 @@ namespace GeeksCoreLibrary.Core.Services
                     };
                 }
             }
-
-            databaseConnection.ClearParameters();
+            
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryJcl", saveHistory); // This is used in triggers.
@@ -2334,8 +2333,7 @@ namespace GeeksCoreLibrary.Core.Services
             }
 
             var sourceTablePrefix = await GetTablePrefixForEntityAsync(sourceEntityType);
-
-            databaseConnection.ClearParameters();
+            
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryJcl", saveHistory); // This is used in triggers.
