@@ -48,8 +48,9 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly IHtmlToPdfConverterService htmlToPdfConverterService;
         private readonly ILanguagesService languagesService;
+        private readonly IPaymentFunctionsService paymentFunctionsService;
 
-        public PaymentsService(ILogger<PaymentsService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IObjectsService objectsService, ICommunicationsService communicationsService, IWiserItemsService wiserItemsService, IAccountsService accountsService, IShoppingBasketsService shoppingBasketsService, IStringReplacementsService stringReplacementsService, IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory, IWebHostEnvironment webHostEnvironment, IHtmlToPdfConverterService htmlToPdfConverterService, ILanguagesService languagesService)
+        public PaymentsService(ILogger<PaymentsService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IObjectsService objectsService, ICommunicationsService communicationsService, IWiserItemsService wiserItemsService, IAccountsService accountsService, IShoppingBasketsService shoppingBasketsService, IStringReplacementsService stringReplacementsService, IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory, IWebHostEnvironment webHostEnvironment, IHtmlToPdfConverterService htmlToPdfConverterService, ILanguagesService languagesService, IPaymentFunctionsService paymentFunctionsService)
         {
             this.logger = logger;
             this.gclSettings = gclSettings.Value;
@@ -65,6 +66,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             this.webHostEnvironment = webHostEnvironment;
             this.htmlToPdfConverterService = htmlToPdfConverterService;
             this.languagesService = languagesService;
+            this.paymentFunctionsService = paymentFunctionsService;
         }
 
         /// <inheritdoc />
@@ -269,6 +271,17 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
             }
 
+            var transactionStarted = await paymentFunctionsService.TransactionStartedAsync(invoiceNumber, shoppingBaskets);
+            if (!transactionStarted)
+            {
+                return new PaymentRequestResult
+                {
+                    Successful = false,
+                    Action = PaymentRequestActions.Redirect,
+                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed")
+                };
+            }
+
             var paymentMethodsQuery = await objectsService.FindSystemObjectByDomainNameAsync("PSP_paymentMethodQuery");
             var paymentMethodCheckWithQuery = await objectsService.FindSystemObjectByDomainNameAsync("PSP_paymentMethodCheckWithQuery");
             var userPaymentAllowed = false;
@@ -411,7 +424,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 }
             }
 
-            // TODO: Call "TransactionBeforeOut" site function.
+            // Allow sites that implement the IPaymentFunctionsService interface to execute a function before the user is redirected to the payment page.
+            await paymentFunctionsService.TransactionBeforeOutAsync(invoiceNumber, shoppingBaskets);
 
             var skipPaymentWhenOrderAmountEqualsZero = (await objectsService.FindSystemObjectByDomainNameAsync("PSP_skipPaymentWhenOrderAmountEqualsZero")).InList("1", "true");
             if (skipPaymentWhenOrderAmountEqualsZero)
@@ -429,8 +443,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                         foreach (var (main, _) in shoppingBaskets)
                         {
                             await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
-                            // TODO: Call "TransactionFinished" site function.
                         }
+                        await paymentFunctionsService.TransactionFinishedAsync(invoiceNumber, true, true, shoppingBaskets);
                     }
 
                     return new PaymentRequestResult
@@ -523,10 +537,15 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
                 main.SetDetail(paymentHistoryPropertyName, $"{DateTime.Now:yyyyMMddHHmmss} - {newStatus}", true);
 
+                // Get invoice number.
+                var invoiceNumberPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_InvoicenumberPropertyName");
+                var invoiceNumber = main.GetDetailValue(invoiceNumberPropertyName);
+
                 // If order is not finished yet and the payment was successful.
                 if (orderNotFinished && isSuccessfulStatus && convertConceptOrderToOrder)
                 {
                     await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
+                    await paymentFunctionsService.TransactionFinishedAsync(invoiceNumber, true, true, shoppingBaskets.ToList());
                 }
 
                 if (!String.IsNullOrWhiteSpace(userEmailAddress) && !String.IsNullOrWhiteSpace(emailContent))
