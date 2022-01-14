@@ -292,53 +292,14 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         /// <returns></returns>
         private async Task<(byte[] FileBytes, DateTime LastModified)> HandleImage(DataRow dataRow, string saveLocation, string propertyName, int preferredWidth, int preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
         {
+            byte[] fileBytes;
+            var imageIsProtected = false;
+
             if (dataRow == null)
             {
-                return (null, DateTime.MinValue);
-            }
+                var extension = Path.GetExtension(saveLocation);
 
-            // Check if image is protected.
-            var imageIsProtected = Convert.ToBoolean(dataRow["protected"]);
-
-            // Retrieve the image bytes from the data row.
-            var fileBytes = dataRow.Field<byte[]>("content");
-
-            if (fileBytes == null || fileBytes.Length == 0)
-            {
-                // Data row didn't contain a file directly, but might contain a content URL.
-                var contentUrl = dataRow.Field<string>("content_url");
-
-                if (!String.IsNullOrWhiteSpace(contentUrl))
-                {
-                    var requestUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
-
-                    if (Uri.TryCreate(contentUrl, UriKind.Absolute, out var contentUri) && contentUri.GetLeftPart(UriPartial.Authority).Equals(requestUrl.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
-                    {
-                        contentUrl = contentUri.LocalPath;
-                    }
-
-                    if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
-                    {
-                        var requestUri = new Uri(contentUrl);
-                        using var webClient = new WebClient();
-                        fileBytes = webClient.DownloadData(requestUri);
-                    }
-                    else
-                    {
-                        var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl);
-                        if (File.Exists(localFilePath))
-                        {
-                            fileBytes = await File.ReadAllBytesAsync(localFilePath);
-                        }
-                    }
-                }
-            }
-            var extension = Path.GetExtension(saveLocation);
-
-            // Final check to see if a the image bytes were retrieved.
-            if (fileBytes == null || fileBytes.Length == 0)
-            {
-                // Try to get a no-image file instead.
+                // No row found in the database, check if a no-image file is available.
                 var noImageFilePath = Path.Combine(webHostEnvironment.WebRootPath, "img", $"noimg_{propertyName}{extension}");
                 if (!File.Exists(noImageFilePath))
                 {
@@ -350,14 +311,74 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                     }
                 }
 
+                // No-image file is available, use that the image.
                 fileBytes = await File.ReadAllBytesAsync(noImageFilePath);
             }
-
-            // Simply return the content without trying to alter it when it's an SVG.
-            var contentType = dataRow.Field<string>("content_type") ?? "";
-            if (contentType.Equals("image/svg+xml", StringComparison.OrdinalIgnoreCase))
+            else
             {
-                return (fileBytes, DateTime.UtcNow);
+                // Check if image is protected.
+                imageIsProtected = Convert.ToBoolean(dataRow["protected"]);
+
+                // Retrieve the image bytes from the data row.
+                fileBytes = dataRow.Field<byte[]>("content");
+
+                if (fileBytes == null || fileBytes.Length == 0)
+                {
+                    // Data row didn't contain a file directly, but might contain a content URL.
+                    var contentUrl = dataRow.Field<string>("content_url");
+
+                    if (!String.IsNullOrWhiteSpace(contentUrl))
+                    {
+                        var requestUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+
+                        if (Uri.TryCreate(contentUrl, UriKind.Absolute, out var contentUri) && contentUri.GetLeftPart(UriPartial.Authority).Equals(requestUrl.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
+                        {
+                            contentUrl = contentUri.LocalPath;
+                        }
+
+                        if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
+                        {
+                            var requestUri = new Uri(contentUrl);
+                            using var webClient = new WebClient();
+                            fileBytes = webClient.DownloadData(requestUri);
+                        }
+                        else
+                        {
+                            var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl);
+                            if (File.Exists(localFilePath))
+                            {
+                                fileBytes = await File.ReadAllBytesAsync(localFilePath);
+                            }
+                        }
+                    }
+                }
+
+                var extension = Path.GetExtension(saveLocation);
+
+                // Final check to see if a the image bytes were retrieved.
+                if (fileBytes == null || fileBytes.Length == 0)
+                {
+                    // Try to get a no-image file instead.
+                    var noImageFilePath = Path.Combine(webHostEnvironment.WebRootPath, "img", $"noimg_{propertyName}{extension}");
+                    if (!File.Exists(noImageFilePath))
+                    {
+                        noImageFilePath = Path.Combine(webHostEnvironment.WebRootPath, "img", $"noimg{extension}");
+                        if (!File.Exists(noImageFilePath))
+                        {
+                            // A no-image file could not be found; abort.
+                            return (null, DateTime.MinValue);
+                        }
+                    }
+
+                    fileBytes = await File.ReadAllBytesAsync(noImageFilePath);
+                }
+
+                // Simply return the content without trying to alter it when it's an SVG.
+                var contentType = dataRow.Field<string>("content_type") ?? "";
+                if (contentType.Equals("image/svg+xml", StringComparison.OrdinalIgnoreCase))
+                {
+                    return (fileBytes, DateTime.UtcNow);
+                }
             }
 
             var outFileBytes = await ResizeImageWithImageMagick(fileBytes, saveLocation, imageIsProtected, preferredWidth, preferredHeight, resizeMode, anchorPosition);
