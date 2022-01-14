@@ -17,6 +17,10 @@
         /// <summary>
         /// Template will be cached based on the URL, including the query string.
         /// </summary>
-        ServerSideCachingPerUrlAndQueryString = 4
+        ServerSideCachingPerUrlAndQueryString = 4,
+        /// <summary>
+        /// Template will be cached based on the full URL, including domain and the query string.
+        /// </summary>
+        ServerSideCachingPerHostNameAndQueryString = 5
     }
 }

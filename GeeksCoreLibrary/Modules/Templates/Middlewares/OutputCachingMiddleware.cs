@@ -181,16 +181,20 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             switch (contentTemplate.CachingMode)
             {
                 case TemplateCachingModes.ServerSideCaching:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.GetLeftPart(UriPartial.Authority).ToSha512Simple()));
                     break;
                 case TemplateCachingModes.ServerSideCachingPerUrl:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.GetLeftPart(UriPartial.Path).ToSha512Simple()));
+                    cacheFileName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
                     break;
                 case TemplateCachingModes.ServerSideCachingPerUrlAndQueryString:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.GetLeftPart(UriPartial.Query).ToSha512Simple()));
+                    cacheFileName.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
                     break;
-                default:
+                case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
+                    cacheFileName.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.NoCaching:
                     return "";
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingMode), contentTemplate.CachingMode.ToString());
             }
 
             // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
