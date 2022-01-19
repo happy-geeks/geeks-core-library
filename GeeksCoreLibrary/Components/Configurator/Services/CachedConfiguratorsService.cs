@@ -26,15 +26,39 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
-        public async Task<DataTable> GetConfiguratorDataAsync(string name, int componentId)
+        public async Task<DataTable> GetConfiguratorDataAsync(string name)
         {
           
-            return await appCache.GetOrAdd($"Redirect_{name}_{componentId}",
+            return await appCache.GetOrAdd($"GetConfiguratorDataAsync_{name}",
                                         async cacheEntry =>
                                         {
                                             cacheEntry.SlidingExpiration = gclSettings.DefaultConfiguratorsCacheDuration;
-                                            return await configuratorsService.GetConfiguratorDataAsync(name, componentId);
+                                            return await configuratorsService.GetConfiguratorDataAsync(name);
                                         });
+        }
+
+        /// <inheritdoc />
+        public async Task<ulong> SaveConfigurationAsync(ConfigurationsModel input)
+        {
+            return await configuratorsService.SaveConfigurationAsync(input);
+        }
+
+        /// <inheritdoc />
+        public async Task<(string deliveryTime, string deliveryExtra)> GetDeliveryTimeAsync(ConfigurationsModel configuration)
+        {
+            return await configuratorsService.GetDeliveryTimeAsync(configuration);
+        }
+
+        /// <inheritdoc />
+        public Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration)
+        {
+            return configuratorsService.ReplaceConfiguratorItemsAsync(templateOrQuery, configuration);
+        }
+
+        /// <inheritdoc />
+        public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
+        {
+            return await configuratorsService.CalculatePriceAsync(input);
         }
     }
 }

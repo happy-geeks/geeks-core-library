@@ -4,14 +4,17 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Crypto.Operators;
@@ -23,6 +26,14 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         private readonly ILogger<Configurator> logger;
         private readonly IDatabaseConnection databaseConnection;
         private readonly IObjectsService objectsService;
+        private readonly IWiserItemsService wiserItemsService;
+        private readonly IStringReplacementsService stringReplacementsService;
+        private readonly string configuratorEntity = "configurator";
+        private readonly string duplicateLayoutKey = "duplicatelayoutfrom";
+        private readonly int configuratorModuleId = 800;
+        private readonly string mainStepEntity = "hoofdstap";
+        private readonly string stepEntity = "stap";
+        private readonly string subStepEntity = "substap";
 
         private readonly string[] queryFields =
         {
@@ -33,30 +44,26 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         };
 
         private readonly List<(string prefix, string fieldName)> configuratorFields = new List<(string prefix, string fieldName)> { ("", "name"), ("", "summary_template"), ("", "summary_mainstep_template"), ("", "summary_step_template"), ("", "progress_pre_template"), ("", "progress_pre_step_template"), ("", "progress_pre_substep_template"), ("", "progress_post_template"), ("", "progress_post_step_template"), ("", "progress_post_substep_template"), ("", "progress_template"), ("", "progress_step_template"), ("", "progress_substep_template"), ("configurator_", "free_content1"), ("configurator_", "free_content2"), ("configurator_", "free_content3"), ("configurator_", "free_content4"), ("configurator_", "free_content5"), ("", "template"), ("", "deliverytime_query"), ("", "custom_param_name"), ("", "custom_param_dependencies"), ("", "custom_param_query"), ("", "pre_render_steps_query"), ("configurator_", "step_template"), ("", "price_calculation_query") };
-        //("mainstep_", "template"),
-        private readonly List<(string prefix, string fieldName)> mainStepFields = new List<(string prefix, string fieldName)> { ("main", "step_template"),  ("", "mainstepname"), ("mainsteps_", "values_template"), ("mainsteps_", "datasource"), ("mainsteps_", "custom_query"), ("mainsteps_", "own_data_values"), ("mainsteps_", "fixed_valuelist"), ("mainsteps_", "datasource_connectedtype"), ("mainsteps_", "datasource_connectedid"), ("mainsteps_", "isrequired"), ("mainsteps_", "check_connectedid"), ("mainstep_", "free_content1"), ("mainstep_", "free_content2"), ("mainstep_", "free_content3"), ("mainstep_", "free_content4"), ("mainstep_", "free_content5") };
+        private readonly List<(string prefix, string fieldName)> mainStepFields = new List<(string prefix, string fieldName)> { ("main", "step_template"), ("", "mainstepname"), ("mainsteps_", "values_template"), ("mainsteps_", "datasource"), ("mainsteps_", "custom_query"), ("mainsteps_", "own_data_values"), ("mainsteps_", "fixed_valuelist"), ("mainsteps_", "datasource_connectedtype"), ("mainsteps_", "datasource_connectedid"), ("mainsteps_", "isrequired"), ("mainsteps_", "check_connectedid"), ("mainstep_", "free_content1"), ("mainstep_", "free_content2"), ("mainstep_", "free_content3"), ("mainstep_", "free_content4"), ("mainstep_", "free_content5") };
         private readonly List<(string prefix, string fieldName)> stepFields = new List<(string prefix, string fieldName)> { ("", "step_template"), ("", "stepname"), ("", "values_template"), ("", "datasource"), ("", "custom_query"), ("", "own_data_values"), ("", "fixed_valuelist"), ("", "datasource_connectedtype"), ("", "variable_name"), ("", "datasource_connectedid"), ("", "isrequired"), ("", "check_connectedid"), ("step_", "free_content1"), ("step_", "free_content2"), ("step_", "free_content3"), ("step_", "free_content4"), ("step_", "free_content5") };
         private readonly List<(string prefix, string fieldName)> subStepFields = new List<(string prefix, string fieldName)> { ("sub", "step_template"), ("", "substepname"), ("substep_", "values_template"), ("substep_", "datasource"), ("substep_", "custom_query"), ("substep_", "own_data_values"), ("substep_", "fixed_valuelist"), ("substep_", "datasource_connectedtype"), ("substep_", "variable_name"), ("substep_", "datasource_connectedid"), ("substep_", "isrequired"), ("substep_", "check_connectedid"), ("substep_", "free_content1"), ("substep_", "free_content2"), ("substep_", "free_content3"), ("substep_", "free_content4"), ("substep_", "free_content5") };
 
-        public ConfiguratorsService(ILogger<Configurator> logger, IDatabaseConnection databaseConnection, IObjectsService objectsService)
+        public ConfiguratorsService(ILogger<Configurator> logger, IDatabaseConnection databaseConnection, IObjectsService objectsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService)
         {
             this.logger = logger;
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
+            this.wiserItemsService = wiserItemsService;
+            this.stringReplacementsService = stringReplacementsService;
         }
 
-        /// <summary>
-        /// Get configurator data from cache or database.
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="componentId"></param>
-        /// <returns></returns>
-        public async Task<DataTable> GetConfiguratorDataAsync(string name, int componentId)
+        /// <inheritdoc />
+        public async Task<DataTable> GetConfiguratorDataAsync(string name)
         {
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("name", name);
             // Get all connected steps/substeps
-            var dataTable = await databaseConnection.GetAsync(@$"
+            var query = @$"
                SELECT 
                     configurator.id AS configuratorId, 
                     mainstep.id AS mainStepId, 
@@ -67,21 +74,22 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     IFNULL(duplicateStep.`value`, '0') AS duplicateStepId,
                     IFNULL(duplicateSubStep.`value`, '0') AS duplicateSubStepId
                 FROM {WiserTableNames.WiserItem} configurator
-                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateConfigurator ON duplicateConfigurator.item_id = configurator.id AND duplicateConfigurator.`key` = 'duplicatelayoutfrom'
+                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateConfigurator ON duplicateConfigurator.item_id = configurator.id AND duplicateConfigurator.`key` = '{this.duplicateLayoutKey}'
 
                 JOIN {WiserTableNames.WiserItemLink} mainStepLink ON mainStepLink.destination_item_id = configurator.id
-                JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
-                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateMainStep ON duplicateMainStep.item_id = mainStep.id AND duplicateMainStep.`key` = 'duplicatelayoutfrom'
+                JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = '{this.mainStepEntity}'
+                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateMainStep ON duplicateMainStep.item_id = mainStep.id AND duplicateMainStep.`key` = '{this.duplicateLayoutKey}'
 
                 JOIN {WiserTableNames.WiserItemLink} stepLink ON stepLink.destination_item_id = mainStep.id
-                JOIN {WiserTableNames.WiserItem} step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
-                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateStep ON duplicateStep.item_id = step.id AND duplicateStep.`key` = 'duplicatelayoutfrom'
+                JOIN {WiserTableNames.WiserItem} step ON step.id = stepLink.item_id AND step.entity_type = '{this.stepEntity}'
+                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateStep ON duplicateStep.item_id = step.id AND duplicateStep.`key` = '{this.duplicateLayoutKey}'
 
                 LEFT JOIN {WiserTableNames.WiserItemLink} subStepLink ON subStepLink.destination_item_id = step.id
-                LEFT JOIN {WiserTableNames.WiserItem} subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = 'substap'
-                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateSubStep ON duplicateSubStep.item_id = subStep.id AND duplicateSubStep.`key` = 'duplicatelayoutfrom'
-                WHERE configurator.moduleid = 800 AND configurator.entity_type = 'configurator' AND configurator.title = ?name
-                ORDER BY mainStepLink.ordering, stepLink.ordering, subStepLink.ordering ");
+                LEFT JOIN {WiserTableNames.WiserItem} subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = '{this.subStepEntity}'
+                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateSubStep ON duplicateSubStep.item_id = subStep.id AND duplicateSubStep.`key` = '{this.duplicateLayoutKey}'
+                WHERE configurator.moduleid = {this.configuratorModuleId} AND configurator.entity_type = '{this.configuratorEntity}' AND configurator.title = ?name
+                ORDER BY mainStepLink.ordering, stepLink.ordering, subStepLink.ordering ";
+            var dataTable = await databaseConnection.GetAsync(query);
 
             var returnDataTable = new DataTable();
 
@@ -90,7 +98,6 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 returnDataTable.Columns.Add(queryField);
             }
 
-            //test.Columns.AddRange(new List<DataColumn>());
             if (dataTable.Rows.Count == 0)
             {
                 return returnDataTable;
@@ -234,11 +241,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 }
             }
 
-
             // afhandeling duplicate layout
             foreach (DataRow returnRow in returnDataTable.Rows)
             {
-
                 if (Convert.ToUInt64(returnRow["duplicateConfiguratorId"]) > 0)
                 {
                     var original = returnDataTable.Rows.Cast<DataRow>().FirstOrDefault(x => Convert.ToUInt64(x["configuratorId"]) == Convert.ToUInt64(returnRow["duplicateConfiguratorId"]));
@@ -323,11 +328,251 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 {
                     returnRow["mainstep_template"] = returnRow["configurator_step_template"];
                 }
+            }
+            return returnDataTable;
+        }
 
-               
+        /// <inheritdoc />
+        public async Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration)
+        {
+            if ((configuration == null) || (!templateOrQuery.Contains("{")))
+            {
+                return templateOrQuery;
             }
 
-            return returnDataTable;
+            foreach (var queryStringItem in configuration.QueryStringItems)
+            {
+                if (templateOrQuery.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase))
+                {
+                    templateOrQuery = templateOrQuery.Replace($"{{{queryStringItem.Key}}}", queryStringItem.Value.ToMySqlSafeValue());
+                }
+            }
+
+            foreach (var key in configuration.Items.Keys)
+            {
+                if (!templateOrQuery.Contains($"{{{configuration.Items[key].Id}}}", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var valuesCanContainDashes = await this.objectsService.GetSystemObjectValueAsync("CONFIGURATOR_ValuesCanContainDashes");
+                if (!String.IsNullOrWhiteSpace(valuesCanContainDashes) && valuesCanContainDashes.Equals("true", StringComparison.OrdinalIgnoreCase) && configuration.Items[key].Value.Contains("-"))
+                {
+                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", configuration.Items[key].Value.Split('-')[1].ToMySqlSafeValue());
+                }
+                else if (configuration.Items[key].Value == "-1")
+                {
+                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", configuration.Items[key].Value.Split('-')[1].ToMySqlSafeValue());
+                }
+                else
+                {
+                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", configuration.Items[key].Value.ToMySqlSafeValue());
+                }
+            }
+
+            return templateOrQuery;
+        }
+
+        /// <inheritdoc />
+        public async Task<(string deliveryTime, string deliveryExtra)> GetDeliveryTimeAsync(ConfigurationsModel configuration)
+        {
+            var dataTable = await this.GetConfiguratorDataAsync(configuration.Configurator);
+
+            if (dataTable == null || dataTable.Rows.Count == 0)
+            {
+                return ("", "");
+            }
+
+            var query = dataTable.Rows[0].Field<string>("deliverytime_query");
+
+            if (String.IsNullOrWhiteSpace(query))
+            {
+                return ("", "");
+            }
+
+            query = await this.ReplaceConfiguratorItemsAsync(query, configuration);
+            
+            var deliveryTimeResultDataTable = await this.databaseConnection.GetAsync(query);
+            if (deliveryTimeResultDataTable.Rows.Count == 0)
+            {
+                return ("", "");
+            }
+
+            var deliveryTime = deliveryTimeResultDataTable.Rows[0][0].ToString();
+            var deliveryTimeExtra = "";
+
+            if (deliveryTimeResultDataTable.Columns.Count > 1)
+            {
+                deliveryTimeExtra = deliveryTimeResultDataTable.Rows[0][1].ToString();
+            }
+
+            return (deliveryTime, deliveryTimeExtra);
+        }
+
+        /// <inheritdoc />
+        public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
+        {
+            var dataTable = await this.GetConfiguratorDataAsync(input.Configurator);
+
+            if (dataTable == null || dataTable.Rows.Count == 0)
+            {
+                return (0, 0, 0);
+            }
+
+            var query = dataTable.Rows[0].Field<string>("price_calculation_query");
+
+            if (String.IsNullOrEmpty(query))
+            {
+                return (0, 0, 0);
+            }
+
+            query = await this.stringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
+            query = await this.ReplaceConfiguratorItemsAsync(query, input);
+
+            var priceResultDataTable = await this.databaseConnection.GetAsync(query);
+            if (priceResultDataTable.Rows.Count == 0)
+            {
+                return (0, 0, 0);
+            }
+
+            var price = priceResultDataTable.Rows[0].IsNull(0) ? 0 : Convert.ToDecimal(priceResultDataTable.Rows[0][0]);
+            var purchasePrice = 0m;
+            var fromPrice = price;
+
+            if (priceResultDataTable.Columns.Count > 1)
+            {
+                purchasePrice = priceResultDataTable.Rows[0].IsNull(1) ? 0 : Convert.ToDecimal(priceResultDataTable.Rows[0][1]);
+            }
+
+            if (priceResultDataTable.Columns.Count > 2)
+            {
+                fromPrice = priceResultDataTable.Rows[0].IsNull(2) ? 0 : Convert.ToDecimal(priceResultDataTable.Rows[0][2]);
+            }
+
+            return (purchasePrice, price, fromPrice);
+        }
+
+        /// <inheritdoc />
+        public async Task<ulong> SaveConfigurationAsync(ConfigurationsModel input)
+        {
+            var configuration = new WiserItemModel
+            {
+                Title = "Configuration",
+                EntityType = "configuration",
+                ModuleId = 854
+            };
+
+            var deliveryTime = await this.GetDeliveryTimeAsync(input);
+            var prices = await this.CalculatePriceAsync(input);
+
+            // add optional 
+            var saveConfigQuery = await this.objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationQuery");
+            await this.AddItemDetailsFromQueryToWiserItemModelAsync(saveConfigQuery, configuration, input.QueryStringItems);
+
+            // set up details 
+            configuration.Details.AddRange(new List<WiserItemDetailModel>
+            {
+                new() { Key = "quantity", Value = input.Quantity },
+                new() { Key = "purchase_price", Value = prices.purchasePrice },
+                new() { Key = "sales_price", Value = prices.customerPrice },
+                new() { Key = "from_price", Value = prices.fromPrice },
+                new() { Key = "delivery_time", Value = deliveryTime.deliveryTime },
+                new() { Key = "delivery_time_extra", Value = deliveryTime.deliveryExtra },
+                new() { Key = "image_url", Value = input.Image },
+            });
+
+            // add all querystring items
+            configuration.Details.AddRange(input.QueryStringItems.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
+
+            // save main item
+            await this.wiserItemsService.SaveAsync(configuration);
+
+            // save configuration line query, we run this query to get all the other variables that need to be added to the configuration line like ean, purchaseprice etc.
+            var saveConfigLineQuery = await this.objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationLineQuery");
+
+            // loop through input items
+            foreach (var item in input.Items.Select(item => item.Value))
+            {
+                // create new WiserItem per input item
+                var configurationItem = new WiserItemModel
+                {
+                    ParentItemId = configuration.Id,
+                    Title = $"{item.Name}: {item.ValueName}",
+                    EntityType = "configurationline",
+                    ModuleId = 854
+                };
+
+                // add optional details, replace the id and value in saveConfigLineQuery
+                await this.AddItemDetailsFromQueryToWiserItemModelAsync(saveConfigLineQuery, configurationItem,
+                                                                   new Dictionary<string, string>()
+                                                                   {
+                                                                       { "id", item.Id },
+                                                                       { "value", item.Value }
+                                                                   });
+
+                // add details
+                configurationItem.Details.AddRange(new List<WiserItemDetailModel>
+                {
+                    new() { Key = "id", Value = item.Id},
+                    new() { Key = "name", Value = item.Name },
+                    new() { Key = "value_name", Value = item.ValueName },
+                    new() { Key = "value", Value = item.Value},
+                    new() { Key = "main_step", Value = item.MainStep},
+                    new() { Key = "step", Value = item.Step},
+                    new() { Key = "sub_step", Value = item.SubStep}
+                });
+
+                foreach (Dictionary<string, object> extraDataDictionary in item.ExtraData.Where(extraDataDictionary => item.ExtraData.Any()))
+                {
+                    // extra check to prevent saving of empty dictionaries 
+                    if (extraDataDictionary.Any())
+                    {
+                        configurationItem.Details.AddRange(extraDataDictionary.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
+                    }
+                }
+
+                // save configuration line
+                await this.wiserItemsService.SaveAsync(configurationItem);
+            }
+
+            return configuration.Id;
+        }
+
+        /// <summary>
+        /// Save extra item details based on other query
+        /// </summary>
+        /// <param name="query"></param>
+        /// <param name="item"></param>
+        /// <param name="parameters"></param>
+        /// <returns></returns>
+        private async Task AddItemDetailsFromQueryToWiserItemModelAsync(string query, WiserItemModel item, Dictionary<string, string> parameters = null)
+        {
+            // if save query is not empty, run query and save result
+            if (!String.IsNullOrWhiteSpace(query))
+            {
+                this.databaseConnection.ClearParameters();
+                if (parameters != null && parameters.Count > 0)
+                {
+                    foreach (var parameter in parameters)
+                    {
+                        this.databaseConnection.AddParameter(parameter.Key, parameter.Value);
+                    }
+                }
+                var saveConfigLineDataTable = await this.databaseConnection.GetAsync(query);
+                if (saveConfigLineDataTable.Rows.Count > 0)
+                {
+                    foreach (DataRow row in saveConfigLineDataTable.Rows)
+                    {
+                        var itemDetail = new WiserItemDetailModel
+                        {
+                            Key = row.Field<string>("itemdetail_name"),
+                            // we dont know the type that is returned from the query, so we save as is without .field<>
+                            Value = row["itemdetail_value"]
+                        };
+                        item.Details.Add(itemDetail);
+                    }
+                }
+            }
         }
     }
 }

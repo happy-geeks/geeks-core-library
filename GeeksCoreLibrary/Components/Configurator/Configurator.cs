@@ -28,8 +28,8 @@ using RestSharp;
 namespace GeeksCoreLibrary.Components.Configurator
 {
     [CmsObject(
-        PrettyName = "Account",
-        Description = "Component for handling accounts on a website, such as login, logout, change password etc."
+        PrettyName = "Configurator",
+        Description = "Component for generating a configurator based on settings from the configurator module"
     )]
     public class Configurator : CmsComponent<ConfiguratorCmsSettingsModel, Configurator.LegacyComponentMode>
     {
@@ -174,7 +174,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                 return new HtmlString("");
             }
 
-            var configuratorData = await configuratorsService.GetConfiguratorDataAsync(currentConfiguratorName, ComponentId);
+            var configuratorData = await configuratorsService.GetConfiguratorDataAsync(currentConfiguratorName);
             var firstRow = configuratorData.Rows[0];
 
             // Basic templates.jjl_summary_template
@@ -330,6 +330,11 @@ namespace GeeksCoreLibrary.Components.Configurator
             return new HtmlString(await TemplatesService.DoReplacesAsync(resultHtml.ToString(), false, removeUnknownVariables: false));
         }
 
+        /// <summary>
+        /// First add all step numbers to the "_stepNumbers" dictionary, so that we have information about all steps before we start generating HTML. If we don't do this, we can't make a step dependent on a future step.
+        /// </summary>
+        /// <param name="configuratorName"></param>
+        /// <returns></returns>
         private async Task LoadStepNumbersAsync(string configuratorName)
         {
             WriteToTrace("LoadStepNumbers");
@@ -345,7 +350,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                 stepNumbers.Add(configuratorName, new Dictionary<string, string>());
             }
 
-            var configuratorData = await configuratorsService.GetConfiguratorDataAsync(configuratorName, ComponentId);
+            var configuratorData = await configuratorsService.GetConfiguratorDataAsync(configuratorName);
             foreach (DataRow row in configuratorData.Rows)
             {
                 var currentUrl = HttpContextHelpers.GetBaseUri(HttpContext).AbsoluteUri;
@@ -385,7 +390,17 @@ namespace GeeksCoreLibrary.Components.Configurator
                 }
             }
         }
-
+        /// <summary>
+        /// render step
+        /// </summary>
+        /// <param name="currentConfiguratorName"></param>
+        /// <param name="row"></param>
+        /// <param name="mainStepNumber"></param>
+        /// <param name="stepNumber"></param>
+        /// <param name="dependentValue"></param>
+        /// <param name="configurator"></param>
+        /// <param name="subSteps"></param>
+        /// <returns></returns>
         private async Task<string> RenderStepAsync(string currentConfiguratorName, DataRow row, int mainStepNumber, int stepNumber, string dependentValue = "-1", ConfigurationsModel configurator = null, List<DataRow> subSteps = null)
         {
             var connectedId = row.Field<string>("datasource_connectedid");
@@ -520,7 +535,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             WriteToTrace("End ReplaceCaseInsensitive stepContent");
 
-            template = ReplaceConfiguratorItems(template, configurator);
+            template = await this.configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator);
 
             WriteToTrace("End ReplaceConfiguratorItems (mainstep)");
 
@@ -534,7 +549,17 @@ namespace GeeksCoreLibrary.Components.Configurator
             return template;
         }
 
-
+        /// <summary>
+        /// render substep 
+        /// </summary>
+        /// <param name="currentConfiguratorName"></param>
+        /// <param name="row"></param>
+        /// <param name="mainStepNumber"></param>
+        /// <param name="stepNumber"></param>
+        /// <param name="subStepNumber"></param>
+        /// <param name="dependentValue"></param>
+        /// <param name="configurator"></param>
+        /// <returns></returns>
         private async Task<string> DoRenderingOfSubStepAsync(string currentConfiguratorName, DataRow row, int mainStepNumber, int stepNumber, int subStepNumber, string dependentValue = "-1", ConfigurationsModel configurator = null)
         {
             var connectedId = row.Field<string>("substep_datasource_connectedid");
@@ -630,7 +655,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             template = template.ReplaceCaseInsensitive("{subStepContent}", subStepContent);
 
 
-            template = ReplaceConfiguratorItems(template, configurator);
+            template = await this.configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator);
 
             WriteToTrace("End ReplaceConfiguratorItems (substep)");
 
@@ -646,6 +671,21 @@ namespace GeeksCoreLibrary.Components.Configurator
 
         }
 
+        /// <summary>
+        /// render values based on datasource
+        /// </summary>
+        /// <param name="template"></param>
+        /// <param name="variableName"></param>
+        /// <param name="dataSource"></param>
+        /// <param name="connectedId"></param>
+        /// <param name="connectedType"></param>
+        /// <param name="fixedValueList"></param>
+        /// <param name="customQuery"></param>
+        /// <param name="checkConnectedId"></param>
+        /// <param name="ownDataValues"></param>
+        /// <param name="configuration"></param>
+        /// <param name="dataSelectorId"></param>
+        /// <returns></returns>
         private async Task<(int count, string renderedValues)> RenderValuesAsync(string template, string variableName, string dataSource, string connectedId, string connectedType, string fixedValueList = "", string customQuery = "", string checkConnectedId = "", string ownDataValues = "", ConfigurationsModel configuration = null, int dataSelectorId = 0)
         {
             var query = "";
@@ -717,7 +757,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                             if (connectedId != "-1" || !customQuery.Contains("{connectedid}"))
                             {
                                 query = customQuery.ReplaceCaseInsensitive("'{connectedId}'", connectedId.ToMySqlSafeValue());
-                                query = ReplaceConfiguratorItems(query, configuration);
+                                query = await  this.configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration);
                                 query = await TemplatesService.HandleIncludesAsync(query, false, null, false);
                                 query = query.ReplaceCaseInsensitive("{connectedId}", connectedId.ToMySqlSafeValue());
                                 query = await StringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
@@ -746,7 +786,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                             }
                             else
                             {
-                                ownDataValues = ReplaceConfiguratorItems(ownDataValues, configuration);
+                                ownDataValues = await this.configuratorsService.ReplaceConfiguratorItemsAsync(ownDataValues, configuration);
                                 var dt = await DatabaseConnection.GetAsync(ownDataValues);
 
                                 if (dt.Rows.Count == 0)
@@ -815,7 +855,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                             query = await dataSelectorsService.GetQueryAsync(itemsRequest);
                             query = await StringReplacementsService.DoAllReplacementsAsync(query, null, false, false, false, true);
-                            query = ReplaceConfiguratorItems(query, configuration);
+                            query = await this.configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration);
                             break;
                         }
                 }
@@ -838,44 +878,7 @@ namespace GeeksCoreLibrary.Components.Configurator
         }
 
 
-        private string ReplaceConfiguratorItems(string templateOrQuery, ConfigurationsModel configuration)
-        {
-            if ((configuration == null) || (!templateOrQuery.Contains("{")))
-            {
-                return templateOrQuery;
-            }
-
-            foreach (var queryStringItem in configuration.QueryStringItems)
-            {
-                if (templateOrQuery.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase))
-                {
-                    templateOrQuery = templateOrQuery.Replace($"{{{queryStringItem.Key}}}", queryStringItem.Value.ToMySqlSafeValue());
-                }
-            }
-
-            foreach (var key in configuration.Items.Keys)
-            {
-                if (!templateOrQuery.Contains($"{{{configuration.Items[key].Id}}}", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (!Settings.ValuesCanContainDashes && configuration.Items[key].Value.Contains("-"))
-                {
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", configuration.Items[key].Value.Split('-')[1].ToMySqlSafeValue());
-                }
-                else if (configuration.Items[key].Value == "-1")
-                {
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", configuration.Items[key].Value.Split('-')[1].ToMySqlSafeValue());
-                }
-                else
-                {
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", configuration.Items[key].Value.ToMySqlSafeValue());
-                }
-            }
-
-            return templateOrQuery;
-        }
+       
         #endregion
 
         #region Web methods
@@ -887,37 +890,7 @@ namespace GeeksCoreLibrary.Components.Configurator
         /// <returns></returns>
         public async Task<(string deliveryTime, string deliveryExtra)> GetDeliveryTime(ConfigurationsModel configuration)
         {
-            var dataTable = await configuratorsService.GetConfiguratorDataAsync(configuration.Configurator, ComponentId);
-
-            if (dataTable == null || dataTable.Rows.Count == 0)
-            {
-                return ("", "");
-            }
-
-            var query = dataTable.Rows[0].Field<string>("deliverytime_query");
-
-            if (String.IsNullOrWhiteSpace(query))
-            {
-                return ("", "");
-            }
-
-            query = ReplaceConfiguratorItems(query, configuration);
-
-            var dt = await DatabaseConnection.GetAsync(query);
-            if (dt.Rows.Count == 0)
-            {
-                return ("", "");
-            }
-
-            var deliveryTime = dt.Rows[0][0].ToString();
-            var deliveryTimeExtra = "";
-
-            if (dt.Columns.Count > 1)
-            {
-                deliveryTimeExtra = dt.Rows[0][1].ToString();
-            }
-
-            return (deliveryTime, deliveryTimeExtra);
+            return await this.configuratorsService.GetDeliveryTimeAsync(configuration);
         }
 
         /// <summary>
@@ -928,121 +901,9 @@ namespace GeeksCoreLibrary.Components.Configurator
         ///  <returns>A <see cref="Tuple"/> where Item1 is the purchase price and Item2 is the customer price.</returns>
         public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePrice(ConfigurationsModel input)
         {
-            var dataTable = await configuratorsService.GetConfiguratorDataAsync(input.Configurator, ComponentId);
-
-            if (dataTable == null || dataTable.Rows.Count == 0)
-            {
-                return (0, 0, 0);
-            }
-
-            var query = dataTable.Rows[0].Field<string>("price_calculation_query");
-
-            if (String.IsNullOrEmpty(query))
-            {
-                return (0, 0, 0);
-            }
-
-            query = await StringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
-            query = ReplaceConfiguratorItems(query, input);
-
-            var dt = await DatabaseConnection.GetAsync(query);
-            if (dt.Rows.Count == 0)
-            {
-                return (0, 0, 0);
-            }
-
-            var price = dt.Rows[0].IsNull(0) ? 0 : Convert.ToDecimal(dt.Rows[0][0]);
-            var purchasePrice = 0m;
-            var fromPrice = price;
-
-            if (dt.Columns.Count > 1)
-            {
-                purchasePrice = dt.Rows[0].IsNull(1) ? 0 : Convert.ToDecimal(dt.Rows[0][1]);
-            }
-
-            if (dt.Columns.Count > 2)
-            {
-                fromPrice = dt.Rows[0].IsNull(2) ? 0 : Convert.ToDecimal(dt.Rows[0][2]);
-            }
-
-
-            if (String.IsNullOrWhiteSpace(Settings.ProductsApiBaseUrl))
-            {
-                return (purchasePrice, price, fromPrice);
-            }
-
-
-            //var restClient = new RestClient(DoReplacementsForHtmlTemplate(Settings.ProductsApiBaseUrl));
-            // TODO restclient implementeren + klopt onderstaande replace??
-            /*
-            var restClient = new RestClient(StringReplacementsService.DoHttpRequestReplacements(Settings.ProductsApiBaseUrl));
-
-            foreach (var item in input.Items.
-                Where(a => a.Value?.ExtraData != null).
-                SelectMany(b => b.Value.ExtraData).
-                Where(c => c != null && c.ContainsKey("ean") && 
-                           !String.IsNullOrWhiteSpace(System.Convert.ToString(c["ean"])) 
-                           && c.ContainsKey("getPriceFromApi") && (bool)c["getPriceFromApi"]).
-                Select(d => System.Convert.ToString(d["ean"])))
-            {
-                var restRequest = new RestRequest(StringReplacementsService.DoHttpRequestReplacements(Settings.ProductsApiGetProductsUrl));
-                restRequest.AddUrlSegment("productNumbers", item);
-                var result = restClient.Execute(restRequest);
-
-                if (result.ErrorException != null)
-                {
-                    WriteToTrace($"Products API caused an exception: {result.ErrorException}", true);
-                    continue;
-                }
-
-                if (result.StatusCode != HttpStatusCode.OK)
-                {
-                    WriteToTrace($"Products API returned non-200 status code: {result.StatusCode} with description: {result.StatusDescription} and content: {result.Content}", true);
-                    continue;
-                }
-
-                var responseData = (JToken)JsonConvert.DeserializeObject(result.Content);
-                var responseType = responseData.GetType();
-
-                if (responseType == typeof(JArray))
-                {
-                    var resultsArray = (JArray)responseData;
-
-                    foreach (var value in resultsArray)
-                    {
-                        var currentPrice = value.Value<decimal>(Settings.ProductsApiSalesPriceProperty);
-                        price += currentPrice;
-
-                        if (!string.IsNullOrWhiteSpace(Settings.ProductsApiPurchasePriceProperty) && value[Settings.ProductsApiPurchasePriceProperty] != null)
-                        {
-                            purchasePrice += value.Value<decimal>(Settings.ProductsApiPurchasePriceProperty);
-                        }
-                        if (!string.IsNullOrWhiteSpace(Settings.ProductsApiFromPriceProperty) && value[Settings.ProductsApiFromPriceProperty] != null) { }
-                        {
-                            var currentFromPrice = value.Value<decimal>(Settings.ProductsApiFromPriceProperty);
-                            fromPrice += currentFromPrice > 0 ? currentFromPrice : currentPrice;
-                        }
-                    }
-                }
-                else if (responseType == typeof(JObject))
-                {
-                    var currentPrice = responseData.Value<decimal>(Settings.ProductsApiSalesPriceProperty);
-                    price += currentPrice;
-
-                    if (!string.IsNullOrWhiteSpace(Settings.ProductsApiPurchasePriceProperty) && responseData[Settings.ProductsApiPurchasePriceProperty] != null)
-                        purchasePrice += responseData.Value<decimal>(Settings.ProductsApiPurchasePriceProperty);
-
-                    if (!string.IsNullOrWhiteSpace(Settings.ProductsApiFromPriceProperty) && responseData[Settings.ProductsApiFromPriceProperty] != null)
-                    {
-                        var currentFromPrice = responseData.Value<decimal>(Settings.ProductsApiFromPriceProperty);
-                        fromPrice += currentFromPrice > 0 ? currentFromPrice : currentPrice;
-                    }
-                    else
-                        fromPrice += currentPrice;
-                }
-            }*/
-
-            return (purchasePrice, price, fromPrice);
+            var prices =  await this.configuratorsService.CalculatePriceAsync(input);
+            // we dont want to return a purchaseprice when using the webmethod
+            return (0, prices.customerPrice, prices.fromPrice);
         }
 
         /// <summary>
@@ -1065,7 +926,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
-            var dataTable = await configuratorsService.GetConfiguratorDataAsync(configuration.Configurator, ComponentId);
+            var dataTable = await configuratorsService.GetConfiguratorDataAsync(configuration.Configurator);
             if (dataTable == null || dataTable.Rows.Count == 0)
             {
                 return result;
@@ -1078,7 +939,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             if (!String.IsNullOrWhiteSpace(preRenderStepsQuery))
             {
-                await DatabaseConnection.ExecuteAsync(ReplaceConfiguratorItems(preRenderStepsQuery, configuration));
+                await DatabaseConnection.ExecuteAsync(await this.configuratorsService.ReplaceConfiguratorItemsAsync(preRenderStepsQuery, configuration));
             }
 
             var customParam = await GetCustomParameters(configuration, dataTable);
@@ -1121,7 +982,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             WriteToTrace($"RenderStep - name: {name}, mainStep: {mainStep}, step: {step}, dependentValue: {dependentValue ?? "NULL"}, configurator: {(configurator == null ? "NULL" : JsonConvert.SerializeObject(configurator))}");
 
             DataRow dataRow = null;
-            dataTable ??= await configuratorsService.GetConfiguratorDataAsync(name, ComponentId);
+            dataTable ??= await configuratorsService.GetConfiguratorDataAsync(name);
 
             if (dataTable == null || dataTable.Rows.Count == 0)
             {
@@ -1133,7 +994,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             if (!String.IsNullOrWhiteSpace(preRenderStepsQuery))
             {
-                await DatabaseConnection.ExecuteAsync(ReplaceConfiguratorItems(preRenderStepsQuery, configurator));
+                await DatabaseConnection.ExecuteAsync(await this.configuratorsService.ReplaceConfiguratorItemsAsync(preRenderStepsQuery, configurator));
             }
 
             var mainStepCount = 0;
@@ -1205,12 +1066,22 @@ namespace GeeksCoreLibrary.Components.Configurator
             return dataRow == null ? "No result! (unknown name, main step or step)" : await RenderStepAsync(name, dataRow, mainStep, step, dependentValue, configurator, subSteps);
         }
 
-
+        /// <summary>
+        /// render sub step
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="mainStep"></param>
+        /// <param name="step"></param>
+        /// <param name="subStep"></param>
+        /// <param name="dependentValue"></param>
+        /// <param name="configurator"></param>
+        /// <param name="dataTable"></param>
+        /// <returns></returns>
         public async Task<string> RenderSubStep(string name, int mainStep, int step, int subStep, string dependentValue = null, ConfigurationsModel configurator = null, DataTable dataTable = null)
         {
             DataRow dataRow = null;
 
-            dataTable ??= await configuratorsService.GetConfiguratorDataAsync(name, ComponentId);
+            dataTable ??= await configuratorsService.GetConfiguratorDataAsync(name);
 
             if (dataTable == null || dataTable.Rows.Count == 0)
             {
@@ -1221,7 +1092,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             WriteToTrace($"preRenderStepsQuery 4: {preRenderStepsQuery}");
             if (!String.IsNullOrWhiteSpace(preRenderStepsQuery))
             {
-                await DatabaseConnection.ExecuteAsync(ReplaceConfiguratorItems(preRenderStepsQuery, configurator));
+                await DatabaseConnection.ExecuteAsync(await this.configuratorsService.ReplaceConfiguratorItemsAsync(preRenderStepsQuery, configurator));
             }
 
             var mainStepCounter = 0;
@@ -1260,12 +1131,17 @@ namespace GeeksCoreLibrary.Components.Configurator
             return dataRow == null ? "No result! (unknown name, main step or step)" : await DoRenderingOfSubStepAsync(name, dataRow, mainStep, step, subStep, dependentValue, configurator);
         }
 
-
+        /// <summary>
+        /// get custom parameters of configurator
+        /// </summary>
+        /// <param name="configuration"></param>
+        /// <param name="dataTable"></param>
+        /// <returns></returns>
         private async Task<CustomParameters> GetCustomParameters(ConfigurationsModel configuration, DataTable dataTable = null)
         {
             var customParameter = new CustomParameters();
 
-            dataTable ??= await configuratorsService.GetConfiguratorDataAsync(configuration.Configurator, ComponentId);
+            dataTable ??= await configuratorsService.GetConfiguratorDataAsync(configuration.Configurator);
 
             if (dataTable == null || dataTable.Rows.Count == 0)
             {
@@ -1295,7 +1171,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             }
 
             // Prepare Query
-            customParameter.Query = ReplaceConfiguratorItems(customParameter.Query, configuration);
+            customParameter.Query = await this.configuratorsService.ReplaceConfiguratorItemsAsync(customParameter.Query, configuration);
 
             // Run Query
             var dt = await DatabaseConnection.GetAsync(customParameter.Query);
@@ -1309,8 +1185,6 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             return customParameter;
         }
-
         #endregion
-
     }
 }

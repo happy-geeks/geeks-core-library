@@ -207,5 +207,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 ? Content("The specified partial template can't be found on the current page", "text/html")
                 : Content(partialTemplateContent, "text/html");
         }
+        
+        [HttpGet, Route("template/{templateId:int}/")]
+        public async Task<TemplateDataModel> TemplateData(int templateId)
+        {
+            return await this.templatesService.GetTemplateDataAsync(templateId);
+        }
     }
 }

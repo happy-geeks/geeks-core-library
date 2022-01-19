@@ -125,7 +125,7 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool useParentItemIdByDefault = false)
         {
-            return await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType);
+            return await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType, useParentItemIdByDefault);
         }
 
         /// <inheritdoc />

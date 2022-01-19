@@ -148,5 +148,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="recursive">TODO</param>
         /// <returns></returns>
         Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false);
+
+        /// <summary>
+        /// Search for a template and returns it. Must supply either an ID or a name.
+        /// </summary>
+        /// <param name="id">Optional: The ID of the template to get.</param>
+        /// <param name="name">Optional: The name of the template to get.</param>
+        /// <param name="type">Optional: The type of template that is being searched for. Only used in combination with name. Default value is html.</param>
+        /// <param name="parentId">Optional: The ID of the parent of the template to get.</param>
+        /// <param name="parentName">Optional: The name of the parent of template to get.</param>
+        /// <returns></returns>
+        Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "");
     }
 }

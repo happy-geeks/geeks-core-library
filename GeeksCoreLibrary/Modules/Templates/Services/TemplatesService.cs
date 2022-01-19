@@ -1077,5 +1077,27 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             return input;
         }
+
+        /// <summary>
+        /// Get the template + linked css and js 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="name"></param>
+        /// <param name="type"></param>
+        /// <param name="parentId"></param>
+        /// <param name="parentName"></param>
+        /// <returns></returns>
+        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
+        {
+            var template = await this.GetTemplateAsync(id, name, type, parentId, parentName);
+            var cssStringBuilder = new StringBuilder();
+            var jsStringBuilder = new StringBuilder();
+            foreach (var templateId in new[] { template.CssTemplates, template.JavascriptTemplates }.SelectMany(x => x).ToList())
+            {
+                var linkedTemplate = await this.GetTemplateAsync(templateId);
+                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+            }
+            return new TemplateDataModel() { Content = template.Content, LinkedCss = cssStringBuilder.ToString(), LinkedJavascript = jsStringBuilder.ToString() }; 
+        }
     }
 }

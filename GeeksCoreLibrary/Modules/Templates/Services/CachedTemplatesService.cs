@@ -430,5 +430,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             return await templatesService.GetJsonResponseFromQueryAsync(queryTemplate, encryptionKey, skipNullValues, allowValueDecryption, recursive);
         }
+
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
+        {
+            return await this.templatesService.GetTemplateDataAsync(id, name, type, parentId, parentName);
+        }
     }
 }
