@@ -16,10 +16,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
 
         public ulong[] ItemIds { get; set; }
 
-        [JsonProperty(ItemConverterType = typeof(FieldConverter))]
         public Field[] Fields { get; set; }
 
-        [JsonProperty(ItemConverterType = typeof(FieldConverter))]
         public Field[] LinkFields { get; set; }
 
         [JsonProperty("scope")]

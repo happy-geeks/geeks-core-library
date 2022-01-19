@@ -373,7 +373,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     }
                     else if (field.FieldName == "parentitemtitle")
                     {
-                        // TODO: Add possibiltiy to retrieve ParentItemTitle from connected rows, but we'll need to join up a couple of times, or not if we're joining down.
+                        // TODO: Add possibility to retrieve ParentItemTitle from connected rows, but we'll need to join up a couple of times, or not if we're joining down.
                         if (String.IsNullOrWhiteSpace(field.FieldAlias))
                         {
                             field.FieldAlias = "parentitemtitle";
@@ -1246,7 +1246,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         case "unique_uuid":
                             {
                                 var finalFieldName = row.Key.FieldName.Equals("itemtitle") ? "title" : row.Key.FieldName;
-                                var formattedField = GetFormattedField(row.Key, joinDetailOn.Replace("id", finalFieldName));
+                                var finalJoinDetailOn = joinDetailOn.Replace(".id", $"_item.{finalFieldName}").Replace(".destination_item_id", $"_item.{finalFieldName}");
+                                var formattedField = GetFormattedField(row.Key, finalJoinDetailOn);
 
                                 switch (row.Operator.ToLowerInvariant())
                                 {
@@ -1288,16 +1289,19 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                     finalValue = finalValue.ToMySqlSafeValue(true);
                                 }
 
+                                var finalJoinDetailOn = joinDetailOn.Replace(".id", "_item.moduleid").Replace(".destination_item_id", "_item.moduleid");
+                                var formattedField = GetFormattedField(row.Key, finalJoinDetailOn);
+
                                 switch (row.Operator.ToLowerInvariant())
                                 {
                                     case "is empty":
-                                        queryPart.Append($"{GetFormattedField(row.Key, joinDetailOn.Replace("id", "moduleid"))} IS NULL ");
+                                        queryPart.Append($"{formattedField} IS NULL ");
                                         break;
                                     case "is not empty":
-                                        queryPart.Append($"{GetFormattedField(row.Key, joinDetailOn.Replace("id", "moduleid"))} IS NOT NULL ");
+                                        queryPart.Append($"{formattedField} IS NOT NULL ");
                                         break;
                                     default:
-                                        queryPart.Append($"{GetFormattedField(row.Key, joinDetailOn.Replace("id", "moduleid"))} {op} {finalValue}");
+                                        queryPart.Append($"{formattedField} {op} {finalValue}");
                                         break;
                                 }
                                 break;

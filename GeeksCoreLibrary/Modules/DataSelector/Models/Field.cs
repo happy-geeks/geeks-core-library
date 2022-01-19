@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Modules.DataSelector.Models
 {
@@ -49,7 +48,6 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
             }
         }
 
-        [JsonProperty(ItemConverterType = typeof(FieldConverter))]
         public Field[] Fields { get; set; }
 
         /// <summary>
