@@ -1354,14 +1354,14 @@ namespace GeeksCoreLibrary.Components.Account
                 if (useTransaction)
                 {
                     // Everything succeeded, commit transaction and return the result
-                    DatabaseConnection.CommitTransactionAsync();
+                    await DatabaseConnection.CommitTransactionAsync();
                 }
 
                 return (result, ErrorTemplate: "", SuccessTemplate: Settings.TemplateSuccess, userId, subAccountId, Role: userRole);
             }
             catch
             {
-                DatabaseConnection.RollbackTransactionAsync(false);
+                await DatabaseConnection.RollbackTransactionAsync(false);
                 throw;
             }
         }
