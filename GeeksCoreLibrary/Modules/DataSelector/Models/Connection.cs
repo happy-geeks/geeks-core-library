@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace GeeksCoreLibrary.Modules.DataSelector.Models
+﻿namespace GeeksCoreLibrary.Modules.DataSelector.Models
 {
     public class Connection
     {

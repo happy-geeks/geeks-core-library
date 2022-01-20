@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Modules.DataSelector.Models
 {
@@ -19,37 +18,20 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
             set => languageCode = value;
         }
 
-        private string formatting;
-        public string Formatting
-        {
-            get => formatting;
-            set
-            {
-                if (String.IsNullOrWhiteSpace(value))
-                {
-                    return;
-                }
+        /// <summary>
+        /// Gets or sets the data type for a scope row, which is either "string", "decimal" or "datetime". If the value is null or empty, the value "string" is assumed.
+        /// </summary>
+        public string DataType { get; set; }
 
-                formatting = String.IsNullOrWhiteSpace(formatting) ? value : value.Replace("{value}", formatting);
-            }
-        }
+        /// <summary>
+        /// Gets or sets the data type for a having row, which is either "string" or "formula". If the value is null or empty, the value "string" is assumed.
+        /// </summary>
+        public string HavingDataType { get; set; }
 
-        public string AggregationFunction
-        {
-            set
-            {
-                if (String.IsNullOrWhiteSpace(value) || value.Equals("distinct", StringComparison.OrdinalIgnoreCase))
-                {
-                    return;
-                }
+        public string Formatting { get; set; }
 
-                formatting = String.IsNullOrWhiteSpace(formatting)
-                    ? $"{value.ToUpper()}(REPLACE({{value}}, ',', '.') * 1)"
-                    : formatting.Replace("{value}", $"{value.ToUpper()}(REPLACE({{value}}, ',', '.') * 1)");
-            }
-        }
+        public string AggregationFunction { get; set; }
 
-        [JsonProperty(ItemConverterType = typeof(FieldConverter))]
         public Field[] Fields { get; set; }
 
         /// <summary>

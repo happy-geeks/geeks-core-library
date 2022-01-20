@@ -373,7 +373,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     }
                     else if (field.FieldName == "parentitemtitle")
                     {
-                        // TODO: Add possibiltiy to retrieve ParentItemTitle from connected rows, but we'll need to join up a couple of times, or not if we're joining down.
+                        // TODO: Add possibility to retrieve ParentItemTitle from connected rows, but we'll need to join up a couple of times, or not if we're joining down.
                         if (String.IsNullOrWhiteSpace(field.FieldAlias))
                         {
                             field.FieldAlias = "parentitemtitle";
@@ -1137,7 +1137,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             var queryAdditionBuilder = new StringBuilder(itemsRequest.QueryAddition);
             foreach (var scope in scopes)
             {
-                if (scope.ScopeRows.Length == 0)
+                if (scope?.ScopeRows == null || scope.ScopeRows.Length == 0)
                 {
                     continue;
                 }
@@ -1246,7 +1246,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         case "unique_uuid":
                             {
                                 var finalFieldName = row.Key.FieldName.Equals("itemtitle") ? "title" : row.Key.FieldName;
-                                var formattedField = GetFormattedField(row.Key, joinDetailOn.Replace("id", finalFieldName));
+                                var finalJoinDetailOn = joinDetailOn.Replace(".id", $"_item.{finalFieldName}").Replace(".destination_item_id", $"_item.{finalFieldName}");
+                                var formattedField = GetFormattedField(row.Key, finalJoinDetailOn);
 
                                 switch (row.Operator.ToLowerInvariant())
                                 {
@@ -1288,16 +1289,19 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                     finalValue = finalValue.ToMySqlSafeValue(true);
                                 }
 
+                                var finalJoinDetailOn = joinDetailOn.Replace(".id", "_item.moduleid").Replace(".destination_item_id", "_item.moduleid");
+                                var formattedField = GetFormattedField(row.Key, finalJoinDetailOn);
+
                                 switch (row.Operator.ToLowerInvariant())
                                 {
                                     case "is empty":
-                                        queryPart.Append($"{GetFormattedField(row.Key, joinDetailOn.Replace("id", "moduleid"))} IS NULL ");
+                                        queryPart.Append($"{formattedField} IS NULL ");
                                         break;
                                     case "is not empty":
-                                        queryPart.Append($"{GetFormattedField(row.Key, joinDetailOn.Replace("id", "moduleid"))} IS NOT NULL ");
+                                        queryPart.Append($"{formattedField} IS NOT NULL ");
                                         break;
                                     default:
-                                        queryPart.Append($"{GetFormattedField(row.Key, joinDetailOn.Replace("id", "moduleid"))} {op} {finalValue}");
+                                        queryPart.Append($"{formattedField} {op} {finalValue}");
                                         break;
                                 }
                                 break;
@@ -1336,15 +1340,15 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             itemsRequest.WhereLink.Add("(");
             foreach (var connection in connections)
             {
-                if (!connection.Equals(connections[0]))
-                {
-                    itemsRequest.WhereLink.Add(" AND ");
-                }
-
-                if (connection.ConnectionRows.Length == 0)
+                if (connection?.ConnectionRows == null || connection.ConnectionRows.Length == 0)
                 {
                     itemsRequest.WhereLink.Add(" TRUE ");
                     continue;
+                }
+
+                if (!connection.Equals(connections[0]))
+                {
+                    itemsRequest.WhereLink.Add(" AND ");
                 }
 
                 itemsRequest.WhereLink.Add("(");
@@ -1521,7 +1525,34 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
         private static string GetFormattedField(Field field, string value)
         {
-            return !String.IsNullOrWhiteSpace(field.Formatting) ? field.Formatting.Replace("{value}", value) : value;
+            // Data type part.
+            var valuePart = field.DataType switch
+            {
+                "decimal" => "CONVERT(REPLACE({value}, ',', '.'), DECIMAL(65,30))",
+                "datetime" => "CONVERT({value}, DATETIME)",
+                _ => "{value}"
+            };
+
+            // Aggregation function part.
+            string function;
+            if (!String.IsNullOrWhiteSpace(field.AggregationFunction) && !field.AggregationFunction.Equals("distinct"))
+            {
+                function = field.AggregationFunction switch
+                {
+                    "countdistinct" => $"COUNT(DISTINCT {valuePart})",
+                    _ => $"{value.ToUpper()}({valuePart})"
+                };
+            }
+            else
+            {
+                function = valuePart;
+            }
+
+            // Formatting part.
+            var result = String.IsNullOrWhiteSpace(field.Formatting) ? function : field.Formatting.Replace("{value}", function);
+
+            // Return the formatted field.
+            return result.Replace("{value}", value);
         }
 
         private async Task<string> CreateScopeRowQueryPart(ScopeRow scopeRow)
@@ -1581,6 +1612,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
         private async Task<string> CreateHavingRowQueryPart(HavingRow havingRow, string selectAlias)
         {
             var formattedField = GetFormattedField(havingRow.Key, selectAlias);
+            var encloseInQuotes = havingRow.Key.HavingDataType.Equals("string");
+
             if (havingRow.Value is JArray array)
             {
                 var valueArray = array.ToObject<string[]>() ?? Array.Empty<string>();
@@ -1599,17 +1632,17 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 switch (havingRow.Operator.ToLowerInvariant())
                 {
                     case "is equal to":
-                        return $"{formattedField} = {value.ToMySqlSafeValue(true)}";
+                        return $"{formattedField} = {value.ToMySqlSafeValue(encloseInQuotes)}";
                     case "is not equal to":
-                        return $"{formattedField} <> {value.ToMySqlSafeValue(true)}";
+                        return $"{formattedField} <> {value.ToMySqlSafeValue(encloseInQuotes)}";
                     case "is less than":
-                        return $"{formattedField} < {value.ToMySqlSafeValue(true)}";
+                        return $"{formattedField} < {value.ToMySqlSafeValue(encloseInQuotes)}";
                     case "is less than or equal to":
-                        return $"{formattedField} <= {value.ToMySqlSafeValue(true)}";
+                        return $"{formattedField} <= {value.ToMySqlSafeValue(encloseInQuotes)}";
                     case "is greater than":
-                        return $"{formattedField} > {value.ToMySqlSafeValue(true)}";
+                        return $"{formattedField} > {value.ToMySqlSafeValue(encloseInQuotes)}";
                     case "is greater than or equal to":
-                        return $"{formattedField} >= {value.ToMySqlSafeValue(true)}";
+                        return $"{formattedField} >= {value.ToMySqlSafeValue(encloseInQuotes)}";
                     case "contains":
                         return $"{formattedField} LIKE '%{value.ToMySqlSafeValue()}%'";
                     case "does not contain":
