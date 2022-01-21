@@ -1540,7 +1540,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 function = field.AggregationFunction switch
                 {
                     "countdistinct" => $"COUNT(DISTINCT {valuePart})",
-                    _ => $"{value.ToUpper()}({valuePart})"
+                    _ => $"{field.AggregationFunction.ToUpper()}({valuePart})"
                 };
             }
             else
