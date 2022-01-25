@@ -119,15 +119,15 @@
         /// <summary>
         /// This table is used to store dynamic content components for the templates module.
         /// </summary>
-        public const string WiserDynamicContent = "wiser_dynamiccontent";
+        public const string WiserDynamicContent = "wiser_dynamic_content";
         /// <summary>
         /// This table is used to link one or more dynamic content to one or more templates.
         /// </summary>
-        public const string WiserTemplateDynamicContent = "wiser_template_dynamiccontent_test";
+        public const string WiserTemplateDynamicContent = "wiser_template_dynamiccontent";
         /// <summary>
         /// This table is used for logging who published which template at which date.
         /// </summary>
-        public const string WiserTemplatePublishLog = "wiser_template_publish_log_test";
+        public const string WiserTemplatePublishLog = "wiser_template_publish_log";
         /// <summary>
         /// This table is used to link multiple templates from the templates module to each other.
         /// </summary>
