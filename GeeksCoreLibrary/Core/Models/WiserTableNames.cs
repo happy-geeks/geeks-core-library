@@ -113,6 +113,30 @@
         /// </summary>
         public const string WiserTableChanges = "wiser_table_changes";
         /// <summary>
+        /// This table is used to store templates from the templates module.
+        /// </summary>
+        public const string WiserTemplate = "wiser_template";
+        /// <summary>
+        /// This table is used to store dynamic content components for the templates module.
+        /// </summary>
+        public const string WiserDynamicContent = "wiser_dynamiccontent";
+        /// <summary>
+        /// This table is used to link one or more dynamic content to one or more templates.
+        /// </summary>
+        public const string WiserTemplateDynamicContent = "wiser_template_dynamiccontent_test";
+        /// <summary>
+        /// This table is used for logging who published which template at which date.
+        /// </summary>
+        public const string WiserTemplatePublishLog = "wiser_template_publish_log_test";
+        /// <summary>
+        /// This table is used to link multiple templates from the templates module to each other.
+        /// </summary>
+        public const string WiserTemplateLink = "wiser_template_link";
+        /// <summary>
+        /// This table is used to store preview profiles for the templates module.
+        /// </summary>
+        public const string WiserPreviewProfiles = "wiser_preview_profiles";
+        /// <summary>
         /// All deleted items will be moved to archive tables, this is the suffix for those archive tables.
         /// </summary>
         public const string ArchiveSuffix = "_archive";

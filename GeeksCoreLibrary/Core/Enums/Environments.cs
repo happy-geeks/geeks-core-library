@@ -3,7 +3,7 @@
 namespace GeeksCoreLibrary.Core.Enums
 {
     [Flags]
-    public enum  Environments
+    public enum Environments
     {
         Hidden = 0,
         Development = 1,
