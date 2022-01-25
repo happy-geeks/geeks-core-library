@@ -123,7 +123,7 @@
         /// <summary>
         /// This table is used to link one or more dynamic content to one or more templates.
         /// </summary>
-        public const string WiserTemplateDynamicContent = "wiser_template_dynamiccontent";
+        public const string WiserTemplateDynamicContent = "wiser_template_dynamic_content";
         /// <summary>
         /// This table is used for logging who published which template at which date.
         /// </summary>

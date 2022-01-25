@@ -8,6 +8,7 @@
         Scss,
         Js,
         Query,
-        Normal
+        Normal,
+        Directory
     }
 }
