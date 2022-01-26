@@ -1612,7 +1612,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
         private async Task<string> CreateHavingRowQueryPart(HavingRow havingRow, string selectAlias)
         {
             var formattedField = GetFormattedField(havingRow.Key, selectAlias);
-            var encloseInQuotes = havingRow.Key.HavingDataType.Equals("string");
+            var encloseInQuotes = (havingRow.Key.HavingDataType ?? "string").Equals("string");
 
             if (havingRow.Value is JArray array)
             {

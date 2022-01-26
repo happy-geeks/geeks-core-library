@@ -152,6 +152,11 @@ namespace GeeksCoreLibrary.Core.Models
         public TimeSpan DefaultShoppingBasketsCacheDuration { get; set; } = new(1, 0, 0);
 
         /// <summary>
+        /// The amount of time to cache data selector responses for data selector parsers.
+        /// </summary>
+        public TimeSpan DefaultDataSelectorParsersCacheDuration { get; set; } = new(1, 0, 0);
+
+        /// <summary>
         /// The SMTP settings for sending emails.
         /// </summary>
         public SmtpSettings SmtpSettings { get; set; }
