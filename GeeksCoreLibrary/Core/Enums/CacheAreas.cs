@@ -10,6 +10,7 @@
         Database,
         Templates,
         WiserItems,
-        ShoppingBaskets
+        ShoppingBaskets,
+        DataSelectors
     }
 }

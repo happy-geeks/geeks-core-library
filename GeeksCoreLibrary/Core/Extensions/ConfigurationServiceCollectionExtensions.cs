@@ -38,6 +38,8 @@ using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Services;
+using GeeksCoreLibrary.Components.DataSelectorParser.Interfaces;
+using GeeksCoreLibrary.Components.DataSelectorParser.Services;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -235,6 +237,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             services.Decorate<IWiserItemsService, CachedWiserItemsService>();
             services.Decorate<IConfiguratorsService, CachedConfiguratorsService>();
             services.Decorate<IShoppingBasketsService, CachedShoppingBasketsService>();
+            services.Decorate<IDataSelectorParsersService, CachedDataSelectorParsersService>();
 
             return services;
         }
