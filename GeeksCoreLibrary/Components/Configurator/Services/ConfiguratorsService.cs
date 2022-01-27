@@ -130,12 +130,14 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             idList.AddRange(dataTable.Rows.Cast<DataRow>().Select(x => Convert.ToUInt64(x["subStepId"])).Distinct());
 
             var languageCode = await this.languagesService.GetLanguageCodeAsync();
-         
+
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("languageCode", languageCode);
             dataTable = await databaseConnection.GetAsync(@$"
                     SELECT item.id, IFNULL(namePart.`value`, item.title) AS title, item.entity_type, detail.`key`, CONCAT_WS('', detail.`value`, detail.long_value) AS `value`
                     FROM {WiserTableNames.WiserItem} item
                     JOIN {WiserTableNames.WiserItemDetail} detail ON detail.item_id = item.id
-                    LEFT JOIN {WiserTableNames.WiserItemDetail} namePart ON namePart.item_id = item.id AND namePart.key = 'title' AND namePart.language_code = '{languageCode}'
+                    LEFT JOIN {WiserTableNames.WiserItemDetail} namePart ON namePart.item_id = item.id AND namePart.key = 'title' AND namePart.language_code = ?languageCode
                     WHERE item.id IN ({String.Join(",", idList)});");
 
             if (dataTable.Rows.Count == 0)
