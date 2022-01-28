@@ -913,6 +913,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     viewComponentName = "Configurator";
                     break;
                 }
+                case "GeeksCoreLibrary.DataSelectorParser":
+                case "JuiceControlLibrary.DataSelectorParser":
+                {
+                    viewComponentName = "DataSelectorParser";
+                    break;
+                }
                 default:
                     return ($"<!-- Dynamic content type '{dynamicContent.Name}' not supported yet. Content ID: {dynamicContent.Id} -->", null);
             }

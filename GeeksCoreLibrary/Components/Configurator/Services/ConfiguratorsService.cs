@@ -15,6 +15,7 @@ using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
+using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Crypto.Operators;
@@ -28,6 +29,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         private readonly IObjectsService objectsService;
         private readonly IWiserItemsService wiserItemsService;
         private readonly IStringReplacementsService stringReplacementsService;
+        private readonly ILanguagesService languagesService;
         private readonly string configuratorEntity = "configurator";
         private readonly string duplicateLayoutKey = "duplicatelayoutfrom";
         private readonly int configuratorModuleId = 800;
@@ -48,13 +50,16 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         private readonly List<(string prefix, string fieldName)> stepFields = new List<(string prefix, string fieldName)> { ("", "step_template"), ("", "stepname"), ("", "values_template"), ("", "datasource"), ("", "custom_query"), ("", "own_data_values"), ("", "fixed_valuelist"), ("", "datasource_connectedtype"), ("", "variable_name"), ("", "datasource_connectedid"), ("", "isrequired"), ("", "check_connectedid"), ("step_", "free_content1"), ("step_", "free_content2"), ("step_", "free_content3"), ("step_", "free_content4"), ("step_", "free_content5") };
         private readonly List<(string prefix, string fieldName)> subStepFields = new List<(string prefix, string fieldName)> { ("sub", "step_template"), ("", "substepname"), ("substep_", "values_template"), ("substep_", "datasource"), ("substep_", "custom_query"), ("substep_", "own_data_values"), ("substep_", "fixed_valuelist"), ("substep_", "datasource_connectedtype"), ("substep_", "variable_name"), ("substep_", "datasource_connectedid"), ("substep_", "isrequired"), ("substep_", "check_connectedid"), ("substep_", "free_content1"), ("substep_", "free_content2"), ("substep_", "free_content3"), ("substep_", "free_content4"), ("substep_", "free_content5") };
 
-        public ConfiguratorsService(ILogger<Configurator> logger, IDatabaseConnection databaseConnection, IObjectsService objectsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService)
+        public ConfiguratorsService(ILogger<Configurator> logger, IDatabaseConnection databaseConnection, 
+                                    IObjectsService objectsService, IWiserItemsService wiserItemsService, 
+                                    IStringReplacementsService stringReplacementsService, ILanguagesService languagesService)
         {
             this.logger = logger;
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
             this.wiserItemsService = wiserItemsService;
             this.stringReplacementsService = stringReplacementsService;
+            this.languagesService = languagesService;
         }
 
         /// <inheritdoc />
@@ -124,10 +129,15 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             idList.AddRange(dataTable.Rows.Cast<DataRow>().Select(x => x.Field<ulong>("stepId")).Distinct());
             idList.AddRange(dataTable.Rows.Cast<DataRow>().Select(x => Convert.ToUInt64(x["subStepId"])).Distinct());
 
+            var languageCode = await this.languagesService.GetLanguageCodeAsync();
+
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("languageCode", languageCode);
             dataTable = await databaseConnection.GetAsync(@$"
-                    SELECT item.id, item.title, item.entity_type, detail.`key`, CONCAT_WS('', detail.`value`, detail.long_value) AS `value`
+                    SELECT item.id, IFNULL(namePart.`value`, item.title) AS title, item.entity_type, detail.`key`, CONCAT_WS('', detail.`value`, detail.long_value) AS `value`
                     FROM {WiserTableNames.WiserItem} item
                     JOIN {WiserTableNames.WiserItemDetail} detail ON detail.item_id = item.id
+                    LEFT JOIN {WiserTableNames.WiserItemDetail} namePart ON namePart.item_id = item.id AND namePart.key = 'title' AND namePart.language_code = ?languageCode
                     WHERE item.id IN ({String.Join(",", idList)});");
 
             if (dataTable.Rows.Count == 0)
@@ -148,7 +158,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 {
                     continue;
                 }
-
+                
                 // fill properties 
                 switch (entityType.ToLowerInvariant())
                 {
@@ -158,6 +168,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 
                             foreach (DataRow item in items)
                             {
+
                                 if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["name"].ToString()))
                                 {
                                     item["name"] = titleField;
