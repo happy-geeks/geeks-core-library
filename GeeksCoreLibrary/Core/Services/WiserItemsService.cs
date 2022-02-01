@@ -3291,17 +3291,9 @@ namespace GeeksCoreLibrary.Core.Services
                 ShowInTreeView = Convert.ToBoolean(dataRow["show_in_tree_view"]),
                 UseItemParentId = dataRow.Table.Columns.Contains("use_item_parent_id") && Convert.ToBoolean(dataRow["use_item_parent_id"])
             };
-
-            var selectionMethod = dataRow.Field<string>("selection_method");
+            
             var relationship = dataRow.Field<string>("relationship");
             var duplication = dataRow.Field<string>("duplication");
-
-            linkSettings.SelectionMethod = selectionMethod switch
-            {
-                "scoping" => LinkSelectionMethods.Scoping,
-                "item-linker" => LinkSelectionMethods.ItemLinker,
-                _ => throw new ArgumentOutOfRangeException(nameof(selectionMethod), selectionMethod)
-            };
 
             linkSettings.Relationship = relationship switch
             {
