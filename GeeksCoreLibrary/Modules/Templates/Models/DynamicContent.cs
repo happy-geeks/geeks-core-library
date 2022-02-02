@@ -18,11 +18,6 @@
         public string SettingsJson { get; set; }
 
         /// <summary>
-        /// Gets or sets the type of dynamic content.
-        /// </summary>
-        public int Type { get; set; }
-
-        /// <summary>
         /// Gets or sets the current version of the dynamic content.
         /// </summary>
         public int Version { get; set; }

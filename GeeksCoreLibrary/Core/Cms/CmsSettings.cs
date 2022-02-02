@@ -21,7 +21,8 @@ namespace GeeksCoreLibrary.Core.Cms
         [CmsProperty(
             PrettyName = "Description",
             Description = "A description that describes the component for use in Wiser. If the component cannot be rendered, this description will be visible in the trace/logs for better identification which component failed to render.",
-            DeveloperRemarks = "This field is required."
+            DeveloperRemarks = "This field is required.",
+            HideInCms = true
         )]
         public string Description { get; set; }
 

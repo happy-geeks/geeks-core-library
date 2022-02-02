@@ -24,14 +24,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 {
     public class PagesService : IPagesService, IScopedService
     {
-        private readonly ILogger<TemplatesService> logger;
+        private readonly ILogger<LegacyTemplatesService> logger;
         private readonly ITemplatesService templatesService;
         private readonly ISeoService seoService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IRedirectService redirectService;
         private readonly IObjectsService objectsService;
 
-        public PagesService(ILogger<TemplatesService> logger, IObjectsService objectsService, ITemplatesService templatesService, ISeoService seoService, IHttpContextAccessor httpContextAccessor, IRedirectService redirectService)
+        public PagesService(ILogger<LegacyTemplatesService> logger, IObjectsService objectsService, ITemplatesService templatesService, ISeoService seoService, IHttpContextAccessor httpContextAccessor, IRedirectService redirectService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
