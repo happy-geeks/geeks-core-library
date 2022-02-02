@@ -67,6 +67,16 @@ namespace GeeksCoreLibrary.Core.Models
         public string DefaultEncryptionKeyTripleDes { get; set; }
 
         /// <summary>
+        /// Base URL of the PostNL api
+        /// </summary>
+        public string PostNlShippingApiKey { get; set; }
+
+        /// <summary>
+        /// Api key to use for the PostNL api
+        /// </summary>
+        public string PostNlApiBaseUrl { get; set; }
+
+        /// <summary>
         /// The encryption key the ShoppingBasketsService uses for AES encryption.
         /// </summary>
         public string ShoppingBasketEncryptionKey { get; set; }
