@@ -132,11 +132,6 @@ namespace GeeksCoreLibrary.Components.Filter
                 throw new Exception("HttpContext is null.");
             }
 
-            if (String.IsNullOrEmpty(Settings.FilterItemsQuery))
-            {
-                throw new Exception("GCL Filters: No FilterItemsQuery is given.");
-            }
-
             WriteToTrace("Start generating filters...");
 
             // Try to use the system objects if possible, reverting back to the previous value if they don't exist (by setting them as the default result)
@@ -294,13 +289,24 @@ namespace GeeksCoreLibrary.Components.Filter
             var minimumItemsRequired = Int32.Parse(await objectsService.FindSystemObjectByDomainNameAsync("filterminimumitemsrequired", defaultResult: "1"));
 
             // Now retrieve the data and save the result in a dataset
-            var filterItemsQuery = Settings.FilterItemsQuery.Replace("{categoryId}", categoryId.ToString());
+            var filterItemsQuery = Settings.FilterItemsQuery;
+            if (String.IsNullOrEmpty(filterItemsQuery))
+            {
+                WriteToTrace("GCL Filters: No FilterItemsQuery is given. Getting filter items from aggregation table.");
+                filterItemsQuery = @"SELECT f.*
+                                     FROM cust_filter_aggregation f
+                                     {filters}
+                                     WHERE f.category_id={categoryId}
+                                     GROUP BY f.filtergroup,f.filtervalue
+                                     ORDER BY f.filtergroup,f.filtervalue;";
+            }
+            filterItemsQuery = filterItemsQuery.Replace("{categoryId}", categoryId.ToString());
             filterItemsQuery = await TemplatesService.DoReplacesAsync(filterItemsQuery, true, false, true); // Support [include[x]] for including other templates.
 
             // Replace the {filters} variable with the join and where parts to exclude not possible filter values when filtered
             if (filterItemsQuery.Contains("{filters}"))
             {
-                var queryPart = await filterService.GetFilterQueryPartAsync(false, filterGroups);
+                var queryPart = await filterService.GetFilterQueryPartAsync(true, filterItemsQuery.Contains("cust_filter_aggregation"), filterGroups);
 
                 filterItemsQuery = filterItemsQuery.Replace("{filters}", queryPart.JoinPart);
                 filterItemsQuery = filterItemsQuery.Replace("{filtersWhere}", queryPart.WherePart);
