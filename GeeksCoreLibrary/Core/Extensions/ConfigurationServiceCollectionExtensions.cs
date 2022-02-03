@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using GeeksCoreLibrary.Components.WebPage.Interfaces;
 using GeeksCoreLibrary.Components.WebPage.Middlewares;
 using GeeksCoreLibrary.Components.WebPage.Services;
@@ -126,7 +127,6 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns></returns>
         public static IServiceCollection AddGclServices(this IServiceCollection services, IConfiguration configuration, bool useCaching = true, bool isApi = false)
         {
-            services.AddHealthChecks().AddMySql(configuration["GCL:ConnectionString"]);
 
             // MVC looks in the directory "Areas" by default, but we use the directory "Modules", so we have to tell MC that.
             services.Configure<RazorViewEngineOptions>(options =>
@@ -141,14 +141,23 @@ namespace GeeksCoreLibrary.Core.Extensions
             });
 
             // Use the options pattern for all GCL settings in appSettings.json.
-            services.Configure<GclSettings>(configuration.GetSection("GCL"));
+            var configurationSection = configuration.GetSection("GCL");
+            services.Configure<GclSettings>(configurationSection);
+            var gclSettings = configurationSection.Get<GclSettings>();
+
+            // Add MySql health checks.
+            services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, "MySqlRead");
+            if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
+            {
+                services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, "MySqlWrite");
+            }
 
             // Set default settings for JSON.NET.
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
 
             // Default MVC controllers and tell them to use JSON.NET instead of the default dotnet Core JSON.
             // Also add a global filter to validate anti forgery tokens, to protect against CSRF attacks.
-            if (!isApi && !configuration.GetValue<bool>("GCL:DisableXsrfProtection"))
+            if (!isApi && !gclSettings.DisableXsrfProtection)
             {
                 services.AddControllersWithViews(options => options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute())).AddNewtonsoftJson();
                 services.AddAntiforgery(options =>
@@ -185,9 +194,20 @@ namespace GeeksCoreLibrary.Core.Extensions
             // Enable caching.
             services.AddLazyCache();
 
-            // Manual additions
-            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            // Manual additions.
+            services.AddHttpContextAccessor();
             services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
+
+            // Templates service.
+            if (gclSettings.UseLegacyWiser1TemplateModule)
+            {
+                services.AddScoped<ITemplatesService, LegacyTemplatesService>();
+            }
+            else
+            {
+                services.AddScoped<ITemplatesService, TemplatesService>();
+            }
+
 
             // Configure automatic scanning of classes for dependency injection.
             services.Scan(scan => scan
@@ -227,7 +247,6 @@ namespace GeeksCoreLibrary.Core.Extensions
             // Decorate cached services, to use caching.
             services.Decorate<IDatabaseConnection, CachedDatabaseConnection>();
             services.Decorate<IDatabaseHelpersService, CachedDatabaseHelpersService>();
-            services.Decorate<ITemplatesService, CachedTemplatesService>();
             services.Decorate<ILanguagesService, CachedLanguagesService>();
             services.Decorate<IObjectsService, CachedObjectsService>();
             services.Decorate<IItemFilesService, CachedItemFilesService>();
@@ -238,6 +257,15 @@ namespace GeeksCoreLibrary.Core.Extensions
             services.Decorate<IConfiguratorsService, CachedConfiguratorsService>();
             services.Decorate<IShoppingBasketsService, CachedShoppingBasketsService>();
             services.Decorate<IDataSelectorParsersService, CachedDataSelectorParsersService>();
+            
+            if (gclSettings.UseLegacyWiser1TemplateModule)
+            {
+                services.Decorate<ITemplatesService, LegacyCachedTemplatesService>();
+            }
+            else
+            {
+                services.Decorate<ITemplatesService, CachedTemplatesService>();
+            }
 
             return services;
         }

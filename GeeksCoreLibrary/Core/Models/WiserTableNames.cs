@@ -129,10 +129,6 @@
         /// </summary>
         public const string WiserTemplatePublishLog = "wiser_template_publish_log";
         /// <summary>
-        /// This table is used to link multiple templates from the templates module to each other.
-        /// </summary>
-        public const string WiserTemplateLink = "wiser_template_link";
-        /// <summary>
         /// This table is used to store preview profiles for the templates module.
         /// </summary>
         public const string WiserPreviewProfiles = "wiser_preview_profiles";

@@ -121,7 +121,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
 
             if (finalResult != null && finalResult.Contains("{"))
             {
-                finalResult = TemplatesService.DoHttpContextReplacements(finalResult, httpContextAccessor.HttpContext);
+                finalResult = LegacyTemplatesService.DoHttpContextReplacements(finalResult, httpContextAccessor.HttpContext);
             }
 
             if (!String.IsNullOrEmpty(finalResult))
