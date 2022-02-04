@@ -140,7 +140,7 @@ namespace GeeksCoreLibrary.Components.Repeater
         {
             return dynamicContentName switch
             {
-                "GeeksCoreLibrary.Repeater" => LegacyComponentMode.NonLegacy,
+                "Repeater" => LegacyComponentMode.NonLegacy,
                 "JuiceControlLibrary.MLSimpleMenu" => LegacyComponentMode.MlSimpleMenu,
                 "JuiceControlLibrary.SimpleMenu" => LegacyComponentMode.SimpleMenu,
                 "JuiceControlLibrary.ProductModule" => LegacyComponentMode.ProductModule,
