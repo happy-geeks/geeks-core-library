@@ -844,7 +844,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             string viewComponentName;
             switch (dynamicContent.Name)
             {
-                case "GeeksCoreLibrary.Repeater":
                 case "JuiceControlLibrary.MLSimpleMenu":
                 case "JuiceControlLibrary.SimpleMenu":
                 case "JuiceControlLibrary.ProductModule":
@@ -852,49 +851,41 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         viewComponentName = "Repeater";
                         break;
                     }
-                case "GeeksCoreLibrary.Account":
                 case "JuiceControlLibrary.AccountWiser2":
                     {
                         viewComponentName = "Account";
                         break;
                     }
-                case "GeeksCoreLibrary.ShoppingBasket":
                 case "JuiceControlLibrary.ShoppingBasket":
                     {
                         viewComponentName = "ShoppingBasket";
                         break;
                     }
-                case "GeeksCoreLibrary.WebPage":
                 case "JuiceControlLibrary.WebPage":
                     {
                         viewComponentName = "WebPage";
                         break;
                     }
-                case "GeeksCoreLibrary.Pagination":
                 case "JuiceControlLibrary.Pagination":
                     {
                         viewComponentName = "Pagination";
                         break;
                     }
-                case "GeeksCoreLibrary.Filter":
                 case "JuiceControlLibrary.DynamicFilter":
                     {
                         viewComponentName = "Filter";
                         break;
                     }
-                case "GeeksCoreLibrary.WebForm":
                 case "JuiceControlLibrary.Sendform":
                     {
                         viewComponentName = "WebForm";
                         break;
                     }
-                case "GeeksCoreLibrary.Configurator":
                 case "JuiceControlLibrary.Configurator":
                 {
                     viewComponentName = "Configurator";
                     break;
                 }
-                case "GeeksCoreLibrary.DataSelectorParser":
                 case "JuiceControlLibrary.DataSelectorParser":
                 {
                     viewComponentName = "DataSelectorParser";
