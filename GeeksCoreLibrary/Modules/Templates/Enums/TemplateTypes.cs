@@ -9,6 +9,7 @@
         Js,
         Query,
         Normal,
-        Directory
+        Directory,
+        Xml
     }
 }
