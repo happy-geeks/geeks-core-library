@@ -5,7 +5,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
 {
     public class FilterCmsSettingsModel : CmsSettings
     {
-        public Filter.ComponentModes ComponentMode { get; set; } = Filter.ComponentModes.Normal;
+        public Filter.ComponentModes ComponentMode { get; set; } = Filter.ComponentModes.Aggregation;
 
         #region Tab Layout properties
 
@@ -200,8 +200,8 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             DeveloperRemarks = @"<p>Place the variable {filters} after the last JOIN to exclude values when filtered. Also place the variable {filtersWhere} on the position where the 'where part' should be inserted. Use same aliasses as in the product overview query. Also use alias 'filterName' for wiser_itemdetail table with detail 'filtername'.</p>
                                 <p>Query must contain the following columns:</p>
                                 <ul>
-                                    <li>filtergroupseo (mandatory) - The name (seo friendly syntax) of the filter group to which the item belongs</li>
-                                    <li>filteritem (mandatory) - The value (seo friendly syntax) on which the customer filters.</li>
+                                    <li>filtergroup (mandatory) - The name (seo friendly syntax) of the filter group to which the item belongs</li>
+                                    <li>filtervalue (mandatory) - The value (seo friendly syntax) on which the customer filters.</li>
                                     <li>count (optional) - The total number of items which matches to the filter value.</li>
                                     <li>itemdetail_... (multiple / optional) - Extra information for use in the template, like the normal name of an item of an image.</li>                                    
                                 </ul>",

@@ -131,6 +131,8 @@ namespace GeeksCoreLibrary.Components.Filter.Models
 
         public string EntityName { get; set; } = "";
 
+        public bool UseAggregationTable { get; set; } = false;
+
         /// <summary>
         ///  Adds an item to the list of items, or parses the value to a double to see if it's a valid value for the min or max value for a slider.
         /// </summary>

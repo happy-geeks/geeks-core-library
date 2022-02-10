@@ -12,7 +12,7 @@ namespace GeeksCoreLibrary.Components.Filter.Interfaces
         /// <param name="forFilterItemsQuery">If query part is for filter items query, then LEFT JOINS instead of INNER JOINS will be returned.</param>
         /// <param name="givenFilterGroups">Give filter groups ik known. Otherwise this function will get the filter groups.</param>
         /// <returns>A <see cref="string"/> containing the joins.</returns>
-        Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, bool forAggregationTable = false, Dictionary<string, FilterGroup> givenFilterGroups = null);
+        Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null);
 
         /// <summary>
         /// Function returns the filters keys from the GCLFilters parameter, which is used for search engine friendly URLs in combination with dynamic filters
