@@ -176,5 +176,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// If you have a project that still needs to run on the old wiser 1 module (that uses the tables easy_templates and easy_dynamiccontent), set this to <see langword="true"/>.
         /// </summary>
         public bool UseLegacyWiser1TemplateModule { get; set; }
+
+        /// <summary>
+        /// A list of domain names that are considered to be test domains. E.g.: my-test-domain.com
+        /// </summary>
+        public string[] TestDomains { get; set; } = Array.Empty<string>();
     }
 }

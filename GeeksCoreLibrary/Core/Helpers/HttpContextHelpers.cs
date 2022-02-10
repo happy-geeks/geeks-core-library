@@ -1,12 +1,13 @@
-﻿using GeeksCoreLibrary.Modules.Templates.Models;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Primitives;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace GeeksCoreLibrary.Core.Helpers
 {
@@ -32,7 +33,7 @@ namespace GeeksCoreLibrary.Core.Helpers
                 return null;
             }
 
-            testDomains ??= new List<string> { "juicebv.nl", "juicedev.nl", "happygeeks.dev" };
+            testDomains ??= GclSettings.Current.TestDomains?.ToList() ?? new List<string>();
 
             var hostname = httpContext.Request.Host.Host.ToLower();
             if (includingTestWww == false && hostname.StartsWith("www", StringComparison.OrdinalIgnoreCase))
