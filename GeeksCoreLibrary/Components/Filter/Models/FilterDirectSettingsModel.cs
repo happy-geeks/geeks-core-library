@@ -2,7 +2,7 @@ using System.ComponentModel;
 
 namespace GeeksCoreLibrary.Components.Filter.Models
 {
-    internal class FilterNormalSettingsModel
+    internal class FilterDirectSettingsModel
     {
         [DefaultValue(@"{summary}<br />
                         {filters}")]
@@ -43,8 +43,8 @@ namespace GeeksCoreLibrary.Components.Filter.Models
         internal string TemplateSummaryFilterGroupItem { get; set; }
 
         [DefaultValue(@"SELECT 
-    IFNULL(queryString.`value`, filters.title) AS filtergroupseo,
-    IFNULL(productPropertyValueNameSeo.`value`, IFNULL(productPropertyValueName.`value`, productPropertyValue.title)) AS filteritem,    
+    IFNULL(queryString.`value`, filters.title) AS filtergroup,
+    IFNULL(productPropertyValueNameSeo.`value`, IFNULL(productPropertyValueName.`value`, productPropertyValue.title)) AS filtervalue,    
     IFNULL(productPropertyValueName.`value`, productPropertyValue.title) AS itemdetail_name,
     filterCategoryLink.ordering AS ordering
   	
@@ -72,9 +72,9 @@ WHERE filters.entity_type='filter'
 
 {filtersWhere}
 
-GROUP BY filtergroupseo,filteritem
-HAVING filteritem IS NOT NULL 
-ORDER BY ordering, filteritem")] 
+GROUP BY filtergroup,filtervalue
+HAVING filtervalue IS NOT NULL 
+ORDER BY ordering, filtervalue")] 
         internal  string FilterItemsQuery { get; set; }
 
     }
