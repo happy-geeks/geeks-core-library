@@ -43,10 +43,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.SortOrder = await reader.IsDBNullAsync("ordering") ? 0 : await reader.GetFieldValueAsync<int>("ordering");
             template.ParentSortOrder = await reader.IsDBNullAsync("parent_ordering") ? 0 : await reader.GetFieldValueAsync<int>("parent_ordering");
             template.LoadAlways = Convert.ToBoolean(reader.GetValue("load_always"));
-            template.LastChanged = await reader.GetFieldValueAsync<DateTime>("changed_on");
             template.UrlRegex = reader.GetStringHandleNull("url_regex");
             template.CachingMode = (TemplateCachingModes)(cachingMode ?? TemplateCachingModes.NoCaching);
             template.CachingMinutes = await reader.IsDBNullAsync("cache_minutes") ? 0 : await reader.GetFieldValueAsync<int>("cache_minutes");
+
+            if (!await reader.IsDBNullAsync("changed_on"))
+            {
+                template.LastChanged = await reader.GetFieldValueAsync<DateTime>("changed_on");
+            }
 
             if (template.Type == TemplateTypes.Scss)
             {
