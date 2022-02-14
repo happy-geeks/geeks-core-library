@@ -847,6 +847,7 @@ namespace GeeksCoreLibrary.Components.Filter
                                     { "name_cf", tempValue.CapitalizeFirst() },
                                     { "name", tempValue },
                                     { "count", filterGroup.Items[k].Count.ToString() },
+                                    { "group", filterGroup.NameSeo },
                                     { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value) }
                                 };
 

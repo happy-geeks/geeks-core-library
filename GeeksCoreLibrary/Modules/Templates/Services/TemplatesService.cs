@@ -121,7 +121,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 whereClause.Add("parent1.template_name = ?parentName");
             }
 
-            whereClause.Add("AND template.removed = 0");
+            whereClause.Add("template.removed = 0");
 
             var query = $@"SELECT
                             IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
@@ -734,7 +734,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                         if (!String.IsNullOrWhiteSpace(queryString))
                         {
-                            content = content.Replace("<img src=\"/preview_image.aspx", $"<img data=\"{queryString}\" src=\"/preview_image.aspx");
+                            content = content.Replace("<div class=\"dynamic-content", $"<div data=\"{queryString}\" class=\"/dynamic-content");
                         }
 
                         input = input.ReplaceCaseInsensitive(m.Groups[0].Value, content);
@@ -751,7 +751,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                         if (!String.IsNullOrWhiteSpace(queryString))
                         {
-                            content = content.Replace("<img src=\"/preview_image.aspx", $"<img data=\"{queryString}\" src=\"/preview_image.aspx");
+                            content = content.Replace("<div class=\"dynamic-content", $"<div data=\"{queryString}\" class=\"/dynamic-content");
                         }
 
                         input = input.ReplaceCaseInsensitive(m.Groups[0].Value, content);

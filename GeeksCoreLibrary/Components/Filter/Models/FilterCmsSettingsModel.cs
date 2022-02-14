@@ -19,8 +19,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 10,
-            ComponentMode = "Normal"
+            DisplayOrder = 10
         )]
         public string TemplateFull { get; set; }
 
@@ -34,8 +33,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 20,
-            ComponentMode = "Normal"
+            DisplayOrder = 20
         )]
         public string TemplateFilterGroup { get; set; }
 
@@ -63,8 +61,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 40,
-            ComponentMode = "Normal"
+            DisplayOrder = 40
         )]
         public string TemplateSingleSelectItem { get; set; }
 
@@ -78,8 +75,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 50,
-            ComponentMode = "Normal"
+            DisplayOrder = 50
         )]
         public string TemplateSingleSelectItemSelected { get; set; }
 
@@ -93,8 +89,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 60,
-            ComponentMode = "Normal"
+            DisplayOrder = 60
         )]
         public string TemplateMultiSelectItem { get; set; }
 
@@ -108,8 +103,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 70,
-            ComponentMode = "Normal"
+            DisplayOrder = 70
         )]
         public string TemplateMultiSelectItemSelected { get; set; }
 
@@ -123,8 +117,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 80,
-            ComponentMode = "Normal"
+            DisplayOrder = 80
         )]
         public string TemplateSlider { get; set; }
 
@@ -138,8 +131,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 90,
-            ComponentMode = "Normal"
+            DisplayOrder = 90
         )]
         public string TemplateSummary { get; set; }
 
@@ -153,8 +145,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 100,
-            ComponentMode = "Normal"
+            DisplayOrder = 100
         )]
         public string TemplateSummaryFilterGroup { get; set; }
 
@@ -168,8 +159,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 110,
-            ComponentMode = "Normal"
+            DisplayOrder = 110
         )]
         public string TemplateSummaryFilterGroupItem { get; set; }
 
@@ -222,8 +212,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.DataHandling,
             TextEditorType = CmsAttributes.CmsTextEditorType.TextBox,
-            DisplayOrder = 30,
-            ComponentMode = "Normal"
+            DisplayOrder = 30
         )]
         public string ExtraFilterProperties { get; set; }
         
