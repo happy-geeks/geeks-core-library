@@ -10,6 +10,6 @@
         public string PostNlGlobalCustomerNumber { get; set; }
         public string PostNlApiBaseUrl { get; set; }
         public string PostNlShippingApiKey { get; set; }
-        public string PostNlTariffNr { get; set; }
+        public string PostNlTariffNumber { get; set; }
     }
 }

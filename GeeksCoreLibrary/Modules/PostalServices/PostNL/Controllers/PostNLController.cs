@@ -23,7 +23,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Controllers
                 BadRequest("No order id specified");
             }
 
-            return Ok(await postNlService.GenerateShippingLabel(encryptedOrderIds));
+            return Ok(await postNlService.GenerateShippingLabelAsync(encryptedOrderIds));
         }
     }
 }

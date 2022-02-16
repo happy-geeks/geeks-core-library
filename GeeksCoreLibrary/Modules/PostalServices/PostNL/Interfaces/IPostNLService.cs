@@ -34,6 +34,6 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Interfaces
         /// </summary>
         /// <param name="encryptedOrderIds">Comma separated string of orderIds to create a shipping label</param>
         /// <returns>Action result containing the text for the reason of the result or error</returns>
-        Task<string> GenerateShippingLabel(string encryptedOrderIds);
+        Task<string> GenerateShippingLabelAsync(string encryptedOrderIds);
     }
 }

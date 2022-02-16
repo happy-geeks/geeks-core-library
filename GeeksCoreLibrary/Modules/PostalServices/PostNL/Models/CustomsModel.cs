@@ -8,7 +8,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models
         public string Currency { get; set; }
         public string HandleAsNonDeliverable { get; set; }
         public string Invoice { get; set; }
-        public string InvoiceNr { get; set; }
+        public string InvoiceNumber { get; set; }
         public string ShipmentType { get; set; }
     }
 }

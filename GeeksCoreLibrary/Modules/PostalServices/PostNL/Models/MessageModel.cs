@@ -1,8 +1,11 @@
-﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models
+﻿using Newtonsoft.Json;
+
+namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models
 {
     public class MessageModel
     {
-        public string MessageID { get; set; }
+        [JsonProperty("MessageID")]
+        public string MessageId { get; set; }
         public string MessageTimeStamp { get; set; }
         public string Printertype { get; set; }
     }

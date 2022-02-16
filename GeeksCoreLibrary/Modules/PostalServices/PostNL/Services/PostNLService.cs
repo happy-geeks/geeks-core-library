@@ -107,7 +107,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             var orderCountryCode = orderDetails.GetDetailValue(entityName);
             string countryCode;
 
-            if (ulong.TryParse(orderCountryCode, out var countryId))
+            if (UInt64.TryParse(orderCountryCode, out var countryId))
             {
                 var countryItem = await wiserItemsService.GetItemDetailsAsync(countryId);
                 countryCode = countryItem.GetDetailValue("name_short")?.ToUpper();
@@ -125,7 +125,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
         /// </summary>
         /// <param name="encryptedOrderIds">Comma separated string of orderIds to create a shipping label</param>
         /// <returns>Action result containing the text for the reason of the result or error</returns>
-        public async Task<string> GenerateShippingLabel(string encryptedOrderIds)
+        public async Task<string> GenerateShippingLabelAsync(string encryptedOrderIds)
         {
             var result = new List<string>();
 
@@ -203,7 +203,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                     },
                     Message = new MessageModel
                     {
-                        MessageID = orderId,
+                        MessageId = orderId,
                         MessageTimeStamp = DateTime.Now.ToString("dd-MM-yyyy HH:mm:ss"),
                         Printertype = "GraphicFile|PDF"
                     },
@@ -234,7 +234,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                         Currency = "EUR",
                         HandleAsNonDeliverable = "false",
                         Invoice = "true",
-                        InvoiceNr = orderId,
+                        InvoiceNumber = orderId,
                         ShipmentType = "Commercial Goods"
                     };
                     var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(UInt64.Parse(orderId), 5002, "orderline");
@@ -245,7 +245,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                             {
                                 Description = orderLine.GetDetailValue("title"),
                                 CountryOfOrigin = "NL",
-                                HSTariffNr = "621112",
+                                HsTariffNumber = "621112",
                                 Quantity = orderLine.GetDetailValue("quantity"),
                                 Value = orderLine.GetDetailValue("price").Replace(",", "."),
                                 Weight = "500"
@@ -292,7 +292,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                 result.Add($"Order {orderId}: Er is succesvol een verzendlabel gegenereerd en verstuurd naar de klant, deze kan gevonden worden op de tab 'PostNL' van deze order. De track&trace code is: {barcode}");
             }
 
-            return $"<ul><li>{String.Join("</li><li>", result)}</li></ul>";
+            return result.ToString();
         }
 
         /// <summary>
