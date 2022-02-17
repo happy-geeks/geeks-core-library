@@ -301,7 +301,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             foreach (DataRow dataRow in dataTable.Rows)
             {
-                var contentId = dataRow.Field<int>("id");
+                var contentId = dataRow.Field<int>("content_id");
                 dynamicContent.Add(contentId, new DynamicContent
                 {
                     Id = contentId,
