@@ -568,10 +568,10 @@ namespace GeeksCoreLibrary.Components.Filter
             }
 
             // Create the full filter HTML result
-            result = Settings.TemplateFull.Replace("{filters}", filtersHtml.ToString()).Replace("{summary}", summary.ToString());
+            result = Settings.TemplateFull.Replace("{filters}", filtersHtml.ToString()).Replace("{summary}", summary.ToString()).Replace("{category_id}", categoryId.ToString());
 
             // Handle if-statements and translations
-            result = await TemplatesService.DoReplacesAsync(result, true, false, true);
+            result = await TemplatesService.DoReplacesAsync(result);
 
             return result;
         }
