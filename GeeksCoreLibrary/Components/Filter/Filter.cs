@@ -535,7 +535,7 @@ namespace GeeksCoreLibrary.Components.Filter
 
                     var summaryItem = StringReplacementsService.DoReplacements(Settings.TemplateSummaryFilterGroupItem, replaceData);
 
-                    summaryGroupItems.AppendLine(summaryItem);
+                    summaryGroupItems.Append(summaryItem);
                 }
                 WriteToTrace($"2 - CreateFilterURL({f.NameSeo}, , False)");
 
@@ -549,7 +549,7 @@ namespace GeeksCoreLibrary.Components.Filter
 
                 var summaryGroupHtml = StringReplacementsService.DoReplacements(Settings.TemplateSummaryFilterGroup, replaceData);
 
-                summaryGroups.AppendLine(summaryGroupHtml);
+                summaryGroups.Append(summaryGroupHtml);
             }
 
             if (filterGroups.Any(x => (x.Value.SelectedValues.Count > 0 || !String.IsNullOrWhiteSpace(x.Value.SelectedValueString)) && (!x.Value.HideInSummary)))
@@ -564,7 +564,7 @@ namespace GeeksCoreLibrary.Components.Filter
 
                 var templateSummaryHtml = StringReplacementsService.DoReplacements(Settings.TemplateSummary, replaceData);
 
-                summary.AppendLine(templateSummaryHtml);
+                summary.Append(templateSummaryHtml);
             }
 
             // Create the full filter HTML result

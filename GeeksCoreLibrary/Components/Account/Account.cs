@@ -903,7 +903,7 @@ namespace GeeksCoreLibrary.Components.Account
                         // Replace details
                         var lineTemplate = await TemplatesService.DoReplacesAsync(subTemplate, dataRow: dataRow, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
-                        fieldsHtmlBuilder.AppendLine(lineTemplate);
+                        fieldsHtmlBuilder.Append(lineTemplate);
                     }
 
                     resultHtml = resultHtml.Replace(match.Value, fieldsHtmlBuilder.ToString());
@@ -1068,7 +1068,7 @@ namespace GeeksCoreLibrary.Components.Account
                         // Replace details
                         var lineTemplate = await TemplatesService.DoReplacesAsync(subTemplate, dataRow: dataRow, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
-                        fieldsHtmlBuilder.AppendLine(lineTemplate);
+                        fieldsHtmlBuilder.Append(lineTemplate);
                     }
 
                     resultHtml = resultHtml.Replace(match.Value, fieldsHtmlBuilder.ToString());
@@ -1095,7 +1095,7 @@ namespace GeeksCoreLibrary.Components.Account
                         // Replace details
                         var lineTemplate = await TemplatesService.DoReplacesAsync(subTemplate.ReplaceCaseInsensitive("{selectedSubAccount}", selectedSubAccount.ToString()).ReplaceCaseInsensitive("{selectedSubAccount_htmlencode}", selectedSubAccount.ToString()), dataRow: dataRow, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
-                        fieldsHtmlBuilder.AppendLine(lineTemplate);
+                        fieldsHtmlBuilder.Append(lineTemplate);
                     }
 
                     resultHtml = resultHtml.Replace(match.Value, fieldsHtmlBuilder.ToString());
