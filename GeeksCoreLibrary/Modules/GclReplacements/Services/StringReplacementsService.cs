@@ -155,16 +155,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 input = DoSessionReplacements(input, forQuery);
             }
 
-            // Evaluate the [if][endif] logic snippets.
-            if (evaluateLogicSnippets)
-            {
-                input = EvaluateTemplate(input);
-            }
-
             // Whether template variables that were not replaced should be removed.
             if (removeUnknownVariables)
             {
                 input = RemoveTemplateVariables(input);
+            }
+
+            // Evaluate the [if][endif] logic snippets.
+            if (evaluateLogicSnippets)
+            {
+                input = EvaluateTemplate(input);
             }
 
             return input;

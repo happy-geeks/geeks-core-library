@@ -39,12 +39,6 @@ namespace GeeksCoreLibrary.Core.Models
         public string Name { get; set; }
 
         /// <summary>
-        /// Gets or sets the selection method.
-        /// TODO: Figure out what this is for, doesn't seem to be used anywhere. Or remove this property if we don't need it.
-        /// </summary>
-        public LinkSelectionMethods SelectionMethod { get; set; }
-
-        /// <summary>
         /// Gets or sets whether or not to show items, that are linked with this type, in the default tree view in Wiser.
         /// </summary>
         public bool ShowInTreeView { get; set; }

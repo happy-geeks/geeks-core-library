@@ -193,7 +193,7 @@ namespace GeeksCoreLibrary.Core.Cms
 
                 var currentValue = resultProperty.GetValue(Settings);
                 // TODO: Check for other types default values?
-                if (currentValue != null && (!(currentValue is string stringValue) || !String.IsNullOrEmpty(stringValue)))
+                if (currentValue != null && (currentValue is not string stringValue || !String.IsNullOrEmpty(stringValue)))
                 {
                     continue;
                 }

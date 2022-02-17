@@ -22,11 +22,10 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
-using GeeksCoreLibrary.Core.Extensions;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services
 {
-    public class CachedTemplatesService : ITemplatesService
+    public class LegacyCachedTemplatesService : ITemplatesService
     {
         private readonly ILogger<LegacyCachedTemplatesService> logger;
         private readonly ITemplatesService templatesService;
@@ -36,7 +35,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ICacheService cacheService;
 
-        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ICacheService cacheService)
+        public LegacyCachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ICacheService cacheService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -64,59 +63,58 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             logger.LogDebug("Caching of templates started");
             var templates = new List<Template>();
-            var joinPart = "";
-            var whereClause = new List<string>();
-            if (gclSettings.Environment == Environments.Development)
-            {
-                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
-            }
-            else
-            {
-                whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
-            }
 
-            whereClause.Add("template.removed = 0");
-            
+            var joinPart = gclSettings.Environment switch
+            {
+                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+                Environments.Acceptance => " AND t.isacceptance=1 ",
+                Environments.Test => " AND t.istest=1 ",
+                Environments.Live => " AND t.islive=1 ",
+                _ => throw new NotImplementedException($"Unknown environment '{gclSettings.Environment}'!"),
+            };
+
             var query = $@"SELECT
-                            IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
-                            parent1.template_name AS parent_name, 
-                            template.parent_id,
-                            template.template_name,
-                            template.template_type,
-                            template.ordering,
-                            parent1.ordering AS parent_ordering,
-                            template.template_id,
-                            GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates, 
-                            GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
-                            template.load_always,
-                            template.changed_on,
-                            template.external_files,
-                            template.template_data_minified,
-                            template.template_data,
-                            template.url_regex,
-                            template.use_cache,
-                            template.cache_minutes,
-                            0 AS use_obfuscate,
-                            template.insert_mode,
-                            template.grouping_create_object_instead_of_array,
-                            template.grouping_key_column_name,
-                            template.grouping_value_column_name,
-                            template.grouping_key,
-                            template.grouping_prefix
-                        FROM {WiserTableNames.WiserTemplate} AS template
+                            IFNULL(ippppp.name, IFNULL(ipppp.name, IFNULL(ippp.name, IFNULL(ipp.name, ip.name)))) as root_name, 
+                            ip.`name` AS parent_name, 
+                            ip.id AS parent_id,
+                            i.`name` AS template_name,
+                            t.templatetype AS template_type,
+                            i.volgnr AS ordering,
+                            ip.volgnr AS parent_ordering,
+                            i.id AS template_id,
+                            t.csstemplates AS css_templates,
+                            t.jstemplates AS javascript_templates,
+                            t.loadalways AS load_always,
+                            t.lastchanged AS changed_on,
+                            t.externalfiles AS external_files,
+                            t.html_obfuscated,
+                            t.html_minified AS template_data_minified,
+                            t.html AS template_data,
+                            t.template,
+                            t.urlregex AS url_regex,
+                            t.usecache AS use_cache,
+                            t.cacheminutes AS cache_minutes,
+                            t.useobfuscate AS use_obfuscate,
+                            t.defaulttemplate AS wiser_cdn_files,
+                            t.pagemode AS insert_mode,
+                            t.groupingCreateObjectInsteadOfArray AS grouping_create_object_instead_of_array,
+                            t.groupingKeyColumnName AS grouping_key_column_name,
+                            t.groupingValueColumnName AS grouping_value_column_name,
+                            t.groupingkey AS grouping_key,
+                            t.groupingprefix AS grouping_prefix
+                        FROM easy_items i 
+                        JOIN easy_templates t ON i.id = t.itemid
                         {joinPart}
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
-
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN (2, 3) AND linkedCssTemplate.removed = 0
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = 4 AND linkedJavascriptTemplate.removed = 0
-
-                        WHERE {String.Join(" AND ", whereClause)}
-                        GROUP BY template.template_id
-                        ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
+                        LEFT JOIN easy_items ip ON i.parent_id = ip.id
+                        LEFT JOIN easy_items ipp ON ip.parent_id = ipp.id
+                        LEFT JOIN easy_items ippp ON ipp.parent_id = ippp.id
+                        LEFT JOIN easy_items ipppp ON ippp.parent_id = ipppp.id
+                        LEFT JOIN easy_items ippppp ON ipppp.parent_id = ippppp.id
+                        WHERE i.moduleid = 143 
+                        AND i.published = 1
+                        AND i.deleted <= 0
+                        AND t.deleted <= 0
+                        ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
             await using (var reader = await databaseConnection.GetReaderAsync(query))
             {
@@ -275,22 +273,58 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private async Task<Dictionary<int, DynamicContent>> GetDynamicContentForCachingAsync(ICacheEntry cacheEntry)
         {
             var dynamicContent = new Dictionary<int, DynamicContent>();
-            var query = gclSettings.Environment == Environments.Development 
-                ? @$"SELECT 
-                    component.content_id,
-                    component.settings, 
-                    component.component,
-                    component.version
-                FROM {WiserTableNames.WiserDynamicContent} AS component
-                LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
-                WHERE otherVersion.id IS NULL" 
-                : @$"SELECT 
-                    component.content_id,
-                    component.settings, 
-                    component.component,
-                    component.version
-                FROM {WiserTableNames.WiserDynamicContent} AS component
-                WHERE (component.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}";
+            string query = null;
+            var templateVersionPart = "";
+            switch (gclSettings.Environment)
+            {
+                case Environments.Development:
+                    // Always get the latest version on development.
+                    query = @"SELECT
+                                d.id,
+                                d.filledvariables, 
+                                d.freefield1,
+                                d.type,
+                                d.version
+                            FROM easy_dynamiccontent d
+                            JOIN (SELECT id, MAX(version) AS version FROM easy_dynamiccontent GROUP BY id) d2 ON d2.id = d.id AND d2.version = d.version
+                            GROUP BY d.id";
+                    break;
+                case Environments.Test:
+                    templateVersionPart = "AND t.istest = 1";
+                    break;
+                case Environments.Acceptance:
+                    templateVersionPart = "AND t.isacceptance = 1";
+                    break;
+                case Environments.Live:
+                    templateVersionPart = "AND t.islive = 1";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            query ??= $@"SELECT
+                            d.id,
+                            d.filledvariables, 
+                            d.freefield1,
+                            d.type,
+                            d.version
+                        FROM easy_dynamiccontent d
+                        JOIN easy_templates t ON t.itemid = d.itemid AND t.version = d.version {templateVersionPart}
+
+                        UNION
+
+                        SELECT
+                            d.id,
+                            d.filledvariables, 
+                            d.freefield1,
+                            d.type,
+                            d.version
+                        FROM easy_dynamiccontent d
+                        WHERE d.version = 1 
+                        AND d.itemid = 0
+
+                        GROUP BY id";
+                        
 
             databaseConnection.ClearParameters();
             var dataTable = await databaseConnection.GetAsync(query);
@@ -305,8 +339,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 dynamicContent.Add(contentId, new DynamicContent
                 {
                     Id = contentId,
-                    Name = dataRow.Field<string>("component"),
-                    SettingsJson = dataRow.Field<string>("settings"),
+                    Name = dataRow.Field<string>("freefield1"),
+                    SettingsJson = dataRow.Field<string>("filledvariables"),
                     Version = dataRow.Field<int>("version")
                 });
             }
@@ -364,9 +398,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 return template;
             }
-            
+
+            // TODO: Test the speed of this and see if it's better run a while loop on string.Contains("contentid=") instead of the regular expression.
             // Timeout on the regular expression to prevent denial of service attacks.
-            var regEx = new Regex(@"<div[^<>]*?(?:class=['""]dynamic-content['""][^<>]*?)?(?:data=['""](?<data>.*?)['""][^>]*?)?(component-id|content-id)=['""](?<contentId>\d+)['""][^>]*?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
+            var regEx = new Regex(@"<img[^>]*?(?:data=['""](?<data>.*?)['""][^>]*?)?contentid=['""](?<contentid>\d+)['""][^>]*?/?>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
 
             var matches = regEx.Matches(template);
             foreach (Match match in matches)
@@ -376,29 +411,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     continue;
                 }
 
-                if (!Int32.TryParse(match.Groups["contentId"].Value, out var contentId) || contentId <= 0)
+                if (!Int32.TryParse(match.Groups["contentid"].Value, out var contentId) || contentId <= 0)
                 {
-                    logger.LogWarning($"Found dynamic content with invalid contentId of '{match.Groups["contentId"].Value}', so ignoring it.");
+                    logger.LogWarning($"Found dynamic content with invalid contentId of '{match.Groups["contentid"].Value}', so ignoring it.");
                     continue;
                 }
 
-                try
-                {
-                    var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
-                    var (html, _) = await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
-                    template = template.Replace(match.Value, (string)html);
-                }
-                catch (Exception exception)
-                {
-                    logger.LogError($"An error while generating component with id '{contentId}': {exception}");
-                    var errorOnPage = $"An error occurred while generating component with id '{contentId}'";
-                    if (gclSettings.Environment is Environments.Development or Environments.Test)
-                    {
-                        errorOnPage += $": {exception.Message}";
-                    }
-
-                    template = template.Replace(match.Value, errorOnPage);
-                }
+                var (html, _) = await GenerateDynamicContentHtmlAsync(contentId);
+                template = template.Replace(match.Value, (string)html);
             }
 
             return template;

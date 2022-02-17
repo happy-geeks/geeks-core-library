@@ -86,7 +86,7 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             DisplayOrder = 10,
-            ComponentMode = "Repeater",
+            ComponentMode = "NonLegacy",
             HideInCms = false,
             ReadOnlyInCms = false
         )]
@@ -125,7 +125,8 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
                                 </ul>",
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.AdvancedTemplates,
-            DisplayOrder= 30
+            DisplayOrder = 30,
+            TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor
         )]
         public string ProductBannerTemplate { get; set; }
 
