@@ -225,7 +225,6 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
             TabName = CmsAttributes.CmsTabName.Behavior,
             GroupName = CmsAttributes.CmsGroupName.Seo,
             DisplayOrder = 10,
-            ComponentMode = "Repeater",
             HideInCms = false,
             ReadOnlyInCms = false
         )]
@@ -242,7 +241,6 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
             TabName = CmsAttributes.CmsTabName.Behavior,
             GroupName = CmsAttributes.CmsGroupName.Seo,
             DisplayOrder = 10,
-            ComponentMode = "Repeater",
             HideInCms = false,
             ReadOnlyInCms = false
         )]
