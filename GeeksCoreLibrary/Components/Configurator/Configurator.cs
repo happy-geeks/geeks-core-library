@@ -314,7 +314,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             allStepsHtml.Replace("{progress_post}", renderedMobilePostProgressHtml);
 
             var resultHtml = new StringBuilder();
-            resultHtml.AppendLine("<div id=\"configurator\" data-customParameter=\"{customParam}|{customParamDependencies}\">".
+            resultHtml.Append("<div id=\"configurator\" data-customParameter=\"{customParam}|{customParamDependencies}\">".
                                       Replace("{customParam}", firstRow.Field<string>("custom_param_name")).
                                       Replace("{customParamDependencies}", firstRow.Field<string>("custom_param_dependencies")));
 
@@ -325,7 +325,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                                                                                       ReplaceCaseInsensitive("{totalsteps}", mainStepCount.ToString()).
                                                                                       ReplaceCaseInsensitive("{progress_post}", renderedMobilePostProgressHtml).
                                                                                       ReplaceCaseInsensitive("{progress_pre}", renderedMobilePreProgressHtml), removeUnknownVariables: false));
-            resultHtml.AppendLine("</div>");
+            resultHtml.Append("</div>");
             WriteToTrace("End generating HTML");
             return new HtmlString(await TemplatesService.DoReplacesAsync(resultHtml.ToString(), false, removeUnknownVariables: false));
         }
@@ -504,7 +504,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         foreach (DataRow subStepRow in subSteps)
                         {
                             subStepCount += 1;
-                            subStepContents.AppendLine(await DoRenderingOfSubStepAsync(currentConfiguratorName, subStepRow, mainStepNumber, stepNumber, subStepCount, configurator: configurator));
+                            subStepContents.Append(await DoRenderingOfSubStepAsync(currentConfiguratorName, subStepRow, mainStepNumber, stepNumber, subStepCount, configurator: configurator));
                         }
                         stepContent = stepContent.
                             ReplaceCaseInsensitive("{substeps}", subStepContents.ToString());

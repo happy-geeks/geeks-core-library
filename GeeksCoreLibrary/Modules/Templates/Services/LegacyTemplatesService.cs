@@ -632,8 +632,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     var imageWidth2X = (imageWidth * 2).ToString();
                     var imageHeight2X = (imageHeight * 2).ToString();
 
-                    outputBuilder.AppendLine(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
-                    outputBuilder.AppendLine(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-jpg-2x} 2x, {image-url-jpg}"" type=""image/jpeg"" />");
+                    outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
+                    outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-jpg-2x} 2x, {image-url-jpg}"" type=""image/jpeg"" />");
 
                     outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
                     outputBuilder.Replace("{image-url-jpg}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".jpg", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
@@ -644,7 +644,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     // If last item, than add the default image
                     if (index == totalItems)
                     {
-                        outputBuilder.AppendLine("<img width=\"100%\" height=\"auto\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
+                        outputBuilder.Append("<img width=\"100%\" height=\"auto\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
                         outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
                     }
 

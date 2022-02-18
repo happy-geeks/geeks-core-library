@@ -83,7 +83,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             databaseConnection.AddParameter("itemLinkId", finalItemLinkId);
             databaseConnection.AddParameter("propertyName", propertyName);
             var getImageResult = await databaseConnection.GetAsync($@"
-                SELECT content_type, content, content_url
+                SELECT content_type, content, content_url, protected
                 FROM `{WiserTableNames.WiserItemFile}`
                 WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
                 ORDER BY id
@@ -116,7 +116,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("fileId", finalItemId);
             var getImageResult = await databaseConnection.GetAsync($@"
-                SELECT content_type, content, content_url
+                SELECT content_type, content, content_url, protected
                 FROM `{WiserTableNames.WiserItemFile}`
                 WHERE id = ?fileId");
 
@@ -147,14 +147,14 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("itemId", finalItemId);
             databaseConnection.AddParameter("propertyName", propertyName);
-            var getImageResult = await databaseConnection.GetAsync($@"
-                SELECT content, content_url
+            var getFileResult = await databaseConnection.GetAsync($@"
+                SELECT content, content_url, protected
                 FROM `{WiserTableNames.WiserItemFile}`
                 WHERE item_id = ?itemId AND property_name = ?propertyName
                 ORDER BY id
                 LIMIT {fileNumber - 1},1");
 
-            if (!ValidateQueryResult(getImageResult, encryptedItemId))
+            if (!ValidateQueryResult(getFileResult, encryptedItemId))
             {
                 // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
                 return (null, DateTime.MinValue);
@@ -164,9 +164,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             var localFilename = $"file_wiser2_{finalItemId}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
-            return getImageResult.Rows.Count == 0
+            return getFileResult.Rows.Count == 0
                 ? (null, DateTime.MinValue)
-                : await HandleFile(getImageResult.Rows[0], fileLocation);
+                : await HandleFile(getFileResult.Rows[0], fileLocation);
         }
 
         /// <inheritdoc />
@@ -180,14 +180,14 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("itemLinkId", finalItemLinkId);
             databaseConnection.AddParameter("propertyName", propertyName);
-            var getImageResult = await databaseConnection.GetAsync($@"
-                SELECT content, content_url
+            var getFileResult = await databaseConnection.GetAsync($@"
+                SELECT content, content_url, protected
                 FROM `{WiserTableNames.WiserItemFile}`
                 WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
                 ORDER BY id
                 LIMIT {fileNumber - 1},1");
 
-            if (!ValidateQueryResult(getImageResult, encryptedItemLinkId))
+            if (!ValidateQueryResult(getFileResult, encryptedItemLinkId))
             {
                 // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
                 return (null, DateTime.MinValue);
@@ -197,9 +197,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             var localFilename = $"file_wiser2_{finalItemLinkId}_itemlink_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
-            return getImageResult.Rows.Count == 0
+            return getFileResult.Rows.Count == 0
                 ? (null, DateTime.MinValue)
-                : await HandleFile(getImageResult.Rows[0], fileLocation);
+                : await HandleFile(getFileResult.Rows[0], fileLocation);
         }
 
         /// <inheritdoc />
@@ -212,12 +212,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("fileId", finalItemId);
-            var getImageResult = await databaseConnection.GetAsync($@"
-                SELECT content, content_url
+            var getFileResult = await databaseConnection.GetAsync($@"
+                SELECT content, content_url, protected
                 FROM `{WiserTableNames.WiserItemFile}`
                 WHERE id = ?fileId");
 
-            if (!ValidateQueryResult(getImageResult, encryptedItemId))
+            if (!ValidateQueryResult(getFileResult, encryptedItemId))
             {
                 // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
                 return (null, DateTime.MinValue);
@@ -227,9 +227,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             var localFilename = $"file_wiser2_{finalItemId}_direct_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
-            return getImageResult.Rows.Count == 0
+            return getFileResult.Rows.Count == 0
                 ? (null, DateTime.MinValue)
-                : await HandleFile(getImageResult.Rows[0], fileLocation);
+                : await HandleFile(getFileResult.Rows[0], fileLocation);
         }
 
         /// <summary>
