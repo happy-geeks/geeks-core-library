@@ -390,7 +390,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> ReplaceAllDynamicContentAsync(string template)
+        public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
         {
             // TODO: This code is exactly the same as in the normal TemplatesService, but that is needed because we need to call "GenerateDynamicContentHtmlAsync" inside the CachedTemplatesService instead of the TemplatesService.
             // TODO: Figure out if there is a better way to do this.

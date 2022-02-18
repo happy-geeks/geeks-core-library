@@ -849,7 +849,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> ReplaceAllDynamicContentAsync(string template)
+        public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
         {
             if (String.IsNullOrWhiteSpace(template))
             {
@@ -876,7 +876,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 try
                 {
                     var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
-                    var (html, _) = await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
+                    var dynamicContentData = componentOverrides?.FirstOrDefault(d => d.Id == contentId);
+                    var (html, _) = dynamicContentData == null ? await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
                     template = template.Replace(match.Value, (string)html);
                 }
                 catch (Exception exception)

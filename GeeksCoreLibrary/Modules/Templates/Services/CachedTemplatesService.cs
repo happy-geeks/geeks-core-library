@@ -356,7 +356,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> ReplaceAllDynamicContentAsync(string template)
+        public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
         {
             // TODO: This code is exactly the same as in the normal TemplatesService, but that is needed because we need to call "GenerateDynamicContentHtmlAsync" inside the CachedTemplatesService instead of the TemplatesService.
             // TODO: Figure out if there is a better way to do this.
@@ -385,7 +385,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 try
                 {
                     var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
-                    var (html, _) = await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
+                    var dynamicContentData = componentOverrides?.FirstOrDefault(d => d.Id == contentId);
+                    var (html, _) = dynamicContentData == null ? await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
                     template = template.Replace(match.Value, (string)html);
                 }
                 catch (Exception exception)

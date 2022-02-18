@@ -135,8 +135,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// Replaces all dynamic content in the given template and returns the new template.
         /// </summary>
         /// <param name="template">The template to replace the dynamic content in.</param>
+        /// <param name="componentOverrides">Optional: If you already have the settings for one or more components, you can add them here. This is made to he </param>
         /// <returns>The new template with all dynamic content.</returns>
-        Task<string> ReplaceAllDynamicContentAsync(string template);
+        Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null);
 
         /// <summary>
         /// Executes a query and converts the results into an JSON object.

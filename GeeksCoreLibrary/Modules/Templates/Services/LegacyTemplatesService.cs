@@ -932,7 +932,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> ReplaceAllDynamicContentAsync(string template)
+        public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
         {
             if (String.IsNullOrWhiteSpace(template))
             {
