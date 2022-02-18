@@ -35,7 +35,16 @@ namespace GeeksCoreLibrary.Core.Helpers
 
             testDomains ??= GclSettings.Current.TestDomains?.ToList() ?? new List<string>();
 
-            var hostname = httpContext.Request.Host.Host.ToLower();
+            string hostname;
+            if (httpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
+            {
+                hostname = wiserUriOverride.Host;
+            }
+            else
+            {
+                hostname = httpContext.Request.Host.Host.ToLower();
+            }
+
             if (includingTestWww == false && hostname.StartsWith("www", StringComparison.OrdinalIgnoreCase))
             {
                 return hostname.Remove(0, hostname.IndexOf(".", StringComparison.OrdinalIgnoreCase) + 1);

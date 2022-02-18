@@ -15,8 +15,10 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Models;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
 
@@ -179,7 +181,14 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             }
 
             // GET variables.
-            input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery);
+            if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
+            {
+                input = DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery);
+            }
+            else
+            {
+                input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery);
+            }
 
             // POST variables.
             if (httpContextAccessor.HttpContext.Request.HasFormContentType)
