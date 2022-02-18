@@ -626,6 +626,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var mailBodyPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailBodyPropertyName", "template");
             var mailSubjectPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailSubjectPropertyName", "subject");
             var mailToPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailToPropertyName", "mailto");
+            var emailAddressBasketPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_EmailAddressBasketPropertyName");
             var languageCodePropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_LanguageCodePropertyName", "languagecode");
             var emailAddressPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_EmailAddressPropertyName", "emailaddress");
             var getMailToBasedOnDeliveryMethod = (await objectsService.FindSystemObjectByDomainNameAsync("GetMailAdresBasedOnDeliveryMethod", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
@@ -708,6 +709,11 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             else
             {
                 templateContent = await shoppingBasketsService.ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, basketSettings, templateContent, isForConfirmationEmail: true);
+            }
+            //get customer basket email instead of the potentially linked user email address
+            if (!String.IsNullOrWhiteSpace(emailAddressBasketPropertyName) && !String.IsNullOrWhiteSpace(shoppingBasket.GetDetailValue(emailAddressBasketPropertyName)))
+            {
+                userEmailAddress = shoppingBasket.GetDetailValue(emailAddressBasketPropertyName);
             }
 
             return new EmailValues
