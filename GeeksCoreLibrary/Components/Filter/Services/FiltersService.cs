@@ -799,7 +799,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 }
                 else if (filterValue.Contains("-") && Information.IsNumeric(filterValue.Split('-')[0]) && Information.IsNumeric(filterValue.Split('-')[1])) // Two values (min and max)
                 {
-                    output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` >= {filterValue.Split('-')[0].ToMySqlSafeValue()} AND fi{filterCounter}.`value` <= {filterValue.Split('-')[1].ToMySqlSafeValue()})";
+                    output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` >= {filterValue.Split('-')[0].ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` <= {filterValue.Split('-')[1].ToMySqlSafeValue(true)})";
                 }
 
                 // TODO: afhandeling via aggregatie tabel
@@ -828,7 +828,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     // multiple values selected
                     if (forAggregationTable)
                     {
-                        output = $"f{filterCounter}.filtergroup='{(String.IsNullOrEmpty(filterGroup.QueryString) ? filterName.ToMySqlSafeValue() : filterGroup.QueryString.ToMySqlSafeValue())}' AND f{filterCounter}.filtervalue IN ({filterValue.ToMySqlSafeValue(true).Replace(ValueSplit, "','")})";
+                        output = $"f{filterCounter}.filtergroup={(String.IsNullOrEmpty(filterGroup.QueryString) ? filterName.ToMySqlSafeValue(true) : filterGroup.QueryString.ToMySqlSafeValue(true))} AND f{filterCounter}.filtervalue IN ({filterValue.ToMySqlSafeValue(true).Replace(ValueSplit, "','")})";
                     }
                     else if (filterGroup.IsGroupFilter)
                     {
@@ -851,18 +851,18 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     }
                     else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) & !forItemPart)
                     {
-                        output = $"(fi{filterCounter}.`key` = '{filterName.ToMySqlSafeValue() + (filterGroup.FilterOnSeoValue ? "_SEO" : "")}')";
+                        output = $"(fi{filterCounter}.`key` = CONCAT('{filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}'))";
                     }
                     else
                     {
-                        output = $"(fi{filterCounter}.`key` = '{filterName.ToMySqlSafeValue() + (filterGroup.FilterOnSeoValue ? "_SEO" : "")}' AND (fi{filterCounter}.`value` IN ({filterValue.ToMySqlSafeValue(true).Replace(ValueSplit, "','")})))";
+                        output = $"(fi{filterCounter}.`key` = CONCAT('{filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}') AND (fi{filterCounter}.`value` IN ({filterValue.ToMySqlSafeValue(true).Replace(ValueSplit, "','")})))";
                     }
                 }
                 else // single value selected
                 {
                     if (forAggregationTable)
                     {
-                        output = $"f{filterCounter}.filtergroup='{(String.IsNullOrEmpty(filterGroup.QueryString) ? filterName.ToMySqlSafeValue() : filterGroup.QueryString.ToMySqlSafeValue())}' AND f{filterCounter}.filtervalue={filterValue.ToMySqlSafeValue(true)}";
+                        output = $"f{filterCounter}.filtergroup={(String.IsNullOrEmpty(filterGroup.QueryString) ? filterName.ToMySqlSafeValue(true) : filterGroup.QueryString.ToMySqlSafeValue(true))} AND f{filterCounter}.filtervalue={filterValue.ToMySqlSafeValue(true)}";
                     }
                     else if (filterGroup.IsGroupFilter)
                     {
@@ -885,12 +885,12 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     }
                     else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) & !forItemPart)
                     {
-                        output = $"(fi{filterCounter}.`key` = '{filterName.ToMySqlSafeValue() + (filterGroup.FilterOnSeoValue ? "_SEO" : "")}')";
+                        output = $"(fi{filterCounter}.`key` = CONCAT({filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}')";
                     }
                     else
                     {
                         // if the filter name is genericFilter dont add it to the join statement, we want all items with the name, but there is no group
-                        var filterNamePart = filterName == "genericFilter" ? "TRUE" : $"fi{filterCounter}.`key` = '{filterName.ToMySqlSafeValue() + (filterGroup.FilterOnSeoValue ? "_SEO" : "")}'  ";
+                        var filterNamePart = filterName == "genericFilter" ? "TRUE" : $"fi{filterCounter}.`key` = CONCAT({filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}')  ";
                         output = $"({filterNamePart} AND (fi{filterCounter}.`value` = {filterValue.ToMySqlSafeValue(true)}))";
                     }
                 }

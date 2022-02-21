@@ -227,10 +227,10 @@ namespace GeeksCoreLibrary.Core.Cms
 
             if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
             {
-                queryToUse = StringReplacementsService.DoReplacements(queryToUse, ExtraDataForReplacements);
+                queryToUse = StringReplacementsService.DoReplacements(queryToUse, ExtraDataForReplacements, true);
             }
 
-            queryToUse = await TemplatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false, dataRow: dataRowForReplacements);
+            queryToUse = await TemplatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false, dataRow: dataRowForReplacements, forQuery: true);
 
             if (doVariablesCheck)
             {

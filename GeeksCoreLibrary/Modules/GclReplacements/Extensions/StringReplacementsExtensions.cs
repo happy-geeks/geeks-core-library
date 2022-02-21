@@ -10,6 +10,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
     public static class StringReplacementsExtensions
     {
         /// <summary>
+        /// This just returns the input as is. This can be used to bypass the default HtmlEncode formatter if needed.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static string Raw(this string input)
+        {
+            return input;
+        }
+
+        /// <summary>
         /// Converts a string to a SEO-friendly variant.
         /// </summary>
         /// <param name="input"></param>

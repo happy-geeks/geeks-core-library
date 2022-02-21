@@ -10,6 +10,7 @@ using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Models;
@@ -31,18 +32,22 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IAccountsService accountsService;
+        private readonly IDatabaseConnection databaseConnection;
 
         private readonly MethodInfo[] formatters;
 
         private readonly Regex formatterRegex;
         private readonly Regex logicSnippetRegex;
 
-        public StringReplacementsService(IObjectsService objectsService, ILanguagesService languagesService, IHttpContextAccessor httpContextAccessor, IAccountsService accountsService)
+        private const string RawFormatterName = "Raw";
+
+        public StringReplacementsService(IObjectsService objectsService, ILanguagesService languagesService, IHttpContextAccessor httpContextAccessor, IAccountsService accountsService, IDatabaseConnection databaseConnection)
         {
             this.objectsService = objectsService;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
             this.accountsService = accountsService;
+            this.databaseConnection = databaseConnection;
 
             formatters = typeof(StringReplacementsExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public);
 
@@ -317,7 +322,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             }
 
             // Find all replacement variables in the input string. Every replacement variable can also have multiple formatters.
-            var variables = GetReplacementVariables(input, prefix, suffix);
+            var variables = forQuery ? GetReplacementVariables(input, prefix, suffix, null) : GetReplacementVariables(input, prefix, suffix);
             if (variables.Length == 0)
             {
                 return input;
@@ -361,7 +366,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     // Simply replace the variable if there are no formatters found.
                     if (forQuery)
                     {
-                        value = value.ToMySqlSafeValue();
+                        var parameterName = DatabaseHelpers.CreateValidParameterName(variable.MatchString);
+                        databaseConnection.AddParameter(parameterName, value);
+                        value = $"?{parameterName}";
                     }
 
                     output.Replace(variable.MatchString, value);
@@ -692,8 +699,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <param name="input">The input string to check.</param>
         /// <param name="prefix">The prefix of replacement variables. The default is '{'.</param>
         /// <param name="suffix">The suffix of replacement variables. The default is '}'.</param>
+        /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
         /// <returns></returns>
-        private static StringReplacementVariable[] GetReplacementVariables(string input, string prefix = "{", string suffix = "}")
+        private static StringReplacementVariable[] GetReplacementVariables(string input, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
             if (String.IsNullOrWhiteSpace(input))
             {
@@ -730,6 +738,14 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
                 // Add the formatters to the list.
                 variable.Formatters.AddRange(formatters.Split('|', StringSplitOptions.RemoveEmptyEntries));
+
+                // Add the default formatter, unless the raw formatter has been used.
+                if (!String.IsNullOrWhiteSpace(defaultFormatter) 
+                    && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase)) 
+                    && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    variable.Formatters.Add(defaultFormatter);
+                }
 
                 result.Add(variable);
             }

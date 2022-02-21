@@ -11,6 +11,7 @@ using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -355,7 +356,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             {
                 if (templateOrQuery.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase))
                 {
-                    templateOrQuery = templateOrQuery.Replace($"{{{queryStringItem.Key}}}", queryStringItem.Value.ToMySqlSafeValue());
+                    var parameterName = DatabaseHelpers.CreateValidParameterName(queryStringItem.Key);
+                    databaseConnection.AddParameter(parameterName, queryStringItem.Value);
+                    templateOrQuery = templateOrQuery.Replace($"{{{queryStringItem.Key}}}", $"?{parameterName}");
                 }
             }
 
@@ -365,19 +368,23 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 {
                     continue;
                 }
-
+                
+                var parameterName = DatabaseHelpers.CreateValidParameterName(configuration.Items[key].Id);
                 var valuesCanContainDashes = await this.objectsService.GetSystemObjectValueAsync("CONFIGURATOR_ValuesCanContainDashes");
                 if (!String.IsNullOrWhiteSpace(valuesCanContainDashes) && valuesCanContainDashes.Equals("true", StringComparison.OrdinalIgnoreCase) && configuration.Items[key].Value.Contains("-"))
                 {
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", configuration.Items[key].Value.Split('-')[1].ToMySqlSafeValue());
+                    databaseConnection.AddParameter(parameterName, configuration.Items[key].Value.Split('-')[1]);
+                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
                 }
                 else if (configuration.Items[key].Value == "-1")
                 {
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", configuration.Items[key].Value.Split('-')[1].ToMySqlSafeValue());
+                    databaseConnection.AddParameter(parameterName, configuration.Items[key].Value.Split('-')[1]);
+                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
                 }
                 else
                 {
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", configuration.Items[key].Value.ToMySqlSafeValue());
+                    databaseConnection.AddParameter(parameterName, configuration.Items[key].Value);
+                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
                 }
             }
 

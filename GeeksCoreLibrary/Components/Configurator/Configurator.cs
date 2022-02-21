@@ -756,10 +756,11 @@ namespace GeeksCoreLibrary.Components.Configurator
                         {
                             if (connectedId != "-1" || !customQuery.Contains("{connectedid}"))
                             {
-                                query = customQuery.ReplaceCaseInsensitive("'{connectedId}'", connectedId.ToMySqlSafeValue());
+                                DatabaseConnection.AddParameter("connectedId", connectedId);
+                                query = customQuery.ReplaceCaseInsensitive("'{connectedId}'", "?connectedId");
                                 query = await  this.configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration);
-                                query = await TemplatesService.HandleIncludesAsync(query, false, null, false);
-                                query = query.ReplaceCaseInsensitive("{connectedId}", connectedId.ToMySqlSafeValue());
+                                query = await TemplatesService.HandleIncludesAsync(query, false, null, false, true);
+                                query = query.ReplaceCaseInsensitive("{connectedId}", "?connectedId");
                                 query = await StringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
                             }
                             break;

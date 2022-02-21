@@ -198,7 +198,7 @@ namespace GeeksCoreLibrary.Components.Filter
             // Get the category id from a query if query is given
             if (!String.IsNullOrEmpty(Settings.FilterCategoryIdQuery))
             {
-                Settings.FilterCategoryIdQuery = await TemplatesService.DoReplacesAsync(Settings.FilterCategoryIdQuery, true, false, true);
+                Settings.FilterCategoryIdQuery = await TemplatesService.DoReplacesAsync(Settings.FilterCategoryIdQuery, true, false, true, forQuery: true);
 
                 dataTable = await DatabaseConnection.GetAsync(Settings.FilterCategoryIdQuery);
 
@@ -303,7 +303,7 @@ namespace GeeksCoreLibrary.Components.Filter
             filterItemsQuery = filterItemsQuery.Replace("{categoryId}", categoryId.ToString());
             filterItemsQuery = filterItemsQuery.Replace("{languageCode}", await languageService.GetLanguageCodeAsync());
             filterItemsQuery = filterItemsQuery.Replace("`cust_filter_aggregation_`", "`cust_filter_aggregation`"); // If no language code, trim trailing underscore
-            filterItemsQuery = await TemplatesService.DoReplacesAsync(filterItemsQuery, true, false, true, removeUnknownVariables:false); // Support [include[x]] for including other templates.
+            filterItemsQuery = await TemplatesService.DoReplacesAsync(filterItemsQuery, true, false, true, removeUnknownVariables: false, forQuery: true); // Support [include[x]] for including other templates.
 
             // Replace the {filters} variable with the join and where parts to exclude not possible filter values when filtered
             if (filterItemsQuery.Contains("{filters}"))

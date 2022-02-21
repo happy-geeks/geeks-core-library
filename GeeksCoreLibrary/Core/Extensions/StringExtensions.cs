@@ -150,9 +150,9 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// Converts a string to a string that can be safely used in a MySQL query to avoid SQL injections.
         /// </summary>
         /// <param name="input"></param>
-        /// <param name="encloseInQuotes">Whether the value should be enclosed in quotes.</param>
+        /// <param name="encloseInQuotes">Whether the value should be enclosed in quotes. You should never set this to <see langword="false"/>! Otherwise SQL injection will still be possible!</param>
         /// <returns></returns>
-        public static string ToMySqlSafeValue(this string input, bool encloseInQuotes = false)
+        public static string ToMySqlSafeValue(this string input, bool encloseInQuotes)
         {
             if (input == null)
             {
@@ -161,6 +161,23 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             var result = MySql.Data.MySqlClient.MySqlHelper.EscapeString(input);
             return encloseInQuotes ? $"'{result}'" : result;
+        }
+
+        /// <summary>
+        /// Converts a string to a string that can be safely used in a MySQL query to avoid SQL injections.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        [Obsolete("This is not safe enough. SQL injection is still possible when using this method! Use SQL parameters instead or use the overload of this method with 'encloseInQuotes' set to true.")]
+        public static string ToMySqlSafeValue(this string input)
+        {
+            if (input == null)
+            {
+                return null;
+            }
+
+            var result = MySql.Data.MySqlClient.MySqlHelper.EscapeString(input);
+            return result;
         }
 
         /// <summary>
