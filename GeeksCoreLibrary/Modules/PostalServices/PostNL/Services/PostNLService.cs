@@ -125,7 +125,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
         /// </summary>
         /// <param name="encryptedOrderIds">Comma separated string of orderIds to create a shipping label</param>
         /// <returns>Action result containing the text for the reason of the result or error</returns>
-        public async Task<string> GenerateShippingLabelAsync(string encryptedOrderIds)
+        public async Task<List<string>> GenerateShippingLabelAsync(string encryptedOrderIds)
         {
             var result = new List<string>();
 
@@ -292,7 +292,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                 result.Add($"Order {orderId}: Er is succesvol een verzendlabel gegenereerd en verstuurd naar de klant, deze kan gevonden worden op de tab 'PostNL' van deze order. De track&trace code is: {barcode}");
             }
 
-            return result.ToString();
+            return result;
         }
 
         /// <summary>

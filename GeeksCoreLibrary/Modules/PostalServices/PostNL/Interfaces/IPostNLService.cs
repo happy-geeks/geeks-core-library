@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.PostalServices.PostNL.Models;
 using GeeksCoreLibrary.Modules.PostalServices.PostNL.Services;
 
@@ -34,6 +35,6 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Interfaces
         /// </summary>
         /// <param name="encryptedOrderIds">Comma separated string of orderIds to create a shipping label</param>
         /// <returns>Action result containing the text for the reason of the result or error</returns>
-        Task<string> GenerateShippingLabelAsync(string encryptedOrderIds);
+        Task<List<string>> GenerateShippingLabelAsync(string encryptedOrderIds);
     }
 }
