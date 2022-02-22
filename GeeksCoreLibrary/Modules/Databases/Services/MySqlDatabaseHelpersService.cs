@@ -221,24 +221,46 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 throw new ArgumentNullException(nameof(indexes));
             }
+
+            var oldIndexes = new Dictionary<string, List<(string Name, List<string> Columns)>>();
             
             foreach (var index in indexes.Where(index => !String.IsNullOrWhiteSpace(index.Name) && index.Fields != null && index.Fields.Any()))
             {
                 var createIndexQuery = $"ALTER TABLE `{index.TableName.ToMySqlSafeValue()}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue()}` (`{String.Join("`,`", index.Fields.Select(f => f.ToMySqlSafeValue()))}`)";
                 
                 databaseConnection.AddParameter("indexName", index.Name);
-                var dataTable = await databaseConnection.GetAsync($"SHOW INDEX FROM `{index.TableName.ToMySqlSafeValue()}` WHERE key_name = ?indexName");
-                var recreateIndex = index.Fields.Count != dataTable.Rows.Count || dataTable.Rows.Cast<DataRow>().Any(dataRow => !index.Fields.Any(f => String.Equals(f, dataRow.Field<string>("column_name"), StringComparison.OrdinalIgnoreCase)));
+
+                if (!oldIndexes.ContainsKey(index.TableName))
+                {
+                    oldIndexes.Add(index.TableName, new List<(string Name, List<string> Columns)>());
+                    var dataTable = await databaseConnection.GetAsync($"SHOW INDEX FROM `{index.TableName.ToMySqlSafeValue()}`");
+                    foreach (var dataRow in dataTable.Rows.Cast<DataRow>().OrderBy(row => row.Field<string>("key_name")).ThenBy(row => Convert.ToInt32(row["seq_in_index"])))
+                    {
+                        var indexName = dataRow.Field<string>("key_name");
+                        var oldIndex = oldIndexes[index.TableName].FirstOrDefault(i => i.Name == indexName);
+                        if (oldIndex.Name == null)
+                        {
+                            oldIndex = (indexName, new List<string>());
+                            oldIndexes[index.TableName].Add(oldIndex);
+                        }
+
+                        var columnName = dataRow.Field<string>("column_name");
+                        oldIndex.Columns.Add(columnName);
+                    }
+                }
+
+                var existingIndex = oldIndexes[index.TableName].FirstOrDefault(i => String.Equals(i.Name, index.Name, StringComparison.OrdinalIgnoreCase) || String.Equals(String.Join(",", i.Columns.OrderBy(c => c)), String.Join(",", index.Fields.OrderBy(f => f)), StringComparison.OrdinalIgnoreCase));
+                var recreateIndex = existingIndex.Name == null || String.Join(",", existingIndex.Columns) != String.Join(",", index.Fields);
                 if (!recreateIndex)
                 {
                     // Index has not been changed, so do nothing.
                     continue;
                 }
 
-                if (dataTable.Rows.Count > 0)
+                if (existingIndex.Name != null)
                 {
                     // If an index with this name already exists, but the new one if different, drop the old index first.
-                    await databaseConnection.ExecuteAsync($"ALTER TABLE `{index.TableName.ToMySqlSafeValue()}` DROP INDEX `{index.Name.ToMySqlSafeValue()}`");
+                    await databaseConnection.ExecuteAsync($"ALTER TABLE `{index.TableName.ToMySqlSafeValue()}` DROP INDEX `{existingIndex.Name.ToMySqlSafeValue()}`");
                 }
 
                 // Create the new index.
