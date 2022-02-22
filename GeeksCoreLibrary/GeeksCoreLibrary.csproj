@@ -22,6 +22,7 @@
     <Folder Include="Core\Cms\Models\" />
     <Folder Include="Core\Cms\Services\" />
     <Folder Include="Modules\Databases\Controllers\" />
+    <Folder Include="Modules\PostalServices\PostNL\Models\" />
   </ItemGroup>
 
   <ItemGroup>
