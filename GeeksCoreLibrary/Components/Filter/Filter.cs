@@ -302,7 +302,7 @@ namespace GeeksCoreLibrary.Components.Filter
             var filterItemsQuery = Settings.FilterItemsQuery;
             filterItemsQuery = filterItemsQuery.Replace("{categoryId}", categoryId.ToString());
             filterItemsQuery = filterItemsQuery.Replace("{languageCode}", await languageService.GetLanguageCodeAsync());
-            filterItemsQuery = filterItemsQuery.Replace("`cust_filter_aggregation_`", "`cust_filter_aggregation`"); // If no language code, trim trailing underscore
+            filterItemsQuery = filterItemsQuery.Replace("`wiser_filter_aggregation_`", "`wiser_filter_aggregation`"); // If no language code, trim trailing underscore
             filterItemsQuery = await TemplatesService.DoReplacesAsync(filterItemsQuery, true, false, true, removeUnknownVariables:false); // Support [include[x]] for including other templates.
 
             // Replace the {filters} variable with the join and where parts to exclude not possible filter values when filtered
