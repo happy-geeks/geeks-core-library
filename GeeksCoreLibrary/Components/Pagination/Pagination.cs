@@ -315,6 +315,13 @@ namespace GeeksCoreLibrary.Components.Pagination
 
             // Create the complete HTML.
             var resultHtml = Settings.FullTemplate.Replace("{summary}", summaryHtml).Replace("{pagination}", paginationHtml.ToString());
+            replaceData = new Dictionary<string, string>
+            {
+                ["pagenr"] = currentPage.ToString(),
+                ["lastpagenr"] = lastPageNumber.ToString(),
+                ["totalitems"] = totalItemCount.ToString()
+            };
+            resultHtml = StringReplacementsService.DoReplacements(resultHtml, replaceData);
 
             return await TemplatesService.DoReplacesAsync(resultHtml, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
         }
