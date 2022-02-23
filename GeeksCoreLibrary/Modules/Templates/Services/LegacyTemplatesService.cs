@@ -1043,7 +1043,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Session replaces.
-            if (httpContext?.Features.Get<ISessionFeature>() == null || !httpContext.Session.IsAvailable)
+            if (httpContext?.Features.Get<ISessionFeature>() != null && httpContext.Session.IsAvailable)
             {
                 foreach (var variable in httpContext.Session.Keys)
                 {
