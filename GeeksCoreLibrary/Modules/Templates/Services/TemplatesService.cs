@@ -28,6 +28,7 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Newtonsoft.Json.Linq;
 using Template = GeeksCoreLibrary.Modules.Templates.Models.Template;
@@ -959,9 +960,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Session replaces.
-            foreach (var variable in httpContext.Session.Keys)
+            if (httpContext?.Features.Get<ISessionFeature>() == null || !httpContext.Session.IsAvailable)
             {
-                input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Session.GetString(variable));
+                foreach (var variable in httpContext.Session.Keys)
+                {
+                    input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Session.GetString(variable));
+                }
             }
 
             // Cookie replaces.
