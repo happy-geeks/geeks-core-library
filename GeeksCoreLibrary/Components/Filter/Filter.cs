@@ -148,7 +148,7 @@ namespace GeeksCoreLibrary.Components.Filter
             WriteToTrace("Start generating filters...");
 
             // Try to use the system objects if possible, reverting back to the previous value if they don't exist (by setting them as the default result)
-            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2");
+            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring ");
             var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2")).Equals("1");
             var parametersToExclude = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude");
             var filterGroups = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);

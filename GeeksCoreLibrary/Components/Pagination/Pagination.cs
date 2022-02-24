@@ -153,7 +153,7 @@ namespace GeeksCoreLibrary.Components.Pagination
                 }
                 if (parsedQuery.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
                 {
-                    Regex.Replace(parsedQuery, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart);
+                    parsedQuery = Regex.Replace(parsedQuery, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart);
                 }
 
                 // Perform replacements on the query.

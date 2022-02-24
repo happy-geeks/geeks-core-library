@@ -56,7 +56,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 var output = new QueryPartModel();
                 var queryJoinPart = new StringBuilder();
                 var filters = new SortedList<string, string>();
-                var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2");
+                var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring");
                 var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2", defaultResult: "0")).Equals("1");
                 var filterParametersToExclude = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude", defaultResult: "templateid,pagenr,gclid,_ga");
 

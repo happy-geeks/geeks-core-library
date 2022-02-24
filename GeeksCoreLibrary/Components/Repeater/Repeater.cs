@@ -284,7 +284,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     }
                     if (query.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
                     {
-                        Regex.Replace(query, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart);
+                        query = Regex.Replace(query, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart);
                     }
 
                     // Replace the {page_limit} variable for paging.
