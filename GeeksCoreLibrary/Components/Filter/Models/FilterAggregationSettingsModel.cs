@@ -43,7 +43,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
         internal string TemplateSummaryFilterGroupItem { get; set; }
 
         [DefaultValue(@"SELECT f.*
-                         FROM `cust_filter_aggregation_{languageCode}` f
+                         FROM `wiser_filter_aggregation_{languageCode}` f
                          {filters}
                          WHERE f.category_id={categoryId}
                          GROUP BY f.filtergroup,f.filtervalue
