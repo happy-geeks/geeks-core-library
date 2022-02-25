@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 using GeeksCoreLibrary.Components.Account.Interfaces;
@@ -146,9 +147,13 @@ namespace GeeksCoreLibrary.Components.Pagination
                 var parsedQuery = Settings.DataQuery;
 
                 // Replace the {filters} variable by the joins from the filter component
-                if (parsedQuery.Contains("{filters}"))
+                if (parsedQuery.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
                 {
                     parsedQuery = parsedQuery.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
+                }
+                if (parsedQuery.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
+                {
+                    parsedQuery = Regex.Replace(parsedQuery, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart);
                 }
 
                 // Perform replacements on the query.
@@ -315,6 +320,13 @@ namespace GeeksCoreLibrary.Components.Pagination
 
             // Create the complete HTML.
             var resultHtml = Settings.FullTemplate.Replace("{summary}", summaryHtml).Replace("{pagination}", paginationHtml.ToString());
+            replaceData = new Dictionary<string, string>
+            {
+                ["pagenr"] = currentPage.ToString(),
+                ["lastpagenr"] = lastPageNumber.ToString(),
+                ["totalitems"] = totalItemCount.ToString()
+            };
+            resultHtml = StringReplacementsService.DoReplacements(resultHtml, replaceData);
 
             return await TemplatesService.DoReplacesAsync(resultHtml, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
         }

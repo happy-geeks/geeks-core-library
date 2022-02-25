@@ -102,6 +102,10 @@ namespace GeeksCoreLibrary.Core.Helpers
             {
                 return null;
             }
+            if (string.IsNullOrEmpty(key))
+            {
+                return null;
+            }
 
             var result = httpContext.Request.Query[key].ToString();
             if (!String.IsNullOrEmpty(result))
