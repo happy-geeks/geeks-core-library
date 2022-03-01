@@ -18,6 +18,11 @@
         public string SettingsJson { get; set; }
 
         /// <summary>
+        /// Gets or sets the component mode the component of the dynamic content should be running in.
+        /// </summary>
+        public string ComponentMode { get; set; }
+
+        /// <summary>
         /// Gets or sets the current version of the dynamic content.
         /// </summary>
         public int Version { get; set; }

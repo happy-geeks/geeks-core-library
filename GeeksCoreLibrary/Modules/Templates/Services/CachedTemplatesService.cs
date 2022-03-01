@@ -278,16 +278,18 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var query = gclSettings.Environment == Environments.Development 
                 ? @$"SELECT 
                     component.content_id,
-                    component.settings, 
+                    component.settings,
                     component.component,
+                    component.component_mode,
                     component.version
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
                 WHERE otherVersion.id IS NULL" 
                 : @$"SELECT 
                     component.content_id,
-                    component.settings, 
+                    component.settings,
                     component.component,
+                    component.component_mode,
                     component.version
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 WHERE (component.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}";
@@ -307,6 +309,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     Id = contentId,
                     Name = dataRow.Field<string>("component"),
                     SettingsJson = dataRow.Field<string>("settings"),
+                    ComponentMode = dataTable.Rows[0].Field<string>("component_mode"),
                     Version = dataRow.Field<int>("version")
                 });
             }
