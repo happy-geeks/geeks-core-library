@@ -492,15 +492,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 return String.Empty;
             }
 
-            if (Request.HasFormContentType && !String.IsNullOrWhiteSpace(HttpContextHelpers.GetRequestValue(HttpContext, "additems")))
+            if (!String.IsNullOrWhiteSpace(HttpContextHelpers.GetRequestValue(HttpContext, "additem")))
             {
-                await AddMultipleItemsAsync();
+                await AddSingleItemAsync();
             }
             else
             {
-                if (!String.IsNullOrWhiteSpace(HttpContextHelpers.GetRequestValue(HttpContext, "additem")))
+                if (Request.Method.Equals("POST"))
                 {
-                    await AddSingleItemAsync();
+                    await AddMultipleItemsAsync();
                 }
             }
 
@@ -537,7 +537,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 return;
             }
 
-            Request.Body.Position = 0L;
             using var reader = new StreamReader(Request.Body);
             var itemsJson = await reader.ReadToEndAsync();
 
