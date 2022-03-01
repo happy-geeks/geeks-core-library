@@ -1223,28 +1223,28 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 switch (pricesIncludesVat)
                 {
                     case true when priceType == ShoppingBasket.PriceTypes.ExVatExDiscount || priceType == ShoppingBasket.PriceTypes.ExVatInDiscount:
-                        {
-                            var priceInVat = await GetPriceAsync(shoppingBasket, basketLines, settings, priceType == ShoppingBasket.PriceTypes.ExVatExDiscount ? ShoppingBasket.PriceTypes.InVatExDiscount : ShoppingBasket.PriceTypes.InVatInDiscount, lineType, onlyIfVatRate);
-                            price = priceInVat - await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.VatOnly, lineType, onlyIfVatRate);
-                            break;
-                        }
+                    {
+                        var priceInVat = await GetPriceAsync(shoppingBasket, basketLines, settings, priceType == ShoppingBasket.PriceTypes.ExVatExDiscount ? ShoppingBasket.PriceTypes.InVatExDiscount : ShoppingBasket.PriceTypes.InVatInDiscount, lineType, onlyIfVatRate);
+                        price = priceInVat - await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.VatOnly, lineType, onlyIfVatRate);
+                        break;
+                    }
                     case false when priceType == ShoppingBasket.PriceTypes.InVatExDiscount || priceType == ShoppingBasket.PriceTypes.InVatInDiscount:
-                        {
-                            var priceExVat = await GetPriceAsync(shoppingBasket, basketLines, settings, priceType == ShoppingBasket.PriceTypes.InVatExDiscount ? ShoppingBasket.PriceTypes.ExVatExDiscount : ShoppingBasket.PriceTypes.ExVatInDiscount, lineType, onlyIfVatRate);
-                            price = priceExVat + await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.VatOnly, lineType, onlyIfVatRate);
-                            break;
-                        }
+                    {
+                        var priceExVat = await GetPriceAsync(shoppingBasket, basketLines, settings, priceType == ShoppingBasket.PriceTypes.InVatExDiscount ? ShoppingBasket.PriceTypes.ExVatExDiscount : ShoppingBasket.PriceTypes.ExVatInDiscount, lineType, onlyIfVatRate);
+                        price = priceExVat + await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.VatOnly, lineType, onlyIfVatRate);
+                        break;
+                    }
                     default:
+                    {
+                        var lines = String.IsNullOrWhiteSpace(lineType) ? basketLines : basketLines.Where(l => l.GetDetailValue("type") == lineType).ToList();
+
+                        foreach (var line in lines)
                         {
-                            var lines = String.IsNullOrWhiteSpace(lineType) ? basketLines : basketLines.Where(l => l.GetDetailValue("type") == lineType).ToList();
-
-                            foreach (var line in lines)
-                            {
-                                price += await GetLinePriceAsync(shoppingBasket, line, settings, priceType, false, true, onlyIfVatRate);
-                            }
-
-                            break;
+                            price += await GetLinePriceAsync(shoppingBasket, line, settings, priceType, false, true, onlyIfVatRate);
                         }
+
+                        break;
+                    }
                 }
             }
 
@@ -1302,73 +1302,72 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 switch (shippingCostsType)
                 {
                     case "fixedvalue":
-                        {
-                            shippingCosts = costs;
-                            break;
-                        }
+                    {
+                        shippingCosts = costs;
+                        break;
+                    }
                     case "fixedpercentage":
-                        {
-                            // TODO: This was marked as TODO in the JCL, so the implementation might not be completely correct.
-                            var totalBasketPrice = await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.InVatInDiscount, "product");
-                            shippingCosts = (costs / 100) * totalBasketPrice;
+                    {
+                        var totalBasketPrice = await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.InVatInDiscount, "product");
+                        shippingCosts = (costs / 100) * totalBasketPrice;
 
-                            break;
-                        }
+                        break;
+                    }
                     case "highestproductshipping":
-                        {
-                            var tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Select(line => line.GetDetailValue<decimal>(propertyName)).Prepend(0M).Max();
+                    {
+                        var tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Select(line => line.GetDetailValue<decimal>(propertyName)).Prepend(0M).Max();
 
-                            shippingCosts = tempValue;
-                            break;
-                        }
+                        shippingCosts = tempValue;
+                        break;
+                    }
                     case "lowestproductshipping":
-                        {
-                            var tempValue = basketLines.Count > 0 ? 1000000M : 0M;
+                    {
+                        var tempValue = basketLines.Count > 0 ? 1000000M : 0M;
 
-                            tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Select(line => line.GetDetailValue<decimal>(propertyName)).Prepend(tempValue).Min();
+                        tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Select(line => line.GetDetailValue<decimal>(propertyName)).Prepend(tempValue).Min();
 
-                            shippingCosts = tempValue;
-                            break;
-                        }
+                        shippingCosts = tempValue;
+                        break;
+                    }
                     case "fixedvaluepluslowestproductshipping":
-                        {
-                            var tempValue = basketLines.Count > 0 ? 1000000M : 0M;
+                    {
+                        var tempValue = basketLines.Count > 0 ? 1000000M : 0M;
 
-                            shippingCosts = costs;
+                        shippingCosts = costs;
 
-                            tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Select(line => line.GetDetailValue<decimal>(propertyName)).Prepend(tempValue).Min();
+                        tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Select(line => line.GetDetailValue<decimal>(propertyName)).Prepend(tempValue).Min();
 
-                            shippingCosts += tempValue;
-                            break;
-                        }
+                        shippingCosts += tempValue;
+                        break;
+                    }
                     case "averageproductshipping":
-                        {
-                            var tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Sum(line => line.GetDetailValue<decimal>(propertyName) * line.GetDetailValue<decimal>("quantity"));
+                    {
+                        var tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Sum(line => line.GetDetailValue<decimal>(propertyName) * line.GetDetailValue<decimal>("quantity"));
 
-                            shippingCosts = tempValue / GetLines(basketLines, "product").Count;
-                            break;
-                        }
+                        shippingCosts = tempValue / GetLines(basketLines, "product").Count;
+                        break;
+                    }
                     case "sumproductshipping":
-                        {
-                            var tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Sum(line => line.GetDetailValue<decimal>(propertyName) * line.GetDetailValue<decimal>("quantity"));
+                    {
+                        var tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Sum(line => line.GetDetailValue<decimal>(propertyName) * line.GetDetailValue<decimal>("quantity"));
 
-                            shippingCosts = tempValue;
-                            break;
-                        }
+                        shippingCosts = tempValue;
+                        break;
+                    }
                     case "highestproductshippingwithfixedvalue":
-                        {
-                            shippingCosts = costs;
+                    {
+                        shippingCosts = costs;
 
-                            var tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Select(line => line.GetDetailValue<decimal>(propertyName)).Prepend(0M).Max();
+                        var tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Select(line => line.GetDetailValue<decimal>(propertyName)).Prepend(0M).Max();
 
-                            shippingCosts += tempValue;
-                            break;
-                        }
+                        shippingCosts += tempValue;
+                        break;
+                    }
                     default:
-                        {
-                            logger.LogTrace("GCL ShoppingBasket CalculateShippingCostsWiser2 - No shipping costs type specified");
-                            break;
-                        }
+                    {
+                        logger.LogTrace("GCL ShoppingBasket CalculateShippingCostsWiser2 - No shipping costs type specified");
+                        break;
+                    }
                 }
             }
 
@@ -1549,6 +1548,31 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// <inheritdoc />
         public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, decimal quantity = 1M, string type = "product", IDictionary<string, string> lineDetails = null)
         {
+            var languageCode = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "langCode") ?? "";
+
+            if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
+            {
+                var sqlQuery = settings.SqlQuery;
+                sqlQuery = sqlQuery.Replace("{itemid}", itemId.ToString());
+                sqlQuery = sqlQuery.Replace("{quantity}", quantity.ToString(CultureInfo.InvariantCulture));
+                sqlQuery = sqlQuery.Replace("{language_code}", languageCode);
+
+                sqlQuery = stringReplacementsService.DoHttpRequestReplacements(sqlQuery, true);
+                sqlQuery = stringReplacementsService.DoSessionReplacements(sqlQuery, true);
+
+                var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
+                if (getItemDetailsResult.Rows.Count > 0)
+                {
+                    var details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
+
+                    lineDetails ??= new Dictionary<string, string>();
+                    foreach (var (key, value) in details)
+                    {
+                        lineDetails[key] = value;
+                    }
+                }
+            }
+
             var addItemLine = AddLineInternal(basketLines, uniqueId, itemId, quantity, type, lineDetails);
 
             // Write changes to database.
@@ -1588,9 +1612,34 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 return;
             }
 
+            var languageCode = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "langCode") ?? "";
+
             var createLinksFor = new List<WiserItemModel>();
             foreach (var item in items)
             {
+                if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
+                {
+                    var sqlQuery = settings.SqlQuery;
+                    sqlQuery = sqlQuery.Replace("{itemid}", item.ItemId.ToString());
+                    sqlQuery = sqlQuery.Replace("{quantity}", item.Quantity.ToString(CultureInfo.InvariantCulture));
+                    sqlQuery = sqlQuery.Replace("{language_code}", languageCode);
+
+                    sqlQuery = stringReplacementsService.DoHttpRequestReplacements(sqlQuery, true);
+                    sqlQuery = stringReplacementsService.DoSessionReplacements(sqlQuery, true);
+
+                    var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
+                    if (getItemDetailsResult.Rows.Count > 0)
+                    {
+                        var details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
+
+                        item.LineDetails ??= new Dictionary<string, string>();
+                        foreach (var (key, value) in details)
+                        {
+                            item.LineDetails[key] = value;
+                        }
+                    }
+                }
+
                 var addItemLine = AddLineInternal(basketLines, item.UniqueId, item.ItemId, item.Quantity, item.Type, item.LineDetails);
                 createLinksFor.Add(addItemLine);
             }
