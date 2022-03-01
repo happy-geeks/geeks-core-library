@@ -299,6 +299,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
             DeveloperRemarks = "The variable '{itemid}' can be used for the ID of the item whose information should be retrieved.",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
             DisplayOrder = 10
         )]
         public string SqlQuery { get; set; }
@@ -309,6 +310,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
             DeveloperRemarks = "This query will only be used when MultipleBasketsPossible is enabled.",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
             DisplayOrder = 20
         )]
         public string GetBasketQuery { get; set; }
@@ -319,6 +321,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
             DeveloperRemarks = "All details of the basket can be used as variable in the query. Use {id} for the item-id of the basket. Select columns 'key' and 'value', optional columns are 'id' and 'readonly'. Readonly is default true, so extra fields are not saved to the basket. Use the column id to get extra details on basket and basket-line level in one query. Select the id of the basket or a basket line to set details of the basket or the basket line.",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Advanced,
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
             DisplayOrder = 10
         )]
         public string ExtraMainFieldsQuery { get; set; }
@@ -329,6 +332,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
             DeveloperRemarks = "All details of the basket can be used as variable in the query. Use {id} for the item-id of the basket. Use {linktype} for the type number of the link between basket and basketline. Select columns 'id', 'key' and 'value', optional column is 'readonly'. Readonly is default true, so extra fields are not saved to the basket. Select the id of the basket line into the column 'id'.",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Advanced,
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
             DisplayOrder = 20
         )]
         public string ExtraLineFieldsQuery { get; set; }
@@ -339,6 +343,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Advanced,
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
             DisplayOrder = 30
         )]
         public string AddToBasketQuery { get; set; }

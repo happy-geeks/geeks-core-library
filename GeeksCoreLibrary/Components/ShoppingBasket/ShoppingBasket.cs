@@ -521,27 +521,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 type = "product";
             }
 
-            var languageCode = HttpContextHelpers.GetRequestValue(HttpContext, "langCode") ?? "";
-
-            Dictionary<string, string> details = null;
-
-            if (!String.IsNullOrWhiteSpace(Settings.SqlQuery))
-            {
-                var sqlQuery = Settings.SqlQuery;
-                sqlQuery = sqlQuery.Replace("{itemid}", itemId.ToString());
-                sqlQuery = sqlQuery.Replace("{quantity}", quantity.ToString(CultureInfo.InvariantCulture));
-                sqlQuery = sqlQuery.Replace("{language_code}", languageCode);
-
-                sqlQuery = StringReplacementsService.DoSessionReplacements(sqlQuery);
-
-                var getItemDetailsResult = await DatabaseConnection.GetAsync(sqlQuery, true);
-                if (getItemDetailsResult.Rows.Count > 0)
-                {
-                    details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
-                }
-            }
-
-            await shoppingBasketsService.AddLineAsync(Main, Lines, Settings, uniqueId, itemId, quantity, type, details);
+            await shoppingBasketsService.AddLineAsync(Main, Lines, Settings, uniqueId, itemId, quantity, type);
         }
 
         private async Task AddMultipleItemsAsync()
