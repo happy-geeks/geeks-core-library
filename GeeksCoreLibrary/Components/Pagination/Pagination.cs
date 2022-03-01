@@ -93,8 +93,6 @@ namespace GeeksCoreLibrary.Components.Pagination
                 {
                     Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
                 }
-
-                HandleDefaultSettingsFromComponentMode();
             }
         }
 
@@ -121,11 +119,16 @@ namespace GeeksCoreLibrary.Components.Pagination
                 Settings.ComponentMode = ComponentModes.Legacy;
             }
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-
-            if (forcedComponentMode.HasValue)
+            if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
+            }
+            else if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+
+            HandleDefaultSettingsFromComponentMode();
 
             // Check if we should actually render this component for the current user.
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();

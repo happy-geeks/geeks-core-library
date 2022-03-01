@@ -1,4 +1,14 @@
-﻿using GeeksCoreLibrary.Components.Account.Interfaces;
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.Cms;
@@ -7,7 +17,9 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
+using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
+using GeeksCoreLibrary.Modules.GclConverters.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -19,18 +31,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.GclConverters.Models;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket
 {
@@ -371,12 +371,18 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 // Force component mode to Legacy mode if it was created through the JCL.
                 Settings.ComponentMode = ComponentModes.Legacy;
             }
-            ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
 
-            if (forcedComponentMode.HasValue)
+            ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
+            if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
+            }
+            else if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+
+            HandleDefaultSettingsFromComponentMode();
 
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
             if (!renderHtml)
@@ -853,8 +859,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 {
                     Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
                 }
-
-                HandleDefaultSettingsFromComponentMode();
             }
         }
 

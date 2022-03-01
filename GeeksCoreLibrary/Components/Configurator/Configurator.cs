@@ -102,8 +102,6 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
-
-            HandleDefaultSettingsFromComponentMode();
         }
 
         /// <inheritdoc />
@@ -133,6 +131,8 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+
+            HandleDefaultSettingsFromComponentMode();
 
             // Check if we should actually render this component for the current user.
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();

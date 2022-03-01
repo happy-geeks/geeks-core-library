@@ -167,6 +167,8 @@ namespace GeeksCoreLibrary.Components.Repeater
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
 
+            HandleDefaultSettingsFromComponentMode();
+
             // Security check by Account Component:
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
             if (!renderHtml)

@@ -263,8 +263,6 @@ namespace GeeksCoreLibrary.Components.Account
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
-
-            HandleDefaultSettingsFromComponentMode();
         }
 
         /// <inheritdoc />
@@ -288,11 +286,16 @@ namespace GeeksCoreLibrary.Components.Account
             ComponentId = dynamicContent.Id;
             ExtraDataForReplacements = extraData;
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-
-            if (forcedComponentMode.HasValue)
+            if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
+            }
+            else if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+
+            HandleDefaultSettingsFromComponentMode();
 
             // Check if we need to call a specific method and then do so. Skip everything else, because we don't want to render the entire component then.
             if (!String.IsNullOrWhiteSpace(callMethod))
