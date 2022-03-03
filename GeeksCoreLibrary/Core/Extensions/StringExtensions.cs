@@ -150,9 +150,9 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// Converts a string to a string that can be safely used in a MySQL query to avoid SQL injections.
         /// </summary>
         /// <param name="input"></param>
-        /// <param name="encloseInQuotes">Whether the value should be enclosed in quotes.</param>
+        /// <param name="encloseInQuotes">Whether the value should be enclosed in quotes. You should never set this to <see langword="false"/>, unless you add quotes manually in your query! Otherwise SQL injection will still be possible!</param>
         /// <returns></returns>
-        public static string ToMySqlSafeValue(this string input, bool encloseInQuotes = false)
+        public static string ToMySqlSafeValue(this string input, bool encloseInQuotes)
         {
             if (input == null)
             {

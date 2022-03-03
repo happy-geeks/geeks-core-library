@@ -756,10 +756,11 @@ namespace GeeksCoreLibrary.Components.Configurator
                         {
                             if (connectedId != "-1" || !customQuery.Contains("{connectedid}"))
                             {
-                                query = customQuery.ReplaceCaseInsensitive("'{connectedId}'", connectedId.ToMySqlSafeValue());
+                                DatabaseConnection.AddParameter("connectedId", connectedId);
+                                query = customQuery.ReplaceCaseInsensitive("'{connectedId}'", "?connectedId");
                                 query = await  this.configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration);
-                                query = await TemplatesService.HandleIncludesAsync(query, false, null, false);
-                                query = query.ReplaceCaseInsensitive("{connectedId}", connectedId.ToMySqlSafeValue());
+                                query = await TemplatesService.HandleIncludesAsync(query, false, null, false, true);
+                                query = query.ReplaceCaseInsensitive("{connectedId}", "?connectedId");
                                 query = await StringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
                             }
                             break;
@@ -865,12 +866,12 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 DatabaseConnection.AddParameter("connectedId", connectedId);
                 DatabaseConnection.AddParameter("connectedType", connectedType);
-                var dt = await DatabaseConnection.GetAsync(query);
+                var dataTable = await DatabaseConnection.GetAsync(query);
 
-                if (dt != null && dt.Rows.Count > 0)
+                if (dataTable != null && dataTable.Rows.Count > 0)
                 {
-                    count = dt.Rows.Count;
-                    renderedValues.Append(String.Join("", StringReplacementsService.DoReplacements(template, dt)));
+                    count = dataTable.Rows.Count;
+                    renderedValues.Append(String.Join("", StringReplacementsService.DoReplacements(template, dataTable)));
                 }
             }
 
@@ -1174,14 +1175,14 @@ namespace GeeksCoreLibrary.Components.Configurator
             customParameter.Query = await this.configuratorsService.ReplaceConfiguratorItemsAsync(customParameter.Query, configuration);
 
             // Run Query
-            var dt = await DatabaseConnection.GetAsync(customParameter.Query);
+            dataTable = await DatabaseConnection.GetAsync(customParameter.Query);
 
-            if (dt == null || dt.Rows.Count == 0)
+            if (dataTable == null || dataTable.Rows.Count == 0)
             {
                 return null;
             }
 
-            customParameter.Value = dt.Rows[0][0].ToString();
+            customParameter.Value = dataTable.Rows[0][0].ToString();
 
             return customParameter;
         }

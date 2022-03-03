@@ -199,7 +199,7 @@ namespace GeeksCoreLibrary.Components.Filter
             // Get the category id from a query if query is given
             if (!String.IsNullOrEmpty(Settings.FilterCategoryIdQuery))
             {
-                Settings.FilterCategoryIdQuery = await TemplatesService.DoReplacesAsync(Settings.FilterCategoryIdQuery, true, false, true);
+                Settings.FilterCategoryIdQuery = await TemplatesService.DoReplacesAsync(Settings.FilterCategoryIdQuery, true, false, true, forQuery: true);
 
                 dataTable = await DatabaseConnection.GetAsync(Settings.FilterCategoryIdQuery);
 
@@ -226,7 +226,6 @@ namespace GeeksCoreLibrary.Components.Filter
             // Add selected values to filter group, so selected templates will be used
             foreach (var filterGroup in filterGroups)
             {
-                // If Not String.IsNullOrEmpty(HttpContext.Current.Request(filtergroup.Key)) Then
                 if (filterGroup.Value.FilterType == FilterGroup.FilterGroupType.MultiSelect)
                 {
                     if (currentFiltersMulti == null)
@@ -304,7 +303,7 @@ namespace GeeksCoreLibrary.Components.Filter
             filterItemsQuery = filterItemsQuery.Replace("{categoryId}", categoryId.ToString());
             filterItemsQuery = filterItemsQuery.Replace("{languageCode}", await languageService.GetLanguageCodeAsync());
             filterItemsQuery = filterItemsQuery.Replace("`wiser_filter_aggregation_`", "`wiser_filter_aggregation`"); // If no language code, trim trailing underscore
-            filterItemsQuery = await TemplatesService.DoReplacesAsync(filterItemsQuery, true, false, true, removeUnknownVariables:false); // Support [include[x]] for including other templates.
+            filterItemsQuery = await TemplatesService.DoReplacesAsync(filterItemsQuery, true, false, true, removeUnknownVariables: false, forQuery: true); // Support [include[x]] for including other templates.
 
             // Replace the {filters} variable with the join and where parts to exclude not possible filter values when filtered
             if (filterItemsQuery.Contains("{filters}"))
@@ -318,24 +317,7 @@ namespace GeeksCoreLibrary.Components.Filter
             }
 
             // Replace user variables if present in query
-            if (filterItemsQuery.Contains("{AccountWiser2_"))
-            {
-                var user = await AccountsService.GetUserDataFromCookieAsync();
-                if (user.UserId > 0)
-                {
-                    filterItemsQuery = filterItemsQuery.Replace("{AccountWiser2_UserId}", user.UserId.ToString());
-                    filterItemsQuery = filterItemsQuery.Replace("{AccountWiser2_MainUserId}", user.MainUserId.ToString());
-                }
-            }
-            if (filterItemsQuery.Contains("{Account_"))
-            {
-                var user = await AccountsService.GetUserDataFromCookieAsync();
-                if (user.UserId > 0)
-                {
-                    filterItemsQuery = filterItemsQuery.Replace("{Account_UserId}", user.UserId.ToString());
-                    filterItemsQuery = filterItemsQuery.Replace("{Account_MainUserId}", user.MainUserId.ToString());
-                }
-            }
+            filterItemsQuery = await AccountsService.DoAccountReplacementsAsync(filterItemsQuery, true);
 
             dataTable = await DatabaseConnection.GetAsync(filterItemsQuery);
 

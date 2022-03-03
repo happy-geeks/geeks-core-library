@@ -12,11 +12,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.DataSelector.Models;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 
 namespace GeeksCoreLibrary.Core.Services
@@ -27,16 +26,18 @@ namespace GeeksCoreLibrary.Core.Services
 
         private readonly IDatabaseConnection databaseConnection;
         private readonly IObjectsService objectsService;
+        private readonly IStringReplacementsService stringReplacementsService;
         private const int MaximumLevelsToDuplicate = 25;
 
         #endregion
 
         #region Constructor
 
-        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService)
+        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService)
         {
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
+            this.stringReplacementsService = stringReplacementsService;
         }
 
         #endregion
@@ -1281,18 +1282,20 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 return false;
             }
-
+            
             workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{id}", itemId.ToString()).ReplaceCaseInsensitive("{itemId}", itemId.ToString());
-            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{title}", wiserItem?.Title?.ToMySqlSafeValue() ?? "");
+            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{title}", "?workFlowItemTitle");
             workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{moduleId}", wiserItem?.ModuleId.ToString());
             workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{userId}", userId.ToString());
-            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{username}", username ?? "");
+            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{username}", "?username");
 
             if (wiserItem?.Details != null)
             {
-                workFlowQuery = wiserItem.Details.Aggregate(workFlowQuery, (current, itemDetail) => current.ReplaceCaseInsensitive($"{{{itemDetail.Key}}}", itemDetail.Value?.ToString()?.ToMySqlSafeValue() ?? ""));
+                var dictionary = wiserItem.Details.ToDictionary(d => d.Key, d => d.Value ?? "");
+                workFlowQuery = stringReplacementsService.DoReplacements(workFlowQuery, dictionary, forQuery: true);
             }
 
+            databaseConnection.AddParameter("workFlowItemTitle", wiserItem?.Title ?? "");
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
@@ -1459,10 +1462,8 @@ namespace GeeksCoreLibrary.Core.Services
 
             if (wiserItem?.Details != null)
             {
-                foreach (var itemDetail in wiserItem.Details)
-                {
-                    queryToExecute = queryToExecute.ReplaceCaseInsensitive($"{{{itemDetail.Key}}}", itemDetail.Value?.ToString()?.ToMySqlSafeValue() ?? "");
-                }
+                var dictionary = wiserItem.Details.ToDictionary(d => d.Key, d => d.Value ?? "");
+                queryToExecute = stringReplacementsService.DoReplacements(queryToExecute, dictionary, forQuery: true);
             }
 
             var dataTable = await databaseConnection.GetAsync(queryToExecute, true);
