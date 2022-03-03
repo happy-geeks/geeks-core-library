@@ -35,9 +35,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync(string cookieName)
+        public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync(string cookieName, ShoppingBasketCmsSettingsModel settings)
         {
-            return await shoppingBasketsService.GetShoppingBasketsAsync(cookieName);
+            return await shoppingBasketsService.GetShoppingBasketsAsync(cookieName, settings);
         }
 
         /// <inheritdoc />
