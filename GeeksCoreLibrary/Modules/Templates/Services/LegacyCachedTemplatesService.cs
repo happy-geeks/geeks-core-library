@@ -70,7 +70,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new NotImplementedException($"Unknown environment '{gclSettings.Environment}'!"),
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
             };
 
             var query = $@"SELECT
@@ -392,38 +392,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
         {
-            // TODO: This code is exactly the same as in the normal TemplatesService, but that is needed because we need to call "GenerateDynamicContentHtmlAsync" inside the CachedTemplatesService instead of the TemplatesService.
-            // TODO: Figure out if there is a better way to do this.
-            if (String.IsNullOrWhiteSpace(template))
-            {
-                return template;
-            }
-
-            // TODO: Test the speed of this and see if it's better run a while loop on string.Contains("contentid=") instead of the regular expression.
-            // Timeout on the regular expression to prevent denial of service attacks.
-            var regEx = new Regex(@"<img[^>]*?(?:data=['""](?<data>.*?)['""][^>]*?)?contentid=['""](?<contentid>\d+)['""][^>]*?/?>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
-
-            var matches = regEx.Matches(template);
-            foreach (Match match in matches)
-            {
-                if (!match.Success)
-                {
-                    continue;
-                }
-
-                if (!Int32.TryParse(match.Groups["contentid"].Value, out var contentId) || contentId <= 0)
-                {
-                    logger.LogWarning($"Found dynamic content with invalid contentId of '{match.Groups["contentid"].Value}', so ignoring it.");
-                    continue;
-                }
-
-                var (html, _) = await GenerateDynamicContentHtmlAsync(contentId);
-                template = template.Replace(match.Value, (string)html);
-            }
-
-            return template;
+            return await ReplaceAllDynamicContentAsync(this, template, componentOverrides);
         }
-        
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllDynamicContentAsync(ITemplatesService service, string template, List<DynamicContent> componentOverrides = null)
+        {
+            return await templatesService.ReplaceAllDynamicContentAsync(service, template, componentOverrides);
+        }
+
         /// <inheritdoc />
         public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false)
         {
@@ -431,9 +408,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
+        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
-            return await this.templatesService.GetTemplateDataAsync(id, name, type, parentId, parentName);
+            return await GetTemplateDataAsync(this, id, name, parentId, parentName);
+        }
+
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService service, int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            return await templatesService.GetTemplateDataAsync(service, id, name, parentId, parentName);
         }
     }
 }

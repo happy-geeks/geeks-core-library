@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
@@ -20,6 +21,7 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
+using Org.BouncyCastle.Crmf;
 
 namespace GeeksCoreLibrary.Components.Repeater
 {
@@ -165,6 +167,8 @@ namespace GeeksCoreLibrary.Components.Repeater
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
 
+            HandleDefaultSettingsFromComponentMode();
+
             // Security check by Account Component:
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
             if (!renderHtml)
@@ -279,6 +283,10 @@ namespace GeeksCoreLibrary.Components.Repeater
                     if (query.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
                     {
                         query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
+                    }
+                    if (query.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
+                    {
+                        query = Regex.Replace(query, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart);
                     }
 
                     // Replace the {page_limit} variable for paging.

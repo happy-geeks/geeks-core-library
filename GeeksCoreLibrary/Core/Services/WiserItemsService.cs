@@ -482,19 +482,18 @@ namespace GeeksCoreLibrary.Core.Services
                 // Check auto increment fields and save the correct value.
                 if (entityTypeSettings.AutoIncrementFields != null && entityTypeSettings.AutoIncrementFields.Any())
                 {
-                    var findAutoIncrementValuesQuery = $@"SELECT IFNULL(MAX(d.`value`), IFNULL(ep.default_value, 0)) AS maximumValue
-                                                    FROM {WiserTableNames.WiserEntityProperty} ep
-                                                    LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.key = ep.property_name AND d.language_code = ep.language_code AND d.item_id <> ?itemId
-                                                    WHERE ep.entity_name = i.entity_type 
-                                                    AND ep.inputtype = 'auto-increment' 
-                                                    AND ep.property_name = ?propertyName
-                                                    AND ((?languageCode IS NULL AND ep.language_code IS NULL) OR (?languageCode IS NOT NULL AND ep.language_code IS NOT NULL AND ep.language_code = ?languageCode))
-                                                    GROUP BY ep.property_name";
-
                     var fieldCounter = 0;
                     foreach (var (fieldName, languageCode) in entityTypeSettings.AutoIncrementFields)
                     {
                         fieldCounter++;
+                        var findAutoIncrementValuesQuery = $@"SELECT IFNULL(MAX(d.`value`), IFNULL(ep.default_value, 0)) AS maximumValue
+                                                        FROM {WiserTableNames.WiserEntityProperty} ep
+                                                        LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.key = ep.property_name AND d.language_code = ep.language_code AND d.item_id <> ?itemId
+                                                        WHERE ep.entity_name = i.entity_type 
+                                                        AND ep.inputtype = 'auto-increment' 
+                                                        AND ep.property_name = ?propertyName{AutoIncrementPropertySuffix}{fieldCounter}
+                                                        AND ((?languageCode{AutoIncrementPropertySuffix}{fieldCounter} IS NULL AND ep.language_code IS NULL) OR (?languageCode{AutoIncrementPropertySuffix}{fieldCounter} IS NOT NULL AND ep.language_code IS NOT NULL AND ep.language_code = ?languageCode{AutoIncrementPropertySuffix}{fieldCounter}))
+                                                        GROUP BY ep.property_name";
                         databaseConnection.AddParameter($"propertyName{AutoIncrementPropertySuffix}{fieldCounter}", fieldName);
                         databaseConnection.AddParameter($"languageCode{AutoIncrementPropertySuffix}{fieldCounter}", languageCode);
                         dataTable = await databaseConnection.GetAsync(findAutoIncrementValuesQuery, true);

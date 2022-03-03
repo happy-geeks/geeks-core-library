@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Helpers;
@@ -22,7 +21,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
-using GeeksCoreLibrary.Core.Extensions;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services
 {
@@ -278,16 +276,18 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var query = gclSettings.Environment == Environments.Development 
                 ? @$"SELECT 
                     component.content_id,
-                    component.settings, 
+                    component.settings,
                     component.component,
+                    component.component_mode,
                     component.version
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
                 WHERE otherVersion.id IS NULL" 
                 : @$"SELECT 
                     component.content_id,
-                    component.settings, 
+                    component.settings,
                     component.component,
+                    component.component_mode,
                     component.version
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 WHERE (component.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}";
@@ -307,6 +307,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     Id = contentId,
                     Name = dataRow.Field<string>("component"),
                     SettingsJson = dataRow.Field<string>("settings"),
+                    ComponentMode = dataTable.Rows[0].Field<string>("component_mode"),
                     Version = dataRow.Field<int>("version")
                 });
             }
@@ -358,53 +359,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
         {
-            // TODO: This code is exactly the same as in the normal TemplatesService, but that is needed because we need to call "GenerateDynamicContentHtmlAsync" inside the CachedTemplatesService instead of the TemplatesService.
-            // TODO: Figure out if there is a better way to do this.
-            if (String.IsNullOrWhiteSpace(template))
-            {
-                return template;
-            }
-            
-            // Timeout on the regular expression to prevent denial of service attacks.
-            var regEx = new Regex(@"<div[^<>]*?(?:class=['""]dynamic-content['""][^<>]*?)?(?:data=['""](?<data>.*?)['""][^>]*?)?(component-id|content-id)=['""](?<contentId>\d+)['""][^>]*?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
-
-            var matches = regEx.Matches(template);
-            foreach (Match match in matches)
-            {
-                if (!match.Success)
-                {
-                    continue;
-                }
-
-                if (!Int32.TryParse(match.Groups["contentId"].Value, out var contentId) || contentId <= 0)
-                {
-                    logger.LogWarning($"Found dynamic content with invalid contentId of '{match.Groups["contentId"].Value}', so ignoring it.");
-                    continue;
-                }
-
-                try
-                {
-                    var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
-                    var dynamicContentData = componentOverrides?.FirstOrDefault(d => d.Id == contentId);
-                    var (html, _) = dynamicContentData == null ? await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
-                    template = template.Replace(match.Value, (string)html);
-                }
-                catch (Exception exception)
-                {
-                    logger.LogError($"An error while generating component with id '{contentId}': {exception}");
-                    var errorOnPage = $"An error occurred while generating component with id '{contentId}'";
-                    if (gclSettings.Environment is Environments.Development or Environments.Test)
-                    {
-                        errorOnPage += $": {exception.Message}";
-                    }
-
-                    template = template.Replace(match.Value, errorOnPage);
-                }
-            }
-
-            return template;
+            return await ReplaceAllDynamicContentAsync(this, template, componentOverrides);
         }
-        
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllDynamicContentAsync(ITemplatesService service, string template, List<DynamicContent> componentOverrides = null)
+        {
+            return await templatesService.ReplaceAllDynamicContentAsync(service, template, componentOverrides);
+        }
+
         /// <inheritdoc />
         public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false)
         {
@@ -412,9 +375,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
+        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
-            return await this.templatesService.GetTemplateDataAsync(id, name, type, parentId, parentName);
+            return await GetTemplateDataAsync(this, id, name, parentId, parentName);
+        }
+
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService service, int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            return await templatesService.GetTemplateDataAsync(service, id, name, parentId, parentName);
         }
     }
 }

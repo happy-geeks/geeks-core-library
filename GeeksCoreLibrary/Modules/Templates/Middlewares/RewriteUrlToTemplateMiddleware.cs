@@ -98,8 +98,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             foreach (var urlRewrite in urlRewrites)
             {
                 var lastIndex = urlRewrite.LastIndexOf("|", StringComparison.Ordinal);
-                var urlMatchFirstPart = urlRewrite.Substring(0, lastIndex);
-                var urlMatchLastPart = urlRewrite.Substring(lastIndex + 1);
+                var urlMatchFirstPart = urlRewrite[..lastIndex];
+                var urlMatchLastPart = urlRewrite[(lastIndex + 1)..];
 
                 // Example: ^/informatie/(?<name>.*?)/(?<pname>.*?)/$
                 var regex = new Regex(urlMatchFirstPart);
@@ -192,8 +192,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                     context.Request.QueryString = queryString;
                     break;
                 }
-
-                throw new NotImplementedException();
             }
         }
 

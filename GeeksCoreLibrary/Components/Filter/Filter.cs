@@ -1,27 +1,25 @@
-using GeeksCoreLibrary.Components.Filter.Models;
-using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
-using GeeksCoreLibrary.Modules.Templates.Interfaces;
-using GeeksCoreLibrary.Modules.Templates.Models;
-using Microsoft.AspNetCore.Html;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using GeeksCoreLibrary.Core.Extensions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
+using GeeksCoreLibrary.Components.Filter.Models;
 using GeeksCoreLibrary.Core.Cms;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
-using GeeksCoreLibrary.Modules.Languages.Services;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Models;
+using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Components.Filter
 {
@@ -85,8 +83,6 @@ namespace GeeksCoreLibrary.Components.Filter
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
-
-            HandleDefaultSettingsFromComponentMode();
         }
 
         /// <inheritdoc />
@@ -105,11 +101,16 @@ namespace GeeksCoreLibrary.Components.Filter
             ComponentId = dynamicContent.Id;
             ExtraDataForReplacements = extraData;
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-            
-            if (forcedComponentMode.HasValue)
+            if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
+            }
+            else if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+
+            HandleDefaultSettingsFromComponentMode();
 
             // Check if we should actually render this component for the current user.
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
@@ -148,7 +149,7 @@ namespace GeeksCoreLibrary.Components.Filter
             WriteToTrace("Start generating filters...");
 
             // Try to use the system objects if possible, reverting back to the previous value if they don't exist (by setting them as the default result)
-            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2");
+            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring ");
             var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2")).Equals("1");
             var parametersToExclude = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude");
             var filterGroups = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
@@ -302,7 +303,7 @@ namespace GeeksCoreLibrary.Components.Filter
             var filterItemsQuery = Settings.FilterItemsQuery;
             filterItemsQuery = filterItemsQuery.Replace("{categoryId}", categoryId.ToString());
             filterItemsQuery = filterItemsQuery.Replace("{languageCode}", await languageService.GetLanguageCodeAsync());
-            filterItemsQuery = filterItemsQuery.Replace("`cust_filter_aggregation_`", "`cust_filter_aggregation`"); // If no language code, trim trailing underscore
+            filterItemsQuery = filterItemsQuery.Replace("`wiser_filter_aggregation_`", "`wiser_filter_aggregation`"); // If no language code, trim trailing underscore
             filterItemsQuery = await TemplatesService.DoReplacesAsync(filterItemsQuery, true, false, true, removeUnknownVariables: false, forQuery: true); // Support [include[x]] for including other templates.
 
             // Replace the {filters} variable with the join and where parts to exclude not possible filter values when filtered

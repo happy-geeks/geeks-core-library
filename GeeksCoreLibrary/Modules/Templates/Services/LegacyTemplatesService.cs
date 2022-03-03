@@ -1,5 +1,4 @@
-﻿using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Core.Enums;
+﻿using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -29,6 +28,7 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Newtonsoft.Json.Linq;
 using Template = GeeksCoreLibrary.Modules.Templates.Models.Template;
@@ -95,7 +95,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new NotImplementedException($"Unknown environment '{gclSettings.Environment}'!"),
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
             };
 
             string whereClause;
@@ -180,7 +180,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new NotImplementedException($"Unknown environment '{gclSettings.Environment}'!")
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
             };
 
             var query = $@"SELECT MAX(t.lastchanged) AS lastChanged
@@ -218,7 +218,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new NotImplementedException($"Unknown environment '{gclSettings.Environment}'!")
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
             };
 
             var query = $@"SELECT
@@ -305,7 +305,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new NotImplementedException($"Unknown environment '{gclSettings.Environment}'!")
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
             };
 
             var query = $@"SELECT
@@ -934,6 +934,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
         {
+            return await ReplaceAllDynamicContentAsync(this, template, componentOverrides);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllDynamicContentAsync(ITemplatesService templatesService, string template, List<DynamicContent> componentOverrides = null)
+        {
             if (String.IsNullOrWhiteSpace(template))
             {
                 return template;
@@ -960,7 +966,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 try
                 {
                     var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
-                    var (html, _) = await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
+                    var (html, _) = await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
                     template = template.Replace(match.Value, (string)html);
                 }
                 catch (Exception exception)
@@ -1017,6 +1023,33 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             return result;
         }
+        
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            return await GetTemplateDataAsync(this, id, name, parentId, parentName);
+        }
+        
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            var template = await templatesService.GetTemplateAsync(id, name, TemplateTypes.Html, parentId, parentName);
+
+            var cssStringBuilder = new StringBuilder();
+            var jsStringBuilder = new StringBuilder();
+            foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
+            {
+                var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
+                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+            }
+
+            return new TemplateDataModel
+            {
+                Content = template.Content, 
+                LinkedCss = cssStringBuilder.ToString(), 
+                LinkedJavascript = jsStringBuilder.ToString()
+            }; 
+        }
 
         /// <summary>
         /// Do all replacement which have to do with request, session or cookie.
@@ -1042,9 +1075,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Session replaces.
-            foreach (var variable in httpContext.Session.Keys)
+            if (httpContext?.Features.Get<ISessionFeature>() != null && httpContext.Session.IsAvailable)
             {
-                input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Session.GetString(variable));
+                foreach (var variable in httpContext.Session.Keys)
+                {
+                    input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Session.GetString(variable));
+                }
             }
 
             // Cookie replaces.
@@ -1054,28 +1090,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             return input;
-        }
-
-        /// <summary>
-        /// Get the template + linked css and js 
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="name"></param>
-        /// <param name="type"></param>
-        /// <param name="parentId"></param>
-        /// <param name="parentName"></param>
-        /// <returns></returns>
-        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
-        {
-            var template = await this.GetTemplateAsync(id, name, type, parentId, parentName);
-            var cssStringBuilder = new StringBuilder();
-            var jsStringBuilder = new StringBuilder();
-            foreach (var templateId in new[] { template.CssTemplates, template.JavascriptTemplates }.SelectMany(x => x).ToList())
-            {
-                var linkedTemplate = await this.GetTemplateAsync(templateId);
-                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
-            }
-            return new TemplateDataModel() { Content = template.Content, LinkedCss = cssStringBuilder.ToString(), LinkedJavascript = jsStringBuilder.ToString() }; 
         }
     }
 }

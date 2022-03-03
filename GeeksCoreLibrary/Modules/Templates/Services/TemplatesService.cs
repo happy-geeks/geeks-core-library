@@ -28,6 +28,7 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Newtonsoft.Json.Linq;
 using Template = GeeksCoreLibrary.Modules.Templates.Models.Template;
@@ -768,8 +769,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var query = gclSettings.Environment == Environments.Development 
                 ? @$"SELECT 
                     component.content_id,
-                    component.settings, 
+                    component.settings,
                     component.component,
+                    component.component_mode,
                     component.version
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
@@ -777,8 +779,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 AND otherVersion.id IS NULL" 
                 : @$"SELECT 
                     component.content_id,
-                    component.settings, 
+                    component.settings,
                     component.component,
+                    component.component_mode,
                     component.version
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 WHERE component.content_id = ?contentId
@@ -798,6 +801,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Id = contentId,
                 Name = dataTable.Rows[0].Field<string>("component"),
                 SettingsJson = dataTable.Rows[0].Field<string>("settings"),
+                ComponentMode = dataTable.Rows[0].Field<string>("component_mode"),
                 Version = dataTable.Rows[0].Field<int>("version")
             };
         }
@@ -851,6 +855,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
         {
+            return await ReplaceAllDynamicContentAsync(this, template, componentOverrides);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllDynamicContentAsync(ITemplatesService templatesService, string template, List<DynamicContent> componentOverrides = null)
+        {
             if (String.IsNullOrWhiteSpace(template))
             {
                 return template;
@@ -877,7 +887,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
                     var dynamicContentData = componentOverrides?.FirstOrDefault(d => d.Id == contentId);
-                    var (html, _) = dynamicContentData == null ? await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
+                    var (html, _) = dynamicContentData == null ? await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await templatesService.GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
                     template = template.Replace(match.Value, (string)html);
                 }
                 catch (Exception exception)
@@ -934,6 +944,33 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             return result;
         }
+        
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            return await GetTemplateDataAsync(this, id, name, parentId, parentName);
+        }
+        
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            var template = await templatesService.GetTemplateAsync(id, name, TemplateTypes.Html, parentId, parentName);
+
+            var cssStringBuilder = new StringBuilder();
+            var jsStringBuilder = new StringBuilder();
+            foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
+            {
+                var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
+                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+            }
+
+            return new TemplateDataModel
+            {
+                Content = template.Content, 
+                LinkedCss = cssStringBuilder.ToString(), 
+                LinkedJavascript = jsStringBuilder.ToString()
+            }; 
+        }
 
         /// <summary>
         /// Do all replacement which have to do with request, session or cookie.
@@ -959,9 +996,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Session replaces.
-            foreach (var variable in httpContext.Session.Keys)
+            if (httpContext?.Features.Get<ISessionFeature>() != null && httpContext.Session.IsAvailable)
             {
-                input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Session.GetString(variable));
+                foreach (var variable in httpContext.Session.Keys)
+                {
+                    input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Session.GetString(variable));
+                }
             }
 
             // Cookie replaces.
@@ -971,28 +1011,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             return input;
-        }
-
-        /// <summary>
-        /// Get the template + linked css and js 
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="name"></param>
-        /// <param name="type"></param>
-        /// <param name="parentId"></param>
-        /// <param name="parentName"></param>
-        /// <returns></returns>
-        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
-        {
-            var template = await this.GetTemplateAsync(id, name, type, parentId, parentName);
-            var cssStringBuilder = new StringBuilder();
-            var jsStringBuilder = new StringBuilder();
-            foreach (var templateId in new[] { template.CssTemplates, template.JavascriptTemplates }.SelectMany(x => x).ToList())
-            {
-                var linkedTemplate = await this.GetTemplateAsync(templateId);
-                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
-            }
-            return new TemplateDataModel() { Content = template.Content, LinkedCss = cssStringBuilder.ToString(), LinkedJavascript = jsStringBuilder.ToString() }; 
         }
     }
 }
