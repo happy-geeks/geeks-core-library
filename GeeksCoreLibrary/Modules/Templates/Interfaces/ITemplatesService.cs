@@ -140,6 +140,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null);
 
         /// <summary>
+        /// Replaces all dynamic content in the given template and returns the new template.
+        /// </summary>
+        /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GenerateDynamicContentHtmlAsync() in this method.</param>
+        /// <param name="template">The template to replace the dynamic content in.</param>
+        /// <param name="componentOverrides">Optional: If you already have the settings for one or more components, you can add them here. This is made to he </param>
+        /// <returns>The new template with all dynamic content.</returns>
+        Task<string> ReplaceAllDynamicContentAsync(ITemplatesService templatesService, string template, List<DynamicContent> componentOverrides = null);
+
+        /// <summary>
         /// Executes a query and converts the results into an JSON object.
         /// </summary>
         /// <param name="queryTemplate">The query to execute with the grouping settings for if and how to group the results in the JSON.</param>
@@ -151,14 +160,26 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false);
 
         /// <summary>
-        /// Search for a template and returns it. Must supply either an ID or a name.
+        /// Get an HTML template together with the linked css and javascript.
+        /// Must supply either ID or name of the template.
         /// </summary>
-        /// <param name="id">Optional: The ID of the template to get.</param>
-        /// <param name="name">Optional: The name of the template to get.</param>
-        /// <param name="type">Optional: The type of template that is being searched for. Only used in combination with name. Default value is html.</param>
-        /// <param name="parentId">Optional: The ID of the parent of the template to get.</param>
-        /// <param name="parentName">Optional: The name of the parent of template to get.</param>
-        /// <returns></returns>
-        Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "");
+        /// <param name="id">Optional: The ID of the template.</param>
+        /// <param name="name">Optional: The name of the template.</param>
+        /// <param name="parentId">Optional: The ID of the parent directory, in case you only want to search in a specific directory when looking up a template by name.</param>
+        /// <param name="parentName">Optional: The ID of the parent directory, in case you only want to search in a specific directory when looking up a template by name.</param>
+        /// <returns>A <see cref="TemplateDataModel"/> with the HTML template, the linked CSS and the linked javascript.</returns>
+        Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "");
+
+        /// <summary>
+        /// Get an HTML template together with the linked css and javascript.
+        /// Must supply either ID or name of the template.
+        /// </summary>
+        /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetTemplateAsync() in this method.</param>
+        /// <param name="id">Optional: The ID of the template.</param>
+        /// <param name="name">Optional: The name of the template.</param>
+        /// <param name="parentId">Optional: The ID of the parent directory, in case you only want to search in a specific directory when looking up a template by name.</param>
+        /// <param name="parentName">Optional: The ID of the parent directory, in case you only want to search in a specific directory when looking up a template by name.</param>
+        /// <returns>A <see cref="TemplateDataModel"/> with the HTML template, the linked CSS and the linked javascript.</returns>
+        Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "");
     }
 }

@@ -855,6 +855,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
         {
+            return await ReplaceAllDynamicContentAsync(this, template, componentOverrides);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllDynamicContentAsync(ITemplatesService templatesService, string template, List<DynamicContent> componentOverrides = null)
+        {
             if (String.IsNullOrWhiteSpace(template))
             {
                 return template;
@@ -881,7 +887,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
                     var dynamicContentData = componentOverrides?.FirstOrDefault(d => d.Id == contentId);
-                    var (html, _) = dynamicContentData == null ? await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
+                    var (html, _) = dynamicContentData == null ? await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await templatesService.GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
                     template = template.Replace(match.Value, (string)html);
                 }
                 catch (Exception exception)
@@ -938,6 +944,33 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             return result;
         }
+        
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            return await GetTemplateDataAsync(this, id, name, parentId, parentName);
+        }
+        
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            var template = await templatesService.GetTemplateAsync(id, name, TemplateTypes.Html, parentId, parentName);
+
+            var cssStringBuilder = new StringBuilder();
+            var jsStringBuilder = new StringBuilder();
+            foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
+            {
+                var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
+                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+            }
+
+            return new TemplateDataModel
+            {
+                Content = template.Content, 
+                LinkedCss = cssStringBuilder.ToString(), 
+                LinkedJavascript = jsStringBuilder.ToString()
+            }; 
+        }
 
         /// <summary>
         /// Do all replacement which have to do with request, session or cookie.
@@ -978,28 +1011,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             return input;
-        }
-
-        /// <summary>
-        /// Get the template + linked css and js 
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="name"></param>
-        /// <param name="type"></param>
-        /// <param name="parentId"></param>
-        /// <param name="parentName"></param>
-        /// <returns></returns>
-        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
-        {
-            var template = await this.GetTemplateAsync(id, name, type, parentId, parentName);
-            var cssStringBuilder = new StringBuilder();
-            var jsStringBuilder = new StringBuilder();
-            foreach (var templateId in new[] { template.CssTemplates, template.JavascriptTemplates }.SelectMany(x => x).ToList())
-            {
-                var linkedTemplate = await this.GetTemplateAsync(templateId);
-                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
-            }
-            return new TemplateDataModel() { Content = template.Content, LinkedCss = cssStringBuilder.ToString(), LinkedJavascript = jsStringBuilder.ToString() }; 
         }
     }
 }
