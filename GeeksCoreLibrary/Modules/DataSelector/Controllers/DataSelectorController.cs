@@ -125,7 +125,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Controllers
             if (String.IsNullOrWhiteSpace(model1.ContainsPath)) model1.ContainsPath = model2.ContainsPath;
             if (String.IsNullOrWhiteSpace(model1.ParentId)) model1.ParentId = model2.ParentId;
             if (String.IsNullOrWhiteSpace(model1.EntityTypes)) model1.EntityTypes = model2.EntityTypes;
-            if (String.IsNullOrWhiteSpace(model1.LinkType)) model1.LinkType = model2.LinkType;
+            model1.LinkType ??= model2.LinkType;
             if (String.IsNullOrWhiteSpace(model1.QueryAddition)) model1.QueryAddition = model2.QueryAddition;
             if (String.IsNullOrWhiteSpace(model1.OrderPart)) model1.OrderPart = model2.OrderPart;
             if (String.IsNullOrWhiteSpace(model1.Fields)) model1.Fields = model2.Fields;

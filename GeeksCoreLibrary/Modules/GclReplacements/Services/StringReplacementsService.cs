@@ -399,7 +399,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
                 if (forQuery)
                 {
-                    value = value.ToMySqlSafeValue();
+                    var parameterName = DatabaseHelpers.CreateValidParameterName(variable.MatchString);
+                    databaseConnection.AddParameter(parameterName, value);
+                    value = $"?{parameterName}";
                 }
 
                 output.Replace(variable.MatchString, value);

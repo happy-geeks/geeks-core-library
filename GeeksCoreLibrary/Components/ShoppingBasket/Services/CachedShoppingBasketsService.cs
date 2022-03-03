@@ -89,9 +89,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null)
+        public async Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null, bool forQuery = false)
         {
-            return await shoppingBasketsService.ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, template, replaceUserAccountVariables, stripNotExistingVariables, userDetails, isForConfirmationEmail, additionalReplacementData);
+            return await shoppingBasketsService.ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, template, replaceUserAccountVariables, stripNotExistingVariables, userDetails, isForConfirmationEmail, additionalReplacementData, forQuery);
         }
 
         /// <inheritdoc />

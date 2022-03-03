@@ -113,7 +113,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             finally
             {
-                // If we're not using transactions, dispose everything here. Otherwise we will dispose it when the transaction gets comitted or rollbacked.
+                // If we're not using transactions, dispose everything here. Otherwise we will dispose it when the transaction gets committed or rollbacked.
                 if (transaction == null && cleanUp)
                 {
                     await CleanUpAsync();

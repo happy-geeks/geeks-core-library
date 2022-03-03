@@ -272,7 +272,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     { "AccountWiser2_MainUserId", user.MainUserId },
                     { "AccountWiser2_UserId", user.UserId }
                 };
-                var query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(settings.GetBasketQuery, extraReplacements, forQuery: true)), stripNotExistingVariables: false));
+                var query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(settings.GetBasketQuery, extraReplacements, forQuery: true)), stripNotExistingVariables: false, forQuery: true), true);
                 var queryResult = await databaseConnection.GetAsync(query, true);
 
                 if (queryResult.Rows.Count > 0 && UInt64.TryParse(Convert.ToString(queryResult.Rows[0][0]), NumberStyles.Integer, CultureInfo.InvariantCulture, out var tempItemId))
@@ -766,7 +766,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             var createConceptOrderQuery = (await templatesService.GetTemplateAsync(0, "AfterCreateConceptOrder", TemplateTypes.Query)).Content;
             if (!String.IsNullOrWhiteSpace(createConceptOrderQuery))
             {
-                var query = stringReplacementsService.DoSessionReplacements(createConceptOrderQuery);
+                var query = stringReplacementsService.DoSessionReplacements(createConceptOrderQuery, true);
 
                 var replacementData = new Dictionary<string, object>
                 {
@@ -775,9 +775,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     { "userId", userId }
                 };
 
-                query = stringReplacementsService.DoReplacements(query, replacementData);
-                query = await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, query);
-                query = stringReplacementsService.DoHttpRequestReplacements(query);
+                query = stringReplacementsService.DoReplacements(query, replacementData, forQuery: true);
+                query = await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, query, forQuery: true);
+                query = stringReplacementsService.DoHttpRequestReplacements(query, true);
 
                 await databaseConnection.ExecuteAsync(query);
             }
@@ -822,16 +822,16 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 var afterConvertToOrderQuery = (await templatesService.GetTemplateAsync(0, "AfterConvertToOrder", TemplateTypes.Query)).Content;
                 if (!String.IsNullOrWhiteSpace(afterConvertToOrderQuery))
                 {
-                    var query = stringReplacementsService.DoSessionReplacements(afterConvertToOrderQuery);
+                    var query = stringReplacementsService.DoSessionReplacements(afterConvertToOrderQuery, true);
 
                     var replacementData = new Dictionary<string, object> { { "orderId", conceptOrder.Id } };
 
                     var orderLineToOrderLinkType = await wiserItemsService.GetLinkTypeAsync(orderEntityType, orderLineEntityType);
                     var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, orderLineToOrderLinkType);
 
-                    query = stringReplacementsService.DoReplacements(query, replacementData);
-                    query = await ReplaceBasketInTemplateAsync(conceptOrder, orderLines, settings, query);
-                    query = stringReplacementsService.DoHttpRequestReplacements(query);
+                    query = stringReplacementsService.DoReplacements(query, replacementData, forQuery: true);
+                    query = await ReplaceBasketInTemplateAsync(conceptOrder, orderLines, settings, query, forQuery: true);
+                    query = stringReplacementsService.DoHttpRequestReplacements(query, true);
 
                     await databaseConnection.ExecuteAsync(query);
                 }
@@ -846,7 +846,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null)
+        public async Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null, bool forQuery = false)
         {
             if (String.IsNullOrWhiteSpace(template))
             {
@@ -893,7 +893,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         replaceData["rowindex"] = index.ToString(CultureInfo.InvariantCulture);
 
                         var lineTemplate = subTemplate;
-                        lineTemplate = stringReplacementsService.DoReplacements(lineTemplate, replaceData);
+                        lineTemplate = stringReplacementsService.DoReplacements(lineTemplate, replaceData, forQuery);
 
                         foreach (var priceVar in priceVars)
                         {
@@ -946,7 +946,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
 
             // Replace main variables.
-            template = stringReplacementsService.DoReplacements(template, shoppingBasket.GetSortedList(true));
+            template = stringReplacementsService.DoReplacements(template, shoppingBasket.GetSortedList(true), forQuery);
 
             logger.LogTrace("GCL ShoppingBasket: End replace main variables");
 
@@ -1069,7 +1069,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             if (userDetails?.Count > 0)
             {
-                template = stringReplacementsService.DoReplacements(template, userDetails);
+                template = stringReplacementsService.DoReplacements(template, userDetails, forQuery);
             }
             else if (replaceUserAccountVariables)
             {
@@ -1077,7 +1077,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 if (details.Count > 0)
                 {
                     userDetails = details;
-                    template = stringReplacementsService.DoReplacements(template, userDetails);
+                    template = stringReplacementsService.DoReplacements(template, userDetails, forQuery);
                 }
             }
 
@@ -1102,7 +1102,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             // Replace additional replacement data, if available.
             if (additionalReplacementData is { Count: > 0 })
             {
-                template = stringReplacementsService.DoReplacements(template, additionalReplacementData);
+                template = stringReplacementsService.DoReplacements(template, additionalReplacementData, forQuery: forQuery);
 
                 logger.LogTrace("GCL ShoppingBasket: End replacing additional data");
             }
@@ -1282,7 +1282,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 return shippingCosts;
             }
 
-            var getShippingCostsResult = await databaseConnection.GetAsync(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, shippingCostsQuery, true), true);
+            var getShippingCostsResult = await databaseConnection.GetAsync(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, shippingCostsQuery, true, forQuery: true), true);
             if (getShippingCostsResult.Rows.Count <= 0)
             {
                 return shippingCosts;
@@ -1449,7 +1449,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 return paymentMethodCosts;
             }
 
-            var getPaymentMethodCostsResult = await databaseConnection.GetAsync(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, paymentMethodCostsQuery, true), true);
+            var getPaymentMethodCostsResult = await databaseConnection.GetAsync(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, paymentMethodCostsQuery, true, forQuery: true), true);
 
             if (getPaymentMethodCostsResult.Rows.Count == 0)
             {
@@ -1622,7 +1622,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     var sqlQuery = settings.SqlQuery;
                     sqlQuery = sqlQuery.Replace("{itemid}", item.ItemId.ToString());
                     sqlQuery = sqlQuery.Replace("{quantity}", item.Quantity.ToString(CultureInfo.InvariantCulture));
-                    sqlQuery = sqlQuery.Replace("{language_code}", languageCode);
+                    sqlQuery = sqlQuery.Replace("{language_code}", "?languageCode");
+                    databaseConnection.AddParameter("languageCode", languageCode);
 
                     sqlQuery = stringReplacementsService.DoHttpRequestReplacements(sqlQuery, true);
                     sqlQuery = stringReplacementsService.DoSessionReplacements(sqlQuery, true);
@@ -2048,7 +2049,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 { "AccountWiser2_MainUserId", user.MainUserId },
                 { "AccountWiser2_UserId", user.UserId }
             };
-            query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(query, extraReplacements, forQuery: true)), stripNotExistingVariables: false));
+            query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(query, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
 
             var queryResult = await databaseConnection.GetAsync(query, true);
 
@@ -2115,7 +2116,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 { "AccountWiser2_MainUserId", user.MainUserId },
                 { "AccountWiser2_UserId", user.UserId }
             };
-            query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(query, extraReplacements, forQuery: true)), stripNotExistingVariables: false));
+            query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(query, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
 
             var queryResult = await databaseConnection.GetAsync(query, true);
 
@@ -2728,7 +2729,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
 
             var template = (await templatesService.GetTemplateAsync(0, templateName)).Content;
-            var queryResult = await databaseConnection.GetAsync(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, methodsQuery, true), true);
+            var queryResult = await databaseConnection.GetAsync(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, methodsQuery, true, forQuery: true), true);
 
             foreach (DataRow dataRow in queryResult.Rows)
             {
@@ -2781,7 +2782,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 { "AccountWiser2_UserId", user.UserId }
             };
             query = stringReplacementsService.DoReplacements(query, replacementsData, forQuery: true);
-            query = await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, query, stripNotExistingVariables: false);
+            query = await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, query, stripNotExistingVariables: false, forQuery: true);
             query = stringReplacementsService.DoHttpRequestReplacements(query, true);
 
             var validityQueryResult = await databaseConnection.GetAsync(query, true);
@@ -2864,7 +2865,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 { "AccountWiser2_UserId", user.UserId }
             };
             query = stringReplacementsService.DoReplacements(query, replacementsData, forQuery: true);
-            query = await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, query, stripNotExistingVariables: false);
+            query = await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, query, stripNotExistingVariables: false, forQuery: true);
             query = stringReplacementsService.DoHttpRequestReplacements(query, true);
 
             var stockActionQueryResult = await databaseConnection.GetAsync(query, true);
@@ -2891,7 +2892,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 { "AccountWiser2_MainUserId", user.MainUserId },
                 { "AccountWiser2_UserId", user.UserId }
             };
-            var query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(settings.AddToBasketQuery, extraReplacements, forQuery: true)), stripNotExistingVariables: false));
+            var query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(settings.AddToBasketQuery, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
             await databaseConnection.ExecuteAsync(query);
         }
 

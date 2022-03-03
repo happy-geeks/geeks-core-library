@@ -62,10 +62,10 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                 databaseConnection.AddParameter("translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));
                 string result;
                 await using (var reader = await databaseConnection.GetReaderAsync(
-                    @"SELECT
+                    @$"SELECT
 	                    `key`,
 	                    CONCAT_WS('', `value`, long_value) AS `value`
-                    FROM wiser_itemdetail
+                    FROM {WiserTableNames.WiserItemDetail}
                     WHERE item_id = ?translationsItemId
                         AND groupname = ?groupName
                         AND language_code = ?languageCode
@@ -126,11 +126,11 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             var userLanguages = httpContextAccessor.HttpContext?.Request.GetTypedHeaders().AcceptLanguage.OrderByDescending(v => v.Quality ?? 1).Select(v => v.Value.Value).ToList();
 
             var getDefaultLanguageResult = await databaseConnection.GetAsync(
-                @"SELECT c.`value`, IFNULL(d.`value`, '0') AS is_default_language
-                FROM wiser_item AS lang
-                JOIN wiser_itemdetail AS c ON c.item_id = lang.id AND c.`key` = 'language_code' AND c.`value` IS NOT NULL AND c.`value` <> ''
-                LEFT JOIN wiser_itemdetail AS d ON d.item_id = lang.id AND d.`key` = 'is_default_language'
-                LEFT JOIN wiser_itemlink AS link ON link.item_id = lang.id AND link.type = 1
+                $@"SELECT c.`value`, IFNULL(d.`value`, '0') AS is_default_language
+                FROM {WiserTableNames.WiserItem} AS lang
+                JOIN {WiserTableNames.WiserItemDetail} AS c ON c.item_id = lang.id AND c.`key` = 'language_code' AND c.`value` IS NOT NULL AND c.`value` <> ''
+                LEFT JOIN {WiserTableNames.WiserItemDetail} AS d ON d.item_id = lang.id AND d.`key` = 'is_default_language'
+                LEFT JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = lang.id AND link.type = 1
                 WHERE lang.entity_type = 'language'
                 AND lang.published_environment > 0
                 ORDER BY IFNULL(link.ordering, lang.title)");

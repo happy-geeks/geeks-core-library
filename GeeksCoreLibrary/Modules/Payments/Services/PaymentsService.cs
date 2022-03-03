@@ -275,7 +275,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             if (!String.IsNullOrWhiteSpace(paymentMethodsQuery) && paymentMethodCheckWithQuery.InList("true", "1"))
             {
-                paymentMethodsQuery = await stringReplacementsService.DoAllReplacementsAsync(paymentMethodsQuery, removeUnknownVariables: false);
+                paymentMethodsQuery = await stringReplacementsService.DoAllReplacementsAsync(paymentMethodsQuery, removeUnknownVariables: false, forQuery: true);
 
                 // Retrieve total amount and replace it inside the query template.
                 var totalPrice = 0M;

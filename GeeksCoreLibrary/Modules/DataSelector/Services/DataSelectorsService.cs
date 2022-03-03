@@ -236,19 +236,19 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                             var done = false;
                             foreach (var item in itemsRequest.FieldsInternal.Where(item => item.FieldAlias == orderByField.FieldName))
                             {
-                                orderByBuilder.Append($"`{item.SelectAlias}` {orderByField.Direction}");
+                                orderByBuilder.Append($"`{item.SelectAlias.ToMySqlSafeValue(false)}` {orderByField.Direction}");
                                 done = true;
                                 break;
                             }
 
                             if (!done)
                             {
-                                orderByBuilder.Append($"`{orderByField.FieldName}` {orderByField.Direction}");
+                                orderByBuilder.Append($"`{orderByField.FieldName.ToMySqlSafeValue(false)}` {orderByField.Direction}");
                             }
                         }
                         else
                         {
-                            orderByBuilder.Append($"`{orderByField.FieldName}` {orderByField.Direction}");
+                            orderByBuilder.Append($"`{orderByField.FieldName.ToMySqlSafeValue(false)}` {orderByField.Direction}");
                         }
                     }
                     else
@@ -261,9 +261,9 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             }
 
             // Change inputs if necessary.
-            if (String.IsNullOrWhiteSpace(itemsRequest.LinkType))
+            if (!itemsRequest.LinkType.HasValue)
             {
-                itemsRequest.LinkType = "1";
+                itemsRequest.LinkType = 1;
             }
 
             if (itemsRequest.NumberOfLevels == 0)
@@ -324,11 +324,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         }
                         else if (field.FieldFromField)
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias}`.id")} AS `{field.SelectAlias}_encrypt_withdate`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.id")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}_encrypt_withdate`");
                         }
                         else
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "")}item`.id")} AS `{field.SelectAlias}_encrypt_withdate`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.id")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}_encrypt_withdate`");
                         }
                     }
                     else if (field.FieldName == "itemtitle")
@@ -344,11 +344,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         }
                         else if (field.FieldFromField)
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias}`.title")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.title")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                         else
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "")}item`.title")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.title")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                     }
                     else if (field.FieldName == "unique_uuid")
@@ -360,15 +360,15 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                 field.FieldAlias = "unique_uuid";
                             }
 
-                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.unique_uuid")} AS `{field.FieldAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.unique_uuid")} AS `{field.FieldAlias.ToMySqlSafeValue(false)}`");
                         }
                         else if (field.FieldFromField)
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias}`.unique_uuid")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.unique_uuid")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                         else
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "")}item`.unique_uuid")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.unique_uuid")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                     }
                     else if (field.FieldName == "parentitemtitle")
@@ -391,19 +391,19 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                 field.FieldAlias = "id";
                             }
 
-                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.id")} AS `{field.FieldAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.id")} AS `{field.FieldAlias.ToMySqlSafeValue(false)}`");
                         }
                         else if (field.FieldFromField)
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias}`.id")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.id")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                         else if (field.IsLinkField)
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix}`.id")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.ToMySqlSafeValue(false)}`.id")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                         else
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "")}item`.id")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.id")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                     }
                     else if (field.FieldName == "moduleid")
@@ -415,15 +415,15 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                 field.FieldAlias = "moduleid";
                             }
 
-                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.moduleid")} AS `{field.FieldAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.moduleid")} AS `{field.FieldAlias.ToMySqlSafeValue(false)}`");
                         }
                         else if (field.FieldFromField)
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias}`.moduleid")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.moduleid")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                         else
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "")}item`.moduleid")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "")}item`.moduleid")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                     }
                     else if (field.FieldName.InList("changed_on", "changed_by"))
@@ -435,20 +435,20 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                 field.FieldAlias = field.FieldName;
                             }
 
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"ilc1.`{field.FieldName}`")} AS `{field.FieldAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"ilc1.`{field.FieldName.ToMySqlSafeValue(false)}`")} AS `{field.FieldAlias.ToMySqlSafeValue(false)}`");
                         }
                         else if (field.FieldFromField)
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias}`.`{field.FieldName}`")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.`{field.FieldName.ToMySqlSafeValue(false)}`")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                         else
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "")}item`.`{field.FieldName}`")} AS `{field.SelectAlias}`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.`{field.FieldName.ToMySqlSafeValue(false)}`")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                     }
                     else
                     {
-                        queryBuilder.AppendLine($", {GetFormattedField(field, $"CONCAT_WS('', `{field.TableAlias}`.`value`, `{field.TableAlias}`.long_value)")} AS `{field.SelectAlias}`");
+                        queryBuilder.AppendLine($", {GetFormattedField(field, $"CONCAT_WS('', `{field.TableAlias.ToMySqlSafeValue(false)}`.`value`, `{field.TableAlias.ToMySqlSafeValue(false)}`.long_value)")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                     }
 
                     if (itemsRequest.JoinDetail.All(f => f.TableAlias != field.TableAlias))
@@ -503,7 +503,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 for (var i = 2; i <= itemsRequest.NumberOfLevels; i++)
                 {
                     queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS ilp{i} ON ilp{i}.item_id = ilp{i - 1}.destination_item_id AND ilp{i}.type = {itemsRequest.LinkType}");
-                    queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItem}` AS ilc{i} ON ilc{i}.id = ilp{i - 1}.destination_item_id AND ilc{i}.published_environment & {itemsRequest.Environment.ToString().ToMySqlSafeValue()} = {itemsRequest.Environment.ToString().ToMySqlSafeValue()}");
+                    queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItem}` AS ilc{i} ON ilc{i}.id = ilp{i - 1}.destination_item_id AND ilc{i}.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment}");
                     queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItemDetail}` AS id{i}.item_id = ilp{i - 1}.destination_item_id AND id{i}.`key` = 'url' {(String.IsNullOrWhiteSpace(itemsRequest.LanguageCode) ? "" : $" AND id{i}.language_code = {itemsRequest.LanguageCode.ToMySqlSafeValue(true)}")}");
                 }
             }
@@ -516,30 +516,30 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     var languageCodePart = "";
                     if (!String.IsNullOrWhiteSpace(item.LanguageCode))
                     {
-                        languageCodePart = $" AND `{item.TableAlias}`.language_code = {item.LanguageCode.ToMySqlSafeValue(true)}";
+                        languageCodePart = $" AND `{item.TableAlias.ToMySqlSafeValue(false)}`.language_code = {item.LanguageCode.ToMySqlSafeValue(true)}";
                     }
                     else if (!String.IsNullOrWhiteSpace(itemsRequest.LanguageCode))
                     {
-                        languageCodePart = $" AND `{item.TableAlias}`.language_code = {itemsRequest.LanguageCode.ToMySqlSafeValue(true)}";
+                        languageCodePart = $" AND `{item.TableAlias.ToMySqlSafeValue(false)}`.language_code = {itemsRequest.LanguageCode.ToMySqlSafeValue(true)}";
                     }
 
                     if (item.IsLinkField)
                     {
-                        queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLinkDetail}` AS `{item.TableAlias}` ON `{item.TableAlias}`.itemlink_id = {item.JoinOn} AND `{item.TableAlias}`.`key` = '{item.FieldName}' {languageCodePart}");
+                        queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLinkDetail}` AS `{item.TableAlias.ToMySqlSafeValue(false)}` ON `{item.TableAlias.ToMySqlSafeValue(false)}`.itemlink_id = {item.JoinOn} AND `{item.TableAlias.ToMySqlSafeValue(false)}`.`key` = '{item.FieldName.ToMySqlSafeValue(false)}' {languageCodePart}");
                     }
                     else if (item.FieldFromField && item.IsReservedFieldName)
                     {
-                        queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItem}` AS `{item.TableAlias}` ON `{item.TableAlias}`.id = {item.JoinOn}");
+                        queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItem}` AS `{item.TableAlias}` ON `{item.TableAlias.ToMySqlSafeValue(false)}`.id = {item.JoinOn}");
                     }
                     else
                     {
-                        queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItemDetail}` AS `{item.TableAlias}` ON `{item.TableAlias}`.item_id = {item.JoinOn} AND `{item.TableAlias}`.`key` = '{item.FieldName}' {languageCodePart}");
+                        queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItemDetail}` AS `{item.TableAlias}` ON `{item.TableAlias.ToMySqlSafeValue(false)}`.item_id = {item.JoinOn} AND `{item.TableAlias.ToMySqlSafeValue(false)}`.`key` = '{item.FieldName.ToMySqlSafeValue(false)}' {languageCodePart}");
                     }
                 }
             }
 
             queryBuilder.AppendLine("WHERE TRUE");
-            queryBuilder.AppendLine(String.IsNullOrWhiteSpace(itemsRequest.ModuleId) ? "" : $" AND ilc1.moduleid = {itemsRequest.ModuleId.ToMySqlSafeValue()}");
+            queryBuilder.AppendLine(String.IsNullOrWhiteSpace(itemsRequest.ModuleId) ? "" : $" AND ilc1.moduleid = {itemsRequest.ModuleId.ToMySqlSafeValue(true)}");
             if (!String.IsNullOrWhiteSpace(itemsRequest.EntityTypes))
             {
                 if (itemsRequest.EntityTypes.Contains(","))
@@ -553,7 +553,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 }
             }
 
-            queryBuilder.AppendLine($" AND ilc1.published_environment & {itemsRequest.Environment.ToString().ToMySqlSafeValue()} = {itemsRequest.Environment.ToString().ToMySqlSafeValue()}");
+            queryBuilder.AppendLine($" AND ilc1.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment}");
             queryBuilder.AppendLine(itemsRequest.QueryAddition);
 
             // Check if given path matches the path in the database.
@@ -567,7 +567,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                 queryBuilder.AppendLine(
                     itemsRequest.Descendants
-                        ? $"AND CONCAT_WS('/', '', {queryPart}'') LIKE '%{itemsRequest.ContainsPath.ToMySqlSafeValue()}%'"
+                        ? $"AND CONCAT_WS('/', '', {queryPart}'') LIKE '%{itemsRequest.ContainsPath.ToMySqlSafeValue(false)}%'"
                         : $"AND CONCAT_WS('/', '', {queryPart}'') = {itemsRequest.ContainsPath.ToMySqlSafeValue(true)}"
                 );
             }
@@ -583,7 +583,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                 queryBuilder.AppendLine(
                     itemsRequest.Descendants
-                        ? $"AND CONCAT_WS('/', '', {queryPart}'') LIKE '%{itemsRequest.ContainsUrl.ToMySqlSafeValue()}%'"
+                        ? $"AND CONCAT_WS('/', '', {queryPart}'') LIKE '%{itemsRequest.ContainsUrl.ToMySqlSafeValue(false)}%'"
                         : $"AND CONCAT_WS('/', '', {queryPart}'') = {itemsRequest.ContainsUrl.ToMySqlSafeValue(true)}"
                 );
             }
@@ -599,11 +599,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         queryPart.Append($"ilp{i}.destination_item_id,");
                     }
 
-                    queryBuilder.AppendLine($"AND {itemsRequest.ParentId} IN ({queryPart.ToString().TrimEnd(',')})");
-                }
-                else
-                {
-                    queryBuilder.AppendLine($"AND {itemsRequest.ParentId} = {itemsRequest.ParentId}");
+                    queryBuilder.AppendLine($"AND {itemsRequest.ParentId.ToMySqlSafeValue(true)} IN ({queryPart.ToString().TrimEnd(',')})");
                 }
             }
 
@@ -635,27 +631,29 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                 foreach (var havingGroup in itemsRequest.Selector.Having)
                 {
-                    if (havingGroup.HavingRows.Length > 0)
+                    if (havingGroup.HavingRows.Length <= 0)
                     {
-                        queryPart = new StringBuilder();
-                        foreach (var row in havingGroup.HavingRows)
-                        {
-                            if (queryPart.Length > 0)
-                            {
-                                queryPart.Append(" OR ");
-                            }
-
-                            queryPart.Append(await CreateHavingRowQueryPart(row, row.Key.FieldName));
-                        }
-
-                        // Add group to having part.
-                        if (havingPart.Length > 0)
-                        {
-                            havingPart.Append(" AND ");
-                        }
-
-                        havingPart.Append($"({queryPart})");
+                        continue;
                     }
+
+                    queryPart = new StringBuilder();
+                    foreach (var row in havingGroup.HavingRows)
+                    {
+                        if (queryPart.Length > 0)
+                        {
+                            queryPart.Append(" OR ");
+                        }
+
+                        queryPart.Append(await CreateHavingRowQueryPart(row, row.Key.FieldName));
+                    }
+
+                    // Add group to having part.
+                    if (havingPart.Length > 0)
+                    {
+                        havingPart.Append(" AND ");
+                    }
+
+                    havingPart.Append($"({queryPart})");
                 }
 
                 if (havingPart.Length > 0)
@@ -701,7 +699,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
             if (!String.IsNullOrWhiteSpace(itemsRequest.Selector?.Limit) && itemsRequest.Selector.Limit != "0")
             {
-                queryBuilder.AppendLine($"LIMIT {itemsRequest.Selector.Limit}");
+                // Split limit, convert values to int and then join again, to make it safe against SQL injection.
+                queryBuilder.AppendLine($"LIMIT {String.Join(",", itemsRequest.Selector.Limit.Split(",", StringSplitOptions.RemoveEmptyEntries & StringSplitOptions.TrimEntries).Select(Int32.Parse))}");
             }
             else if (Int32.TryParse(itemsRequest.NumberOfItems, out var numberOfItems))
             {
@@ -988,7 +987,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             }
 
             var outputTemplate = data.OutputTemplate;
-            var output = stringReplacementsService.FillStringByClassList(jsonResult, outputTemplate); //JCLUtils.FillStringByClassList(result, ref dummy);
+            var output = stringReplacementsService.FillStringByClassList(jsonResult, outputTemplate);
 
             output = stringReplacementsService.EvaluateTemplate(output);
 
@@ -1252,22 +1251,22 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                 switch (row.Operator.ToLowerInvariant())
                                 {
                                     case "contains":
-                                        queryPart.Append($"{formattedField} LIKE '%{finalValue.ToMySqlSafeValue()}%'");
+                                        queryPart.Append($"{formattedField} LIKE '%{finalValue.ToMySqlSafeValue(false)}%'");
                                         break;
                                     case "does not contain":
-                                        queryPart.Append($"{formattedField} NOT LIKE '%{finalValue.ToMySqlSafeValue()}%'");
+                                        queryPart.Append($"{formattedField} NOT LIKE '%{finalValue.ToMySqlSafeValue(false)}%'");
                                         break;
                                     case "begin with":
-                                        queryPart.Append($"{formattedField} LIKE '{finalValue.ToMySqlSafeValue()}%'");
+                                        queryPart.Append($"{formattedField} LIKE '{finalValue.ToMySqlSafeValue(false)}%'");
                                         break;
                                     case "does not begin with":
-                                        queryPart.Append($"{formattedField} NOT LIKE '{finalValue.ToMySqlSafeValue()}%'");
+                                        queryPart.Append($"{formattedField} NOT LIKE '{finalValue.ToMySqlSafeValue(false)}%'");
                                         break;
                                     case "end with":
-                                        queryPart.Append($"{formattedField} LIKE '%{finalValue.ToMySqlSafeValue()}'");
+                                        queryPart.Append($"{formattedField} LIKE '%{finalValue.ToMySqlSafeValue(false)}'");
                                         break;
                                     case "does not end with":
-                                        queryPart.Append($"{formattedField} NOT LIKE '%{finalValue.ToMySqlSafeValue()}'");
+                                        queryPart.Append($"{formattedField} NOT LIKE '%{finalValue.ToMySqlSafeValue(false)}'");
                                         break;
                                     default:
                                         var finalPart = String.IsNullOrWhiteSpace(op) ? finalValue : $"{op} {finalValue.ToMySqlSafeValue(true)}";
@@ -1366,29 +1365,29 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         itemsRequest.WhereLink.Add(" OR ");
                     }
 
-                    var tableName = $"{prefix}_{count}";
+                    var tableName = $"{prefix.ToMySqlSafeValue(false)}_{count}";
 
                     if (connectionRow.ItemIds is { Length: > 0 })
                     {
                         if (connectionRow.Modes.Contains("up"))
                         {
-                            queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"{tableName}.destination_item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"{tableName}.destination_item_id = {String.Join(", ", connectionRow.ItemIds.First())}");
+                            queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}`.destination_item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}`.destination_item_id = {String.Join(", ", connectionRow.ItemIds.Single())}");
                         }
                         else
                         {
-                            queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"{tableName}.item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"{tableName}.item_id = {String.Join(", ", connectionRow.ItemIds.First())}");
+                            queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}`.item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}`.item_id = {String.Join(", ", connectionRow.ItemIds.Single())}");
                         }
                     }
                     else
                     {
                         if (!String.IsNullOrWhiteSpace(connectionRow.EntityName))
                         {
-                            queryPartItem.Append($"{tableName}_item.entity_type = {connectionRow.EntityName.ToMySqlSafeValue(true)}");
+                            queryPartItem.Append($"`{tableName}`_item.entity_type = {connectionRow.EntityName.ToMySqlSafeValue(true)}");
                         }
 
                         if (connectionRow.TypeNumber > 0)
                         {
-                            queryPartLink.Append($"{tableName}.type = {connectionRow.TypeNumber}");
+                            queryPartLink.Append($"`{tableName}`.type = {connectionRow.TypeNumber}");
                         }
                     }
 
@@ -1406,8 +1405,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     {
                         itemsRequest.FieldsInternal.AddRange(
                             connectionRow.Modes.Contains("up")
-                                ? UpdateFieldsWithInternals($"{tableName}.destination_item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
-                                : UpdateFieldsWithInternals($"{tableName}.item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
+                                ? UpdateFieldsWithInternals($"`{tableName}`.destination_item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
+                                : UpdateFieldsWithInternals($"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
                         );
                     }
 
@@ -1429,11 +1428,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         }
 
                         // All the specific fields specified on the connection.
-                        itemsRequest.FieldsInternal.AddRange(UpdateFieldsWithInternals($"{tableName}.id", $"ldv_{tableName}_", linkFields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix), true));
+                        itemsRequest.FieldsInternal.AddRange(UpdateFieldsWithInternals($"`{tableName}`.id", $"ldv_{tableName}_", linkFields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix), true));
                     }
 
                     // Process the scope of the connection (constraint on connection).
-                    ProcessScopes(itemsRequest, connectionRow.Scopes, connectionRow.Modes.Contains("up") ? $"{tableName}.destination_item_id" : $"{tableName}.item_id", $"idv_{tableName}_", connectionRow.Modes.Contains("optional"));
+                    ProcessScopes(itemsRequest, connectionRow.Scopes, connectionRow.Modes.Contains("up") ? $"`{tableName}`.destination_item_id" : $"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Modes.Contains("optional"));
 
                     // Add "AND" to query part if query part is not empty.
                     if (queryPartLink.Length > 0)
@@ -1452,12 +1451,12 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         var settings = itemsRequest.LinkTypeSettings.FirstOrDefault(l => l.Type == connectionRow.TypeNumber && l.DestinationEntityType.Equals(connectionRow.EntityName, StringComparison.OrdinalIgnoreCase) && l.SourceEntityType.Equals(itemsRequest.EntityTypes?.Split(',').First(), StringComparison.OrdinalIgnoreCase));
                         if (settings is { UseParentItemId: true })
                         {
-                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS {tableName}_item ON {tableName}_item.id = {previousLevelTableAlias}.parent_item_id AND {tableName}_item.published_environment & {itemsRequest.Environment.ToString().ToMySqlSafeValue()} = {itemsRequest.Environment.ToString().ToMySqlSafeValue()} {queryPartItem}");
+                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.id = {previousLevelTableAlias}.parent_item_id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
                         }
                         else
                         {
                             itemsRequest.JoinLink.Add($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS {tableName} ON {tableName}.item_id = {joinOn} {queryPartLink}");
-                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS {tableName}_item ON {tableName}_item.id = {tableName}.destination_item_id AND {tableName}_item.published_environment & {itemsRequest.Environment.ToString().ToMySqlSafeValue()} = {itemsRequest.Environment.ToString().ToMySqlSafeValue()} {queryPartItem}");
+                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.id = {tableName}.destination_item_id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
                         }
                     }
                     else
@@ -1465,12 +1464,12 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         var settings = itemsRequest.LinkTypeSettings.FirstOrDefault(l => l.Type == connectionRow.TypeNumber && l.DestinationEntityType.Equals(itemsRequest.EntityTypes?.Split(',').First(), StringComparison.OrdinalIgnoreCase) && l.SourceEntityType.Equals(connectionRow.EntityName, StringComparison.OrdinalIgnoreCase));
                         if (settings is { UseParentItemId: true })
                         {
-                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS {tableName}_item ON {tableName}_item.parent_item_id = {previousLevelTableAlias}.id AND {tableName}_item.published_environment & {itemsRequest.Environment.ToString().ToMySqlSafeValue()} = {itemsRequest.Environment.ToString().ToMySqlSafeValue()} {queryPartItem}");
+                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.parent_item_id = {previousLevelTableAlias}.id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
                         }
                         else
                         {
                             itemsRequest.JoinLink.Add($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS {tableName} ON {tableName}.destination_item_id = {joinOn} {queryPartLink}");
-                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS {tableName}_item ON {tableName}_item.id = {tableName}.item_id AND {tableName}_item.published_environment & {itemsRequest.Environment.ToString().ToMySqlSafeValue()} = {itemsRequest.Environment.ToString().ToMySqlSafeValue()} {queryPartItem}");
+                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.id = {tableName}.item_id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
                         }
                     }
 
@@ -1479,7 +1478,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     // If link (connection) is not optional, then check the id of the left join table in the where statement.
                     if (!connectionRow.Modes.Contains("optional"))
                     {
-                        itemsRequest.WhereLink.Add($"{tableName}_item.id IS NOT NULL AND");
+                        itemsRequest.WhereLink.Add($"`{tableName}_item`.id IS NOT NULL AND");
                     }
 
                     // Only use the deepest level in the where part --> Waarom?? Tijdelijk uitgeschakeld, deuren configurator IG, wel variant verplicht, glas optioneel
@@ -1557,11 +1556,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
         private async Task<string> CreateScopeRowQueryPart(ScopeRow scopeRow)
         {
-            var formattedField = GetFormattedField(scopeRow.Key, $"`{scopeRow.Key.TableAlias}`.`value`");
+            var formattedField = GetFormattedField(scopeRow.Key, $"`{scopeRow.Key.TableAlias.ToMySqlSafeValue(false)}`.`value`");
             if (scopeRow.Value is JArray array)
             {
                 var valueArray = array.ToObject<string[]>() ?? Array.Empty<string>();
-                var inPart = String.Join(", ", valueArray.Select(v => $"'{v}'"));
+                var inPart = String.Join(", ", valueArray.Select(v => v.ToMySqlSafeValue(true)));
                 switch (scopeRow.Operator)
                 {
                     case "is equal to":
@@ -1588,17 +1587,17 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     case "is greater than or equal to":
                         return $"{formattedField} >= {value.ToMySqlSafeValue(true)}";
                     case "contains":
-                        return $"{formattedField} LIKE '%{value.ToMySqlSafeValue()}%'";
+                        return $"{formattedField} LIKE '%{value.ToMySqlSafeValue(false)}%'";
                     case "does not contain":
-                        return $"{formattedField} NOT LIKE '%{value.ToMySqlSafeValue()}%'";
+                        return $"{formattedField} NOT LIKE '%{value.ToMySqlSafeValue(false)}%'";
                     case "begin with":
-                        return $"{formattedField} LIKE '{value.ToMySqlSafeValue()}%'";
+                        return $"{formattedField} LIKE '{value.ToMySqlSafeValue(false)}%'";
                     case "does not begin with":
-                        return $"{formattedField} NOT LIKE '{value.ToMySqlSafeValue()}%'";
+                        return $"{formattedField} NOT LIKE '{value.ToMySqlSafeValue(false)}%'";
                     case "end with":
-                        return $"{formattedField} LIKE '%{value.ToMySqlSafeValue()}'";
+                        return $"{formattedField} LIKE '%{value.ToMySqlSafeValue(false)}'";
                     case "does not end with":
-                        return $"{formattedField} NOT LIKE '%{value.ToMySqlSafeValue()}'";
+                        return $"{formattedField} NOT LIKE '%{value.ToMySqlSafeValue(false)}'";
                     case "is empty":
                         return $"{formattedField} IS NULL OR {formattedField} = ''";
                     case "is not empty":
@@ -1611,13 +1610,12 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
         private async Task<string> CreateHavingRowQueryPart(HavingRow havingRow, string selectAlias)
         {
-            var formattedField = GetFormattedField(havingRow.Key, selectAlias);
-            var encloseInQuotes = (havingRow.Key.HavingDataType ?? "string").Equals("string");
+            var formattedField = GetFormattedField(havingRow.Key, $"`{selectAlias}");
 
             if (havingRow.Value is JArray array)
             {
                 var valueArray = array.ToObject<string[]>() ?? Array.Empty<string>();
-                var inPart = String.Join(", ", valueArray.Select(v => $"'{v}'"));
+                var inPart = String.Join(", ", valueArray.Select(v => v.ToMySqlSafeValue(true)));
                 switch (havingRow.Operator)
                 {
                     case "is equal to":
@@ -1632,29 +1630,29 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 switch (havingRow.Operator.ToLowerInvariant())
                 {
                     case "is equal to":
-                        return $"{formattedField} = {value.ToMySqlSafeValue(encloseInQuotes)}";
+                        return $"{formattedField} = {value.ToMySqlSafeValue(true)}";
                     case "is not equal to":
-                        return $"{formattedField} <> {value.ToMySqlSafeValue(encloseInQuotes)}";
+                        return $"{formattedField} <> {value.ToMySqlSafeValue(true)}";
                     case "is less than":
-                        return $"{formattedField} < {value.ToMySqlSafeValue(encloseInQuotes)}";
+                        return $"{formattedField} < {value.ToMySqlSafeValue(true)}";
                     case "is less than or equal to":
-                        return $"{formattedField} <= {value.ToMySqlSafeValue(encloseInQuotes)}";
+                        return $"{formattedField} <= {value.ToMySqlSafeValue(true)}";
                     case "is greater than":
-                        return $"{formattedField} > {value.ToMySqlSafeValue(encloseInQuotes)}";
+                        return $"{formattedField} > {value.ToMySqlSafeValue(true)}";
                     case "is greater than or equal to":
-                        return $"{formattedField} >= {value.ToMySqlSafeValue(encloseInQuotes)}";
+                        return $"{formattedField} >= {value.ToMySqlSafeValue(true)}";
                     case "contains":
-                        return $"{formattedField} LIKE '%{value.ToMySqlSafeValue()}%'";
+                        return $"{formattedField} LIKE '%{value.ToMySqlSafeValue(false)}%'";
                     case "does not contain":
-                        return $"{formattedField} NOT LIKE '%{value.ToMySqlSafeValue()}%'";
+                        return $"{formattedField} NOT LIKE '%{value.ToMySqlSafeValue(false)}%'";
                     case "begin with":
-                        return $"{formattedField} LIKE '{value.ToMySqlSafeValue()}%'";
+                        return $"{formattedField} LIKE '{value.ToMySqlSafeValue(false)}%'";
                     case "does not begin with":
-                        return $"{formattedField} NOT LIKE '{value.ToMySqlSafeValue()}%'";
+                        return $"{formattedField} NOT LIKE '{value.ToMySqlSafeValue(false)}%'";
                     case "end with":
-                        return $"{formattedField} LIKE '%{value.ToMySqlSafeValue()}'";
+                        return $"{formattedField} LIKE '%{value.ToMySqlSafeValue(false)}'";
                     case "does not end with":
-                        return $"{formattedField} NOT LIKE '%{value.ToMySqlSafeValue()}'";
+                        return $"{formattedField} NOT LIKE '%{value.ToMySqlSafeValue(false)}'";
                     case "is empty":
                         return $"{formattedField} IS NULL OR {formattedField} = ''";
                     case "is not empty":
@@ -1703,7 +1701,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 }
             }
 
-            selectAlias = $"`{selectAlias}`";
+            selectAlias = $"`{selectAlias.ToMySqlSafeValue(false)}`";
 
             return selectAlias;
         }

@@ -226,7 +226,6 @@ namespace GeeksCoreLibrary.Components.Filter
             // Add selected values to filter group, so selected templates will be used
             foreach (var filterGroup in filterGroups)
             {
-                // If Not String.IsNullOrEmpty(HttpContext.Current.Request(filtergroup.Key)) Then
                 if (filterGroup.Value.FilterType == FilterGroup.FilterGroupType.MultiSelect)
                 {
                     if (currentFiltersMulti == null)
@@ -318,24 +317,7 @@ namespace GeeksCoreLibrary.Components.Filter
             }
 
             // Replace user variables if present in query
-            if (filterItemsQuery.Contains("{AccountWiser2_"))
-            {
-                var user = await AccountsService.GetUserDataFromCookieAsync();
-                if (user.UserId > 0)
-                {
-                    filterItemsQuery = filterItemsQuery.Replace("{AccountWiser2_UserId}", user.UserId.ToString());
-                    filterItemsQuery = filterItemsQuery.Replace("{AccountWiser2_MainUserId}", user.MainUserId.ToString());
-                }
-            }
-            if (filterItemsQuery.Contains("{Account_"))
-            {
-                var user = await AccountsService.GetUserDataFromCookieAsync();
-                if (user.UserId > 0)
-                {
-                    filterItemsQuery = filterItemsQuery.Replace("{Account_UserId}", user.UserId.ToString());
-                    filterItemsQuery = filterItemsQuery.Replace("{Account_MainUserId}", user.MainUserId.ToString());
-                }
-            }
+            filterItemsQuery = await AccountsService.DoAccountReplacementsAsync(filterItemsQuery, true);
 
             dataTable = await DatabaseConnection.GetAsync(filterItemsQuery);
 

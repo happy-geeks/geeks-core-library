@@ -31,29 +31,56 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         private readonly IWiserItemsService wiserItemsService;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly ILanguagesService languagesService;
-        private readonly string configuratorEntity = "configurator";
-        private readonly string duplicateLayoutKey = "duplicatelayoutfrom";
-        private readonly int configuratorModuleId = 800;
-        private readonly string mainStepEntity = "hoofdstap";
-        private readonly string stepEntity = "stap";
-        private readonly string subStepEntity = "substap";
+        private const string ConfiguratorEntity = "configurator";
+        private const string DuplicateLayoutKey = "duplicatelayoutfrom";
+        private const int ConfiguratorModuleId = 800;
+        private const string MainStepEntity = "hoofdstap";
+        private const string StepEntity = "stap";
+        private const string SubStepEntity = "substap";
 
         private readonly string[] queryFields =
         {
-            "configuratorId","mainStepId","stepId","subStepId","duplicateConfiguratorId","duplicateMainStepId","duplicateStepId","duplicateSubStepId","summary_template", "summary_mainstep_template", "summary_step_template", "progress_pre_template", "progress_pre_step_template", "progress_pre_substep_template", "progress_post_template", "progress_post_step_template", "progress_post_substep_template", "progress_template", "progress_step_template", "progress_substep_template", "name", "configurator_free_content1", "configurator_free_content2", "configurator_free_content3", "configurator_free_content4",
-            "configurator_free_content5", "template", "price_calculation_query", "deliverytime_query", "custom_param_name", "custom_param_dependencies", "custom_param_query", "pre_render_steps_query", "mainstep_template", "mainstepname", "mainsteps_values_template", "mainsteps_datasource", "mainsteps_custom_query", "mainsteps_own_data_values", "mainsteps_fixed_valuelist", "mainsteps_datasource_connectedtype", "mainsteps_datasource_connectedid", "mainsteps_isrequired", "mainsteps_check_connectedid", "mainstep_free_content1", "mainstep_free_content2", "mainstep_free_content3",
-            "mainstep_free_content4", "mainstep_free_content5", "step_template", "stepname", "values_template", "datasource", "custom_query", "own_data_values", "fixed_valuelist", "datasource_connectedtype", "variable_name", "step_free_content1", "step_free_content2", "step_free_content3", "step_free_content4", "step_free_content5", "datasource_connectedid", "isrequired", "check_connectedid", "substepname", "substep_template", "substep_values_template", "substep_datasource",
-            "substep_custom_query", "substep_own_data_values", "substep_fixed_valuelist", "substep_datasource_connectedtype", "substep_variable_name", "substep_datasource_connectedid", "substep_isrequired", "substep_check_connectedid", "substep_free_content1", "substep_free_content2", "substep_free_content3", "substep_free_content4", "substep_free_content5", "urlregex", "configurator_step_template"
+            "configuratorId", "mainStepId", "stepId", "subStepId", "duplicateConfiguratorId", "duplicateMainStepId", "duplicateStepId", "duplicateSubStepId", "summary_template", "summary_mainstep_template", "summary_step_template", "progress_pre_template", "progress_pre_step_template", "progress_pre_substep_template", "progress_post_template", "progress_post_step_template",
+            "progress_post_substep_template", "progress_template", "progress_step_template", "progress_substep_template", "name", "configurator_free_content1", "configurator_free_content2", "configurator_free_content3", "configurator_free_content4",
+            "configurator_free_content5", "template", "price_calculation_query", "deliverytime_query", "custom_param_name", "custom_param_dependencies", "custom_param_query", "pre_render_steps_query", "mainstep_template", "mainstepname", "mainsteps_values_template", "mainsteps_datasource", "mainsteps_custom_query", "mainsteps_own_data_values", "mainsteps_fixed_valuelist",
+            "mainsteps_datasource_connectedtype", "mainsteps_datasource_connectedid", "mainsteps_isrequired", "mainsteps_check_connectedid", "mainstep_free_content1", "mainstep_free_content2", "mainstep_free_content3",
+            "mainstep_free_content4", "mainstep_free_content5", "step_template", "stepname", "values_template", "datasource", "custom_query", "own_data_values", "fixed_valuelist", "datasource_connectedtype", "variable_name", "step_free_content1", "step_free_content2", "step_free_content3", "step_free_content4", "step_free_content5", "datasource_connectedid", "isrequired", "check_connectedid",
+            "substepname", "substep_template", "substep_values_template", "substep_datasource",
+            "substep_custom_query", "substep_own_data_values", "substep_fixed_valuelist", "substep_datasource_connectedtype", "substep_variable_name", "substep_datasource_connectedid", "substep_isrequired", "substep_check_connectedid", "substep_free_content1", "substep_free_content2", "substep_free_content3", "substep_free_content4", "substep_free_content5", "urlregex",
+            "configurator_step_template"
         };
 
-        private readonly List<(string prefix, string fieldName)> configuratorFields = new List<(string prefix, string fieldName)> { ("", "name"), ("", "summary_template"), ("", "summary_mainstep_template"), ("", "summary_step_template"), ("", "progress_pre_template"), ("", "progress_pre_step_template"), ("", "progress_pre_substep_template"), ("", "progress_post_template"), ("", "progress_post_step_template"), ("", "progress_post_substep_template"), ("", "progress_template"), ("", "progress_step_template"), ("", "progress_substep_template"), ("configurator_", "free_content1"), ("configurator_", "free_content2"), ("configurator_", "free_content3"), ("configurator_", "free_content4"), ("configurator_", "free_content5"), ("", "template"), ("", "deliverytime_query"), ("", "custom_param_name"), ("", "custom_param_dependencies"), ("", "custom_param_query"), ("", "pre_render_steps_query"), ("configurator_", "step_template"), ("", "price_calculation_query") };
-        private readonly List<(string prefix, string fieldName)> mainStepFields = new List<(string prefix, string fieldName)> { ("main", "step_template"), ("", "mainstepname"), ("mainsteps_", "values_template"), ("mainsteps_", "datasource"), ("mainsteps_", "custom_query"), ("mainsteps_", "own_data_values"), ("mainsteps_", "fixed_valuelist"), ("mainsteps_", "datasource_connectedtype"), ("mainsteps_", "datasource_connectedid"), ("mainsteps_", "isrequired"), ("mainsteps_", "check_connectedid"), ("mainstep_", "free_content1"), ("mainstep_", "free_content2"), ("mainstep_", "free_content3"), ("mainstep_", "free_content4"), ("mainstep_", "free_content5") };
-        private readonly List<(string prefix, string fieldName)> stepFields = new List<(string prefix, string fieldName)> { ("", "step_template"), ("", "stepname"), ("", "values_template"), ("", "datasource"), ("", "custom_query"), ("", "own_data_values"), ("", "fixed_valuelist"), ("", "datasource_connectedtype"), ("", "variable_name"), ("", "datasource_connectedid"), ("", "isrequired"), ("", "check_connectedid"), ("step_", "free_content1"), ("step_", "free_content2"), ("step_", "free_content3"), ("step_", "free_content4"), ("step_", "free_content5") };
-        private readonly List<(string prefix, string fieldName)> subStepFields = new List<(string prefix, string fieldName)> { ("sub", "step_template"), ("", "substepname"), ("substep_", "values_template"), ("substep_", "datasource"), ("substep_", "custom_query"), ("substep_", "own_data_values"), ("substep_", "fixed_valuelist"), ("substep_", "datasource_connectedtype"), ("substep_", "variable_name"), ("substep_", "datasource_connectedid"), ("substep_", "isrequired"), ("substep_", "check_connectedid"), ("substep_", "free_content1"), ("substep_", "free_content2"), ("substep_", "free_content3"), ("substep_", "free_content4"), ("substep_", "free_content5") };
+        private readonly List<(string prefix, string fieldName)> configuratorFields = new List<(string prefix, string fieldName)>
+        {
+            ("", "name"), ("", "summary_template"), ("", "summary_mainstep_template"), ("", "summary_step_template"), ("", "progress_pre_template"), ("", "progress_pre_step_template"), ("", "progress_pre_substep_template"), ("", "progress_post_template"), ("", "progress_post_step_template"), ("", "progress_post_substep_template"), ("", "progress_template"), ("", "progress_step_template"),
+            ("", "progress_substep_template"), ("configurator_", "free_content1"), ("configurator_", "free_content2"), ("configurator_", "free_content3"), ("configurator_", "free_content4"), ("configurator_", "free_content5"), ("", "template"), ("", "deliverytime_query"), ("", "custom_param_name"), ("", "custom_param_dependencies"), ("", "custom_param_query"), ("", "pre_render_steps_query"),
+            ("configurator_", "step_template"), ("", "price_calculation_query")
+        };
 
-        public ConfiguratorsService(ILogger<Configurator> logger, IDatabaseConnection databaseConnection, 
-                                    IObjectsService objectsService, IWiserItemsService wiserItemsService, 
-                                    IStringReplacementsService stringReplacementsService, ILanguagesService languagesService)
+        private readonly List<(string prefix, string fieldName)> mainStepFields = new List<(string prefix, string fieldName)>
+        {
+            ("main", "step_template"), ("", "mainstepname"), ("mainsteps_", "values_template"), ("mainsteps_", "datasource"), ("mainsteps_", "custom_query"), ("mainsteps_", "own_data_values"), ("mainsteps_", "fixed_valuelist"), ("mainsteps_", "datasource_connectedtype"), ("mainsteps_", "datasource_connectedid"), ("mainsteps_", "isrequired"), ("mainsteps_", "check_connectedid"),
+            ("mainstep_", "free_content1"), ("mainstep_", "free_content2"), ("mainstep_", "free_content3"), ("mainstep_", "free_content4"), ("mainstep_", "free_content5")
+        };
+
+        private readonly List<(string prefix, string fieldName)> stepFields = new List<(string prefix, string fieldName)>
+        {
+            ("", "step_template"), ("", "stepname"), ("", "values_template"), ("", "datasource"), ("", "custom_query"), ("", "own_data_values"), ("", "fixed_valuelist"), ("", "datasource_connectedtype"), ("", "variable_name"), ("", "datasource_connectedid"), ("", "isrequired"), ("", "check_connectedid"), ("step_", "free_content1"), ("step_", "free_content2"), ("step_", "free_content3"),
+            ("step_", "free_content4"), ("step_", "free_content5")
+        };
+
+        private readonly List<(string prefix, string fieldName)> subStepFields = new List<(string prefix, string fieldName)>
+        {
+            ("sub", "step_template"), ("", "substepname"), ("substep_", "values_template"), ("substep_", "datasource"), ("substep_", "custom_query"), ("substep_", "own_data_values"), ("substep_", "fixed_valuelist"), ("substep_", "datasource_connectedtype"), ("substep_", "variable_name"), ("substep_", "datasource_connectedid"), ("substep_", "isrequired"), ("substep_", "check_connectedid"),
+            ("substep_", "free_content1"), ("substep_", "free_content2"), ("substep_", "free_content3"), ("substep_", "free_content4"), ("substep_", "free_content5")
+        };
+
+        public ConfiguratorsService(ILogger<Configurator> logger,
+            IDatabaseConnection databaseConnection,
+            IObjectsService objectsService,
+            IWiserItemsService wiserItemsService,
+            IStringReplacementsService stringReplacementsService,
+            ILanguagesService languagesService)
         {
             this.logger = logger;
             this.databaseConnection = databaseConnection;
@@ -80,20 +107,20 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     IFNULL(duplicateStep.`value`, '0') AS duplicateStepId,
                     IFNULL(duplicateSubStep.`value`, '0') AS duplicateSubStepId
                 FROM {WiserTableNames.WiserItem} configurator
-                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateConfigurator ON duplicateConfigurator.item_id = configurator.id AND duplicateConfigurator.`key` = '{this.duplicateLayoutKey}'
+                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateConfigurator ON duplicateConfigurator.item_id = configurator.id AND duplicateConfigurator.`key` = '{DuplicateLayoutKey}'
 
                 JOIN {WiserTableNames.WiserItemLink} mainStepLink ON mainStepLink.destination_item_id = configurator.id
-                JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = '{this.mainStepEntity}'
-                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateMainStep ON duplicateMainStep.item_id = mainStep.id AND duplicateMainStep.`key` = '{this.duplicateLayoutKey}'
+                JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = '{MainStepEntity}'
+                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateMainStep ON duplicateMainStep.item_id = mainStep.id AND duplicateMainStep.`key` = '{DuplicateLayoutKey}'
 
                 JOIN {WiserTableNames.WiserItemLink} stepLink ON stepLink.destination_item_id = mainStep.id
-                JOIN {WiserTableNames.WiserItem} step ON step.id = stepLink.item_id AND step.entity_type = '{this.stepEntity}'
-                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateStep ON duplicateStep.item_id = step.id AND duplicateStep.`key` = '{this.duplicateLayoutKey}'
+                JOIN {WiserTableNames.WiserItem} step ON step.id = stepLink.item_id AND step.entity_type = '{StepEntity}'
+                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateStep ON duplicateStep.item_id = step.id AND duplicateStep.`key` = '{DuplicateLayoutKey}'
 
                 LEFT JOIN {WiserTableNames.WiserItemLink} subStepLink ON subStepLink.destination_item_id = step.id
-                LEFT JOIN {WiserTableNames.WiserItem} subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = '{this.subStepEntity}'
-                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateSubStep ON duplicateSubStep.item_id = subStep.id AND duplicateSubStep.`key` = '{this.duplicateLayoutKey}'
-                WHERE configurator.moduleid = {this.configuratorModuleId} AND configurator.entity_type = '{this.configuratorEntity}' AND configurator.title = ?name
+                LEFT JOIN {WiserTableNames.WiserItem} subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = '{SubStepEntity}'
+                LEFT JOIN {WiserTableNames.WiserItemDetail} duplicateSubStep ON duplicateSubStep.item_id = subStep.id AND duplicateSubStep.`key` = '{DuplicateLayoutKey}'
+                WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
                 ORDER BY mainStepLink.ordering, stepLink.ordering, subStepLink.ordering ";
             var dataTable = await databaseConnection.GetAsync(query);
 
@@ -112,7 +139,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             // create one list item per step/substep
             foreach (DataRow dr in dataTable.Rows)
             {
-                returnDataTable.Rows.Add(new object[] {
+                returnDataTable.Rows.Add(new object[]
+                {
                     dr.Field<ulong>("configuratorId"),
                     dr.Field<ulong>("mainStepId"),
                     dr.Field<ulong>("stepId"),
@@ -130,7 +158,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             idList.AddRange(dataTable.Rows.Cast<DataRow>().Select(x => x.Field<ulong>("stepId")).Distinct());
             idList.AddRange(dataTable.Rows.Cast<DataRow>().Select(x => Convert.ToUInt64(x["subStepId"])).Distinct());
 
-            var languageCode = await this.languagesService.GetLanguageCodeAsync();
+            var languageCode = await languagesService.GetLanguageCodeAsync();
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("languageCode", languageCode);
@@ -159,97 +187,109 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 {
                     continue;
                 }
-                
+
                 // fill properties 
                 switch (entityType.ToLowerInvariant())
                 {
                     case "configurator":
+                    {
+                        var items = returnDataTable.AsEnumerable().Where(x => Convert.ToUInt64(x["configuratorId"]) == idField);
+
+                        foreach (var item in items)
                         {
-                            var items = returnDataTable.AsEnumerable().Where(x => Convert.ToUInt64(x["configuratorId"]) == idField);
-
-                            foreach (DataRow item in items)
+                            if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["name"].ToString()))
                             {
-
-                                if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["name"].ToString()))
-                                {
-                                    item["name"] = titleField;
-                                }
-                                var foundField = configuratorFields.FirstOrDefault(x => x.fieldName == keyField);
-                                if (foundField.prefix == null || foundField.fieldName == null)
-                                {
-                                    break;
-                                }
-                                item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
+                                item["name"] = titleField;
                             }
-                            break;
+
+                            var foundField = configuratorFields.FirstOrDefault(x => x.fieldName == keyField);
+                            if (foundField.prefix == null || foundField.fieldName == null)
+                            {
+                                break;
+                            }
+
+                            item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
                         }
+
+                        break;
+                    }
                     case "hoofdstap":
-                        {
-                            var items = returnDataTable.AsEnumerable().Where(x => Convert.ToUInt64(x["mainStepId"]) == idField);
+                    {
+                        var items = returnDataTable.AsEnumerable().Where(x => Convert.ToUInt64(x["mainStepId"]) == idField);
 
-                            foreach (DataRow item in items)
+                        foreach (DataRow item in items)
+                        {
+                            if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["mainstepname"].ToString()))
                             {
-                                if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["mainstepname"].ToString()))
-                                {
-                                    item["mainstepname"] = titleField;
-                                }
-                                var foundField = mainStepFields.FirstOrDefault(x => x.fieldName == keyField);
-                                if (foundField.prefix == null || foundField.fieldName == null)
-                                {
-                                    break;
-                                }
-                                item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
+                                item["mainstepname"] = titleField;
                             }
-                            break;
+
+                            var foundField = mainStepFields.FirstOrDefault(x => x.fieldName == keyField);
+                            if (foundField.prefix == null || foundField.fieldName == null)
+                            {
+                                break;
+                            }
+
+                            item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
                         }
+
+                        break;
+                    }
                     case "stap":
-                        {
-                            var items = returnDataTable.AsEnumerable().Where(x => Convert.ToUInt64(x["stepId"]) == idField);
+                    {
+                        var items = returnDataTable.AsEnumerable().Where(x => Convert.ToUInt64(x["stepId"]) == idField);
 
-                            foreach (DataRow item in items)
+                        foreach (var item in items)
+                        {
+                            if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["stepname"].ToString()))
                             {
-                                if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["stepname"].ToString()))
-                                {
-                                    item["stepname"] = titleField;
-                                }
-                                var foundField = stepFields.FirstOrDefault(x => x.fieldName == keyField);
-                                if (foundField.prefix == null || foundField.fieldName == null)
-                                {
-                                    break;
-                                }
-                                item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
-                                // if variable name isn't set, fill it with title in mysql safe value.
-                                if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["variable_name"].ToString()))
-                                {
-                                    item["variable_name"] = titleField.ToMySqlSafeValue();
-                                }
+                                item["stepname"] = titleField;
                             }
-                            break;
+
+                            var foundField = stepFields.FirstOrDefault(x => x.fieldName == keyField);
+                            if (foundField.prefix == null || foundField.fieldName == null)
+                            {
+                                break;
+                            }
+
+                            item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
+
+                            // if variable name isn't set, fill it with title in mysql safe value.
+                            if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["variable_name"].ToString()))
+                            {
+                                item["variable_name"] = titleField;
+                            }
                         }
+
+                        break;
+                    }
                     case "substap":
-                        {
-                            var items = returnDataTable.AsEnumerable().Where(x => Convert.ToUInt64(x["subStepId"]) == idField);
+                    {
+                        var items = returnDataTable.AsEnumerable().Where(x => Convert.ToUInt64(x["subStepId"]) == idField);
 
-                            foreach (DataRow item in items)
+                        foreach (var item in items)
+                        {
+                            if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["substepname"].ToString()))
                             {
-                                if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["substepname"].ToString()))
-                                {
-                                    item["substepname"] = titleField;
-                                }
-                                var foundField = subStepFields.FirstOrDefault(x => x.fieldName == keyField);
-                                if (foundField.prefix == null || foundField.fieldName == null)
-                                {
-                                    break;
-                                }
-                                item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
-                                // if variable name isn't set, fill it with title in mysql safe value.
-                                if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["substep_variable_name"].ToString()))
-                                {
-                                    item["substep_variable_name"] = titleField.ToMySqlSafeValue();
-                                }
+                                item["substepname"] = titleField;
                             }
-                            break;
+
+                            var foundField = subStepFields.FirstOrDefault(x => x.fieldName == keyField);
+                            if (foundField.prefix == null || foundField.fieldName == null)
+                            {
+                                break;
+                            }
+
+                            item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
+                            // if variable name isn't set, fill it with title in mysql safe value.
+                            if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["substep_variable_name"].ToString()))
+                            {
+                                item["substep_variable_name"] = titleField;
+                            }
                         }
+
+                        break;
+                    }
                 }
             }
 
@@ -277,6 +317,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         returnRow["step_template"] = original["step_template"];
                     }
                 }
+
                 if (Convert.ToUInt64(returnRow["duplicateMainStepId"]) > 0)
                 {
                     var original = returnDataTable.Rows.Cast<DataRow>().FirstOrDefault(x => Convert.ToUInt64(x["mainStepId"]) == Convert.ToUInt64(returnRow["duplicateMainStepId"]));
@@ -298,6 +339,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         }
                     }
                 }
+
                 if (Convert.ToUInt64(returnRow["duplicateStepId"]) > 0)
                 {
                     var original = returnDataTable.Rows.Cast<DataRow>().FirstOrDefault(x => Convert.ToUInt64(x["stepId"]) == Convert.ToUInt64(returnRow["duplicateStepId"]));
@@ -320,6 +362,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 
                     }
                 }
+
                 if (Convert.ToUInt64(returnRow["duplicateSubStepId"]) > 0)
                 {
                     var original = returnDataTable.Rows.Cast<DataRow>().FirstOrDefault(x => Convert.ToUInt64(x["subStepId"]) == Convert.ToUInt64(returnRow["duplicateSubStepId"]));
@@ -331,16 +374,17 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 }
 
                 // fall back to configurator step template
-                if (String.IsNullOrWhiteSpace(returnRow["step_template"].ToString())) // || returnRow.IsNull("mainstep_template")
+                if (String.IsNullOrWhiteSpace(returnRow["step_template"].ToString()))
                 {
                     returnRow["step_template"] = returnRow["configurator_step_template"];
                 }
 
-                if (String.IsNullOrWhiteSpace(returnRow["mainstep_template"].ToString())) // || returnRow.IsNull("mainstep_template")
+                if (String.IsNullOrWhiteSpace(returnRow["mainstep_template"].ToString()))
                 {
                     returnRow["mainstep_template"] = returnRow["configurator_step_template"];
                 }
             }
+
             return returnDataTable;
         }
 
@@ -368,9 +412,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 {
                     continue;
                 }
-                
+
                 var parameterName = DatabaseHelpers.CreateValidParameterName(configuration.Items[key].Id);
-                var valuesCanContainDashes = await this.objectsService.GetSystemObjectValueAsync("CONFIGURATOR_ValuesCanContainDashes");
+                var valuesCanContainDashes = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_ValuesCanContainDashes");
                 if (!String.IsNullOrWhiteSpace(valuesCanContainDashes) && valuesCanContainDashes.Equals("true", StringComparison.OrdinalIgnoreCase) && configuration.Items[key].Value.Contains("-"))
                 {
                     databaseConnection.AddParameter(parameterName, configuration.Items[key].Value.Split('-')[1]);
@@ -394,7 +438,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         /// <inheritdoc />
         public async Task<(string deliveryTime, string deliveryExtra)> GetDeliveryTimeAsync(ConfigurationsModel configuration)
         {
-            var dataTable = await this.GetConfiguratorDataAsync(configuration.Configurator);
+            var dataTable = await GetConfiguratorDataAsync(configuration.Configurator);
 
             if (dataTable == null || dataTable.Rows.Count == 0)
             {
@@ -408,9 +452,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 return ("", "");
             }
 
-            query = await this.ReplaceConfiguratorItemsAsync(query, configuration);
-            
-            var deliveryTimeResultDataTable = await this.databaseConnection.GetAsync(query);
+            query = await ReplaceConfiguratorItemsAsync(query, configuration);
+
+            var deliveryTimeResultDataTable = await databaseConnection.GetAsync(query);
             if (deliveryTimeResultDataTable.Rows.Count == 0)
             {
                 return ("", "");
@@ -430,7 +474,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         /// <inheritdoc />
         public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
         {
-            var dataTable = await this.GetConfiguratorDataAsync(input.Configurator);
+            var dataTable = await GetConfiguratorDataAsync(input.Configurator);
 
             if (dataTable == null || dataTable.Rows.Count == 0)
             {
@@ -444,10 +488,10 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 return (0, 0, 0);
             }
 
-            query = await this.stringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
-            query = await this.ReplaceConfiguratorItemsAsync(query, input);
+            query = await stringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
+            query = await ReplaceConfiguratorItemsAsync(query, input);
 
-            var priceResultDataTable = await this.databaseConnection.GetAsync(query);
+            var priceResultDataTable = await databaseConnection.GetAsync(query);
             if (priceResultDataTable.Rows.Count == 0)
             {
                 return (0, 0, 0);
@@ -480,12 +524,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 ModuleId = 854
             };
 
-            var deliveryTime = await this.GetDeliveryTimeAsync(input);
-            var prices = await this.CalculatePriceAsync(input);
+            var deliveryTime = await GetDeliveryTimeAsync(input);
+            var prices = await CalculatePriceAsync(input);
 
             // add optional 
-            var saveConfigQuery = await this.objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationQuery");
-            await this.AddItemDetailsFromQueryToWiserItemModelAsync(saveConfigQuery, configuration, input.QueryStringItems);
+            var saveConfigQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationQuery");
+            await AddItemDetailsFromQueryToWiserItemModelAsync(saveConfigQuery, configuration, input.QueryStringItems);
 
             // set up details 
             configuration.Details.AddRange(new List<WiserItemDetailModel>
@@ -503,10 +547,10 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             configuration.Details.AddRange(input.QueryStringItems.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
 
             // save main item
-            await this.wiserItemsService.SaveAsync(configuration);
+            await wiserItemsService.SaveAsync(configuration);
 
             // save configuration line query, we run this query to get all the other variables that need to be added to the configuration line like ean, purchaseprice etc.
-            var saveConfigLineQuery = await this.objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationLineQuery");
+            var saveConfigLineQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationLineQuery");
 
             // loop through input items
             foreach (var item in input.Items.Select(item => item.Value))
@@ -521,23 +565,24 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 };
 
                 // add optional details, replace the id and value in saveConfigLineQuery
-                await this.AddItemDetailsFromQueryToWiserItemModelAsync(saveConfigLineQuery, configurationItem,
-                                                                   new Dictionary<string, string>()
-                                                                   {
-                                                                       { "id", item.Id },
-                                                                       { "value", item.Value }
-                                                                   });
+                await AddItemDetailsFromQueryToWiserItemModelAsync(saveConfigLineQuery,
+                    configurationItem,
+                    new Dictionary<string, string>()
+                    {
+                        { "id", item.Id },
+                        { "value", item.Value }
+                    });
 
                 // add details
                 configurationItem.Details.AddRange(new List<WiserItemDetailModel>
                 {
-                    new() { Key = "id", Value = item.Id},
+                    new() { Key = "id", Value = item.Id },
                     new() { Key = "name", Value = item.Name },
                     new() { Key = "value_name", Value = item.ValueName },
-                    new() { Key = "value", Value = item.Value},
-                    new() { Key = "main_step", Value = item.MainStep},
-                    new() { Key = "step", Value = item.Step},
-                    new() { Key = "sub_step", Value = item.SubStep}
+                    new() { Key = "value", Value = item.Value },
+                    new() { Key = "main_step", Value = item.MainStep },
+                    new() { Key = "step", Value = item.Step },
+                    new() { Key = "sub_step", Value = item.SubStep }
                 });
 
                 foreach (Dictionary<string, object> extraDataDictionary in item.ExtraData.Where(extraDataDictionary => item.ExtraData.Any()))
@@ -550,7 +595,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 }
 
                 // save configuration line
-                await this.wiserItemsService.SaveAsync(configurationItem);
+                await wiserItemsService.SaveAsync(configurationItem);
             }
 
             return configuration.Id;
@@ -568,15 +613,16 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             // if save query is not empty, run query and save result
             if (!String.IsNullOrWhiteSpace(query))
             {
-                this.databaseConnection.ClearParameters();
+                databaseConnection.ClearParameters();
                 if (parameters != null && parameters.Count > 0)
                 {
                     foreach (var parameter in parameters)
                     {
-                        this.databaseConnection.AddParameter(parameter.Key, parameter.Value);
+                        databaseConnection.AddParameter(parameter.Key, parameter.Value);
                     }
                 }
-                var saveConfigLineDataTable = await this.databaseConnection.GetAsync(query);
+
+                var saveConfigLineDataTable = await databaseConnection.GetAsync(query);
                 if (saveConfigLineDataTable.Rows.Count > 0)
                 {
                     foreach (DataRow row in saveConfigLineDataTable.Rows)
