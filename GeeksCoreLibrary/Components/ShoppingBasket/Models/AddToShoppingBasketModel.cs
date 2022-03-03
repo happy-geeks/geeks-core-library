@@ -8,7 +8,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 
         public ulong ItemId { get; set; }
 
-        public decimal Quantity { get; set; }
+        public decimal Quantity { get; set; } = 1;
 
         public string Type { get; set; } = "product";
 

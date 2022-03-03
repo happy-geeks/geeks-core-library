@@ -31,6 +31,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket
 {
@@ -40,6 +41,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
     )]
     public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, ShoppingBasket.ComponentModes>
     {
+        private readonly GclSettings gclSettings;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IWebHostEnvironment webHostEnvironment;
@@ -202,8 +204,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         }
 
         [ActivatorUtilitiesConstructor]
-        public ShoppingBasket(ILogger<ShoppingBasket> logger, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IShoppingBasketsService shoppingBasketsService, ITemplatesService templatesService, IWebHostEnvironment webHostEnvironment, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IAccountsService accountsService, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService)
+        public ShoppingBasket(IOptions<GclSettings> gclSettings, ILogger<ShoppingBasket> logger, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IShoppingBasketsService shoppingBasketsService, ITemplatesService templatesService, IWebHostEnvironment webHostEnvironment, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IAccountsService accountsService, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService)
         {
+            this.gclSettings = gclSettings.Value;
             this.httpContextAccessor = httpContextAccessor;
             this.shoppingBasketsService = shoppingBasketsService;
             this.webHostEnvironment = webHostEnvironment;
@@ -338,7 +341,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             else
             {
                 var template = Settings.Template ?? "";
-                template = await TemplatesService.DoReplacesAsync(template, false, false, false);
+                template = await TemplatesService.DoReplacesAsync(DoDefaultShoppingBasketHtmlReplacements(template), false, false, false);
 
                 var additionalReplacementData = new Dictionary<string, object>
                 {
@@ -403,7 +406,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             }
             else if (!String.IsNullOrWhiteSpace(basketIdRequestValue))
             {
-                if (UInt64.TryParse(basketIdRequestValue.DecryptWithAesWithSalt("", true), out var decryptedId))
+                if (UInt64.TryParse(basketIdRequestValue.DecryptWithAesWithSalt(gclSettings.ShoppingBasketEncryptionKey, true), out var decryptedId))
                 {
                     // Load basket after decrypting ID from request variable basketId.
                     var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, decryptedId);
