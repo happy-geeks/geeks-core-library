@@ -19,8 +19,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// Gets all baskets through a cookie name.
         /// </summary>
         /// <param name="cookieName"></param>
+        /// <param name="settings"></param>
         /// <returns></returns>
-        Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync(string cookieName);
+        Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync(string cookieName, ShoppingBasketCmsSettingsModel settings);
 
         /// <summary>
         /// Get a basket item ID from a cookie value.

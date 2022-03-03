@@ -167,8 +167,9 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             {
                 checkoutBasketsCookieName = "checkout_baskets";
             }
-
-            var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync(checkoutBasketsCookieName);
+            
+            var settings = await shoppingBasketsService.GetSettingsAsync();
+            var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync(checkoutBasketsCookieName, settings);
 
             var orderId = 0UL;
 
