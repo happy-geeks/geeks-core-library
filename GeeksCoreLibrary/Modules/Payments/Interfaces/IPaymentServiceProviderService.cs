@@ -31,5 +31,18 @@ namespace GeeksCoreLibrary.Modules.Payments.Interfaces
         /// </summary>
         /// <returns>A <see cref="StatusUpdateResult"/> with the results from the status update.</returns>
         Task<StatusUpdateResult> ProcessStatusUpdateAsync();
+
+        /// <summary>
+        /// Determines what to do after a user is returned to the webshop after a payment. This is used for payment service providers that do not offer specific return URL's for multiple
+        /// states, like successful state, error state, cancel state, etc.
+        /// </summary>
+        Task<PaymentReturnResult> HandlePaymentReturnAsync()
+        {
+            // Default implementation is to do nothing and return a PaymentReturnResult object with its action set to None.
+            return Task.FromResult(new PaymentReturnResult
+            {
+                Action = PaymentResultActions.None
+            });
+        }
     }
 }

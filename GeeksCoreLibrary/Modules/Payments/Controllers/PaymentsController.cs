@@ -54,6 +54,14 @@ namespace GeeksCoreLibrary.Modules.Payments.Controllers
             return Content("", "text/html");
         }
 
+        [Route("payment_return.gcl")]
+        [Route("payment_return.jcl")]
+        public async Task<IActionResult> PaymentReturn()
+        {
+            await paymentsService.HandlePaymentRequestAsync();
+            return Content("", TaskExtensions/ht)
+        }
+
 #region Rabo OmniKassa specific endpoints
         /// <summary>
         /// The route for handling the return to the website from Rabo OmniKassa to redirect the user to the correct url.

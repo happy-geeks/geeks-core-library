@@ -96,6 +96,26 @@
         /// AfterPay offers standard campaigns depending on the season. Merchants are able to set up specific campaigns through separate agreements. All campaigns can be retrieved by calling the AfterPay API.
         /// For example, Christmas campaign A would be displayed at checkout as “Buy now, pay after Christmas” and payment is due by January 31, regardless of the actual purchase date.
         /// </summary>
-        CampaignInvoice = 205
+        CampaignInvoice = 205,
+        /// <summary>
+        /// The goods will be paid through Belfius Pay Button, an online payment method of Belfius.
+        /// </summary>
+        Belfius = 206,
+        /// <summary>
+        /// The goods will be paid through KBC Payment Button, an online payment method of KBC.
+        /// </summary>
+        KBC = 207,
+        /// <summary>
+        /// The goods will be paid using a gift card.
+        /// </summary>
+        GiftCard = 12,
+        /// <summary>
+        /// The goods will be paid through Direct Debit (like SEPA Direct Debit).
+        /// </summary>
+        DirectDebit = 31,
+        /// <summary>
+        /// Przelewy24, for Polish customers.
+        /// </summary>
+        Przelewy24 = 208
     }
 }

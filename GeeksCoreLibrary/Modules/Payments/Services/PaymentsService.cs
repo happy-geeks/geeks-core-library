@@ -622,6 +622,25 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             return true;
         }
 
+        /// <inheritdoc />
+        public async Task<PaymentReturnResult> HandlePaymentReturnAsync()
+        {
+            var paymentServiceProvider = GetPaymentServiceProvider();
+            if (paymentServiceProvider == PaymentServiceProviders.Unknown)
+            {
+                return new PaymentReturnResult
+                {
+                    Action = PaymentResultActions.Redirect,
+                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL")
+                };
+            }
+
+            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentServiceProvider);
+            paymentServiceProviderService.LogPaymentActions = (await objectsService.FindSystemObjectByDomainNameAsync("log_all_psp_requests")).Equals("true");
+
+            return await paymentServiceProviderService.HandlePaymentReturnAsync();
+        }
+
         private async Task<EmailValues> GetMailValuesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, bool forMerchantMail = false, bool forAttachment = false)
         {
             var mailBodyPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailBodyPropertyName", "template");
