@@ -868,9 +868,9 @@ namespace GeeksCoreLibrary.Components.Account
                         {
                             resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", createOrUpdateAccountResult.ErrorTemplate).ReplaceCaseInsensitive("{success}", createOrUpdateAccountResult.SuccessTemplate);
                         }
-
-                        resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "");
                     }
+
+                    resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "");
 
                     // Check if we can automatically login the user after creating a new account.
                     var isLoggedIn = false;
@@ -1193,7 +1193,7 @@ namespace GeeksCoreLibrary.Components.Account
             var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
             await SaveGoogleClientIdAsync(userId);
             
-            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?) null : new DateTimeOffset(DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified), new TimeSpan(amountOfDaysToRememberCookie.Value, 0, 0));
+            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
             HttpContextHelpers.WriteCookie(HttpContext, Constants.CookieName, cookieValue, offset, isEssential: true);
 
             await SaveLoginAttemptAsync(true, userId);
