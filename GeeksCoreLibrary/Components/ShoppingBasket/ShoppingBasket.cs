@@ -376,13 +376,13 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             }
 
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-            if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
-            {
-                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
-            }
-            else if (forcedComponentMode.HasValue)
+            if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            }
+            else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
             }
 
             HandleDefaultSettingsFromComponentMode();
@@ -622,7 +622,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 return String.Empty;
             }
 
-            Request.Body.Position = 0L;
             using var reader = new StreamReader(Request.Body);
             var updateQuantitiesJson = await reader.ReadToEndAsync();
 
@@ -656,9 +655,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             {
                 await shoppingBasketsService.RemoveLinesAsync(Main, Lines, Settings, new[] { itemId });
             }
-            else if (Request.HasFormContentType)
+            else if (Request.HasFormContentType || Request.Method.InList("POST", "DELETE"))
             {
-                Request.Body.Position = 0L;
                 using var reader = new StreamReader(Request.Body);
                 var requestJson = await reader.ReadToEndAsync();
 
