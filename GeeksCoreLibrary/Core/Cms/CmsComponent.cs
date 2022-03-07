@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -192,20 +193,18 @@ namespace GeeksCoreLibrary.Core.Cms
                 }
 
                 var currentValue = resultProperty.GetValue(Settings);
-                // TODO: Check for other types default values?
-                if (currentValue != null && (currentValue is not string stringValue || !String.IsNullOrEmpty(stringValue)))
+                if (currentValue != null && !Equals(currentValue, resultProperty.PropertyType.GetDefaultValue()) && (currentValue is not string stringValue || !String.IsNullOrEmpty(stringValue)))
                 {
                     continue;
                 }
-
-                // TODO: Maybe use constants instead of default value attribute?
+                
                 var defaultValueAttribute = propertyWithDefaultValue.GetCustomAttribute<DefaultValueAttribute>();
                 if (defaultValueAttribute == null)
                 {
                     continue;
                 }
 
-                resultProperty.SetValue(Settings, defaultValueAttribute.Value);
+                resultProperty.SetValue(Settings, Convert.ChangeType(defaultValueAttribute.Value, resultProperty.PropertyType));
             }
         }
 

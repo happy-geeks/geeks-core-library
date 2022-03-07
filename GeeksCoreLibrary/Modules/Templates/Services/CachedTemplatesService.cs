@@ -74,7 +74,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             whereClause.Add("template.removed = 0");
-            
+
             var query = $@"SELECT
                             IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
                             parent1.template_name AS parent_name, 
@@ -273,7 +273,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private async Task<Dictionary<int, DynamicContent>> GetDynamicContentForCachingAsync(ICacheEntry cacheEntry)
         {
             var dynamicContent = new Dictionary<int, DynamicContent>();
-            var query = gclSettings.Environment == Environments.Development 
+            var query = gclSettings.Environment == Environments.Development
                 ? @$"SELECT 
                     component.content_id,
                     component.settings,
@@ -282,7 +282,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     component.version
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
-                WHERE otherVersion.id IS NULL" 
+                WHERE otherVersion.id IS NULL"
                 : @$"SELECT 
                     component.content_id,
                     component.settings,
@@ -307,11 +307,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     Id = contentId,
                     Name = dataRow.Field<string>("component"),
                     SettingsJson = dataRow.Field<string>("settings"),
-                    ComponentMode = dataTable.Rows[0].Field<string>("component_mode"),
+                    ComponentMode = dataRow.Field<string>("component_mode"),
                     Version = dataRow.Field<int>("version")
                 });
             }
-            
+
             cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
 
             return dynamicContent;

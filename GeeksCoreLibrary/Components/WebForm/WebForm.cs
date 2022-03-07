@@ -92,13 +92,13 @@ namespace GeeksCoreLibrary.Components.WebForm
                 allowLegacyEmailTemplateGeneration = true;
             }
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-            if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
-            {
-                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
-            }
-            else if (forcedComponentMode.HasValue)
+            if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            }
+            else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
             }
 
             HandleDefaultSettingsFromComponentMode();

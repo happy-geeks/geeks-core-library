@@ -56,13 +56,13 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser
             ComponentId = dynamicContent.Id;
             ExtraDataForReplacements = extraData;
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-            if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
-            {
-                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
-            }
-            else if (forcedComponentMode.HasValue)
+            if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            }
+            else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
             }
 
             HandleDefaultSettingsFromComponentMode();
