@@ -14,6 +14,7 @@ using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -43,6 +44,7 @@ namespace GeeksCoreLibrary.Components.Account
         private readonly GclSettings gclSettings;
         private readonly IObjectsService objectsService;
         private readonly ICommunicationsService communicationsService;
+        private readonly IWiserItemsService wiserItemsService;
 
         #region Enums
 
@@ -236,11 +238,12 @@ namespace GeeksCoreLibrary.Components.Account
 
         #region Constructor
 
-        public Account(IOptions<GclSettings> gclSettings, ILogger<Account> logger, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, ICommunicationsService communicationsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IAntiforgery antiForgery)
+        public Account(IOptions<GclSettings> gclSettings, ILogger<Account> logger, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, ICommunicationsService communicationsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IAntiforgery antiForgery, IWiserItemsService wiserItemsService)
         {
             this.gclSettings = gclSettings.Value;
             this.objectsService = objectsService;
             this.communicationsService = communicationsService;
+            this.wiserItemsService = wiserItemsService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -865,9 +868,9 @@ namespace GeeksCoreLibrary.Components.Account
                         {
                             resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", createOrUpdateAccountResult.ErrorTemplate).ReplaceCaseInsensitive("{success}", createOrUpdateAccountResult.SuccessTemplate);
                         }
-
-                        resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "");
                     }
+
+                    resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "");
 
                     // Check if we can automatically login the user after creating a new account.
                     var isLoggedIn = false;
@@ -1189,8 +1192,8 @@ namespace GeeksCoreLibrary.Components.Account
             var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
             var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
             await SaveGoogleClientIdAsync(userId);
-
-            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : new DateTimeOffset(DateTime.Now, new TimeSpan(amountOfDaysToRememberCookie.Value, 0, 0));
+            
+            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
             HttpContextHelpers.WriteCookie(HttpContext, Constants.CookieName, cookieValue, offset, isEssential: true);
 
             await SaveLoginAttemptAsync(true, userId);
@@ -1708,11 +1711,13 @@ namespace GeeksCoreLibrary.Components.Account
 
             var googleClientId = String.Join(".", clientIdSplit.Skip(2));
 
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Settings.EntityType);
+
             DatabaseConnection.AddParameter("userId", userIdForGoogleCid);
             DatabaseConnection.AddParameter("name", String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? "google-cid" : Settings.GoogleClientIdFieldName);
             DatabaseConnection.AddParameter("value", googleClientId);
 
-            await RenderAndExecuteQueryAsync($"INSERT INTO {WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)");
+            await RenderAndExecuteQueryAsync($"INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)");
         }
 
         /// <summary>

@@ -545,7 +545,7 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 30,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps",
+            ComponentMode = "LoginSingleStep,LoginMultipleSteps,CreateOrUpdateAccount",
             TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string SaveLoginAttemptQuery { get; set; }
@@ -614,7 +614,7 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 55,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword",
+            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword,CreateOrUpdateAccount",
             TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string ChangePasswordQuery { get; set; }
