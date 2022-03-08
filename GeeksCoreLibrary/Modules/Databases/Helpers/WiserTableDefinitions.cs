@@ -226,7 +226,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("title", MySqlDbType.VarChar, 255, notNull: true),
                     new("changed_on", MySqlDbType.DateTime, notNull: true),
                     new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
-                    new("published_environment", MySqlDbType.Int16, notNull: true)
+                    new("published_environment", MySqlDbType.Int16, notNull: true),
+                    new("removed", MySqlDbType.Int16, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
@@ -294,6 +295,30 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 Indexes = new List<IndexSettingsModel>
                 {
                     new(WiserTableNames.WiserPreviewProfiles, "idx_template_id", IndexTypes.Normal, new List<string> { "template_id" })
+                }
+            },
+
+            // wiser_template_publish_log
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserDynamicContentPublishLog,
+                LastUpdate = new DateTime(2022, 3, 8),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("content_id", MySqlDbType.Int32, notNull: true),
+                    new("old_live", MySqlDbType.Int32, notNull: true),
+                    new("old_accept", MySqlDbType.Int32, notNull: true),
+                    new("old_test", MySqlDbType.Int32, notNull: true),
+                    new("new_live", MySqlDbType.Int32, notNull: true),
+                    new("new_accept", MySqlDbType.Int32, notNull: true),
+                    new("new_test", MySqlDbType.Int32, notNull: true),
+                    new("changed_on", MySqlDbType.DateTime, notNull: true),
+                    new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserDynamicContentPublishLog, "idx_content_id", IndexTypes.Normal, new List<string> { "content_id" })
                 }
             }
         };
