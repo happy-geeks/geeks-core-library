@@ -369,6 +369,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         var parameterName = DatabaseHelpers.CreateValidParameterName(variable.MatchString);
                         databaseConnection.AddParameter(parameterName, value);
                         value = $"?{parameterName}";
+
+                        // Make sure there won't be quotes around the variable in the query, otherwise it will be seen as a literal string by MySql.
+                        output.Replace($"'{variable.MatchString}'", value).Replace($"\"{variable.MatchString}\"", value);
                     }
 
                     output.Replace(variable.MatchString, value);
@@ -402,6 +405,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     var parameterName = DatabaseHelpers.CreateValidParameterName(variable.MatchString);
                     databaseConnection.AddParameter(parameterName, value);
                     value = $"?{parameterName}";
+
+                    // Make sure there won't be quotes around the variable in the query, otherwise it will be seen as a literal string by MySql.
+                    output.Replace($"'{variable.MatchString}'", value).Replace($"\"{variable.MatchString}\"", value);
                 }
 
                 output.Replace(variable.MatchString, value);
