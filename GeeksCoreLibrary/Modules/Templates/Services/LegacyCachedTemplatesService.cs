@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Helpers;
@@ -417,6 +416,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService service, int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             return await templatesService.GetTemplateDataAsync(service, id, name, parentId, parentName);
+        }
+
+        /// <inheritdoc />
+        public async Task ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+        {
+            await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(template);
         }
     }
 }

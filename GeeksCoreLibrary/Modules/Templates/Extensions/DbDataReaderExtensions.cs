@@ -100,6 +100,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             {
                 template.WiserCdnFiles = cdnFiles.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
             }
+            
+            if (reader.HasColumn("pre_load_query"))
+            {
+                template.PreLoadQuery = reader.GetStringHandleNull("pre_load_query");
+            }
 
             if (!isQuery)
             {

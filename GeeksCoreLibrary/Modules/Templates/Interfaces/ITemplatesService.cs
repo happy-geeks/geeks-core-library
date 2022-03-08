@@ -181,5 +181,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="parentName">Optional: The ID of the parent directory, in case you only want to search in a specific directory when looking up a template by name.</param>
         /// <returns>A <see cref="TemplateDataModel"/> with the HTML template, the linked CSS and the linked javascript.</returns>
         Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "");
+
+        /// <summary>
+        /// Executes the pre load query for an HTML template, if it's set. After executing it, it will save the first <see cref="DataRow"/> of the results in the HttpContext.
+        /// </summary>
+        /// <param name="template">The template with a pre load query to execute.</param>
+        Task ExecutePreLoadQueryAndRememberResultsAsync(Template template);
     }
 }

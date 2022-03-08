@@ -64,8 +64,10 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Interfaces
         /// <param name="replaceData"></param>
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
         /// <param name="caseSensitive">Whether the variable names in the replacement data dictionary should be case sensitive.</param>
+        /// <param name="prefix"></param>
+        /// <param name="suffix"></param>
         /// <returns></returns>
-        string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = true);
+        string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}");
 
         /// <summary>
         /// Performs all replacements on a string using data that implements the IEnumerable&lt;KeyValuePair&lt;string, string&gt;&gt; interface.

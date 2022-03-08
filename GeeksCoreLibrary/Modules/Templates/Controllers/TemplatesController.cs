@@ -71,6 +71,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     ombouw = false;
                     break;
                 case TemplateTypes.Html:
+                    // Execute the pre load query before any replacements are being done and before any dynamic components are handled.
+                    await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(contentTemplate);
                     break;
                 case TemplateTypes.Query:
                     context.Response.ContentType = "application/json";
