@@ -100,7 +100,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.grouping_key_column_name,
                             template.grouping_value_column_name,
                             template.grouping_key,
-                            template.grouping_prefix
+                            template.grouping_prefix,
+                            template.pre_load_query
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -384,6 +385,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService service, int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             return await templatesService.GetTemplateDataAsync(service, id, name, parentId, parentName);
+        }
+
+        /// <inheritdoc />
+        public async Task ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+        {
+            await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(template);
         }
     }
 }

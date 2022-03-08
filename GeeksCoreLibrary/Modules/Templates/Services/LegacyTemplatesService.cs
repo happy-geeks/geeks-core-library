@@ -1051,6 +1051,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }; 
         }
 
+        /// <inheritdoc />
+        public Task ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+        {
+            // Do nothing here, this functionality is not supported for old/legacy the templates module.
+            return Task.FromResult(0);
+        }
+
         /// <summary>
         /// Do all replacement which have to do with request, session or cookie.
         /// Only use this function if you can't add ITemplatesService via dependency injection, otherwise you should use the non static functions <see cref="IStringReplacementsService.DoSessionReplacements" /> and <see cref="IStringReplacementsService.DoHttpRequestReplacements"/>.

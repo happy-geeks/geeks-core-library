@@ -129,6 +129,10 @@
         /// </summary>
         public const string WiserTemplatePublishLog = "wiser_template_publish_log";
         /// <summary>
+        /// This table is used for logging who published which dynamic component at which date.
+        /// </summary>
+        public const string WiserDynamicContentPublishLog = "wiser_dynamic_content_publish_log";
+        /// <summary>
         /// This table is used to store preview profiles for the templates module.
         /// </summary>
         public const string WiserPreviewProfiles = "wiser_preview_profiles";

@@ -250,7 +250,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         }
 
         /// <inheritdoc />
-        public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = false)
+        public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}")
         {
             if (replaceData == null)
             {
@@ -262,7 +262,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             {
                 dataDictionary.Add(column.ColumnName, replaceData[column]);
             }
-            return DoReplacements(input, dataDictionary, forQuery: forQuery);
+
+            return DoReplacements(input, dataDictionary, prefix, suffix, forQuery);
         }
 
         /// <inheritdoc />
