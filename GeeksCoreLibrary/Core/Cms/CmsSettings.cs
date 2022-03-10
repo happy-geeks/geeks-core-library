@@ -1,9 +1,10 @@
 ﻿
 using GeeksCoreLibrary.Core.Cms.Attributes;
+using GeeksCoreLibrary.Modules.Templates.Enums;
 
 namespace GeeksCoreLibrary.Core.Cms
 {
-    public abstract class CmsSettings
+    public class CmsSettings
     {
         #region Constants
         
@@ -39,9 +40,7 @@ namespace GeeksCoreLibrary.Core.Cms
             DeveloperRemarks = "This only works for Wiser 2 customers using the Account component.",
             TabName = CmsAttributes.CmsTabName.Behavior,
             GroupName = CmsAttributes.CmsGroupName.Common,
-            DisplayOrder = 10,
-            HideInCms = false,
-            ReadOnlyInCms = false
+            DisplayOrder = 10
         )]
         public bool UserNeedsToBeLoggedIn { get; set; } = false;
         
@@ -54,9 +53,7 @@ namespace GeeksCoreLibrary.Core.Cms
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Behavior,
             GroupName = CmsAttributes.CmsGroupName.Handling,
-            DisplayOrder = 10,
-            HideInCms = false,
-            ReadOnlyInCms = false
+            DisplayOrder = 10
         )]
         public bool HandleRequest { get; set; } = false;
 
@@ -69,9 +66,7 @@ namespace GeeksCoreLibrary.Core.Cms
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Behavior,
             GroupName = CmsAttributes.CmsGroupName.Handling,
-            DisplayOrder = 20,
-            HideInCms = false,
-            ReadOnlyInCms = false
+            DisplayOrder = 20
         )]
         public bool EvaluateIfElseInTemplates { get; set; } = true;
 
@@ -84,11 +79,46 @@ namespace GeeksCoreLibrary.Core.Cms
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Behavior,
             GroupName = CmsAttributes.CmsGroupName.Handling,
-            DisplayOrder = 30,
-            HideInCms = false,
-            ReadOnlyInCms = false
+            DisplayOrder = 30
         )]
         public bool RemoveUnknownVariables { get; set; } = true;
+
+        #endregion
+
+        #region Tab developer properties
+        
+        /// <summary>
+        /// How the component should be cached. Default value is 'ServerSideCaching'.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Caching mode",
+            Description = @"<p>How the component should be cached. Default value is 'ServerSideCaching'. The options are:</p>
+                            <ul>
+                                <li><strong>NoCaching</strong>: Component will not be cached and will always be rendered on-the-fly.</li>
+                                <li><strong>ServerSideCaching</strong>: Component will be cached regardless of URL.</li>
+                                <li><strong>ServerSideCachingPerUrl</strong>: Component will be cached based on the URL, excluding the query string.</li>
+                                <li><strong>ServerSideCachingPerUrlAndQueryString</strong>: Component will be cached based on the URL, including the query string.</li>
+                                <li><strong>ServerSideCachingPerHostNameAndQueryString</strong>: Component will be cached based on the full URL, including domain and the query string.</li>
+                            </ul>",
+            DeveloperRemarks = "",
+            TabName = CmsAttributes.CmsTabName.Developer,
+            GroupName = CmsAttributes.CmsGroupName.Caching,
+            DisplayOrder = 10
+        )]
+        public TemplateCachingModes CachingMode { get; set; } = TemplateCachingModes.ServerSideCaching;
+        
+        /// <summary>
+        /// The amount of time the component should stay cached. Default value is '0', which means that the setting 'DefaultTemplateCacheDuration' from the appsettings will be used. Set it to any other value to overwrite the appsettings.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Cache minutes",
+            Description = "The amount of time (in minutes) the component should stay cached. Default value is '0', which means that the setting 'DefaultTemplateCacheDuration' from the appsettings will be used. Set it to any other value to overwrite the appsettings.",
+            DeveloperRemarks = "",
+            TabName = CmsAttributes.CmsTabName.Developer,
+            GroupName = CmsAttributes.CmsGroupName.Caching,
+            DisplayOrder = 20
+        )]
+        public int CacheMinutes { get; set; }
 
         #endregion
     }

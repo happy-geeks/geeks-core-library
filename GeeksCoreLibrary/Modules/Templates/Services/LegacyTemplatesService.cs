@@ -366,15 +366,21 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<TemplateResponse> GetCombinedTemplateValueAsync(ICollection<int> templateIds, TemplateTypes templateType)
         {
+            return await GetCombinedTemplateValueAsync(this, templateIds, templateType);
+        }
+
+        /// <inheritdoc />
+        public async Task<TemplateResponse> GetCombinedTemplateValueAsync(ITemplatesService templatesService, ICollection<int> templateIds, TemplateTypes templateType)
+        {
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
-            var templates = await GetTemplatesAsync(templateIds, true);
+            var templates = await templatesService.GetTemplatesAsync(templateIds, true);
 
             foreach (var template in templates.Where(t => t.Type == templateType))
             {
-                await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
+                await templatesService.AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
             }
 
             result.Content = resultBuilder.ToString();
@@ -474,6 +480,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false)
         {
+            return await DoReplacesAsync(this, input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false)
+        {
             // Input cannot be empty.
             if (String.IsNullOrEmpty(input))
             {
@@ -489,13 +501,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             // HTML and mail templates.
             // Note: The string replacements service cannot handle the replacing of templates, because that would cause the StringReplacementsService to need
             // the TemplatesService, which in turn needs the StringReplacementsService, creating a circular dependency.
-            input = await HandleIncludesAsync(input, forQuery: forQuery);
-            input = await HandleImageTemplating(input);
+            input = await templatesService.HandleIncludesAsync(input, forQuery: forQuery);
+            input = await templatesService.HandleImageTemplating(input);
 
             // Replace dynamic content.
             if (handleDynamicContent && !forQuery)
             {
-                input = await ReplaceAllDynamicContentAsync(input);
+                input = await templatesService.ReplaceAllDynamicContentAsync(input);
             }
 
             if (evaluateLogicSnippets)
@@ -664,6 +676,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false)
         {
+            return await HandleIncludesAsync(this, input, handleStringReplacements, dataRow, handleRequest, forQuery);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false)
+        {
             if (String.IsNullOrWhiteSpace(input))
             {
                 return input;
@@ -691,7 +709,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     {
                         // Contains a parent
                         var split = templateName.Split('\\');
-                        var template = await GetTemplateAsync(name: split[1], parentName: split[0]);
+                        var template = await templatesService.GetTemplateAsync(name: split[1], parentName: split[0]);
                         if (handleStringReplacements)
                         {
                             template.Content = await stringReplacementsService.DoAllReplacementsAsync(template.Content, dataRow, handleRequest, false, false, forQuery);
@@ -701,7 +719,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                     else
                     {
-                        var template = await GetTemplateAsync(name: templateName);
+                        var template = await templatesService.GetTemplateAsync(name: templateName);
                         if (handleStringReplacements)
                         {
                             template.Content = await stringReplacementsService.DoAllReplacementsAsync(template.Content, dataRow, handleRequest, false, false, forQuery);
@@ -727,7 +745,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     {
                         // Contains a parent
                         var split = templateName.Split('\\');
-                        var template = await GetTemplateAsync(name: split[1], parentName: split[0]);
+                        var template = await templatesService.GetTemplateAsync(name: split[1], parentName: split[0]);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
                         var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
@@ -744,7 +762,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                     else
                     {
-                        var template = await GetTemplateAsync(name: templateName);
+                        var template = await templatesService.GetTemplateAsync(name: templateName);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
                         var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
@@ -1053,6 +1071,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
         /// <inheritdoc />
         public Task ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+        {
+            // Do nothing here, this functionality is not supported for old/legacy the templates module.
+            return Task.FromResult(0);
+        }
+
+        /// <inheritdoc />
+        public Task ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
         {
             // Do nothing here, this functionality is not supported for old/legacy the templates module.
             return Task.FromResult(0);
