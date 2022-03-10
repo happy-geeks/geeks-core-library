@@ -267,6 +267,15 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
         )]
         public bool ShowBaseHeaderAndFooterOnNoData { get; set; }
 
+        [CmsProperty(
+            PrettyName = "Loads the items up to the specified page number",
+            Description = "Use this property to load items up to the specified page number",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Basic,
+            DisplayOrder = 30
+        )]
+        public bool LoadItemsUpToPageNumber { get; set; }
+
         #endregion
     }
 }
