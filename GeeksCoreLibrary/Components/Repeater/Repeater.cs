@@ -305,9 +305,6 @@ namespace GeeksCoreLibrary.Components.Repeater
                                 pageNumber = 1;
                             }
 
-                            // Check if the property must be overruled
-                            bool.TryParse(httpContextAccessor.HttpContext.Request.Query["loadUptoPageNumberOverrule"].ToString(), out var loadUptoPageNumberOverrule);
-
                             var startIndex = (pageNumber - 1) * Settings.ItemsPerPage;
                             var totalBanners = 0;
                             var bannersForCurrentPage = 0;
@@ -321,20 +318,16 @@ namespace GeeksCoreLibrary.Components.Repeater
                                 }
                             }
 
-                            if (Settings.LoadItemsUpToPageNumber)
+                            // Check if the property must be overruled
+                            bool.TryParse(httpContextAccessor.HttpContext.Request.Query["loadUptoPageNumberOverrule"].ToString(), out var loadUptoPageNumberOverrule);
+
+                            if (Settings.LoadItemsUpToPageNumber && loadUptoPageNumberOverrule)
                             {
-                                if (loadUptoPageNumberOverrule)
-                                {
-                                    limitClause = $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
-                                }
-                                else
-                                {
-                                    limitClause = $" LIMIT 0, {Settings.ItemsPerPage * pageNumber - bannersForCurrentPage}";
-                                }
+                                limitClause = $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
                             }
                             else
                             {
-                                limitClause = $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
+                                limitClause = $" LIMIT 0, {Settings.ItemsPerPage * pageNumber - bannersForCurrentPage}";
                             }
                         }
 
