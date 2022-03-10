@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Newtonsoft.Json.Linq;
 
@@ -20,8 +21,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="type">Optional: The type of template that is being searched for. Only used in combination with name. Default value is html.</param>
         /// <param name="parentId">Optional: The ID of the parent of the template to get.</param>
         /// <param name="parentName">Optional: The name of the parent of template to get.</param>
+        /// <param name="includeContent">Optional: Whether or not to include the contents of the template. Default value is <see langword="true"/>.</param>
         /// <returns></returns>
-        Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "");
+        Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "", bool includeContent = true);
+
+        /// <summary>
+        /// Gets the caching settings for a template.
+        /// </summary>
+        /// <param name="id">Optional: The ID of the template to get.</param>
+        /// <param name="name">Optional: The name of the template to get.</param>
+        /// <param name="parentId">Optional: The ID of the parent of the template to get.</param>
+        /// <param name="parentName">Optional: The name of the parent of template to get.</param>
+        /// <returns></returns>
+        Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "");
 
         /// <summary>
         /// Gets the last changed date of general templates of a specific type. This can be used for generating the URL for gcl_general.css for example.
@@ -234,5 +246,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetTemplateAsync() in this method.</param>
         /// <param name="template">The template with a pre load query to execute.</param>
         Task ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template);
+        
+        /// <summary>
+        /// Creates the file name the cached HTML will be saved to and loaded from.
+        /// </summary>
+        /// <param name="contentTemplate">The <see cref="Template"/>.</param>
+        /// <returns></returns>
+        Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate);
     }
 }

@@ -26,6 +26,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Features;
@@ -50,7 +51,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly ITempDataProvider tempDataProvider;
         private readonly IActionContextAccessor actionContextAccessor;
         private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly IObjectsService objectService;
+        private readonly IObjectsService objectsService;
+        private readonly ILanguagesService languagesService;
         private readonly IFiltersService filtersService;
         
         /// <summary>
@@ -66,7 +68,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IActionContextAccessor actionContextAccessor,
             IWebHostEnvironment webHostEnvironment,
             IFiltersService filtersService,
-            IObjectsService objectService)
+            IObjectsService objectsService,
+            ILanguagesService languagesService)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -78,11 +81,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.actionContextAccessor = actionContextAccessor;
             this.webHostEnvironment = webHostEnvironment;
             this.filtersService = filtersService;
-            this.objectService = objectService;
+            this.objectsService = objectsService;
+            this.languagesService = languagesService;
         }
 
         /// <inheritdoc />
-        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
+        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "", bool includeContent = true)
         {
             if (id <= 0 && String.IsNullOrEmpty(name))
             {
@@ -135,10 +139,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.loadalways AS load_always,
                             t.lastchanged AS changed_on,
                             t.externalfiles AS external_files,
-                            t.html_obfuscated,
-                            t.html_minified AS template_data_minified,
-                            t.html AS template_data,
-                            t.template,
+                            {(includeContent ? "t.html_obfuscated, t.html_minified AS template_data_minified, t.html AS template_data, t.template," : "")}
                             t.urlregex AS url_regex,
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
@@ -167,6 +168,73 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             await using var reader = await databaseConnection.GetReaderAsync(query);
             var result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+
+            return result;
+        }
+
+        /// <inheritdoc />
+        public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            if (id <= 0 && String.IsNullOrEmpty(name))
+            {
+                throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
+            }
+            
+            var joinPart = gclSettings.Environment switch
+            {
+                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+                Environments.Acceptance => " AND t.isacceptance=1 ",
+                Environments.Test => " AND t.istest=1 ",
+                Environments.Live => " AND t.islive=1 ",
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+            };
+
+            string whereClause;
+            if (id > 0)
+            {
+                databaseConnection.AddParameter("id", id);
+                whereClause = "i.id = ?id";
+            }
+            else
+            {
+                databaseConnection.AddParameter("name", name);
+                whereClause = "i.name = ?name";
+            }
+
+            if (parentId > 0)
+            {
+                databaseConnection.AddParameter("parentId", parentId);
+                whereClause += " AND ip.id = ?parentId";
+            }
+            else if (!String.IsNullOrWhiteSpace(parentName))
+            {
+                databaseConnection.AddParameter("parentName", parentName);
+                whereClause = " AND ip.name = ?parentName";
+            }
+
+            var query = $@"SELECT
+                            i.`name` AS template_name,
+                            i.id AS template_id,
+                            t.usecache AS use_cache,
+                            t.cacheminutes AS cache_minutes
+                        FROM easy_items i 
+                        JOIN easy_templates t ON i.id=t.itemid
+                        {joinPart}
+                        WHERE i.moduleid = 143 
+                        AND i.published = 1
+                        AND i.deleted <= 0
+                        AND t.deleted <= 0
+                        AND {whereClause}
+                        LIMIT 1";
+            
+            var dataTable = await databaseConnection.GetAsync(query);
+            var result = dataTable.Rows.Count == 0 ? new Template() : new Template
+            {
+                Id = dataTable.Rows[0].Field<int>("template_id"),
+                Name = dataTable.Rows[0].Field<string>("template_name"),
+                CachingMinutes = dataTable.Rows[0].Field<int>("cache_minutes"),
+                CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache")
+            };
 
             return result;
         }
@@ -520,7 +588,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
         public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
         {
-            var imageUrlTemplate = await objectService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser2/<item_id>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
+            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser2/<item_id>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
 
             imageUrlTemplate = imageUrlTemplate.Replace("<item_id>", itemId);
             imageUrlTemplate = imageUrlTemplate.Replace("<filename>", filename);
@@ -626,7 +694,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                 foreach (Match s in items)
                 {
-                    var imageTemplate = await objectService.FindSystemObjectByDomainNameAsync("image_template", "<figure><picture>{images}</picture></figure>");
+                    var imageTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_template", "<figure><picture>{images}</picture></figure>");
 
                     // Get the specified parameters from the regex match
                     parameters = s.Value.Split(":")[1].Split("(");
@@ -1081,6 +1149,58 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             // Do nothing here, this functionality is not supported for old/legacy the templates module.
             return Task.FromResult(0);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate)
+        {
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
+            switch (contentTemplate.CachingMode)
+            {
+                case TemplateCachingModes.ServerSideCaching:
+                    break;
+                case TemplateCachingModes.ServerSideCachingPerUrl:
+                    cacheFileName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.ServerSideCachingPerUrlAndQueryString:
+                    cacheFileName.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
+                    cacheFileName.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.NoCaching:
+                    return "";
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingMode), contentTemplate.CachingMode.ToString());
+            }
+
+            // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
+            var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (cookieCacheDeviation.Length > 0)
+            {
+                var requestCookies = httpContextAccessor.HttpContext?.Request.Cookies;
+                foreach (var cookieName in cookieCacheDeviation)
+                {
+                    if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
+                    {
+                        continue;
+                    }
+
+                    var combinedCookiePart = $"{cookieName}:{cookieValue}";
+                    cacheFileName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
+                }
+            }
+
+            // And finally add the language code to the file name.
+            if (!String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                cacheFileName.Append($"_{languagesService.CurrentLanguageCode}");
+            }
+
+            cacheFileName.Append(".html");
+
+            return cacheFileName.ToString();
         }
 
         /// <summary>
