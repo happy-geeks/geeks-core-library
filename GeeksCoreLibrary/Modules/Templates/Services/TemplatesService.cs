@@ -256,16 +256,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
             }
 
-            whereClause.Add("AND template.removed = 0");
-            whereClause.Add("AND template.load_always = 1");
-            whereClause.Add("AND template.template_type = ?templateType");
+            whereClause.Add("template.removed = 0");
+            whereClause.Add("template.load_always = 1");
+            whereClause.Add("template.template_type = ?templateType");
 
             var query = $@"SELECT MAX(template.changed_on) AS lastChanged
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         WHERE {String.Join(" AND ", whereClause)}";
 
-            databaseConnection.AddParameter("templateType", templateType.ToString());
+            databaseConnection.AddParameter("templateType", templateType);
             DateTime? result;
             await using var reader = await databaseConnection.GetReaderAsync(query);
             if (!await reader.ReadAsync())
@@ -285,7 +285,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             databaseConnection.AddParameter("includeContent", includeContent);
             
             var joinPart = "";
-            var whereClause = new List<string>();
+            var whereClause = new List<string> { $"template.template_id IN ({String.Join(",", templateIds)})", "template.removed = 0" };
             if (gclSettings.Environment == Environments.Development)
             {
                 joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
@@ -297,20 +297,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             var query = $@"SELECT
                             IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
-                            parent1.template_name AS parent_name,
+                            parent1.template_name AS parent_name, 
                             template.parent_id,
                             template.template_name,
                             template.template_type,
                             template.ordering,
                             parent1.ordering AS parent_ordering,
                             template.template_id,
-                            GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates,
+                            GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates, 
                             GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
                             template.load_always,
                             template.changed_on,
                             template.external_files,
-                            IF(?includeContent, template.template_data_minified, '') AS template_data_minified,
-                            IF(?includeContent, template.template_data, '') AS template_data,
+                            {(includeContent ? "template.template_data_minified, template.template_data," : "")}
                             template.url_regex,
                             template.use_cache,
                             template.cache_minutes,
@@ -322,17 +321,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.grouping_key,
                             template.grouping_prefix,
                             template.pre_load_query
-                        FROM easy_items i 
-                        JOIN easy_templates t ON i.id = t.itemid
+                        FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
-                        WHERE template.template_id IN ({String.Join(",", templateIds)})
-                        AND template.removed = 0
-                        AND template.load_always > 0
+
+                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN (2, 3) AND linkedCssTemplate.removed = 0
+                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = 4 AND linkedJavascriptTemplate.removed = 0
+
+                        WHERE {String.Join(" AND ", whereClause)}
+                        GROUP BY template.template_id
                         ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
             await using var reader = await databaseConnection.GetReaderAsync(query);
@@ -348,8 +349,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
         {
-            databaseConnection.AddParameter("templateType", templateType.ToString());
-            
             var joinPart = "";
             var whereClause = new List<string>();
             if (gclSettings.Environment == Environments.Development)
@@ -363,7 +362,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             whereClause.Add("template.removed = 0");
             whereClause.Add("template.load_always = 1");
-            whereClause.Add("template.template_type = ?templateType");
+
+            whereClause.Add(templateType is TemplateTypes.Css or TemplateTypes.Scss 
+                ? $"template.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})" 
+                : $"template.template_type = {(int)templateType}");
 
             var query = $@"SELECT
                             IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
