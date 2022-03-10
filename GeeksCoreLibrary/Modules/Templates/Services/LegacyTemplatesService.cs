@@ -278,7 +278,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
         {
-            databaseConnection.AddParameter("templateType", templateType.ToString());
+            var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss 
+                ? $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'"
+                : $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')";
 
             var joinPart = gclSettings.Environment switch
             {
@@ -331,7 +333,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND i.deleted <= 0
                         AND t.deleted <= 0
                         AND t.loadalways > 0
-                        AND t.templatetype = ?templateType
+                        AND {templateTypeQueryPart}
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
             var result = new TemplateResponse();
@@ -353,7 +355,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 result.LastChangeDate = DateTime.Now;
             }
 
-            if (templateType == TemplateTypes.Css)
+            if (templateType is TemplateTypes.Css or TemplateTypes.Scss)
             {
                 result.Content = CssHelpers.MoveImportStatementsToTop(result.Content);
             }

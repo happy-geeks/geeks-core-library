@@ -427,7 +427,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 result.LastChangeDate = DateTime.Now;
             }
 
-            if (templateType == TemplateTypes.Css)
+            if (templateType is TemplateTypes.Css or TemplateTypes.Scss)
             {
                 result.Content = CssHelpers.MoveImportStatementsToTop(result.Content);
             }
