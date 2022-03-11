@@ -183,26 +183,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
         )]
         public string BasketLineEntityName { get; set; }
 
-        //[CmsProperty(
-        //    PrettyName = "Link type number basket line to basket",
-        //    Description = "The number of the type which is used for connecting basket lines to a basket.",
-        //    DeveloperRemarks = "",
-        //    TabName = CmsAttributes.CmsTabName.DataSource,
-        //    GroupName = CmsAttributes.CmsGroupName.Basic,
-        //    DisplayOrder = 30
-        //)]
-        //public int LinkTypeBasketLineToBasket { get; set; }
-
-        //[CmsProperty(
-        //    PrettyName = "Link type number basket to user",
-        //    Description = "The number of the type which is used for connecting baskets to a user.",
-        //    DeveloperRemarks = "",
-        //    TabName = CmsAttributes.CmsTabName.DataSource,
-        //    GroupName = CmsAttributes.CmsGroupName.Basic,
-        //    DisplayOrder = 40
-        //)]
-        //public int LinkTypeBasketToUser { get; set; }
-
         [CmsProperty(
             PrettyName = "Quantity property name",
             Description = "The name of the property for the basket line entity which is used for the quantity.",

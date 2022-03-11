@@ -15,11 +15,5 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 
         [DefaultValue("basketline")]
         internal string BasketLineEntityName { get; }
-
-        //[DefaultValue(5002)]
-        //internal int LinkTypeBasketLineToBasket { get; }
-
-        //[DefaultValue(5010)]
-        //internal int LinkTypeBasketToUser { get; }
     }
 }
