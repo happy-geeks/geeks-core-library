@@ -50,6 +50,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         }
 
         /// <summary>
+        /// Decodes the string from an URL-safe string.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static string UrlDecode(this string input)
+        {
+            return input == null ? null : Uri.UnescapeDataString(input);
+        }
+
+        /// <summary>
         /// Cuts a string to a maximum amount of characters.
         /// </summary>
         /// <param name="input"></param>
@@ -226,6 +236,17 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         }
 
         /// <summary>
+        /// Encrypts a value with AES.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="withDateTime"></param>
+        /// <returns></returns>
+        public static string EncryptNormal(this string input, bool withDateTime = false)
+        {
+            return input?.EncryptWithAes(withDateTime: withDateTime);
+        }
+
+        /// <summary>
         /// Decrypts a value with AES. This method uses a salt, so it can decrypt values encrypted with <see cref="StringExtensions.EncryptWithAesWithSalt"/>.
         /// </summary>
         /// <param name="input"></param>
@@ -235,6 +256,18 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         public static string Decrypt(this string input, bool withDateTime = false, int minutesValidOverride = 0)
         {
             return input?.DecryptWithAesWithSalt(withDateTime: withDateTime, minutesValidOverride: minutesValidOverride);
+        }
+
+        /// <summary>
+        /// Decrypts a value with AES. This method does not use use a salt, so it can decrypt values encrypted with <see cref="StringExtensions.EncryptWithAes"/>.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="withDateTime"></param>
+        /// <param name="minutesValidOverride"></param>
+        /// <returns></returns>
+        public static string DecryptNormal(this string input, bool withDateTime = false, int minutesValidOverride = 0)
+        {
+            return input?.DecryptWithAes(withDateTime: withDateTime, minutesValidOverride: minutesValidOverride);
         }
 
         /// <summary>

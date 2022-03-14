@@ -21,7 +21,6 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
-using Org.BouncyCastle.Crmf;
 
 namespace GeeksCoreLibrary.Components.Repeater
 {
