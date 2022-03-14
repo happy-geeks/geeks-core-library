@@ -988,7 +988,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
                     var dynamicContentData = componentOverrides?.FirstOrDefault(d => d.Id == contentId);
                     var (html, _) = dynamicContentData == null ? await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await templatesService.GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
-                    template = template.Replace(match.Value, (string)html);
+                    template = template.Replace(match.Value, $"<!-- Start component {contentId} -->{(string)html}<!-- End component {contentId} -->");
                 }
                 catch (Exception exception)
                 {

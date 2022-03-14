@@ -4,13 +4,13 @@ namespace GeeksCoreLibrary.Components.Filter.Models
 {
     internal class FilterAggregationSettingsModel
     {
-        [DefaultValue(@"{summary}<br />
-                        {filters}")]
+        [DefaultValue(@"{summary:Raw}<br />
+                        {filters:Raw}")]
         internal string TemplateFull { get; set; }
 
         [DefaultValue(@"<ul>
                             <b>{name}</b><br />
-                            {items}
+                            {items:Raw}
                         </ul>")]
         internal string TemplateFilterGroup { get; set; }
 
@@ -32,11 +32,11 @@ namespace GeeksCoreLibrary.Components.Filter.Models
         internal string TemplateSlider { get; set; }
 
         [DefaultValue(@"<u>Geselecteerde filters:</u> <a href=""{url}"">Wis alle</a><br /><br />
-                        {items}")]
+                        {items:Raw}")]
         internal string TemplateSummary { get; set; }
 
-        [DefaultValue(@"<b>{groupname}</b> (<a href=""{url}"">Wis alle van deze groep</a>)<br />
-                        {selectedvalues}")]
+        [DefaultValue(@"<>{groupname}</b> (<a href=""{url}"">Wis alle van deze groep</a>)<br />
+                        {selectedvalues:Raw}")]
         internal string TemplateSummaryFilterGroup { get; set; }
 
         [DefaultValue(@"{name} (<a href=""{url}"">Wis</a>)<br />")]
