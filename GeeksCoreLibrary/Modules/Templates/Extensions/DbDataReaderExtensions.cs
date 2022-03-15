@@ -46,6 +46,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.UrlRegex = reader.GetStringHandleNull("url_regex");
             template.CachingMode = (TemplateCachingModes)(cachingMode ?? TemplateCachingModes.NoCaching);
             template.CachingMinutes = await reader.IsDBNullAsync("cache_minutes") ? 0 : await reader.GetFieldValueAsync<int>("cache_minutes");
+            template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations)await reader.GetFieldValueAsync<int>("caching_location");
 
             if (!await reader.IsDBNullAsync("changed_on"))
             {

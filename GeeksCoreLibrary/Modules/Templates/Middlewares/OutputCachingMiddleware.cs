@@ -1,12 +1,10 @@
 ﻿using GeeksCoreLibrary.Core.Enums;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
-using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +17,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using LazyCache;
 
 namespace GeeksCoreLibrary.Modules.Templates.Middlewares
 {
@@ -36,7 +35,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             this.logger = logger;
         }
 
-        public async Task Invoke(HttpContext context, IObjectsService objectsService, ITemplatesService templatesService, ILanguagesService languagesService, IWebHostEnvironment webHostEnvironment, IOptions<GclSettings> gclSettings)
+        public async Task Invoke(HttpContext context, IObjectsService objectsService, ITemplatesService templatesService, ILanguagesService languagesService, IWebHostEnvironment webHostEnvironment, IOptions<GclSettings> gclSettings, IAppCache cache)
         {
             // Don't even bother doing anything if it's not the correct route.
             if (!context.Request.Method.Equals("GET") || context.Request.Path != "/template.gcl")
@@ -93,20 +92,45 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 await next.Invoke(context);
                 return;
             }
-
+            
             // Get folder and file name.
             var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
             var cacheFileName = await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate);
             var fullCachePath = Path.Combine(cacheFolder, cacheFileName);
-            
-            logger.LogDebug($"Content cache enabled for page '{HttpContextHelpers.GetOriginalRequestUri(context)}', cache file location: {fullCachePath}.");
+            var cacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
 
-            // Check if a cache file already exists and if it hasn't expired yet.
-            var fileInfo = new FileInfo(fullCachePath);
-            if (fileInfo.Exists && fileInfo.LastWriteTimeUtc.AddMinutes(contentTemplate.CachingMinutes) > DateTime.UtcNow)
+            switch (contentTemplate.CachingLocation)
             {
-                using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
-                pageHtml = $"{await fileReader.ReadToEndAsync()}<!-- TEMPLATE FROM CACHE ({contentTemplate.Id}) -->";
+                case TemplateCachingLocations.InMemory:
+                {
+                    logger.LogDebug($"Content cache enabled for page '{HttpContextHelpers.GetOriginalRequestUri(context)}', cache in memory with key: {cacheKey}.");
+                    pageHtml = await cache.GetAsync<string>(cacheKey);
+                    break;
+                }
+                case TemplateCachingLocations.OnDisk:
+                {
+                    logger.LogDebug($"Content cache enabled for page '{HttpContextHelpers.GetOriginalRequestUri(context)}', cache file location: {fullCachePath}.");
+
+                    // Check if a cache file already exists and if it hasn't expired yet.
+                    var fileInfo = new FileInfo(fullCachePath);
+                    if (fileInfo.Exists)
+                    {
+                        if (fileInfo.LastWriteTimeUtc.AddMinutes(contentTemplate.CachingMinutes) > DateTime.UtcNow)
+                        {
+                            using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
+                            pageHtml = $"{await fileReader.ReadToEndAsync()}<!-- TEMPLATE FROM CACHE ({contentTemplate.Id}) -->";
+                        }
+                        else
+                        {
+                            // Cleanup the old cache file if it has expired.
+                            fileInfo.Delete();
+                        }
+                    }
+
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingLocation), contentTemplate.CachingLocation.ToString());
             }
 
             if (!String.IsNullOrWhiteSpace(pageHtml))
@@ -157,8 +181,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 // Copy the new body to the original body.
                 await newStream.CopyToAsync(originalBody);
 
-                // Write the HTML to the cache file.
-                await File.WriteAllTextAsync(Path.Combine(cacheFolder, cacheFileName), pageHtml);
+
+                switch (contentTemplate.CachingLocation)
+                {
+                    case TemplateCachingLocations.InMemory:
+                        cache.Add(cacheKey, pageHtml, DateTimeOffset.UtcNow.AddMinutes(contentTemplate.CachingMinutes));
+                        break;
+                    case TemplateCachingLocations.OnDisk:
+                        // Write the HTML to the cache file.
+                        await File.WriteAllTextAsync(Path.Combine(cacheFolder, cacheFileName), pageHtml);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingLocation), contentTemplate.CachingLocation.ToString());
+                }
             }
             finally
             {

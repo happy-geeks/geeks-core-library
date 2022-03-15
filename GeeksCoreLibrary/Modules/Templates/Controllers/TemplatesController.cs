@@ -172,7 +172,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 }
             }
 
-            var (result, _) = await templatesService.GenerateDynamicContentHtmlAsync(componentId, componentMode, callMethod);
+            var result = await templatesService.GenerateDynamicContentHtmlAsync(componentId, componentMode, callMethod);
 
             return result switch
             {
