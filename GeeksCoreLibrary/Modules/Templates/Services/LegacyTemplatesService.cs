@@ -143,6 +143,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.urlregex AS url_regex,
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
+                            1 AS cache_location,
                             t.useobfuscate AS use_obfuscate,
                             t.defaulttemplate AS wiser_cdn_files,
                             t.pagemode AS insert_mode,
@@ -216,7 +217,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             i.`name` AS template_name,
                             i.id AS template_id,
                             t.usecache AS use_cache,
-                            t.cacheminutes AS cache_minutes
+                            t.cacheminutes AS cache_minutes,
+                            CASE t.templatetype
+                                WHEN 'html' THEN 1
+                                WHEN 'css' THEN 2
+                                WHEN 'scss' THEN 3
+                                WHEN 'js' THEN 4
+                                ELSE 0
+                            END AS template_type
                         FROM easy_items i 
                         JOIN easy_templates t ON i.id=t.itemid
                         {joinPart}
@@ -233,9 +241,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Id = dataTable.Rows[0].Field<int>("template_id"),
                 Name = dataTable.Rows[0].Field<string>("template_name"),
                 CachingMinutes = dataTable.Rows[0].Field<int>("cache_minutes"),
-                CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache")
+                CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache"),
+                CachingLocation = TemplateCachingLocations.OnDisk,
+                Type = (TemplateTypes)Convert.ToInt32(dataTable.Rows[0]["template_type"])
             };
-
+            
             return result;
         }
 
@@ -312,6 +322,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.urlregex AS url_regex,
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
+                            1 AS cache_location,
                             t.useobfuscate AS use_obfuscate,
                             t.defaulttemplate AS wiser_cdn_files,
                             t.pagemode AS insert_mode,
@@ -399,6 +410,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.urlregex AS url_regex,
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
+                            1 AS cache_location,
                             t.useobfuscate AS use_obfuscate,
                             t.defaulttemplate AS wiser_cdn_files,
                             t.pagemode AS insert_mode,
@@ -922,11 +934,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+        public async Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
         {
             if (String.IsNullOrWhiteSpace(dynamicContent?.Name) || String.IsNullOrWhiteSpace(dynamicContent?.SettingsJson))
             {
-                return ("", null);
+                return "";
             }
 
             string viewComponentName;
@@ -980,7 +992,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     break;
                 }
                 default:
-                    return ($"<!-- Dynamic content type '{dynamicContent.Name}' not supported yet. Content ID: {dynamicContent.Id} -->", null);
+                    return $"<!-- Dynamic content type '{dynamicContent.Name}' not supported yet. Content ID: {dynamicContent.Id} -->";
             }
 
             // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
@@ -1008,12 +1020,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             await using var stringWriter = new StringWriter();
             component.WriteTo(stringWriter, HtmlEncoder.Default);
             var html = stringWriter.ToString();
-
-            return (html, viewContext.ViewData);
+            return html;
         }
 
         /// <inheritdoc />
-        public async Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+        public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
         {
             var dynamicContent = await GetDynamicContentData(componentId);
             return await GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
@@ -1054,7 +1065,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 try
                 {
                     var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
-                    var (html, _) = await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
+                    var html = await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
                     template = template.Replace(match.Value, (string)html);
                 }
                 catch (Exception exception)
@@ -1154,7 +1165,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate)
+        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
             var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
             var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
@@ -1200,7 +1211,17 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 cacheFileName.Append($"_{languagesService.CurrentLanguageCode}");
             }
 
-            cacheFileName.Append(".html");
+            if (String.IsNullOrEmpty(extension))
+            {
+                return cacheFileName.ToString();
+            }
+
+            if (!extension.StartsWith("."))
+            {
+                extension = $".{extension}";
+            }
+
+            cacheFileName.Append(extension);
 
             return cacheFileName.ToString();
         }

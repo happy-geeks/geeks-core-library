@@ -1,5 +1,4 @@
-﻿
-using GeeksCoreLibrary.Core.Cms.Attributes;
+﻿using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 
 namespace GeeksCoreLibrary.Core.Cms
@@ -108,6 +107,23 @@ namespace GeeksCoreLibrary.Core.Cms
         public TemplateCachingModes CachingMode { get; set; } = TemplateCachingModes.ServerSideCaching;
         
         /// <summary>
+        /// How the component should be cached. Default value is 'ServerSideCaching'.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Caching location",
+            Description = @"<p>Where the component should be cached. Default value is 'InMemory'. The options are:</p>
+                            <ul>
+                                <li><strong>InMemory</strong>: Component will be cached in memory. This is much faster than caching it on disk, but caching will be lost if the site is restarted and could cause high memory usage on sites with a lot of pages.</li>
+                                <li><strong>OnDisk</strong>: Component will be cached on disk. This is much slower than caching it in memory, but it will not be lost if the site is restarted and will not use (much) memory.</li>
+                            </ul>",
+            DeveloperRemarks = "",
+            TabName = CmsAttributes.CmsTabName.Developer,
+            GroupName = CmsAttributes.CmsGroupName.Caching,
+            DisplayOrder = 20
+        )]
+        public TemplateCachingLocations CachingLocation { get; set; } = TemplateCachingLocations.InMemory;
+        
+        /// <summary>
         /// The amount of time the component should stay cached. Default value is '0', which means that the setting 'DefaultTemplateCacheDuration' from the appsettings will be used. Set it to any other value to overwrite the appsettings.
         /// </summary>
         [CmsProperty(
@@ -116,7 +132,7 @@ namespace GeeksCoreLibrary.Core.Cms
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Developer,
             GroupName = CmsAttributes.CmsGroupName.Caching,
-            DisplayOrder = 20
+            DisplayOrder = 30
         )]
         public int CacheMinutes { get; set; }
 

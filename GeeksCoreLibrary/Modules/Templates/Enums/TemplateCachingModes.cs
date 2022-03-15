@@ -1,5 +1,8 @@
 ﻿namespace GeeksCoreLibrary.Modules.Templates.Enums
 {
+    /// <summary>
+    /// The different ways a template can be cached.
+    /// </summary>
     public enum TemplateCachingModes
     {
         /// <summary>

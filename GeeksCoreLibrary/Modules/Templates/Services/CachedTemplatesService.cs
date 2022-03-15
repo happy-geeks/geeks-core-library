@@ -61,26 +61,54 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var templateContent = "";
             var foundInOutputCache = false;
             string fullCachePath = null;
-            if (type == TemplateTypes.Html && includeContent)
+            var cacheSettings = !includeContent ? new Template { CachingMode = TemplateCachingModes.NoCaching } : await GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
+            string contentCacheKey = null;
+            if (includeContent && cacheSettings.CachingMode != TemplateCachingModes.NoCaching && cacheSettings.CachingMinutes > 0)
             {
-                var cacheSettings = await GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
-                if (cacheSettings.CachingMode != TemplateCachingModes.NoCaching && cacheSettings.CachingMinutes > 0)
+                // Get folder and file name.
+                var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+                var cacheFileName = await GetTemplateOutputCacheFileNameAsync(cacheSettings, cacheSettings.Type.ToString());
+                fullCachePath = Path.Combine(cacheFolder, cacheFileName);
+
+                switch (cacheSettings.CachingLocation)
                 {
-                    // Get folder and file name.
-                    var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
-                    var cacheFileName = await GetTemplateOutputCacheFileNameAsync(cacheSettings);
-                    fullCachePath = Path.Combine(cacheFolder, cacheFileName);
-
-                    logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
-
-                    // Check if a cache file already exists and if it hasn't expired yet.
-                    var fileInfo = new FileInfo(fullCachePath);
-                    if (fileInfo.Exists && fileInfo.LastWriteTimeUtc.AddMinutes(cacheSettings.CachingMinutes) > DateTime.UtcNow)
+                    case TemplateCachingLocations.InMemory:
                     {
-                        using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
-                        templateContent = $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{await fileReader.ReadToEndAsync()}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
-                        foundInOutputCache = true;
+                        // Cache the template contents in memory.
+                        contentCacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
+                        logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache in memory with key: {contentCacheKey}.");
+                        templateContent = await cache.GetAsync<string>(contentCacheKey);
+                        foundInOutputCache = !String.IsNullOrEmpty(templateContent);
+                        break;
                     }
+                    case TemplateCachingLocations.OnDisk:
+                    {
+                        logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
+
+                        // Check if a cache file already exists and if it hasn't expired yet.
+                        var fileInfo = new FileInfo(fullCachePath);
+                        if (fileInfo.Exists)
+                        {
+                            if (fileInfo.LastWriteTimeUtc.AddMinutes(cacheSettings.CachingMinutes) > DateTime.UtcNow)
+                            {
+                                using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
+                                var fileContents = await fileReader.ReadToEndAsync();
+                                templateContent = cacheSettings.Type != TemplateTypes.Html
+                                    ? fileContents
+                                    : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContents}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
+                                foundInOutputCache = true;
+                            }
+                            else
+                            {
+                                // Cleanup the old cache file if it has expired.
+                                fileInfo.Delete();
+                            }
+                        }
+
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
                 }
             }
 
@@ -93,7 +121,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     return await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, !foundInOutputCache);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
 
-            if (type != TemplateTypes.Html || !includeContent)
+            if (!includeContent)
             {
                 return template;
             }
@@ -104,8 +132,17 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
             else if (!String.IsNullOrEmpty(fullCachePath))
             {
-                // Write the HTML to the cache file.
-                await File.WriteAllTextAsync(fullCachePath, template.Content);
+                switch (cacheSettings.CachingLocation)
+                {
+                    case TemplateCachingLocations.InMemory:
+                        cache.Add(contentCacheKey, template.Content, DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes));
+                        break;
+                    case TemplateCachingLocations.OnDisk:
+                        await File.WriteAllTextAsync(fullCachePath, template.Content);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
+                }
             }
 
             return template;
@@ -303,14 +340,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+        public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
         {
             var dynamicContent = await GetDynamicContentData(componentId);
             return await GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
         }
 
         /// <inheritdoc />
-        public async Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+        public async Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
         {
             if (dynamicContent == null || dynamicContent.Id == 0 || String.IsNullOrWhiteSpace(dynamicContent.SettingsJson))
             {
@@ -343,13 +380,47 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 default:
                     throw new ArgumentOutOfRangeException(nameof(settings.CachingMode), settings.CachingMode.ToString());
             }
-            
-            return await cache.GetOrAdd(cacheKey.ToString(),
-                async cacheEntry =>
+
+            switch (settings.CachingLocation)
+            {
+                case TemplateCachingLocations.InMemory:
+                case TemplateCachingLocations.OnDisk when !String.IsNullOrWhiteSpace(callMethod):
+                    return await cache.GetOrAdd(cacheKey.ToString(),
+                        async cacheEntry =>
+                        {
+                            cacheEntry.SlidingExpiration = settings.CacheMinutes <= 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
+                            return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                        }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                case TemplateCachingLocations.OnDisk:
                 {
-                    cacheEntry.SlidingExpiration = settings.CacheMinutes <= 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
-                    return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                    var fileName = $"{cacheKey}.html";
+                    var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+                    var fullCachePath = Path.Combine(cacheFolder, fileName);
+
+                    // Check if a cache file already exists and if it hasn't expired yet.
+                    var fileInfo = new FileInfo(fullCachePath);
+                    string html;
+                    if (fileInfo.Exists)
+                    {
+                        if (fileInfo.LastWriteTimeUtc.AddMinutes(settings.CacheMinutes) > DateTime.UtcNow)
+                        {
+                            using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
+                            var fileContents = await fileReader.ReadToEndAsync();
+                            html = $"<!-- START DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->{fileContents}<!-- END DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->";
+                            return html;
+                        }
+
+                        // Cleanup the old cache file if it has expired.
+                        fileInfo.Delete();
+                    }
+
+                    html = (string)await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                    await File.WriteAllTextAsync(fullCachePath, html);
+                    return html;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(settings.CachingLocation), settings.CachingLocation.ToString());
+            }
         }
 
         /// <inheritdoc />
@@ -395,9 +466,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate)
+        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
-            return await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate);
+            return await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate, extension);
         }
     }
 }

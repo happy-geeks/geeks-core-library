@@ -146,6 +146,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.url_regex,
                             template.use_cache,
                             template.cache_minutes,
+                            template.cache_location,
                             0 AS use_obfuscate,
                             template.insert_mode,
                             template.grouping_create_object_instead_of_array,
@@ -222,7 +223,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.template_name,
                             template.template_id,
                             template.use_cache,
-                            template.cache_minutes
+                            template.cache_minutes,
+                            template.cache_location, 
+                            template.template_type
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
 
@@ -236,7 +239,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Id = dataTable.Rows[0].Field<int>("template_id"),
                 Name = dataTable.Rows[0].Field<string>("template_name"),
                 CachingMinutes = dataTable.Rows[0].Field<int>("cache_minutes"),
-                CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache")
+                CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache"),
+                CachingLocation = dataTable.Rows[0].Field<TemplateCachingLocations>("cache_location"),
+                Type = dataTable.Rows[0].Field<TemplateTypes>("template_type")
             };
 
             return result;
@@ -313,6 +318,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.url_regex,
                             template.use_cache,
                             template.cache_minutes,
+                            template.cache_location,
                             0 AS use_obfuscate,
                             template.insert_mode,
                             template.grouping_create_object_instead_of_array,
@@ -386,6 +392,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.url_regex,
                             template.use_cache,
                             template.cache_minutes,
+                            template.cache_location,
                             0 AS use_obfuscate,
                             template.insert_mode,
                             template.grouping_create_object_instead_of_array,
@@ -907,11 +914,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+        public async Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
         {
             if (String.IsNullOrWhiteSpace(dynamicContent?.Name) || String.IsNullOrWhiteSpace(dynamicContent?.SettingsJson))
             {
-                return ("", null);
+                return "";
             }
 
             var viewComponentName = dynamicContent.Name;
@@ -935,18 +942,17 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             // and we only want to return the results of that method, instead of rendering the entire component.
             if (viewContext.TempData.ContainsKey("InvokeMethodResult") && viewContext.TempData["InvokeMethodResult"] != null)
             {
-                return (viewContext.TempData["InvokeMethodResult"], viewContext.ViewData);
+                return viewContext.TempData["InvokeMethodResult"];
             }
 
             await using var stringWriter = new StringWriter();
             component.WriteTo(stringWriter, HtmlEncoder.Default);
             var html = stringWriter.ToString();
-
-            return (html, viewContext.ViewData);
+            return html;
         }
 
         /// <inheritdoc />
-        public async Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+        public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
         {
             var dynamicContent = await GetDynamicContentData(componentId);
             return await GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
@@ -987,7 +993,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
                     var dynamicContentData = componentOverrides?.FirstOrDefault(d => d.Id == contentId);
-                    var (html, _) = dynamicContentData == null ? await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await templatesService.GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
+                    var html = dynamicContentData == null ? await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await templatesService.GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
                     template = template.Replace(match.Value, $"<!-- Start component {contentId} -->{(string)html}<!-- End component {contentId} -->");
                 }
                 catch (Exception exception)
@@ -1097,7 +1103,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate)
+        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
             var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
             var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
@@ -1143,7 +1149,17 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 cacheFileName.Append($"_{languagesService.CurrentLanguageCode}");
             }
 
-            cacheFileName.Append(".html");
+            if (String.IsNullOrEmpty(extension))
+            {
+                return cacheFileName.ToString();
+            }
+
+            if (!extension.StartsWith("."))
+            {
+                extension = $".{extension}";
+            }
+
+            cacheFileName.Append(extension);
 
             return cacheFileName.ToString();
         }

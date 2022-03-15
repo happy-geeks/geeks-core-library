@@ -160,8 +160,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="forcedComponentMode">Optional: If you want to overwrite the component mode of the component. Default is <see langword="null" />.</param>
         /// <param name="callMethod">Optional: If you want to call a specific method in the component, enter the name of that method here.</param>
         /// <param name="extraData">Optional: Any extra data to be used in all replacements in the component.</param>
-        /// <returns>A Tuple with the HTML and the component instance (if applicable).</returns>
-        Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
+        /// <returns>The generates HTML of the component or the result of the called method of the component.</returns>
+        Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
 
         /// <summary>
         /// Generates the HTML for dynamic content, based on the content ID.
@@ -170,8 +170,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="forcedComponentMode">Optional: If you want to overwrite the component mode of the component. Default is <see langword="null" />.</param>
         /// <param name="callMethod">Optional: If you want to call a specific method in the component, enter the name of that method here.</param>
         /// <param name="extraData">Optional: Any extra data to be used in all replacements in the component.</param>
-        /// <returns>A Tuple with the HTML and the component instance (if applicable).</returns>
-        Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
+        /// <returns>The generates HTML of the component or the result of the called method of the component.</returns>
+        Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
         
         Task<string> HandleImageTemplating(string input);
         Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "");
@@ -246,12 +246,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetTemplateAsync() in this method.</param>
         /// <param name="template">The template with a pre load query to execute.</param>
         Task ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template);
-        
+
         /// <summary>
         /// Creates the file name the cached HTML will be saved to and loaded from.
         /// </summary>
         /// <param name="contentTemplate">The <see cref="Template"/>.</param>
-        /// <returns></returns>
-        Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate);
+        /// <param name="extension">Optional: The extension to use for the file name. Default is ".html".</param>
+        /// <returns>The name for the file to cache the contents of the template to.</returns>
+        Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html");
     }
 }
