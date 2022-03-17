@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
@@ -155,8 +156,8 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                 query = @"SELECT `value` FROM easy_objects WHERE active = 1 AND `key` = ?key AND typenr = ?typeNumber";
             }
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            var result = await reader.ReadAsync() ? reader.GetStringHandleNull("value") : "";
+            var dataTable = await databaseConnection.GetAsync(query);
+            var result = dataTable.Rows.Count > 0 ? dataTable.Rows[0].Field<string>("value") ?? "" : "";
             return result;
         }
 

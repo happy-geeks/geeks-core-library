@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using GeeksCoreLibrary.Core.Cms;
+﻿using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
 
 namespace GeeksCoreLibrary.Components.DataSelectorParser.Models

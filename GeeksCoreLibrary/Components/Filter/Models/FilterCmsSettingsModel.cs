@@ -29,7 +29,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
         [CmsProperty(
             PrettyName = "Filter group template",
             Description = "The template for a filter group.",
-            DeveloperRemarks = @"Use {items} to place the filter items. Use {name} or {name_cf} for the name of the filter.",
+            DeveloperRemarks = @"Use {items:Raw} to place the filter items. Use {name} or {name_cf} for the name of the filter.",
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
@@ -43,7 +43,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
         [CmsProperty(
             PrettyName = "Slider filter group template",
             Description = "The template for a slider filter group.",
-            DeveloperRemarks = @"Use {items} to place the slider filter. The normal filter group template will be used if this one is left empty. Use {name} or {name_cf} for the name of the filter. Use {querystring} for the name of the querystring.",
+            DeveloperRemarks = @"Use {items:Raw} to place the slider filter. The normal filter group template will be used if this one is left empty. Use {name} or {name_cf} for the name of the filter. Use {querystring} for the name of the querystring.",
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
@@ -127,7 +127,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
         [CmsProperty(
             PrettyName = "Summary complete template",
             Description = "The complete template for the summary of the selected filters.",
-            DeveloperRemarks = @"Possible variables: {url} (to reset all selections), {items}.",
+            DeveloperRemarks = @"Possible variables: {url} (to reset all selections), {items:Raw}.",
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,

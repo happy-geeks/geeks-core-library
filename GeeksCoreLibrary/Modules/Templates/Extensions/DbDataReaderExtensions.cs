@@ -46,6 +46,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.UrlRegex = reader.GetStringHandleNull("url_regex");
             template.CachingMode = (TemplateCachingModes)(cachingMode ?? TemplateCachingModes.NoCaching);
             template.CachingMinutes = await reader.IsDBNullAsync("cache_minutes") ? 0 : await reader.GetFieldValueAsync<int>("cache_minutes");
+            template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations)await reader.GetFieldValueAsync<int>("caching_location");
 
             if (!await reader.IsDBNullAsync("changed_on"))
             {
@@ -58,9 +59,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             }
 
             var useObfuscate = Convert.ToInt16(await reader.GetFieldValueAsync<object>("use_obfuscate")) > 0;
-            var htmlMinified = reader.GetStringHandleNull("template_data_minified");
-            var html = reader.GetStringHandleNull("template_data");
-            if (useObfuscate)
+            var htmlMinified = reader.HasColumn("template_data_minified") ? reader.GetStringHandleNull("template_data_minified") : "";
+            var html = reader.HasColumn("template_data") ? reader.GetStringHandleNull("template_data") : "";
+            if (useObfuscate && reader.HasColumn("html_obfuscated"))
             {
                 template.Content = reader.GetStringHandleNull("html_obfuscated");
             }

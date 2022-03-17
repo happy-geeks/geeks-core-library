@@ -6,9 +6,13 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using BuckarooSdk.Logging;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
@@ -17,6 +21,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 {
     public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     {
+        private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly ILogger<MySqlDatabaseConnection> logger;
         private readonly string connectionStringForReading;
         private readonly string connectionStringForWriting;
 
@@ -30,19 +36,24 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private DbDataReader dataReader;
 
         private IDbTransaction transaction;
+        private Guid instanceId;
 
         private readonly ConcurrentDictionary<string, object> parameters = new();
 
         /// <summary>
         /// Creates a new instance of <see cref="MySqlDatabaseConnection"/>.
         /// </summary>
-        /// <param name="gclSettings"></param>
-        public MySqlDatabaseConnection(IOptions<GclSettings> gclSettings)
+        public MySqlDatabaseConnection(IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, ILogger<MySqlDatabaseConnection> logger)
         {
+            this.httpContextAccessor = httpContextAccessor;
+            this.logger = logger;
             this.gclSettings = gclSettings.Value;
 
+            instanceId = Guid.NewGuid();
             connectionStringForReading = this.gclSettings.ConnectionString;
             connectionStringForWriting = this.gclSettings.ConnectionStringForWriting;
+
+            logger.LogTrace($"Created new instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)}");
         }
 
         /// <inheritdoc />
@@ -54,6 +65,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async Task<DbDataReader> GetReaderAsync(string query)
         {
+            logger.LogTrace($"Called GetReaderAsync of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)}");
             await EnsureOpenConnectionForReadingAsync();
             CommandForReading.CommandText = query;
 
@@ -415,6 +427,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public void Dispose()
         {
+            logger.LogTrace($"Disposing instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)}");
             dataReader?.Dispose();
             ConnectionForReading?.Dispose();
             CommandForReading?.Dispose();

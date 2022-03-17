@@ -101,7 +101,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     linkTypeOrderLineToOrder = 5002;
                 }
 
-                result.Add((await wiserItemsService.GetItemDetailsAsync(itemId), await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkTypeOrderLineToOrder, orderLineEntityType, itemIdEntityType: orderEntityType, useParentItemIdByDefault: true)));
+                result.Add((await wiserItemsService.GetItemDetailsAsync(itemId), await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkTypeOrderLineToOrder, orderLineEntityType, itemIdEntityType: orderEntityType)));
             }
 
             return result;
@@ -118,7 +118,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             foreach (var basketId in basketIds)
             {
                 var basket = await wiserItemsService.GetItemDetailsAsync(basketId, entityType: settings.BasketEntityName);
-                var lines = await wiserItemsService.GetLinkedItemDetailsAsync(basketId, 5002, settings.BasketLineEntityName, itemIdEntityType: settings.BasketEntityName, useParentItemIdByDefault: true);
+                var lines = await wiserItemsService.GetLinkedItemDetailsAsync(basketId, 5002, settings.BasketLineEntityName, itemIdEntityType: settings.BasketEntityName);
                 result.Add((basket, lines));
             }
 
@@ -315,7 +315,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     }
                     else
                     {
-                        basketLines = await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, 5002, settings.BasketLineEntityName, itemIdEntityType: settings.BasketEntityName, useParentItemIdByDefault: true);
+                        basketLines = await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, 5002, settings.BasketLineEntityName, itemIdEntityType: settings.BasketEntityName);
 
                         // UniqueUuid is not used anymore for baskets; Update basket lines to set the UniqueUuid value
                         // to a separate detail called "uniqueid". UniqueUuid is not cleared though.
@@ -456,13 +456,13 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     line.AddedBy = "GCL";
                 }
 
-                var lineSaveResult = await wiserItemsService.SaveAsync(line, shoppingBasket.Id, 5002, alwaysSaveValues: true, saveHistory: false, useParentItemIdByDefault: true);
+                var lineSaveResult = await wiserItemsService.SaveAsync(line, shoppingBasket.Id, 5002, alwaysSaveValues: true, saveHistory: false);
                 line.Id = lineSaveResult.Id;
 
                 lineIds.Add(line.Id);
             }
 
-            await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, 5002, lineIds);
+            await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, 5002, lineIds, entityType: settings.BasketLineEntityName);
 
             if (newBasket)
             {
@@ -631,7 +631,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
                 if (recalculateRequired)
                 {
-                    var basketLines = await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, 5002, settings.BasketLineEntityName, itemIdEntityType: settings.BasketEntityName, useParentItemIdByDefault: true);
+                    var basketLines = await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, 5002, settings.BasketLineEntityName, itemIdEntityType: settings.BasketEntityName);
 
                     await RecalculateVariablesAsync(shoppingBasket, basketLines, settings);
                     await SaveAsync(shoppingBasket, basketLines, settings);
@@ -827,7 +827,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     var replacementData = new Dictionary<string, object> { { "orderId", conceptOrder.Id } };
 
                     var orderLineToOrderLinkType = await wiserItemsService.GetLinkTypeAsync(orderEntityType, orderLineEntityType);
-                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, orderLineToOrderLinkType, orderLineEntityType, itemIdEntityType: orderEntityType, useParentItemIdByDefault: true);
+                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, orderLineToOrderLinkType, orderLineEntityType, itemIdEntityType: orderEntityType);
 
                     query = stringReplacementsService.DoReplacements(query, replacementData, forQuery: true);
                     query = await ReplaceBasketInTemplateAsync(conceptOrder, orderLines, settings, query, forQuery: true);

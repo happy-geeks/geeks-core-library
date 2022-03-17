@@ -751,7 +751,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 // Add the default formatter, unless the raw formatter has been used.
                 if (!String.IsNullOrWhiteSpace(defaultFormatter) 
                     && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase)) 
-                    && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase)))
+                    && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase)) 
+                    && !variable.Formatters.Any(f => String.Equals(f, "CurrencySup", StringComparison.OrdinalIgnoreCase)))
                 {
                     variable.Formatters.Add(defaultFormatter);
                 }

@@ -199,12 +199,13 @@ namespace GeeksCoreLibrary.Core.Cms
                 }
                 
                 var defaultValueAttribute = propertyWithDefaultValue.GetCustomAttribute<DefaultValueAttribute>();
-                if (defaultValueAttribute == null)
+                if (defaultValueAttribute?.Value == null)
                 {
                     continue;
                 }
 
-                resultProperty.SetValue(Settings, Convert.ChangeType(defaultValueAttribute.Value, resultProperty.PropertyType));
+                var propertyType = Nullable.GetUnderlyingType(resultProperty.PropertyType) ?? resultProperty.PropertyType;
+                resultProperty.SetValue(Settings, Convert.ChangeType(defaultValueAttribute.Value, propertyType));
             }
         }
 

@@ -2,7 +2,7 @@
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 {
-    internal class ShoppingBasketAddItemsSettingsModel
+    internal class ShoppingBasketRemoveItemsSettingsModel
     {
         [DefaultValue("shoppingbasket")]
         internal string CookieName { get; }
@@ -33,8 +33,5 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
         
         [DefaultValue("discount")]
         internal string DiscountPropertyName { get; }
-
-        [DefaultValue(100)]
-        internal decimal MaxItemQuantity { get; }
     }
 }

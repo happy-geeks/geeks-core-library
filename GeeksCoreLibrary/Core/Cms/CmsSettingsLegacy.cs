@@ -1,6 +1,6 @@
 ﻿namespace GeeksCoreLibrary.Core.Cms
 {
-    public abstract class CmsSettingsLegacy
+    public class CmsSettingsLegacy
     {
         /// <summary>
         /// A description that describes the component for use in Wiser.
@@ -83,6 +83,6 @@
         
         public string Html { get; set; } 
         
-        public string SQLQuery { get; set; } 
+        public string SQLQuery { get; set; }
     }
 }
