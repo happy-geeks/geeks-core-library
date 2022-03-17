@@ -343,10 +343,10 @@ namespace GeeksCoreLibrary.Components.Pagination
 
             var linkFormat = Settings.LinkFormat.Replace("{pnr}", pageNumber.ToString()).Replace("{variablename}", Settings.PageNumberVariableName);
 
-            var originalQueryString = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var originalQueryString = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)?.Query;
             if (Settings.AddPageQueryStringToLinkFormat)
             {
-                var queryStringBuilder = HttpUtility.ParseQueryString(originalQueryString?.ToString() ?? "");
+                var queryStringBuilder = HttpUtility.ParseQueryString(originalQueryString ?? "");
                 if (linkFormat.Contains("?", StringComparison.Ordinal))
                 {
                     // Link format contains a query string; combine it with the request's query string.

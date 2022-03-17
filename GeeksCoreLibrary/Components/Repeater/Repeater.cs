@@ -322,11 +322,11 @@ namespace GeeksCoreLibrary.Components.Repeater
 
                             if (Settings.LoadItemsUpToPageNumber && loadUptoPageNumberOverrule)
                             {
-                                limitClause = $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
+                                limitClause = $" LIMIT 0, {Settings.ItemsPerPage * pageNumber - bannersForCurrentPage}";
                             }
                             else
                             {
-                                limitClause = $" LIMIT 0, {Settings.ItemsPerPage * pageNumber - bannersForCurrentPage}";
+                                limitClause = $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
                             }
                         }
 
