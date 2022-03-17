@@ -170,10 +170,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         GROUP BY template.template_id
                         ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            var result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            using (var reader = await databaseConnection.GetReaderAsync(query))
+            {
+                var result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
 
-            return result;
+                return result;
+            }
         }
 
         /// <inheritdoc />
@@ -272,15 +274,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             databaseConnection.AddParameter("templateType", templateType);
             DateTime? result;
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            if (!await reader.ReadAsync())
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count == 0)
             {
                 return null;
             }
-
-            var ordinal = reader.GetOrdinal("lastChanged");
-            result = await reader.IsDBNullAsync(ordinal) ? null : reader.GetDateTime(ordinal);
-            return result;
+            
+            return dataTable.Rows[0].Field<DateTime?>("lastChanged");
         }
 
         /// <inheritdoc />
@@ -342,11 +342,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         GROUP BY template.template_id
                         ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            while (await reader.ReadAsync())
+            using (var reader = await databaseConnection.GetReaderAsync(query))
             {
-                var template = await reader.ToTemplateModelAsync();
-                results.Add(template);
+                while (await reader.ReadAsync())
+                {
+                    var template = await reader.ToTemplateModelAsync();
+                    results.Add(template);
+                }
             }
 
             return results;
@@ -420,11 +422,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var idsLoaded = new List<int>();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            while (await reader.ReadAsync())
+            using (var reader = await databaseConnection.GetReaderAsync(query))
             {
-                var template = await reader.ToTemplateModelAsync();
-                await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
+                while (await reader.ReadAsync())
+                {
+                    var template = await reader.ToTemplateModelAsync();
+                    await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
+                }
             }
 
             result.Content = resultBuilder.ToString();
