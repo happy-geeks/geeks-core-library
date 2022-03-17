@@ -100,12 +100,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 commandToUse.CommandText = query;
                 using var dataAdapter = new MySqlDataAdapter(commandToUse);
                 await dataAdapter.FillAsync(result);
+
+                logger.LogDebug("Query: {query}", query);
+
                 return result;
             }
             catch (MySqlException mySqlException)
             {
                 if (retryCount >= gclSettings.MaximumRetryCountForQueries)
                 {
+                    logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                     throw;
                 }
 
@@ -120,6 +124,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         Thread.Sleep(1000);
                         return await GetAsync(query, retryCount + 1);
                     default:
+                        logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                         throw;
                 }
             }
@@ -170,12 +175,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
 
                 commandToUse.CommandText = query;
+                logger.LogDebug("Query: {query}", query);
                 return await commandToUse.ExecuteNonQueryAsync();
             }
             catch (MySqlException mySqlException)
             {
                 if (retryCount >= gclSettings.MaximumRetryCountForQueries)
                 {
+                    logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                     throw;
                 }
 
@@ -190,6 +197,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         Thread.Sleep(1000);
                         return await ExecuteAsync(query, retryCount + 1);
                     default:
+                        logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                         throw;
                 }
             }
