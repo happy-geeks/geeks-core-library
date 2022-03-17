@@ -4,8 +4,8 @@ namespace GeeksCoreLibrary.Components.Filter.Models
 {
     internal class FilterAggregationSettingsModel
     {
-        [DefaultValue(@"{summary:Raw}<br />
-                        {filters:Raw}")]
+        [DefaultValue(@"{summary}<br />
+                        {filters}")]
         internal string TemplateFull { get; set; }
 
         [DefaultValue(@"<ul>
