@@ -11,13 +11,13 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using LazyCache;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -36,8 +36,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ICacheService cacheService;
         private readonly IWebHostEnvironment webHostEnvironment;
+        private readonly IObjectsService objectsService;
 
-        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, ICacheService cacheService, IWebHostEnvironment webHostEnvironment)
+        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, ICacheService cacheService, IWebHostEnvironment webHostEnvironment, IObjectsService objectsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -47,6 +48,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.httpContextAccessor = httpContextAccessor;
             this.cacheService = cacheService;
             this.webHostEnvironment = webHostEnvironment;
+            this.objectsService = objectsService;
         }
 
         /// <inheritdoc />
@@ -63,7 +65,21 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             string fullCachePath = null;
             var cacheSettings = !includeContent ? new Template { CachingMode = TemplateCachingModes.NoCaching } : await GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
             string contentCacheKey = null;
-            if (includeContent && cacheSettings.CachingMode != TemplateCachingModes.NoCaching && cacheSettings.CachingMinutes > 0)
+
+            // Check if cache should be skipped:
+            // - It can be skipped if on the development environment, but dev caching is not enabled.
+            // - It can be skipped if on the test environment, but test caching is not enabled.
+            var skipCache = false;
+
+            switch (this.gclSettings.Environment)
+            {
+                case Environments.Development when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
+                case Environments.Test when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_test_enabled")).Equals("true"):
+                    skipCache = true;
+                    break;
+            }
+
+            if (!skipCache && includeContent && cacheSettings.CachingMode != TemplateCachingModes.NoCaching && cacheSettings.CachingMinutes > 0)
             {
                 // Get folder and file name.
                 var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
@@ -358,6 +374,18 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             if (settings == null)
             {
                 return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+            }
+
+            // Check if cache should be skipped:
+            // - It can be skipped if on the development environment, but dev caching is not enabled.
+            // - It can be skipped if on the test environment, but test caching is not enabled.
+            var skipCache = false;
+
+            switch (this.gclSettings.Environment)
+            {
+                case Environments.Development when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
+                case Environments.Test when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_test_enabled")).Equals("true"):
+                    return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
             }
 
             var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);

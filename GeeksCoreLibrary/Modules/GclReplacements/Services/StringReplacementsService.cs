@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -149,15 +150,24 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 input = DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
             }
 
-            // DataRow replacements.
-            if (dataRow != null)
+            // Do replacements multiple times to handle double replacements such as "{price:Currency(true,{culture})}".
+            var counter = 0;
+            while (input.Contains("{") && counter < 3)
             {
-                input = DoReplacements(input, dataRow, forQuery);
-            }
+                counter++;
 
-            // Request replacements.
-            if (handleRequest && httpContextAccessor.HttpContext != null)
-            {
+                // DataRow replacements.
+                if (dataRow != null)
+                {
+                    input = DoReplacements(input, dataRow, forQuery);
+                }
+
+                // Request replacements.
+                if (!handleRequest || httpContextAccessor.HttpContext == null)
+                {
+                    continue;
+                }
+
                 input = DoHttpRequestReplacements(input, forQuery);
                 input = DoSessionReplacements(input, forQuery);
             }
@@ -937,6 +947,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <returns></returns>
         private static object ConvertValue(string input, Type type)
         {
+            type = Nullable.GetUnderlyingType(type) ?? type;
+            if (type == typeof(decimal))
+            {
+                return Convert.ToDecimal(input, new CultureInfo("en-US"));
+            }
+            if (type == typeof(double))
+            {
+                return Convert.ToDouble(input, new CultureInfo("en-US"));
+            }
+
             return Convert.ChangeType(input, type);
         }
     }

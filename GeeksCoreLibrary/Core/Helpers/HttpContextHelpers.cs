@@ -264,6 +264,11 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <returns>An <see cref="UriBuilder"/> containing the full URL.</returns>
         public static UriBuilder GetOriginalRequestUriBuilder(HttpContext httpContext)
         {
+            if (httpContext == null)
+            {
+                return new UriBuilder();
+            }
+
             var result = new UriBuilder
             {
                 Host = httpContext.Request.Host.Host,

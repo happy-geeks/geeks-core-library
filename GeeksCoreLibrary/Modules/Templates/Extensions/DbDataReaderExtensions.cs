@@ -81,25 +81,25 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             var cssTemplates = reader.GetStringHandleNull("css_templates");
             if (!String.IsNullOrWhiteSpace(cssTemplates))
             {
-                template.CssTemplates = cssTemplates.Split(",", StringSplitOptions.RemoveEmptyEntries).Select(Int32.Parse).Where(id => id > 0).ToList();
+                template.CssTemplates = cssTemplates.Split(new [] {';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(Int32.Parse).Where(id => id > 0).ToList();
             }
 
             var javascriptTemplates = reader.GetStringHandleNull("javascript_templates");
             if (!String.IsNullOrWhiteSpace(javascriptTemplates))
             {
-                template.JavascriptTemplates = javascriptTemplates.Split(",", StringSplitOptions.RemoveEmptyEntries).Select(Int32.Parse).Where(id => id > 0).ToList();
+                template.JavascriptTemplates = javascriptTemplates.Split(new [] {';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(Int32.Parse).Where(id => id > 0).ToList();
             }
 
             var externalFiles = reader.GetStringHandleNull("external_files");
             if (!String.IsNullOrWhiteSpace(externalFiles))
             {
-                template.ExternalFiles = externalFiles.Split(";", StringSplitOptions.RemoveEmptyEntries).ToList();
+                template.ExternalFiles = externalFiles.Split(new [] {';', ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             }
 
             var cdnFiles = reader.HasColumn("wiser_cdn_files") ? reader.GetStringHandleNull("wiser_cdn_files") : null;
             if (!String.IsNullOrWhiteSpace(cdnFiles))
             {
-                template.WiserCdnFiles = cdnFiles.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
+                template.WiserCdnFiles = cdnFiles.Split(new [] {';', ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             }
             
             if (reader.HasColumn("pre_load_query"))
