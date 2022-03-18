@@ -730,7 +730,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             prefix = Regex.Escape(prefix);
             suffix = Regex.Escape(suffix);
 
-            var regex = new Regex($@"{prefix}(?<field>[^{{]*?){suffix}");
+            var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}");
 
             var result = new List<StringReplacementVariable>();
             foreach (Match match in regex.Matches(input))

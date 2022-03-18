@@ -149,7 +149,7 @@ namespace GeeksCoreLibrary.Components.Filter
             WriteToTrace("Start generating filters...");
 
             // Try to use the system objects if possible, reverting back to the previous value if they don't exist (by setting them as the default result)
-            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring ");
+            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring");
             var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2")).Equals("1");
             var parametersToExclude = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude");
             var filterGroups = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
@@ -864,8 +864,8 @@ namespace GeeksCoreLibrary.Components.Filter
                     {
                         WriteToTrace($"2 - BuildFilterGroupHtml Slider({filterGroup.NameSeo})");
 
-                        double selectedMinValue = 0;
-                        double selectedMaxValue = 0;
+                        var selectedMinValue = filterGroup.MinValue;
+                        var selectedMaxValue = filterGroup.MaxValue;
 
                         if (!String.IsNullOrEmpty(HttpContext.Request.Query[!String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo]))
                         {
@@ -876,19 +876,19 @@ namespace GeeksCoreLibrary.Components.Filter
 
                             if (requestParameter.Contains("-"))
                             {
-                                selectedMinValue = Double.Parse(requestParameter.Split("-")[0].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
-                                selectedMaxValue = Double.Parse(requestParameter.Split("-")[1].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                                selectedMinValue = Decimal.Parse(requestParameter.Split("-")[0].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                                selectedMaxValue = Decimal.Parse(requestParameter.Split("-")[1].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
                             }
                             else
                             {
                                 selectedMinValue = 0;
-                                selectedMaxValue = Double.Parse(requestParameter.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                                selectedMaxValue = Decimal.Parse(requestParameter.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
                             }
 
                             WriteToTrace("Set selected slider values: " + filterGroup.SelectedValueString);
                         }
 
-                        filterHtml.Append(Settings.TemplateSlider.Replace("{minValue}", filterGroup.MinValue.ToString())
+                        filterHtml.Append(Settings.TemplateSlider.Replace("{minValue}", filterGroup.MinValue.ToString(CultureInfo.InvariantCulture))
                                              .Replace("{maxValue}", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture))
                                              .Replace("{selectedMin}", selectedMinValue.ToString(CultureInfo.InvariantCulture))
                                              .Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture))
