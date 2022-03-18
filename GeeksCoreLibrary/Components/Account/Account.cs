@@ -691,7 +691,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 // If there are form post variables and the correct content ID has been posted with them, it means the user is trying reset their password.
-                if (request == null || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
+                if (request == null || !request.HasFormContentType || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
                 {
                     resultHtml = Settings.Template;
                 }
