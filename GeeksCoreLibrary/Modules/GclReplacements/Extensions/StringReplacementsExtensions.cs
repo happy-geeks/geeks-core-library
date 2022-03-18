@@ -100,15 +100,17 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         {
             return input.ToString(numberFormat, CultureInfo.CreateSpecificCulture(cultureName));
         }
+
         /// <summary>
         /// Converts a <see cref="decimal"/> to a currency representation. This will the use default culture of the application instance.
         /// </summary>
         /// <param name="input"></param>
         /// <param name="includeCurrencySymbol"></param>
+        /// <param name="cultureName"></param>
         /// <returns></returns>
-        public static string Currency(this decimal input, bool includeCurrencySymbol = true)
+        public static string Currency(this decimal input, bool includeCurrencySymbol = true, string cultureName = null)
         {
-            var culture = CultureInfo.CurrentCulture;
+            var culture = !String.IsNullOrWhiteSpace(cultureName) ? new CultureInfo(cultureName) : CultureInfo.CurrentCulture;
             var output = input.ToString(includeCurrencySymbol ? "C" : $"N{culture.NumberFormat.CurrencyDecimalDigits}", culture);
 
             if (culture.Name.Equals("nl", StringComparison.OrdinalIgnoreCase) || culture.Name.Equals("nl-NL", StringComparison.OrdinalIgnoreCase))
@@ -129,7 +131,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         public static string CurrencySup(this decimal input, bool includeCurrencySymbol = true, string cultureName = null)
         {
             var culture = !String.IsNullOrWhiteSpace(cultureName) ? new CultureInfo(cultureName) : CultureInfo.CurrentCulture;
-
             var output = input.ToString(includeCurrencySymbol ? "C" : $"N{culture.NumberFormat.CurrencyDecimalDigits}", culture);
 
             var decimalSeparator = culture.NumberFormat.CurrencyDecimalSeparator;
