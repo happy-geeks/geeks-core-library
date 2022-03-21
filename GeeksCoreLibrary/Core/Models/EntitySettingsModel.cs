@@ -23,5 +23,11 @@ namespace GeeksCoreLibrary.Core.Models
         public bool EnableMultipleEnvironments { get; set; }
 
         public List<string> AcceptedChildTypes { get; set; } = new();
+
+        public bool ShowInTreeView { get; set; }
+
+        public bool ShowOverviewTab { get; set; }
+
+        public bool ShowTitleField { get; set; }
     }
 }
