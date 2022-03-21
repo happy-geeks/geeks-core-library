@@ -321,6 +321,31 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 {
                     new(WiserTableNames.WiserDynamicContentPublishLog, "idx_content_id", IndexTypes.Normal, new List<string> { "content_id" })
                 }
+            },
+
+            // wiser_data_selector
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserDataSelector,
+                LastUpdate = new DateTime(2022, 3, 18),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("name", MySqlDbType.VarChar, 50, notNull: true),
+                    new("removed", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("module_selection", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
+                    new("request_json", MySqlDbType.MediumText),
+                    new("saved_json", MySqlDbType.MediumText),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("changed_on", MySqlDbType.DateTime),
+                    new("show_in_export_module", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("available_for_rendering", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("default_template", MySqlDbType.UInt64, notNull: true, defaultValue: "0")
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserDataSelector, "idx_name", IndexTypes.Unique, new List<string> { "name" })
+                }
             }
         };
     }
