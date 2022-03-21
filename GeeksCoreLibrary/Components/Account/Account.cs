@@ -667,7 +667,7 @@ namespace GeeksCoreLibrary.Components.Account
                 var userLogin = "";
                 if (userIdFromQueryString > 0)
                 {
-                    var query = SetupAccountQuery(Settings.ValidatePasswordQuery, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
+                    var query = SetupAccountQuery(Settings.ValidateResetPasswordTokenQuery, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
                     var dataTable = await RenderAndExecuteQueryAsync(query);
 
                     if (dataTable == null || dataTable.Rows.Count == 0)
@@ -1749,7 +1749,8 @@ namespace GeeksCoreLibrary.Components.Account
                 return;
             }
 
-            var userId = result.Rows[0][Constants.UserIdColumn];
+            var userDataRow = result.Rows[0];
+            var userId = userDataRow[Constants.UserIdColumn];
 
             // Generate a new token for the user.
             string token;
@@ -1854,11 +1855,11 @@ namespace GeeksCoreLibrary.Components.Account
                 .ReplaceCaseInsensitive("<jhead", "<head").ReplaceCaseInsensitive("</jhead", "</head").ReplaceCaseInsensitive("<jtitle", "<title").ReplaceCaseInsensitive("</jtitle", "</title").ReplaceCaseInsensitive("<jbody", "<body")
                 .ReplaceCaseInsensitive("</jbody", "</body");
 
-            await communicationsService.SendEmailAsync(await StringReplacementsService.DoAllReplacementsAsync(emailAddress, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                await StringReplacementsService.DoAllReplacementsAsync(subject, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                await StringReplacementsService.DoAllReplacementsAsync(body),
-                sender: await StringReplacementsService.DoAllReplacementsAsync(senderEmail, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                senderName: await StringReplacementsService.DoAllReplacementsAsync(senderName, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+            await communicationsService.SendEmailAsync(await StringReplacementsService.DoAllReplacementsAsync(emailAddress, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                await StringReplacementsService.DoAllReplacementsAsync(subject, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                await StringReplacementsService.DoAllReplacementsAsync(body, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                sender: await StringReplacementsService.DoAllReplacementsAsync(senderEmail, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                senderName: await StringReplacementsService.DoAllReplacementsAsync(senderName, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
         }
 
         /// <summary>
