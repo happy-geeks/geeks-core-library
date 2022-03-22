@@ -6,6 +6,7 @@ using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.WebPage.Models;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.Services;
@@ -30,6 +31,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ITempDataProvider tempDataProvider;
         private readonly IViewComponentHelper viewComponentHelper;
+        private readonly IDataSelectorsService dataSelectorsService;
 
         public WebPageController(ILogger<WebPageController> logger,
             ITemplatesService templatesService,
@@ -37,7 +39,8 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
             IActionContextAccessor actionContextAccessor,
             IHttpContextAccessor httpContextAccessor,
             ITempDataProvider tempDataProvider,
-            IViewComponentHelper viewComponentHelper)
+            IViewComponentHelper viewComponentHelper,
+            IDataSelectorsService dataSelectorsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -46,6 +49,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
             this.httpContextAccessor = httpContextAccessor;
             this.tempDataProvider = tempDataProvider;
             this.viewComponentHelper = viewComponentHelper;
+            this.dataSelectorsService = dataSelectorsService;
         }
 
         [Route("webpage.gcl")]
@@ -161,6 +165,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
             }
 
             var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString());
+            newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
 
             if (!ombouw)
             {

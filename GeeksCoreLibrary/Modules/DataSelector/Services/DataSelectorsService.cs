@@ -5,8 +5,10 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -19,6 +21,7 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -33,8 +36,9 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
         private readonly ITemplatesService templatesService;
         private readonly IHtmlToPdfConverterService htmlToPdfConverterService;
         private readonly IExcelService excelService;
+        private readonly ILogger<DataSelectorsService> logger;
 
-        public DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IStringReplacementsService stringReplacementsService, ITemplatesService templatesService, IHtmlToPdfConverterService htmlToPdfConverterService, IExcelService excelService)
+        public DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IStringReplacementsService stringReplacementsService, ITemplatesService templatesService, IHtmlToPdfConverterService htmlToPdfConverterService, IExcelService excelService, ILogger<DataSelectorsService> logger)
         {
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
@@ -42,6 +46,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             this.templatesService = templatesService;
             this.htmlToPdfConverterService = htmlToPdfConverterService;
             this.excelService = excelService;
+            this.logger = logger;
         }
 
         /// <inheritdoc />
@@ -1122,6 +1127,63 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             
             var pdfFile = await htmlToPdfConverterService.ConvertHtmlStringToPdfAsync(pdfSettings);
             return (pdfFile, HttpStatusCode.OK, String.Empty);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllDataSelectorsAsync(string template)
+        {
+            if (String.IsNullOrWhiteSpace(template))
+            {
+                return template;
+            }
+
+            // Data selectors with templates.
+            var regEx = new Regex(@"<div[^<>]*?(?:class=['""]dynamic-content['""][^<>]*?)?(data-selector-id)=['""](?<dataSelectorId>\d+)['""]([^<>]*?)?(template-id)=['""](?<templateId>\d+)['""][^>]*?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
+
+            var matches = regEx.Matches(template);
+            foreach (Match match in matches)
+            {
+                if (!match.Success)
+                {
+                    continue;
+                }
+
+                if (!Int32.TryParse(match.Groups["dataSelectorId"].Value, out var dataSelectorId) || dataSelectorId <= 0)
+                {
+                    logger.LogWarning($"Found dynamic content with invalid dataSelectorId of '{match.Groups["dataSelectorId"].Value}', so ignoring it.");
+                    continue;
+                }
+                if (!Int64.TryParse(match.Groups["templateId"].Value, out var templateId) || templateId <= 0)
+                {
+                    logger.LogWarning($"Found dynamic content with invalid dataSelectorId of '{match.Groups["templateId"].Value}', so ignoring it.");
+                    continue;
+                }
+
+                try
+                {
+                    var dataSelectorRequestModel = new DataSelectorRequestModel
+                    {
+                        DataSelectorId = dataSelectorId,
+                        ContentItemId = templateId.ToString(),
+                        ContentPropertyName = "template"
+                    };
+                    var (html, _, _) = await ToHtmlAsync(dataSelectorRequestModel);
+                    template = template.Replace(match.Value, $"<!-- Start data selector with id {dataSelectorId} and template {templateId} -->{html}<!-- End data selector with id {dataSelectorId} and template {templateId} -->");
+                }
+                catch (Exception exception)
+                {
+                    logger.LogError($"An error while generating data selector with id '{dataSelectorId}' and template '{templateId}': {exception}");
+                    var errorOnPage = $"An error occurred while generating data selector with id '{dataSelectorId}' and template '{templateId}'";
+                    if (gclSettings.Environment is Environments.Development or Environments.Test)
+                    {
+                        errorOnPage += $": {exception.Message}";
+                    }
+
+                    template = template.Replace(match.Value, errorOnPage);
+                }
+            }
+
+            return template;
         }
 
         #region Helper functions

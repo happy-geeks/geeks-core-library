@@ -75,5 +75,12 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Interfaces
         /// </summary>
         /// <param name="data">The <see cref="DataSelectorRequestModel"/> with the settings of the data selector.</param>
         Task<(ItemsRequest Result, HttpStatusCode StatusCode, string Error)> InitializeItemsRequestAsync(DataSelectorRequestModel data);
+
+        /// <summary>
+        /// Replaces all data selectors in a HTML template with the rendered versions.
+        /// </summary>
+        /// <param name="template">The HTML template that might contain one or more data selectors.</param>
+        /// <returns>The same template but with all data selectors fully rendered.</returns>
+        Task<string> ReplaceAllDataSelectorsAsync(string template);
     }
 }

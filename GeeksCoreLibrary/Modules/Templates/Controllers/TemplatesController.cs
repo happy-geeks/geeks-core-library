@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
 {
@@ -21,13 +22,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         private readonly ITemplatesService templatesService;
         private readonly IDatabaseConnection databaseConnection;
         private readonly IPagesService pagesService;
+        private readonly IDataSelectorsService dataSelectorsService;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IDatabaseConnection databaseConnection, IPagesService pagesService)
+        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IDatabaseConnection databaseConnection, IPagesService pagesService, IDataSelectorsService dataSelectorsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
             this.databaseConnection = databaseConnection;
             this.pagesService = pagesService;
+            this.dataSelectorsService = dataSelectorsService;
         }
 
         [Route("template.gcl")]
@@ -105,6 +108,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
 
             var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString());
+            newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
 
             if (!ombouw)
             {
@@ -199,6 +203,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             var template = (await templatesService.GetTemplateAsync(templateId)).Content;
             template = await templatesService.HandleIncludesAsync(template);
             template = await templatesService.ReplaceAllDynamicContentAsync(template);
+            template = await dataSelectorsService.ReplaceAllDataSelectorsAsync(template);
 
             // Parse the html to get the partial template part.
             var htmlDocument = new HtmlDocument();
