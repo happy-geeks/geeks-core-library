@@ -1167,7 +1167,12 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         ContentItemId = templateId.ToString(),
                         ContentPropertyName = "template"
                     };
-                    var (html, _, _) = await ToHtmlAsync(dataSelectorRequestModel);
+                    var (html, _, error) = await ToHtmlAsync(dataSelectorRequestModel);
+                    if (!String.IsNullOrWhiteSpace(error))
+                    {
+                        html = $"An error occurred while generating data selector with id '{dataSelectorId}' and template '{templateId}': {error}";
+                    }
+
                     template = template.Replace(match.Value, $"<!-- Start data selector with id {dataSelectorId} and template {templateId} -->{html}<!-- End data selector with id {dataSelectorId} and template {templateId} -->");
                 }
                 catch (Exception exception)
