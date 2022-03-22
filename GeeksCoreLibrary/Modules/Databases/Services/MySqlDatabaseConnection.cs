@@ -113,7 +113,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     throw;
                 }
 
-                switch (mySqlException.ErrorCode)
+                switch (mySqlException.Number)
                 {
                     case (int)MySqlErrorCode.LockDeadlock:
                     case (int)MySqlErrorCode.LockWaitTimeout:
@@ -186,7 +186,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     throw;
                 }
 
-                switch (mySqlException.ErrorCode)
+                switch (mySqlException.Number)
                 {
                     case (int)MySqlErrorCode.LockDeadlock:
                     case (int)MySqlErrorCode.LockWaitTimeout:
@@ -304,7 +304,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     throw;
                 }
 
-                switch (mySqlException.ErrorCode)
+                switch (mySqlException.Number)
                 {
                     case (int)MySqlErrorCode.LockDeadlock:
                     case (int)MySqlErrorCode.LockWaitTimeout:
