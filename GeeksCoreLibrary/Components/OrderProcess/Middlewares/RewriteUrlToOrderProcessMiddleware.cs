@@ -75,15 +75,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
             }
             
             var orderProcess = await orderProcessesService.GetOrderProcessViaFixedUrl(path);
-            if (!orderProcess.HasValue || orderProcess.Value.Id == 0)
+            if (orderProcess == null || orderProcess.Id == 0)
             {
                 return;
             }
             
-            logger.LogInformation($"Found order process with id '{orderProcess.Value.Id}' and name '{orderProcess.Value.Title}' for current URL '{currentUrl}'.");
+            logger.LogInformation($"Found order process with id '{orderProcess.Id}' and name '{orderProcess.Title}' for current URL '{currentUrl}'.");
             var queryString = new QueryString();
-            queryString = queryString.Add("id", orderProcess.Value.Id.ToString());
-            queryString = queryString.Add("title", orderProcess.Value.Title);
+            queryString = queryString.Add("id", orderProcess.Id.ToString());
+            queryString = queryString.Add("title", orderProcess.Title);
 
             context.Request.Path = "/orderProcess.gcl";
             context.Request.QueryString = queryString;

@@ -4,9 +4,12 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
+using GeeksCoreLibrary.Components.OrderProcess.Enums;
+using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -25,6 +28,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         private readonly GclSettings gclSettings;
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IOrderProcessesService orderProcessesService;
 
         #region Enums
 
@@ -38,11 +42,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
         #region Constructor
 
-        public OrderProcess(IOptions<GclSettings> gclSettings, ILogger<OrderProcess> logger, IStringReplacementsService stringReplacementsService, ILanguagesService languagesService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor)
+        public OrderProcess(IOptions<GclSettings> gclSettings, ILogger<OrderProcess> logger, IStringReplacementsService stringReplacementsService, ILanguagesService languagesService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor, IOrderProcessesService orderProcessesService)
         {
             this.gclSettings = gclSettings.Value;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
+            this.orderProcessesService = orderProcessesService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -144,7 +149,104 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns></returns>
         private async Task<string> HandleAutomaticModeAsync()
         {
-            return $"<h1>Test order process {Settings.OrderProcessId}</h1>";
+            // A single step can contain groups and a single group can contain fields.
+            var steps = await orderProcessesService.GetAllStepsGroupsAndFields(Settings.OrderProcessId);
+
+            // Build the steps HTML.
+            var stepsBuilder = new StringBuilder();
+            foreach (var step in steps)
+            {
+                var replaceData = new Dictionary<string, string>
+                {
+                    { "id", step.Id.ToString() },
+                    { "title", step.Title }
+                };
+
+                var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
+
+                // Build the groups HTML.
+                var groupsBuilder = new StringBuilder();
+                foreach (var group in step.Groups)
+                {
+                    replaceData = new Dictionary<string, string>
+                    {
+                        { "id", group.Id.ToString() },
+                        { "title", group.Title }
+                    };
+
+                    var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
+
+                    // Build the fields HTML.
+                    var fieldsBuilder = new StringBuilder();
+                    foreach (var field in group.Fields)
+                    {
+                        replaceData = new Dictionary<string, string>
+                        {
+                            { "id", field.Id.ToString() },
+                            { "title", field.Title },
+                            { "placeholder", field.Placeholder },
+                            { "fieldId", field.FieldId },
+                            { "inputType", field.InputFieldType },
+                            { "label", field.Label },
+                            { "pattern", field.Pattern },
+                            { "required", field.Mandatory ? "required" : "" }
+                        };
+
+                        var fieldHtml = field.Type switch
+                        {
+                            OrderProcessFieldTypes.Input => Settings.TemplateInputField,
+                            OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonField,
+                            OrderProcessFieldTypes.Select => Settings.TemplateSelectField,
+                            OrderProcessFieldTypes.Checkbox => Settings.TemplateCheckboxField,
+                            _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
+                        };
+
+                        fieldHtml = StringReplacementsService.DoReplacements(fieldHtml, replaceData);
+
+                        // Build the field options HTML, if applicable.
+                        if (field.Values != null && field.Values.Any() && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
+                        {
+                            var optionsBuilder = new StringBuilder();
+                            foreach (var option in field.Values)
+                            {
+                                var optionHtml = field.Type switch
+                                {
+                                    OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonFieldOption,
+                                    OrderProcessFieldTypes.Select => Settings.TemplateSelectFieldOption,
+                                    _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
+                                };
+                                
+                                replaceData = new Dictionary<string, string>
+                                {
+                                    { "fieldId", field.FieldId },
+                                    { "required", field.Mandatory ? "required" : "" },
+                                    { "optionValue", option.Key },
+                                    { "optionText", String.IsNullOrEmpty(option.Value) ? option.Key : option.Value },
+                                };
+
+                                optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
+                                optionsBuilder.AppendLine(optionHtml);
+                            }
+                            
+                            fieldHtml = fieldHtml.Replace("{options}", optionsBuilder.ToString());
+                        }
+                        fieldsBuilder.AppendLine(fieldHtml);
+                    }
+
+                    groupHtml = groupHtml.Replace("{fields}", fieldsBuilder.ToString());
+                    groupsBuilder.AppendLine(groupHtml);
+                }
+
+                stepHtml = stepHtml.Replace("{groups}", groupsBuilder.ToString());
+                stepsBuilder.AppendLine(stepHtml);
+            }
+
+            var html = Settings.Template.Replace("{steps}", stepsBuilder.ToString());
+
+            // TODO: Progress HTML
+            
+            // Do all generic replacement last and then return the final HTML.
+            return await TemplatesService.DoReplacesAsync(html);
         }
 
         #endregion

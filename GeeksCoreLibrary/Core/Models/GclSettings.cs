@@ -167,6 +167,11 @@ namespace GeeksCoreLibrary.Core.Models
         public TimeSpan DefaultDataSelectorParsersCacheDuration { get; set; } = new(1, 0, 0);
 
         /// <summary>
+        /// The amount of time to cache objects.
+        /// </summary>
+        public TimeSpan DefaultOrderProcessCacheDuration { get; set; } = new(1, 0, 0);
+
+        /// <summary>
         /// The SMTP settings for sending emails.
         /// </summary>
         public SmtpSettings SmtpSettings { get; set; }

@@ -23,39 +23,39 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </fieldset>")]
         internal string TemplateGroup { get; }
 
-        [DefaultValue(@"<div id='container_{formfieldid}' class='field-container'>
-    [if({formfieldlabel}!)]<label for='{formfieldid}'>{formfieldlabel}</label>[endif]
-    <input type='{formfieldinputtype}' id='{formfieldid}' name='{formfieldid}' placeholder='{formfieldplaceholder}' {required} pattern='{formfieldregexcheck}' value='{value}' />
+        [DefaultValue(@"<div id='container_{fieldId}' class='field-container'>
+    [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
+    <input type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} pattern='{pattern}' value='{value}' />
 </div>")]
         internal string TemplateInputField { get; }
 
-        [DefaultValue(@"<div id='container_{formfieldid}' class='field-container'>
-    [if({formfieldlabel}!)]<label>{formfieldlabel}</label>[endif]
+        [DefaultValue(@"<div id='container_{fieldId}' class='field-container'>
+    [if({label}!)]<label>{label}</label>[endif]
     {options}
 </div>")]
         internal string TemplateRadioButtonField { get; }
         
         [DefaultValue(@"<label>
-    <input type='radio' id='{formfieldid}_{option}' name='{formfieldid}' value='{option}' {required} {checked} />
-    <span class='label'>{option}</span>
+    <input type='radio' id='{fieldId}_{optionValue}' name='{fieldId}' value='{optionValue}' {required} {checked} />
+    <span class='label'>{optionText}</span>
 </label>")]
         internal string TemplateRadioButtonFieldOption { get; }
         
-        [DefaultValue(@"<div id='container_{formfieldid}' class='field-container'>
-    [if({formfieldlabel}!)]<label for='{formfieldid}'>{formfieldlabel}</label>[endif]
-    <select id='{formfieldid}' name='{formfieldid}' {required}>
+        [DefaultValue(@"<div id='container_{fieldId}' class='field-container'>
+    [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
+    <select id='{fieldId}' name='{fieldId}' {required}>
         {options}
     </select>
 </div>")]
         internal string TemplateSelectField { get; }
         
-        [DefaultValue(@"<option value='{formfieldid}_{option}' name='{formfieldid}' {required} {checked} /> <span class='label'>{option}</span></label>")]
+        [DefaultValue(@"<option value='{fieldId}_{option}' name='{fieldId}' {required} {checked} /> <span class='label'>{option}</span></label>")]
         internal string TemplateSelectFieldOption { get; }
         
-        [DefaultValue(@"<div id='container_{formfieldid}' class='field-container'>
+        [DefaultValue(@"<div id='container_{fieldId}' class='field-container'>
     <label>
-        <input type='checkbox' id='{formfieldid}' name='{formfieldid}' {required} {checked} value='1' />
-        <span class='label'>{formfieldlabel}</span>
+        <input type='checkbox' id='{fieldId}' name='{fieldId}' {required} {checked} value='1' />
+        <span class='label'>{label}</span>
     </label>
 </div>")]
         internal string TemplateCheckboxField { get; }
