@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.WebPage.Interfaces;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
@@ -39,6 +38,13 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
             this.objectsService = objectsService;
             this.webPagesService = webPagesService;
 
+            if (context.Request.Path == "/webpage.gcl" || context.Request.Path == "/template.gcl" || context.Request.Path == "/webpage.jcl" || context.Request.Path == "/template.jcl" || context.Request.Path == "/orderProcess.gcl")
+            {
+                // If this happens, it means that another middleware has already found something and we don't need to do this again.
+                await this.next.Invoke(context);
+                return;
+            }
+
             var path = context.Request.Path.ToUriComponent();
             var queryString = context.Request.QueryString;
             if (!context.Items.ContainsKey(Constants.OriginalPathKey))
@@ -71,7 +77,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
         private async Task HandleRewrites(HttpContext context, string path, QueryString queryStringFromUrl)
         {
             // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
-            var regEx = new Regex(@"(\.jpe?g|\.gif|\.png|\.webp|\.svg|\.bmp|\.tif|\.ico|\.woff2?|\.css|\.js|\.[gj]cl|\.webmanifest)(?:\?.*)?$");
+            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex);
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (regEx.IsMatch(currentUrl.ToString()))
             {

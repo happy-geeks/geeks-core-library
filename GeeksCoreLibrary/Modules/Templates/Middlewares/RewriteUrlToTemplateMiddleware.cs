@@ -40,9 +40,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             this.objectsService = objectsService;
             this.databaseConnection = databaseConnection;
 
-            if (context.Request.Path == "/webpage.gcl" || context.Request.Path == "/template.gcl" || context.Request.Path == "/webpage.jcl" || context.Request.Path == "/template.jcl")
+            if (context.Request.Path == "/webpage.gcl" || context.Request.Path == "/template.gcl" || context.Request.Path == "/webpage.jcl" || context.Request.Path == "/template.jcl" || context.Request.Path == "/orderProcess.gcl")
             {
-                // If this happens, it means the RewriteUrlToWebPageMiddleware has already found something and we don't need to do this again.
+                // If this happens, it means that another middleware has already found something and we don't need to do this again.
                 await this.next.Invoke(context);
                 return;
             }

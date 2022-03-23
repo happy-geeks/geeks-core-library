@@ -41,6 +41,7 @@ using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Services;
 using GeeksCoreLibrary.Components.DataSelectorParser.Interfaces;
 using GeeksCoreLibrary.Components.DataSelectorParser.Services;
+using GeeksCoreLibrary.Components.OrderProcess.Middlewares;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -90,6 +91,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             builder.UseMiddleware<RedirectMiddleWare>();
 
             builder.UseWebMarkupMin();
+            builder.UseMiddleware<RewriteUrlToOrderProcessMiddleware>();
             builder.UseMiddleware<RewriteUrlToWebPageMiddleware>();
             builder.UseMiddleware<RewriteUrlToTemplateMiddleware>();
 

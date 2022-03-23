@@ -38,14 +38,14 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
 	                                                    CONCAT_WS('/', parent1.id, parent2.id, parent3.id, parent4.id, parent5.id) AS parents
                                                     FROM {WiserTableNames.WiserItem} AS webPage
                                                     JOIN {WiserTableNames.WiserItemDetail} AS fixedUrl ON fixedUrl.item_id = webPage.id AND fixedUrl.`key` = 'fixed_url' AND fixedUrl.value = ?fixedUrl
-                                                    LEFT JOIN {WiserTableNames.WiserItemDetail} AS titleSeo ON titleSeo.item_id = webPage.id AND titleSeo.`key` = 'title_seo'
+                                                    LEFT JOIN {WiserTableNames.WiserItemDetail} AS titleSeo ON titleSeo.item_id = webPage.id AND titleSeo.`key` = '{CoreConstants.SeoTitlePropertyName}'
 ");
 
             for (var i = 1; i <= 5; i++)
             {
                 queryBuilder.AppendLine($"LEFT JOIN {WiserTableNames.WiserItemLink} AS link{i} ON link{i}.item_id = {(i == 1 ? "webPage.id" : $"parent{i - 1}.id")} And link{i}.type = 1");
                 queryBuilder.AppendLine($"LEFT JOIN {WiserTableNames.WiserItem} AS parent{i} ON parent{i}.id = link{i}.destination_item_id And parent{i}.published_environment >= ?publishedEnvironment");
-                queryBuilder.AppendLine($"LEFT JOIN {WiserTableNames.WiserItemDetail} AS parentTitleSeo{i} ON parentTitleSeo{i}.item_id = parent{i}.id And parentTitleSeo{i}.`key` = 'title_seo'");
+                queryBuilder.AppendLine($"LEFT JOIN {WiserTableNames.WiserItemDetail} AS parentTitleSeo{i} ON parentTitleSeo{i}.item_id = parent{i}.id And parentTitleSeo{i}.`key` = '{CoreConstants.SeoTitlePropertyName}'");
             }
 
             queryBuilder.AppendLine(@"WHERE webPage.published_environment >= ?publishedEnvironment
