@@ -70,5 +70,25 @@
         public const string ActiveStepRequestKey = "activeStep";
 
         #endregion
+
+        #region Replacements
+
+        public const string ProgressReplacement = "{progress}";
+
+        public const string HeaderReplacement = "{header}";
+
+        public const string FooterReplacement = "{footer}";
+
+        public const string StepsReplacement = "{steps}";
+
+        public const string StepReplacement = "{step}";
+
+        public const string GroupsReplacement = "{groups}";
+
+        public const string FieldsReplacement = "{fields}";
+
+        public const string FieldOptionsReplacement = "{options}";
+
+        #endregion
     }
 }

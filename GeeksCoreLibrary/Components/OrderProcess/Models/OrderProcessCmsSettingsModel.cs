@@ -53,6 +53,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{header}</strong> The header of the step, which can be edited by the customer in the Wiser item for the step.</li>
     <li><strong>{groups}</strong> The groups of this step, will be replaced by TemplateGroup for each step.</li>
     <li><strong>{footer}</strong> The footer of the step, which can be edited by the customer in the Wiser item for the step.</li>
+    <li><strong>{activeStep}</strong> The number of the active step.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,

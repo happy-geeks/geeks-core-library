@@ -8,22 +8,24 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 
         [DefaultValue(@"<h1>Bestelproces</h1>
 {progress}
-<div id='steps'>{step}</div>")]
+{step}")]
         internal string Template { get; }
 
-        [DefaultValue(@"<h2>{title}</h2>
-<div id='step_{title:Seo}'>
-    {header}
-    {groups}
-    {footer}
+        [DefaultValue(@"<div id='step{activeStep}' data-active-step='{activeStep}' class='step-container'>
+    <h2>{title}</h2>
+    <div id='step_{title:Seo}' class='step-content'>
+        <div class='step-header'>{header}</div>
+        <div class='step-groups'>{groups}</div>
+        <div class='step-footer'>{footer}</div>
+    </div>
 </div>")]
         internal string TemplateStep { get; }
 
-        [DefaultValue(@"<fieldset>
+        [DefaultValue(@"<fieldset class='group-container'>
     <legend>{title}</legend>
-    {header}
-    {fields}
-    {footer}
+    <div class='group-header'>{header}</div>
+    <div class='group-fields'>{fields}</div>
+    <div class='group-footer'>{footer}</div>
 </fieldset>")]
         internal string TemplateGroup { get; }
 
@@ -69,9 +71,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </div>")]
         internal string TemplateProgress { get; }
 
-        [DefaultValue(@"<div class='progress-step' id='progressStep{number}' data-active-step='{activeStep}'>
-    <span class='number {active}'>{number}</span>
-    <span class='name'>{name}</span>
+        [DefaultValue(@"<div class='progress-step {active}' id='progressStep{number}' data-active-step='{activeStep}' data-id='{id}'>
+    <span class='number'>{number}</span>
+    <span class='name'>{title}</span>
 </div>")]
         internal string TemplateProgressStep { get; }
 

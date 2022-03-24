@@ -180,7 +180,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             };
 
             var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
-            stepHtml = stepHtml.ReplaceCaseInsensitive("{header}", step.Header).ReplaceCaseInsensitive("{footer}", step.Footer);
+            stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, step.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, step.Footer);
 
             // Build the groups HTML.
             var groupsBuilder = new StringBuilder();
@@ -188,12 +188,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             {
                 replaceData = new Dictionary<string, string>
                 {
-                    { "id", @group.Id.ToString() },
-                    { "title", @group.Title }
+                    { "id", group.Id.ToString() },
+                    { "title", group.Title }
                 };
 
                 var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
-                groupHtml = groupHtml.ReplaceCaseInsensitive("{header}", @group.Header).ReplaceCaseInsensitive("{footer}", @group.Footer);
+                groupHtml = groupHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, group.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, group.Footer);
 
                 // Build the fields HTML.
                 var fieldsBuilder = new StringBuilder();
@@ -247,22 +247,44 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             optionsBuilder.AppendLine(optionHtml);
                         }
 
-                        fieldHtml = fieldHtml.Replace("{options}", optionsBuilder.ToString());
+                        fieldHtml = fieldHtml.Replace(Constants.FieldOptionsReplacement, optionsBuilder.ToString());
                     }
 
                     fieldsBuilder.AppendLine(fieldHtml);
                 }
 
-                groupHtml = groupHtml.Replace("{fields}", fieldsBuilder.ToString());
+                groupHtml = groupHtml.Replace(Constants.FieldsReplacement, fieldsBuilder.ToString());
                 groupsBuilder.AppendLine(groupHtml);
             }
 
-            stepHtml = stepHtml.Replace("{groups}", groupsBuilder.ToString());
+            stepHtml = stepHtml.Replace(Constants.GroupsReplacement, groupsBuilder.ToString());
 
-            var html = Settings.Template.Replace("{step}", stepHtml);
+            var html = Settings.Template.ReplaceCaseInsensitive(Constants.StepReplacement, stepHtml);
 
-            // TODO: Progress HTML
-            
+            // Build the HTML for the steps progress.
+            if (html.Contains(Constants.ProgressReplacement, StringComparison.OrdinalIgnoreCase))
+            {
+                var progressBuilder = new StringBuilder();
+                for (var index = 0; index < steps.Count; index++)
+                {
+                    var stepNumber = index + 1;
+                    var progressStep = steps[index];
+                    replaceData = new Dictionary<string, string>
+                    {
+                        { "id", progressStep.Id.ToString() },
+                        { "title", progressStep.Title },
+                        { "number", stepNumber.ToString() },
+                        { "active", ActiveStep == stepNumber ? "active" : "" }
+                    };
+
+                    var progressStepHtml = StringReplacementsService.DoReplacements(Settings.TemplateProgressStep, replaceData);
+                    progressBuilder.AppendLine(progressStepHtml);
+                }
+
+                var progressHtml = Settings.TemplateProgress.ReplaceCaseInsensitive(Constants.StepsReplacement, progressBuilder.ToString());
+                html = html.ReplaceCaseInsensitive(Constants.ProgressReplacement, progressHtml);
+            }
+
             // Do all generic replacement last and then return the final HTML.
             return await TemplatesService.DoReplacesAsync(html);
         }
