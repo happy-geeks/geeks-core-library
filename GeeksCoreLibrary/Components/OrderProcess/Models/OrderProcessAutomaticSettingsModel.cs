@@ -13,13 +13,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 
         [DefaultValue(@"<h2>{title}</h2>
 <div id='step_{title:Seo}'>
+    {header}
     {groups}
+    {footer}
 </div>")]
         internal string TemplateStep { get; }
 
         [DefaultValue(@"<fieldset>
     <legend>{title}</legend>
+    {header}
     {fields}
+    {footer}
 </fieldset>")]
         internal string TemplateGroup { get; }
 

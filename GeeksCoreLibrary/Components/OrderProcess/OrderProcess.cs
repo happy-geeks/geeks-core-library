@@ -11,6 +11,7 @@ using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -163,6 +164,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 };
 
                 var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
+                stepHtml = stepHtml.ReplaceCaseInsensitive("{header}", step.Header).ReplaceCaseInsensitive("{footer}", step.Footer);
 
                 // Build the groups HTML.
                 var groupsBuilder = new StringBuilder();
@@ -175,6 +177,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     };
 
                     var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
+                    groupHtml = groupHtml.ReplaceCaseInsensitive("{header}", group.Header).ReplaceCaseInsensitive("{footer}", group.Footer);
 
                     // Build the fields HTML.
                     var fieldsBuilder = new StringBuilder();
