@@ -64,5 +64,11 @@
         public const string FieldVisibilityProperty = "formfieldvisible";
 
         #endregion
+
+        #region Request values
+
+        public const string ActiveStepRequestKey = "activeStep";
+
+        #endregion
     }
 }

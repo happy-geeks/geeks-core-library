@@ -8,7 +8,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 
         [DefaultValue(@"<h1>Bestelproces</h1>
 {progress}
-<div id='steps'>{steps}</div>")]
+<div id='steps'>{step}</div>")]
         internal string Template { get; }
 
         [DefaultValue(@"<h2>{title}</h2>
@@ -69,8 +69,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </div>")]
         internal string TemplateProgress { get; }
 
-        [DefaultValue(@"<div class='progress-step' id='progressStep{number}'>
-    <span class='number'>{number}</span>
+        [DefaultValue(@"<div class='progress-step' id='progressStep{number}' data-active-step='{activeStep}'>
+    <span class='number {active}'>{number}</span>
     <span class='name'>{name}</span>
 </div>")]
         internal string TemplateProgressStep { get; }

@@ -81,12 +81,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
             }
             
             logger.LogInformation($"Found order process with id '{orderProcess.Id}' and name '{orderProcess.Title}' for current URL '{currentUrl}'.");
-            var queryString = new QueryString();
-            queryString = queryString.Add("id", orderProcess.Id.ToString());
-            queryString = queryString.Add("title", orderProcess.Title);
+            queryStringFromUrl = queryStringFromUrl.Add("id", orderProcess.Id.ToString());
+            queryStringFromUrl = queryStringFromUrl.Add("title", orderProcess.Title);
 
             context.Request.Path = "/orderProcess.gcl";
-            context.Request.QueryString = queryString;
+            context.Request.QueryString = queryStringFromUrl;
         }
     }
 }

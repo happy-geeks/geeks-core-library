@@ -12,6 +12,7 @@ using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -20,6 +21,7 @@ using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.OrderProcess
 {
@@ -30,6 +32,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IOrderProcessesService orderProcessesService;
+
+        private int ActiveStep { get; set; }
 
         #region Enums
 
@@ -111,6 +115,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 return new HtmlString(debugInformation);
             }
 
+            // Get the active step.
+            var activeStepValue = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.ActiveStepRequestKey);
+            Int32.TryParse(activeStepValue, out var parsedActiveStep);
+            ActiveStep = parsedActiveStep > 0 ? parsedActiveStep : 1;
+
             // Check if we need to call a specific method and then do so. Skip everything else, because we don't want to render the entire component then.
             if (!String.IsNullOrWhiteSpace(callMethod))
             {
@@ -153,98 +162,104 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             // A single step can contain groups and a single group can contain fields.
             var steps = await orderProcessesService.GetAllStepsGroupsAndFields(Settings.OrderProcessId);
 
-            // Build the steps HTML.
-            var stepsBuilder = new StringBuilder();
-            foreach (var step in steps)
+            // If we have an invalid active step, return a 404.
+            if (ActiveStep <= 0 || ActiveStep > steps.Count)
             {
-                var replaceData = new Dictionary<string, string>
+                HttpContextHelpers.Return404(httpContextAccessor.HttpContext);
+                return "";
+            }
+
+            // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
+            var step = steps[ActiveStep - 1];
+            
+            // Build the steps HTML.
+            var replaceData = new Dictionary<string, string>
+            {
+                { "id", step.Id.ToString() },
+                { "title", step.Title }
+            };
+
+            var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
+            stepHtml = stepHtml.ReplaceCaseInsensitive("{header}", step.Header).ReplaceCaseInsensitive("{footer}", step.Footer);
+
+            // Build the groups HTML.
+            var groupsBuilder = new StringBuilder();
+            foreach (var group in step.Groups)
+            {
+                replaceData = new Dictionary<string, string>
                 {
-                    { "id", step.Id.ToString() },
-                    { "title", step.Title }
+                    { "id", @group.Id.ToString() },
+                    { "title", @group.Title }
                 };
 
-                var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
-                stepHtml = stepHtml.ReplaceCaseInsensitive("{header}", step.Header).ReplaceCaseInsensitive("{footer}", step.Footer);
+                var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
+                groupHtml = groupHtml.ReplaceCaseInsensitive("{header}", @group.Header).ReplaceCaseInsensitive("{footer}", @group.Footer);
 
-                // Build the groups HTML.
-                var groupsBuilder = new StringBuilder();
-                foreach (var group in step.Groups)
+                // Build the fields HTML.
+                var fieldsBuilder = new StringBuilder();
+                foreach (var field in @group.Fields)
                 {
                     replaceData = new Dictionary<string, string>
                     {
-                        { "id", group.Id.ToString() },
-                        { "title", group.Title }
+                        { "id", field.Id.ToString() },
+                        { "title", field.Title },
+                        { "placeholder", field.Placeholder },
+                        { "fieldId", field.FieldId },
+                        { "inputType", field.InputFieldType },
+                        { "label", field.Label },
+                        { "pattern", field.Pattern },
+                        { "required", field.Mandatory ? "required" : "" }
                     };
 
-                    var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
-                    groupHtml = groupHtml.ReplaceCaseInsensitive("{header}", group.Header).ReplaceCaseInsensitive("{footer}", group.Footer);
-
-                    // Build the fields HTML.
-                    var fieldsBuilder = new StringBuilder();
-                    foreach (var field in group.Fields)
+                    var fieldHtml = field.Type switch
                     {
-                        replaceData = new Dictionary<string, string>
-                        {
-                            { "id", field.Id.ToString() },
-                            { "title", field.Title },
-                            { "placeholder", field.Placeholder },
-                            { "fieldId", field.FieldId },
-                            { "inputType", field.InputFieldType },
-                            { "label", field.Label },
-                            { "pattern", field.Pattern },
-                            { "required", field.Mandatory ? "required" : "" }
-                        };
+                        OrderProcessFieldTypes.Input => Settings.TemplateInputField,
+                        OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonField,
+                        OrderProcessFieldTypes.Select => Settings.TemplateSelectField,
+                        OrderProcessFieldTypes.Checkbox => Settings.TemplateCheckboxField,
+                        _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
+                    };
 
-                        var fieldHtml = field.Type switch
-                        {
-                            OrderProcessFieldTypes.Input => Settings.TemplateInputField,
-                            OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonField,
-                            OrderProcessFieldTypes.Select => Settings.TemplateSelectField,
-                            OrderProcessFieldTypes.Checkbox => Settings.TemplateCheckboxField,
-                            _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
-                        };
+                    fieldHtml = StringReplacementsService.DoReplacements(fieldHtml, replaceData);
 
-                        fieldHtml = StringReplacementsService.DoReplacements(fieldHtml, replaceData);
-
-                        // Build the field options HTML, if applicable.
-                        if (field.Values != null && field.Values.Any() && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
+                    // Build the field options HTML, if applicable.
+                    if (field.Values != null && field.Values.Any() && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
+                    {
+                        var optionsBuilder = new StringBuilder();
+                        foreach (var option in field.Values)
                         {
-                            var optionsBuilder = new StringBuilder();
-                            foreach (var option in field.Values)
+                            var optionHtml = field.Type switch
                             {
-                                var optionHtml = field.Type switch
-                                {
-                                    OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonFieldOption,
-                                    OrderProcessFieldTypes.Select => Settings.TemplateSelectFieldOption,
-                                    _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
-                                };
-                                
-                                replaceData = new Dictionary<string, string>
-                                {
-                                    { "fieldId", field.FieldId },
-                                    { "required", field.Mandatory ? "required" : "" },
-                                    { "optionValue", option.Key },
-                                    { "optionText", String.IsNullOrEmpty(option.Value) ? option.Key : option.Value },
-                                };
+                                OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonFieldOption,
+                                OrderProcessFieldTypes.Select => Settings.TemplateSelectFieldOption,
+                                _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
+                            };
 
-                                optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
-                                optionsBuilder.AppendLine(optionHtml);
-                            }
-                            
-                            fieldHtml = fieldHtml.Replace("{options}", optionsBuilder.ToString());
+                            replaceData = new Dictionary<string, string>
+                            {
+                                { "fieldId", field.FieldId },
+                                { "required", field.Mandatory ? "required" : "" },
+                                { "optionValue", option.Key },
+                                { "optionText", String.IsNullOrEmpty(option.Value) ? option.Key : option.Value },
+                            };
+
+                            optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
+                            optionsBuilder.AppendLine(optionHtml);
                         }
-                        fieldsBuilder.AppendLine(fieldHtml);
+
+                        fieldHtml = fieldHtml.Replace("{options}", optionsBuilder.ToString());
                     }
 
-                    groupHtml = groupHtml.Replace("{fields}", fieldsBuilder.ToString());
-                    groupsBuilder.AppendLine(groupHtml);
+                    fieldsBuilder.AppendLine(fieldHtml);
                 }
 
-                stepHtml = stepHtml.Replace("{groups}", groupsBuilder.ToString());
-                stepsBuilder.AppendLine(stepHtml);
+                groupHtml = groupHtml.Replace("{fields}", fieldsBuilder.ToString());
+                groupsBuilder.AppendLine(groupHtml);
             }
 
-            var html = Settings.Template.Replace("{steps}", stepsBuilder.ToString());
+            stepHtml = stepHtml.Replace("{groups}", groupsBuilder.ToString());
+
+            var html = Settings.Template.Replace("{step}", stepHtml);
 
             // TODO: Progress HTML
             
