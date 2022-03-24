@@ -33,6 +33,10 @@
 
         #region Fields
 
+        public const string StepHeaderProperty = "orderprocessstepheader";
+
+        public const string StepFooterProperty = "orderprocessstepfooter";
+
         public const string OrderProcessUrlProperty = "orderprocessurl";
 
         public const string GroupTypeProperty = "orderprocessgrouptype";
@@ -51,7 +55,7 @@
 
         public const string FieldInputTypeProperty = "formfieldinputtype";
 
-        public const string FieldValuesProperty = "formfieldvalues";
+        public const string FieldValuesGroupName = "formfieldvalues";
 
         public const string FieldMandatoryProperty = "formfieldmandatory";
 

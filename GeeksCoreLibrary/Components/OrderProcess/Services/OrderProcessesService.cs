@@ -7,10 +7,10 @@ using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Services
@@ -77,6 +77,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                        # Step
 	                        step.id AS stepId,
 	                        step.title AS stepTitle,
+	                        CONCAT_WS('', stepHeader.value, stepHeader.long_value) AS stepHeader,
+	                        CONCAT_WS('', stepFooter.value, stepFooter.long_value) AS stepFooter,
 	                        
 	                        # Group
 	                        fieldGroup.id AS groupId,
@@ -93,15 +95,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                        fieldPlaceholder.value AS fieldPlaceholder,
 	                        fieldType.value AS fieldType,
 	                        fieldInputType.value AS fieldInputType,
-	                        fieldValues.value AS fieldValues,
 	                        fieldMandatory.value AS fieldMandatory,
 	                        fieldPattern.value AS fieldPattern,
-	                        fieldVisible.value AS fieldVisible
+	                        fieldVisible.value AS fieldVisible,
+
+                            # Field values
+	                        IF(NULLIF(fieldValues.`key`, '') IS NULL AND NULLIF(fieldValues.value, '') IS NULL, NULL, JSON_OBJECTAGG(IFNULL(fieldValues.`key`, ''), IFNULL(fieldValues.value, ''))) AS fieldValues
                         FROM {WiserTableNames.WiserItem} AS orderProcess
 
                         # Step
                         JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
                         JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepHeader ON stepHeader.item_id = step.id AND stepHeader.`key` = '{Constants.StepHeaderProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepFooter ON stepFooter.item_id = step.id AND stepFooter.`key` = '{Constants.StepFooterProperty}'
 
                         # Group
                         JOIN {WiserTableNames.WiserItemLink} AS linkToGroup ON linkToGroup.destination_item_id = step.id AND linkToGroup.type = {Constants.GroupToStepLinkType}
@@ -118,14 +124,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldPlaceholder ON fieldPlaceholder.item_id = field.id AND fieldPlaceholder.`key` = '{Constants.FieldPlaceholderProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldType ON fieldType.item_id = field.id AND fieldType.`key` = '{Constants.FieldTypeProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldInputType ON fieldInputType.item_id = field.id AND fieldInputType.`key` = '{Constants.FieldInputTypeProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldValues ON fieldValues.item_id = field.id AND fieldValues.`key` = '{Constants.FieldValuesProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldMandatory ON fieldMandatory.item_id = field.id AND fieldMandatory.`key` = '{Constants.FieldMandatoryProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldPattern ON fieldPattern.item_id = field.id AND fieldPattern.`key` = '{Constants.FieldValidationPatternProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldVisible ON fieldVisible.item_id = field.id AND fieldVisible.`key` = '{Constants.FieldVisibilityProperty}'
+                        
+                        # Field values
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldValues ON fieldValues.item_id = field.id AND fieldValues.groupname = '{Constants.FieldValuesGroupName}'
 
                         WHERE orderProcess.id = ?id
                         AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
 
+                        GROUP BY step.id, fieldGroup.id, field.id
                         ORDER BY linkToStep.ordering ASC, linkToGroup.ordering ASC, linkToField.ordering ASC";
 
             databaseConnection.AddParameter("id", orderProcessId);
@@ -133,6 +142,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             
             foreach (DataRow dataRow in dataTable.Rows)
             {
+                // Get the step if it already exists in the results, or create a new one if it doesn't.
                 var stepId = dataRow.Field<ulong>("stepId");
                 var step = results.SingleOrDefault(s => s.Id == stepId);
                 if (step == null)
@@ -141,12 +151,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     {
                         Id = stepId,
                         Title = dataRow.Field<string>("stepTitle"),
+                        Header = dataRow.Field<string>("stepHeader"),
+                        Footer = dataRow.Field<string>("stepFooter"),
                         Groups = new List<OrderProcessGroupModel>()
                     };
 
                     results.Add(step);
                 }
 
+                // Get the group if it already exists in the current step, or create a new one if it doesn't.
                 var groupId = dataRow.Field<ulong>("groupId");
                 var group = step.Groups.SingleOrDefault(g => g.Id == groupId);
                 if (group == null)
@@ -167,11 +180,35 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 var fieldId = dataRow.Field<ulong?>("fieldId");
                 if (fieldId is null or 0)
                 {
+                    // If we have no (more) fields, we stop here.
                     continue;
                 }
 
-                var fieldValues = dataRow.Field<string>("fieldValues") ?? "";
+                // Get the field values, for fields that have multiple choises.
+                var fieldValues = dataRow.Field<string>("fieldValues");
+
+                // The query will generate a JSON object with all keys and values, we can deserialize that to a dictionary.
+                var fieldValuesDictionary = String.IsNullOrWhiteSpace(fieldValues) ? new Dictionary<string, string>() : JsonConvert.DeserializeObject<Dictionary<string, string>>(fieldValues) ?? new Dictionary<string, string>();
+
+                // The user can leave either the key or the value empty, so make sure we always have a key and value, even if they're the same.
+                fieldValuesDictionary = fieldValuesDictionary.ToDictionary(k => String.IsNullOrWhiteSpace(k.Key) ? k.Value : k.Key, k => String.IsNullOrWhiteSpace(k.Value) ? k.Key : k.Value);
+
+                // Order the dictionary.
+                fieldValuesDictionary = fieldValuesDictionary.OrderBy(k =>
+                {
+                    var split = k.Value.Split('|');
+                    if (split.Length < 2 || !Int32.TryParse(split[1], out var ordering))
+                    {
+                        return k.Value;
+                    }
+                    
+                    return ordering.ToString().PadLeft(11, '0');
+                }).ToDictionary(k => k.Key, k => k.Value);
+
+                // Strip the ordering numbers from the values.
+                fieldValuesDictionary = fieldValuesDictionary.ToDictionary(k => k.Key.Contains("|") ? k.Key[..k.Key.LastIndexOf("|", StringComparison.Ordinal)] : k.Key, k => k.Value.Contains("|") ? k.Value[..k.Value.LastIndexOf("|", StringComparison.Ordinal)] : k.Value);
                 
+                // Create a new field model and add it to the current group.
                 var field = new OrderProcessFieldModel
                 {
                     Id = fieldId.Value,
@@ -180,7 +217,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     Label = dataRow.Field<string>("fieldLabel"),
                     Placeholder = dataRow.Field<string>("fieldPlaceholder"),
                     Type = (OrderProcessFieldTypes)Enum.Parse(typeof(OrderProcessFieldTypes), dataRow.Field<string>("fieldType") ?? "Input", true),
-                    Values = fieldValues.ToDictionary(Environment.NewLine, "|"),
+                    Values = fieldValuesDictionary,
                     Mandatory = dataRow.Field<string>("fieldMandatory") == "1",
                     Pattern = dataRow.Field<string>("fieldPattern"),
                     Visible = (OrderProcessFieldVisibilityTypes)Enum.Parse(typeof(OrderProcessFieldVisibilityTypes), dataRow.Field<string>("fieldVisible") ?? "Always", true)

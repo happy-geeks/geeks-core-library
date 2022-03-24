@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.WebPage.Interfaces;
 using GeeksCoreLibrary.Core.Models;
-using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using LazyCache;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -14,14 +13,12 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
     {
         private readonly IAppCache cache;
         private readonly GclSettings gclSettings;
-        private readonly IDatabaseConnection databaseConnection;
         private readonly IWebPagesService webPagesService;
 
-        public CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IWebPagesService webPagesService)
+        public CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSettings, IWebPagesService webPagesService)
         {
             this.cache = cache;
             this.gclSettings = gclSettings.Value;
-            this.databaseConnection = databaseConnection;
             this.webPagesService = webPagesService;
         }
 

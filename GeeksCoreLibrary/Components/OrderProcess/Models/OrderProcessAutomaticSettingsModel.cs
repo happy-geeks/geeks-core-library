@@ -49,7 +49,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </div>")]
         internal string TemplateSelectField { get; }
         
-        [DefaultValue(@"<option value='{fieldId}_{option}' name='{fieldId}' {required} {checked} /> <span class='label'>{option}</span></label>")]
+        [DefaultValue(@"<option id='{fieldId}_{optionValue}' value='{optionValue}' {selected} /> <span class='label'>{optionText}</span></label>")]
         internal string TemplateSelectFieldOption { get; }
         
         [DefaultValue(@"<div id='container_{fieldId}' class='field-container'>
