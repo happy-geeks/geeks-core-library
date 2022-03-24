@@ -11,14 +11,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 {step}")]
         internal string Template { get; }
 
-        [DefaultValue(@"<div id='step{activeStep}' data-active-step='{activeStep}' class='step-container'>
+        [DefaultValue(@"<form method='POST' id='step{activeStep}' data-active-step='{activeStep}' class='step-container'>
     <h2>{title}</h2>
     <div id='step_{title:Seo}' class='step-content'>
         <div class='step-header'>{header}</div>
         <div class='step-groups'>{groups}</div>
         <div class='step-footer'>{footer}</div>
     </div>
-</div>")]
+    <button type='submit' id='confirmButton'>{confirmButtonText}</button>
+</form>")]
         internal string TemplateStep { get; }
 
         [DefaultValue(@"<fieldset class='group-container'>
@@ -31,7 +32,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 
         [DefaultValue(@"<div id='container_{fieldId}' class='field-container'>
     [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
-    <input type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} pattern='{pattern}' value='{value}' />
+    <input type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern} value='{value}' />
 </div>")]
         internal string TemplateInputField { get; }
 

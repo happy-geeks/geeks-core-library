@@ -176,7 +176,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             var replaceData = new Dictionary<string, string>
             {
                 { "id", step.Id.ToString() },
-                { "title", step.Title }
+                { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title") },
+                { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText") }
             };
 
             var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
@@ -189,7 +190,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 replaceData = new Dictionary<string, string>
                 {
                     { "id", group.Id.ToString() },
-                    { "title", group.Title }
+                    { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title") }
                 };
 
                 var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
@@ -202,12 +203,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     replaceData = new Dictionary<string, string>
                     {
                         { "id", field.Id.ToString() },
-                        { "title", field.Title },
-                        { "placeholder", field.Placeholder },
+                        { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title") },
+                        { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder") }, //field.Placeholder
                         { "fieldId", field.FieldId },
                         { "inputType", field.InputFieldType },
-                        { "label", field.Label },
-                        { "pattern", field.Pattern },
+                        { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label") }, // field.Label
+                        { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
                         { "required", field.Mandatory ? "required" : "" }
                     };
 
@@ -240,7 +241,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                 { "fieldId", field.FieldId },
                                 { "required", field.Mandatory ? "required" : "" },
                                 { "optionValue", option.Key },
-                                { "optionText", String.IsNullOrEmpty(option.Value) ? option.Key : option.Value },
+                                { "optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{option.Value}_text") },
                             };
 
                             optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
@@ -272,7 +273,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     replaceData = new Dictionary<string, string>
                     {
                         { "id", progressStep.Id.ToString() },
-                        { "title", progressStep.Title },
+                        { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title") },
                         { "number", stepNumber.ToString() },
                         { "active", ActiveStep == stepNumber ? "active" : "" }
                     };

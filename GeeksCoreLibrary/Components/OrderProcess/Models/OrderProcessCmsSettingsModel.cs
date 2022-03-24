@@ -54,6 +54,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{groups}</strong> The groups of this step, will be replaced by TemplateGroup for each step.</li>
     <li><strong>{footer}</strong> The footer of the step, which can be edited by the customer in the Wiser item for the step.</li>
     <li><strong>{activeStep}</strong> The number of the active step.</li>
+    <li><strong>{confirmButtonText}</strong> The text for the button to go to the next step. This will be retrieved from the translations module from Wiser.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,
@@ -100,7 +101,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{inputType}</strong> The input type of this field, this value should be used in the 'type' attribute of the input.</li>
     <li><strong>{placeholder}</strong> The placeholder for the field, should be used in the 'placeholder' attribute of the input.</li>
     <li><strong>{required}</strong> This will be replaced with the 'required' attribute if the field is required, or with an empty string if it isn't.</li>
-    <li><strong>{pattern}</strong> The regex validation pattern for the field.</li>
+    <li><strong>{pattern}</strong> The regex validation pattern for the field. This will be replaced with the entire attribute (pattern='the pattern') if there is a pattern, or with an empty string if there isn't.</li>
     <li><strong>{value}</strong> The current value of the field, retrieved from the basket or logged in user, or POST variables.</li>
 </ul>",
             DeveloperRemarks = "",
