@@ -5,6 +5,8 @@
     /// </summary>
     public class Constants
     {
+        internal const string ComponentIdFormKey = "__orderProcess";
+
         #region Entity types
 
         public const string OrderProcessEntityType = "WiserOrderProcess";

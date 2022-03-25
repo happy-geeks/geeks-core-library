@@ -11,8 +11,10 @@ using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
+using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -32,6 +34,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IOrderProcessesService orderProcessesService;
+        private readonly IShoppingBasketsService shoppingBasketsService;
+        private readonly IWiserItemsService wiserItemsService;
 
         private int ActiveStep { get; set; }
 
@@ -47,12 +51,24 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
         #region Constructor
 
-        public OrderProcess(IOptions<GclSettings> gclSettings, ILogger<OrderProcess> logger, IStringReplacementsService stringReplacementsService, ILanguagesService languagesService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor, IOrderProcessesService orderProcessesService)
+        public OrderProcess(IOptions<GclSettings> gclSettings,
+            ILogger<OrderProcess> logger,
+            IStringReplacementsService stringReplacementsService,
+            ILanguagesService languagesService,
+            IDatabaseConnection databaseConnection,
+            ITemplatesService templatesService,
+            IAccountsService accountsService,
+            IHttpContextAccessor httpContextAccessor,
+            IOrderProcessesService orderProcessesService,
+            IShoppingBasketsService shoppingBasketsService,
+            IWiserItemsService wiserItemsService)
         {
             this.gclSettings = gclSettings.Value;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
             this.orderProcessesService = orderProcessesService;
+            this.shoppingBasketsService = shoppingBasketsService;
+            this.wiserItemsService = wiserItemsService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -70,7 +86,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <inheritdoc />
         public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
         {
-            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<OrderProcessCmsSettingsModel>(settingsJson);
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<OrderProcessCmsSettingsModel>(settingsJson) ?? new OrderProcessCmsSettingsModel();
             if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
@@ -86,7 +102,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         }
 
         #endregion
-        
         
         #region Rendering
 
@@ -169,6 +184,20 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 return "";
             }
 
+            // Gather some data.
+            var httpContext = HttpContext;
+            var response = httpContext?.Response;
+            var request = httpContext?.Request;
+            var isPostBack = request is { HasFormContentType: true } && request.Form.Count > 0 && request.Form[Constants.ComponentIdFormKey].ToString() == ComponentId.ToString();
+
+            // Get the logged in user, if any.
+            var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
+            var userData = loggedInUser.UserId == 0 ? new WiserItemModel() : await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
+            
+            // Get the active basket, if any.
+            var shoppingBasketSettings = await shoppingBasketsService.GetSettingsAsync();
+            var (shoppingBasket, shoppingBasketLines, _, _) = await shoppingBasketsService.LoadAsync(shoppingBasketSettings);
+
             // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
             var step = steps[ActiveStep - 1];
             
@@ -176,7 +205,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             var replaceData = new Dictionary<string, string>
             {
                 { "id", step.Id.ToString() },
-                { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title", defaultValue: step.Title) },
+                { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title", defaultValue: step.Title ?? "") },
                 { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText", defaultValue: step.ConfirmButtonText) }
             };
 
@@ -187,29 +216,79 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             var groupsBuilder = new StringBuilder();
             foreach (var group in step.Groups)
             {
+                // First get fields that we can show in this group, based on the visibility settings of each field.
+                var fieldsToShow = group.Fields.Where(field =>
+                {
+                    // Check if we need to skip this field.
+                    return field.Visibility switch
+                    {
+                        OrderProcessFieldVisibilityTypes.Always => true,
+                        OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
+                        OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
+                        _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString())
+                    };
+                }).ToList();
+
+                // Skip this group if it has no fields that we can show.
+                if (!fieldsToShow.Any())
+                {
+                    continue;
+                }
+
+                // Create dictionary for replacements.
                 replaceData = new Dictionary<string, string>
                 {
                     { "id", group.Id.ToString() },
-                    { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title) }
+                    { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") }
                 };
 
                 var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
                 groupHtml = groupHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, group.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, group.Footer);
-
+                
                 // Build the fields HTML.
                 var fieldsBuilder = new StringBuilder();
-                foreach (var field in @group.Fields)
+                foreach (var field in fieldsToShow)
                 {
+                    var fieldValue = "";
+                    if (isPostBack)
+                    {
+                        // Get the posted field value.
+                        fieldValue = request.Form[field.FieldId];
+                        var valueForDatabase = fieldValue;
+
+                        if (field.InputFieldType == OrderProcessInputTypes.Password && !String.IsNullOrEmpty(valueForDatabase))
+                        {
+                            valueForDatabase = fieldValue.ToSha512ForPasswords();
+                            fieldValue = "";
+                        }
+
+                        // Set the posted value in the basket. We do that here so that we can be sure that people can only save values that are configured in Wiser.
+                        // This way they can't just add a random field to the HTML to save that value in our database.
+                        // TODO: Some values should be saved in the account instead of basket.
+                        shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
+                    }
+                    else if (field.InputFieldType != OrderProcessInputTypes.Password)
+                    {
+                        fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
+                        if (String.IsNullOrWhiteSpace(fieldValue))
+                        {
+                            fieldValue = userData.GetDetailValue(field.FieldId);
+                        }
+                    }
+
+                    // Create dictionary for replacements.
                     replaceData = new Dictionary<string, string>
                     {
                         { "id", field.Id.ToString() },
-                        { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title) },
-                        { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder) },
+                        { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title ?? "") },
+                        { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder ?? "") },
                         { "fieldId", field.FieldId },
-                        { "inputType", field.InputFieldType },
-                        { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label) },
+                        { "inputType", EnumHelpers.ToEnumString(field.InputFieldType) },
+                        { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label ?? "") },
                         { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
-                        { "required", field.Mandatory ? "required" : "" }
+                        { "required", field.Mandatory ? "required" : "" },
+                        { "value", fieldValue },
+                        { "checked", String.IsNullOrWhiteSpace(fieldValue) ? "" : "checked" }
                     };
 
                     var fieldHtml = field.Type switch
@@ -235,13 +314,16 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                 OrderProcessFieldTypes.Select => Settings.TemplateSelectFieldOption,
                                 _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
                             };
-
+                            
+                            // Create dictionary for replacements.
                             replaceData = new Dictionary<string, string>
                             {
                                 { "fieldId", field.FieldId },
                                 { "required", field.Mandatory ? "required" : "" },
                                 { "optionValue", option.Key },
-                                { "optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{option.Value}_text", defaultValue: option.Value) },
+                                { "optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{option.Value}_text", defaultValue: option.Value ?? "") },
+                                { "selected", option.Key == fieldValue ? "selected" : "" },
+                                { "checked", option.Key == fieldValue ? "checked" : "" }
                             };
 
                             optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
@@ -270,10 +352,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 {
                     var stepNumber = index + 1;
                     var progressStep = steps[index];
+
+                    // Create dictionary for replacements.
                     replaceData = new Dictionary<string, string>
                     {
                         { "id", progressStep.Id.ToString() },
-                        { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title", defaultValue: progressStep.Title) },
+                        { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title", defaultValue: progressStep.Title ?? "") },
                         { "number", stepNumber.ToString() },
                         { "active", ActiveStep == stepNumber ? "active" : "" }
                     };
@@ -286,8 +370,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 html = html.ReplaceCaseInsensitive(Constants.ProgressReplacement, progressHtml);
             }
 
+            // Save values to database.
+            if (isPostBack)
+            {
+                await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+            }
+
             // Do all generic replacement last and then return the final HTML.
-            return await TemplatesService.DoReplacesAsync(html);
+            return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(html), Constants.ComponentIdFormKey);
         }
 
         #endregion

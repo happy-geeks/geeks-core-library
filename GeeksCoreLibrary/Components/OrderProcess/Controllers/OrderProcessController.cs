@@ -96,7 +96,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             (viewComponentHelper as IViewContextAware)?.Contextualize(viewContext);
 
             // Dynamically invoke the correct ViewComponent.
-            var dynamicContent = new DynamicContent();
             var orderProcessSettings = new OrderProcessCmsSettingsModel
             {
                 HandleRequest = false,
@@ -105,8 +104,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
                 UserNeedsToBeLoggedIn = false,
                 OrderProcessId = orderProcessId
             };
-
-            dynamicContent.SettingsJson = JsonConvert.SerializeObject(orderProcessSettings);
+            
+            var dynamicContent = new DynamicContent
+            {
+                Id = 1,
+                SettingsJson = JsonConvert.SerializeObject(orderProcessSettings)
+            };
             var component = await viewComponentHelper.InvokeAsync("OrderProcess", new { dynamicContent, callMethod = "", forcedComponentMode = (int?)WebPage.WebPage.ComponentModes.Render });
             await using (var stringWriter = new StringWriter())
             {
