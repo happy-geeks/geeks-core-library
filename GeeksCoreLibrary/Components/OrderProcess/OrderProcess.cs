@@ -176,8 +176,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             var replaceData = new Dictionary<string, string>
             {
                 { "id", step.Id.ToString() },
-                { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title") },
-                { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText") }
+                { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title", defaultValue: step.Title) },
+                { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText", defaultValue: step.ConfirmButtonText) }
             };
 
             var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
@@ -190,7 +190,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 replaceData = new Dictionary<string, string>
                 {
                     { "id", group.Id.ToString() },
-                    { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title") }
+                    { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title) }
                 };
 
                 var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
@@ -203,11 +203,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     replaceData = new Dictionary<string, string>
                     {
                         { "id", field.Id.ToString() },
-                        { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title") },
-                        { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder") }, //field.Placeholder
+                        { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title) },
+                        { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder) },
                         { "fieldId", field.FieldId },
                         { "inputType", field.InputFieldType },
-                        { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label") }, // field.Label
+                        { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label) },
                         { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
                         { "required", field.Mandatory ? "required" : "" }
                     };
@@ -241,7 +241,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                 { "fieldId", field.FieldId },
                                 { "required", field.Mandatory ? "required" : "" },
                                 { "optionValue", option.Key },
-                                { "optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{option.Value}_text") },
+                                { "optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{option.Value}_text", defaultValue: option.Value) },
                             };
 
                             optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
@@ -273,7 +273,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     replaceData = new Dictionary<string, string>
                     {
                         { "id", progressStep.Id.ToString() },
-                        { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title") },
+                        { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title", defaultValue: progressStep.Title) },
                         { "number", stepNumber.ToString() },
                         { "active", ActiveStep == stepNumber ? "active" : "" }
                     };

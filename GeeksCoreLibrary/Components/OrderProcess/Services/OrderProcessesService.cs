@@ -79,6 +79,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                        step.title AS stepTitle,
 	                        CONCAT_WS('', stepHeader.value, stepHeader.long_value) AS stepHeader,
 	                        CONCAT_WS('', stepFooter.value, stepFooter.long_value) AS stepFooter,
+                            stepConfirmButtonText.value AS stepConfirmButtonText,
 	                        
 	                        # Group
 	                        fieldGroup.id AS groupId,
@@ -108,6 +109,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepHeader ON stepHeader.item_id = step.id AND stepHeader.`key` = '{Constants.StepHeaderProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepFooter ON stepFooter.item_id = step.id AND stepFooter.`key` = '{Constants.StepFooterProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepConfirmButtonText ON stepConfirmButtonText.item_id = step.id AND stepConfirmButtonText.`key` = '{Constants.StepConfirmButtonTextProperty}'
 
                         # Group
                         JOIN {WiserTableNames.WiserItemLink} AS linkToGroup ON linkToGroup.destination_item_id = step.id AND linkToGroup.type = {Constants.GroupToStepLinkType}
@@ -153,6 +155,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         Title = dataRow.Field<string>("stepTitle"),
                         Header = dataRow.Field<string>("stepHeader"),
                         Footer = dataRow.Field<string>("stepFooter"),
+                        ConfirmButtonText = dataRow.Field<string>("stepConfirmButtonText"),
                         Groups = new List<OrderProcessGroupModel>()
                     };
 
@@ -220,7 +223,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     Values = fieldValuesDictionary,
                     Mandatory = dataRow.Field<string>("fieldMandatory") == "1",
                     Pattern = dataRow.Field<string>("fieldPattern"),
-                    Visible = (OrderProcessFieldVisibilityTypes)Enum.Parse(typeof(OrderProcessFieldVisibilityTypes), dataRow.Field<string>("fieldVisible") ?? "Always", true)
+                    Visibility = (OrderProcessFieldVisibilityTypes)Enum.Parse(typeof(OrderProcessFieldVisibilityTypes), dataRow.Field<string>("fieldVisible") ?? "Always", true)
                 };
 
                 group.Fields.Add(field);

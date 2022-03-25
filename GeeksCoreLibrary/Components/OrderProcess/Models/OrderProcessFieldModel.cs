@@ -51,6 +51,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// <summary>
         /// Gets or sets when the field should be visible.
         /// </summary>
-        public OrderProcessFieldVisibilityTypes Visible { get; set; }
+        public OrderProcessFieldVisibilityTypes Visibility { get; set; }
     }
 }

@@ -37,6 +37,8 @@
 
         public const string StepFooterProperty = "orderprocessstepfooter";
 
+        public const string StepConfirmButtonTextProperty = "orderprocessstepconfirmbuttontext";
+
         public const string OrderProcessUrlProperty = "orderprocessurl";
 
         public const string GroupTypeProperty = "orderprocessgrouptype";

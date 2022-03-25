@@ -16,6 +16,7 @@ using GeeksCoreLibrary.Modules.Languages.Models;
 
 namespace GeeksCoreLibrary.Modules.Languages.Services
 {
+    /// <inheritdoc cref="ILanguagesService" />
     public class LanguagesService : ILanguagesService, IScopedService
     {
         private readonly ILogger<LanguagesService> logger;
@@ -25,16 +26,10 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         private readonly GclSettings gclSettings;
 
         public string CurrentLanguageCode { get; set; }
-        public string Wiser2TranslationsGroupName { get; set; } = "translations";
 
         /// <summary>
         /// Creates a new instance of <see cref="LanguagesService"/>.
         /// </summary>
-        /// <param name="logger"></param>
-        /// <param name="databaseConnection"></param>
-        /// <param name="objectsService"></param>
-        /// <param name="gclSettings"></param>
-        /// <param name="httpContextAccessor"></param>
         public LanguagesService(ILogger<LanguagesService> logger, IDatabaseConnection databaseConnection, IObjectsService objectsService, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor)
         {
             this.logger = logger;
@@ -43,14 +38,9 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             this.httpContextAccessor = httpContextAccessor;
             this.gclSettings = gclSettings.Value;
         }
-
-        /// <summary>
-        /// Returns the translated word if exists in cache, if not it will return the original word
-        /// </summary>
-        /// <param name="original"></param>
-        /// <param name="languageCode"></param>
-        /// <returns></returns>
-        public async Task<string> GetTranslationAsync(string original, string languageCode = null)
+        
+        /// <inheritdoc />
+        public async Task<string> GetTranslationAsync(string original, string languageCode = null, string defaultValue = null)
         {
             try
             {
@@ -58,7 +48,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                 
                 databaseConnection.AddParameter("languageCode", languageCode);
                 databaseConnection.AddParameter("original", original);
-                databaseConnection.AddParameter("groupName", Wiser2TranslationsGroupName);
+                databaseConnection.AddParameter("groupName", Constants.TranslationsGroupName);
                 databaseConnection.AddParameter("translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));
                 var dataTable = await databaseConnection.GetAsync(
                     @$"SELECT
@@ -74,7 +64,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
 
                 if (String.IsNullOrEmpty(result))
                 {
-                    result = original;
+                    result = defaultValue ?? original;
                 }
 
                 return result;
