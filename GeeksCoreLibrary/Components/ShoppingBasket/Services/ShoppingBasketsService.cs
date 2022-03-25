@@ -440,7 +440,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
             var newBasket = false;
             var user = await accountsService.GetUserDataFromCookieAsync();
@@ -453,40 +453,51 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 newBasket = true;
             }
 
-            shoppingBasket = await wiserItemsService.SaveAsync(shoppingBasket, alwaysSaveValues: true, saveHistory: false);
-
-            var lineIds = new List<ulong>();
-
-            foreach (var line in basketLines)
+            if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
+            try
             {
-                if (String.IsNullOrWhiteSpace(line.EntityType) || line.Id == 0UL)
+                shoppingBasket = await wiserItemsService.SaveAsync(shoppingBasket, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false);
+
+                var lineIds = new List<ulong>();
+
+                foreach (var line in basketLines)
                 {
-                    line.EntityType = settings.BasketLineEntityName;
-                    line.AddedBy = "GCL";
-                }
-
-                var lineSaveResult = await wiserItemsService.SaveAsync(line, shoppingBasket.Id, 5002, alwaysSaveValues: true, saveHistory: false);
-                line.Id = lineSaveResult.Id;
-
-                lineIds.Add(line.Id);
-            }
-
-            await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, 5002, lineIds, entityType: settings.BasketLineEntityName);
-
-            if (newBasket)
-            {
-                if (user is { MainUserId: > 0 })
-                {
-                    await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, user.MainUserId, 5010);
-                }
-                else
-                {
-                    var newlyCreatedAccount = accountsService.GetRecentlyCreateAccountId();
-                    if (newlyCreatedAccount > 0)
+                    if (String.IsNullOrWhiteSpace(line.EntityType) || line.Id == 0UL)
                     {
-                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, newlyCreatedAccount, 5010);
+                        line.EntityType = settings.BasketLineEntityName;
+                        line.AddedBy = "GCL";
+                    }
+
+                    var lineSaveResult = await wiserItemsService.SaveAsync(line, shoppingBasket.Id, 5002, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false);
+                    line.Id = lineSaveResult.Id;
+
+                    lineIds.Add(line.Id);
+                }
+
+                await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, 5002, lineIds, entityType: settings.BasketLineEntityName);
+
+                if (newBasket)
+                {
+                    if (user is { MainUserId: > 0 })
+                    {
+                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, user.MainUserId, 5010);
+                    }
+                    else
+                    {
+                        var newlyCreatedAccount = accountsService.GetRecentlyCreateAccountId();
+                        if (newlyCreatedAccount > 0)
+                        {
+                            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, newlyCreatedAccount, 5010);
+                        }
                     }
                 }
+
+                if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
+            }
+            catch
+            {
+                if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
+                throw;
             }
 
             // Write basket item ID to cookie.
@@ -521,7 +532,13 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             var recalculateRequired = false;
 
-            if (request.HasFormContentType)
+            if (!request.HasFormContentType)
+            {
+                return;
+            }
+            
+            await databaseConnection.BeginTransactionAsync();
+            try
             {
                 foreach (var formKey in request.Form.Keys)
                 {
@@ -564,6 +581,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         {
                             index = 1;
                         }
+
                         elementIndex++;
                     }
 
@@ -619,7 +637,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                             continue;
                         }
 
-                        await wiserItemsService.SaveAsync(entity, alwaysSaveValues: true, saveHistory: false);
+                        await wiserItemsService.SaveAsync(entity, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false);
                         if (linkTuples.Count == 0 || entity.Id == 0)
                         {
                             continue;
@@ -643,8 +661,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     var basketLines = await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, 5002, settings.BasketLineEntityName, itemIdEntityType: settings.BasketEntityName);
 
                     await RecalculateVariablesAsync(shoppingBasket, basketLines, settings);
-                    await SaveAsync(shoppingBasket, basketLines, settings);
+                    await SaveAsync(shoppingBasket, basketLines, settings, false);
                 }
+
+                await databaseConnection.CommitTransactionAsync();
+            }
+            catch
+            {
+                await databaseConnection.RollbackTransactionAsync();
+                throw;
             }
         }
 
@@ -1557,82 +1582,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// <inheritdoc />
         public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, decimal quantity = 1M, string type = "product", IDictionary<string, string> lineDetails = null)
         {
-            var languageCode = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "langCode") ?? "";
-
-            if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
+            await databaseConnection.BeginTransactionAsync();
+            try
             {
-                var sqlQuery = settings.SqlQuery;
-                sqlQuery = sqlQuery.Replace("{itemid}", itemId.ToString());
-                sqlQuery = sqlQuery.Replace("{quantity}", quantity.ToString(CultureInfo.InvariantCulture));
-                sqlQuery = sqlQuery.Replace("{language_code}", languageCode);
+                var languageCode = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "langCode") ?? "";
 
-                sqlQuery = stringReplacementsService.DoHttpRequestReplacements(sqlQuery, true);
-                sqlQuery = stringReplacementsService.DoSessionReplacements(sqlQuery, true);
-
-                var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
-                if (getItemDetailsResult.Rows.Count > 0)
-                {
-                    var details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
-
-                    lineDetails ??= new Dictionary<string, string>();
-                    foreach (var (key, value) in details)
-                    {
-                        lineDetails[key] = value;
-                    }
-                }
-            }
-
-            var addItemLine = AddLineInternal(basketLines, uniqueId, itemId, quantity, type, lineDetails);
-
-            // Write changes to database.
-            await SaveAsync(shoppingBasket, basketLines, settings);
-
-            var alsoCreateItemLink = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_AlsoCreateItemLinkBetweenBasketLineAndProduct")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            if (alsoCreateItemLink)
-            {
-                if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_LinkTypeProductToOrderLine", "5030"), out var productToBasketLinkType))
-                {
-                    productToBasketLinkType = 5030;
-                }
-
-                var productId = addItemLine.GetDetailValue<ulong>("connecteditemid");
-                if (productId > 0)
-                {
-                    await wiserItemsService.AddItemLinkAsync(productId, addItemLine.Id, productToBasketLinkType);
-                }
-            }
-
-            await ExecuteAddToBasketQuery(shoppingBasket, basketLines, settings);
-
-            // Reload basket (for getting item details of added item).
-            if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
-            {
-                await LoadAsync(settings, itemId);
-            }
-
-            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, type);
-        }
-
-        /// <inheritdoc />
-        public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items)
-        {
-            if (items == null || items.Count == 0)
-            {
-                return;
-            }
-
-            var languageCode = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "langCode") ?? "";
-
-            var createLinksFor = new List<WiserItemModel>();
-            foreach (var item in items)
-            {
                 if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
                 {
                     var sqlQuery = settings.SqlQuery;
-                    sqlQuery = sqlQuery.Replace("{itemid}", item.ItemId.ToString());
-                    sqlQuery = sqlQuery.Replace("{quantity}", item.Quantity.ToString(CultureInfo.InvariantCulture));
-                    sqlQuery = sqlQuery.Replace("{language_code}", "?languageCode");
-                    databaseConnection.AddParameter("languageCode", languageCode);
+                    sqlQuery = sqlQuery.Replace("{itemid}", itemId.ToString());
+                    sqlQuery = sqlQuery.Replace("{quantity}", quantity.ToString(CultureInfo.InvariantCulture));
+                    sqlQuery = sqlQuery.Replace("{language_code}", languageCode);
 
                     sqlQuery = stringReplacementsService.DoHttpRequestReplacements(sqlQuery, true);
                     sqlQuery = stringReplacementsService.DoSessionReplacements(sqlQuery, true);
@@ -1642,23 +1602,19 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     {
                         var details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
 
-                        item.LineDetails ??= new Dictionary<string, string>();
+                        lineDetails ??= new Dictionary<string, string>();
                         foreach (var (key, value) in details)
                         {
-                            item.LineDetails[key] = value;
+                            lineDetails[key] = value;
                         }
                     }
                 }
 
-                var addItemLine = AddLineInternal(basketLines, item.UniqueId, item.ItemId, item.Quantity, item.Type, item.LineDetails);
-                createLinksFor.Add(addItemLine);
-            }
+                var addItemLine = AddLineInternal(basketLines, uniqueId, itemId, quantity, type, lineDetails);
 
-            // Write changes to database.
-            await SaveAsync(shoppingBasket, basketLines, settings);
+                // Write changes to database.
+                await SaveAsync(shoppingBasket, basketLines, settings, false);
 
-            if (createLinksFor.Count > 0)
-            {
                 var alsoCreateItemLink = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_AlsoCreateItemLinkBetweenBasketLineAndProduct")).Equals("true", StringComparison.OrdinalIgnoreCase);
                 if (alsoCreateItemLink)
                 {
@@ -1667,28 +1623,120 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         productToBasketLinkType = 5030;
                     }
 
-                    foreach (var item in createLinksFor)
+                    var productId = addItemLine.GetDetailValue<ulong>("connecteditemid");
+                    if (productId > 0)
                     {
-                        var productId = item.GetDetailValue<ulong>("connecteditemid");
-                        if (productId <= 0)
-                        {
-                            continue;
-                        }
-
-                        await wiserItemsService.AddItemLinkAsync(productId, item.Id, productToBasketLinkType);
+                        await wiserItemsService.AddItemLinkAsync(productId, addItemLine.Id, productToBasketLinkType);
                     }
                 }
+
+                await ExecuteAddToBasketQuery(shoppingBasket, basketLines, settings);
+
+                // Reload basket (for getting item details of added item).
+                if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
+                {
+                    await LoadAsync(settings, itemId);
+                }
+
+                await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, type);
+
+                await databaseConnection.CommitTransactionAsync();
             }
-
-            await ExecuteAddToBasketQuery(shoppingBasket, basketLines, settings);
-
-            if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
+            catch
             {
-                await LoadAsync(settings, shoppingBasket.Id);
+                await databaseConnection.RollbackTransactionAsync();
+                throw;
             }
+        }
 
-            // Recalculate sendcosts, coupons etc. after getting the extra fields (price can be selected with extra fields query).
-            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, items.First().Type);
+        /// <inheritdoc />
+        public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items)
+        {
+            if (items == null || items.Count == 0)
+            {
+                return;
+            }
+            
+
+            await databaseConnection.BeginTransactionAsync();
+            try
+            {
+                var languageCode = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "langCode") ?? "";
+
+                var createLinksFor = new List<WiserItemModel>();
+                foreach (var item in items)
+                {
+                    if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
+                    {
+                        var sqlQuery = settings.SqlQuery;
+                        sqlQuery = sqlQuery.Replace("{itemid}", item.ItemId.ToString());
+                        sqlQuery = sqlQuery.Replace("{quantity}", item.Quantity.ToString(CultureInfo.InvariantCulture));
+                        sqlQuery = sqlQuery.Replace("{language_code}", "?languageCode");
+                        databaseConnection.AddParameter("languageCode", languageCode);
+
+                        sqlQuery = stringReplacementsService.DoHttpRequestReplacements(sqlQuery, true);
+                        sqlQuery = stringReplacementsService.DoSessionReplacements(sqlQuery, true);
+
+                        var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
+                        if (getItemDetailsResult.Rows.Count > 0)
+                        {
+                            var details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
+
+                            item.LineDetails ??= new Dictionary<string, string>();
+                            foreach (var (key, value) in details)
+                            {
+                                item.LineDetails[key] = value;
+                            }
+                        }
+                    }
+
+                    var addItemLine = AddLineInternal(basketLines, item.UniqueId, item.ItemId, item.Quantity, item.Type, item.LineDetails);
+                    createLinksFor.Add(addItemLine);
+                }
+
+                // Write changes to database.
+                await SaveAsync(shoppingBasket, basketLines, settings, false);
+
+                if (createLinksFor.Count > 0)
+                {
+                    var alsoCreateItemLink = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_AlsoCreateItemLinkBetweenBasketLineAndProduct")).Equals("true", StringComparison.OrdinalIgnoreCase);
+                    if (alsoCreateItemLink)
+                    {
+                        if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_LinkTypeProductToOrderLine", "5030"), out var productToBasketLinkType))
+                        {
+                            productToBasketLinkType = 5030;
+                        }
+
+                        foreach (var item in createLinksFor)
+                        {
+                            var productId = item.GetDetailValue<ulong>("connecteditemid");
+                            if (productId <= 0)
+                            {
+                                continue;
+                            }
+
+                            await wiserItemsService.AddItemLinkAsync(productId, item.Id, productToBasketLinkType);
+                        }
+                    }
+                }
+
+                await ExecuteAddToBasketQuery(shoppingBasket, basketLines, settings);
+
+                if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
+                {
+                    await LoadAsync(settings, shoppingBasket.Id);
+                }
+
+                // Recalculate sendcosts, coupons etc. after getting the extra fields (price can be selected with extra fields query).
+                await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, items.First().Type);
+
+                await databaseConnection.CommitTransactionAsync();
+            }
+            catch
+            {
+                await databaseConnection.RollbackTransactionAsync();
+                throw;
+            }
         }
 
         /// <inheritdoc />

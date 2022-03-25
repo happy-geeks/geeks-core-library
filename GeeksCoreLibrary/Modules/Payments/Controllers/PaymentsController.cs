@@ -23,7 +23,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Controllers
         /// <returns></returns>
         [Route("payment_out.gcl")]
         [Route("payment_out.jcl")]
-        [HttpPost]
+        [HttpPost, HttpGet]
         public async Task<IActionResult> PaymentOut()
         {
             var paymentRequestResult = await paymentsService.HandlePaymentRequestAsync();

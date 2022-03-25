@@ -150,7 +150,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public async Task<PaymentRequestResult> HandlePaymentRequestAsync()
         {
-            if (httpContextAccessor.HttpContext == null || !httpContextAccessor.HttpContext.Request.HasFormContentType)
+            if (httpContextAccessor.HttpContext == null)
             {
                 return new PaymentRequestResult
                 {
