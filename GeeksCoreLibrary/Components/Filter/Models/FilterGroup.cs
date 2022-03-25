@@ -148,13 +148,13 @@ namespace GeeksCoreLibrary.Components.Filter.Models
                 try
                 {
                     Decimal.TryParse(value.ToString()?.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator), out var decimalValue);
-                    if (decimalValue > MaxValue)
+                    if (Math.Ceiling(decimalValue) > MaxValue)
                     {
-                        MaxValue = decimalValue;
+                        MaxValue = Math.Ceiling(decimalValue);
                     }
-                    if (decimalValue < MinValue)
+                    if (Math.Floor(decimalValue) < MinValue)
                     {
-                        MinValue = decimalValue;
+                        MinValue = Math.Floor(decimalValue);
                     }
                 }
                 catch (Exception ex)
