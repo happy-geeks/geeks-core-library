@@ -8,8 +8,11 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using GeeksCoreLibrary.Components.Account.Interfaces;
+using GeeksCoreLibrary.Components.Account.Models;
 using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
@@ -23,6 +26,7 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
@@ -207,12 +211,96 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
                 var step = steps[ActiveStep - 1];
 
+                // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
+                if (isPostBack) 
+                {
+                    foreach (var group in step.Groups)
+                    {
+                        // Get fields that we can show in this group, based on the visibility settings of each field.
+                        var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
+
+                        // Skip this group if it has no fields that we can show.
+                        if (!fieldsToShow.Any())
+                        {
+                            continue;
+                        }
+                        
+                        foreach (var field in fieldsToShow)
+                        {
+                            // Get the posted field value.
+                            field.Value = request.Form[field.FieldId].ToString();
+
+                            // Do field validation.
+                            field.IsValid = FieldValueIsValid(field, field.Value);
+
+                            if (!field.IsValid)
+                            {
+                                fieldErrorsOccurred = true;
+                                continue;
+                            }
+
+                            // Get value to save to database.
+                            var valueForDatabase = field.Value;
+                            if (field.InputFieldType == OrderProcessInputTypes.Password && !String.IsNullOrEmpty(valueForDatabase))
+                            {
+                                valueForDatabase = field.Value.ToSha512ForPasswords();
+                                field.Value = "";
+                            }
+
+                            // Set the posted value in the basket. We do that here so that we can be sure that people can only save values that are configured in Wiser.
+                            // This way they can't just add a random field to the HTML to save that value in our database.
+                            // TODO: Some values should be saved in the account instead of basket.
+                            shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
+                        }
+                    }
+
+                    // Save values to database if all validation succeeded.
+                    if (!fieldErrorsOccurred)
+                    {
+                        await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+                    }
+
+                    // Redirect to the next step.
+                    var nextStep = ActiveStep + 1;
+                    if (nextStep <= steps.Count)
+                    {
+                        var nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                        var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
+                        nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
+                        nextStepUri.Query = nextStepQueryString.ToString();
+                        response.Redirect(nextStepUri.ToString());
+                    }
+                    else
+                    {
+                        response.Redirect("/payment_out.gcl");
+                    }
+
+                    return null;
+                }
+                
+                // Generate URI for previous step.
+                var previousStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                var previousStep = ActiveStep - 1;
+                var previousStepQueryString = HttpUtility.ParseQueryString(previousStepUri.Query);
+                if (previousStep <= 1)
+                {
+                    previousStepQueryString.Remove(Constants.ActiveStepRequestKey);
+                }
+                else
+                {
+                    previousStepQueryString[Constants.ActiveStepRequestKey] = previousStep.ToString();
+                }
+
+                previousStepUri.Query = previousStepQueryString.ToString() ?? String.Empty;
+                
                 // Build the steps HTML.
                 var replaceData = new Dictionary<string, string>
                 {
                     { "id", step.Id.ToString() },
                     { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title", defaultValue: step.Title ?? "") },
-                    { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText", defaultValue: step.ConfirmButtonText) }
+                    { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText", defaultValue: step.ConfirmButtonText) },
+                    { "previousStepLinkText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_previousStepLinkText", defaultValue: step.PreviousStepLinkText) },
+                    { "previousStepUrl", previousStepUri.ToString() }
                 };
 
                 var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
@@ -222,18 +310,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 var groupsBuilder = new StringBuilder();
                 foreach (var group in step.Groups)
                 {
-                    // First get fields that we can show in this group, based on the visibility settings of each field.
-                    var fieldsToShow = group.Fields.Where(field =>
-                    {
-                        // Check if we need to skip this field.
-                        return field.Visibility switch
-                        {
-                            OrderProcessFieldVisibilityTypes.Always => true,
-                            OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
-                            OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
-                            _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString())
-                        };
-                    }).ToList();
+                    // Get fields that we can show in this group, based on the visibility settings of each field.
+                    var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
 
                     // Skip this group if it has no fields that we can show.
                     if (!fieldsToShow.Any())
@@ -255,30 +333,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     var fieldsBuilder = new StringBuilder();
                     foreach (var field in fieldsToShow)
                     {
-                        var fieldIsValid = true;
-                        var fieldValue = "";
-                        if (isPostBack)
-                        {
-                            // Get the posted field value.
-                            fieldValue = request.Form[field.FieldId];
-
-                            // Do field validation.
-                            fieldIsValid = FieldValueIsValid(field, fieldValue);
-
-                            // Get value to save to database.
-                            var valueForDatabase = fieldValue;
-                            if (field.InputFieldType == OrderProcessInputTypes.Password && !String.IsNullOrEmpty(valueForDatabase))
-                            {
-                                valueForDatabase = fieldValue.ToSha512ForPasswords();
-                                fieldValue = "";
-                            }
-
-                            // Set the posted value in the basket. We do that here so that we can be sure that people can only save values that are configured in Wiser.
-                            // This way they can't just add a random field to the HTML to save that value in our database.
-                            // TODO: Some values should be saved in the account instead of basket.
-                            shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
-                        }
-                        else if (field.InputFieldType != OrderProcessInputTypes.Password)
+                        var fieldValue = field.Value;
+                        if (String.IsNullOrEmpty(fieldValue) && field.InputFieldType != OrderProcessInputTypes.Password)
                         {
                             fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
                             if (String.IsNullOrWhiteSpace(fieldValue))
@@ -344,13 +400,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.FieldOptionsReplacement, optionsBuilder.ToString());
                         }
 
-                        if (fieldIsValid)
+                        if (field.IsValid)
                         {
                             fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, "").ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "");
                         }
                         else
                         {
-                            fieldErrorsOccurred = true;
                             var errorMessage = await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_text", defaultValue: field.ErrorMessage ?? "");
                             var errorHtml = Settings.TemplateFieldError.ReplaceCaseInsensitive(Constants.ErrorMessageReplacement, errorMessage);
                             fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, errorHtml).ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "error");
@@ -393,16 +448,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     resultHtml = resultHtml.ReplaceCaseInsensitive(Constants.ProgressReplacement, progressHtml);
                 }
 
-                // Save values to database.
-                if (isPostBack)
-                {
-                    await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
-                }
-
                 if (fieldErrorsOccurred)
                 {
                     resultHtml = AddStepErrorToResult(resultHtml, "Client");
                 }
+            }
+            catch (ThreadAbortException)
+            {
+                // Ignore ThreadAbortExceptions, these always occur when we do a redirect and we don't need to see them in the logs or anything.
             }
             catch (Exception exception)
             {
@@ -417,6 +470,27 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         #endregion
 
         #region Private methods
+
+        /// <summary>
+        /// Gets the fields of a group that should be shown to the user.
+        /// </summary>
+        /// <param name="group">The group settings.</param>
+        /// <param name="loggedInUser">The data of the user.</param>
+        /// <returns>A list of fields that should be shown/handled on this step/group.</returns>
+        private static List<OrderProcessFieldModel> GetGroupFieldsToShow(OrderProcessGroupModel group, UserCookieDataModel loggedInUser)
+        {
+            return group.Fields.Where(field =>
+            {
+                // Check if we need to skip this field.
+                return field.Visibility switch
+                {
+                    OrderProcessFieldVisibilityTypes.Always => true,
+                    OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
+                    OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
+                    _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString())
+                };
+            }).ToList();
+        }
 
         /// <summary>
         /// Validates whether a value for a field is valid.

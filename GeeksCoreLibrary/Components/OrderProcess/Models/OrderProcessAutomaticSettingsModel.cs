@@ -19,6 +19,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         <div class='step-groups'>{groups}</div>
         <div class='step-footer'>{footer}</div>
     </div>
+    [if({activeStep}>1)]<a href='{previousStepUrl}'>{previousStepLinkText}</a>[endif]
     <button type='submit' id='confirmButton'>{confirmButtonText}</button>
 </form>")]
         internal string TemplateStep { get; }

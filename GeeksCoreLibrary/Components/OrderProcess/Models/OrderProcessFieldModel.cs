@@ -57,5 +57,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the message that should be shown when the user entered an invalid value.
         /// </summary>
         public string ErrorMessage { get; set; }
+
+        /// <summary>
+        /// Gets or sets the value of the field that was entered by the user, or comes from the basket or account.
+        /// </summary>
+        public string Value { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the value entered by the user is valid.
+        /// </summary>
+        public bool IsValid { get; set; } = true;
     }
 }

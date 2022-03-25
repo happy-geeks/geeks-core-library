@@ -81,6 +81,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                        CONCAT_WS('', stepHeader.value, stepHeader.long_value) AS stepHeader,
 	                        CONCAT_WS('', stepFooter.value, stepFooter.long_value) AS stepFooter,
                             stepConfirmButtonText.value AS stepConfirmButtonText,
+                            previousStepLinkText.value AS previousStepLinkText,
 	                        
 	                        # Group
 	                        fieldGroup.id AS groupId,
@@ -112,6 +113,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepHeader ON stepHeader.item_id = step.id AND stepHeader.`key` = '{Constants.StepHeaderProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepFooter ON stepFooter.item_id = step.id AND stepFooter.`key` = '{Constants.StepFooterProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepConfirmButtonText ON stepConfirmButtonText.item_id = step.id AND stepConfirmButtonText.`key` = '{Constants.StepConfirmButtonTextProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS previousStepLinkText ON previousStepLinkText.item_id = step.id AND previousStepLinkText.`key` = '{Constants.StepPreviousStepLinkTextProperty}'
 
                         # Group
                         JOIN {WiserTableNames.WiserItemLink} AS linkToGroup ON linkToGroup.destination_item_id = step.id AND linkToGroup.type = {Constants.GroupToStepLinkType}
@@ -159,6 +161,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         Header = dataRow.Field<string>("stepHeader"),
                         Footer = dataRow.Field<string>("stepFooter"),
                         ConfirmButtonText = dataRow.Field<string>("stepConfirmButtonText"),
+                        PreviousStepLinkText = dataRow.Field<string>("previousStepLinkText"),
                         Groups = new List<OrderProcessGroupModel>()
                     };
 

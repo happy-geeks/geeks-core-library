@@ -41,6 +41,8 @@
 
         public const string StepConfirmButtonTextProperty = "orderprocessstepconfirmbuttontext";
 
+        public const string StepPreviousStepLinkTextProperty = "orderprocessstepprevioussteplinktext";
+
         public const string OrderProcessUrlProperty = "orderprocessurl";
 
         public const string GroupTypeProperty = "orderprocessgrouptype";

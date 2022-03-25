@@ -56,6 +56,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{footer}</strong> The footer of the step, which can be edited by the customer in the Wiser item for the step.</li>
     <li><strong>{activeStep}</strong> The number of the active step.</li>
     <li><strong>{confirmButtonText}</strong> The text for the button to go to the next step. This will be retrieved from the translations module from Wiser.</li>
+    <li><strong>{previousStepLinkText}</strong> The text on the link to go back to the previous step.</li>
+    <li><strong>{previousStepUrl}</strong> The URL of the previous step.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,

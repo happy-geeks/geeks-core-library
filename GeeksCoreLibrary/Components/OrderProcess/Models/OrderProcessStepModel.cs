@@ -26,5 +26,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the default text for the confirm button of this step. This value is only used when no translation can be found.
         /// </summary>
         public string ConfirmButtonText { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the default text for the link to go back to the previous step. This value is only used when no translation can be found.
+        /// </summary>
+        public string PreviousStepLinkText { get; set; }
     }
 }
