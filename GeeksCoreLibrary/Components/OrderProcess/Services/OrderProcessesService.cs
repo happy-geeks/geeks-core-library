@@ -7,6 +7,7 @@ using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using Microsoft.Extensions.Options;
@@ -171,7 +172,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     {
                         Id = groupId,
                         Title = dataRow.Field<string>("groupTitle"),
-                        Type = (OrderProcessGroupTypes)Enum.Parse(typeof(OrderProcessGroupTypes), dataRow.Field<string>("groupType") ?? "Fields", true),
+                        Type = EnumHelpers.ToEnum<OrderProcessGroupTypes>(dataRow.Field<string>("groupType") ?? "Fields"),
                         Header = dataRow.Field<string>("groupHeader"),
                         Footer = dataRow.Field<string>("groupFooter"),
                         Fields = new List<OrderProcessFieldModel>()
@@ -219,11 +220,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     FieldId = dataRow.Field<string>("fieldFormId"),
                     Label = dataRow.Field<string>("fieldLabel"),
                     Placeholder = dataRow.Field<string>("fieldPlaceholder"),
-                    Type = (OrderProcessFieldTypes)Enum.Parse(typeof(OrderProcessFieldTypes), dataRow.Field<string>("fieldType") ?? "Input", true),
+                    Type = EnumHelpers.ToEnum<OrderProcessFieldTypes>(dataRow.Field<string>("fieldType") ?? "Input"),
                     Values = fieldValuesDictionary,
                     Mandatory = dataRow.Field<string>("fieldMandatory") == "1",
                     Pattern = dataRow.Field<string>("fieldPattern"),
-                    Visibility = (OrderProcessFieldVisibilityTypes)Enum.Parse(typeof(OrderProcessFieldVisibilityTypes), dataRow.Field<string>("fieldVisible") ?? "Always", true)
+                    Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("fieldVisible") ?? "Always"),
+                    InputFieldType = EnumHelpers.ToEnum<OrderProcessInputTypes>(dataRow.Field<string>("fieldInputType") ?? "text")
                 };
 
                 group.Fields.Add(field);

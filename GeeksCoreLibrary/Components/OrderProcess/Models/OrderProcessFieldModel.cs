@@ -31,7 +31,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// <summary>
         /// Gets or sets the type of input field. This can be any value supported by HTML for an input field.
         /// </summary>
-        public string InputFieldType { get; set; }
+        public OrderProcessInputTypes InputFieldType { get; set; }
 
         /// <summary>
         /// Gets or sets the values that should be possible in a multiple choice type of field (such as radio buttons or selects).
