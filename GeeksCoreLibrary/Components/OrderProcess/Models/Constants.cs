@@ -67,6 +67,8 @@
 
         public const string FieldVisibilityProperty = "formfieldvisible";
 
+        public const string FieldErrorMessageProperty = "formfielderrormessage";
+
         #endregion
 
         #region Request values
@@ -76,6 +78,14 @@
         #endregion
 
         #region Replacements
+
+        public const string ErrorReplacement = "{error}";
+
+        public const string ErrorTypeReplacement = "{errorType}";
+
+        public const string ErrorMessageReplacement = "{errorMessage}";
+
+        public const string ErrorClassReplacement = "{errorClass}";
 
         public const string ProgressReplacement = "{progress}";
 

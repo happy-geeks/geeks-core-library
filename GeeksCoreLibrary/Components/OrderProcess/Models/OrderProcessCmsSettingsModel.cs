@@ -50,6 +50,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 <ul>
     <li><strong>{id}</strong> The ID of the Wiser item with the settings for the step.</li>
     <li><strong>{title}</strong> The title of the Wiser item with the settings for the step.</li>
+    <li><strong>{error}</strong> If any error occurred in this step, this will be replaced by the value of 'TemplateStepError', otherwise it will be replaced by an empty string. If this variable is not found in the template and an error occurs, then only the contents of 'TemplateStepError' wil be shown (which means that no fields will be visible on the page).</li>
     <li><strong>{header}</strong> The header of the step, which can be edited by the customer in the Wiser item for the step.</li>
     <li><strong>{groups}</strong> The groups of this step, will be replaced by TemplateGroup for each step.</li>
     <li><strong>{footer}</strong> The footer of the step, which can be edited by the customer in the Wiser item for the step.</li>
@@ -64,6 +65,23 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             DisplayOrder = 20
         )]
         public string TemplateStep { get; set; }
+
+        /// <summary>
+        /// The HTML template that will be shown after a failed action.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Template step error",
+            Description = @"The HTML template that will be shown after a failed action. You can use the variable '{errorType}' to check which error was thrown. We have the following error types available:
+<ul>
+    <li><strong>Server:</strong> This is any exception that occurred on the server. The actual exception will be written to the logs.</li>
+    <li><strong>Client:</strong> This is any error from the client, when they entered invalid or no values in required fields. This is just to show a generic message that they can't procedure, specific errors will be shown near the field(s) with the problem(s).</li>
+</ul>",
+            TabName = CmsAttributes.CmsTabName.Layout,
+            GroupName = CmsAttributes.CmsGroupName.Templates,
+            TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
+            DisplayOrder = 25
+        )]
+        public string TemplateStepError { get; set; }
         
         /// <summary>
         /// The template for a group of fields in the order process.
@@ -86,6 +104,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             DisplayOrder = 30
         )]
         public string TemplateGroup { get; set; }
+
+        /// <summary>
+        /// The HTML template that will be shown with a field when there was a validation error for that field.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Template field error",
+            Description = "The HTML template that will be shown with a field when there was a validation error for that field. You can use the variable '{errorMessage}' on the location where you want to show the message.",
+            TabName = CmsAttributes.CmsTabName.Layout,
+            GroupName = CmsAttributes.CmsGroupName.Templates,
+            TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
+            DisplayOrder = 35
+        )]
+        public string TemplateFieldError { get; set; }
         
         /// <summary>
         /// The template for a normal input field in the order process.
@@ -96,6 +127,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 <ul>
     <li><strong>{id}</strong> The ID of the Wiser item with the settings for the field.</li>
     <li><strong>{title}</strong> The title of the Wiser item with the settings for the field.</li>
+    <li><strong>{error}</strong> If a validation error occurred with this field, this variable will be replaced by the value of 'TemplateFieldError', otherwise it will be replaced by an empty string.</li>
+    <li><strong>{errorClass}</strong> If a validation error occurred with this field, this variable will be replaced by the literal text 'error', otherwise it will be replaced by en empty string.</li>
     <li><strong>{fieldId}</strong> The ID of the field as it's set in the settings for the field. This value should be used in the 'name' and 'id' attributes of the input and the 'for' attribute of the label.</li>
     <li><strong>{label}</strong> The label for this field.</li>
     <li><strong>{inputType}</strong> The input type of this field, this value should be used in the 'type' attribute of the input.</li>
@@ -122,6 +155,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 <ul>
     <li><strong>{id}</strong> The ID of the Wiser item with the settings for the field.</li>
     <li><strong>{title}</strong> The title of the Wiser item with the settings for the field.</li>
+    <li><strong>{error}</strong> If a validation error occurred with this field, this variable will be replaced by the value of 'TemplateFieldError', otherwise it will be replaced by an empty string.</li>
+    <li><strong>{errorClass}</strong> If a validation error occurred with this field, this variable will be replaced by the literal text 'error', otherwise it will be replaced by en empty string.</li>
     <li><strong>{fieldId}</strong> The ID of the field as it's set in the settings for the field. This value should be used in the 'name' and 'id' attributes of the input and the 'for' attribute of the label.</li>
     <li><strong>{label}</strong> The label for this field.</li>
     <li><strong>{placeholder}</strong> The placeholder for the field, should be used in the 'placeholder' attribute of the input.</li>
@@ -168,6 +203,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 <ul>
     <li><strong>{id}</strong> The ID of the Wiser item with the settings for the field.</li>
     <li><strong>{title}</strong> The title of the Wiser item with the settings for the field.</li>
+    <li><strong>{error}</strong> If a validation error occurred with this field, this variable will be replaced by the value of 'TemplateFieldError', otherwise it will be replaced by an empty string.</li>
+    <li><strong>{errorClass}</strong> If a validation error occurred with this field, this variable will be replaced by the literal text 'error', otherwise it will be replaced by en empty string.</li>
     <li><strong>{fieldId}</strong> The ID of the field as it's set in the settings for the field. This value should be used in the 'name' and 'id' attributes of the input and the 'for' attribute of the label.</li>
     <li><strong>{required}</strong> This will be replaced with the 'required' attribute if the field is required, or with an empty string if it isn't.</li>
     <li><strong>{label}</strong> The label for this field.</li>
@@ -214,6 +251,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 <ul>
     <li><strong>{id}</strong> The ID of the Wiser item with the settings for the field.</li>
     <li><strong>{title}</strong> The title of the Wiser item with the settings for the field.</li>
+    <li><strong>{error}</strong> If a validation error occurred with this field, this variable will be replaced by the value of 'TemplateFieldError', otherwise it will be replaced by an empty string.</li>
+    <li><strong>{errorClass}</strong> If a validation error occurred with this field, this variable will be replaced by the literal text 'error', otherwise it will be replaced by en empty string.</li>
     <li><strong>{fieldId}</strong> The ID of the field as it's set in the settings for the field. This value should be used in the 'name' and 'id' attributes of the input and the 'for' attribute of the label.</li>
     <li><strong>{label}</strong> The label for this field.</li>
     <li><strong>{required}</strong> This will be replaced with the 'required' attribute if the field is required, or with an empty string if it isn't.</li>

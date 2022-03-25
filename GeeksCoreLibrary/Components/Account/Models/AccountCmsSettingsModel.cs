@@ -66,7 +66,7 @@ namespace GeeksCoreLibrary.Components.Account.Models
             DeveloperRemarks = @"<p>You can use the variable '{errorType}' to check which error was thrown. We have the following error types available, based on the chosen component mode:</p>
                                 <h2>All modes:</h2>
                                 <ul>
-                                    <li><strong>Server:</strong> This is any exception that occurred on the server. The actual exception will be written to the trace.</li>
+                                    <li><strong>Server:</strong> This is any exception that occurred on the server. The actual exception will be written to the logs.</li>
                                 </ul>
                                 <h2>LoginSingleStep:</h2>
                                 <ul>

@@ -4,8 +4,10 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Enums;
@@ -189,195 +191,292 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             var response = httpContext?.Response;
             var request = httpContext?.Request;
             var isPostBack = request is { HasFormContentType: true } && request.Form.Count > 0 && request.Form[Constants.ComponentIdFormKey].ToString() == ComponentId.ToString();
+            var fieldErrorsOccurred = false;
+            string resultHtml = null;
 
-            // Get the logged in user, if any.
-            var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
-            var userData = loggedInUser.UserId == 0 ? new WiserItemModel() : await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
-            
-            // Get the active basket, if any.
-            var shoppingBasketSettings = await shoppingBasketsService.GetSettingsAsync();
-            var (shoppingBasket, shoppingBasketLines, _, _) = await shoppingBasketsService.LoadAsync(shoppingBasketSettings);
-
-            // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
-            var step = steps[ActiveStep - 1];
-            
-            // Build the steps HTML.
-            var replaceData = new Dictionary<string, string>
+            try
             {
-                { "id", step.Id.ToString() },
-                { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title", defaultValue: step.Title ?? "") },
-                { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText", defaultValue: step.ConfirmButtonText) }
-            };
+                // Get the logged in user, if any.
+                var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
+                var userData = loggedInUser.UserId == 0 ? new WiserItemModel() : await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
 
-            var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
-            stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, step.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, step.Footer);
+                // Get the active basket, if any.
+                var shoppingBasketSettings = await shoppingBasketsService.GetSettingsAsync();
+                var (shoppingBasket, shoppingBasketLines, _, _) = await shoppingBasketsService.LoadAsync(shoppingBasketSettings);
 
-            // Build the groups HTML.
-            var groupsBuilder = new StringBuilder();
-            foreach (var group in step.Groups)
-            {
-                // First get fields that we can show in this group, based on the visibility settings of each field.
-                var fieldsToShow = group.Fields.Where(field =>
+                // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
+                var step = steps[ActiveStep - 1];
+
+                // Build the steps HTML.
+                var replaceData = new Dictionary<string, string>
                 {
-                    // Check if we need to skip this field.
-                    return field.Visibility switch
-                    {
-                        OrderProcessFieldVisibilityTypes.Always => true,
-                        OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
-                        OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
-                        _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString())
-                    };
-                }).ToList();
-
-                // Skip this group if it has no fields that we can show.
-                if (!fieldsToShow.Any())
-                {
-                    continue;
-                }
-
-                // Create dictionary for replacements.
-                replaceData = new Dictionary<string, string>
-                {
-                    { "id", group.Id.ToString() },
-                    { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") }
+                    { "id", step.Id.ToString() },
+                    { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title", defaultValue: step.Title ?? "") },
+                    { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText", defaultValue: step.ConfirmButtonText) }
                 };
 
-                var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
-                groupHtml = groupHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, group.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, group.Footer);
-                
-                // Build the fields HTML.
-                var fieldsBuilder = new StringBuilder();
-                foreach (var field in fieldsToShow)
+                var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
+                stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, step.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, step.Footer);
+
+                // Build the groups HTML.
+                var groupsBuilder = new StringBuilder();
+                foreach (var group in step.Groups)
                 {
-                    var fieldValue = "";
-                    if (isPostBack)
+                    // First get fields that we can show in this group, based on the visibility settings of each field.
+                    var fieldsToShow = group.Fields.Where(field =>
                     {
-                        // Get the posted field value.
-                        fieldValue = request.Form[field.FieldId];
-                        var valueForDatabase = fieldValue;
-
-                        if (field.InputFieldType == OrderProcessInputTypes.Password && !String.IsNullOrEmpty(valueForDatabase))
+                        // Check if we need to skip this field.
+                        return field.Visibility switch
                         {
-                            valueForDatabase = fieldValue.ToSha512ForPasswords();
-                            fieldValue = "";
-                        }
+                            OrderProcessFieldVisibilityTypes.Always => true,
+                            OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
+                            OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
+                            _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString())
+                        };
+                    }).ToList();
 
-                        // Set the posted value in the basket. We do that here so that we can be sure that people can only save values that are configured in Wiser.
-                        // This way they can't just add a random field to the HTML to save that value in our database.
-                        // TODO: Some values should be saved in the account instead of basket.
-                        shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
-                    }
-                    else if (field.InputFieldType != OrderProcessInputTypes.Password)
+                    // Skip this group if it has no fields that we can show.
+                    if (!fieldsToShow.Any())
                     {
-                        fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
-                        if (String.IsNullOrWhiteSpace(fieldValue))
-                        {
-                            fieldValue = userData.GetDetailValue(field.FieldId);
-                        }
+                        continue;
                     }
 
                     // Create dictionary for replacements.
                     replaceData = new Dictionary<string, string>
                     {
-                        { "id", field.Id.ToString() },
-                        { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title ?? "") },
-                        { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder ?? "") },
-                        { "fieldId", field.FieldId },
-                        { "inputType", EnumHelpers.ToEnumString(field.InputFieldType) },
-                        { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label ?? "") },
-                        { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
-                        { "required", field.Mandatory ? "required" : "" },
-                        { "value", fieldValue },
-                        { "checked", String.IsNullOrWhiteSpace(fieldValue) ? "" : "checked" }
+                        { "id", group.Id.ToString() },
+                        { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") }
                     };
 
-                    var fieldHtml = field.Type switch
-                    {
-                        OrderProcessFieldTypes.Input => Settings.TemplateInputField,
-                        OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonField,
-                        OrderProcessFieldTypes.Select => Settings.TemplateSelectField,
-                        OrderProcessFieldTypes.Checkbox => Settings.TemplateCheckboxField,
-                        _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
-                    };
+                    var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
+                    groupHtml = groupHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, group.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, group.Footer);
 
-                    fieldHtml = StringReplacementsService.DoReplacements(fieldHtml, replaceData);
-
-                    // Build the field options HTML, if applicable.
-                    if (field.Values != null && field.Values.Any() && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
+                    // Build the fields HTML.
+                    var fieldsBuilder = new StringBuilder();
+                    foreach (var field in fieldsToShow)
                     {
-                        var optionsBuilder = new StringBuilder();
-                        foreach (var option in field.Values)
+                        var fieldIsValid = true;
+                        var fieldValue = "";
+                        if (isPostBack)
                         {
-                            var optionHtml = field.Type switch
-                            {
-                                OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonFieldOption,
-                                OrderProcessFieldTypes.Select => Settings.TemplateSelectFieldOption,
-                                _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
-                            };
-                            
-                            // Create dictionary for replacements.
-                            replaceData = new Dictionary<string, string>
-                            {
-                                { "fieldId", field.FieldId },
-                                { "required", field.Mandatory ? "required" : "" },
-                                { "optionValue", option.Key },
-                                { "optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{option.Value}_text", defaultValue: option.Value ?? "") },
-                                { "selected", option.Key == fieldValue ? "selected" : "" },
-                                { "checked", option.Key == fieldValue ? "checked" : "" }
-                            };
+                            // Get the posted field value.
+                            fieldValue = request.Form[field.FieldId];
 
-                            optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
-                            optionsBuilder.AppendLine(optionHtml);
+                            // Do field validation.
+                            fieldIsValid = FieldValueIsValid(field, fieldValue);
+
+                            // Get value to save to database.
+                            var valueForDatabase = fieldValue;
+                            if (field.InputFieldType == OrderProcessInputTypes.Password && !String.IsNullOrEmpty(valueForDatabase))
+                            {
+                                valueForDatabase = fieldValue.ToSha512ForPasswords();
+                                fieldValue = "";
+                            }
+
+                            // Set the posted value in the basket. We do that here so that we can be sure that people can only save values that are configured in Wiser.
+                            // This way they can't just add a random field to the HTML to save that value in our database.
+                            // TODO: Some values should be saved in the account instead of basket.
+                            shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
+                        }
+                        else if (field.InputFieldType != OrderProcessInputTypes.Password)
+                        {
+                            fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
+                            if (String.IsNullOrWhiteSpace(fieldValue))
+                            {
+                                fieldValue = userData.GetDetailValue(field.FieldId);
+                            }
                         }
 
-                        fieldHtml = fieldHtml.Replace(Constants.FieldOptionsReplacement, optionsBuilder.ToString());
+                        // Create dictionary for replacements.
+                        replaceData = new Dictionary<string, string>
+                        {
+                            { "id", field.Id.ToString() },
+                            { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title ?? "") },
+                            { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder ?? "") },
+                            { "fieldId", field.FieldId },
+                            { "inputType", EnumHelpers.ToEnumString(field.InputFieldType) },
+                            { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label ?? "") },
+                            { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
+                            { "required", field.Mandatory ? "required" : "" },
+                            { "value", fieldValue },
+                            { "checked", String.IsNullOrWhiteSpace(fieldValue) ? "" : "checked" }
+                        };
+
+                        var fieldHtml = field.Type switch
+                        {
+                            OrderProcessFieldTypes.Input => Settings.TemplateInputField,
+                            OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonField,
+                            OrderProcessFieldTypes.Select => Settings.TemplateSelectField,
+                            OrderProcessFieldTypes.Checkbox => Settings.TemplateCheckboxField,
+                            _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
+                        };
+
+                        fieldHtml = StringReplacementsService.DoReplacements(fieldHtml, replaceData);
+
+                        // Build the field options HTML, if applicable.
+                        if (field.Values != null && field.Values.Any() && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
+                        {
+                            var optionsBuilder = new StringBuilder();
+                            foreach (var option in field.Values)
+                            {
+                                var optionHtml = field.Type switch
+                                {
+                                    OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonFieldOption,
+                                    OrderProcessFieldTypes.Select => Settings.TemplateSelectFieldOption,
+                                    _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
+                                };
+
+                                // Create dictionary for replacements.
+                                replaceData = new Dictionary<string, string>
+                                {
+                                    { "fieldId", field.FieldId },
+                                    { "required", field.Mandatory ? "required" : "" },
+                                    { "optionValue", option.Key },
+                                    { "optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{option.Value}_text", defaultValue: option.Value ?? "") },
+                                    { "selected", option.Key == fieldValue ? "selected" : "" },
+                                    { "checked", option.Key == fieldValue ? "checked" : "" }
+                                };
+
+                                optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
+                                optionsBuilder.AppendLine(optionHtml);
+                            }
+
+                            fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.FieldOptionsReplacement, optionsBuilder.ToString());
+                        }
+
+                        if (fieldIsValid)
+                        {
+                            fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, "").ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "");
+                        }
+                        else
+                        {
+                            fieldErrorsOccurred = true;
+                            var errorMessage = await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_text", defaultValue: field.ErrorMessage ?? "");
+                            var errorHtml = Settings.TemplateFieldError.ReplaceCaseInsensitive(Constants.ErrorMessageReplacement, errorMessage);
+                            fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, errorHtml).ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "error");
+                        }
+
+                        fieldsBuilder.AppendLine(fieldHtml);
                     }
 
-                    fieldsBuilder.AppendLine(fieldHtml);
+                    groupHtml = groupHtml.ReplaceCaseInsensitive(Constants.FieldsReplacement, fieldsBuilder.ToString());
+                    groupsBuilder.AppendLine(groupHtml);
                 }
 
-                groupHtml = groupHtml.Replace(Constants.FieldsReplacement, fieldsBuilder.ToString());
-                groupsBuilder.AppendLine(groupHtml);
-            }
+                stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.GroupsReplacement, groupsBuilder.ToString());
 
-            stepHtml = stepHtml.Replace(Constants.GroupsReplacement, groupsBuilder.ToString());
+                resultHtml = Settings.Template.ReplaceCaseInsensitive(Constants.StepReplacement, stepHtml);
 
-            var html = Settings.Template.ReplaceCaseInsensitive(Constants.StepReplacement, stepHtml);
-
-            // Build the HTML for the steps progress.
-            if (html.Contains(Constants.ProgressReplacement, StringComparison.OrdinalIgnoreCase))
-            {
-                var progressBuilder = new StringBuilder();
-                for (var index = 0; index < steps.Count; index++)
+                // Build the HTML for the steps progress.
+                if (resultHtml.Contains(Constants.ProgressReplacement, StringComparison.OrdinalIgnoreCase))
                 {
-                    var stepNumber = index + 1;
-                    var progressStep = steps[index];
-
-                    // Create dictionary for replacements.
-                    replaceData = new Dictionary<string, string>
+                    var progressBuilder = new StringBuilder();
+                    for (var index = 0; index < steps.Count; index++)
                     {
-                        { "id", progressStep.Id.ToString() },
-                        { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title", defaultValue: progressStep.Title ?? "") },
-                        { "number", stepNumber.ToString() },
-                        { "active", ActiveStep == stepNumber ? "active" : "" }
-                    };
+                        var stepNumber = index + 1;
+                        var progressStep = steps[index];
 
-                    var progressStepHtml = StringReplacementsService.DoReplacements(Settings.TemplateProgressStep, replaceData);
-                    progressBuilder.AppendLine(progressStepHtml);
+                        // Create dictionary for replacements.
+                        replaceData = new Dictionary<string, string>
+                        {
+                            { "id", progressStep.Id.ToString() },
+                            { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title", defaultValue: progressStep.Title ?? "") },
+                            { "number", stepNumber.ToString() },
+                            { "active", ActiveStep == stepNumber ? "active" : "" }
+                        };
+
+                        var progressStepHtml = StringReplacementsService.DoReplacements(Settings.TemplateProgressStep, replaceData);
+                        progressBuilder.AppendLine(progressStepHtml);
+                    }
+
+                    var progressHtml = Settings.TemplateProgress.ReplaceCaseInsensitive(Constants.StepsReplacement, progressBuilder.ToString());
+                    resultHtml = resultHtml.ReplaceCaseInsensitive(Constants.ProgressReplacement, progressHtml);
                 }
 
-                var progressHtml = Settings.TemplateProgress.ReplaceCaseInsensitive(Constants.StepsReplacement, progressBuilder.ToString());
-                html = html.ReplaceCaseInsensitive(Constants.ProgressReplacement, progressHtml);
-            }
+                // Save values to database.
+                if (isPostBack)
+                {
+                    await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+                }
 
-            // Save values to database.
-            if (isPostBack)
+                if (fieldErrorsOccurred)
+                {
+                    resultHtml = AddStepErrorToResult(resultHtml, "Client");
+                }
+            }
+            catch (Exception exception)
             {
-                await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+                resultHtml = AddStepErrorToResult(resultHtml, "Server");
+                Logger.LogError(exception.ToString());
             }
 
             // Do all generic replacement last and then return the final HTML.
-            return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(html), Constants.ComponentIdFormKey);
+            return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(resultHtml), Constants.ComponentIdFormKey);
+        }
+
+        #endregion
+
+        #region Private methods
+
+        /// <summary>
+        /// Validates whether a value for a field is valid.
+        /// This checks if the field is mandatory, if the regex pattern matches and if the value is valid for the type of field (eg if an email field contains a valid e-mail address).
+        /// </summary>
+        /// <param name="field">The settings for the field.</param>
+        /// <param name="fieldValue">The value that the user entered.</param>
+        /// <returns>A <see cref="bool"/> indicating whether the value is valid or not.</returns>
+        private static bool FieldValueIsValid(OrderProcessFieldModel field, string fieldValue)
+        {
+            try
+            {
+                if (!String.IsNullOrWhiteSpace(field.Pattern))
+                {
+                    // If the field is not mandatory, then it can be empty but must still pass validation if it's not empty.
+                    return (!field.Mandatory && String.IsNullOrEmpty(fieldValue)) || Regex.IsMatch(fieldValue, field.Pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                }
+
+                switch (field.Mandatory)
+                {
+                    case true when String.IsNullOrWhiteSpace(fieldValue):
+                        return false;
+                    case false when String.IsNullOrWhiteSpace(fieldValue):
+                        return true;
+                    default:
+                        return field.InputFieldType switch
+                        {
+                            OrderProcessInputTypes.Email => Regex.IsMatch(fieldValue, @"(@)(.+)$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(200)),
+                            OrderProcessInputTypes.Number => Decimal.TryParse(fieldValue, NumberStyles.Any, new CultureInfo("en-US"), out _),
+                            _ => true
+                        };
+                }
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Method to add an error to the result.
+        /// If a variable '{error}' exists in the result HTML, then that variable will be replaced with the error.
+        /// It that variable doesn't exist and the errorType is "Server", the entire result HTML will be replaced by the error.
+        /// </summary>
+        /// <param name="resultHtml">The result HTML.</param>
+        /// <param name="errorType">The type of error (Server or Client).</param>
+        /// <returns>The result HTML with the error.</returns>
+        private string AddStepErrorToResult(string resultHtml, string errorType)
+        {
+            if (String.IsNullOrEmpty(resultHtml) || (!resultHtml.Contains(Constants.ErrorReplacement) && errorType != "Server"))
+            {
+                resultHtml = Settings.TemplateStepError;
+            }
+            else
+            {
+                resultHtml = resultHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, Settings.TemplateStepError);
+            }
+
+            resultHtml = resultHtml.ReplaceCaseInsensitive(Constants.ErrorTypeReplacement, errorType);
+            return resultHtml;
         }
 
         #endregion

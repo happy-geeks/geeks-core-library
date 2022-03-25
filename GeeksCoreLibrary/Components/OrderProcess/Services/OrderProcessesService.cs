@@ -100,6 +100,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                        fieldMandatory.value AS fieldMandatory,
 	                        fieldPattern.value AS fieldPattern,
 	                        fieldVisible.value AS fieldVisible,
+	                        fieldErrorMessage.value AS fieldErrorMessage,
 
                             # Field values
 	                        IF(NULLIF(fieldValues.`key`, '') IS NULL AND NULLIF(fieldValues.value, '') IS NULL, NULL, JSON_OBJECTAGG(IFNULL(fieldValues.`key`, ''), IFNULL(fieldValues.value, ''))) AS fieldValues
@@ -130,6 +131,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldMandatory ON fieldMandatory.item_id = field.id AND fieldMandatory.`key` = '{Constants.FieldMandatoryProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldPattern ON fieldPattern.item_id = field.id AND fieldPattern.`key` = '{Constants.FieldValidationPatternProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldVisible ON fieldVisible.item_id = field.id AND fieldVisible.`key` = '{Constants.FieldVisibilityProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldErrorMessage ON fieldErrorMessage.item_id = field.id AND fieldErrorMessage.`key` = '{Constants.FieldErrorMessageProperty}'
                         
                         # Field values
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldValues ON fieldValues.item_id = field.id AND fieldValues.groupname = '{Constants.FieldValuesGroupName}'
@@ -225,7 +227,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     Mandatory = dataRow.Field<string>("fieldMandatory") == "1",
                     Pattern = dataRow.Field<string>("fieldPattern"),
                     Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("fieldVisible") ?? "Always"),
-                    InputFieldType = EnumHelpers.ToEnum<OrderProcessInputTypes>(dataRow.Field<string>("fieldInputType") ?? "text")
+                    InputFieldType = EnumHelpers.ToEnum<OrderProcessInputTypes>(dataRow.Field<string>("fieldInputType") ?? "text"),
+                    ErrorMessage = dataRow.Field<string>("fieldErrorMessage")
                 };
 
                 group.Fields.Add(field);

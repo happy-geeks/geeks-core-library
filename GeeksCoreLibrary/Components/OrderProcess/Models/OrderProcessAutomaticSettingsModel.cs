@@ -15,12 +15,23 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <h2>{title}</h2>
     <div id='step_{title:Seo}' class='step-content'>
         <div class='step-header'>{header}</div>
+        {error}
         <div class='step-groups'>{groups}</div>
         <div class='step-footer'>{footer}</div>
     </div>
     <button type='submit' id='confirmButton'>{confirmButtonText}</button>
 </form>")]
         internal string TemplateStep { get; }
+
+        [DefaultValue(@"<div class='error'>
+    [if({errorType}=Client)]
+    <p>[T{Niet alle gegevens zijn correct ingevuld, controleer de gegevens en probeer het opnieuw.}]</p>
+    [endif]
+    [if({errorType}=Server)]
+    <p>[T{Er is een onbekende fout opgetreden. Probeer het a.u.b. nogmaals of neem contact op met ons.}]</p>
+    [endif]
+</div>")]
+        internal string TemplateStepError { get; }
 
         [DefaultValue(@"<fieldset class='group-container'>
     <legend>{title}</legend>
@@ -30,15 +41,20 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </fieldset>")]
         internal string TemplateGroup { get; }
 
-        [DefaultValue(@"<div id='container_{fieldId}' class='field-container'>
+        [DefaultValue(@"<span class='field-error'>[if({errorMessage}=)][T{Vul a.u.b. een geldige waarde in}][else]{errorMessage}[endif]</span>")]
+        internal string TemplateFieldError { get; }
+
+        [DefaultValue(@"<div id='container_{fieldId}' class='field-container {errorClass}'>
     [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
     <input type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern} value='{value}' />
+    {error}
 </div>")]
         internal string TemplateInputField { get; }
 
-        [DefaultValue(@"<div id='container_{fieldId}' class='field-container'>
+        [DefaultValue(@"<div id='container_{fieldId}' class='field-container {errorClass}'>
     [if({label}!)]<label>{label}</label>[endif]
     {options}
+    {error}
 </div>")]
         internal string TemplateRadioButtonField { get; }
         
@@ -48,22 +64,24 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </label>")]
         internal string TemplateRadioButtonFieldOption { get; }
         
-        [DefaultValue(@"<div id='container_{fieldId}' class='field-container'>
+        [DefaultValue(@"<div id='container_{fieldId}' class='field-container {errorClass}'>
     [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
     <select id='{fieldId}' name='{fieldId}' {required}>
         {options}
     </select>
+    {error}
 </div>")]
         internal string TemplateSelectField { get; }
         
         [DefaultValue(@"<option id='{fieldId}_{optionValue}' value='{optionValue}' {selected} /> <span class='label'>{optionText}</span></label>")]
         internal string TemplateSelectFieldOption { get; }
         
-        [DefaultValue(@"<div id='container_{fieldId}' class='field-container'>
+        [DefaultValue(@"<div id='container_{fieldId}' class='field-container {errorClass}'>
     <label>
         <input type='checkbox' id='{fieldId}' name='{fieldId}' {required} {checked} value='1' />
         <span class='label'>{label}</span>
     </label>
+    {error}
 </div>")]
         internal string TemplateCheckboxField { get; }
 

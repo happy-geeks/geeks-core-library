@@ -52,5 +52,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets when the field should be visible.
         /// </summary>
         public OrderProcessFieldVisibilityTypes Visibility { get; set; }
+
+        /// <summary>
+        /// Gets or sets the message that should be shown when the user entered an invalid value.
+        /// </summary>
+        public string ErrorMessage { get; set; }
     }
 }
