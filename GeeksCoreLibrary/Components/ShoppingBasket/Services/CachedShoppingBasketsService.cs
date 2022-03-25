@@ -125,9 +125,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
-            return await shoppingBasketsService.SaveAsync(shoppingBasket, basketLines, settings);
+            return await shoppingBasketsService.SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
         }
 
         /// <inheritdoc />

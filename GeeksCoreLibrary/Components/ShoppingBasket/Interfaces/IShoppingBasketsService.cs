@@ -123,7 +123,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <summary>
         /// Saves the current basket to the database.
         /// </summary>
-        Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings);
+        Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true);
 
         /// <summary>
         /// Calculates the shipping costs based on the shipping costs query defined in the settings module.
