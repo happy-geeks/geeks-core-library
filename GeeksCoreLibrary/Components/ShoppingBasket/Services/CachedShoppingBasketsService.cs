@@ -35,6 +35,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
+        public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync()
+        {
+            return await shoppingBasketsService.GetShoppingBasketsAsync();
+        }
+
+        /// <inheritdoc />
         public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync(string cookieName, ShoppingBasketCmsSettingsModel settings)
         {
             return await shoppingBasketsService.GetShoppingBasketsAsync(cookieName, settings);
@@ -216,6 +222,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         public async Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
         {
             return await shoppingBasketsService.GetVatRuleByRateAsync(shoppingBasket, settings, vatRate);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetCheckoutObjectValueAsync(string propertyName, string defaultResult = "")
+        {
+            return await shoppingBasketsService.GetCheckoutObjectValueAsync(propertyName, defaultResult);
         }
     }
 }

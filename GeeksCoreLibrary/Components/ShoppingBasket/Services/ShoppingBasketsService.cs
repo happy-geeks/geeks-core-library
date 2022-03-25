@@ -108,6 +108,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
+        public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync()
+        {
+            var checkoutBasketsCookieName = await GetCheckoutObjectValueAsync("CHECKOUT_CheckoutBasketsCookieName", "checkout_baskets");
+            
+            var settings = await GetSettingsAsync();
+            return await GetShoppingBasketsAsync(checkoutBasketsCookieName, settings);
+        }
+
+        /// <inheritdoc />
         public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync(string cookieName, ShoppingBasketCmsSettingsModel settings)
         {
             var result = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
@@ -1843,6 +1852,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// <inheritdoc />
         public async Task<ShoppingBasketCmsSettingsModel> GetSettingsAsync()
         {
+            var cookieAgeSetting = await objectsService.FindSystemObjectByDomainNameAsync("basketCookieAgeInDays");
+            if (!Int32.TryParse(cookieAgeSetting, out var cookieAgeInDays))
+            {
+                cookieAgeInDays = 7;
+            }
+
             return new()
             {
                 CookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName"),
@@ -1856,6 +1871,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 VatRatePropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_VatrateProductDataProperty"),
                 BasketEntityName = await objectsService.FindSystemObjectByDomainNameAsync("basketEntityType"),
                 BasketLineEntityName = await objectsService.FindSystemObjectByDomainNameAsync("basketLineEntityType"),
+                CookieAgeInDays = cookieAgeInDays,
                 HandleRequest = true
             };
         }
@@ -2021,154 +2037,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
 
             return result;
-        }
-
-        #region Private functions (helper functions)
-
-        private void WriteEncryptedIdToCookie(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings)
-        {
-            var httpContext = httpContextAccessor.HttpContext;
-            var expires = DateTimeOffset.Now.AddDays(settings.CookieAgeInDays);
-            var encryptedId = EncryptBasketItemId(shoppingBasket.Id);
-            HttpContextHelpers.WriteCookie(httpContext, settings.CookieName, encryptedId, expires, isEssential: true);
-        }
-
-        private async Task UpdateLineDetailsViaExtraQueryAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string query)
-        {
-            if (String.IsNullOrWhiteSpace(query))
-            {
-                return;
-            }
-
-            var user = await accountsService.GetUserDataFromCookieAsync();
-            var extraReplacements = new Dictionary<string, object>
-            {
-                { "linktype", 5002 },
-                { "Account_MainUserId", user.MainUserId },
-                { "Account_UserId", user.UserId },
-                { "AccountWiser2_MainUserId", user.MainUserId },
-                { "AccountWiser2_UserId", user.UserId }
-            };
-            query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(query, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
-
-            var queryResult = await databaseConnection.GetAsync(query, true);
-
-            if (queryResult.Rows.Count == 0)
-            {
-                return;
-            }
-
-            var containsReadOnlyColumn = queryResult.Columns.Contains("readonly");
-            var containsKeyColumn = queryResult.Columns.Contains("key");
-            var containsValueColumn = queryResult.Columns.Contains("value");
-
-            foreach (DataRow dataRow in queryResult.Rows)
-            {
-                var id = dataRow.Field<ulong>("id");
-                var line = GetLine(basketLines, id);
-
-                if (line == null)
-                {
-                    continue;
-                }
-
-                if (containsKeyColumn && containsValueColumn)
-                {
-                    var key = dataRow.Field<string>("key");
-                    var value = dataRow.Field<string>("value");
-
-                    line.SetDetail(key, value, readOnly: !containsReadOnlyColumn || Convert.ToBoolean(dataRow["readonly"]), markChangedAsFalse: true);
-                }
-                else
-                {
-                    foreach (DataColumn dataColumn in dataRow.Table.Columns)
-                    {
-                        if (dataColumn.ColumnName.Equals("id"))
-                        {
-                            continue;
-                        }
-
-                        if (dataColumn.ColumnName.EndsWith("_save"))
-                        {
-                            line.SetDetail(dataColumn.ColumnName[..^5], Convert.ToString(dataRow[dataColumn]), markChangedAsFalse: true);
-                        }
-                        else
-                        {
-                            line.SetDetail(dataColumn.ColumnName, Convert.ToString(dataRow[dataColumn]), readOnly: true, markChangedAsFalse: true);
-                        }
-                    }
-                }
-            }
-        }
-
-        private async Task UpdateMainDetailsViaExtraQueryAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string query)
-        {
-            if (String.IsNullOrWhiteSpace(query))
-            {
-                return;
-            }
-
-            var user = await accountsService.GetUserDataFromCookieAsync();
-            var extraReplacements = new Dictionary<string, object>
-            {
-                { "Account_MainUserId", user.MainUserId },
-                { "Account_UserId", user.UserId },
-                { "AccountWiser2_MainUserId", user.MainUserId },
-                { "AccountWiser2_UserId", user.UserId }
-            };
-            query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(query, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
-
-            var queryResult = await databaseConnection.GetAsync(query, true);
-
-            if (queryResult.Rows.Count == 0)
-            {
-                return;
-            }
-
-            var containsReadOnlyColumn = queryResult.Columns.Contains("readonly");
-            var containsIdColumn = queryResult.Columns.Contains("readonly");
-            var containsKeyColumn = queryResult.Columns.Contains("key");
-            var containsValueColumn = queryResult.Columns.Contains("value");
-
-            foreach (DataRow dataRow in queryResult.Rows)
-            {
-                if (containsIdColumn)
-                {
-                    var id = dataRow.Field<ulong>("id");
-
-                    if (shoppingBasket.Id != id)
-                    {
-                        continue;
-                    }
-                }
-
-                if (containsKeyColumn && containsValueColumn)
-                {
-                    var key = dataRow.Field<string>("key");
-                    var value = dataRow.Field<string>("value");
-
-                    shoppingBasket.SetDetail(key, value, readOnly: !containsReadOnlyColumn || Convert.ToBoolean(dataRow["readonly"]), markChangedAsFalse: true);
-                }
-                else
-                {
-                    foreach (DataColumn dataColumn in queryResult.Columns)
-                    {
-                        if (dataColumn.ColumnName.Equals("id"))
-                        {
-                            continue;
-                        }
-
-                        if (dataColumn.ColumnName.EndsWith("_save"))
-                        {
-                            shoppingBasket.SetDetail(dataColumn.ColumnName.Replace("_save", ""), Convert.ToString(dataRow[dataColumn]), markChangedAsFalse: true);
-                        }
-                        else
-                        {
-                            shoppingBasket.SetDetail(dataColumn.ColumnName, Convert.ToString(dataRow[dataColumn]), readOnly: true, markChangedAsFalse: true);
-                        }
-                    }
-                }
-            }
         }
 
         /// <inheritdoc />
@@ -2343,7 +2211,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             return round ? Math.Round(output, 2, MidpointRounding.AwayFromZero) : output;
         }
-
+        
+        /// <inheritdoc />
         public async Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
         {
             vatFactorsByRate ??= new SortedList<int, decimal>();
@@ -2354,6 +2223,166 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
 
             return vatFactorsByRate[vatRate];
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetCheckoutObjectValueAsync(string propertyName, string defaultResult = "")
+        {
+            var result = await objectsService.FindSystemObjectByDomainNameAsync(propertyName);
+            if (String.IsNullOrEmpty(result))
+            {
+                result = await objectsService.FindSystemObjectByDomainNameAsync($"W2{propertyName}");
+            }
+
+            return String.IsNullOrEmpty(result) ? defaultResult : result;
+        }
+
+        #region Private functions (helper functions)
+
+        private void WriteEncryptedIdToCookie(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings)
+        {
+            var httpContext = httpContextAccessor.HttpContext;
+            var expires = DateTimeOffset.Now.AddDays(settings.CookieAgeInDays);
+            var encryptedId = EncryptBasketItemId(shoppingBasket.Id);
+            HttpContextHelpers.WriteCookie(httpContext, settings.CookieName, encryptedId, expires, isEssential: true);
+        }
+
+        private async Task UpdateLineDetailsViaExtraQueryAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string query)
+        {
+            if (String.IsNullOrWhiteSpace(query))
+            {
+                return;
+            }
+
+            var user = await accountsService.GetUserDataFromCookieAsync();
+            var extraReplacements = new Dictionary<string, object>
+            {
+                { "linktype", 5002 },
+                { "Account_MainUserId", user.MainUserId },
+                { "Account_UserId", user.UserId },
+                { "AccountWiser2_MainUserId", user.MainUserId },
+                { "AccountWiser2_UserId", user.UserId }
+            };
+            query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(query, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
+
+            var queryResult = await databaseConnection.GetAsync(query, true);
+
+            if (queryResult.Rows.Count == 0)
+            {
+                return;
+            }
+
+            var containsReadOnlyColumn = queryResult.Columns.Contains("readonly");
+            var containsKeyColumn = queryResult.Columns.Contains("key");
+            var containsValueColumn = queryResult.Columns.Contains("value");
+
+            foreach (DataRow dataRow in queryResult.Rows)
+            {
+                var id = dataRow.Field<ulong>("id");
+                var line = GetLine(basketLines, id);
+
+                if (line == null)
+                {
+                    continue;
+                }
+
+                if (containsKeyColumn && containsValueColumn)
+                {
+                    var key = dataRow.Field<string>("key");
+                    var value = dataRow.Field<string>("value");
+
+                    line.SetDetail(key, value, readOnly: !containsReadOnlyColumn || Convert.ToBoolean(dataRow["readonly"]), markChangedAsFalse: true);
+                }
+                else
+                {
+                    foreach (DataColumn dataColumn in dataRow.Table.Columns)
+                    {
+                        if (dataColumn.ColumnName.Equals("id"))
+                        {
+                            continue;
+                        }
+
+                        if (dataColumn.ColumnName.EndsWith("_save"))
+                        {
+                            line.SetDetail(dataColumn.ColumnName[..^5], Convert.ToString(dataRow[dataColumn]), markChangedAsFalse: true);
+                        }
+                        else
+                        {
+                            line.SetDetail(dataColumn.ColumnName, Convert.ToString(dataRow[dataColumn]), readOnly: true, markChangedAsFalse: true);
+                        }
+                    }
+                }
+            }
+        }
+
+        private async Task UpdateMainDetailsViaExtraQueryAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string query)
+        {
+            if (String.IsNullOrWhiteSpace(query))
+            {
+                return;
+            }
+
+            var user = await accountsService.GetUserDataFromCookieAsync();
+            var extraReplacements = new Dictionary<string, object>
+            {
+                { "Account_MainUserId", user.MainUserId },
+                { "Account_UserId", user.UserId },
+                { "AccountWiser2_MainUserId", user.MainUserId },
+                { "AccountWiser2_UserId", user.UserId }
+            };
+            query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(query, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
+
+            var queryResult = await databaseConnection.GetAsync(query, true);
+
+            if (queryResult.Rows.Count == 0)
+            {
+                return;
+            }
+
+            var containsReadOnlyColumn = queryResult.Columns.Contains("readonly");
+            var containsIdColumn = queryResult.Columns.Contains("readonly");
+            var containsKeyColumn = queryResult.Columns.Contains("key");
+            var containsValueColumn = queryResult.Columns.Contains("value");
+
+            foreach (DataRow dataRow in queryResult.Rows)
+            {
+                if (containsIdColumn)
+                {
+                    var id = dataRow.Field<ulong>("id");
+
+                    if (shoppingBasket.Id != id)
+                    {
+                        continue;
+                    }
+                }
+
+                if (containsKeyColumn && containsValueColumn)
+                {
+                    var key = dataRow.Field<string>("key");
+                    var value = dataRow.Field<string>("value");
+
+                    shoppingBasket.SetDetail(key, value, readOnly: !containsReadOnlyColumn || Convert.ToBoolean(dataRow["readonly"]), markChangedAsFalse: true);
+                }
+                else
+                {
+                    foreach (DataColumn dataColumn in queryResult.Columns)
+                    {
+                        if (dataColumn.ColumnName.Equals("id"))
+                        {
+                            continue;
+                        }
+
+                        if (dataColumn.ColumnName.EndsWith("_save"))
+                        {
+                            shoppingBasket.SetDetail(dataColumn.ColumnName.Replace("_save", ""), Convert.ToString(dataRow[dataColumn]), markChangedAsFalse: true);
+                        }
+                        else
+                        {
+                            shoppingBasket.SetDetail(dataColumn.ColumnName, Convert.ToString(dataRow[dataColumn]), readOnly: true, markChangedAsFalse: true);
+                        }
+                    }
+                }
+            }
         }
 
         private async Task<(bool Valid, decimal Discount, ShoppingBasket.HandleCouponResults HandleCouponResult, WiserItemModel Coupon, bool OnlyChangePrice, bool DoRemove)> HandleCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode)
@@ -2894,17 +2923,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             };
             var query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(settings.AddToBasketQuery, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
             await databaseConnection.ExecuteAsync(query);
-        }
-
-        private async Task<string> GetCheckoutObjectValueAsync(string propertyName)
-        {
-            var result = await objectsService.FindSystemObjectByDomainNameAsync(propertyName);
-            if (String.IsNullOrWhiteSpace(result))
-            {
-                result = await objectsService.FindSystemObjectByDomainNameAsync($"W2{propertyName}");
-            }
-
-            return result;
         }
 
         #endregion

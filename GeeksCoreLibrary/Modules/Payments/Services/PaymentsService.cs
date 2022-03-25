@@ -162,14 +162,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             // Retrieve baskets.
-            var checkoutBasketsCookieName = await GetCheckoutObjectValueAsync("CHECKOUT_CheckoutBasketsCookieName");
-            if (String.IsNullOrWhiteSpace(checkoutBasketsCookieName))
-            {
-                checkoutBasketsCookieName = "checkout_baskets";
-            }
-            
-            var settings = await shoppingBasketsService.GetSettingsAsync();
-            var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync(checkoutBasketsCookieName, settings);
+            var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync();
 
             var orderId = 0UL;
 
@@ -334,26 +327,26 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 invoiceNumber = orderId.ToString();
             }
 
-            var uniquePaymentNumberWithoutDate = (await GetCheckoutObjectValueAsync("CHECKOUT_UniquePaymentNumberWithoutDate")).Equals("1");
+            var uniquePaymentNumberWithoutDate = (await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_UniquePaymentNumberWithoutDate")).Equals("1");
             var uniquePaymentNumber = uniquePaymentNumberWithoutDate ? invoiceNumber : $"{invoiceNumber}-{DateTime.Now:yyyyMMddHHmmss}";
 
             foreach (var (main, lines) in shoppingBaskets)
             {
                 main.SetDetail("UniquePaymentNumber", uniquePaymentNumber);
 
-                var invoiceNumberPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_InvoicenumberPropertyName");
+                var invoiceNumberPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_InvoicenumberPropertyName");
                 if (!String.IsNullOrWhiteSpace(invoiceNumberPropertyName))
                 {
                     main.SetDetail(invoiceNumberPropertyName, invoiceNumber);
                 }
 
-                var languageCodePropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_LanguageCodePropertyName", "languagecode");
+                var languageCodePropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_LanguageCodePropertyName", "languagecode");
                 if (!String.IsNullOrWhiteSpace(languageCodePropertyName))
                 {
                     main.SetDetail(languageCodePropertyName, languagesService?.CurrentLanguageCode ?? "");
                 }
 
-                var pspPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_PspPropertyName", "psp");
+                var pspPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_PspPropertyName", "psp");
                 main.SetDetail(pspPropertyName, paymentServiceProvider.ToString("G"));
                 await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
             }
@@ -367,7 +360,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             // Check if the order is a test order.
-            var isTestOrderPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_isTestOrderPropertyName", "istestorder");
+            var isTestOrderPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_isTestOrderPropertyName", "istestorder");
             var isTestOrder = gclSettings.Environment.InList(Environments.Test, Environments.Development);
             var convertConceptOrderToOrder = false;
 
@@ -461,19 +454,9 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var mailsToSendToUser = new List<SingleCommunicationModel>();
             var mailsToSendToMerchant = new List<SingleCommunicationModel>();
             var mailAttachment = await objectsService.FindSystemObjectByDomainNameAsync("PSP_mailAttachment");
-            var paymentHistoryPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_PaymentHistoryPropertyName", "paymenthistory");
-
-            //string invoiceNumber;
-
-            //if (!String.IsNullOrWhiteSpace(shoppingBaskets.First().Main.GetDetailValue("UniquePaymentNumber")))
-            //{
-            //    invoiceNumber = shoppingBaskets.First().Main.GetDetailValue("UniquePaymentNumber");
-            //}
-
+            var paymentHistoryPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_PaymentHistoryPropertyName", "paymenthistory");
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();
-
             var orderEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderEntityType", "order");
-            //var orderLineEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderLineEntityType", "orderline");
 
             var emailContent = "";
             var emailSubject = "";
@@ -624,12 +607,12 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
         private async Task<EmailValues> GetMailValuesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, bool forMerchantMail = false, bool forAttachment = false)
         {
-            var mailBodyPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailBodyPropertyName", "template");
-            var mailSubjectPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailSubjectPropertyName", "subject");
-            var mailToPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailToPropertyName", "mailto");
-            var emailAddressBasketPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_EmailAddressBasketPropertyName");
-            var languageCodePropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_LanguageCodePropertyName", "languagecode");
-            var emailAddressPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_EmailAddressPropertyName", "emailaddress");
+            var mailBodyPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_MailBodyPropertyName", "template");
+            var mailSubjectPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_MailSubjectPropertyName", "subject");
+            var mailToPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_MailToPropertyName", "mailto");
+            var emailAddressBasketPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_EmailAddressBasketPropertyName");
+            var languageCodePropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_LanguageCodePropertyName", "languagecode");
+            var emailAddressPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_EmailAddressPropertyName", "emailaddress");
             var getMailToBasedOnDeliveryMethod = (await objectsService.FindSystemObjectByDomainNameAsync("GetMailAdresBasedOnDeliveryMethod", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
 
             var userEmailAddress = "";
@@ -724,23 +707,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 User = new CommunicationReceiverModel { Address = userEmailAddress },
                 Merchant = new CommunicationReceiverModel { Address = merchantEmailAddress }
             };
-        }
-
-        /// <summary>
-        /// Retrieves an object by key. If the result is empty, it will try again by prepending "W2" to the key name to check if a legacy key is set.
-        /// </summary>
-        /// <param name="propertyName"></param>
-        /// <param name="defaultResult"></param>
-        /// <returns></returns>
-        private async Task<string> GetCheckoutObjectValueAsync(string propertyName, string defaultResult = "")
-        {
-            var result = await objectsService.FindSystemObjectByDomainNameAsync(propertyName);
-            if (String.IsNullOrEmpty(result))
-            {
-                result = await objectsService.FindSystemObjectByDomainNameAsync($"W2{propertyName}");
-            }
-
-            return String.IsNullOrEmpty(result) ? defaultResult : result;
         }
     }
 }

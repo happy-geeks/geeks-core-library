@@ -18,6 +18,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <summary>
         /// Gets all baskets through a cookie name.
         /// </summary>
+        /// <returns></returns>
+        Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync();
+
+        /// <summary>
+        /// Gets all baskets through a cookie name.
+        /// </summary>
         /// <param name="cookieName"></param>
         /// <param name="settings"></param>
         /// <returns></returns>
@@ -187,5 +193,13 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="vatRate"></param>
         /// <returns></returns>
         Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate);
+
+        /// <summary>
+        /// Retrieves an object by key. If the result is empty, it will try again by prepending "W2" to the key name to check if a legacy key is set.
+        /// </summary>
+        /// <param name="propertyName"></param>
+        /// <param name="defaultResult"></param>
+        /// <returns></returns>
+        Task<string> GetCheckoutObjectValueAsync(string propertyName, string defaultResult = "");
     }
 }
