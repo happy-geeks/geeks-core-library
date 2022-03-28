@@ -289,8 +289,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
         {
             var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss 
-                ? $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'"
-                : $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')";
+                ? $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')"
+                : $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'";
 
             var joinPart = gclSettings.Environment switch
             {
