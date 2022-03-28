@@ -24,7 +24,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         [HttpGet]
         public async Task<IActionResult> GeneralJavascript()
         {
-            var lastChangedDate = await templatesService.GetGeneralTemplateLastChangedDateAsync(TemplateTypes.Css) ?? DateTime.Now;
+            var lastChangedDate = await templatesService.GetGeneralTemplateLastChangedDateAsync(TemplateTypes.Js) ?? DateTime.Now;
             if (!this.IsModified(lastChangedDate))
             {
                 return StatusCode((int) HttpStatusCode.NotModified);
