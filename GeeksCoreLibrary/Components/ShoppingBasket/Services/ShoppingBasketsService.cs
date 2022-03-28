@@ -2253,17 +2253,20 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 var countryCookieName = await objectsService.FindSystemObjectByDomainNameAsync("W2_CountryCookieName");
 
-                if (!String.IsNullOrWhiteSpace(shoppingBasket.GetDetailValue(settings.CountryPropertyName)) && shoppingBasket.GetDetailValue(settings.CountryPropertyName) == vatRule.Country)
+                if (!String.IsNullOrWhiteSpace(countryCookieName))
                 {
-                    doReturnCountry = true;
-                }
-                else if (userDetails.ContainsKey(settings.CountryPropertyName) && !String.IsNullOrWhiteSpace(userDetails[settings.CountryPropertyName]) && userDetails[settings.CountryPropertyName] == vatRule.Country)
-                {
-                    doReturnCountry = true;
-                }
-                else if (!String.IsNullOrWhiteSpace(countryCookieName) && HttpContextHelpers.ReadCookie(httpContext, countryCookieName) == vatRule.Country)
-                {
-                    doReturnCountry = true;
+                    if (!String.IsNullOrWhiteSpace(shoppingBasket.GetDetailValue(settings.CountryPropertyName)) && shoppingBasket.GetDetailValue(settings.CountryPropertyName) == vatRule.Country)
+                    {
+                        doReturnCountry = true;
+                    }
+                    else if (userDetails.ContainsKey(settings.CountryPropertyName) && !String.IsNullOrWhiteSpace(userDetails[settings.CountryPropertyName]) && userDetails[settings.CountryPropertyName] == vatRule.Country)
+                    {
+                        doReturnCountry = true;
+                    }
+                    else if (HttpContextHelpers.ReadCookie(httpContext, countryCookieName) == vatRule.Country)
+                    {
+                        doReturnCountry = true;
+                    }
                 }
             }
             else
