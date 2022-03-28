@@ -225,11 +225,13 @@ namespace GeeksCoreLibrary.Components.WebPage
                 {
                     var itemLinkAlias = $"searchUpLink{i}";
                     var itemAlias = $"searchUpItem{i}";
+                    var titleAlias = $"item{i}Title";
                     var seoTitleAlias = $"item{i}SeoName";
                     var previousLink = i == 1 ? "webPage.id" : $"searchUpLink{i - 1}.destination_item_id";
 
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS `{itemLinkAlias}` ON `{itemLinkAlias}`.item_id = {previousLink}");
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItem}` AS `{itemAlias}` ON `{itemAlias}`.id = `{itemLinkAlias}`.destination_item_id");
+                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{titleAlias}` ON `{titleAlias}`.item_id = `{itemAlias}`.id AND `{titleAlias}`.`key` = 'title'");
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{seoTitleAlias}` ON `{seoTitleAlias}`.item_id = `{itemAlias}`.id AND `{seoTitleAlias}`.`key` = 'title_seo'");
                 }
             }
@@ -243,14 +245,14 @@ namespace GeeksCoreLibrary.Components.WebPage
             }
             else if (!String.IsNullOrWhiteSpace(Settings.PageName))
             {
-                query.Append(" AND webPageSeoName.`value` = ?pageName");
+                query.Append(" AND IFNULL(webPageSeoName.`value`, webPageTitle.`value`) = ?pageName");
 
                 if (!String.IsNullOrWhiteSpace(pathMustContain) && Settings.SearchNumberOfLevels > 0)
                 {
                     query.Append(" AND CONCAT_WS('/'");
                     for (var i = Settings.SearchNumberOfLevels; i > 0; i--)
                     {
-                        query.Append($", `item{i}SeoName`.`value`");
+                        query.Append($", IFNULL(`item{i}SeoName`.`value`, `item{i}SeoName`.`value`)");
                     }
                     query.Append(") LIKE CONCAT('%', ?path, '%')");
                 }
