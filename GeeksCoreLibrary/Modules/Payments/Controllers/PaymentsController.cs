@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
+using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Payments.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -49,8 +50,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Controllers
         [HttpPost, HttpGet, IgnoreAntiforgeryToken]
         public async Task<IActionResult> PaymentIn()
         {
-            var statusUpdateResult = await paymentsService.HandleStatusUpdateAsync();
-
+            await paymentsService.HandleStatusUpdateAsync();
             return Content("", "text/html");
         }
 
@@ -58,8 +58,21 @@ namespace GeeksCoreLibrary.Modules.Payments.Controllers
         [Route("payment_return.jcl")]
         public async Task<IActionResult> PaymentReturn()
         {
-            await paymentsService.HandlePaymentRequestAsync();
-            return Content("", TaskExtensions/ht)
+            var result = await paymentsService.HandlePaymentReturnAsync();
+
+            switch (result.Action)
+            {
+                case PaymentResultActions.Redirect:
+                    Response.Redirect(result.ActionData);
+                    break;
+                case PaymentResultActions.None:
+                    // Do nothing.
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(result.Action), result.Action.ToString());
+            }
+
+            return Content("", "text/html");
         }
 
 #region Rabo OmniKassa specific endpoints

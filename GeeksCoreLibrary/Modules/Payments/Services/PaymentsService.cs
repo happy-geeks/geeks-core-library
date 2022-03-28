@@ -70,7 +70,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public async Task<bool> HandleStatusUpdateAsync()
         {
-            var paymentServiceProvider = GetPaymentServiceProvider();
+            var paymentServiceProvider = GetPaymentServiceProviderFromRequest();
             var shoppingBaskets = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(GetInvoiceNumber(paymentServiceProvider));
 
             // Create the correct service for the payment service provider using the factory.
@@ -108,10 +108,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <summary>
-        /// Attempts to determine the invoice number by checking for various 
+        /// Attempts to determine the invoice number by checking various request values.
         /// </summary>
         /// <returns></returns>
-        private PaymentServiceProviders GetPaymentServiceProvider()
+        private PaymentServiceProviders GetPaymentServiceProviderFromRequest()
         {
             var paymentServiceProviderName = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "gcl_psp");
             if (String.IsNullOrWhiteSpace(paymentServiceProviderName))
@@ -625,7 +625,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public async Task<PaymentReturnResult> HandlePaymentReturnAsync()
         {
-            var paymentServiceProvider = GetPaymentServiceProvider();
+            var paymentServiceProvider = GetPaymentServiceProviderFromRequest();
             if (paymentServiceProvider == PaymentServiceProviders.Unknown)
             {
                 return new PaymentReturnResult

@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
@@ -11,6 +12,8 @@ using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -18,6 +21,7 @@ using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Helpers;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Models;
+using GeeksCoreLibrary.Modules.Payments.Models.Mollie;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -73,16 +77,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             // Retrieve the API key. A development-specific one can be set for testing on development environments.
-            string apiKey;
-            if (gclSettings.Environment == Environments.Development)
-            {
-                apiKey = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_apikey_dev");
-            }
-            else
-            {
-                apiKey = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_apikey_live");
-            }
-
+            var apiKey = await GetApiKeyAsync();
             var locale = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_locale");
 
             // Build and execute payment request.
@@ -94,7 +89,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             restRequest.AddParameter("amount[currency]", await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_currency", "EUR"), ParameterType.GetOrPost);
             restRequest.AddParameter("amount[value]", totalPrice.ToString("F2", CultureInfo.InvariantCulture), ParameterType.GetOrPost);
             restRequest.AddParameter("description", await objectsService.FindSystemObjectByDomainNameAsync("PSP_description"), ParameterType.GetOrPost);
-            restRequest.AddParameter("redirectUrl", BuildRedirectUrl(), ParameterType.GetOrPost);
+            restRequest.AddParameter("redirectUrl", BuildRedirectUrl(shoppingBaskets.First().Main.Id), ParameterType.GetOrPost);
             restRequest.AddParameter("webhookUrl", await BuildWebhookUrlAsync(), ParameterType.GetOrPost);
 
             if (!String.IsNullOrWhiteSpace(locale))
@@ -121,6 +116,11 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // Metadata is always sent back.
             restRequest.AddParameter("metadata", invoiceNumber, ParameterType.GetOrPost);
 
+            if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
+            {
+                restRequest.AddParameter("testmode", "true", ParameterType.GetOrPost);
+            }
+
             var restResponse = await restClient.ExecuteAsync(restRequest);
 
             if (restResponse.StatusCode != HttpStatusCode.Created)
@@ -131,13 +131,13 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     Successful = false,
                     Action = PaymentRequestActions.Redirect,
                     ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL"),
-                    ErrorMessage = "" // TODO: See if Mollie returns an error of some kind.
+                    ErrorMessage = GetErrorMessageInResponse(JObject.Parse(restResponse.Content))
                 };
             }
 
             var responseJson = JObject.Parse(restResponse.Content);
 
-            return new PaymentRequestResult()
+            return new PaymentRequestResult
             {
                 Successful = true,
                 Action = PaymentRequestActions.Redirect,
@@ -145,7 +145,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             };
         }
 
-        private string GetPaymentMethodName(PaymentMethods paymentMethod)
+        private static string GetPaymentMethodName(PaymentMethods paymentMethod)
         {
             var result = paymentMethod switch
             {
@@ -158,14 +158,26 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             return result;
         }
 
-        private string GetIssuerName(string issuerValue)
+        private static string GetIssuerName(string issuerValue)
         {
-            // TODO
-            return String.Empty;
+            var issuerConstants = typeof(IdealIssuers).GetFields(BindingFlags.Public | BindingFlags.Static);
+            var issuerConstant = issuerConstants.FirstOrDefault(mi => mi.Name.Equals(issuerValue, StringComparison.OrdinalIgnoreCase) || mi.Name.Equals($"ideal_{issuerValue}", StringComparison.OrdinalIgnoreCase));
+
+            if (issuerConstant != null)
+            {
+                return (string)issuerConstant.GetValue(null);
+            }
+
+            return null;
         }
 
-        private string BuildRedirectUrl()
+        private string BuildRedirectUrl(ulong orderId)
         {
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return String.Empty;
+            }
+
             var redirectUrl = new UriBuilder
             {
                 Host = httpContextAccessor.HttpContext.Request.Host.Host,
@@ -174,7 +186,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             };
             var queryString = new NameValueCollection
             {
-                ["gcl_psp"] = "mollie"
+                ["gcl_psp"] = "mollie",
+                ["order_id"] = orderId.ToString()
             };
             redirectUrl.Query = queryString.ToString() ?? String.Empty;
 
@@ -183,7 +196,28 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
         private async Task<string> BuildWebhookUrlAsync()
         {
-            var webhookUrl = new UriBuilder(await objectsService.FindSystemObjectByDomainNameAsync("PSP_notifyurl"));
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return String.Empty;
+            }
+
+            var webhookUrlObjectValue = await objectsService.FindSystemObjectByDomainNameAsync("PSP_notifyurl");
+
+            UriBuilder webhookUrl;
+            if (String.IsNullOrWhiteSpace(webhookUrlObjectValue))
+            {
+                webhookUrl = new UriBuilder
+                {
+                    Host = httpContextAccessor.HttpContext.Request.Host.Host,
+                    Scheme = httpContextAccessor.HttpContext.Request.Scheme,
+                    Path = "payment_in.gcl"
+                };
+            }
+            else
+            {
+                webhookUrl = new UriBuilder(webhookUrlObjectValue);
+            }
+
             var queryString = HttpUtility.ParseQueryString(webhookUrl.Query);
             queryString["gcl_psp"] = "mollie";
 
@@ -208,21 +242,18 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var mollieOrderId = httpContextAccessor.HttpContext.Request.Form["id"];
 
             // Retrieve the API key. A development-specific one can be set for testing on development environments.
-            string apiKey;
-            if (gclSettings.Environment == Environments.Development)
-            {
-                apiKey = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_apikey_dev");
-            }
-            else
-            {
-                apiKey = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_apikey_live");
-            }
+            var apiKey = await GetApiKeyAsync();
 
             var restClient = new RestClient(ApiBaseUrl)
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(apiKey, "Bearer")
             };
             var restRequest = new RestRequest($"/payments/{mollieOrderId}", Method.GET);
+
+            if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
+            {
+                restRequest.AddParameter("testmode", "true", ParameterType.GetOrPost);
+            }
 
             // Execute the request. The result will be a JSON object.
             // For more info: https://docs.mollie.com/reference/v2/payments-api/get-payment
@@ -257,7 +288,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             return new StatusUpdateResult
             {
-                Successful = status == "paid",
+                Successful = status.Equals("paid", StringComparison.OrdinalIgnoreCase),
                 Status = status
             };
         }
@@ -265,7 +296,85 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public async Task<PaymentReturnResult> HandlePaymentReturnAsync()
         {
-            throw new NotImplementedException();
+            var apiKey = await GetApiKeyAsync();
+            var mollieOrderId = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "order_id");
+
+            var restClient = new RestClient(ApiBaseUrl)
+            {
+                Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(apiKey, "Bearer")
+            };
+            var restRequest = new RestRequest($"/payments/{mollieOrderId}", Method.GET);
+
+            if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
+            {
+                restRequest.AddParameter("testmode", "true", ParameterType.GetOrPost);
+            }
+
+            var restResponse = await restClient.ExecuteAsync(restRequest);
+
+            if (restResponse.StatusCode != HttpStatusCode.OK)
+            {
+                // Payment request failed.
+                return new PaymentReturnResult
+                {
+                    Action = PaymentResultActions.Redirect,
+                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL")
+                };
+            }
+
+            // Payment status request succeeded.
+            var responseJson = JObject.Parse(restResponse.Content);
+            var status = responseJson["status"]?.ToString() ?? String.Empty;
+
+            var redirectUrl = status switch
+            {
+                "paid" => await objectsService.FindSystemObjectByDomainNameAsync("PSP_successURL"),
+                "pending" => await objectsService.FindSystemObjectByDomainNameAsync("PSP_pendingURL"),
+                _ => await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL")
+            };
+
+            return new PaymentReturnResult
+            {
+                Action = PaymentResultActions.Redirect,
+                ActionData = redirectUrl
+            };
+        }
+
+        /// <summary>
+        /// Returns the live API key for acceptance and live environments, and the dev API key for development and test environments.
+        /// If no dev API key is set, the live API key will always be returned.
+        /// </summary>
+        /// <returns></returns>
+        private async Task<string> GetApiKeyAsync()
+        {
+            string result = null;
+
+            if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
+            {
+                result = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_apikey_dev");
+            }
+
+            if (String.IsNullOrWhiteSpace(result))
+            {
+                result = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_apikey_live");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Attempts to retrieve the error message from Mollie's generic error format.
+        /// </summary>
+        /// <param name="response">A <see cref="JObject"/> that represents the error.</param>
+        /// <returns>A combination of the title and detail properties, or the string "Unknown error" if title and detail are not present in the JObject.</returns>
+        private static string GetErrorMessageInResponse(JObject response)
+        {
+            if (response != null && response.ContainsKey("title") && response.ContainsKey("detail"))
+            {
+                return $"{response["title"]}: {response["detail"]}";
+            }
+
+            return "Unknown error";
         }
 
         public async Task<bool> LogPaymentActionAsync(string invoiceNumber, int status)
