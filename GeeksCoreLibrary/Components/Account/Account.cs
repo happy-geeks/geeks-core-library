@@ -14,6 +14,7 @@ using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -43,6 +44,7 @@ namespace GeeksCoreLibrary.Components.Account
         private readonly GclSettings gclSettings;
         private readonly IObjectsService objectsService;
         private readonly ICommunicationsService communicationsService;
+        private readonly IWiserItemsService wiserItemsService;
 
         #region Enums
 
@@ -236,11 +238,12 @@ namespace GeeksCoreLibrary.Components.Account
 
         #region Constructor
 
-        public Account(IOptions<GclSettings> gclSettings, ILogger<Account> logger, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, ICommunicationsService communicationsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IAntiforgery antiForgery)
+        public Account(IOptions<GclSettings> gclSettings, ILogger<Account> logger, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, ICommunicationsService communicationsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IAntiforgery antiForgery, IWiserItemsService wiserItemsService)
         {
             this.gclSettings = gclSettings.Value;
             this.objectsService = objectsService;
             this.communicationsService = communicationsService;
+            this.wiserItemsService = wiserItemsService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -664,7 +667,7 @@ namespace GeeksCoreLibrary.Components.Account
                 var userLogin = "";
                 if (userIdFromQueryString > 0)
                 {
-                    var query = SetupAccountQuery(Settings.ValidatePasswordQuery, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
+                    var query = SetupAccountQuery(Settings.ValidateResetPasswordTokenQuery, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
                     var dataTable = await RenderAndExecuteQueryAsync(query);
 
                     if (dataTable == null || dataTable.Rows.Count == 0)
@@ -688,7 +691,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 // If there are form post variables and the correct content ID has been posted with them, it means the user is trying reset their password.
-                if (request == null || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
+                if (request == null || !request.HasFormContentType || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
                 {
                     resultHtml = Settings.Template;
                 }
@@ -865,9 +868,9 @@ namespace GeeksCoreLibrary.Components.Account
                         {
                             resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", createOrUpdateAccountResult.ErrorTemplate).ReplaceCaseInsensitive("{success}", createOrUpdateAccountResult.SuccessTemplate);
                         }
-
-                        resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "");
                     }
+
+                    resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "");
 
                     // Check if we can automatically login the user after creating a new account.
                     var isLoggedIn = false;
@@ -1189,8 +1192,8 @@ namespace GeeksCoreLibrary.Components.Account
             var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
             var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
             await SaveGoogleClientIdAsync(userId);
-
-            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : new DateTimeOffset(DateTime.Now, new TimeSpan(amountOfDaysToRememberCookie.Value, 0, 0));
+            
+            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
             HttpContextHelpers.WriteCookie(HttpContext, Constants.CookieName, cookieValue, offset, isEssential: true);
 
             await SaveLoginAttemptAsync(true, userId);
@@ -1708,11 +1711,13 @@ namespace GeeksCoreLibrary.Components.Account
 
             var googleClientId = String.Join(".", clientIdSplit.Skip(2));
 
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Settings.EntityType);
+
             DatabaseConnection.AddParameter("userId", userIdForGoogleCid);
             DatabaseConnection.AddParameter("name", String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? "google-cid" : Settings.GoogleClientIdFieldName);
             DatabaseConnection.AddParameter("value", googleClientId);
 
-            await RenderAndExecuteQueryAsync($"INSERT INTO {WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)");
+            await RenderAndExecuteQueryAsync($"INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)");
         }
 
         /// <summary>
@@ -1744,7 +1749,8 @@ namespace GeeksCoreLibrary.Components.Account
                 return;
             }
 
-            var userId = result.Rows[0][Constants.UserIdColumn];
+            var userDataRow = result.Rows[0];
+            var userId = userDataRow[Constants.UserIdColumn];
 
             // Generate a new token for the user.
             string token;
@@ -1849,11 +1855,11 @@ namespace GeeksCoreLibrary.Components.Account
                 .ReplaceCaseInsensitive("<jhead", "<head").ReplaceCaseInsensitive("</jhead", "</head").ReplaceCaseInsensitive("<jtitle", "<title").ReplaceCaseInsensitive("</jtitle", "</title").ReplaceCaseInsensitive("<jbody", "<body")
                 .ReplaceCaseInsensitive("</jbody", "</body");
 
-            await communicationsService.SendEmailAsync(await StringReplacementsService.DoAllReplacementsAsync(emailAddress, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                await StringReplacementsService.DoAllReplacementsAsync(subject, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                await StringReplacementsService.DoAllReplacementsAsync(body),
-                sender: await StringReplacementsService.DoAllReplacementsAsync(senderEmail, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                senderName: await StringReplacementsService.DoAllReplacementsAsync(senderName, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+            await communicationsService.SendEmailAsync(await StringReplacementsService.DoAllReplacementsAsync(emailAddress, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                await StringReplacementsService.DoAllReplacementsAsync(subject, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                await StringReplacementsService.DoAllReplacementsAsync(body, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                sender: await StringReplacementsService.DoAllReplacementsAsync(senderEmail, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                senderName: await StringReplacementsService.DoAllReplacementsAsync(senderName, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
         }
 
         /// <summary>

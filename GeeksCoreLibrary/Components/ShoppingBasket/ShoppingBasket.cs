@@ -69,6 +69,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             AddItems = 2,
 
             /// <summary>
+            /// For updating an item in the basket. This requires the ID of the basket line that should be updated/replaced to be present in the request.
+            /// </summary>
+            [CmsEnum(PrettyName = "Update item")]
+            UpdateItem = 11,
+
+            /// <summary>
             /// For changing the quantity of one or more items in the shopping basket.
             /// </summary>
             [CmsEnum(PrettyName = "Change quantity")]
@@ -435,6 +441,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 case ComponentModes.AddItems:
                     resultHtml.Append(await HandleAddItemsModeAsync());
                     break;
+                case ComponentModes.UpdateItem:
+                    resultHtml.Append(await HandleUpdateItemModeAsync());
+                    break;
                 case ComponentModes.ChangeQuantity:
                     resultHtml.Append(await HandleChangeQuantityModeAsync());
                     break;
@@ -484,10 +493,10 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         }
 
         /// <summary>
-        /// Adds a new item to the basket and returns the rendered template.
+        /// Adds a new item to the basket.
         /// </summary>
-        /// <param name="renderBasket"></param>
-        /// <returns></returns>
+        /// <param name="renderBasket">Whether the template should be rendered after adding is done.</param>
+        /// <returns>The rendered template, or an empty string if <paramref name="renderBasket"/> is <see langword="false"/>.</returns>
         public async Task<string> HandleAddItemsModeAsync(bool renderBasket = true)
         {
             if (HttpContext == null)
@@ -506,6 +515,41 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                     await AddMultipleItemsAsync();
                 }
             }
+
+            return renderBasket ? await GetRenderedBasketAsync() : String.Empty;
+        }
+
+        /// <summary>
+        /// Updates an existing item in the basket.
+        /// </summary>
+        /// <param name="renderBasket">Whether the template should be rendered after updating is done.</param>
+        /// <returns>The rendered template, or an empty string if <paramref name="renderBasket"/> is <see langword="false"/>.</returns>
+        public async Task<string> HandleUpdateItemModeAsync(bool renderBasket = true)
+        {
+            if (HttpContext == null)
+            {
+                return String.Empty;
+            }
+
+            using var reader = new StreamReader(Request.Body);
+            var itemJson = await reader.ReadToEndAsync();
+
+            // Convert the body to an UpdateItemModel object.
+            var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UpdateItemModel>(itemJson);
+            if (item == null)
+            {
+                return String.Empty;
+            }
+
+            // Check if this line belongs to the current basket.
+            if (Lines.All(l => l.Id != item.LineId))
+            {
+                Logger.LogWarning("Could not update line with ID '{lineId}'", item.LineId);
+                return String.Empty;
+            }
+
+            // Update the line.
+            await shoppingBasketsService.UpdateLineAsync(Main, Lines, Settings, item);
 
             return renderBasket ? await GetRenderedBasketAsync() : String.Empty;
         }

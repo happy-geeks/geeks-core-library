@@ -21,7 +21,6 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
-using Org.BouncyCastle.Crmf;
 
 namespace GeeksCoreLibrary.Components.Repeater
 {
@@ -318,7 +317,17 @@ namespace GeeksCoreLibrary.Components.Repeater
                                 }
                             }
 
-                            limitClause = $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
+                            // Check if the property must be overruled
+                            bool.TryParse(httpContextAccessor.HttpContext.Request.Query["loadUptoPageNumberOverrule"].ToString(), out var loadUptoPageNumberOverrule);
+
+                            if (Settings.LoadItemsUpToPageNumber && loadUptoPageNumberOverrule)
+                            {
+                                limitClause = $" LIMIT 0, {Settings.ItemsPerPage * pageNumber - bannersForCurrentPage}";
+                            }
+                            else
+                            {
+                                limitClause = $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
+                            }
                         }
 
                         if (query.Contains("{page_limit}", StringComparison.OrdinalIgnoreCase))
@@ -449,7 +458,8 @@ namespace GeeksCoreLibrary.Components.Repeater
                 // Don't place BetweenItemsTemplate for the first item and also don't place it before the first item in a new group (if we're using groups).
                 if (index > 0 && (Settings.CreateGroupsOfNItems == 1 || (Settings.CreateGroupsOfNItems > 1 && blocksPlaced % Settings.CreateGroupsOfNItems > 0)))
                 {
-                    html.Append(template.BetweenItemsTemplate);
+                    templateHtml = template.BetweenItemsTemplate;
+                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, data.Rows[0], Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
                 }
 
                 templateHtml = template.ItemTemplate;

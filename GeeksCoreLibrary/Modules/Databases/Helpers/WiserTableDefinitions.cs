@@ -150,6 +150,202 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserEntityProperty, "idx_link_overview", IndexTypes.Normal, new List<string> { "link_type", "visible_in_overview" }),
                     new(WiserTableNames.WiserEntityProperty, "idx_property", IndexTypes.Normal, new List<string> { "property_name" })
                 }
+            },
+
+            // wiser_template
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserTemplate,
+                LastUpdate = new DateTime(2022, 3, 15),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("parent_id", MySqlDbType.Int32),
+                    new("template_name", MySqlDbType.VarChar, 50, notNull: true),
+                    new("template_data", MySqlDbType.MediumText),
+                    new("template_data_minified", MySqlDbType.MediumText),
+                    new("template_type", MySqlDbType.Int32, notNull: true),
+                    new("version", MySqlDbType.Int24, notNull: true),
+                    new("template_id", MySqlDbType.Int32, notNull: true),
+                    new("changed_on", MySqlDbType.DateTime, notNull: true),
+                    new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
+                    new("published_environment", MySqlDbType.Int16, notNull: true),
+                    new("use_cache", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("cache_minutes", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("cache_location", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("handle_request", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("handle_session", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("handle_objects", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("handle_standards", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("handle_translations", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("handle_dynamic_content", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("handle_logic_blocks", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("handle_mutators", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("login_required", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("login_user_type", MySqlDbType.VarChar, 50),
+                    new("login_session_prefix", MySqlDbType.VarChar, 255),
+                    new("login_role", MySqlDbType.VarChar, 50),
+                    new("linked_templates", MySqlDbType.MediumText),
+                    new("ordering", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("insert_mode", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("load_always", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("url_regex", MySqlDbType.VarChar, 255),
+                    new("external_files", MySqlDbType.MediumText),
+                    new("grouping_create_object_instead_of_array", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("grouping_prefix", MySqlDbType.VarChar, 50),
+                    new("grouping_key", MySqlDbType.VarChar, 50),
+                    new("grouping_key_column_name", MySqlDbType.VarChar, 50),
+                    new("grouping_value_column_name", MySqlDbType.VarChar, 50),
+                    new("removed", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("is_scss_include_template", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("use_in_wiser_html_editors", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("pre_load_query", MySqlDbType.MediumText)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserTemplate, "idx_unique", IndexTypes.Unique, new List<string> { "template_id", "version" }),
+                    new(WiserTableNames.WiserTemplate, "idx_template_id", IndexTypes.Normal, new List<string> { "template_id", "removed" }),
+                    new(WiserTableNames.WiserTemplate, "idx_parent_id", IndexTypes.Normal, new List<string> { "parent_id", "removed" }),
+                    new(WiserTableNames.WiserTemplate, "idx_type", IndexTypes.Normal, new List<string> { "template_type", "removed" }),
+                    new(WiserTableNames.WiserTemplate, "idx_environment", IndexTypes.Normal, new List<string> { "published_environment", "removed" })
+                }
+            },
+
+            // wiser_dynamic_content
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserDynamicContent,
+                LastUpdate = new DateTime(2022, 3, 8),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("content_id", MySqlDbType.Int32, notNull: true),
+                    new("settings", MySqlDbType.MediumText),
+                    new("component", MySqlDbType.VarChar, 255, notNull: true),
+                    new("component_mode", MySqlDbType.VarChar, 255, notNull: true),
+                    new("version", MySqlDbType.Int24, notNull: true, defaultValue: "0"),
+                    new("title", MySqlDbType.VarChar, 255, notNull: true),
+                    new("changed_on", MySqlDbType.DateTime, notNull: true),
+                    new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
+                    new("published_environment", MySqlDbType.Int16, notNull: true),
+                    new("removed", MySqlDbType.Int16, notNull: true, defaultValue: "0")
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserDynamicContent, "idx_unique", IndexTypes.Unique, new List<string> { "content_id", "version" }),
+                }
+            },
+
+            // wiser_template_dynamic_content
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserTemplateDynamicContent,
+                LastUpdate = new DateTime(2022, 3, 8),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("content_id", MySqlDbType.Int32, notNull: true),
+                    new("destination_template_id", MySqlDbType.Int32, notNull: true),
+                    new("added_on", MySqlDbType.DateTime, notNull: true),
+                    new("added_by", MySqlDbType.VarChar, 50, notNull: true)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserTemplateDynamicContent, "idx_unique", IndexTypes.Unique, new List<string> { "content_id", "destination_template_id" }),
+                    new(WiserTableNames.WiserTemplateDynamicContent, "idx_destination", IndexTypes.Normal, new List<string> { "destination_template_id" })
+                }
+            },
+
+            // wiser_template_publish_log
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserTemplatePublishLog,
+                LastUpdate = new DateTime(2022, 3, 8),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("template_id", MySqlDbType.Int32, notNull: true),
+                    new("old_live", MySqlDbType.Int32, notNull: true),
+                    new("old_accept", MySqlDbType.Int32, notNull: true),
+                    new("old_test", MySqlDbType.Int32, notNull: true),
+                    new("new_live", MySqlDbType.Int32, notNull: true),
+                    new("new_accept", MySqlDbType.Int32, notNull: true),
+                    new("new_test", MySqlDbType.Int32, notNull: true),
+                    new("changed_on", MySqlDbType.DateTime, notNull: true),
+                    new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserTemplatePublishLog, "idx_template_id", IndexTypes.Normal, new List<string> { "template_id" })
+                }
+            },
+
+            // wiser_preview_profiles
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserPreviewProfiles,
+                LastUpdate = new DateTime(2022, 3, 8),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("name", MySqlDbType.VarChar, 255, notNull: true),
+                    new("template_id", MySqlDbType.Int32, notNull: true),
+                    new("url", MySqlDbType.MediumText, notNull: true),
+                    new("variables", MySqlDbType.MediumText, notNull: true)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserPreviewProfiles, "idx_template_id", IndexTypes.Normal, new List<string> { "template_id" })
+                }
+            },
+
+            // wiser_template_publish_log
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserDynamicContentPublishLog,
+                LastUpdate = new DateTime(2022, 3, 8),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("content_id", MySqlDbType.Int32, notNull: true),
+                    new("old_live", MySqlDbType.Int32, notNull: true),
+                    new("old_accept", MySqlDbType.Int32, notNull: true),
+                    new("old_test", MySqlDbType.Int32, notNull: true),
+                    new("new_live", MySqlDbType.Int32, notNull: true),
+                    new("new_accept", MySqlDbType.Int32, notNull: true),
+                    new("new_test", MySqlDbType.Int32, notNull: true),
+                    new("changed_on", MySqlDbType.DateTime, notNull: true),
+                    new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserDynamicContentPublishLog, "idx_content_id", IndexTypes.Normal, new List<string> { "content_id" })
+                }
+            },
+
+            // wiser_data_selector
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserDataSelector,
+                LastUpdate = new DateTime(2022, 3, 18),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("name", MySqlDbType.VarChar, 50, notNull: true),
+                    new("removed", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("module_selection", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
+                    new("request_json", MySqlDbType.MediumText),
+                    new("saved_json", MySqlDbType.MediumText),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("changed_on", MySqlDbType.DateTime),
+                    new("show_in_export_module", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("available_for_rendering", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("default_template", MySqlDbType.UInt64, notNull: true, defaultValue: "0")
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserDataSelector, "idx_name", IndexTypes.Unique, new List<string> { "name" })
+                }
             }
         };
     }

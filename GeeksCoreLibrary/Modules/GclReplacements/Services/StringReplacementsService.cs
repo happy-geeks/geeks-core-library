@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -149,15 +150,24 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 input = DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
             }
 
-            // DataRow replacements.
-            if (dataRow != null)
+            // Do replacements multiple times to handle double replacements such as "{price:Currency(true,{culture})}".
+            var counter = 0;
+            while (input.Contains("{") && counter < 3)
             {
-                input = DoReplacements(input, dataRow, forQuery);
-            }
+                counter++;
 
-            // Request replacements.
-            if (handleRequest && httpContextAccessor.HttpContext != null)
-            {
+                // DataRow replacements.
+                if (dataRow != null)
+                {
+                    input = DoReplacements(input, dataRow, forQuery);
+                }
+
+                // Request replacements.
+                if (!handleRequest || httpContextAccessor.HttpContext == null)
+                {
+                    continue;
+                }
+
                 input = DoHttpRequestReplacements(input, forQuery);
                 input = DoSessionReplacements(input, forQuery);
             }
@@ -250,7 +260,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         }
 
         /// <inheritdoc />
-        public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = false)
+        public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}")
         {
             if (replaceData == null)
             {
@@ -262,7 +272,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             {
                 dataDictionary.Add(column.ColumnName, replaceData[column]);
             }
-            return DoReplacements(input, dataDictionary, forQuery: forQuery);
+
+            return DoReplacements(input, dataDictionary, prefix, suffix, forQuery);
         }
 
         /// <inheritdoc />
@@ -369,6 +380,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         var parameterName = DatabaseHelpers.CreateValidParameterName(variable.MatchString);
                         databaseConnection.AddParameter(parameterName, value);
                         value = $"?{parameterName}";
+
+                        // Make sure there won't be quotes around the variable in the query, otherwise it will be seen as a literal string by MySql.
+                        output.Replace($"'{variable.MatchString}'", value).Replace($"\"{variable.MatchString}\"", value);
                     }
 
                     output.Replace(variable.MatchString, value);
@@ -402,6 +416,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     var parameterName = DatabaseHelpers.CreateValidParameterName(variable.MatchString);
                     databaseConnection.AddParameter(parameterName, value);
                     value = $"?{parameterName}";
+
+                    // Make sure there won't be quotes around the variable in the query, otherwise it will be seen as a literal string by MySql.
+                    output.Replace($"'{variable.MatchString}'", value).Replace($"\"{variable.MatchString}\"", value);
                 }
 
                 output.Replace(variable.MatchString, value);
@@ -713,7 +730,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             prefix = Regex.Escape(prefix);
             suffix = Regex.Escape(suffix);
 
-            var regex = new Regex($@"{prefix}(?<field>.*?){suffix}");
+            var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}");
 
             var result = new List<StringReplacementVariable>();
             foreach (Match match in regex.Matches(input))
@@ -744,7 +761,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 // Add the default formatter, unless the raw formatter has been used.
                 if (!String.IsNullOrWhiteSpace(defaultFormatter) 
                     && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase)) 
-                    && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase)))
+                    && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase)) 
+                    && !variable.Formatters.Any(f => String.Equals(f, "CurrencySup", StringComparison.OrdinalIgnoreCase)))
                 {
                     variable.Formatters.Add(defaultFormatter);
                 }
@@ -929,6 +947,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <returns></returns>
         private static object ConvertValue(string input, Type type)
         {
+            type = Nullable.GetUnderlyingType(type) ?? type;
+            if (type == typeof(decimal))
+            {
+                return Convert.ToDecimal(input, new CultureInfo("en-US"));
+            }
+            if (type == typeof(double))
+            {
+                return Convert.ToDouble(input, new CultureInfo("en-US"));
+            }
+
             return Convert.ChangeType(input, type);
         }
     }

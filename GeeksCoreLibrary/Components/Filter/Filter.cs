@@ -79,7 +79,7 @@ namespace GeeksCoreLibrary.Components.Filter
         public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
         {
             Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<FilterCmsSettingsModel>(settingsJson);
-            if (forcedComponentMode.HasValue)
+            if (forcedComponentMode.HasValue && Settings != null)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
@@ -149,10 +149,9 @@ namespace GeeksCoreLibrary.Components.Filter
             WriteToTrace("Start generating filters...");
 
             // Try to use the system objects if possible, reverting back to the previous value if they don't exist (by setting them as the default result)
-            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring ");
+            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring");
             var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2")).Equals("1");
             var parametersToExclude = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude");
-            var filterGroups = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
             ulong categoryId = 0;
             DataTable dataTable;
             Dictionary<string, List<string>> currentFiltersMulti = null;
@@ -217,10 +216,10 @@ namespace GeeksCoreLibrary.Components.Filter
             }
 
             // Get filtergroups (items of entitytype "filter"), possibly connected to current category
-            filterGroups = await filterService.GetFilterGroupsAsync(categoryId, Settings.ExtraFilterProperties);
+            var filterGroups = await filterService.GetFilterGroupsAsync(categoryId, Settings.ExtraFilterProperties);
             if (filterGroups.Count == 0)
             {
-                WriteToTrace($"GCL Filter: No filter groups found", true);
+                WriteToTrace("GCL Filter: No filter groups found", true);
             }
 
             // Add selected values to filter group, so selected templates will be used
@@ -389,7 +388,6 @@ namespace GeeksCoreLibrary.Components.Filter
             // NOTE: This code assumes that filters in the same group are sorted properly so that they are together in the results, otherwise this code gets too complicated.
             var groupHtml = new StringBuilder();
             var previousFilterType = "";
-            var result = "";
             var previousFilterGroup = new FilterGroup();
 
             foreach (var filterGroup in filterGroups.Values)
@@ -462,10 +460,7 @@ namespace GeeksCoreLibrary.Components.Filter
                     { "type", previousFilterType },
                     { "typename", previousFilterType }
                 };
-                if (previousFilterGroup != null)
-                {
-                    previousFilterGroup.AddExtraPropertiesToList(replaceData);
-                }
+                previousFilterGroup?.AddExtraPropertiesToList(replaceData);
 
                 var template = StringReplacementsService.DoReplacements(Settings.TemplateFilterGroup, replaceData);
 
@@ -483,13 +478,11 @@ namespace GeeksCoreLibrary.Components.Filter
                     continue;
                 }
 
-                var tempGroup = "";
                 var summaryGroupItems = new StringBuilder();
-                tempGroup = f.Name.Contains("/") ? f.Name.Split("/")[1] : f.Name;
+                var tempGroup = f.Name.Contains("/") ? f.Name.Split("/")[1] : f.Name;
                 foreach (var selectedFilterItem in f.SelectedValues)
                 {
-                    var tempName = "";
-                    tempName = f.ContainsOrder ? selectedFilterItem.Split("|")[1] : selectedFilterItem.ToLower();
+                    var tempName = f.ContainsOrder ? selectedFilterItem.Split("|")[1] : selectedFilterItem.ToLower();
                     WriteToTrace($"1 - CreateFilterURL({f.NameSeo}, {selectedFilterItem}), False");
 
                     replaceData = new Dictionary<string, string>
@@ -527,7 +520,7 @@ namespace GeeksCoreLibrary.Components.Filter
                     { "groupname", tempGroup },
                     { "group", f.NameSeo },
                     { "selectedvalues", summaryGroupItems.ToString() },
-                    { "url", CreateFilterUrl(filterGroups, f.NameSeo, "", false) }
+                    { "url", CreateFilterUrl(filterGroups, f.NameSeo, "") }
                 };
 
                 var summaryGroupHtml = StringReplacementsService.DoReplacements(Settings.TemplateSummaryFilterGroup, replaceData);
@@ -535,7 +528,8 @@ namespace GeeksCoreLibrary.Components.Filter
                 summaryGroups.Append(summaryGroupHtml);
             }
 
-            if (filterGroups.Any(x => (x.Value.SelectedValues.Count > 0 || !String.IsNullOrWhiteSpace(x.Value.SelectedValueString)) && (!x.Value.HideInSummary)))
+            var hasActiveFilters = filterGroups.Any(fg => fg.Value.SelectedValues.Count > 0 || !String.IsNullOrWhiteSpace(fg.Value.SelectedValueString));
+            if (hasActiveFilters && filterGroups.Any(x => !x.Value.HideInSummary))
             {
                 WriteToTrace("3 - CreateFilterURL(, , False)");
 
@@ -551,7 +545,10 @@ namespace GeeksCoreLibrary.Components.Filter
             }
 
             // Create the full filter HTML result
-            result = Settings.TemplateFull.Replace("{filters}", filtersHtml.ToString()).Replace("{summary}", summary.ToString()).Replace("{category_id}", categoryId.ToString());
+            var result = Settings.TemplateFull.Replace("{filters}", filtersHtml.ToString())
+                .Replace("{summary}", summary.ToString())
+                .Replace("{category_id}", categoryId.ToString())
+                .Replace("{has_active_filters}", hasActiveFilters ? "1" : "0");
 
             // Handle if-statements and translations
             result = await TemplatesService.DoReplacesAsync(result);
@@ -572,11 +569,11 @@ namespace GeeksCoreLibrary.Components.Filter
             try
             {
                 var parameterList = new SortedList<string, string>();
-                const string valueSplit = ",";
+                const string ValueSplit = ",";
 
                 foreach (var f in filterGroups.Values.Where(group => group.SelectedValueString != ""))
                 {
-                    var nameStr = "";
+                    string nameStr;
                     if (!String.IsNullOrEmpty(f.QueryString))
                     {
                         nameStr = f.QueryString;
@@ -600,8 +597,8 @@ namespace GeeksCoreLibrary.Components.Filter
                         }
                         else
                         {
-                            WriteToTrace($"2 - adding item to parameter list, key = {groupName.ToLower()}, value = {f.SelectedValueString}{valueSplit}{filter.ToLower()}");
-                            parameterList.Add(groupName.ToLower(), f.SelectedValueString + valueSplit + filter.ToLower());
+                            WriteToTrace($"2 - adding item to parameter list, key = {groupName.ToLower()}, value = {f.SelectedValueString}{ValueSplit}{filter.ToLower()}");
+                            parameterList.Add(groupName.ToLower(), f.SelectedValueString + ValueSplit + filter.ToLower());
                         }
                     }
                     else
@@ -678,7 +675,7 @@ namespace GeeksCoreLibrary.Components.Filter
 
                 // If there's no question mark, the index will become -1, which is fine
                 var startIndex = queryString.IndexOf("?", StringComparison.Ordinal);
-                curQs = curQs.Concat(queryString.Substring(startIndex + 1).ToDictionary("&", "=").Where(p => !curQs.Keys.Contains(p.Key))).ToDictionary(p => p.Key, p => p.Value);
+                curQs = curQs.Concat(queryString[(startIndex + 1)..].ToDictionary("&", "=").Where(p => !curQs.Keys.Contains(p.Key))).ToDictionary(p => p.Key, p => p.Value);
                 var exclude = parametersToExclude.Split(',');
                 chosenFilters.AddRange(curQs.Keys.Where(qs => !exclude.Contains(qs, StringComparer.OrdinalIgnoreCase)).ToList());
             }
@@ -864,8 +861,8 @@ namespace GeeksCoreLibrary.Components.Filter
                     {
                         WriteToTrace($"2 - BuildFilterGroupHtml Slider({filterGroup.NameSeo})");
 
-                        double selectedMinValue = 0;
-                        double selectedMaxValue = 0;
+                        var selectedMinValue = filterGroup.MinValue;
+                        var selectedMaxValue = filterGroup.MaxValue;
 
                         if (!String.IsNullOrEmpty(HttpContext.Request.Query[!String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo]))
                         {
@@ -876,19 +873,19 @@ namespace GeeksCoreLibrary.Components.Filter
 
                             if (requestParameter.Contains("-"))
                             {
-                                selectedMinValue = Double.Parse(requestParameter.Split("-")[0].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
-                                selectedMaxValue = Double.Parse(requestParameter.Split("-")[1].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                                selectedMinValue = Decimal.Parse(requestParameter.Split("-")[0].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                                selectedMaxValue = Decimal.Parse(requestParameter.Split("-")[1].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
                             }
                             else
                             {
                                 selectedMinValue = 0;
-                                selectedMaxValue = Double.Parse(requestParameter.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                                selectedMaxValue = Decimal.Parse(requestParameter.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
                             }
 
                             WriteToTrace("Set selected slider values: " + filterGroup.SelectedValueString);
                         }
 
-                        filterHtml.Append(Settings.TemplateSlider.Replace("{minValue}", filterGroup.MinValue.ToString())
+                        filterHtml.Append(Settings.TemplateSlider.Replace("{minValue}", filterGroup.MinValue.ToString(CultureInfo.InvariantCulture))
                                              .Replace("{maxValue}", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture))
                                              .Replace("{selectedMin}", selectedMinValue.ToString(CultureInfo.InvariantCulture))
                                              .Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture))
@@ -929,7 +926,7 @@ namespace GeeksCoreLibrary.Components.Filter
                 }
                 else if (!String.IsNullOrEmpty(filterGroup.Group))
                 {
-                    htmlBuilder.Append(filterHtml.ToString());
+                    htmlBuilder.Append(filterHtml);
                 }
                 else
                 {

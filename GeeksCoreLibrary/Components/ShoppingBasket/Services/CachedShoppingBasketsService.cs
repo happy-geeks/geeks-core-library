@@ -153,6 +153,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             await shoppingBasketsService.AddLinesAsync(shoppingBasket, basketLines, settings, items);
         }
+        
+        /// <inheritdoc />
+        public async Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item)
+        {
+            await shoppingBasketsService.UpdateLineAsync(shoppingBasket, basketLines, settings, item);
+        }
 
         /// <inheritdoc />
         public async Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity)

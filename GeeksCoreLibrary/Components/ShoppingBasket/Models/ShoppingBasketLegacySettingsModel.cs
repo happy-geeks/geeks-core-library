@@ -12,10 +12,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 
         public string BasketLineEntityName { get; set; }
 
-        //public int LinkTypeBasketLineToBasket { get; set; }
-
-        //public int LinkTypeBasketToUser { get; set; }
-
         public string PropertynameQuantity { get; set; }
 
         public string PropertynameFactor { get; set; }

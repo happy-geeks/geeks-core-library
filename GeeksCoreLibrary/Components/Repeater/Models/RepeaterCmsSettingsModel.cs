@@ -20,21 +20,6 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
             ReadOnlyInCms = true
         )]
         public Repeater.ComponentModes ComponentMode { get; set; } = Repeater.ComponentModes.Repeater;
-        
-        /// <summary>
-        /// Setting this to true causes the Repeater to build the HTML the way that MLSimpleMenu in the JCL used to, instead of the more logical way.
-        /// The JCL adds a header and footer around every single item, except for items in the deepest level. Since this makes no sense, we changed that in the GCL.
-        /// The GCL will only add a header before the first item of every level and a footer after every last item of a level.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Legacy mode",
-            Description = "Setting this to true causes the Repeater to build the HTML the way that MLSimpleMenu in the JCL used to, instead of the more logical way.",
-            DeveloperRemarks = "The JCL adds a header and footer around every single item, except for items in the deepest level. Since this makes no sense, we changed that in the GCL. The GCL will only add a header before the first item of every level and a footer after every last item of a level.",
-            DisplayOrder = 20,
-            HideInCms = true,
-            ReadOnlyInCms = true
-        )]
-        public bool LegacyMode { get; set; }
 
         #endregion
 
@@ -214,6 +199,23 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
         #endregion
 
         #region Tab Behavior properties
+        
+        /// <summary>
+        /// Setting this to true causes the Repeater to build the HTML the way that MLSimpleMenu in the JCL used to, instead of the more logical way.
+        /// The JCL adds a header and footer around every single item, except for items in the deepest level. Since this makes no sense, we changed that in the GCL.
+        /// The GCL will only add a header before the first item of every level and a footer after every last item of a level.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Legacy mode",
+            Description = "You should only enable this setting for customers that have been converted from the JCL, not for new Wiser 3 customers. Setting this to true causes the Repeater to build the HTML the way that MLSimpleMenu in the JCL used to, instead of the more logical way.",
+            DeveloperRemarks = "The JCL adds a header and footer around every single item, except for items in the deepest level. Since this makes no sense, we changed that in the GCL. The GCL will only add a header before the first item of every level and a footer after every last item of a level.",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Misc,
+            DisplayOrder = 10,
+            HideInCms = false,
+            ReadOnlyInCms = true
+        )]
+        public bool LegacyMode { get; set; }
 
         /// <summary>
         /// If there is no data then return 404 if this property is set to true
@@ -266,6 +268,15 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
             DisplayOrder = 20
         )]
         public bool ShowBaseHeaderAndFooterOnNoData { get; set; }
+
+        [CmsProperty(
+            PrettyName = "Loads the items up to the specified page number",
+            Description = "Use this property to load items up to the specified page number",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Basic,
+            DisplayOrder = 30
+        )]
+        public bool LoadItemsUpToPageNumber { get; set; }
 
         #endregion
     }

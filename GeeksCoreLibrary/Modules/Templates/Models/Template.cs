@@ -107,5 +107,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets how long the template will be cached in minutes.
         /// </summary>
         public int CachingMinutes { get; set; }
+
+        /// <summary>
+        /// Gets or sets where the template should be cached.
+        /// </summary>
+        public TemplateCachingLocations CachingLocation { get; set; } = TemplateCachingLocations.InMemory;
+
+        /// <summary>
+        /// Gets or sets the query that should be executed at the start of loading a HTML template on the page.
+        /// </summary>
+        public string PreLoadQuery { get; set; }
     }
 }

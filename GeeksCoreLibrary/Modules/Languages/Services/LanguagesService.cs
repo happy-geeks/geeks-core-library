@@ -60,8 +60,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                 databaseConnection.AddParameter("original", original);
                 databaseConnection.AddParameter("groupName", Wiser2TranslationsGroupName);
                 databaseConnection.AddParameter("translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));
-                string result;
-                await using (var reader = await databaseConnection.GetReaderAsync(
+                var dataTable = await databaseConnection.GetAsync(
                     @$"SELECT
 	                    `key`,
 	                    CONCAT_WS('', `value`, long_value) AS `value`
@@ -69,10 +68,9 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                     WHERE item_id = ?translationsItemId
                         AND groupname = ?groupName
                         AND language_code = ?languageCode
-                        AND (`value` = ?original OR long_value = ?original)"))
-                {
-                    result = await reader.ReadAsync() ? reader.GetStringHandleNull(1) : original;
-                }
+                        AND (`value` = ?original OR long_value = ?original)");
+
+                var result = dataTable.Rows.Count > 0 ? dataTable.Rows[0].Field<string>("value") ?? "" : original;
 
                 if (String.IsNullOrEmpty(result))
                 {

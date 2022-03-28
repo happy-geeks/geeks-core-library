@@ -50,6 +50,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         }
 
         /// <summary>
+        /// Decodes the string from an URL-safe string.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static string UrlDecode(this string input)
+        {
+            return input == null ? null : Uri.UnescapeDataString(input);
+        }
+
+        /// <summary>
         /// Cuts a string to a maximum amount of characters.
         /// </summary>
         /// <param name="input"></param>
@@ -90,15 +100,17 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         {
             return input.ToString(numberFormat, CultureInfo.CreateSpecificCulture(cultureName));
         }
+
         /// <summary>
         /// Converts a <see cref="decimal"/> to a currency representation. This will the use default culture of the application instance.
         /// </summary>
         /// <param name="input"></param>
         /// <param name="includeCurrencySymbol"></param>
+        /// <param name="cultureName"></param>
         /// <returns></returns>
-        public static string Currency(this decimal input, bool includeCurrencySymbol = true)
+        public static string Currency(this decimal input, bool includeCurrencySymbol = true, string cultureName = null)
         {
-            var culture = CultureInfo.CurrentCulture;
+            var culture = !String.IsNullOrWhiteSpace(cultureName) ? new CultureInfo(cultureName) : CultureInfo.CurrentCulture;
             var output = input.ToString(includeCurrencySymbol ? "C" : $"N{culture.NumberFormat.CurrencyDecimalDigits}", culture);
 
             if (culture.Name.Equals("nl", StringComparison.OrdinalIgnoreCase) || culture.Name.Equals("nl-NL", StringComparison.OrdinalIgnoreCase))
@@ -114,12 +126,11 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <param name="includeCurrencySymbol"></param>
-        /// <param name="cultureString"></param>
+        /// <param name="cultureName"></param>
         /// <returns></returns>
-        public static string CurrencySup(this decimal input, bool includeCurrencySymbol = true, string cultureString = null)
+        public static string CurrencySup(this decimal input, bool includeCurrencySymbol = true, string cultureName = null)
         {
-            var culture = !String.IsNullOrWhiteSpace(cultureString) ? new CultureInfo(cultureString) : CultureInfo.CurrentCulture;
-
+            var culture = !String.IsNullOrWhiteSpace(cultureName) ? new CultureInfo(cultureName) : CultureInfo.CurrentCulture;
             var output = input.ToString(includeCurrencySymbol ? "C" : $"N{culture.NumberFormat.CurrencyDecimalDigits}", culture);
 
             var decimalSeparator = culture.NumberFormat.CurrencyDecimalSeparator;
@@ -132,7 +143,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         }
 
         /// <summary>
-        /// Returns a string with the first character in upper-case.
+        /// Returns a string with the first character in uppercase.
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
@@ -143,7 +154,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
                 return input;
             }
 
-            // Only one character; simply return the string in upper-case.
+            // Only one character; simply return the string in uppercase.
             if (input.Length == 1)
             {
                 return input.ToUpper();
@@ -157,7 +168,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         }
 
         /// <summary>
-        /// Returns a string with the first character in lower-case.
+        /// Returns a string with the first character in lowercase.
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
@@ -168,7 +179,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
                 return input;
             }
 
-            // Only one character; simply return the string in lower-case.
+            // Only one character; simply return the string in lowercase.
             if (input.Length == 1)
             {
                 return input.ToLower();
@@ -226,6 +237,17 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         }
 
         /// <summary>
+        /// Encrypts a value with AES.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="withDateTime"></param>
+        /// <returns></returns>
+        public static string EncryptNormal(this string input, bool withDateTime = false)
+        {
+            return input?.EncryptWithAes(withDateTime: withDateTime);
+        }
+
+        /// <summary>
         /// Decrypts a value with AES. This method uses a salt, so it can decrypt values encrypted with <see cref="StringExtensions.EncryptWithAesWithSalt"/>.
         /// </summary>
         /// <param name="input"></param>
@@ -235,6 +257,18 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         public static string Decrypt(this string input, bool withDateTime = false, int minutesValidOverride = 0)
         {
             return input?.DecryptWithAesWithSalt(withDateTime: withDateTime, minutesValidOverride: minutesValidOverride);
+        }
+
+        /// <summary>
+        /// Decrypts a value with AES. This method does not use use a salt, so it can decrypt values encrypted with <see cref="StringExtensions.EncryptWithAes"/>.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="withDateTime"></param>
+        /// <param name="minutesValidOverride"></param>
+        /// <returns></returns>
+        public static string DecryptNormal(this string input, bool withDateTime = false, int minutesValidOverride = 0)
+        {
+            return input?.DecryptWithAes(withDateTime: withDateTime, minutesValidOverride: minutesValidOverride);
         }
 
         /// <summary>
@@ -251,7 +285,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// Converts a date time to a string with the specified format.
         /// </summary>
         /// <param name="input"></param>
-        /// <param name="format"></param>
+        /// <param name="format">The format of the <see cref="DateTime"/>. Can be a default format or a custom format.</param>
         /// <returns></returns>
         public static string DateTime(this DateTime input, string format)
         {
@@ -266,6 +300,28 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         public static string Sha512(this string input)
         {
             return input?.ToSha512ForPasswords();
+        }
+
+        /// <summary>
+        /// Converts this string to uppercase.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="useInvariantCulture">Whether to use the casing rules of the invariant culture instead of those of the current culture.</param>
+        /// <returns>The string converted to uppercase.</returns>
+        public static string Uppercase(this string input, bool useInvariantCulture = false)
+        {
+            return useInvariantCulture ? input?.ToUpperInvariant() : input?.ToUpper();
+        }
+
+        /// <summary>
+        /// Converts this string to lowercase.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="useInvariantCulture">Whether to use the casing rules of the invariant culture instead of those of the current culture.</param>
+        /// <returns>The string converted to lowercase.</returns>
+        public static string Lowercase(this string input, bool useInvariantCulture = false)
+        {
+            return useInvariantCulture ? input?.ToLowerInvariant() : input?.ToLower();
         }
     }
 }

@@ -85,7 +85,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null, bool forQuery = false);
 
         Task<decimal> GetPriceAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, string lineType = "", int onlyIfVatRate = -1, bool includeDiscountGettingVat = true);
-        
+
         /// <summary>
         /// Gets the total price of a single basket line.
         /// </summary>
@@ -133,9 +133,39 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
 
         Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds);
 
+        /// <summary>
+        /// Adds multiple items to the basket.
+        /// </summary>
+        /// <param name="shoppingBasket">The current basket.</param>
+        /// <param name="basketLines">The current basket lines.</param>
+        /// <param name="settings">The settings of the ShoppingBasket component that called this function.</param>
+        /// <param name="uniqueId">The unique ID of the item. If null or empty, the <paramref name="itemId"/> value will be used.</param>
+        /// <param name="itemId">The ID of the item that will be added.</param>
+        /// <param name="quantity">The quantity that should be added.</param>
+        /// <param name="type">The type of the item. Defaults to "product".</param>
+        /// <param name="lineDetails">Additional properties for the basket line.</param>
+        /// <returns></returns>
         Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, decimal quantity = 1M, string type = "product", IDictionary<string, string> lineDetails = null);
 
+        /// <summary>
+        /// Adds multiple items to the basket.
+        /// </summary>
+        /// <param name="shoppingBasket">The current basket.</param>
+        /// <param name="basketLines">The current basket lines.</param>
+        /// <param name="settings">The settings of the ShoppingBasket component that called this function.</param>
+        /// <param name="items">The data of the lines that will be added.</param>
+        /// <returns></returns>
         Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items);
+
+        /// <summary>
+        /// Updates an existing line in the basket.
+        /// </summary>
+        /// <param name="shoppingBasket">The current basket.</param>
+        /// <param name="basketLines">The current basket lines.</param>
+        /// <param name="settings">The settings of the ShoppingBasket component that requested this update.</param>
+        /// <param name="item">The data of the line that will be replaced. The <see cref="UpdateItemModel.LineId"/> property of this object will determine which line will be replaced.</param>
+        /// <returns></returns>
+        Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item);
 
         /// <summary>
         /// Attempts to update the quantity
@@ -171,14 +201,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
 
         Task<IList<VatRule>> GetVatRulesAsync();
 
-        /// <summary>
-        /// Creates a <see cref="ShoppingBasketCmsSettingsModel"/> object with various settings retrieved from system objects.
-        /// </summary>
-        /// <returns>A <see cref="ShoppingBasketCmsSettingsModel"/> object.</returns>
-        Task<ShoppingBasketCmsSettingsModel> GetSettingsAsync();
-
         Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate);
-        
+
         /// <summary>
         /// Function returns the VAT rule by given VAT rate, depending on the actual information and requirements of the rule.
         /// </summary>
@@ -187,5 +211,11 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="vatRate"></param>
         /// <returns></returns>
         Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate);
+
+        /// <summary>
+        /// Creates a <see cref="ShoppingBasketCmsSettingsModel"/> object with various settings retrieved from system objects.
+        /// </summary>
+        /// <returns>A <see cref="ShoppingBasketCmsSettingsModel"/> object.</returns>
+        Task<ShoppingBasketCmsSettingsModel> GetSettingsAsync();
     }
 }

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Newtonsoft.Json.Linq;
 
@@ -20,8 +21,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="type">Optional: The type of template that is being searched for. Only used in combination with name. Default value is html.</param>
         /// <param name="parentId">Optional: The ID of the parent of the template to get.</param>
         /// <param name="parentName">Optional: The name of the parent of template to get.</param>
+        /// <param name="includeContent">Optional: Whether or not to include the contents of the template. Default value is <see langword="true"/>.</param>
         /// <returns></returns>
-        Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "");
+        Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "", bool includeContent = true);
+
+        /// <summary>
+        /// Gets the caching settings for a template.
+        /// </summary>
+        /// <param name="id">Optional: The ID of the template to get.</param>
+        /// <param name="name">Optional: The name of the template to get.</param>
+        /// <param name="parentId">Optional: The ID of the parent of the template to get.</param>
+        /// <param name="parentName">Optional: The name of the parent of template to get.</param>
+        /// <returns></returns>
+        Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "");
 
         /// <summary>
         /// Gets the last changed date of general templates of a specific type. This can be used for generating the URL for gcl_general.css for example.
@@ -52,6 +64,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="templateType">The type of content to get.</param>
         /// <returns></returns>
         Task<TemplateResponse> GetCombinedTemplateValueAsync(ICollection<int> templateIds, TemplateTypes templateType);
+        
+        /// <summary>
+        /// Get the content for multiple templates and combine them into one string.
+        /// </summary>
+        /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GenerateDynamicContentHtmlAsync() in this method.</param>
+        /// <param name="templateIds">The IDs of the templates to get.</param>
+        /// <param name="templateType">The type of content to get.</param>
+        /// <returns></returns>
+        Task<TemplateResponse> GetCombinedTemplateValueAsync(ITemplatesService templatesService, ICollection<int> templateIds, TemplateTypes templateType);
 
         /// <summary>
         /// Adds a single template to the response for a combined template response.
@@ -90,6 +111,25 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false);
 
         /// <summary>
+        /// Do all replaces on a template. If you don't need to replace includes, please use IStringReplacementsService.DoAllReplacements() instead.
+        /// This function will call IStringReplacementsService.DoAllReplacements() and then handle includes after.
+        /// For example:
+        /// Replaces template names (syntaxed as: &lt;[templatename]&gt;) with template from cache (easy-templates)
+        /// For backward compatibility reasons also: replaces templates (syntax as: &lt;[parentTemplateName\templateName]&gt;) with template from cache (easy-templates)
+        /// </summary>
+        /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GenerateDynamicContentHtmlAsync() in this method.</param>
+        /// <param name="input">The original content to be replaced</param>
+        /// <param name="handleStringReplacements">Optional: Whether string replacements should be performed on the template.</param>
+        /// <param name="handleDynamicContent">Optional: Whether or not to replace dynamic content blocks in the template. Disabling this improves performance. Default value is true.</param>
+        /// <param name="evaluateLogicSnippets">Optional: Whether or not to evaluate any logic snippets in the template. Disabling this improves performance. Default value is true.</param>
+        /// <param name="dataRow">Optional: All values from this <see cref="DataRow"/> will also be replaced in the output.</param>
+        /// <param name="handleRequest">Optional: Whether or not to replace values from the request (such as query string, cookies and session). Default value is true.</param>
+        /// <param name="removeUnknownVariables">Optional: Whether ot not to remove all left over variables after all replacements have been done. Default value is true.</param>
+        /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+        /// <returns></returns>
+        Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false);
+
+        /// <summary>
         /// Replaces [include[x]] with a template called 'x'.
         /// </summary>
         /// <param name="input">The string that might have an include.</param>
@@ -100,6 +140,18 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <returns>The replaced string.</returns>
         Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false);
 
+        /// <summary>
+        /// Replaces [include[x]] with a template called 'x'.
+        /// </summary>
+        /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GenerateDynamicContentHtmlAsync() in this method.</param>
+        /// <param name="input">The string that might have an include.</param>
+        /// <param name="handleStringReplacements">Optional: Whether string replacements should be performed on the included template(s).</param>
+        /// <param name="dataRow">Optional: All values from this <see cref="DataRow"/> will also be replaced in the output in the included template(s).</param>
+        /// <param name="handleRequest">Optional: Whether or not to replace values from the request (such as query string, cookies and session) in the included template(s). Default value is true.</param>
+        /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+        /// <returns>The replaced string.</returns>
+        Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false);
+
 
         /// <summary>
         /// Generates the HTML for dynamic content, based on the content ID.
@@ -108,8 +160,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="forcedComponentMode">Optional: If you want to overwrite the component mode of the component. Default is <see langword="null" />.</param>
         /// <param name="callMethod">Optional: If you want to call a specific method in the component, enter the name of that method here.</param>
         /// <param name="extraData">Optional: Any extra data to be used in all replacements in the component.</param>
-        /// <returns>A Tuple with the HTML and the component instance (if applicable).</returns>
-        Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
+        /// <returns>The generates HTML of the component or the result of the called method of the component.</returns>
+        Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
 
         /// <summary>
         /// Generates the HTML for dynamic content, based on the content ID.
@@ -118,8 +170,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="forcedComponentMode">Optional: If you want to overwrite the component mode of the component. Default is <see langword="null" />.</param>
         /// <param name="callMethod">Optional: If you want to call a specific method in the component, enter the name of that method here.</param>
         /// <param name="extraData">Optional: Any extra data to be used in all replacements in the component.</param>
-        /// <returns>A Tuple with the HTML and the component instance (if applicable).</returns>
-        Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
+        /// <returns>The generates HTML of the component or the result of the called method of the component.</returns>
+        Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
         
         Task<string> HandleImageTemplating(string input);
         Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "");
@@ -181,5 +233,26 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="parentName">Optional: The ID of the parent directory, in case you only want to search in a specific directory when looking up a template by name.</param>
         /// <returns>A <see cref="TemplateDataModel"/> with the HTML template, the linked CSS and the linked javascript.</returns>
         Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "");
+
+        /// <summary>
+        /// Executes the pre load query for an HTML template, if it's set. After executing it, it will save the first <see cref="DataRow"/> of the results in the HttpContext.
+        /// </summary>
+        /// <param name="template">The template with a pre load query to execute.</param>
+        Task ExecutePreLoadQueryAndRememberResultsAsync(Template template);
+
+        /// <summary>
+        /// Executes the pre load query for an HTML template, if it's set. After executing it, it will save the first <see cref="DataRow"/> of the results in the HttpContext.
+        /// </summary>
+        /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetTemplateAsync() in this method.</param>
+        /// <param name="template">The template with a pre load query to execute.</param>
+        Task ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template);
+
+        /// <summary>
+        /// Creates the file name the cached HTML will be saved to and loaded from.
+        /// </summary>
+        /// <param name="contentTemplate">The <see cref="Template"/>.</param>
+        /// <param name="extension">Optional: The extension to use for the file name. Default is ".html".</param>
+        /// <returns>The name for the file to cache the contents of the template to.</returns>
+        Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html");
     }
 }
