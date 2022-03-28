@@ -337,7 +337,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                             // Join to product-part and category-part given to function (from variable in overview query)
                                             queryJoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : "_" + languagesService.CurrentLanguageCode)}` f{filterCounter} ON f{filterCounter}.category_id={categoryJoinPart} AND f{filterCounter}.product_id={productJoinPart} ");
                                         }
-                                        
+
                                     }
                                     else if (filterNameFromGroup == "itemtitle")
                                     {
@@ -424,7 +424,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         }
                                     }
 
-                                    joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValue, filterGroup,  true);
+                                    joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValue, filterGroup, true);
                                     if (joinPart != "")
                                     {
                                         queryJoinPart.Append("AND " + joinPart);
@@ -498,7 +498,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
             var result = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
             var filterGroupConnectionPart = await objectsService.FindSystemObjectByDomainNameAsync("filtergroupconnectionpart");
             var filtersToItemType = Int32.Parse(await objectsService.FindSystemObjectByDomainNameAsync("filtertoitemtype", "6001"));
-            var joinFiltersToItemPart ="";
+            var joinFiltersToItemPart = "";
             var orderingPart = "";
 
             logger.LogTrace("1 - Filter connection: " + filterGroupConnectionPart);
@@ -585,7 +585,6 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", "");
             }
 
-            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("lang_id", languageCode);
             databaseConnection.AddParameter("category_id", categoryId > 0 ? categoryId : 0);
             databaseConnection.AddParameter("filtertoitemtype", filtersToItemType);
@@ -670,7 +669,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 {
                     f.CustomJoin = row["customjoin"].ToString();
                 }
-                
+
                 if (dataTable.Columns.Contains("customselect") && !String.IsNullOrEmpty(row["customselect"].ToString()))
                 {
                     f.CustomSelect = row["customselect"].ToString();
