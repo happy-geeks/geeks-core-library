@@ -26,7 +26,6 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
@@ -212,70 +211,32 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 var step = steps[ActiveStep - 1];
 
                 // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
-                if (isPostBack) 
+                if (isPostBack)
                 {
-                    foreach (var group in step.Groups)
-                    {
-                        // Get fields that we can show in this group, based on the visibility settings of each field.
-                        var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
-
-                        // Skip this group if it has no fields that we can show.
-                        if (!fieldsToShow.Any())
-                        {
-                            continue;
-                        }
-                        
-                        foreach (var field in fieldsToShow)
-                        {
-                            // Get the posted field value.
-                            field.Value = request.Form[field.FieldId].ToString();
-
-                            // Do field validation.
-                            field.IsValid = FieldValueIsValid(field, field.Value);
-
-                            if (!field.IsValid)
-                            {
-                                fieldErrorsOccurred = true;
-                                continue;
-                            }
-
-                            // Get value to save to database.
-                            var valueForDatabase = field.Value;
-                            if (field.InputFieldType == OrderProcessInputTypes.Password && !String.IsNullOrEmpty(valueForDatabase))
-                            {
-                                valueForDatabase = field.Value.ToSha512ForPasswords();
-                                field.Value = "";
-                            }
-
-                            // Set the posted value in the basket. We do that here so that we can be sure that people can only save values that are configured in Wiser.
-                            // This way they can't just add a random field to the HTML to save that value in our database.
-                            // TODO: Some values should be saved in the account instead of basket.
-                            shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
-                        }
-                    }
+                    fieldErrorsOccurred = ValidatePostBackAndSaveValues(step, loggedInUser, request, shoppingBasket);
 
                     // Save values to database if all validation succeeded.
                     if (!fieldErrorsOccurred)
                     {
                         await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
-                    }
 
-                    // Redirect to the next step.
-                    var nextStep = ActiveStep + 1;
-                    if (nextStep <= steps.Count)
-                    {
-                        var nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
-                        var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
-                        nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
-                        nextStepUri.Query = nextStepQueryString.ToString();
-                        response.Redirect(nextStepUri.ToString());
-                    }
-                    else
-                    {
-                        response.Redirect("/payment_out.gcl");
-                    }
+                        // Redirect to the next step.
+                        var nextStep = ActiveStep + 1;
+                        if (nextStep <= steps.Count)
+                        {
+                            var nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                            var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
+                            nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
+                            nextStepUri.Query = nextStepQueryString?.ToString() ?? "";
+                            response.Redirect(nextStepUri.ToString());
+                        }
+                        else
+                        {
+                            response.Redirect("/payment_out.gcl");
+                        }
 
-                    return null;
+                        return null;
+                    }
                 }
                 
                 // Generate URI for previous step.
@@ -310,111 +271,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 var groupsBuilder = new StringBuilder();
                 foreach (var group in step.Groups)
                 {
-                    // Get fields that we can show in this group, based on the visibility settings of each field.
-                    var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
-
-                    // Skip this group if it has no fields that we can show.
-                    if (!fieldsToShow.Any())
+                    var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, userData);
+                    if (groupHtml == null)
                     {
                         continue;
                     }
 
-                    // Create dictionary for replacements.
-                    replaceData = new Dictionary<string, string>
-                    {
-                        { "id", group.Id.ToString() },
-                        { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") }
-                    };
-
-                    var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
-                    groupHtml = groupHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, group.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, group.Footer);
-
-                    // Build the fields HTML.
-                    var fieldsBuilder = new StringBuilder();
-                    foreach (var field in fieldsToShow)
-                    {
-                        var fieldValue = field.Value;
-                        if (String.IsNullOrEmpty(fieldValue) && field.InputFieldType != OrderProcessInputTypes.Password)
-                        {
-                            fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
-                            if (String.IsNullOrWhiteSpace(fieldValue))
-                            {
-                                fieldValue = userData.GetDetailValue(field.FieldId);
-                            }
-                        }
-
-                        // Create dictionary for replacements.
-                        replaceData = new Dictionary<string, string>
-                        {
-                            { "id", field.Id.ToString() },
-                            { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title ?? "") },
-                            { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder ?? "") },
-                            { "fieldId", field.FieldId },
-                            { "inputType", EnumHelpers.ToEnumString(field.InputFieldType) },
-                            { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label ?? "") },
-                            { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
-                            { "required", field.Mandatory ? "required" : "" },
-                            { "value", fieldValue },
-                            { "checked", String.IsNullOrWhiteSpace(fieldValue) ? "" : "checked" }
-                        };
-
-                        var fieldHtml = field.Type switch
-                        {
-                            OrderProcessFieldTypes.Input => Settings.TemplateInputField,
-                            OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonField,
-                            OrderProcessFieldTypes.Select => Settings.TemplateSelectField,
-                            OrderProcessFieldTypes.Checkbox => Settings.TemplateCheckboxField,
-                            _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
-                        };
-
-                        fieldHtml = StringReplacementsService.DoReplacements(fieldHtml, replaceData);
-
-                        // Build the field options HTML, if applicable.
-                        if (field.Values != null && field.Values.Any() && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
-                        {
-                            var optionsBuilder = new StringBuilder();
-                            foreach (var option in field.Values)
-                            {
-                                var optionHtml = field.Type switch
-                                {
-                                    OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonFieldOption,
-                                    OrderProcessFieldTypes.Select => Settings.TemplateSelectFieldOption,
-                                    _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
-                                };
-
-                                // Create dictionary for replacements.
-                                replaceData = new Dictionary<string, string>
-                                {
-                                    { "fieldId", field.FieldId },
-                                    { "required", field.Mandatory ? "required" : "" },
-                                    { "optionValue", option.Key },
-                                    { "optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{option.Value}_text", defaultValue: option.Value ?? "") },
-                                    { "selected", option.Key == fieldValue ? "selected" : "" },
-                                    { "checked", option.Key == fieldValue ? "checked" : "" }
-                                };
-
-                                optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
-                                optionsBuilder.AppendLine(optionHtml);
-                            }
-
-                            fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.FieldOptionsReplacement, optionsBuilder.ToString());
-                        }
-
-                        if (field.IsValid)
-                        {
-                            fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, "").ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "");
-                        }
-                        else
-                        {
-                            var errorMessage = await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_text", defaultValue: field.ErrorMessage ?? "");
-                            var errorHtml = Settings.TemplateFieldError.ReplaceCaseInsensitive(Constants.ErrorMessageReplacement, errorMessage);
-                            fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, errorHtml).ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "error");
-                        }
-
-                        fieldsBuilder.AppendLine(fieldHtml);
-                    }
-
-                    groupHtml = groupHtml.ReplaceCaseInsensitive(Constants.FieldsReplacement, fieldsBuilder.ToString());
                     groupsBuilder.AppendLine(groupHtml);
                 }
 
@@ -425,26 +287,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Build the HTML for the steps progress.
                 if (resultHtml.Contains(Constants.ProgressReplacement, StringComparison.OrdinalIgnoreCase))
                 {
-                    var progressBuilder = new StringBuilder();
-                    for (var index = 0; index < steps.Count; index++)
-                    {
-                        var stepNumber = index + 1;
-                        var progressStep = steps[index];
-
-                        // Create dictionary for replacements.
-                        replaceData = new Dictionary<string, string>
-                        {
-                            { "id", progressStep.Id.ToString() },
-                            { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title", defaultValue: progressStep.Title ?? "") },
-                            { "number", stepNumber.ToString() },
-                            { "active", ActiveStep == stepNumber ? "active" : "" }
-                        };
-
-                        var progressStepHtml = StringReplacementsService.DoReplacements(Settings.TemplateProgressStep, replaceData);
-                        progressBuilder.AppendLine(progressStepHtml);
-                    }
-
-                    var progressHtml = Settings.TemplateProgress.ReplaceCaseInsensitive(Constants.StepsReplacement, progressBuilder.ToString());
+                    var progressHtml = await RenderStepsProgressAsync(steps);
                     resultHtml = resultHtml.ReplaceCaseInsensitive(Constants.ProgressReplacement, progressHtml);
                 }
 
@@ -467,9 +310,235 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(resultHtml), Constants.ComponentIdFormKey);
         }
 
+        /// <summary>
+        /// Renders the HTML for a group.
+        /// </summary>
+        /// <param name="group">The group to render.</param>
+        /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
+        /// <param name="shoppingBasket">The basket of the user.</param>
+        /// <param name="userData">The data of the user.</param>
+        /// <returns>The HTML for the group.</returns>
+        private async Task<string> RenderGroupAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, WiserItemModel userData)
+        {
+            // Get fields that we can show in this group, based on the visibility settings of each field.
+            var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
+
+            // Skip this group if it has no fields that we can show.
+            if (!fieldsToShow.Any())
+            {
+                return null;
+            }
+
+            // Create dictionary for replacements.
+            var replaceData = new Dictionary<string, string>
+            {
+                { "id", group.Id.ToString() },
+                { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") }
+            };
+
+            var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
+            groupHtml = groupHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, group.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, group.Footer);
+
+            // Build the fields HTML.
+            var fieldsBuilder = new StringBuilder();
+            foreach (var field in fieldsToShow)
+            {
+                var fieldHtml = await RenderFieldAsync(field, shoppingBasket, userData);
+                fieldsBuilder.AppendLine(fieldHtml);
+            }
+
+            return groupHtml.ReplaceCaseInsensitive(Constants.FieldsReplacement, fieldsBuilder.ToString());
+        }
+
+        /// <summary>
+        /// Renders the HTML for a single field.
+        /// </summary>
+        /// <param name="field">The field to generate HTML for.</param>
+        /// <param name="shoppingBasket">The basket of the user.</param>
+        /// <param name="userData">The data of the user.</param>
+        /// <returns>The HTML for the field.</returns>
+        private async Task<string> RenderFieldAsync(OrderProcessFieldModel field, WiserItemModel shoppingBasket, WiserItemModel userData)
+        {
+            var fieldValue = field.Value;
+            if (String.IsNullOrEmpty(fieldValue) && field.InputFieldType != OrderProcessInputTypes.Password)
+            {
+                fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
+                if (String.IsNullOrWhiteSpace(fieldValue))
+                {
+                    fieldValue = userData.GetDetailValue(field.FieldId);
+                }
+            }
+
+            // Create dictionary for replacements.
+            var replaceData = new Dictionary<string, string>
+            {
+                { "id", field.Id.ToString() },
+                { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title ?? "") },
+                { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder ?? "") },
+                { "fieldId", field.FieldId },
+                { "inputType", EnumHelpers.ToEnumString(field.InputFieldType) },
+                { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label ?? "") },
+                { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
+                { "required", field.Mandatory ? "required" : "" },
+                { "value", fieldValue },
+                { "checked", String.IsNullOrWhiteSpace(fieldValue) ? "" : "checked" }
+            };
+
+            var fieldHtml = field.Type switch
+            {
+                OrderProcessFieldTypes.Input => Settings.TemplateInputField,
+                OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonField,
+                OrderProcessFieldTypes.Select => Settings.TemplateSelectField,
+                OrderProcessFieldTypes.Checkbox => Settings.TemplateCheckboxField,
+                _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
+            };
+
+            fieldHtml = StringReplacementsService.DoReplacements(fieldHtml, replaceData);
+
+            // Build the field options HTML, if applicable.
+            if (field.Values != null && field.Values.Any() && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
+            {
+                var optionsHtml = await RenderFieldOptionsAsync(field, fieldValue);
+                fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.FieldOptionsReplacement, optionsHtml);
+            }
+
+            if (field.IsValid)
+            {
+                fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, "").ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "");
+            }
+            else
+            {
+                var errorMessage = await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_text", defaultValue: field.ErrorMessage ?? "");
+                var errorHtml = Settings.TemplateFieldError.ReplaceCaseInsensitive(Constants.ErrorMessageReplacement, errorMessage);
+                fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, errorHtml).ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "error");
+            }
+
+            return fieldHtml;
+        }
+
+        /// <summary>
+        /// Renders the HTML for all options of a field.
+        /// </summary>
+        /// <param name="field">The field to render the options for.</param>
+        /// <param name="fieldValue"></param>
+        /// <returns>The HTML with all options for the given field.</returns>
+        private async Task<string> RenderFieldOptionsAsync(OrderProcessFieldModel field, string fieldValue)
+        {
+            var optionsBuilder = new StringBuilder();
+            foreach (var (key, value) in field.Values)
+            {
+                var optionHtml = field.Type switch
+                {
+                    OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonFieldOption,
+                    OrderProcessFieldTypes.Select => Settings.TemplateSelectFieldOption,
+                    _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
+                };
+
+                // Create dictionary for replacements.
+                var replaceData = new Dictionary<string, string>
+                {
+                    { "fieldId", field.FieldId },
+                    { "required", field.Mandatory ? "required" : "" },
+                    { "optionValue", key },
+                    { "optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{value}_text", defaultValue: value ?? "") },
+                    { "selected", key == fieldValue ? "selected" : "" },
+                    { "checked", key == fieldValue ? "checked" : "" }
+                };
+
+                optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
+                optionsBuilder.AppendLine(optionHtml);
+            }
+
+            return optionsBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Renders the HTML for the progress of the order process.
+        /// </summary>
+        /// <param name="steps">The available steps.</param>
+        /// <returns>The HTML for the progress steps.</returns>
+        private async Task<string> RenderStepsProgressAsync(List<OrderProcessStepModel> steps)
+        {
+            var progressBuilder = new StringBuilder();
+            for (var index = 0; index < steps.Count; index++)
+            {
+                var stepNumber = index + 1;
+                var progressStep = steps[index];
+
+                // Create dictionary for replacements.
+                var replaceData = new Dictionary<string, string>
+                {
+                    { "id", progressStep.Id.ToString() },
+                    { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title", defaultValue: progressStep.Title ?? "") },
+                    { "number", stepNumber.ToString() },
+                    { "active", ActiveStep == stepNumber ? "active" : "" }
+                };
+
+                var progressStepHtml = StringReplacementsService.DoReplacements(Settings.TemplateProgressStep, replaceData);
+                progressBuilder.AppendLine(progressStepHtml);
+            }
+
+            return Settings.TemplateProgress.ReplaceCaseInsensitive(Constants.StepsReplacement, progressBuilder.ToString());
+        }
+
         #endregion
 
         #region Private methods
+
+        /// <summary>
+        /// Validates data posted by the user and saves that data in their basket or account.
+        /// This will also set the Value and IsValid properties on each field in the current step.
+        /// </summary>
+        /// <param name="step">The currently active step.</param>
+        /// <param name="loggedInUser">The <see cref="UserCookieDataModel"/> of the logged in user, or empty object if they're not logged in.</param>
+        /// <param name="request">The current <see cref="HttpRequest"/>.</param>
+        /// <param name="shoppingBasket">The basket of the user.</param>
+        /// <returns>A <see cref="Boolean"/> indicating whether any there were any errors in the validation.</returns>
+        private static bool ValidatePostBackAndSaveValues(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket)
+        {
+            var fieldErrorsOccurred = false;
+            foreach (var group in step.Groups)
+            {
+                // Get fields that we can show in this group, based on the visibility settings of each field.
+                var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
+
+                // Skip this group if it has no fields that we can show.
+                if (!fieldsToShow.Any())
+                {
+                    continue;
+                }
+
+                foreach (var field in fieldsToShow)
+                {
+                    // Get the posted field value.
+                    field.Value = request.Form[field.FieldId].ToString();
+
+                    // Do field validation.
+                    field.IsValid = FieldValueIsValid(field, field.Value);
+
+                    if (!field.IsValid)
+                    {
+                        fieldErrorsOccurred = true;
+                        continue;
+                    }
+
+                    // Get value to save to database.
+                    var valueForDatabase = field.Value;
+                    if (field.InputFieldType == OrderProcessInputTypes.Password && !String.IsNullOrEmpty(valueForDatabase))
+                    {
+                        valueForDatabase = field.Value.ToSha512ForPasswords();
+                        field.Value = "";
+                    }
+
+                    // Set the posted value in the basket. We do that here so that we can be sure that people can only save values that are configured in Wiser.
+                    // This way they can't just add a random field to the HTML to save that value in our database.
+                    // TODO: Some values should be saved in the account instead of basket.
+                    shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
+                }
+            }
+
+            return fieldErrorsOccurred;
+        }
 
         /// <summary>
         /// Gets the fields of a group that should be shown to the user.
