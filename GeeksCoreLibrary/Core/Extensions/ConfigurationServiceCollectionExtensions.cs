@@ -131,7 +131,6 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns></returns>
         public static IServiceCollection AddGclServices(this IServiceCollection services, IConfiguration configuration, bool useCaching = true, bool isApi = false)
         {
-
             // MVC looks in the directory "Areas" by default, but we use the directory "Modules", so we have to tell MC that.
             services.Configure<RazorViewEngineOptions>(options =>
             {

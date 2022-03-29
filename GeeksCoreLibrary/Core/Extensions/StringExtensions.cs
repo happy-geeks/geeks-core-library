@@ -98,6 +98,9 @@ namespace GeeksCoreLibrary.Core.Extensions
                 { 'œ', "oe" }
             };
 
+            // Array of characters that should be left intact.
+            var preserveCharacters = new[] {'_'};
+
             foreach (var c in normalizedString)
             {
                 if (Regex.IsMatch(c.ToString(), "\\p{IsCyrillic}"))
@@ -108,6 +111,13 @@ namespace GeeksCoreLibrary.Core.Extensions
                 var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
                 if (unicodeCategory == UnicodeCategory.NonSpacingMark)
                 {
+                    continue;
+                }
+
+                // Some characters should be left intact.
+                if (preserveCharacters.Contains(c))
+                {
+                    stringBuilder.Append(c);
                     continue;
                 }
 

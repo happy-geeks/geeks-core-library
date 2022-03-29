@@ -198,9 +198,9 @@ namespace GeeksCoreLibrary.Components.Filter
             // Get the category id from a query if query is given
             if (!String.IsNullOrEmpty(Settings.FilterCategoryIdQuery))
             {
-                Settings.FilterCategoryIdQuery = await TemplatesService.DoReplacesAsync(Settings.FilterCategoryIdQuery, true, false, true, forQuery: true);
+                var query = await TemplatesService.DoReplacesAsync(Settings.FilterCategoryIdQuery, true, false, true, forQuery: true);
 
-                dataTable = await DatabaseConnection.GetAsync(Settings.FilterCategoryIdQuery);
+                dataTable = await DatabaseConnection.GetAsync(query);
 
                 if (dataTable.Rows.Count >= 1)
                 {

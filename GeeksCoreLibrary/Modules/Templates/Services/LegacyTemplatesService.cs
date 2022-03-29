@@ -289,8 +289,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
         {
             var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss 
-                ? $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'"
-                : $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')";
+                ? $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')"
+                : $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'";
 
             var joinPart = gclSettings.Environment switch
             {
@@ -792,22 +792,24 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         // Contains a parent
                         var split = templateName.Split('\\');
                         var template = await templatesService.GetTemplateAsync(name: split[1], parentName: split[0]);
+                        var templateContent = template.Content;
                         if (handleStringReplacements)
                         {
-                            template.Content = await stringReplacementsService.DoAllReplacementsAsync(template.Content, dataRow, handleRequest, false, false, forQuery);
+                            templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery);
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, template.Content);
+                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, templateContent);
                     }
                     else
                     {
                         var template = await templatesService.GetTemplateAsync(name: templateName);
+                        var templateContent = template.Content;
                         if (handleStringReplacements)
                         {
-                            template.Content = await stringReplacementsService.DoAllReplacementsAsync(template.Content, dataRow, handleRequest, false, false, forQuery);
+                            templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery);
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, template.Content);
+                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, templateContent);
                     }
                 }
 

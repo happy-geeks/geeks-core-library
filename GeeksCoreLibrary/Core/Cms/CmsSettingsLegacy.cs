@@ -27,7 +27,7 @@
         /// <summary>
         /// If this is set to true, all left over variables after all replacements will be removed from the string.
         /// </summary>
-        public bool RemoveUnknownVariables { get; set; } = false;
+        public bool RemoveUnknownVariables { get; set; } = true;
         
         /// <summary>
         /// Will set a 404 status for the page if no data was found

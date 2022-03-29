@@ -39,7 +39,6 @@ namespace GeeksCoreLibrary.Components.Repeater.Services
             }
 
             var fullUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).PathAndQuery;
-            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("baseUrl", fullUrl);
             databaseConnection.AddParameter("languageCode", languagesService.CurrentLanguageCode ?? "");
             databaseConnection.AddParameter("publishedEnvironment", (int)gclSettings.Environment);

@@ -304,7 +304,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 WHERE (component.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}";
 
-            databaseConnection.ClearParameters();
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {
