@@ -4,13 +4,26 @@ using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Web;
+using GeeksCoreLibrary.Components.Account.Interfaces;
+using GeeksCoreLibrary.Components.Account.Models;
 using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
+using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Languages.Interfaces;
+using GeeksCoreLibrary.Modules.Payments.Enums;
+using GeeksCoreLibrary.Modules.Payments.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Enums;
+using GeeksCoreLibrary.Modules.Templates.Interfaces;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
@@ -20,28 +33,82 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
     public class OrderProcessesService : IOrderProcessesService, IScopedService
     {
         private readonly IDatabaseConnection databaseConnection;
+        private readonly IShoppingBasketsService shoppingBasketsService;
+        private readonly IAccountsService accountsService;
+        private readonly IWiserItemsService wiserItemsService;
+        private readonly ILogger<OrderProcessesService> logger;
+        private readonly ILanguagesService languagesService;
+        private readonly ITemplatesService templatesService;
+        private readonly IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory;
         private readonly GclSettings gclSettings;
 
-        public OrderProcessesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings)
+        public OrderProcessesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, IShoppingBasketsService shoppingBasketsService, IAccountsService accountsService, IWiserItemsService wiserItemsService, ILogger<OrderProcessesService> logger, ILanguagesService languagesService, ITemplatesService templatesService, IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory)
         {
             this.databaseConnection = databaseConnection;
+            this.shoppingBasketsService = shoppingBasketsService;
+            this.accountsService = accountsService;
+            this.wiserItemsService = wiserItemsService;
+            this.logger = logger;
+            this.languagesService = languagesService;
+            this.templatesService = templatesService;
+            this.paymentServiceProviderServiceFactory = paymentServiceProviderServiceFactory;
             this.gclSettings = gclSettings.Value;
+        }
+
+        /// <inheritdoc />
+        public async Task<OrderProcessSettingsModel> GetOrderProcessSettingsAsync(ulong orderProcessId)
+        {
+            if (orderProcessId == 0)
+            {
+                throw new ArgumentNullException(nameof(orderProcessId));
+            }
+            
+            var query = @$"SELECT 
+                                orderProcess.id,
+	                            IFNULL(titleSeo.value, orderProcess.title) AS name,
+                                IFNULL(fixedUrl.value, '/payment.html') AS fixedUrl,
+                                COUNT(step.id) AS amountOfSteps
+                            FROM {WiserTableNames.WiserItem} AS orderProcess
+                            JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
+                            JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS fixedUrl ON fixedUrl.item_id = orderProcess.id AND fixedUrl.`key` = '{Constants.OrderProcessUrlProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS titleSeo ON titleSeo.item_id = orderProcess.id AND titleSeo.`key` = '{CoreConstants.SeoTitlePropertyName}'
+                            WHERE orderProcess.id = ?id
+                            AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
+                            AND orderProcess.published_environment >= ?publishedEnvironment
+                            GROUP BY orderProcess.id
+                            LIMIT 1";
+            
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("id", orderProcessId);
+            databaseConnection.AddParameter("publishedEnvironment", (int)gclSettings.Environment);
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count == 0)
+            {
+                return null;
+            }
+
+            var firstRow = dataTable.Rows[0];
+            return new OrderProcessSettingsModel
+            {
+                Id = firstRow.Field<ulong>("id"),
+                Title = firstRow.Field<string>("name"),
+                FixedUrl = firstRow.Field<string>("fixedUrl")
+            };
         }
 
         /// <inheritdoc />
         public async Task<OrderProcessSettingsModel> GetOrderProcessViaFixedUrlAsync(string fixedUrl)
         {
-            if (String.IsNullOrWhiteSpace(fixedUrl))
-            {
-                throw new ArgumentNullException(nameof(fixedUrl));
-            }
-            
-            var query = @$"SELECT 
-                                orderProcess.id,
-	                            IFNULL(titleSeo.value, orderProcess.title) AS name
+            return await GetOrderProcessViaFixedUrlAsync(this, fixedUrl);
+        }
+
+        /// <inheritdoc />
+        public async Task<OrderProcessSettingsModel> GetOrderProcessViaFixedUrlAsync(IOrderProcessesService orderProcessesService, string fixedUrl)
+        {
+            var query = @$"SELECT orderProcess.id
                             FROM {WiserTableNames.WiserItem} AS orderProcess
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fixedUrl ON fixedUrl.item_id = orderProcess.id AND fixedUrl.`key` = '{Constants.OrderProcessUrlProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS titleSeo ON titleSeo.item_id = orderProcess.id AND titleSeo.`key` = '{CoreConstants.SeoTitlePropertyName}'
                             WHERE orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
                             AND orderProcess.published_environment >= ?publishedEnvironment
                             AND IFNULL(fixedUrl.value, '/payment.html') = ?fixedUrl
@@ -56,13 +123,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 return null;
             }
 
-            var firstRow = dataTable.Rows[0];
-            return new OrderProcessSettingsModel
-            {
-                Id = firstRow.Field<ulong>("id"),
-                Title = firstRow.Field<string>("name"),
-                FixedUrl = fixedUrl
-            };
+            return await orderProcessesService.GetOrderProcessSettingsAsync(dataTable.Rows[0].Field<ulong>("id"));
         }
 
         /// <inheritdoc />
@@ -242,14 +303,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<PaymentMethodSettingsModel>> GetPaymentMethodsAsync(ulong orderProcessId)
+        public async Task<List<PaymentMethodSettingsModel>> GetPaymentMethodsAsync(ulong orderProcessId, UserCookieDataModel loggedInUser = null)
         {
             if (orderProcessId == 0)
             {
                 throw new ArgumentNullException(nameof(orderProcessId));
             }
 
-            var results = new List<PaymentMethodSettingsModel>();
             var query = $@"SELECT 
 	                            paymentMethod.id AS paymentMethodId,
 	                            paymentMethod.title AS paymentMethodTitle,
@@ -273,25 +333,274 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             databaseConnection.AddParameter("id", orderProcessId);
             var dataTable = await databaseConnection.GetAsync(query);
+            var results = dataTable.Rows.Cast<DataRow>().Select(DataRowToPaymentMethodSettingsModel).ToList();
 
-            foreach (DataRow dataRow in dataTable.Rows)
+            if (loggedInUser == null)
             {
-                Decimal.TryParse(dataRow.Field<string>("paymentMethodFee")?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var fee);
-                results.Add(new PaymentMethodSettingsModel
-                {
-                    Id = dataRow.Field<ulong>("paymentMethodId"),
-                    Title = dataRow.Field<string>("paymentMethodTitle"),
-                    Fee = fee,
-                    Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("paymentMethodVisibility") ?? "Always"),
-                    PaymentServiceProvider = new PaymentServiceProviderSettingsModel
-                    {
-                        Id = dataRow.Field<ulong>("paymentServiceProviderId"),
-                        Title = dataRow.Field<string>("paymentServiceProviderTitle")
-                    }
-                });
+                return results;
             }
 
+            // Only get the payment methods that the user can see.
+            results = results.Where(paymentMethod =>
+            {
+                // Check if we need to skip this field.
+                return paymentMethod.Visibility switch
+                {
+                    OrderProcessFieldVisibilityTypes.Always => true,
+                    OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
+                    OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
+                    _ => throw new ArgumentOutOfRangeException(nameof(paymentMethod.Visibility), paymentMethod.Visibility.ToString())
+                };
+            }).ToList();
+
             return results;
+        }
+
+        /// <inheritdoc />
+        public async Task<PaymentMethodSettingsModel> GetPaymentMethodAsync(ulong paymentMethodId)
+        {
+            if (paymentMethodId == 0)
+            {
+                throw new ArgumentNullException(nameof(paymentMethodId));
+            }
+            
+            var query = $@"SELECT 
+	                            paymentMethod.id AS paymentMethodId,
+	                            paymentMethod.title AS paymentMethodTitle,
+	                            paymentServiceProvider.id AS paymentServiceProviderId,
+	                            paymentServiceProvider.title AS paymentServiceProviderTitle,
+	                            paymentMethodFee.value AS paymentMethodFee,
+	                            paymentMethodVisibility.value AS paymentMethodVisibility
+                            FROM {WiserTableNames.WiserItem} AS paymentMethod
+
+                            # PSP
+                            JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
+                            JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
+
+                            # Other payment method properties
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
+                            WHERE paymentMethod.id = ?id
+                            AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'";
+
+            databaseConnection.AddParameter("id", paymentMethodId);
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count == 0)
+            {
+                return null;
+            }
+
+            var dataRow = dataTable.Rows[0];
+            var result = DataRowToPaymentMethodSettingsModel(dataRow);
+
+            return result;
+        }
+
+        /// <inheritdoc />
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ulong orderProcessId)
+        {
+            return await HandlePaymentRequestAsync(this, orderProcessId);
+        }
+
+        /// <inheritdoc />
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId)
+        {
+            // Retrieve baskets.
+            var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync();
+            var selectedPaymentMethodId = shoppingBaskets.First().Main.GetDetailValue<ulong>(Constants.PaymentMethodProperty);
+            var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
+
+            // Build the fail URL.
+            var failUrl = new UriBuilder(orderProcessSettings.FixedUrl);
+            var queryString = HttpUtility.ParseQueryString(failUrl.Query);
+            queryString[Constants.ErrorFromPaymentOutRequestKey] = "true";
+
+            if (orderProcessSettings.AmountOfSteps > 1)
+            {
+                queryString[Constants.ActiveStepRequestKey] = orderProcessSettings.AmountOfSteps.ToString();
+            }
+
+            failUrl.Query = queryString.ToString();
+            
+            // Check if we have a valid payment method.
+            if (selectedPaymentMethodId == 0)
+            {
+                return new PaymentRequestResult
+                {
+                    Successful = false,
+                    Action = PaymentRequestActions.Redirect,
+                    ActionData = failUrl.ToString(),
+                    ErrorMessage = $"Invalid payment method '{selectedPaymentMethodId}'"
+                };
+            }
+
+            var paymentMethodSettings = await orderProcessesService.GetPaymentMethodAsync(selectedPaymentMethodId);
+            if (paymentMethodSettings == null)
+            {
+                return new PaymentRequestResult
+                {
+                    Successful = false,
+                    Action = PaymentRequestActions.Redirect,
+                    ActionData = failUrl.ToString(),
+                    ErrorMessage = $"Invalid payment method '{selectedPaymentMethodId}'"
+                };
+            }
+            
+            // Get current user.
+            var user = await accountsService.GetUserDataFromCookieAsync();
+            var userDetails = user.UserId > 0 ? await wiserItemsService.GetItemDetailsAsync(user.UserId) : new WiserItemModel();
+            
+            // Double check that we received a valid payment method.
+            var availablePaymentMethods = await orderProcessesService.GetPaymentMethodsAsync(orderProcessId, user);
+            
+            if (availablePaymentMethods == null || availablePaymentMethods.All(p => p.Id != selectedPaymentMethodId))
+            {
+                return new PaymentRequestResult
+                {
+                    Successful = false,
+                    Action = PaymentRequestActions.Redirect,
+                    ActionData = failUrl.ToString(),
+                    ErrorMessage = "This user is not allowed to pay"
+                };
+            }
+            
+            // Convert baskets to concept orders.
+            var orderId = 0UL;
+            var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+            var conceptOrders = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
+            foreach (var (main, lines) in shoppingBaskets)
+            {
+                var (conceptOrderId, conceptOrder, conceptOrderLines) = await shoppingBasketsService.MakeConceptOrderFromBasketAsync(main, lines, basketSettings);
+
+                conceptOrders.Add((conceptOrder, conceptOrderLines));
+
+                orderId = conceptOrderId;
+            }
+            
+            // Generate invoice number.
+            var invoiceNumber = "";
+            var invoiceNumberQuery = (await templatesService.GetTemplateAsync(name: Constants.InvoiceNumberQueryTemplate, type: TemplateTypes.Query))?.Content;
+            if (!String.IsNullOrWhiteSpace(invoiceNumberQuery))
+            {
+                invoiceNumberQuery = invoiceNumberQuery.Replace("{oid}", orderId.ToString());
+                var getInvoiceNumberResult = await databaseConnection.GetAsync(invoiceNumberQuery);
+                if (getInvoiceNumberResult.Rows.Count > 0)
+                {
+                    invoiceNumber = Convert.ToString(getInvoiceNumberResult.Rows[0][0]);
+                }
+            }
+
+            if (String.IsNullOrWhiteSpace(invoiceNumber))
+            {
+                invoiceNumber = orderId.ToString();
+            }
+            
+            var uniquePaymentNumber = $"{invoiceNumber}-{DateTime.Now:yyyyMMddHHmmss}";
+
+            // Check if the order is a test order.
+            var isTestOrder = gclSettings.Environment.InList(Environments.Test, Environments.Development);
+            
+            // Save data to the concept order(s).
+            foreach (var (main, lines) in conceptOrders)
+            {
+                main.SetDetail(Constants.PaymentMethodProperty, paymentMethodSettings.Id);
+                main.SetDetail(Constants.PaymentMethodNameProperty, paymentMethodSettings.Title);
+                main.SetDetail(Constants.PaymentProviderProperty, paymentMethodSettings.PaymentServiceProvider.Id);
+                main.SetDetail(Constants.PaymentProviderNameProperty, paymentMethodSettings.PaymentServiceProvider.Title);
+                main.SetDetail(Constants.UniquePaymentNumberProperty, uniquePaymentNumber);
+                main.SetDetail(Constants.InvoiceNumberProperty, invoiceNumber);
+                main.SetDetail(Constants.LanguageCodeProperty, languagesService?.CurrentLanguageCode ?? "");
+                main.SetDetail(Constants.IsTestOrderProperty, isTestOrder.ToString());
+                await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
+            }
+            
+            var convertConceptOrderToOrder = paymentMethodSettings.PaymentServiceProvider.OrdersCanBeSetDirectoryToFinished;
+            
+            // Increment use count of redeemed coupons.
+            foreach (var (main, lines) in conceptOrders)
+            {
+                foreach (var basketLine in shoppingBasketsService.GetLines(lines, "coupon"))
+                {
+                    var couponItemId = basketLine.GetDetailValue<ulong>(ShoppingBasket.Models.Constants.ConnectedItemIdProperty);
+                    if (couponItemId == 0)
+                    {
+                        continue;
+                    }
+
+                    var couponItem = await wiserItemsService.GetItemDetailsAsync(couponItemId);
+                    if (couponItem is not { Id: > 0 })
+                    {
+                        continue;
+                    }
+
+                    var totalBasketPrice = await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, lineType: "product");
+                    await shoppingBasketsService.UseCouponAsync(couponItem, totalBasketPrice);
+                }
+            }
+
+            // TODO: Call "TransactionBeforeOut" site function.
+            
+            if (!convertConceptOrderToOrder && paymentMethodSettings.PaymentServiceProvider.SkipPaymentWhenOrderAmountEqualsZero)
+            {
+                var totalPrice = 0M;
+                foreach (var (main, lines) in conceptOrders)
+                {
+                    totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings);
+                }
+
+                if (totalPrice == 0M)
+                {
+                    convertConceptOrderToOrder = true;
+                }
+            }
+            
+            if (convertConceptOrderToOrder)
+            {
+                foreach (var (main, _) in conceptOrders)
+                {
+                    await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
+                    // TODO: Call "TransactionFinished" site function.
+                }
+
+                return new PaymentRequestResult
+                {
+                    Successful = true,
+                    Action = PaymentRequestActions.Redirect,
+                    ActionData = paymentMethodSettings.PaymentServiceProvider.SuccessUrl
+                };
+            }
+            
+            // Get the correct service based on name.
+            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Title);
+            paymentServiceProviderService.LogPaymentActions = true;
+
+            if (convertConceptOrderToOrder)
+            {
+                // TODO
+                //await ProcessStatusUpdateAsync(conceptOrders, "Success", true, convertConceptOrderToOrder);
+            }
+
+            // TODO
+            //return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, paymentMethod, invoiceNumber);
+            return new PaymentRequestResult();
+        }
+
+        private static PaymentMethodSettingsModel DataRowToPaymentMethodSettingsModel(DataRow dataRow)
+        {
+            Decimal.TryParse(dataRow.Field<string>("paymentMethodFee")?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var fee);
+            var result = new PaymentMethodSettingsModel
+            {
+                Id = dataRow.Field<ulong>("paymentMethodId"),
+                Title = dataRow.Field<string>("paymentMethodTitle"),
+                Fee = fee,
+                Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("paymentMethodVisibility") ?? "Always"),
+                PaymentServiceProvider = new PaymentServiceProviderSettingsModel
+                {
+                    Id = dataRow.Field<ulong>("paymentServiceProviderId"),
+                    Title = dataRow.Field<string>("paymentServiceProviderTitle")
+                }
+            };
+            return result;
         }
     }
 }

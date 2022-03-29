@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
@@ -39,8 +40,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         {
             this.objectsService = objectsService;
             this.databaseConnection = databaseConnection;
-
-            if (context.Request.Path == "/webpage.gcl" || context.Request.Path == "/template.gcl" || context.Request.Path == "/webpage.jcl" || context.Request.Path == "/template.jcl" || context.Request.Path == "/orderProcess.gcl")
+            
+            if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
                 // If this happens, it means that another middleware has already found something and we don't need to do this again.
                 await this.next.Invoke(context);

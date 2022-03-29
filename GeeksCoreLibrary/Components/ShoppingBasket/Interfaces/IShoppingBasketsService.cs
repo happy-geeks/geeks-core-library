@@ -69,14 +69,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         Task<bool> UseCouponAsync(WiserItemModel coupon, decimal totalProductsPrice);
 
         /// <summary>
-        /// Takes certain values from the request and adds them to the basket details.
-        /// </summary>
-        /// <param name="shoppingBasket"></param>
-        /// <param name="settings"></param>
-        /// <returns></returns>
-        Task UpdateShoppingBasketWithRequestDataAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings);
-
-        /// <summary>
         /// Create a concept order out of a basket.
         /// </summary>
         /// <returns></returns>

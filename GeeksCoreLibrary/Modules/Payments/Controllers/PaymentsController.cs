@@ -21,7 +21,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Controllers
         /// The route for handling payment requests.
         /// </summary>
         /// <returns></returns>
-        [Route("payment_out.gcl")]
+        /*[Route("payment_out.gcl")]
         [Route("payment_out.jcl")]
         [HttpPost, HttpGet]
         public async Task<IActionResult> PaymentOut()
@@ -38,7 +38,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Controllers
             }
 
             return Content("", "text/html");
-        }
+        }*/
 
         /// <summary>
         /// The route for handling payment updates from a PSP.

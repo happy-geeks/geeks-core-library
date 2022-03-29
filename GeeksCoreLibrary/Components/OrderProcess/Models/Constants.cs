@@ -7,6 +7,16 @@
     {
         internal const string ComponentIdFormKey = "__orderProcess";
 
+        #region Pages
+
+        public const string CheckoutPage = "orderProcessCheckout.gcl";
+
+        public const string PaymentInPage = "orderProcessPaymentIn.gcl";
+
+        public const string PaymentOutPage = "orderProcessPaymentOut.gcl";
+
+        #endregion
+
         #region Entity types
 
         public const string OrderProcessEntityType = "WiserOrderProcess";
@@ -17,7 +27,7 @@
 
         public const string FormFieldEntityType = "WiserFormField";
 
-        public const string PaymentServiceProviderEntityType = "WiserPaymentprovider";
+        public const string PaymentServiceProviderEntityType = "WiserPaymentProvider";
 
         public const string PaymentMethodEntityType = "WiserPaymentmethod";
 
@@ -81,13 +91,29 @@
 
         public const string PaymentMethodLogoProperty = "paymentmethodlogo";
 
-        public const string PaymentSelectedValueProperty = "paymentMethod";
+        public const string PaymentMethodProperty = "paymentMethod";
+
+        public const string PaymentMethodNameProperty = "paymentMethodName";
+
+        public const string PaymentProviderProperty = "paymentProvider";
+
+        public const string PaymentProviderNameProperty = "paymentProviderName";
+
+        public const string UniquePaymentNumberProperty = "UniquePaymentNumber";
+
+        public const string InvoiceNumberProperty = "InvoiceNumber";
+
+        public const string LanguageCodeProperty = "LanguageCode";
+
+        public const string IsTestOrderProperty = "IsTestOrder";
 
         #endregion
 
         #region Request values
 
         public const string ActiveStepRequestKey = "activeStep";
+
+        public const string ErrorFromPaymentOutRequestKey = "errorFromPaymentOut";
 
         #endregion
 
@@ -118,6 +144,12 @@
         public const string PaymentMethodsReplacement = "{paymentMethods}";
 
         public const string FieldOptionsReplacement = "{options}";
+
+        #endregion
+
+        #region Template names
+
+        public const string InvoiceNumberQueryTemplate = "InvoiceNumberQuery";
 
         #endregion
     }

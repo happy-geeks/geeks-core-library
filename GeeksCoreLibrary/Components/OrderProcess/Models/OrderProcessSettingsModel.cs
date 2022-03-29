@@ -9,5 +9,10 @@
         /// Gets or sets the URL for this order process.
         /// </summary>
         public string FixedUrl { get; set; }
+
+        /// <summary>
+        /// Gets or sets the amount of steps this order process has.
+        /// </summary>
+        public int AmountOfSteps { get; set; }
     }
 }

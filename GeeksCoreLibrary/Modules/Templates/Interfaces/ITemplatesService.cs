@@ -5,8 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Models;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.Templates.Interfaces

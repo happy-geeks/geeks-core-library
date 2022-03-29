@@ -27,7 +27,6 @@ using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.OrderProcess
@@ -35,7 +34,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess
     [ViewComponent(Name = "OrderProcess")]
     public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProcess.ComponentModes>
     {
-        private readonly GclSettings gclSettings;
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IOrderProcessesService orderProcessesService;
@@ -48,16 +46,27 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
         public enum ComponentModes
         {
-            Automatic = 1,
-            PaymentMethods = 2
+            /// <summary>
+            /// Checkout process, with 1 or more steps where the order can place an order.
+            /// </summary>
+            Checkout,
+
+            /// <summary>
+            /// For sending the user to the correct PSP, based on the chosen payment method and the settings in Wiser.
+            /// </summary>
+            PaymentOut,
+
+            /// <summary>
+            /// For handling web hooks from PSPs and updating orders with the correct status based on what the PSP sends us.
+            /// </summary>
+            PaymentIn
         }
 
         #endregion
 
         #region Constructor
 
-        public OrderProcess(IOptions<GclSettings> gclSettings,
-            ILogger<OrderProcess> logger,
+        public OrderProcess(ILogger<OrderProcess> logger,
             IStringReplacementsService stringReplacementsService,
             ILanguagesService languagesService,
             IDatabaseConnection databaseConnection,
@@ -68,7 +77,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             IShoppingBasketsService shoppingBasketsService,
             IWiserItemsService wiserItemsService)
         {
-            this.gclSettings = gclSettings.Value;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
             this.orderProcessesService = orderProcessesService;
@@ -156,7 +164,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
             switch (Settings.ComponentMode)
             {
-                case ComponentModes.Automatic:
+                case ComponentModes.Checkout:
                 {
                     var html = await HandleAutomaticModeAsync();
                     resultHtml.Append(html);
@@ -179,17 +187,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns></returns>
         private async Task<string> HandleAutomaticModeAsync()
         {
-            // A single step can contain groups and a single group can contain fields.
-            var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(Settings.OrderProcessId);
-            var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId);
-
-            // If we have an invalid active step, return a 404.
-            if (ActiveStep <= 0 || ActiveStep > steps.Count)
-            {
-                HttpContextHelpers.Return404(httpContextAccessor.HttpContext);
-                return "";
-            }
-
             // Gather some data.
             var httpContext = HttpContext;
             var response = httpContext?.Response;
@@ -200,9 +197,22 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
             try
             {
+                // A single step can contain groups and a single group can contain fields.
+                var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(Settings.OrderProcessId);
+
+                // If we have an invalid active step, return a 404.
+                if (ActiveStep <= 0 || ActiveStep > steps.Count)
+                {
+                    HttpContextHelpers.Return404(httpContextAccessor.HttpContext);
+                    return "";
+                }
+
                 // Get the logged in user, if any.
                 var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
                 var userData = loggedInUser.UserId == 0 ? new WiserItemModel() : await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
+                
+                // Get the available payment methods.
+                var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId, loggedInUser);
 
                 // Get the active basket, if any.
                 var shoppingBasketSettings = await shoppingBasketsService.GetSettingsAsync();
@@ -233,7 +243,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         }
                         else
                         {
-                            response.Redirect("/payment_out.gcl");
+                            response.Redirect($"/{Constants.PaymentOutPage}");
                         }
 
                         return null;
@@ -326,7 +336,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             return group.Type switch
             {
                 OrderProcessGroupTypes.Fields => await RenderGroupFieldsAsync(group, loggedInUser, shoppingBasket, userData),
-                OrderProcessGroupTypes.PaymentMethods => await RenderGroupPaymentMethodsAsync(group, loggedInUser, paymentMethods, fieldErrorsOccurred),
+                OrderProcessGroupTypes.PaymentMethods => await RenderGroupPaymentMethodsAsync(group, paymentMethods, fieldErrorsOccurred),
                 _ => throw new ArgumentOutOfRangeException(nameof(group.Type), group.Type.ToString())
             };
         }
@@ -375,17 +385,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// Renders the HTML for a group of type "PaymentMethods".
         /// </summary>
         /// <param name="group">The group to render.</param>
-        /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
         /// <param name="paymentMethods">The list of available payment methods for the current order process.</param>
         /// <param name="fieldErrorsOccurred">Whether any errors occurred in this group.</param>
         /// <returns>The HTML for the group.</returns>
-        private async Task<string> RenderGroupPaymentMethodsAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, List<PaymentMethodSettingsModel> paymentMethods, bool fieldErrorsOccurred)
+        private async Task<string> RenderGroupPaymentMethodsAsync(OrderProcessGroupModel group, List<PaymentMethodSettingsModel> paymentMethods, bool fieldErrorsOccurred)
         {
-            // Get payment methods that we can show, based on the visibility settings of each payment methods.
-            var paymentMethodsToShow = GetPaymentMethodsToShow(paymentMethods, loggedInUser);
-
             // Skip this group if it has no fields that we can show.
-            if (!paymentMethodsToShow.Any())
+            if (!paymentMethods.Any())
             {
                 return null;
             }
@@ -412,7 +418,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
             // Build the fields HTML.
             var paymentMethodsBuilder = new StringBuilder();
-            foreach (var paymentMethod in paymentMethodsToShow)
+            foreach (var paymentMethod in paymentMethods)
             {
                 var paymentMethodHtml = await RenderPaymentMethodAsync(paymentMethod);
                 paymentMethodsBuilder.AppendLine(paymentMethodHtml);
@@ -435,7 +441,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 { "title", await languagesService.GetTranslationAsync($"orderProcess_paymentMethod_{paymentMethod.Title}_title", defaultValue: paymentMethod.Title ?? "") },
                 { "logoPropertyName", Constants.PaymentMethodLogoProperty },
                 { "fee", paymentMethod.Fee },
-                { "paymentMethodFieldName", Constants.PaymentSelectedValueProperty }
+                { "paymentMethodFieldName", Constants.PaymentMethodProperty }
             };
 
             var paymentMethodHtml = StringReplacementsService.DoReplacements(Settings.TemplatePaymentMethod, replaceData);
@@ -638,15 +644,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     case OrderProcessGroupTypes.PaymentMethods:
                     {
                         // Make sure the user selected a payment method and that the selected payment method is one of the available payment methods that are set in Wiser.
-                        var availablePaymentMethods = GetPaymentMethodsToShow(paymentMethods, loggedInUser);
-                        var selectedPaymentMethod = request.Form[Constants.PaymentSelectedValueProperty].ToString();
-                        if (String.IsNullOrWhiteSpace(selectedPaymentMethod) || availablePaymentMethods.All(p => p.Id.ToString() != selectedPaymentMethod))
+                        var selectedPaymentMethod = request.Form[Constants.PaymentMethodProperty].ToString();
+                        if (String.IsNullOrWhiteSpace(selectedPaymentMethod) || paymentMethods.All(p => p.Id.ToString() != selectedPaymentMethod))
                         {
                             fieldErrorsOccurred = true;
                             continue;
                         }
 
-                        shoppingBasket.SetDetail(Constants.PaymentSelectedValueProperty, selectedPaymentMethod);
+                        shoppingBasket.SetDetail(Constants.PaymentMethodProperty, selectedPaymentMethod);
                         break;
                     }
                     default:
@@ -674,27 +679,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
                     OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
                     _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString())
-                };
-            }).ToList();
-        }
-
-        /// <summary>
-        /// Gets the fields of a group that should be shown to the user.
-        /// </summary>
-        /// <param name="allPaymentMethods">The list of all payment methods.</param>
-        /// <param name="loggedInUser">The data of the user.</param>
-        /// <returns>A list of payment methods that should be shown/handled on this step/group.</returns>
-        private static List<PaymentMethodSettingsModel> GetPaymentMethodsToShow(List<PaymentMethodSettingsModel> allPaymentMethods, UserCookieDataModel loggedInUser)
-        {
-            return allPaymentMethods.Where(paymentMethod =>
-            {
-                // Check if we need to skip this field.
-                return paymentMethod.Visibility switch
-                {
-                    OrderProcessFieldVisibilityTypes.Always => true,
-                    OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
-                    OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
-                    _ => throw new ArgumentOutOfRangeException(nameof(paymentMethod.Visibility), paymentMethod.Visibility.ToString())
                 };
             }).ToList();
         }

@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
-using GeeksCoreLibrary.Components.WebPage.Models;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -19,7 +18,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
+using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
 {
@@ -54,7 +53,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             this.dataSelectorsService = dataSelectorsService;
         }
 
-        [Route("orderProcess.gcl")]
+        [Route(Constants.CheckoutPage)]
         public async Task<IActionResult> OrderProcessAsync()
         {
             var context = HttpContext;
@@ -75,7 +74,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase);
 
             var contentToWrite = new StringBuilder();
-            var url = (string)context.Items[Constants.OriginalPathAndQueryStringKey];
+            var url = (string)context.Items[Modules.Templates.Models.Constants.OriginalPathAndQueryStringKey];
 
             // Header template.
             if (ombouw)
@@ -99,7 +98,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             var orderProcessSettings = new OrderProcessCmsSettingsModel
             {
                 HandleRequest = false,
-                ComponentMode = OrderProcess.ComponentModes.Automatic,
+                ComponentMode = OrderProcess.ComponentModes.Checkout,
                 EvaluateIfElseInTemplates = true,
                 UserNeedsToBeLoggedIn = false,
                 OrderProcessId = orderProcessId

@@ -37,8 +37,8 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
         {
             this.objectsService = objectsService;
             this.webPagesService = webPagesService;
-
-            if (context.Request.Path == "/webpage.gcl" || context.Request.Path == "/template.gcl" || context.Request.Path == "/webpage.jcl" || context.Request.Path == "/template.jcl" || context.Request.Path == "/orderProcess.gcl")
+            
+            if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
                 // If this happens, it means that another middleware has already found something and we don't need to do this again.
                 await this.next.Invoke(context);

@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
@@ -167,7 +168,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     }
 
                     var orderItem = new OrderItem.Builder()
-                        .WithId(line.GetDetailValue("connecteditemid"))
+                        .WithId(line.GetDetailValue(Components.ShoppingBasket.Models.Constants.ConnectedItemIdProperty))
                         .WithName(name)
                         .WithDescription(name)
                         .WithQuantity(line.GetDetailValue<int>("quantity"))

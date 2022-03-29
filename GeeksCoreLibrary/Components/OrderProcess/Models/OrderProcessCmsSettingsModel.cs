@@ -5,7 +5,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 {
     public class OrderProcessCmsSettingsModel : CmsSettings
     {
-        public OrderProcess.ComponentModes ComponentMode { get; set; } = OrderProcess.ComponentModes.Automatic;
+        public OrderProcess.ComponentModes ComponentMode { get; set; } = OrderProcess.ComponentModes.Checkout;
         
         #region Tab DataSource properties
 

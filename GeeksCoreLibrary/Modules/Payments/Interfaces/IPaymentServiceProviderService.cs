@@ -2,6 +2,7 @@
 using GeeksCoreLibrary.Modules.Payments.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 
 namespace GeeksCoreLibrary.Modules.Payments.Interfaces

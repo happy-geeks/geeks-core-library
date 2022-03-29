@@ -2,12 +2,12 @@
 using GeeksCoreLibrary.Modules.Payments.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Models;
 
 namespace GeeksCoreLibrary.Modules.Payments.Interfaces
 {
     public interface IPaymentsService
     {
-        Task<PaymentRequestResult> HandlePaymentRequestAsync();
 
         Task<bool> HandleStatusUpdateAsync();
 

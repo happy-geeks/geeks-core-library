@@ -510,167 +510,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task UpdateShoppingBasketWithRequestDataAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings)
-        {
-            var request = httpContextAccessor.HttpContext?.Request;
-            if (request == null)
-            {
-                return;
-            }
-
-            // Some properties are disallowed as it can be dangerous to just allow everything to be changed.
-            var disallowedProperties = new List<string>
-            {
-                "UniquePaymentNumber",
-                await objectsService.FindSystemObjectByDomainNameAsync("CHECKOUT_PaymentHistoryPropertyName", "paymenthistory"),
-                await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_PaymentHistoryPropertyName", "paymenthistory")
-            };
-            var newItemInfo = new List<(int Index, string Entity, string EntityProp, string Value)>();
-
-            var recalculateRequired = false;
-
-            if (!request.HasFormContentType)
-            {
-                return;
-            }
-            
-            await databaseConnection.BeginTransactionAsync();
-            try
-            {
-                foreach (var formKey in request.Form.Keys)
-                {
-                    if (disallowedProperties.Contains(formKey, StringComparer.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    var value = request.Form[formKey].ToString();
-                    if (formKey.StartsWith("gclo_", StringComparison.OrdinalIgnoreCase) || formKey.StartsWith("jclo_", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Remove the "gclo_" (or "jclo_") part from the key.
-                        var propertyName = formKey[5..];
-
-                        if (value.Contains(";", StringComparison.Ordinal))
-                        {
-                            // Value contains friendly name, add friendly name separate to basket.
-                            var valueSplit = value.Split(';');
-                            shoppingBasket.SetDetail($"{propertyName}Name", valueSplit[1]);
-                            value = valueSplit[0];
-                        }
-
-                        shoppingBasket.SetDetail(propertyName, value);
-                        recalculateRequired = true;
-                    }
-
-                    if (!formKey.StartsWith("gcl_new_", StringComparison.OrdinalIgnoreCase) && !formKey.StartsWith("jcl_new_", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    // Remove the "gcl_new_" (or "jcl_new_") part from the key.
-                    var keySplit = formKey[8..].Split('_');
-                    var index = 1;
-                    var elementIndex = 0;
-
-                    if (keySplit.Length == 3)
-                    {
-                        if (!Int32.TryParse(keySplit[elementIndex], out index))
-                        {
-                            index = 1;
-                        }
-
-                        elementIndex++;
-                    }
-
-                    var entity = keySplit[elementIndex];
-                    var entityProp = keySplit[elementIndex + 1];
-
-                    if (value.Contains("{basketId}", StringComparison.Ordinal))
-                    {
-                        value = value.Replace("{basketId}", shoppingBasket.Id.ToString());
-                    }
-
-                    if (value.Contains("{accountId}", StringComparison.Ordinal))
-                    {
-                        var user = await accountsService.GetUserDataFromCookieAsync();
-                        value = value.Replace("{accountId}", user.UserId.ToString());
-                    }
-
-                    newItemInfo.Add((index, entity, entityProp, value));
-                    recalculateRequired = true;
-                }
-
-                if (newItemInfo.Count > 0)
-                {
-                    // Run through tuple list, starting with splitting by newIndex.
-                    // Deep group by chains are unreadable, so working by index and where querying.
-                    var itemInfoIndexes = newItemInfo.Select(tuple => tuple.Index).Distinct().ToList();
-                    foreach (var itemInfoIndex in itemInfoIndexes)
-                    {
-                        List<(int Index, string EntityType, string PropertyName, string Value)> entityInfoList = newItemInfo.Where(tuple => tuple.Index == itemInfoIndex).OrderBy(tuple => tuple.Entity != "itemlink").ToList();
-                        // Reference to the item model, since its needed by more than 1 entityInfo, but it's the same for the whole newIndex.
-                        WiserItemModel entity = null;
-                        var linkTuples = new List<(int Index, string EntityType, string PropertyName, string Value)>();
-
-                        // Run through the tuple entries.
-                        foreach (var entityInfo in entityInfoList)
-                        {
-                            if (entityInfo.EntityType == "itemlink")
-                            {
-                                // Make item if it doesn't exist.
-                                entity ??= new WiserItemModel { EntityType = entityInfo.EntityType };
-
-                                // Add values.
-                                entity.SetDetail(entityInfo.PropertyName, entityInfo.Value);
-                            }
-                            else
-                            {
-                                linkTuples.Add(entityInfo);
-                            }
-                        }
-
-                        if (entity == null)
-                        {
-                            continue;
-                        }
-
-                        await wiserItemsService.SaveAsync(entity, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false);
-                        if (linkTuples.Count == 0 || entity.Id == 0)
-                        {
-                            continue;
-                        }
-
-                        // Link the new entity to target entity.
-                        foreach (var linkTuple in linkTuples)
-                        {
-                            if (!UInt64.TryParse(linkTuple.Value, out var destinationItemId) || !Int32.TryParse(linkTuple.PropertyName, out var linkType))
-                            {
-                                continue;
-                            }
-
-                            await wiserItemsService.AddItemLinkAsync(entity.Id, destinationItemId, linkType);
-                        }
-                    }
-                }
-
-                if (recalculateRequired)
-                {
-                    var basketLines = await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, 5002, settings.BasketLineEntityName, itemIdEntityType: settings.BasketEntityName);
-
-                    await RecalculateVariablesAsync(shoppingBasket, basketLines, settings);
-                    await SaveAsync(shoppingBasket, basketLines, settings, false);
-                }
-
-                await databaseConnection.CommitTransactionAsync();
-            }
-            catch
-            {
-                await databaseConnection.RollbackTransactionAsync();
-                throw;
-            }
-        }
-
-        /// <inheritdoc />
         public async Task<(ulong ConceptOrderId, WiserItemModel ConceptOrder, List<WiserItemModel> ConceptOrderLines)> MakeConceptOrderFromBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
         {
             var user = await accountsService.GetUserDataFromCookieAsync();
@@ -766,7 +605,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
                 if (createItemLinkBetweenBasketLineAndProduct)
                 {
-                    var productId = conceptLine.GetDetailValue<ulong>("connecteditemid");
+                    var productId = conceptLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
                     if (productId > 0)
                     {
                         await wiserItemsService.AddItemLinkAsync(productId, conceptLine.Id, productToBasketLineLinkType);
@@ -1298,7 +1137,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 foreach (var couponLine in couponLines)
                 {
-                    var coupon = await wiserItemsService.GetItemDetailsAsync(couponLine.GetDetailValue<ulong>("connecteditemid"));
+                    var coupon = await wiserItemsService.GetItemDetailsAsync(couponLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty));
                     if (coupon.GetDetailValue<bool>(CouponConstants.FreeShippingCostsKey))
                     {
                         RemoveShippingCostsLine(basketLines);
@@ -1462,7 +1301,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 foreach (var couponLine in couponLines)
                 {
-                    var coupon = await wiserItemsService.GetItemDetailsAsync(Convert.ToUInt64(couponLine.GetDetailValue<ulong>("connecteditemid")));
+                    var coupon = await wiserItemsService.GetItemDetailsAsync(Convert.ToUInt64(couponLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty)));
                     if (coupon.ContainsDetail("freepaymentserviceprovidercosts") && coupon.GetDetailValue<bool>("freepaymentserviceprovidercosts"))
                     {
                         RemovePaymentMethodCostsLine(basketLines);
@@ -1562,7 +1401,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     linesToRemove.Add(line);
                 else if (line.Id > 0 && itemIdsOrUniqueIds.Any(id => id == line.Id.ToString()))
                     linesToRemove.Add(line);
-                else if (line.ContainsDetail("connecteditemid") && itemIdsOrUniqueIds.Any(id => id == line.GetDetailValue("connecteditemid")))
+                else if (line.ContainsDetail(Constants.ConnectedItemIdProperty) && itemIdsOrUniqueIds.Any(id => id == line.GetDetailValue(Constants.ConnectedItemIdProperty)))
                     linesToRemove.Add(line);
             }
 
@@ -1617,7 +1456,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         productToBasketLinkType = 5030;
                     }
 
-                    var productId = addItemLine.GetDetailValue<ulong>("connecteditemid");
+                    var productId = addItemLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
                     if (productId > 0)
                     {
                         await wiserItemsService.AddItemLinkAsync(productId, addItemLine.Id, productToBasketLinkType);
@@ -1698,7 +1537,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
                         foreach (var item in createLinksFor)
                         {
-                            var productId = item.GetDetailValue<ulong>("connecteditemid");
+                            var productId = item.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
                             if (productId <= 0)
                             {
                                 continue;
@@ -1748,7 +1587,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 var sqlQuery = settings.SqlQuery;
                 sqlQuery = await templatesService.HandleIncludesAsync(sqlQuery, false, null, false, true);
-                sqlQuery = sqlQuery.Replace("{itemid}", lineToUpdate.GetDetailValue<int>("connecteditemid").ToString());
+                sqlQuery = sqlQuery.Replace("{itemid}", lineToUpdate.GetDetailValue<int>(Constants.ConnectedItemIdProperty).ToString());
                 sqlQuery = sqlQuery.Replace("{quantity}", lineToUpdate.GetDetailValue<decimal>(settings.QuantityPropertyName).ToString(CultureInfo.InvariantCulture));
                 sqlQuery = await stringReplacementsService.DoAllReplacementsAsync(sqlQuery, null, true, true, false, true);
 
@@ -1773,7 +1612,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             if (item.LineDetails != null)
             {
-                foreach (var (key, value) in item.LineDetails.Where(ld => !ld.Key.InList("uniqueid", "connecteditemid", "quantity", "type")))
+                foreach (var (key, value) in item.LineDetails.Where(ld => !ld.Key.InList("uniqueid", Constants.ConnectedItemIdProperty, "quantity", "type")))
                 {
                     lineToUpdate.SetDetail(key, value);
                 }
@@ -1860,7 +1699,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             if (handleCouponResult.OnlyChangePrice)
             {
-                foreach (var line in GetLines(basketLines, "coupon").Where(line => line.GetDetailValue("connecteditemid") == couponId))
+                foreach (var line in GetLines(basketLines, "coupon").Where(line => line.GetDetailValue(Constants.ConnectedItemIdProperty) == couponId))
                 {
                     line.SetDetail("price", (handleCouponResult.Discount * -1).ToString(CultureInfo.InvariantCulture));
                     logger.LogTrace($"Changed coupon price to: {handleCouponResult.Discount * -1}");
@@ -1962,7 +1801,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 quantity = settings.MaxItemQuantity;
             }
 
-            foreach (var line in basketLines.Where(line => (line.ContainsDetail("uniqueid") && line.GetDetailValue("uniqueid") == itemIdOrUniqueId) || line.Id > 0 && line.Id.ToString() == itemIdOrUniqueId || (line.ContainsDetail("connecteditemid") && line.GetDetailValue("connecteditemid") == itemIdOrUniqueId)))
+            foreach (var line in basketLines.Where(line => (line.ContainsDetail("uniqueid") && line.GetDetailValue("uniqueid") == itemIdOrUniqueId) || line.Id > 0 && line.Id.ToString() == itemIdOrUniqueId || (line.ContainsDetail(Constants.ConnectedItemIdProperty) && line.GetDetailValue(Constants.ConnectedItemIdProperty) == itemIdOrUniqueId)))
             {
                 line.SetDetail(settings.QuantityPropertyName, quantity.ToString(CultureInfo.InvariantCulture));
             }
@@ -2032,7 +1871,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 {
                     foreach (var line in basketLines)
                     {
-                        var basketProductItemId = line.GetDetailValue<ulong>("connecteditemid");
+                        var basketProductItemId = line.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
 
                         if (basketProductItemId == actionProductId)
                         {
@@ -2536,7 +2375,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 }
             }
 
-            var existingCoupon = GetLines(basketLines, "coupon").FirstOrDefault(l => l.GetDetailValue<ulong>("connecteditemid") == coupon.Id);
+            var existingCoupon = GetLines(basketLines, "coupon").FirstOrDefault(l => l.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty) == coupon.Id);
 
             // Check if the coupon is only valid for certain items.
             var discountOnSpecificItems = false;
@@ -2573,7 +2412,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     // Check if coupon linked item is in the basket.
                     foreach (var line in GetLines(basketLines, ""))
                     {
-                        if (line.GetDetailValue("connecteditemid") == itemId)
+                        if (line.GetDetailValue(Constants.ConnectedItemIdProperty) == itemId)
                         {
                             // Product is linked, add to total product amount used to calculate discount.
                             totalProductsPrice += await GetLinePriceAsync(shoppingBasket, line, settings, calculateOverPriceWithoutVat ? ShoppingBasket.PriceTypes.ExVatInDiscount : ShoppingBasket.PriceTypes.InVatExDiscount);
@@ -2706,11 +2545,11 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             // No existing line; create a new one.
             line = new WiserItemModel();
             line.SetDetail("uniqueid", uniqueId);
-            line.SetDetail("connecteditemid", itemId.ToString());
+            line.SetDetail(Constants.ConnectedItemIdProperty, itemId.ToString());
             line.SetDetail(settings.QuantityPropertyName, quantity.ToString(CultureInfo.InvariantCulture));
             if (lineDetails != null)
             {
-                foreach (var (key, value) in lineDetails.Where(ld => !ld.Key.InList("uniqueid", "connecteditemid", "type")))
+                foreach (var (key, value) in lineDetails.Where(ld => !ld.Key.InList("uniqueid", Constants.ConnectedItemIdProperty, "type")))
                 {
                     line.SetDetail(key, value);
                 }
