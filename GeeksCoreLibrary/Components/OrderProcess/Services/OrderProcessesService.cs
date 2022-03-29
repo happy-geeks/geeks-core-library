@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.OrderProcess.Enums;
@@ -28,7 +29,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         }
 
         /// <inheritdoc />
-        public async Task<OrderProcessSettingsModel> GetOrderProcessViaFixedUrl(string fixedUrl)
+        public async Task<OrderProcessSettingsModel> GetOrderProcessViaFixedUrlAsync(string fixedUrl)
         {
             if (String.IsNullOrWhiteSpace(fixedUrl))
             {
@@ -65,7 +66,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<OrderProcessStepModel>> GetAllStepsGroupsAndFields(ulong orderProcessId)
+        public async Task<List<OrderProcessStepModel>> GetAllStepsGroupsAndFieldsAsync(ulong orderProcessId)
         {
             if (orderProcessId == 0)
             {
@@ -235,6 +236,59 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 };
 
                 group.Fields.Add(field);
+            }
+
+            return results;
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PaymentMethodSettingsModel>> GetPaymentMethodsAsync(ulong orderProcessId)
+        {
+            if (orderProcessId == 0)
+            {
+                throw new ArgumentNullException(nameof(orderProcessId));
+            }
+
+            var results = new List<PaymentMethodSettingsModel>();
+            var query = $@"SELECT 
+	                            paymentMethod.id AS paymentMethodId,
+	                            paymentMethod.title AS paymentMethodTitle,
+	                            paymentServiceProvider.id AS paymentServiceProviderId,
+	                            paymentServiceProvider.title AS paymentServiceProviderTitle,
+	                            paymentMethodFee.value AS paymentMethodFee,
+	                            paymentMethodVisibility.value AS paymentMethodVisibility
+                            FROM {WiserTableNames.WiserItem} AS orderProcess
+                            JOIN {WiserTableNames.WiserItemLink} AS paymentMethodLink ON paymentMethodLink.destination_item_id = orderProcess.id AND paymentMethodLink.type = {Constants.PaymentMethodToOrderProcessLinkType}
+                            JOIN {WiserTableNames.WiserItem} AS paymentMethod ON paymentMethod.id = paymentMethodLink.item_id AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'
+
+                            # PSP
+                            JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
+                            JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
+
+                            # Other payment method properties
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
+                            WHERE orderProcess.id = ?id
+                            AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'";
+
+            databaseConnection.AddParameter("id", orderProcessId);
+            var dataTable = await databaseConnection.GetAsync(query);
+
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                Decimal.TryParse(dataRow.Field<string>("paymentMethodFee")?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var fee);
+                results.Add(new PaymentMethodSettingsModel
+                {
+                    Id = dataRow.Field<ulong>("paymentMethodId"),
+                    Title = dataRow.Field<string>("paymentMethodTitle"),
+                    Fee = fee,
+                    Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("paymentMethodVisibility") ?? "Always"),
+                    PaymentServiceProvider = new PaymentServiceProviderSettingsModel
+                    {
+                        Id = dataRow.Field<ulong>("paymentServiceProviderId"),
+                        Title = dataRow.Field<string>("paymentServiceProviderTitle")
+                    }
+                });
             }
 
             return results;

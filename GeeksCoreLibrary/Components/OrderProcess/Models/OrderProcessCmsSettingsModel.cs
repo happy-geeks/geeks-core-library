@@ -89,7 +89,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// The template for a group of fields in the order process.
         /// </summary>
         [CmsProperty(
-            PrettyName = "Template group",
+            PrettyName = "Template fields group",
             Description = @"The template for a group of fields in the order process. You can use the following variables here:
 <ul>
     <li><strong>{id}</strong> The ID of the Wiser item with the settings for the group.</li>
@@ -105,7 +105,29 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             ComponentMode = "Automatic",
             DisplayOrder = 30
         )]
-        public string TemplateGroup { get; set; }
+        public string TemplateFieldsGroup { get; set; }
+        
+        /// <summary>
+        /// The template for a group of payment methods in the order process.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Template payment methods group",
+            Description = @"The template for a group of payment methods in the order process. You can use the following variables here:
+<ul>
+    <li><strong>{id}</strong> The ID of the Wiser item with the settings for the group.</li>
+    <li><strong>{title}</strong> The title of the Wiser item with the settings for the group.</li>
+    <li><strong>{header}</strong> The header of the group, which can be edited by the customer in the Wiser item for the group.</li>
+    <li><strong>{paymentMethods}</strong> The fields of this group, will be replaced by the templates for the different fields.</li>
+    <li><strong>{footer}</strong> The footer of the group, which can be edited by the customer in the Wiser item for the group.</li>
+</ul>",
+            DeveloperRemarks = "",
+            TabName = CmsAttributes.CmsTabName.Layout,
+            GroupName = CmsAttributes.CmsGroupName.Templates,
+            TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
+            ComponentMode = "Automatic,PaymentMethods",
+            DisplayOrder = 35
+        )]
+        public string TemplatePaymentMethodsGroup { get; set; }
 
         /// <summary>
         /// The HTML template that will be shown with a field when there was a validation error for that field.
@@ -314,7 +336,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 <ul>
     <li><strong>{id}</strong> The ID of the payment method.</li>
     <li><strong>{title}</strong> This name of the payment method.</li>
-    <li><strong>{logo}</strong> The URL to the logo for the payment method.</li>
+    <li><strong>{logoPropertyName}</strong> The name of the field in wiser where the logo is saved for the payment method.</li>
+    <li><strong>{paymentMethodFieldName}</strong> The name of the input element for the selected payment method. Don't use any other name, otherwise the GCL will not know which payment method the user selected and throw an exception.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,

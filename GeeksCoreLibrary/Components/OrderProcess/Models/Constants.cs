@@ -17,7 +17,7 @@
 
         public const string FormFieldEntityType = "WiserFormField";
 
-        public const string PaymentProviderEntityType = "WiserPaymentprovider";
+        public const string PaymentServiceProviderEntityType = "WiserPaymentprovider";
 
         public const string PaymentMethodEntityType = "WiserPaymentmethod";
 
@@ -30,6 +30,8 @@
         public const int GroupToStepLinkType = 5071;
 
         public const int FieldToGroupLinkType = 5072;
+
+        public const int PaymentMethodToOrderProcessLinkType = 5060;
 
         #endregion
 
@@ -71,6 +73,16 @@
 
         public const string FieldErrorMessageProperty = "formfielderrormessage";
 
+        public const string PaymentMethodServiceProviderProperty = "paymentmethodprovider";
+
+        public const string PaymentMethodFeeProperty = "paymentmethodfee";
+
+        public const string PaymentMethodVisibilityProperty = "paymentmethodvisible";
+
+        public const string PaymentMethodLogoProperty = "paymentmethodlogo";
+
+        public const string PaymentSelectedValueProperty = "paymentMethod";
+
         #endregion
 
         #region Request values
@@ -102,6 +114,8 @@
         public const string GroupsReplacement = "{groups}";
 
         public const string FieldsReplacement = "{fields}";
+
+        public const string PaymentMethodsReplacement = "{paymentMethods}";
 
         public const string FieldOptionsReplacement = "{options}";
 

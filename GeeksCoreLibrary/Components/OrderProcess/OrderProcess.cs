@@ -180,7 +180,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         private async Task<string> HandleAutomaticModeAsync()
         {
             // A single step can contain groups and a single group can contain fields.
-            var steps = await orderProcessesService.GetAllStepsGroupsAndFields(Settings.OrderProcessId);
+            var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(Settings.OrderProcessId);
+            var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId);
 
             // If we have an invalid active step, return a 404.
             if (ActiveStep <= 0 || ActiveStep > steps.Count)
@@ -213,7 +214,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
                 if (isPostBack)
                 {
-                    fieldErrorsOccurred = ValidatePostBackAndSaveValues(step, loggedInUser, request, shoppingBasket);
+                    fieldErrorsOccurred = ValidatePostBackAndSaveValues(step, loggedInUser, request, shoppingBasket, paymentMethods);
 
                     // Save values to database if all validation succeeded.
                     if (!fieldErrorsOccurred)
@@ -255,9 +256,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 previousStepUri.Query = previousStepQueryString.ToString() ?? String.Empty;
                 
                 // Build the steps HTML.
-                var replaceData = new Dictionary<string, string>
+                var replaceData = new Dictionary<string, object>
                 {
-                    { "id", step.Id.ToString() },
+                    { "id", step.Id },
                     { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title", defaultValue: step.Title ?? "") },
                     { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText", defaultValue: step.ConfirmButtonText) },
                     { "previousStepLinkText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_previousStepLinkText", defaultValue: step.PreviousStepLinkText) },
@@ -271,7 +272,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 var groupsBuilder = new StringBuilder();
                 foreach (var group in step.Groups)
                 {
-                    var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, userData);
+                    var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, userData, paymentMethods, fieldErrorsOccurred);
                     if (groupHtml == null)
                     {
                         continue;
@@ -317,8 +318,28 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
         /// <param name="userData">The data of the user.</param>
+        /// <param name="paymentMethods">The list of available payment methods for the current order process.</param>
+        /// <param name="fieldErrorsOccurred">Whether any errors occurred in this group.</param>
         /// <returns>The HTML for the group.</returns>
-        private async Task<string> RenderGroupAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, WiserItemModel userData)
+        private async Task<string> RenderGroupAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, WiserItemModel userData, List<PaymentMethodSettingsModel> paymentMethods, bool fieldErrorsOccurred)
+        {
+            return group.Type switch
+            {
+                OrderProcessGroupTypes.Fields => await RenderGroupFieldsAsync(group, loggedInUser, shoppingBasket, userData),
+                OrderProcessGroupTypes.PaymentMethods => await RenderGroupPaymentMethodsAsync(group, loggedInUser, paymentMethods, fieldErrorsOccurred),
+                _ => throw new ArgumentOutOfRangeException(nameof(group.Type), group.Type.ToString())
+            };
+        }
+
+        /// <summary>
+        /// Renders the HTML for a group of type "Fields".
+        /// </summary>
+        /// <param name="group">The group to render.</param>
+        /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
+        /// <param name="shoppingBasket">The basket of the user.</param>
+        /// <param name="userData">The data of the user.</param>
+        /// <returns>The HTML for the group.</returns>
+        private async Task<string> RenderGroupFieldsAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, WiserItemModel userData)
         {
             // Get fields that we can show in this group, based on the visibility settings of each field.
             var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
@@ -330,13 +351,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             }
 
             // Create dictionary for replacements.
-            var replaceData = new Dictionary<string, string>
+            var replaceData = new Dictionary<string, object>
             {
-                { "id", group.Id.ToString() },
+                { "id", group.Id },
                 { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") }
             };
 
-            var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateGroup, replaceData);
+            var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateFieldsGroup, replaceData);
             groupHtml = groupHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, group.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, group.Footer);
 
             // Build the fields HTML.
@@ -348,6 +369,77 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             }
 
             return groupHtml.ReplaceCaseInsensitive(Constants.FieldsReplacement, fieldsBuilder.ToString());
+        }
+
+        /// <summary>
+        /// Renders the HTML for a group of type "PaymentMethods".
+        /// </summary>
+        /// <param name="group">The group to render.</param>
+        /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
+        /// <param name="paymentMethods">The list of available payment methods for the current order process.</param>
+        /// <param name="fieldErrorsOccurred">Whether any errors occurred in this group.</param>
+        /// <returns>The HTML for the group.</returns>
+        private async Task<string> RenderGroupPaymentMethodsAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, List<PaymentMethodSettingsModel> paymentMethods, bool fieldErrorsOccurred)
+        {
+            // Get payment methods that we can show, based on the visibility settings of each payment methods.
+            var paymentMethodsToShow = GetPaymentMethodsToShow(paymentMethods, loggedInUser);
+
+            // Skip this group if it has no fields that we can show.
+            if (!paymentMethodsToShow.Any())
+            {
+                return null;
+            }
+
+            // Create dictionary for replacements.
+            var replaceData = new Dictionary<string, object>
+            {
+                { "id", group.Id },
+                { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") }
+            };
+
+            var errorHtml = "";
+            if (fieldErrorsOccurred)
+            {
+                var errorMessage = await languagesService.GetTranslationAsync("orderProcess_paymentMethod_errorMessage", defaultValue: "");
+                errorHtml = Settings.TemplateFieldError.ReplaceCaseInsensitive(Constants.ErrorMessageReplacement, errorMessage);
+            }
+
+            var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplatePaymentMethodsGroup, replaceData);
+            groupHtml = groupHtml
+                .ReplaceCaseInsensitive(Constants.HeaderReplacement, group.Header)
+                .ReplaceCaseInsensitive(Constants.FooterReplacement, group.Footer)
+                .ReplaceCaseInsensitive(Constants.ErrorReplacement, errorHtml);
+
+            // Build the fields HTML.
+            var paymentMethodsBuilder = new StringBuilder();
+            foreach (var paymentMethod in paymentMethodsToShow)
+            {
+                var paymentMethodHtml = await RenderPaymentMethodAsync(paymentMethod);
+                paymentMethodsBuilder.AppendLine(paymentMethodHtml);
+            }
+
+            return groupHtml.ReplaceCaseInsensitive(Constants.PaymentMethodsReplacement, paymentMethodsBuilder.ToString());
+        }
+
+        /// <summary>
+        /// Renders the HTML for a single payment method.
+        /// </summary>
+        /// <param name="paymentMethod">The payment method to generate the HTML for.</param>
+        /// <returns>The HTML for the payment method.</returns>
+        private async Task<string> RenderPaymentMethodAsync(PaymentMethodSettingsModel paymentMethod)
+        {
+            // Create dictionary for replacements.
+            var replaceData = new Dictionary<string, object>
+            {
+                { "id", paymentMethod.Id },
+                { "title", await languagesService.GetTranslationAsync($"orderProcess_paymentMethod_{paymentMethod.Title}_title", defaultValue: paymentMethod.Title ?? "") },
+                { "logoPropertyName", Constants.PaymentMethodLogoProperty },
+                { "fee", paymentMethod.Fee },
+                { "paymentMethodFieldName", Constants.PaymentSelectedValueProperty }
+            };
+
+            var paymentMethodHtml = StringReplacementsService.DoReplacements(Settings.TemplatePaymentMethod, replaceData);
+            return paymentMethodHtml;
         }
 
         /// <summary>
@@ -370,9 +462,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             }
 
             // Create dictionary for replacements.
-            var replaceData = new Dictionary<string, string>
+            var replaceData = new Dictionary<string, object>
             {
-                { "id", field.Id.ToString() },
+                { "id", field.Id },
                 { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title ?? "") },
                 { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder ?? "") },
                 { "fieldId", field.FieldId },
@@ -408,7 +500,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             }
             else
             {
-                var errorMessage = await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_text", defaultValue: field.ErrorMessage ?? "");
+                var errorMessage = await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_errorMessage", defaultValue: field.ErrorMessage ?? "");
                 var errorHtml = Settings.TemplateFieldError.ReplaceCaseInsensitive(Constants.ErrorMessageReplacement, errorMessage);
                 fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, errorHtml).ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "error");
             }
@@ -435,7 +527,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 };
 
                 // Create dictionary for replacements.
-                var replaceData = new Dictionary<string, string>
+                var replaceData = new Dictionary<string, object>
                 {
                     { "fieldId", field.FieldId },
                     { "required", field.Mandatory ? "required" : "" },
@@ -466,11 +558,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 var progressStep = steps[index];
 
                 // Create dictionary for replacements.
-                var replaceData = new Dictionary<string, string>
+                var replaceData = new Dictionary<string, object>
                 {
-                    { "id", progressStep.Id.ToString() },
+                    { "id", progressStep.Id },
                     { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title", defaultValue: progressStep.Title ?? "") },
-                    { "number", stepNumber.ToString() },
+                    { "number", stepNumber },
                     { "active", ActiveStep == stepNumber ? "active" : "" }
                 };
 
@@ -493,8 +585,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="loggedInUser">The <see cref="UserCookieDataModel"/> of the logged in user, or empty object if they're not logged in.</param>
         /// <param name="request">The current <see cref="HttpRequest"/>.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
+        /// <param name="paymentMethods">All available payment methods.</param>
         /// <returns>A <see cref="Boolean"/> indicating whether any there were any errors in the validation.</returns>
-        private static bool ValidatePostBackAndSaveValues(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket)
+        private static bool ValidatePostBackAndSaveValues(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods)
         {
             var fieldErrorsOccurred = false;
             foreach (var group in step.Groups)
@@ -502,38 +595,62 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Get fields that we can show in this group, based on the visibility settings of each field.
                 var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
 
-                // Skip this group if it has no fields that we can show.
-                if (!fieldsToShow.Any())
+                switch (group.Type)
                 {
-                    continue;
-                }
-
-                foreach (var field in fieldsToShow)
-                {
-                    // Get the posted field value.
-                    field.Value = request.Form[field.FieldId].ToString();
-
-                    // Do field validation.
-                    field.IsValid = FieldValueIsValid(field, field.Value);
-
-                    if (!field.IsValid)
+                    case OrderProcessGroupTypes.Fields:
                     {
-                        fieldErrorsOccurred = true;
-                        continue;
-                    }
+                        // Skip this group if it has no fields that we can show.
+                        if (!fieldsToShow.Any())
+                        {
+                            continue;
+                        }
 
-                    // Get value to save to database.
-                    var valueForDatabase = field.Value;
-                    if (field.InputFieldType == OrderProcessInputTypes.Password && !String.IsNullOrEmpty(valueForDatabase))
+                        foreach (var field in fieldsToShow)
+                        {
+                            // Get the posted field value.
+                            field.Value = request.Form[field.FieldId].ToString();
+
+                            // Do field validation.
+                            field.IsValid = FieldValueIsValid(field, field.Value);
+
+                            if (!field.IsValid)
+                            {
+                                fieldErrorsOccurred = true;
+                                continue;
+                            }
+
+                            // Get value to save to database.
+                            var valueForDatabase = field.Value;
+                            if (field.InputFieldType == OrderProcessInputTypes.Password && !String.IsNullOrEmpty(valueForDatabase))
+                            {
+                                valueForDatabase = field.Value.ToSha512ForPasswords();
+                                field.Value = "";
+                            }
+
+                            // Set the posted value in the basket. We do that here so that we can be sure that people can only save values that are configured in Wiser.
+                            // This way they can't just add a random field to the HTML to save that value in our database.
+                            // TODO: Some values should be saved in the account instead of basket.
+                            shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
+                        }
+
+                        break;
+                    }
+                    case OrderProcessGroupTypes.PaymentMethods:
                     {
-                        valueForDatabase = field.Value.ToSha512ForPasswords();
-                        field.Value = "";
-                    }
+                        // Make sure the user selected a payment method and that the selected payment method is one of the available payment methods that are set in Wiser.
+                        var availablePaymentMethods = GetPaymentMethodsToShow(paymentMethods, loggedInUser);
+                        var selectedPaymentMethod = request.Form[Constants.PaymentSelectedValueProperty].ToString();
+                        if (String.IsNullOrWhiteSpace(selectedPaymentMethod) || availablePaymentMethods.All(p => p.Id.ToString() != selectedPaymentMethod))
+                        {
+                            fieldErrorsOccurred = true;
+                            continue;
+                        }
 
-                    // Set the posted value in the basket. We do that here so that we can be sure that people can only save values that are configured in Wiser.
-                    // This way they can't just add a random field to the HTML to save that value in our database.
-                    // TODO: Some values should be saved in the account instead of basket.
-                    shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
+                        shoppingBasket.SetDetail(Constants.PaymentSelectedValueProperty, selectedPaymentMethod);
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(group.Type), group.Type.ToString());
                 }
             }
 
@@ -557,6 +674,27 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
                     OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
                     _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString())
+                };
+            }).ToList();
+        }
+
+        /// <summary>
+        /// Gets the fields of a group that should be shown to the user.
+        /// </summary>
+        /// <param name="allPaymentMethods">The list of all payment methods.</param>
+        /// <param name="loggedInUser">The data of the user.</param>
+        /// <returns>A list of payment methods that should be shown/handled on this step/group.</returns>
+        private static List<PaymentMethodSettingsModel> GetPaymentMethodsToShow(List<PaymentMethodSettingsModel> allPaymentMethods, UserCookieDataModel loggedInUser)
+        {
+            return allPaymentMethods.Where(paymentMethod =>
+            {
+                // Check if we need to skip this field.
+                return paymentMethod.Visibility switch
+                {
+                    OrderProcessFieldVisibilityTypes.Always => true,
+                    OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
+                    OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
+                    _ => throw new ArgumentOutOfRangeException(nameof(paymentMethod.Visibility), paymentMethod.Visibility.ToString())
                 };
             }).ToList();
         }

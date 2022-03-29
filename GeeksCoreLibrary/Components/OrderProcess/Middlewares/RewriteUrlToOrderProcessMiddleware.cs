@@ -74,7 +74,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
                 return;
             }
             
-            var orderProcess = await orderProcessesService.GetOrderProcessViaFixedUrl(path);
+            var orderProcess = await orderProcessesService.GetOrderProcessViaFixedUrlAsync(path);
             if (orderProcess == null || orderProcess.Id == 0)
             {
                 return;

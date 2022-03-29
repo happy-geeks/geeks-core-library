@@ -23,26 +23,38 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         }
 
         /// <inheritdoc />
-        public async Task<OrderProcessSettingsModel> GetOrderProcessViaFixedUrl(string fixedUrl)
+        public async Task<OrderProcessSettingsModel> GetOrderProcessViaFixedUrlAsync(string fixedUrl)
         {
             var key = $"OrderProcessWithFixedUrl_{fixedUrl}";
             return await cache.GetOrAdd(key,
                 delegate(ICacheEntry cacheEntry)
                 {
                     cacheEntry.SlidingExpiration = gclSettings.DefaultOrderProcessCacheDuration;
-                    return orderProcessesService.GetOrderProcessViaFixedUrl(fixedUrl);
+                    return orderProcessesService.GetOrderProcessViaFixedUrlAsync(fixedUrl);
                 });
         }
 
         /// <inheritdoc />
-        public async Task<List<OrderProcessStepModel>> GetAllStepsGroupsAndFields(ulong orderProcessId)
+        public async Task<List<OrderProcessStepModel>> GetAllStepsGroupsAndFieldsAsync(ulong orderProcessId)
         {
             var key = $"OrderProcessGetAllStepsGroupsAndFields_{orderProcessId}";
             return await cache.GetOrAdd(key,
                 delegate(ICacheEntry cacheEntry)
                 {
                     cacheEntry.SlidingExpiration = gclSettings.DefaultOrderProcessCacheDuration;
-                    return orderProcessesService.GetAllStepsGroupsAndFields(orderProcessId);
+                    return orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
+                });
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PaymentMethodSettingsModel>> GetPaymentMethodsAsync(ulong orderProcessId)
+        {
+            var key = $"OrderProcessGetPaymentMethods_{orderProcessId}";
+            return await cache.GetOrAdd(key,
+                delegate(ICacheEntry cacheEntry)
+                {
+                    cacheEntry.SlidingExpiration = gclSettings.DefaultOrderProcessCacheDuration;
+                    return orderProcessesService.GetPaymentMethodsAsync(orderProcessId);
                 });
         }
     }

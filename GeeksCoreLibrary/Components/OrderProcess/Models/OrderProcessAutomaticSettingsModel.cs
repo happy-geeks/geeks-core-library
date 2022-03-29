@@ -40,7 +40,16 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <div class='group-fields'>{fields}</div>
     <div class='group-footer'>{footer}</div>
 </fieldset>")]
-        internal string TemplateGroup { get; }
+        internal string TemplateFieldsGroup { get; }
+
+        [DefaultValue(@"<fieldset class='group-container'>
+    <legend>{title}</legend>
+    <div class='group-header'>{header}</div>
+    {error}
+    <ul class='group-payment-methods'>{paymentMethods}</ul>
+    <div class='group-footer'>{footer}</div>
+</fieldset>")]
+        internal string TemplatePaymentMethodsGroup { get; }
 
         [DefaultValue(@"<span class='field-error'>[if({errorMessage}=)][T{Vul a.u.b. een geldige waarde in}][else]{errorMessage}[endif]</span>")]
         internal string TemplateFieldError { get; }
@@ -97,11 +106,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </div>")]
         internal string TemplateProgressStep { get; }
 
-        [DefaultValue(@"<label>
-    <input type='radio' id='paymentMethod_{id}' value='{id}' name='paymentMethod' />
-    <img class='logo' src='{logo}' alt='{title}' />
-    <span class='label'>{title}</span>
-</label>")]
+        [DefaultValue(@"<li>
+    <label>
+        <input type='radio' id='paymentMethod_{id}' value='{id}' name='{paymentMethodFieldName}' required />
+        <img class='logo' src='/image/wiser2/{id}/{logoPropertyName}/crop/32/32/{title:Seo}.png' alt='{title}' />
+        <span class='label'>{title}</span>
+    </label>
+</li>")]
         internal string TemplatePaymentMethod { get; }
 
         #endregion
