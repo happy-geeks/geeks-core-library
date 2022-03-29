@@ -20,7 +20,6 @@ using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
-using LazyCache;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging;
@@ -39,13 +38,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         private readonly IAccountsService accountsService;
         private readonly ITemplatesService templatesService;
         private readonly IStringReplacementsService stringReplacementsService;
-        private readonly IAppCache cache;
         private readonly ITempDataDictionaryFactory tempDataDictionaryFactory;
         private readonly ILanguagesService languagesService;
 
         private SortedList<int, decimal> vatFactorsByRate;
 
-        public ShoppingBasketsService(IOptions<GclSettings> gclSettings, ILogger<ShoppingBasketsService> logger, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IWiserItemsService wiserItemsService, IAccountsService accountsService, ITemplatesService templatesService, IStringReplacementsService stringReplacementsService, IAppCache cache, ITempDataDictionaryFactory tempDataDictionaryFactory, ILanguagesService languagesService)
+        public ShoppingBasketsService(IOptions<GclSettings> gclSettings, ILogger<ShoppingBasketsService> logger, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IWiserItemsService wiserItemsService, IAccountsService accountsService, ITemplatesService templatesService, IStringReplacementsService stringReplacementsService, ITempDataDictionaryFactory tempDataDictionaryFactory, ILanguagesService languagesService)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -56,7 +54,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             this.accountsService = accountsService;
             this.templatesService = templatesService;
             this.stringReplacementsService = stringReplacementsService;
-            this.cache = cache;
             this.tempDataDictionaryFactory = tempDataDictionaryFactory;
             this.languagesService = languagesService;
         }
@@ -1585,17 +1582,14 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             await databaseConnection.BeginTransactionAsync();
             try
             {
-                var languageCode = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "langCode") ?? "";
-
                 if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
                 {
                     var sqlQuery = settings.SqlQuery;
+                    sqlQuery = await templatesService.HandleIncludesAsync(sqlQuery, false, null, false, true);
                     sqlQuery = sqlQuery.Replace("{itemid}", itemId.ToString());
                     sqlQuery = sqlQuery.Replace("{quantity}", quantity.ToString(CultureInfo.InvariantCulture));
-                    sqlQuery = sqlQuery.Replace("{language_code}", languageCode);
-
-                    sqlQuery = stringReplacementsService.DoHttpRequestReplacements(sqlQuery, true);
-                    sqlQuery = stringReplacementsService.DoSessionReplacements(sqlQuery, true);
+                    
+                    sqlQuery = await stringReplacementsService.DoAllReplacementsAsync(sqlQuery, null, true, true, false, true);
 
                     var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
                     if (getItemDetailsResult.Rows.Count > 0)
@@ -1609,8 +1603,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         }
                     }
                 }
-
-                var addItemLine = AddLineInternal(basketLines, uniqueId, itemId, quantity, type, lineDetails);
+                
+                var addItemLine = AddLineInternal(basketLines, settings, uniqueId, itemId, quantity, type, lineDetails);
 
                 // Write changes to database.
                 await SaveAsync(shoppingBasket, basketLines, settings, false);
@@ -1657,25 +1651,20 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 return;
             }
             
-
             await databaseConnection.BeginTransactionAsync();
             try
             {
-                var languageCode = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "langCode") ?? "";
-
                 var createLinksFor = new List<WiserItemModel>();
                 foreach (var item in items)
                 {
                     if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
                     {
                         var sqlQuery = settings.SqlQuery;
+                        sqlQuery = await templatesService.HandleIncludesAsync(sqlQuery, false, null, false, true);
                         sqlQuery = sqlQuery.Replace("{itemid}", item.ItemId.ToString());
                         sqlQuery = sqlQuery.Replace("{quantity}", item.Quantity.ToString(CultureInfo.InvariantCulture));
-                        sqlQuery = sqlQuery.Replace("{language_code}", "?languageCode");
-                        databaseConnection.AddParameter("languageCode", languageCode);
-
-                        sqlQuery = stringReplacementsService.DoHttpRequestReplacements(sqlQuery, true);
-                        sqlQuery = stringReplacementsService.DoSessionReplacements(sqlQuery, true);
+                        
+                        sqlQuery = await stringReplacementsService.DoAllReplacementsAsync(sqlQuery, null, true, true, false, true);
 
                         var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
                         if (getItemDetailsResult.Rows.Count > 0)
@@ -1689,8 +1678,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                             }
                         }
                     }
-
-                    var addItemLine = AddLineInternal(basketLines, item.UniqueId, item.ItemId, item.Quantity, item.Type, item.LineDetails);
+                    
+                    var addItemLine = AddLineInternal(basketLines, settings, item.UniqueId, item.ItemId, item.Quantity, item.Type, item.LineDetails);
                     createLinksFor.Add(addItemLine);
                 }
 
@@ -1726,8 +1715,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 {
                     await LoadAsync(settings, shoppingBasket.Id);
                 }
-
-                // Recalculate sendcosts, coupons etc. after getting the extra fields (price can be selected with extra fields query).
+                
+                // Recalculate shipping costs, coupons etc. after getting the extra fields (price can be selected with extra fields query).
                 await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, items.First().Type);
 
                 await databaseConnection.CommitTransactionAsync();
@@ -1737,6 +1726,69 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 await databaseConnection.RollbackTransactionAsync();
                 throw;
             }
+        }
+
+        /// <inheritdoc />
+        public async Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            // Find existing basket line.
+            var lineToUpdate = basketLines.Find(l => l.Id == item.LineId);
+            if (lineToUpdate == null)
+            {
+                return;
+            }
+
+            // Enrich the line details if a query is present.
+            if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
+            {
+                var sqlQuery = settings.SqlQuery;
+                sqlQuery = await templatesService.HandleIncludesAsync(sqlQuery, false, null, false, true);
+                sqlQuery = sqlQuery.Replace("{itemid}", lineToUpdate.GetDetailValue<int>("connecteditemid").ToString());
+                sqlQuery = sqlQuery.Replace("{quantity}", lineToUpdate.GetDetailValue<decimal>(settings.QuantityPropertyName).ToString(CultureInfo.InvariantCulture));
+                sqlQuery = await stringReplacementsService.DoAllReplacementsAsync(sqlQuery, null, true, true, false, true);
+
+                var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
+                if (getItemDetailsResult.Rows.Count > 0)
+                {
+                    var details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
+
+                    item.LineDetails ??= new Dictionary<string, string>();
+                    foreach (var (key, value) in details)
+                    {
+                        item.LineDetails[key] = value;
+                    }
+                }
+            }
+
+            // Unique ID can be updated if it was provided in the JSON.
+            if (!String.IsNullOrWhiteSpace(item.UniqueId))
+            {
+                lineToUpdate.SetDetail("uniqueid", item.UniqueId);
+            }
+
+            if (item.LineDetails != null)
+            {
+                foreach (var (key, value) in item.LineDetails.Where(ld => !ld.Key.InList("uniqueid", "connecteditemid", "quantity", "type")))
+                {
+                    lineToUpdate.SetDetail(key, value);
+                }
+            }
+
+            // Write changes to database.
+            await SaveAsync(shoppingBasket, basketLines, settings);
+
+            if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
+            {
+                await LoadAsync(settings, shoppingBasket.Id);
+            }
+
+            // Recalculate sendcosts, coupons etc. after getting the extra fields (price can be selected with extra fields query).
+            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, lineToUpdate.GetDetailValue("type"));
         }
 
         /// <inheritdoc />
@@ -1898,6 +1950,27 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
+        public async Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity)
+        {
+            if (settings.RemoveItemWhenQuantityIsZero && quantity <= 0M)
+            {
+                await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { itemIdOrUniqueId });
+            }
+
+            if (quantity > settings.MaxItemQuantity)
+            {
+                quantity = settings.MaxItemQuantity;
+            }
+
+            foreach (var line in basketLines.Where(line => (line.ContainsDetail("uniqueid") && line.GetDetailValue("uniqueid") == itemIdOrUniqueId) || line.Id > 0 && line.Id.ToString() == itemIdOrUniqueId || (line.ContainsDetail("connecteditemid") && line.GetDetailValue("connecteditemid") == itemIdOrUniqueId)))
+            {
+                line.SetDetail(settings.QuantityPropertyName, quantity.ToString(CultureInfo.InvariantCulture));
+            }
+
+            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings);
+        }
+
+        /// <inheritdoc />
         public async Task<ShoppingBasketCmsSettingsModel> GetSettingsAsync()
         {
             var cookieAgeSetting = await objectsService.FindSystemObjectByDomainNameAsync("basketCookieAgeInDays");
@@ -1922,27 +1995,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 CookieAgeInDays = cookieAgeInDays,
                 HandleRequest = true
             };
-        }
-
-        /// <inheritdoc />
-        public async Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity)
-        {
-            if (settings.RemoveItemWhenQuantityIsZero && quantity <= 0M)
-            {
-                await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { itemIdOrUniqueId });
-            }
-
-            if (quantity > settings.MaxItemQuantity)
-            {
-                quantity = settings.MaxItemQuantity;
-            }
-
-            foreach (var line in basketLines.Where(line => (line.ContainsDetail("uniqueid") && line.GetDetailValue("uniqueid") == itemIdOrUniqueId) || line.Id > 0 && line.Id.ToString() == itemIdOrUniqueId || (line.ContainsDetail("connecteditemid") && line.GetDetailValue("connecteditemid") == itemIdOrUniqueId)))
-            {
-                line.SetDetail(settings.QuantityPropertyName, quantity.ToString(CultureInfo.InvariantCulture));
-            }
-
-            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings);
         }
 
         /// <inheritdoc />
@@ -2118,17 +2170,20 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 var countryCookieName = await objectsService.FindSystemObjectByDomainNameAsync("W2_CountryCookieName");
 
-                if (!String.IsNullOrWhiteSpace(shoppingBasket.GetDetailValue(settings.CountryPropertyName)) && shoppingBasket.GetDetailValue(settings.CountryPropertyName) == vatRule.Country)
+                if (!String.IsNullOrWhiteSpace(countryCookieName))
                 {
-                    doReturnCountry = true;
-                }
-                else if (userDetails.ContainsKey(settings.CountryPropertyName) && !String.IsNullOrWhiteSpace(userDetails[settings.CountryPropertyName]) && userDetails[settings.CountryPropertyName] == vatRule.Country)
-                {
-                    doReturnCountry = true;
-                }
-                else if (!String.IsNullOrWhiteSpace(countryCookieName) && HttpContextHelpers.ReadCookie(httpContext, countryCookieName) == vatRule.Country)
-                {
-                    doReturnCountry = true;
+                    if (!String.IsNullOrWhiteSpace(shoppingBasket.GetDetailValue(settings.CountryPropertyName)) && shoppingBasket.GetDetailValue(settings.CountryPropertyName) == vatRule.Country)
+                    {
+                        doReturnCountry = true;
+                    }
+                    else if (userDetails.ContainsKey(settings.CountryPropertyName) && !String.IsNullOrWhiteSpace(userDetails[settings.CountryPropertyName]) && userDetails[settings.CountryPropertyName] == vatRule.Country)
+                    {
+                        doReturnCountry = true;
+                    }
+                    else if (HttpContextHelpers.ReadCookie(httpContext, countryCookieName) == vatRule.Country)
+                    {
+                        doReturnCountry = true;
+                    }
                 }
             }
             else
@@ -2611,12 +2666,13 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// Internal function used to add or update a line. This function does not save changes or recalculate values.
         /// </summary>
         /// <param name="basketLines"></param>
+        /// <param name="settings"></param>
         /// <param name="uniqueId"></param>
         /// <param name="itemId"></param>
         /// <param name="quantity"></param>
         /// <param name="type"></param>
         /// <param name="lineDetails"></param>
-        private static WiserItemModel AddLineInternal(ICollection<WiserItemModel> basketLines, string uniqueId = null, ulong itemId = 0UL, decimal quantity = 1M, string type = "product", IDictionary<string, string> lineDetails = null)
+        private static WiserItemModel AddLineInternal(ICollection<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, decimal quantity = 1M, string type = "product", IDictionary<string, string> lineDetails = null)
         {
             if (String.IsNullOrEmpty(uniqueId))
             {
@@ -2629,17 +2685,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             var existingLine = basketLines.FirstOrDefault(basketLine => basketLine.ContainsDetail("uniqueid") && basketLine.GetDetailValue("uniqueid") == uniqueId);
             if (existingLine != null)
             {
-                existingLine.SetDetail("quantity", (existingLine.GetDetailValue<decimal>("quantity") + quantity).ToString(CultureInfo.InvariantCulture));
+                existingLine.SetDetail(settings.QuantityPropertyName, (existingLine.GetDetailValue<decimal>(settings.QuantityPropertyName) + quantity).ToString(CultureInfo.InvariantCulture));
 
                 if (lineDetails != null)
                 {
-                    foreach (var lineDetail in lineDetails)
+                    foreach (var (key, value) in lineDetails)
                     {
-                        existingLine.SetDetail(lineDetail.Key, lineDetail.Value);
+                        existingLine.SetDetail(key, value);
                     }
-
-                    line = existingLine;
                 }
+
+                line = existingLine;
             }
 
             if (line != null)
@@ -2651,10 +2707,10 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             line = new WiserItemModel();
             line.SetDetail("uniqueid", uniqueId);
             line.SetDetail("connecteditemid", itemId.ToString());
-            line.SetDetail("quantity", quantity.ToString(CultureInfo.InvariantCulture));
+            line.SetDetail(settings.QuantityPropertyName, quantity.ToString(CultureInfo.InvariantCulture));
             if (lineDetails != null)
             {
-                foreach (var (key, value) in lineDetails)
+                foreach (var (key, value) in lineDetails.Where(ld => !ld.Key.InList("uniqueid", "connecteditemid", "type")))
                 {
                     line.SetDetail(key, value);
                 }

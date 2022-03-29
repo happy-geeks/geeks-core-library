@@ -207,12 +207,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
 
         Task<IList<VatRule>> GetVatRulesAsync();
 
-        /// <summary>
-        /// Creates a <see cref="ShoppingBasketCmsSettingsModel"/> object with various settings retrieved from system objects.
-        /// </summary>
-        /// <returns>A <see cref="ShoppingBasketCmsSettingsModel"/> object.</returns>
-        Task<ShoppingBasketCmsSettingsModel> GetSettingsAsync();
-
         Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate);
         
         /// <summary>
@@ -224,6 +218,11 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <returns></returns>
         Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate);
 
+        /// <summary>
+        /// Creates a <see cref="ShoppingBasketCmsSettingsModel"/> object with various settings retrieved from system objects.
+        /// </summary>
+        /// <returns>A <see cref="ShoppingBasketCmsSettingsModel"/> object.</returns>
+        Task<ShoppingBasketCmsSettingsModel> GetSettingsAsync();
 
         /// <summary>
         /// Retrieves an object by key. If the result is empty, it will try again by prepending "W2" to the key name to check if a legacy key is set.
