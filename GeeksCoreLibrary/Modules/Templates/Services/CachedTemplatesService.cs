@@ -291,7 +291,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     component.settings,
                     component.component,
                     component.component_mode,
-                    component.version
+                    component.version,
+                    component.title
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
                 WHERE otherVersion.id IS NULL"
@@ -300,7 +301,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     component.settings,
                     component.component,
                     component.component_mode,
-                    component.version
+                    component.version,
+                    component.title
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 WHERE (component.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}";
 
@@ -319,7 +321,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     Name = dataRow.Field<string>("component"),
                     SettingsJson = dataRow.Field<string>("settings"),
                     ComponentMode = dataRow.Field<string>("component_mode"),
-                    Version = dataRow.Field<int>("version")
+                    Version = dataRow.Field<int>("version"),
+                    Title = dataRow.Field<string>("title")
                 });
             }
 

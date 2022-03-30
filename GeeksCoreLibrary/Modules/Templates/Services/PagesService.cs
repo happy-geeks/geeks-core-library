@@ -88,6 +88,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             var viewModel = new PageViewModel();
 
+            // Add Google reCAPTCHAv3 if setup.
+            await AddGoogleReCaptchaToViewModelAsync(viewModel);
+
             // Add CSS for all pages.
             var generalCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css);
             externalCss.AddRange(generalCss.ExternalFiles);
@@ -216,7 +219,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                 if (inlineHeadJavascriptTemplates.Any())
                 {
-                    viewModel.Javascript.PageInlineHeadJavascript = String.Join(Environment.NewLine, inlineHeadJavascriptTemplates);
+                    viewModel.Javascript.PageInlineHeadJavascript ??= "";
+                    viewModel.Javascript.PageInlineHeadJavascript += String.Join(Environment.NewLine, inlineHeadJavascriptTemplates);
                 }
 
                 if (asyncFooterJavascriptTemplates.Any())
@@ -296,8 +300,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 }
             }
 
-            viewModel.Css.ExternalCss = externalCss;
-            viewModel.Javascript.ExternalJavascript = externalScripts;
+            viewModel.Css.ExternalCss.AddRange(externalCss);
+            viewModel.Javascript.ExternalJavascript.AddRange(externalScripts);
             viewModel.Body = newBodyHtml;
 
             // Add viewport.
@@ -421,19 +425,64 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Load all Google Analytics related stuff.
-            AddGoogleAnalyticsToViewModel(viewModel);
+            await AddGoogleAnalyticsToViewModelAsync(viewModel);
 
             // Check for additional plugins to load (like Wiser Search, Zopim, etc.).
-            AddPluginScripts(viewModel);
+            await AddPluginScriptsAsync(viewModel);
 
             return viewModel;
+        }
+        
+        /// <summary>
+        /// Sets various Google reCAPTCHAv3 scripts based on the customer's settings.
+        /// </summary>
+        /// <param name="viewModel">The <see cref="PageViewModel"/> that will be updated.</param>
+        private async Task AddGoogleReCaptchaToViewModelAsync(PageViewModel viewModel)
+        {
+            var reCaptchaSiteKey = await objectsService.FindSystemObjectByDomainNameAsync("google_recaptcha_v3_sitekey");
+            var reCaptchaSecretKey = await objectsService.FindSystemObjectByDomainNameAsync("google_recaptcha_v3_secretkey");
+            if (String.IsNullOrWhiteSpace(reCaptchaSiteKey) || String.IsNullOrWhiteSpace(reCaptchaSecretKey))
+            {
+                return;
+            }
+
+            viewModel.Javascript.ExternalJavascript.Add(new JavaScriptResource
+            {
+                Uri = new Uri($"https://www.google.com/recaptcha/api.js?render={reCaptchaSiteKey}"),
+                Async = true,
+                Defer = true
+            });
+
+            viewModel.Javascript.PageInlineHeadJavascript ??= "";
+            viewModel.Javascript.PageInlineHeadJavascript += $@"function gclExecuteReCaptcha(action) {{
+	return new Promise((resolve, reject) => {{
+		if (!grecaptcha || !grecaptcha.ready) {{
+			reject(""grecaptcha not defined!"");
+			return;
+		}}
+
+		grecaptcha.ready(() => {{
+			try {{
+				grecaptcha.execute(""{reCaptchaSiteKey}"", {{action: action}}).then((token) => {{
+					resolve(token);
+				}}).catch((error) => {{
+					reject(error);
+				}});
+			}} catch (exception) {{
+				reject(exception);
+			}}
+		}});
+	}});
+}}
+
+gclExecuteReCaptcha(""Page_load"")";
         }
 
         /// <summary>
         /// Sets various Google Analytics tracking scripts based on the customer's settings.
         /// </summary>
         /// <param name="viewModel">The <see cref="PageViewModel"/> that will be updated.</param>
-        private async void AddGoogleAnalyticsToViewModel(PageViewModel viewModel)
+        private async Task AddGoogleAnalyticsToViewModelAsync(PageViewModel viewModel)
         {
             var inlineHeadJavaScript = new StringBuilder();
             var inlineBodyNoScript = new StringBuilder();
@@ -523,7 +572,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// Adds plugin scripts to the view model's Javascript settings.
         /// </summary>
         /// <param name="viewModel">The <see cref="PageViewModel"/> that will be updated.</param>
-        private async void AddPluginScripts(PageViewModel viewModel)
+        private async Task AddPluginScriptsAsync(PageViewModel viewModel)
         {
             var wiserSearchScript = await objectsService.FindSystemObjectByDomainNameAsync("WiserSearchScript");
 

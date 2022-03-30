@@ -65,10 +65,21 @@ async function initializeWebForm{contentId}() {
         const container = document.getElementById('GclWebFormContainer{contentId}');
         const fields = this.querySelectorAll('input, select, checkbox, textarea');
 
-        // Validate reCAPTCHA field (if one is present on the form).
-        const recaptchaResponseField = [...fields].find(e => e.getAttribute('name') === 'g-recaptcha-response');
-        if (recaptchaResponseField && recaptchaResponseField.value.trim() === '') {
+        // Validate reCAPTCHA v2 field (if one is present on the form).
+        const recaptchaV2ResponseField = [...fields].find(e => e.getAttribute('name') === 'g-recaptcha-response');
+        if (recaptchaV2ResponseField && recaptchaV2ResponseField.value.trim() === '') {
             return;
+        }
+
+        // Handle reCAPTCHA v3 (if one is present on the form).
+        const recaptchaV3ResponseField = [...fields].find(e => e.getAttribute('name') === 'g-recaptcha-response-v3');
+        if (recaptchaV3ResponseField && typeof gclExecuteReCaptcha === 'function') {
+            const token = await gclExecuteReCaptcha('Form_{WebFormName}_submit');
+            if (!token) {
+                return;
+            }
+
+            recaptchaV3ResponseField.value = token;
         }
 
         const postData = new FormData();

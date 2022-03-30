@@ -23,5 +23,8 @@ namespace GeeksCoreLibrary.Components.WebForm.Models
 
         [DefaultValue(Constants.DefaultFormJavaScript)]
         internal string TemplateJavaScript { get; }
+
+        [DefaultValue(0.5)]
+        internal decimal ReCaptchaV3ScoreThreshold { get; }
     }
 }
