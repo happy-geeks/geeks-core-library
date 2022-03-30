@@ -13,6 +13,11 @@
         public string Name { get; set; }
 
         /// <summary>
+        /// Gets or sets the title of the component that was set in Wiser.
+        /// </summary>
+        public string Title { get; set; }
+
+        /// <summary>
         /// Gets or sets the full settings JSON of the dynamic content.
         /// </summary>
         public string SettingsJson { get; set; }

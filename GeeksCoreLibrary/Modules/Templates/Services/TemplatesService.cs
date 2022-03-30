@@ -897,7 +897,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     component.settings,
                     component.component,
                     component.component_mode,
-                    component.version
+                    component.version,
+                    component.title
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
                 WHERE component.content_id = ?contentId
@@ -907,7 +908,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     component.settings,
                     component.component,
                     component.component_mode,
-                    component.version
+                    component.version,
+                    component.title
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 WHERE component.content_id = ?contentId
                 AND (component.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}
@@ -927,7 +929,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Name = dataTable.Rows[0].Field<string>("component"),
                 SettingsJson = dataTable.Rows[0].Field<string>("settings"),
                 ComponentMode = dataTable.Rows[0].Field<string>("component_mode"),
-                Version = dataTable.Rows[0].Field<int>("version")
+                Version = dataTable.Rows[0].Field<int>("version"),
+                Title = dataTable.Rows[0].Field<string>("title")
             };
         }
 
