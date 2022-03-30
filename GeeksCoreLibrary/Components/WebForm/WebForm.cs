@@ -118,13 +118,13 @@ namespace GeeksCoreLibrary.Components.WebForm
             }
 
             var resultHtml = new StringBuilder();
-            if (!Request.HasFormContentType || !await ValidateFormSubmitAsync())
+            if (!Request.HasFormContentType)
             {
-                resultHtml.Append(await CreateFormHtml());
+                resultHtml.Append(await CreateFormHtmlAsync());
             }
             else
             {
-                resultHtml.Append(await SubmitForm());
+                resultHtml.Append(await SubmitFormAsync());
             }
 
             if (!String.IsNullOrWhiteSpace(Settings.TemplateJavaScript))
@@ -144,7 +144,7 @@ namespace GeeksCoreLibrary.Components.WebForm
         /// Creates the form HTML based on the form HTML template as set in the settings.
         /// </summary>
         /// <returns>The generated form HTML as a string.</returns>
-        public async Task<string> CreateFormHtml()
+        public async Task<string> CreateFormHtmlAsync()
         {
             if (String.IsNullOrWhiteSpace(Settings.FormHtmlTemplate))
             {
@@ -152,7 +152,6 @@ namespace GeeksCoreLibrary.Components.WebForm
             }
 
             var formHtml = Settings.FormHtmlTemplate;
-            formHtml = await TemplatesService.DoReplacesAsync(formHtml, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, handleRequest: Settings.HandleRequest, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
             formHtml = formHtml.ReplaceCaseInsensitive("{contentId}", ComponentId.ToString())
                 .ReplaceCaseInsensitive("<jform", "<form")
@@ -171,6 +170,8 @@ namespace GeeksCoreLibrary.Components.WebForm
                 var hiddenInputs = $"<input type=\"hidden\" name=\"__WebForm{ComponentId}\" value=\"{ComponentId}\" /><input type=\"hidden\" name=\"__WebFormCheck{ComponentId}\" value=\"\" />";
                 formHtml = formHtml.Insert(endTagIndex, hiddenInputs);
             }
+
+            formHtml = await TemplatesService.DoReplacesAsync(formHtml, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, handleRequest: Settings.HandleRequest, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
             return formHtml;
         }
@@ -214,8 +215,13 @@ namespace GeeksCoreLibrary.Components.WebForm
         /// Submits the form, and returns either the HTML of the success template or the HTML of the failed template.
         /// </summary>
         /// <returns>The HTML of the success template or the HTML of the failed template.</returns>
-        public async Task<string> SubmitForm()
+        public async Task<string> SubmitFormAsync()
         {
+            if (!await ValidateFormSubmitAsync())
+            {
+                return await CreateFormHtmlAsync();
+            }
+
             var communication = new SingleCommunicationModel();
 
             // Check if there are files to upload.

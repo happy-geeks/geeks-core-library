@@ -66,7 +66,7 @@ async function initializeWebForm{contentId}() {
         const fields = this.querySelectorAll('input, select, checkbox, textarea');
 
         // Validate reCAPTCHA field (if one is present on the form).
-        const recaptchaResponseField = fields.find(e => e.getAttribute('name') === 'g-recaptcha-response');
+        const recaptchaResponseField = [...fields].find(e => e.getAttribute('name') === 'g-recaptcha-response');
         if (recaptchaResponseField && recaptchaResponseField.value.trim() === '') {
             return;
         }
