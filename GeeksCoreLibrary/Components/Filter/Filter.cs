@@ -308,12 +308,54 @@ namespace GeeksCoreLibrary.Components.Filter
             // Replace the {filters} variable with the join and where parts to exclude not possible filter values when filtered
             if (filterItemsQuery.Contains("{filters}"))
             {
-                var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
 
-                filterItemsQuery = filterItemsQuery.Replace("{filters}", queryPart.JoinPart);
-                filterItemsQuery = filterItemsQuery.Replace("{filtersWhere}", queryPart.WherePart);
-                filterItemsQuery = filterItemsQuery.Replace("{filtersSelectStart}", queryPart.SelectPartStart);
-                filterItemsQuery = filterItemsQuery.Replace("{filtersSelectEnd}", queryPart.SelectPartEnd);
+                if (Settings.ComponentMode == ComponentModes.Aggregation)
+                {
+                    var filterItemsQueryNew = "";
+                    var notActiveFilters = "";
+
+                    foreach (var filterGroup in filterGroups)
+                    {
+                        if (filterGroup.Value.SelectedValues.Count > 0)
+                        {
+                            var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups,
+                                forActiveFilter: filterGroup.Value.GetParamKey());
+                            if (!string.IsNullOrEmpty(filterItemsQueryNew))
+                            {
+                                filterItemsQueryNew += " UNION ALL ";
+                            }
+
+                            filterItemsQueryNew +=
+                                $"({filterItemsQuery.Replace("{filters}", queryPart.JoinPart).Replace("{filterGroup}", $"AND f.filtergroup='{filterGroup.Value.GetParamKey().ToMySqlSafeValue(false)}'")})";
+                        }
+                        else
+                        {
+                            notActiveFilters += $"'{filterGroup.Value.GetParamKey()}',";
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(filterItemsQueryNew)) //No active filters
+                    {
+                        filterItemsQueryNew = filterItemsQuery.Replace("{filters}", "").Replace("{filterGroup}", "");
+                    }
+                    else if (!string.IsNullOrEmpty(notActiveFilters)) //Active and no active filters combined
+                    {
+                        var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
+                        filterItemsQueryNew +=
+                            $" UNION ALL ({filterItemsQuery.Replace("{filters}", queryPart.JoinPart).Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
+                    }
+                    
+                    filterItemsQuery = filterItemsQueryNew;
+                }
+                else
+                {
+                    var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
+
+                    filterItemsQuery = filterItemsQuery.Replace("{filters}", queryPart.JoinPart);
+                    filterItemsQuery = filterItemsQuery.Replace("{filtersWhere}", queryPart.WherePart);
+                    filterItemsQuery = filterItemsQuery.Replace("{filtersSelectStart}", queryPart.SelectPartStart);
+                    filterItemsQuery = filterItemsQuery.Replace("{filtersSelectEnd}", queryPart.SelectPartEnd);
+                }
             }
 
             // Replace user variables if present in query
@@ -412,7 +454,7 @@ namespace GeeksCoreLibrary.Components.Filter
                             { "items", groupHtml.ToString() },
                             { "type", previousFilterType },
                             { "typename", previousFilterType }
-                        };
+                        }; 
                         filterGroup.AddExtraPropertiesToList(replaceData);
 
                         var template = StringReplacementsService.DoReplacements(Settings.TemplateFilterGroup, replaceData);
@@ -866,14 +908,19 @@ namespace GeeksCoreLibrary.Components.Filter
 
                         var selectedMinValue = filterGroup.MinValue;
                         var selectedMaxValue = filterGroup.MaxValue;
+                        var requestParameter = "";
 
-                        if (!String.IsNullOrEmpty(HttpContext.Request.Query[!String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo]))
+                        if (!String.IsNullOrEmpty(HttpContext.Request.Query[filterGroup.GetParamKey()]))
                         {
-                            var requestParameter = HttpContext.Request.Query[
-                                !String.IsNullOrEmpty(filterGroup.QueryString)
-                                    ? filterGroup.QueryString
-                                    : filterGroup.NameSeo].ToString();
+                            requestParameter = HttpContext.Request.Query[filterGroup.GetParamKey()].ToString();
+                        }
+                        else if (filterGroup.SelectedValues.Count > 0) // when one filter querystring instead of querystrings per filter
+                        {
+                            requestParameter = filterGroup.SelectedValues[0];
+                        }
 
+                        if (!string.IsNullOrEmpty(requestParameter))
+                        {
                             if (requestParameter.Contains("-"))
                             {
                                 selectedMinValue = Decimal.Parse(requestParameter.Split("-")[0].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
@@ -887,14 +934,14 @@ namespace GeeksCoreLibrary.Components.Filter
 
                             WriteToTrace("Set selected slider values: " + filterGroup.SelectedValueString);
                         }
-
+                            
                         filterHtml.Append(Settings.TemplateSlider.Replace("{minValue}", filterGroup.MinValue.ToString(CultureInfo.InvariantCulture))
-                                             .Replace("{maxValue}", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture))
-                                             .Replace("{selectedMin}", selectedMinValue.ToString(CultureInfo.InvariantCulture))
-                                             .Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture))
-                                             .Replace("{filterName}", filterGroup.Name)
-                                             .Replace("{filterNameSeo}", filterGroup.NameSeo));
-                    }
+                                            .Replace("{maxValue}", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture))
+                                            .Replace("{selectedMin}", selectedMinValue.ToString(CultureInfo.InvariantCulture))
+                                            .Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture))
+                                            .Replace("{filterName}", filterGroup.Name)
+                                            .Replace("{filterNameSeo}", filterGroup.NameSeo));
+                }
 
                     break;
                 }
