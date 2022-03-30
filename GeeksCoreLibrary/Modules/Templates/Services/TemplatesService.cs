@@ -696,8 +696,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                 if (dataTable.Rows.Count == 0)
                 {
-                    var noImageFilePath = Path.Combine("/img", "noimg.png");
-                    input = string.Format("<img src=\"{0}\" />", noImageFilePath);
+                    input = input.ReplaceCaseInsensitive(m.Value, $"<img src=\"/img/noimg.png\" />");
                     continue;
                 }
 
