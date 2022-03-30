@@ -441,6 +441,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return;
             }
 
+            if (String.IsNullOrWhiteSpace(seoTitle) && String.IsNullOrWhiteSpace(seoDescription) && String.IsNullOrWhiteSpace(seoKeyWords) && String.IsNullOrWhiteSpace(seoCanonical) && !noIndex && !noFollow && robots == null)
+            {
+                return;
+            }
+
             var componentSeoData = httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] as PageMetaDataModel ?? new PageMetaDataModel();
             if (!String.IsNullOrWhiteSpace(seoTitle) && !componentSeoData.MetaTags.ContainsKey("title"))
             {

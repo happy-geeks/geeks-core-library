@@ -12,6 +12,7 @@ using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Seo.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
@@ -135,7 +136,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, !foundInOutputCache);
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
 
             if (!includeContent)
             {
@@ -173,7 +175,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />
@@ -185,7 +188,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetGeneralTemplateLastChangedDateAsync(templateType);
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />
@@ -197,7 +201,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetGeneralTemplateValueAsync(templateType);
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />
@@ -274,7 +279,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.HandleImageTemplating(input);
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <summary>
@@ -315,15 +321,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             foreach (DataRow dataRow in dataTable.Rows)
             {
                 var contentId = dataRow.Field<int>("content_id");
-                dynamicContent.Add(contentId, new DynamicContent
-                {
-                    Id = contentId,
-                    Name = dataRow.Field<string>("component"),
-                    SettingsJson = dataRow.Field<string>("settings"),
-                    ComponentMode = dataRow.Field<string>("component_mode"),
-                    Version = dataRow.Field<int>("version"),
-                    Title = dataRow.Field<string>("title")
-                });
+                dynamicContent.Add(contentId,
+                    new DynamicContent
+                    {
+                        Id = contentId,
+                        Name = dataRow.Field<string>("component"),
+                        SettingsJson = dataRow.Field<string>("settings"),
+                        ComponentMode = dataRow.Field<string>("component_mode"),
+                        Version = dataRow.Field<int>("version"),
+                        Title = dataRow.Field<string>("title")
+                    });
             }
 
             cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
@@ -378,11 +385,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
             }
 
-            // Check if cache should be skipped:
-            // - It can be skipped if on the development environment, but dev caching is not enabled.
-            // - It can be skipped if on the test environment, but test caching is not enabled.
-            var skipCache = false;
-
             switch (this.gclSettings.Environment)
             {
                 case Environments.Development when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
@@ -411,16 +413,21 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     throw new ArgumentOutOfRangeException(nameof(settings.CachingMode), settings.CachingMode.ToString());
             }
 
+            string html;
+            var addedToCache = false;
             switch (settings.CachingLocation)
             {
                 case TemplateCachingLocations.InMemory:
                 case TemplateCachingLocations.OnDisk when !String.IsNullOrWhiteSpace(callMethod):
-                    return await cache.GetOrAdd(cacheKey.ToString(),
+                    html = (string)await cache.GetOrAddAsync(cacheKey.ToString(),
                         async cacheEntry =>
                         {
+                            addedToCache = true;
                             cacheEntry.SlidingExpiration = settings.CacheMinutes <= 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
                             return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-                        }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                        },
+                        cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                    break;
                 case TemplateCachingLocations.OnDisk:
                 {
                     var fileName = $"{cacheKey}.html";
@@ -429,7 +436,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                     // Check if a cache file already exists and if it hasn't expired yet.
                     var fileInfo = new FileInfo(fullCachePath);
-                    string html;
                     if (fileInfo.Exists)
                     {
                         if (fileInfo.LastWriteTimeUtc.AddMinutes(settings.CacheMinutes) > DateTime.UtcNow)
@@ -445,12 +451,36 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
 
                     html = (string)await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                    addedToCache = true;
                     await File.WriteAllTextAsync(fullCachePath, html);
-                    return html;
+                    break;
                 }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(settings.CachingLocation), settings.CachingLocation.ToString());
             }
+
+            // Cache page SEO data,
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return html;
+            }
+
+            cacheKey.Append($"_{Constants.PageMetaDataFromComponentKey}");
+
+            if (addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
+            {
+                cache.Add(cacheKey.ToString(), componentSeoData);
+            }
+            else if (!addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] == null)
+            {
+                componentSeoData = cache.Get<PageMetaDataModel>(cacheKey.ToString());
+                if (componentSeoData != null)
+                {
+                    httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] = componentSeoData;
+                }
+            }
+
+            return html;
         }
 
         /// <inheritdoc />
