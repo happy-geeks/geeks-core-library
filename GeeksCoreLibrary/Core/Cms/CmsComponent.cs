@@ -275,67 +275,6 @@ namespace GeeksCoreLibrary.Core.Cms
             return (renderHtml, debugInformation);
         }
 
-        /// <summary>
-        /// Sets the SEO meta data for the current page.
-        /// </summary>
-        /// <param name="seoTitle"></param>
-        /// <param name="seoDescription"></param>
-        /// <param name="seoKeyWords"></param>
-        /// <param name="seoCanonical"></param>
-        /// <param name="noIndex"></param>
-        /// <param name="noFollow"></param>
-        /// <param name="robots"></param>
-        protected void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null)
-        {
-            var componentSeoData = HttpContext.Items[CmsSettings.PageMetaDataFromComponentKey] as PageMetaDataModel ?? new PageMetaDataModel();
-            if (!String.IsNullOrWhiteSpace(seoTitle) && !componentSeoData.MetaTags.ContainsKey("title"))
-            {
-                componentSeoData.PageTitle = seoTitle;
-                componentSeoData.MetaTags.Add("title", seoTitle);
-            }
-
-            if (!String.IsNullOrWhiteSpace(seoDescription) && !componentSeoData.MetaTags.ContainsKey("description"))
-            {
-                componentSeoData.MetaTags.Add("description", seoDescription);
-            }
-
-            if (!String.IsNullOrWhiteSpace(seoKeyWords) && !componentSeoData.MetaTags.ContainsKey("keywords"))
-            {
-                componentSeoData.MetaTags.Add("keywords", seoKeyWords);
-            }
-
-            if (!String.IsNullOrWhiteSpace(seoCanonical) && String.IsNullOrWhiteSpace(componentSeoData.Canonical))
-            {
-                componentSeoData.Canonical = seoCanonical;
-            }
-
-            if (!componentSeoData.MetaTags.ContainsKey("robots"))
-            {
-                var allRobots = new List<string>();
-                if (robots != null)
-                {
-                    allRobots.AddRange(robots);
-                }
-
-                if (noIndex && !allRobots.Any(s => s.Equals("noindex", StringComparison.OrdinalIgnoreCase)))
-                {
-                    allRobots.Add("noindex");
-                }
-
-                if (noFollow && !allRobots.Any(s => s.Equals("nofollow", StringComparison.OrdinalIgnoreCase)))
-                {
-                    allRobots.Add("nofollow");
-                }
-
-                if (allRobots.Any())
-                {
-                    componentSeoData.MetaTags.Add("robots", String.Join(",", allRobots));
-                }
-            }
-
-            HttpContext.Items[CmsSettings.PageMetaDataFromComponentKey] = componentSeoData;
-        }
-
         protected void AddExternalJavaScriptLibrary(string url, bool async = false, bool defer = false)
         {
             var javaScriptLibraries = HttpContext.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] as List<JavaScriptResource> ?? new List<JavaScriptResource>();
