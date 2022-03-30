@@ -29,6 +29,7 @@ namespace GeeksCoreLibrary.Components.WebPage
         private readonly GclSettings gclSettings;
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IPagesService pagesService;
 
         #region Enums
 
@@ -41,11 +42,12 @@ namespace GeeksCoreLibrary.Components.WebPage
 
         #region Constructor
 
-        public WebPage(IOptions<GclSettings> gclSettings, ILogger<WebPage> logger, IStringReplacementsService stringReplacementsService, ILanguagesService languagesService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor)
+        public WebPage(IOptions<GclSettings> gclSettings, ILogger<WebPage> logger, IStringReplacementsService stringReplacementsService, ILanguagesService languagesService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor, IPagesService pagesService)
         {
             this.gclSettings = gclSettings.Value;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
+            this.pagesService = pagesService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -156,7 +158,7 @@ namespace GeeksCoreLibrary.Components.WebPage
             var noIndex = Convert.ToBoolean(getWebPageResult.Rows[0].GetValueIfColumnExists("noindex"));
             var noFollow = Convert.ToBoolean(getWebPageResult.Rows[0].GetValueIfColumnExists<string>("nofollow"));
             var robots = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("robots");
-            SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
+            pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
 
             return html;
         }

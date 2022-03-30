@@ -34,5 +34,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="newBodyHtml"></param>
         /// <returns></returns>
         Task<PageViewModel> CreatePageViewModelAsync(List<string> externalCss, List<int> cssTemplates, List<string> externalJavascript, List<int> javascriptTemplates, string newBodyHtml);
+        
+        /// <summary>
+        /// Sets the SEO meta data for the current page.
+        /// </summary>
+        void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null);
     }
 }

@@ -19,8 +19,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Core\Cms\Models\" />
-    <Folder Include="Core\Cms\Services\" />
+    <Compile Remove="Core\Cms\Services\**" />
+    <Content Remove="Core\Cms\Services\**" />
+    <EmbeddedResource Remove="Core\Cms\Services\**" />
+    <None Remove="Core\Cms\Services\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Modules\Databases\Controllers\" />
     <Folder Include="Modules\PostalServices\PostNL\Models\" />
   </ItemGroup>
