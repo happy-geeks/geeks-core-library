@@ -40,7 +40,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
         }
 
         /// <inheritdoc />
-        public async Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart = "")
+        public async Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart = "", string forActiveFilter = "")
         {
             var httpContext = httpContextAccessor.HttpContext;
 
@@ -329,13 +329,16 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                     {
                                         if (forFilterItemsQuery)
                                         {
-                                            // Join to table with alias "f" in FilterItemsQuery
-                                            queryJoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : "_" + languagesService.CurrentLanguageCode)}` f{filterCounter} ON f{filterCounter}.category_id=f.category_id AND f{filterCounter}.product_id=f.product_id ");
+                                            if (filterGroup.GetParamKey() != forActiveFilter) //Don't include the JOIN of the filter for which the query - part is requested
+                                            {
+                                                // Join to table with alias "f" in FilterItemsQuery
+                                                queryJoinPart.Append($"JOIN `wiser_filter_aggregation{(string.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : "_" + languagesService.CurrentLanguageCode)}` f{filterCounter} ON f{filterCounter}.category_id=f.category_id AND f{filterCounter}.product_id=f.product_id ");
+                                            }
                                         }
                                         else
                                         {
                                             // Join to product-part and category-part given to function (from variable in overview query)
-                                            queryJoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : "_" + languagesService.CurrentLanguageCode)}` f{filterCounter} ON f{filterCounter}.category_id={categoryJoinPart} AND f{filterCounter}.product_id={productJoinPart} ");
+                                            queryJoinPart.Append($"JOIN `wiser_filter_aggregation{(string.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : "_" + languagesService.CurrentLanguageCode)}` f{filterCounter} ON f{filterCounter}.category_id={categoryJoinPart} AND f{filterCounter}.product_id={productJoinPart} ");
                                         }
 
                                     }
@@ -355,7 +358,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         }
 
                                     }
-                                    else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
+                                    else if (!string.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
                                     {
                                         queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLink} fi{filterCounter}l ON fi{filterCounter}l.destination_item_id = {filterConnectionPart} "); // AND fi{filterCounter}l.type=800
                                     }
@@ -373,7 +376,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                             if (!isAdvancedFilter)
                             {
                                 var joinPart = "";
-                                if (filterGroup != null && (String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType) || filterGroup.UseAggregationTable))
+                                if (filterGroup != null && ((!string.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType) && !filterGroup.UseAggregationTable) || (filterGroup.UseAggregationTable && forFilterItemsQuery && (filterGroup.GetParamKey() == forActiveFilter)) == false))
                                 {
                                     joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValue, filterGroup, false, filterGroup.UseAggregationTable);
                                     if (joinPart != "")
@@ -381,10 +384,11 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         queryJoinPart.Append("AND " + joinPart);
                                     }
                                 }
+
                                 queryJoinPart.AppendLine();
 
                                 // Handle join and join part if detail value is item-id
-                                if (filterGroup != null && !String.IsNullOrEmpty(filterGroup.ConnectedEntity) && !filterGroup.UseAggregationTable)
+                                if (filterGroup != null && !string.IsNullOrEmpty(filterGroup.ConnectedEntity) && !filterGroup.UseAggregationTable)
                                 {
                                     if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
                                     {
@@ -393,7 +397,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
 
                                     queryJoinPart.Append($"JOIN {WiserTableNames.WiserItem} fi{filterCounter}i ON fi{filterCounter}i.entity_type={filterGroup.ConnectedEntity.ToMySqlSafeValue(true)} ");
 
-                                    if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
+                                    if (!string.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
                                     {
                                         queryJoinPart.Append($"AND fi{filterCounter}i.id=fi{filterCounter}l.item_id ");
                                     }
@@ -778,11 +782,11 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 {
                     if (Information.IsNumeric(filterValue)) // One (minimum) value
                     {
-                        output = $"f{filterCounter}.filtergroup = {(String.IsNullOrEmpty(filterGroup.QueryString) ? filterName.ToMySqlSafeValue(true) : filterGroup.QueryString.ToMySqlSafeValue(true))} AND f{filterCounter}.filtervalue < {filterValue.ToMySqlSafeValue(true)}";
+                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue < {filterValue.ToMySqlSafeValue(true)}";
                     }
                     else
                     {
-                        output = $"f{filterCounter}.filtergroup = {(String.IsNullOrEmpty(filterGroup.QueryString) ? filterName.ToMySqlSafeValue(true) : filterGroup.QueryString.ToMySqlSafeValue(true))} AND f{filterCounter}.filtervalue >= {filterValue.Split('-')[0].ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue <= {filterValue.Split('-')[1].ToMySqlSafeValue(true)}";
+                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue >= {filterValue.Split('-')[0].ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue <= {filterValue.Split('-')[1].ToMySqlSafeValue(true)}";
                     }
                 }
                 else
@@ -821,7 +825,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     // multiple values selected
                     if (forAggregationTable)
                     {
-                        output = $"f{filterCounter}.filtergroup={(String.IsNullOrEmpty(filterGroup.QueryString) ? filterName.ToMySqlSafeValue(true) : filterGroup.QueryString.ToMySqlSafeValue(true))} AND f{filterCounter}.filtervalue IN ({filterValue.ToMySqlSafeValue(true).Replace(ValueSplit, "','")})";
+                        output = $"f{filterCounter}.filtergroup={filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue IN ({filterValue.ToMySqlSafeValue(true).Replace(ValueSplit, "','")})";
                     }
                     else if (filterGroup.IsGroupFilter)
                     {
@@ -855,7 +859,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 {
                     if (forAggregationTable)
                     {
-                        output = $"f{filterCounter}.filtergroup={(String.IsNullOrEmpty(filterGroup.QueryString) ? filterName.ToMySqlSafeValue(true) : filterGroup.QueryString.ToMySqlSafeValue(true))} AND f{filterCounter}.filtervalue={filterValue.ToMySqlSafeValue(true)}";
+                        output = $"f{filterCounter}.filtergroup={filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue={filterValue.ToMySqlSafeValue(true)}";
                     }
                     else if (filterGroup.IsGroupFilter)
                     {
