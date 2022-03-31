@@ -116,13 +116,11 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 }
 
                 // Request replacements.
-                if (!handleRequest || httpContextAccessor.HttpContext == null)
+                if (handleRequest && httpContextAccessor.HttpContext != null)
                 {
-                    continue;
+                    input = DoHttpRequestReplacements(input, forQuery);
+                    input = DoSessionReplacements(input, forQuery);
                 }
-
-                input = DoHttpRequestReplacements(input, forQuery);
-                input = DoSessionReplacements(input, forQuery);
 
                 // Translations.
                 if (input.Contains("[T{"))
@@ -145,7 +143,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 }
 
                 // CMS objects.
-                if (input.Contains("[O{"))
+                if (input.Contains("[O{") && httpContextAccessor.HttpContext != null)
                 {
                     dataDictionary.Clear();
 
@@ -213,7 +211,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             // Cookies.
             input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery);
-            
+
             // Request cache.
             input = DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery);
 
@@ -759,9 +757,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 variable.Formatters.AddRange(formatters.Split('|', StringSplitOptions.RemoveEmptyEntries));
 
                 // Add the default formatter, unless the raw formatter has been used.
-                if (!String.IsNullOrWhiteSpace(defaultFormatter) 
-                    && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase)) 
-                    && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase)) 
+                if (!String.IsNullOrWhiteSpace(defaultFormatter)
+                    && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase))
+                    && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase))
                     && !variable.Formatters.Any(f => String.Equals(f, "CurrencySup", StringComparison.OrdinalIgnoreCase)))
                 {
                     variable.Formatters.Add(defaultFormatter);
