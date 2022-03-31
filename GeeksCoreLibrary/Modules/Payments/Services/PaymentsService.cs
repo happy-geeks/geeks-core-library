@@ -103,6 +103,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 PaymentServiceProviders.Buckaroo => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "brq_invoicenumber"),
                 PaymentServiceProviders.MultiSafepay => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "transactionid"),
                 PaymentServiceProviders.RaboOmniKassa => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "order_id"),
+                PaymentServiceProviders.Mollie => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "invoice_number"),
                 _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), $"Payment service provider '{paymentServiceProvider:G}' is not yet supported.")
             };
         }
@@ -452,7 +453,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 await ProcessStatusUpdateAsync(shoppingBaskets, "Success", true, convertConceptOrderToOrder);
             }
 
-            return await paymentServiceProviderService.HandlePaymentRequestAsync(shoppingBaskets, userDetails, paymentMethod, invoiceNumber);
+            return await paymentServiceProviderService.HandlePaymentRequestAsync(shoppingBaskets, userDetails, paymentMethod, uniquePaymentNumber);
         }
 
         /// <inheritdoc />
@@ -691,8 +692,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var user = await accountsService.GetUserDataFromCookieAsync();
             var templateItem = await wiserItemsService.GetItemDetailsAsync(templateItemId, languageCode: languageCode, userId: user.UserId) ?? await wiserItemsService.GetItemDetailsAsync(templateItemId, userId: user.UserId);
 
-            var templateContent = templateItem.GetDetailValue(mailBodyPropertyName);
-            var templateSubject = templateItem.GetDetailValue(mailSubjectPropertyName);
+            var templateContent = templateItem?.GetDetailValue(mailBodyPropertyName) ?? String.Empty;
+            var templateSubject = templateItem?.GetDetailValue(mailSubjectPropertyName) ?? String.Empty;
 
             if (getMailToBasedOnDeliveryMethod)
             {
@@ -709,7 +710,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
             else
             {
-                merchantEmailAddress = templateItem.GetDetailValue(mailToPropertyName);
+                merchantEmailAddress = templateItem?.GetDetailValue(mailToPropertyName) ?? String.Empty;
             }
 
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();

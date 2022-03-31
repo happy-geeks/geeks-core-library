@@ -80,6 +80,13 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var apiKey = await GetApiKeyAsync();
             var locale = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_locale");
 
+            var description = await objectsService.FindSystemObjectByDomainNameAsync("PSP_description");
+
+            if (String.IsNullOrWhiteSpace(description))
+            {
+                description = $"Order #{invoiceNumber}";
+            }
+
             // Build and execute payment request.
             var restClient = new RestClient(ApiBaseUrl)
             {
@@ -88,9 +95,9 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var restRequest = new RestRequest("/payments", Method.POST);
             restRequest.AddParameter("amount[currency]", await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_currency", "EUR"), ParameterType.GetOrPost);
             restRequest.AddParameter("amount[value]", totalPrice.ToString("F2", CultureInfo.InvariantCulture), ParameterType.GetOrPost);
-            restRequest.AddParameter("description", await objectsService.FindSystemObjectByDomainNameAsync("PSP_description"), ParameterType.GetOrPost);
-            restRequest.AddParameter("redirectUrl", BuildRedirectUrl(shoppingBaskets.First().Main.Id), ParameterType.GetOrPost);
-            restRequest.AddParameter("webhookUrl", await BuildWebhookUrlAsync(), ParameterType.GetOrPost);
+            restRequest.AddParameter("description", description, ParameterType.GetOrPost);
+            restRequest.AddParameter("redirectUrl", BuildRedirectUrl(invoiceNumber), ParameterType.GetOrPost);
+            restRequest.AddParameter("webhookUrl", await BuildWebhookUrlAsync(invoiceNumber), ParameterType.GetOrPost);
 
             if (!String.IsNullOrWhiteSpace(locale))
             {
@@ -116,11 +123,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // Metadata is always sent back.
             restRequest.AddParameter("metadata", invoiceNumber, ParameterType.GetOrPost);
 
-            if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
-            {
-                restRequest.AddParameter("testmode", "true", ParameterType.GetOrPost);
-            }
-
             var restResponse = await restClient.ExecuteAsync(restRequest);
 
             if (restResponse.StatusCode != HttpStatusCode.Created)
@@ -137,11 +139,29 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             var responseJson = JObject.Parse(restResponse.Content);
 
+            var paymentId = responseJson["id"]?.ToString();
+            var status = responseJson["status"]?.ToString();
+            foreach (var (main, lines) in shoppingBaskets)
+            {
+                var history = new StringBuilder(main.GetDetailValue("psptransactionstatushistory"));
+                if (history.Length > 0)
+                {
+                    history.Append(", ");
+                }
+                history.Append(status);
+
+                main.SetDetail("psptransactionid", paymentId);
+                main.SetDetail("psptransactionstatus", status);
+                main.SetDetail("psptransactionstatushistory", history.ToString());
+
+                await shoppingBasketsService.SaveAsync(main, lines, await shoppingBasketsService.GetSettingsAsync());
+            }
+
             return new PaymentRequestResult
             {
                 Successful = true,
                 Action = PaymentRequestActions.Redirect,
-                ActionData = responseJson["_links"]?["checkout"]?.ToString()
+                ActionData = responseJson["_links"]?["checkout"]?["href"]?.ToString()
             };
         }
 
@@ -171,30 +191,38 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             return null;
         }
 
-        private string BuildRedirectUrl(ulong orderId)
+        private string BuildRedirectUrl(string invoiceNumber)
         {
             if (httpContextAccessor.HttpContext == null)
             {
                 return String.Empty;
             }
 
+            var request = httpContextAccessor.HttpContext.Request;
+
             var redirectUrl = new UriBuilder
             {
-                Host = httpContextAccessor.HttpContext.Request.Host.Host,
-                Scheme = httpContextAccessor.HttpContext.Request.Scheme,
+                Host = request.Host.Host,
+                Scheme = request.Scheme,
                 Path = "payment_return.gcl"
             };
+
+            if (request.Host.Port.HasValue && !request.Host.Port.Value.InList(80, 443))
+            {
+                redirectUrl.Port = request.Host.Port.Value;
+            }
+
             var queryString = new NameValueCollection
             {
                 ["gcl_psp"] = "mollie",
-                ["order_id"] = orderId.ToString()
+                ["invoice_number"] = invoiceNumber
             };
-            redirectUrl.Query = queryString.ToString() ?? String.Empty;
+            redirectUrl.Query = queryString.ToQueryString() ?? String.Empty;
 
             return redirectUrl.ToString();
         }
 
-        private async Task<string> BuildWebhookUrlAsync()
+        private async Task<string> BuildWebhookUrlAsync(string invoiceNumber)
         {
             if (httpContextAccessor.HttpContext == null)
             {
@@ -220,6 +248,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             var queryString = HttpUtility.ParseQueryString(webhookUrl.Query);
             queryString["gcl_psp"] = "mollie";
+            queryString["invoice_number"] = invoiceNumber;
 
             webhookUrl.Query = queryString.ToString() ?? String.Empty;
 
@@ -250,11 +279,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             };
             var restRequest = new RestRequest($"/payments/{mollieOrderId}", Method.GET);
 
-            if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
-            {
-                restRequest.AddParameter("testmode", "true", ParameterType.GetOrPost);
-            }
-
             // Execute the request. The result will be a JSON object.
             // For more info: https://docs.mollie.com/reference/v2/payments-api/get-payment
             var restResponse = await restClient.ExecuteAsync(restRequest);
@@ -272,7 +296,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             if (String.IsNullOrWhiteSpace(status))
             {
-                await LogPaymentActionAsync(String.Empty, (int)restResponse.StatusCode);
+                await LogPaymentActionAsync(String.Empty, (int)restResponse.StatusCode, responseBody: restResponse.Content);
 
                 return new StatusUpdateResult
                 {
@@ -284,7 +308,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // The invoice number is sent as the metadata, which can be retrieved here.
             var invoiceNumber = responseJson["metadata"]?.ToString();
 
-            await LogPaymentActionAsync(invoiceNumber, (int)restResponse.StatusCode);
+            await LogPaymentActionAsync(invoiceNumber, (int)restResponse.StatusCode, responseBody: restResponse.Content);
 
             return new StatusUpdateResult
             {
@@ -297,20 +321,33 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         public async Task<PaymentReturnResult> HandlePaymentReturnAsync()
         {
             var apiKey = await GetApiKeyAsync();
-            var mollieOrderId = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "order_id");
+            var invoiceNumber = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "invoice_number");
+
+            var baskets = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(invoiceNumber);
+            if (baskets == null || baskets.Count == 0)
+            {
+                await LogPaymentActionAsync(invoiceNumber, 0, error: $"Unknown invoice number: {invoiceNumber}");
+
+                // Unknown invoice number.
+                return new PaymentReturnResult
+                {
+                    Action = PaymentResultActions.Redirect,
+                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL")
+                };
+            }
+
+            // The Mollie payment ID is saved in all baskets, so just use the one from the first basket.
+            var molliePaymentId = baskets.First().ShoppingBasket.GetDetailValue("psptransactionid");
 
             var restClient = new RestClient(ApiBaseUrl)
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(apiKey, "Bearer")
             };
-            var restRequest = new RestRequest($"/payments/{mollieOrderId}", Method.GET);
-
-            if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
-            {
-                restRequest.AddParameter("testmode", "true", ParameterType.GetOrPost);
-            }
+            var restRequest = new RestRequest($"/payments/{molliePaymentId}", Method.GET);
 
             var restResponse = await restClient.ExecuteAsync(restRequest);
+
+            await LogPaymentActionAsync(invoiceNumber, (int)restResponse.StatusCode, responseBody: restResponse.Content);
 
             if (restResponse.StatusCode != HttpStatusCode.OK)
             {
@@ -326,10 +363,17 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var responseJson = JObject.Parse(restResponse.Content);
             var status = responseJson["status"]?.ToString() ?? String.Empty;
 
+            var successUrl = await objectsService.FindSystemObjectByDomainNameAsync("PSP_successURL");
+            var pendingUrl = await objectsService.FindSystemObjectByDomainNameAsync("PSP_pendingURL");
+            if (String.IsNullOrWhiteSpace(pendingUrl))
+            {
+                pendingUrl = successUrl;
+            }
+
             var redirectUrl = status switch
             {
-                "paid" => await objectsService.FindSystemObjectByDomainNameAsync("PSP_successURL"),
-                "pending" => await objectsService.FindSystemObjectByDomainNameAsync("PSP_pendingURL"),
+                "paid" => successUrl,
+                "pending" => pendingUrl,
                 _ => await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL")
             };
 
@@ -377,7 +421,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             return "Unknown error";
         }
 
-        public async Task<bool> LogPaymentActionAsync(string invoiceNumber, int status)
+        public async Task<bool> LogPaymentActionAsync(string invoiceNumber, int status, string requestBody = "", string responseBody = "", string error = "")
         {
             if (!LogPaymentActions || httpContextAccessor?.HttpContext == null)
             {
@@ -406,7 +450,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 }
             }
 
-            return await LoggingHelpers.AddLogEntryAsync(databaseConnection, PaymentServiceProviders.Mollie, invoiceNumber, status, headers.ToString(), queryString.ToString(), formValues.ToString());
+            return await LoggingHelpers.AddLogEntryAsync(databaseConnection, PaymentServiceProviders.Mollie, invoiceNumber, status, headers.ToString(), queryString.ToString(), formValues.ToString(), requestBody, responseBody, error);
         }
     }
 }
