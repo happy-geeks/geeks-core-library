@@ -2,7 +2,7 @@
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Models
 {
-    internal class OrderProcessAutomaticSettingsModel
+    internal class OrderProcessCheckoutSettingsModel
     {
         #region Tab layout properties
 

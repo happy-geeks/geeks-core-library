@@ -10,7 +10,7 @@ namespace GeeksCoreLibrary.Core.Helpers
     {
         public static string GetContentFilesFolderPath(IWebHostEnvironment webHostEnvironment)
         {
-            var result = Path.Combine(webHostEnvironment.WebRootPath, "contentfiles");
+            var result = Path.Combine(webHostEnvironment.WebRootPath, Modules.ItemFiles.Models.Constants.DefaultFilesDirectory);
 
             if (!Directory.Exists(result))
             {

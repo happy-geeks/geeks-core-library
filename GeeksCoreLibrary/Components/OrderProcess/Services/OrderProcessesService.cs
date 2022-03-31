@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
@@ -17,12 +18,19 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Communication.Interfaces;
+using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
+using GeeksCoreLibrary.Modules.GclConverters.Models;
+using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
+using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -30,6 +38,7 @@ using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Services
 {
+    /// <inheritdoc cref="IOrderProcessesService" />
     public class OrderProcessesService : IOrderProcessesService, IScopedService
     {
         private readonly IDatabaseConnection databaseConnection;
@@ -40,9 +49,16 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         private readonly ILanguagesService languagesService;
         private readonly ITemplatesService templatesService;
         private readonly IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory;
+        private readonly IWebHostEnvironment webHostEnvironment;
+        private readonly IHtmlToPdfConverterService htmlToPdfConverterService;
+        private readonly ICommunicationsService communicationsService;
+        private readonly IItemFilesService itemFilesService;
         private readonly GclSettings gclSettings;
 
-        public OrderProcessesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, IShoppingBasketsService shoppingBasketsService, IAccountsService accountsService, IWiserItemsService wiserItemsService, ILogger<OrderProcessesService> logger, ILanguagesService languagesService, ITemplatesService templatesService, IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory)
+        /// <summary>
+        /// Creates a new instance of <see cref="OrderProcessesService"/>.
+        /// </summary>
+        public OrderProcessesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, IShoppingBasketsService shoppingBasketsService, IAccountsService accountsService, IWiserItemsService wiserItemsService, ILogger<OrderProcessesService> logger, ILanguagesService languagesService, ITemplatesService templatesService, IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory, IWebHostEnvironment webHostEnvironment, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService, IItemFilesService itemFilesService)
         {
             this.databaseConnection = databaseConnection;
             this.shoppingBasketsService = shoppingBasketsService;
@@ -52,6 +68,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             this.languagesService = languagesService;
             this.templatesService = templatesService;
             this.paymentServiceProviderServiceFactory = paymentServiceProviderServiceFactory;
+            this.webHostEnvironment = webHostEnvironment;
+            this.htmlToPdfConverterService = htmlToPdfConverterService;
+            this.communicationsService = communicationsService;
+            this.itemFilesService = itemFilesService;
             this.gclSettings = gclSettings.Value;
         }
 
@@ -67,12 +87,20 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 orderProcess.id,
 	                            IFNULL(titleSeo.value, orderProcess.title) AS name,
                                 IFNULL(fixedUrl.value, '/payment.html') AS fixedUrl,
-                                COUNT(step.id) AS amountOfSteps
+                                COUNT(step.id) AS amountOfSteps,
+                                emailAddressField.value AS emailAddressField,
+                                IF(statusUpdateTemplate.value IS NULL OR statusUpdateTemplate.value = '', '0', statusUpdateTemplate.value) AS statusUpdateTemplate,
+                                IF(statusUpdateWebShopTemplate.value IS NULL OR statusUpdateWebShopTemplate.value = '', '0', statusUpdateWebShopTemplate.value) AS statusUpdateWebShopTemplate,
+                                IF(statusUpdateAttachmentTemplate.value IS NULL OR statusUpdateAttachmentTemplate.value = '', '0', statusUpdateAttachmentTemplate.value) AS statusUpdateAttachmentTemplate
                             FROM {WiserTableNames.WiserItem} AS orderProcess
                             JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
                             JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fixedUrl ON fixedUrl.item_id = orderProcess.id AND fixedUrl.`key` = '{Constants.OrderProcessUrlProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS titleSeo ON titleSeo.item_id = orderProcess.id AND titleSeo.`key` = '{CoreConstants.SeoTitlePropertyName}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS emailAddressField ON emailAddressField.item_id = orderProcess.id AND emailAddressField.`key` = '{Constants.OrderProcessEmailAddressFieldProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateTemplate ON statusUpdateTemplate.item_id = orderProcess.id AND statusUpdateTemplate.`key` = '{Constants.OrderProcessStatusUpdateTemplateProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateWebShopTemplate ON statusUpdateWebShopTemplate.item_id = orderProcess.id AND statusUpdateWebShopTemplate.`key` = '{Constants.OrderProcessStatusUpdateWebShopTemplateProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateAttachmentTemplate ON statusUpdateAttachmentTemplate.item_id = orderProcess.id AND statusUpdateAttachmentTemplate.`key` = '{Constants.StatusUpdateMailAttachmentProperty}'
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
                             AND orderProcess.published_environment >= ?publishedEnvironment
@@ -93,7 +121,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             {
                 Id = firstRow.Field<ulong>("id"),
                 Title = firstRow.Field<string>("name"),
-                FixedUrl = firstRow.Field<string>("fixedUrl")
+                FixedUrl = firstRow.Field<string>("fixedUrl"),
+                AmountOfSteps = Convert.ToInt32(firstRow["amountOfSteps"]),
+                EmailAddressProperty = firstRow.Field<string>("emailAddressField"),
+                StatusUpdateMailTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateTemplate")),
+                StatusUpdateMailWebShopTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateWebShopTemplate")),
+                StatusUpdateMailAttachmentTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateAttachmentTemplate"))
             };
         }
 
@@ -316,18 +349,28 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                            paymentServiceProvider.id AS paymentServiceProviderId,
 	                            paymentServiceProvider.title AS paymentServiceProviderTitle,
 	                            paymentMethodFee.value AS paymentMethodFee,
-	                            paymentMethodVisibility.value AS paymentMethodVisibility
+	                            paymentMethodVisibility.value AS paymentMethodVisibility,
+
+                                paymentServiceProviderLogAllRequests.value AS paymentServiceProviderLogAllRequests,
+                                paymentServiceProviderSetOrdersDirectlyToFinished.value AS paymentServiceProviderSetOrdersDirectlyToFinished,
+                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.value AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
+                                paymentServiceProviderSuccessUrl.value AS paymentServiceProviderSuccessUrl
                             FROM {WiserTableNames.WiserItem} AS orderProcess
+
+                            # Payment method
                             JOIN {WiserTableNames.WiserItemLink} AS paymentMethodLink ON paymentMethodLink.destination_item_id = orderProcess.id AND paymentMethodLink.type = {Constants.PaymentMethodToOrderProcessLinkType}
                             JOIN {WiserTableNames.WiserItem} AS paymentMethod ON paymentMethod.id = paymentMethodLink.item_id AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
 
                             # PSP
                             JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
                             JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSuccessUrl ON paymentServiceProviderSuccessUrl.item_id = paymentServiceProvider.id AND paymentServiceProviderSuccessUrl.`key` = '{Constants.PaymentServiceProviderSuccessUrlProperty}'
 
-                            # Other payment method properties
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'";
 
@@ -370,16 +413,24 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                            paymentServiceProvider.id AS paymentServiceProviderId,
 	                            paymentServiceProvider.title AS paymentServiceProviderTitle,
 	                            paymentMethodFee.value AS paymentMethodFee,
-	                            paymentMethodVisibility.value AS paymentMethodVisibility
+	                            paymentMethodVisibility.value AS paymentMethodVisibility,
+
+                                paymentServiceProviderLogAllRequests.value AS paymentServiceProviderLogAllRequests,
+                                paymentServiceProviderSetOrdersDirectlyToFinished.value AS paymentServiceProviderSetOrdersDirectlyToFinished,
+                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.value AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
+                                paymentServiceProviderSuccessUrl.value AS paymentServiceProviderSuccessUrl
                             FROM {WiserTableNames.WiserItem} AS paymentMethod
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
 
                             # PSP
                             JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
                             JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSuccessUrl ON paymentServiceProviderSuccessUrl.item_id = paymentServiceProvider.id AND paymentServiceProviderSuccessUrl.`key` = '{Constants.PaymentServiceProviderSuccessUrlProperty}'
 
-                            # Other payment method properties
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
                             WHERE paymentMethod.id = ?id
                             AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'";
 
@@ -420,7 +471,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 queryString[Constants.ActiveStepRequestKey] = orderProcessSettings.AmountOfSteps.ToString();
             }
 
-            failUrl.Query = queryString.ToString();
+            failUrl.Query = queryString.ToString()!;
             
             // Check if we have a valid payment method.
             if (selectedPaymentMethodId == 0)
@@ -482,7 +533,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var invoiceNumberQuery = (await templatesService.GetTemplateAsync(name: Constants.InvoiceNumberQueryTemplate, type: TemplateTypes.Query))?.Content;
             if (!String.IsNullOrWhiteSpace(invoiceNumberQuery))
             {
-                invoiceNumberQuery = invoiceNumberQuery.Replace("{oid}", orderId.ToString());
+                invoiceNumberQuery = invoiceNumberQuery.ReplaceCaseInsensitive("{oid}", orderId.ToString()).ReplaceCaseInsensitive("{orderId}", orderId.ToString());
                 var getInvoiceNumberResult = await databaseConnection.GetAsync(invoiceNumberQuery);
                 if (getInvoiceNumberResult.Rows.Count > 0)
                 {
@@ -514,12 +565,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
             }
             
-            var convertConceptOrderToOrder = paymentMethodSettings.PaymentServiceProvider.OrdersCanBeSetDirectoryToFinished;
+            var convertConceptOrderToOrder = paymentMethodSettings.PaymentServiceProvider.OrdersCanBeSetDirectlyToFinished;
             
             // Increment use count of redeemed coupons.
             foreach (var (main, lines) in conceptOrders)
             {
-                foreach (var basketLine in shoppingBasketsService.GetLines(lines, "coupon"))
+                foreach (var basketLine in shoppingBasketsService.GetLines(lines, Constants.OrderLineCouponType))
                 {
                     var couponItemId = basketLine.GetDetailValue<ulong>(ShoppingBasket.Models.Constants.ConnectedItemIdProperty);
                     if (couponItemId == 0)
@@ -533,7 +584,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         continue;
                     }
 
-                    var totalBasketPrice = await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, lineType: "product");
+                    var totalBasketPrice = await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, lineType: Constants.OrderLineProductType);
                     await shoppingBasketsService.UseCouponAsync(couponItem, totalBasketPrice);
                 }
             }
@@ -572,17 +623,165 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             
             // Get the correct service based on name.
             var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Title);
-            paymentServiceProviderService.LogPaymentActions = true;
+            paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
 
             if (convertConceptOrderToOrder)
             {
-                // TODO
-                //await ProcessStatusUpdateAsync(conceptOrders, "Success", true, convertConceptOrderToOrder);
+                await HandlePaymentStatusUpdateAsync(orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
             }
 
-            // TODO
-            //return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, paymentMethod, invoiceNumber);
-            return new PaymentRequestResult();
+            // TODO: PaymentMethods can't be an enum anymore, since you can now add new ones via Wiser.
+            return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, PaymentMethods.Unknown, invoiceNumber);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> HandlePaymentStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, string newStatus, bool isSuccessfulStatus, bool convertConceptOrderToOrder = true)
+        {
+            return await HandlePaymentStatusUpdateAsync(this, orderProcessSettings, conceptOrders, newStatus, isSuccessfulStatus, convertConceptOrderToOrder);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> HandlePaymentStatusUpdateAsync(IOrderProcessesService orderProcessesService, OrderProcessSettingsModel orderProcessSettings, ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, string newStatus, bool isSuccessfulStatus, bool convertConceptOrderToOrder = true)
+        {
+            var mailsToSendToUser = new List<SingleCommunicationModel>();
+            var mailsToSendToMerchant = new List<SingleCommunicationModel>();
+            var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+
+            var emailContent = "";
+            var emailSubject = "";
+            var attachmentTemplate = "";
+            var userEmailAddress = "";
+            var merchantEmailAddress = "";
+            var bcc = "";
+            var senderAddress = "";
+            var senderName = "";
+            var replyToAddress = "";
+            var replyToName = "";
+
+            var attachments = new List<string>();
+
+            var orderIsFinished = false;
+
+            foreach (var (main, lines) in conceptOrders)
+            {
+                orderIsFinished = main.EntityType == Constants.OrderEntityType;
+
+                // Get email content and addresses.
+                var mailValues = await GetMailValuesAsync(orderProcessSettings, main, lines);
+                if (mailValues != null)
+                {
+                    emailContent = mailValues.Content;
+                    emailSubject = mailValues.Subject;
+                    userEmailAddress = mailValues.User?.Address ?? "";
+                    merchantEmailAddress = mailValues.Merchant?.Address ?? "";
+                    bcc = mailValues.Bcc;
+                    senderAddress = mailValues.Sender?.Address ?? "";
+                    senderName = mailValues.Sender?.DisplayName ?? "";
+                    replyToAddress = mailValues.ReplyTo?.Address ?? "";
+                    replyToName = mailValues.ReplyTo?.DisplayName ?? "";
+                }
+
+                // Get email content specifically for the merchant.
+                mailValues = await GetMailValuesAsync(orderProcessSettings, main, lines, true);
+                string merchantEmailContent;
+                string merchantEmailSubject;
+                string merchantBcc;
+                string merchantSenderAddress;
+                string merchantSenderName;
+                string merchantReplyToAddress;
+                string merchantReplyToName;
+                if (mailValues != null)
+                {
+                    merchantEmailContent = mailValues.Content;
+                    merchantEmailSubject = mailValues.Subject;
+                    merchantEmailAddress = mailValues.Merchant.Address;
+                    merchantBcc = mailValues.Bcc;
+                    merchantSenderAddress = mailValues.Sender?.Address ?? "";
+                    merchantSenderName = mailValues.Sender?.DisplayName ?? "";
+                    merchantReplyToAddress = mailValues.ReplyTo?.Address ?? "";
+                    merchantReplyToName = mailValues.ReplyTo?.DisplayName ?? "";
+                }
+                else
+                {
+                    merchantEmailContent = emailContent;
+                    merchantEmailSubject = emailSubject;
+                    merchantBcc = bcc;
+                    merchantSenderAddress = senderAddress;
+                    merchantSenderName = senderName;
+                    merchantReplyToAddress = replyToAddress;
+                    merchantReplyToName = replyToName;
+                }
+
+                // Get email content specifically for the attachment.
+                mailValues = await GetMailValuesAsync(orderProcessSettings, main, lines, false, true);
+                if (mailValues != null)
+                {
+                    attachmentTemplate = mailValues.Content;
+                }
+
+                main.SetDetail(Constants.PaymentHistoryProperty, $"{DateTime.Now:yyyyMMddHHmmss} - {newStatus}", true);
+
+                // If order is not finished yet and the payment was successful.
+                if (!orderIsFinished && isSuccessfulStatus && convertConceptOrderToOrder)
+                {
+                    await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
+                }
+
+                if (!String.IsNullOrWhiteSpace(userEmailAddress) && !String.IsNullOrWhiteSpace(emailContent))
+                {
+                    mailsToSendToUser.Add(new SingleCommunicationModel
+                    {
+                        Content = emailContent,
+                        Subject = emailSubject,
+                        Receivers = new List<CommunicationReceiverModel> { new() { Address = userEmailAddress } },
+                        Bcc = new List<string> { bcc },
+                        ReplyTo = replyToAddress,
+                        ReplyToName = replyToName,
+                        Sender = senderAddress,
+                        SenderName = senderName
+                    });
+                }
+
+                if (!String.IsNullOrWhiteSpace(merchantEmailAddress) && !String.IsNullOrWhiteSpace(merchantEmailContent))
+                {
+                    mailsToSendToMerchant.Add(new SingleCommunicationModel
+                    {
+                        Content = merchantEmailContent,
+                        Subject = merchantEmailSubject,
+                        Receivers = new List<CommunicationReceiverModel> { new() { Address = merchantEmailAddress } },
+                        Bcc = new List<string> { merchantBcc },
+                        ReplyTo = merchantReplyToAddress,
+                        ReplyToName = merchantReplyToName,
+                        Sender = merchantSenderAddress,
+                        SenderName = merchantSenderName
+                    });
+                }
+            }
+
+            // TODO: Add customer mail attachments.
+
+            if (!orderIsFinished)
+            {
+                foreach (var mailToSend in mailsToSendToUser)
+                {
+                    if (isSuccessfulStatus && mailToSend.Receivers.Any() && !String.IsNullOrWhiteSpace(mailToSend.Content))
+                    {
+                        await communicationsService.SendEmailAsync(mailToSend);
+                    }
+                }
+                
+                foreach (var mailToSend in mailsToSendToMerchant)
+                {
+                    if (!mailToSend.Receivers.Any() || String.IsNullOrWhiteSpace(mailToSend.Content))
+                    {
+                        continue;
+                    }
+
+                    await communicationsService.SendEmailAsync(mailToSend);
+                }
+            }
+
+            return true;
         }
 
         private static PaymentMethodSettingsModel DataRowToPaymentMethodSettingsModel(DataRow dataRow)
@@ -597,10 +796,112 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 PaymentServiceProvider = new PaymentServiceProviderSettingsModel
                 {
                     Id = dataRow.Field<ulong>("paymentServiceProviderId"),
-                    Title = dataRow.Field<string>("paymentServiceProviderTitle")
+                    Title = dataRow.Field<string>("paymentServiceProviderTitle"),
+                    SuccessUrl = dataRow.Field<string>("paymentServiceProviderSuccessUrl"),
+                    LogAllRequests = dataRow.Field<string>("paymentServiceProviderLogAllRequests") == "1",
+                    OrdersCanBeSetDirectlyToFinished = dataRow.Field<string>("paymentServiceProviderSetOrdersDirectlyToFinished") == "1",
+                    SkipPaymentWhenOrderAmountEqualsZero = dataRow.Field<string>("paymentServiceProviderSkipWhenOrderAmountEqualsZero") == "1",
                 }
             };
             return result;
+        }
+
+        private async Task<EmailValues> GetMailValuesAsync(OrderProcessSettingsModel orderProcessSettings, WiserItemModel conceptOrder, List<WiserItemModel> conceptOrderLines, bool forMerchantMail = false, bool forAttachment = false)
+        {
+            var userEmailAddress = "";
+
+            var linkedUsers = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, reverse: true);
+
+            ulong templateItemId;
+            string templatePropertyName;
+            if (forAttachment)
+            {
+                templatePropertyName = Constants.StatusUpdateMailAttachmentProperty;
+                templateItemId = orderProcessSettings.StatusUpdateMailAttachmentTemplateId;
+            }
+            else if (forMerchantMail)
+            {
+                templatePropertyName = Constants.StatusUpdateMailWebShopProperty;
+                templateItemId = orderProcessSettings.StatusUpdateMailWebShopTemplateId;
+            }
+            else
+            {
+                templatePropertyName = Constants.StatusUpdateMailToConsumerProperty;
+                templateItemId = orderProcessSettings.StatusUpdateMailTemplateId;
+            }
+            
+            if (!String.IsNullOrWhiteSpace(conceptOrder.GetDetailValue(templatePropertyName)) && UInt64.TryParse(conceptOrder.GetDetailValue(templatePropertyName), out var idFromOrder) && idFromOrder > 0)
+            {
+                templateItemId = idFromOrder;
+            }
+
+            if (templateItemId == 0)
+            {
+                return null;
+            }
+
+            var languageCode = conceptOrder.GetDetailValue(Constants.LanguageCodeProperty);
+            var user = await accountsService.GetUserDataFromCookieAsync();
+            var templateItem = await wiserItemsService.GetItemDetailsAsync(templateItemId, languageCode: languageCode, userId: user.UserId) ?? await wiserItemsService.GetItemDetailsAsync(templateItemId, userId: user.UserId);
+
+            var templateContent = templateItem.GetDetailValue(Constants.MailTemplateBodyProperty);
+            var templateSubject = templateItem.GetDetailValue(Constants.MailTemplateSubjectProperty);
+            var merchantEmailAddress = templateItem.GetDetailValue(Constants.MailTemplateToAddressProperty);
+            var bcc = templateItem.GetDetailValue(Constants.MailTemplateBccProperty);
+            var replyToAddress = templateItem.GetDetailValue(Constants.MailTemplateReplyToAddressProperty);
+            var replyToName = templateItem.GetDetailValue(Constants.MailTemplateReplyToNameProperty);
+            var senderAddress = templateItem.GetDetailValue(Constants.MailTemplateSenderEmailProperty);
+            var senderName = templateItem.GetDetailValue(Constants.MailTemplateSenderNameProperty);
+
+            var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+
+            // Do subject replacements.
+            templateSubject = await shoppingBasketsService.ReplaceBasketInTemplateAsync(conceptOrder, conceptOrderLines, basketSettings, templateSubject, isForConfirmationEmail: true);
+
+            // Do basket replacements.
+            if (linkedUsers.Count > 0)
+            {
+                templateContent = await shoppingBasketsService.ReplaceBasketInTemplateAsync(conceptOrder, conceptOrderLines, basketSettings, templateContent, userDetails: linkedUsers.Last().GetSortedList(), isForConfirmationEmail: true);
+                if (linkedUsers.Last().ContainsDetail(orderProcessSettings.EmailAddressProperty))
+                {
+                    userEmailAddress = linkedUsers.Last().GetDetailValue(orderProcessSettings.EmailAddressProperty);
+                }
+            }
+            else
+            {
+                templateContent = await shoppingBasketsService.ReplaceBasketInTemplateAsync(conceptOrder, conceptOrderLines, basketSettings, templateContent, isForConfirmationEmail: true);
+            }
+
+            //get customer basket email instead of the potentially linked user email address
+            if (!String.IsNullOrWhiteSpace(orderProcessSettings.EmailAddressProperty) && !String.IsNullOrWhiteSpace(conceptOrder.GetDetailValue(orderProcessSettings.EmailAddressProperty)))
+            {
+                userEmailAddress = conceptOrder.GetDetailValue(orderProcessSettings.EmailAddressProperty);
+            }
+
+            return new EmailValues
+            {
+                Content = templateContent,
+                Subject = templateSubject,
+                User = new CommunicationReceiverModel
+                {
+                    Address = userEmailAddress
+                },
+                Merchant = new CommunicationReceiverModel
+                {
+                    Address = merchantEmailAddress
+                },
+                Bcc = bcc,
+                ReplyTo = new CommunicationReceiverModel
+                {
+                    Address = replyToAddress,
+                    DisplayName = replyToName
+                },
+                Sender = new CommunicationReceiverModel
+                {
+                    Address = senderAddress,
+                    DisplayName = senderName
+                }
+            };
         }
     }
 }

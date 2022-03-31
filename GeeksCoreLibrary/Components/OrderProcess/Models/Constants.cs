@@ -31,6 +31,12 @@
 
         public const string PaymentMethodEntityType = "WiserPaymentmethod";
 
+        public const string ConceptOrderEntityType = "conceptorder";
+
+        public const string OrderEntityType = "order";
+
+        public const string OrderLineEntityType = "orderline";
+
         #endregion
 
         #region Link types
@@ -45,7 +51,7 @@
 
         #endregion
 
-        #region Fields
+        #region Fields for order process settings
 
         public const string StepHeaderProperty = "orderprocessstepheader";
 
@@ -56,6 +62,12 @@
         public const string StepPreviousStepLinkTextProperty = "orderprocessstepprevioussteplinktext";
 
         public const string OrderProcessUrlProperty = "orderprocessurl";
+
+        public const string OrderProcessEmailAddressFieldProperty = "orderprocessemailaddressfield";
+
+        public const string OrderProcessStatusUpdateTemplateProperty = "orderprocessstatusupdatetemplate";
+
+        public const string OrderProcessStatusUpdateWebShopTemplateProperty = "orderprocessstatusupdatewebshoptemplate";
 
         public const string GroupTypeProperty = "orderprocessgrouptype";
 
@@ -83,6 +95,14 @@
 
         public const string FieldErrorMessageProperty = "formfielderrormessage";
 
+        public const string PaymentServiceProviderSuccessUrlProperty = "pspsuccessurl";
+
+        public const string PaymentServiceProviderLogAllRequestsProperty = "psplogallrequests";
+
+        public const string PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty = "psporderscanbesetdirectlytofinished";
+
+        public const string PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty = "pspkippaymentwhenorderamountequalszero";
+
         public const string PaymentMethodServiceProviderProperty = "paymentmethodprovider";
 
         public const string PaymentMethodFeeProperty = "paymentmethodfee";
@@ -93,6 +113,10 @@
 
         public const string PaymentMethodProperty = "paymentMethod";
 
+        #endregion
+
+        #region Fields for basket and orders
+        
         public const string PaymentMethodNameProperty = "paymentMethodName";
 
         public const string PaymentProviderProperty = "paymentProvider";
@@ -106,6 +130,40 @@
         public const string LanguageCodeProperty = "LanguageCode";
 
         public const string IsTestOrderProperty = "IsTestOrder";
+
+        public const string PaymentHistoryProperty = "Paymenthistory";
+
+        public const string ShippingMethodProperty = "ShippingMethod";
+
+        public const string StatusUpdateMailAttachmentProperty = "MailAttachmentTemplate";
+
+        public const string StatusUpdateMailWebShopProperty = "MailToWebShopTemplate";
+
+        public const string StatusUpdateMailToConsumerProperty = "MailToConsumerTemplate";
+
+        #endregion
+
+        #region Fields for mail/pdf templates
+
+        public const string MailTemplateBodyProperty = "template";
+
+        public const string MailTemplateSubjectProperty = "subject";
+
+        public const string MailTemplateToAddressProperty = "mailto";
+
+        public const string MailTemplateSenderEmailProperty = "sender_email";
+
+        public const string MailTemplateSenderNameProperty = "sender_name";
+
+        public const string MailTemplateBccProperty = "bcc";
+
+        public const string MailTemplateReplyToAddressProperty = "replyto_email";
+
+        public const string MailTemplateReplyToNameProperty = "replyto_name";
+
+        public const string PdfTemplateFileNameProperty = "file_name";
+
+        public const string PdfTemplateOrientationProperty = "orientation";
 
         #endregion
 
@@ -150,6 +208,14 @@
         #region Template names
 
         public const string InvoiceNumberQueryTemplate = "InvoiceNumberQuery";
+
+        #endregion
+
+        #region Order line types
+
+        public const string OrderLineCouponType = "coupon";
+
+        public const string OrderLineProductType = "product";
 
         #endregion
     }

@@ -100,5 +100,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         {
             return await orderProcessesService.HandlePaymentRequestAsync(service, orderProcessId);
         }
+
+        /// <inheritdoc />
+        public async Task<bool> HandlePaymentStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, string newStatus, bool isSuccessfulStatus, bool convertConceptOrderToOrder = true)
+        {
+            return await orderProcessesService.HandlePaymentStatusUpdateAsync(this, orderProcessSettings, conceptOrders, newStatus, isSuccessfulStatus, convertConceptOrderToOrder);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> HandlePaymentStatusUpdateAsync(IOrderProcessesService service, OrderProcessSettingsModel orderProcessSettings, ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, string newStatus, bool isSuccessfulStatus, bool convertConceptOrderToOrder = true)
+        {
+            return await orderProcessesService.HandlePaymentStatusUpdateAsync(service, orderProcessSettings, conceptOrders, newStatus, isSuccessfulStatus, convertConceptOrderToOrder);
+        }
     }
 }

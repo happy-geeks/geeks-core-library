@@ -30,7 +30,6 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Models;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using Microsoft.Extensions.Options;
-using Constants = GeeksCoreLibrary.Modules.Payments.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
@@ -72,7 +71,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public async Task<bool> HandleStatusUpdateAsync()
         {
-            var paymentServiceProvider = GetPaymentServiceProvider();
+            var paymentServiceProvider = GetPaymentServiceProviderFromRequest();
             var shoppingBaskets = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(GetInvoiceNumber(paymentServiceProvider));
 
             // Create the correct service for the payment service provider using the factory.
@@ -110,10 +109,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <summary>
-        /// Attempts to determine the invoice number by checking for various 
+        /// Attempts to determine the invoice number by checking various request values.
         /// </summary>
         /// <returns></returns>
-        private PaymentServiceProviders GetPaymentServiceProvider()
+        private PaymentServiceProviders GetPaymentServiceProviderFromRequest()
         {
             var paymentServiceProviderName = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "gcl_psp");
             if (String.IsNullOrWhiteSpace(paymentServiceProviderName))
@@ -150,14 +149,332 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync()
+        {
+            if (httpContextAccessor.HttpContext == null || !httpContextAccessor.HttpContext.Request.HasFormContentType)
+            {
+                return new PaymentRequestResult
+                {
+                    Action = PaymentRequestActions.Redirect,
+                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                    Successful = false,
+                    ErrorMessage = "No http context found."
+                };
+            }
+
+            // Retrieve baskets.
+            var checkoutBasketsCookieName = await GetCheckoutObjectValueAsync("CHECKOUT_CheckoutBasketsCookieName");
+            if (String.IsNullOrWhiteSpace(checkoutBasketsCookieName))
+            {
+                checkoutBasketsCookieName = "checkout_baskets";
+            }
+            
+            var settings = await shoppingBasketsService.GetSettingsAsync();
+            var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync(checkoutBasketsCookieName, settings);
+
+            var orderId = 0UL;
+
+            // Determine invoice number by format.
+            var invoiceNumber = "";
+            var invoiceNumberFormat = await objectsService.FindSystemObjectByDomainNameAsync("ORDER_invoicenumberFormat");
+            if (!String.IsNullOrWhiteSpace(invoiceNumberFormat))
+            {
+                invoiceNumber = DateTime.Now.ToString(invoiceNumberFormat);
+            }
+
+            // Get current user.
+            var user = await accountsService.GetUserDataFromCookieAsync();
+            var userDetails = user.UserId > 0 ? await wiserItemsService.GetItemDetailsAsync(user.UserId) : new WiserItemModel();
+
+            var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+
+            var newShoppingBaskets = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
+            foreach (var (main, lines) in shoppingBaskets)
+            {
+                //await shoppingBasketsService.UpdateShoppingBasketWithRequestDataAsync(main, basketSettings);
+                var (conceptOrderId, conceptOrder, conceptOrderLines) = await shoppingBasketsService.MakeConceptOrderFromBasketAsync(main, lines, basketSettings);
+
+                newShoppingBaskets.Add((conceptOrder, conceptOrderLines));
+
+                orderId = conceptOrderId;
+            }
+
+            // Update the baskets list with the newly created concept orders.
+            shoppingBaskets = newShoppingBaskets;
+
+            var paymentMethodData = shoppingBaskets.First().Main.GetDetailValue("paymentmethod");
+            if (String.IsNullOrWhiteSpace(paymentMethodData))
+            {
+                throw new Exception("Cannot handle payment request: No payment method set.");
+            }
+
+            var paymentMethodParts = paymentMethodData.Split('_');
+
+            // The payment method should contain 2 parts, the name of the PSP and the name of the payment method, separated by an underscore. E.g.:
+            // Buckaroo_Ideal
+            if (paymentMethodParts.Length < 2)
+            {
+                return new PaymentRequestResult
+                {
+                    Successful = false,
+                    Action = PaymentRequestActions.Redirect,
+                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                    ErrorMessage = $"Invalid payment method '{paymentMethodData}'"
+                };
+            }
+
+            // Check if the PSP name is available in the PSP enum.
+            // Support for legacy names (aka the JCL names) is available through a helper function.
+            if (!Enum.TryParse(paymentMethodParts[0], true, out PaymentServiceProviders paymentServiceProvider))
+            {
+                // Maybe an old legacy name is used (like "BUCK" instead of "Buckaroo"). Check that here.
+                paymentServiceProvider = LegacyMappingsHelper.GetPaymentServiceProviderByLegacyName(paymentMethodParts[0]);
+
+                if (paymentServiceProvider == PaymentServiceProviders.Unknown)
+                {
+                    logger.LogDebug($"PaymentService: Unknown payment service provider name: {paymentMethodParts[0]}");
+
+                    // Not a supported PSP; return user to the error page.
+                    return new PaymentRequestResult
+                    {
+                        Successful = false,
+                        Action = PaymentRequestActions.Redirect,
+                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                        ErrorMessage = "Unknown PSP"
+                    };
+                }
+            }
+
+            if (!Enum.TryParse(paymentMethodParts[1], true, out PaymentMethods paymentMethod))
+            {
+                paymentMethod = LegacyMappingsHelper.GetPaymentMethodByLegacyName(paymentMethodParts[1]);
+
+                if (paymentMethod == PaymentMethods.Unknown)
+                {
+                    logger.LogDebug($"PaymentService: Unknown payment method: {paymentMethodParts[1]}");
+
+                    // Not a supported payment method; return user to the error page.
+                    return new PaymentRequestResult
+                    {
+                        Successful = false,
+                        Action = PaymentRequestActions.Redirect,
+                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                        ErrorMessage = "Unknown payment method"
+                    };
+                }
+            }
+
+            // Update the "paymentmethod" key in the basket so it doesn't use the legacy type anymore.
+            foreach (var (main, lines) in shoppingBaskets)
+            {
+                main.SetDetail("paymentmethod", $"{paymentServiceProvider:G}_{paymentMethod:G}");
+                await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
+            }
+
+            var paymentMethodsQuery = await objectsService.FindSystemObjectByDomainNameAsync("PSP_paymentMethodQuery");
+            var paymentMethodCheckWithQuery = await objectsService.FindSystemObjectByDomainNameAsync("PSP_paymentMethodCheckWithQuery");
+            var userPaymentAllowed = false;
+
+            if (!String.IsNullOrWhiteSpace(paymentMethodsQuery) && paymentMethodCheckWithQuery.InList("true", "1"))
+            {
+                paymentMethodsQuery = await stringReplacementsService.DoAllReplacementsAsync(paymentMethodsQuery, removeUnknownVariables: false, forQuery: true);
+
+                // Retrieve total amount and replace it inside the query template.
+                var totalPrice = 0M;
+                foreach (var (main, lines) in shoppingBaskets)
+                {
+                    totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings);
+                }
+
+                paymentMethodsQuery = paymentMethodsQuery.Replace("{totalAmountOrder}", totalPrice.ToString(CultureInfo.InvariantCulture));
+
+                var getPaymentMethodsResult = await databaseConnection.GetAsync(paymentMethodsQuery);
+                var containsAllowedColumn = getPaymentMethodsResult.Columns.Contains("isAllowedToPay");
+
+                // No result means the user is now allowed to pay.
+                if (getPaymentMethodsResult.Rows.Count > 0)
+                {
+                    foreach (DataRow paymentMethodDataRow in getPaymentMethodsResult.Rows)
+                    {
+                        if (!paymentMethodDataRow.Field<string>("paymentmethod").Equals(paymentMethodData, StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        userPaymentAllowed = !containsAllowedColumn || Convert.ToBoolean(paymentMethodDataRow["isAllowedToPay"]);
+                    }
+                }
+
+                if (!userPaymentAllowed)
+                {
+                    return new PaymentRequestResult
+                    {
+                        Successful = false,
+                        Action = PaymentRequestActions.Redirect,
+                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                        ErrorMessage = "This user is not allowed to pay"
+                    };
+                }
+            }
+
+            // TODO: Add support for pre-made orders.
+
+            var invoiceNumberQuery = await objectsService.FindSystemObjectByDomainNameAsync("ORDER_invoicenumberQuery");
+            if (!String.IsNullOrWhiteSpace(invoiceNumberQuery))
+            {
+                invoiceNumberQuery = invoiceNumberQuery.Replace("{oid}", orderId.ToString());
+                var getInvoiceNumberResult = await databaseConnection.GetAsync(invoiceNumberQuery);
+                if (getInvoiceNumberResult.Rows.Count > 0)
+                {
+                    invoiceNumber = Convert.ToString(getInvoiceNumberResult.Rows[0][0]);
+                }
+            }
+
+            if (String.IsNullOrWhiteSpace(invoiceNumber))
+            {
+                invoiceNumber = orderId.ToString();
+            }
+
+            var uniquePaymentNumberWithoutDate = (await GetCheckoutObjectValueAsync("CHECKOUT_UniquePaymentNumberWithoutDate")).Equals("1");
+            var uniquePaymentNumber = uniquePaymentNumberWithoutDate ? invoiceNumber : $"{invoiceNumber}-{DateTime.Now:yyyyMMddHHmmss}";
+
+            foreach (var (main, lines) in shoppingBaskets)
+            {
+                main.SetDetail("UniquePaymentNumber", uniquePaymentNumber);
+
+                var invoiceNumberPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_InvoicenumberPropertyName");
+                if (!String.IsNullOrWhiteSpace(invoiceNumberPropertyName))
+                {
+                    main.SetDetail(invoiceNumberPropertyName, invoiceNumber);
+                }
+
+                var languageCodePropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_LanguageCodePropertyName", "languagecode");
+                if (!String.IsNullOrWhiteSpace(languageCodePropertyName))
+                {
+                    main.SetDetail(languageCodePropertyName, languagesService?.CurrentLanguageCode ?? "");
+                }
+
+                var pspPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_PspPropertyName", "psp");
+                main.SetDetail(pspPropertyName, paymentServiceProvider.ToString("G"));
+                await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
+            }
+
+            var setOrderToFinished = false;
+
+            var paymentMethodsDirectToFinished = (await objectsService.FindSystemObjectByDomainNameAsync("PSP_paymentMethodsDirectToFinished")).Split(',', StringSplitOptions.RemoveEmptyEntries);
+            if (paymentMethodsDirectToFinished.Length > 0 && (paymentMethodsDirectToFinished.Contains(paymentMethod.ToString("G"), StringComparer.OrdinalIgnoreCase) || paymentMethodsDirectToFinished.Contains(paymentMethod.ToString("D"), StringComparer.Ordinal)))
+            {
+                setOrderToFinished = true;
+            }
+
+            // Check if the order is a test order.
+            var isTestOrderPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_isTestOrderPropertyName", "istestorder");
+            var isTestOrder = gclSettings.Environment.InList(Environments.Test, Environments.Development);
+            var convertConceptOrderToOrder = false;
+
+            foreach (var (main, lines) in shoppingBaskets)
+            {
+                main.SetDetail(isTestOrderPropertyName, isTestOrder.ToString());
+
+                if (setOrderToFinished)
+                {
+                    if (paymentServiceProvider == PaymentServiceProviders.NoPsp)
+                    {
+                        convertConceptOrderToOrder = true;
+                    }
+                }
+                else
+                {
+                    await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
+                }
+            }
+
+            // TODO: Add one-click checkout functionality.
+
+            // Increment use count of redeemed coupons.
+            foreach (var (main, lines) in shoppingBaskets)
+            {
+                foreach (var basketLine in shoppingBasketsService.GetLines(lines, "coupon"))
+                {
+                    var couponItemId = basketLine.GetDetailValue<ulong>("connecteditemid");
+                    if (couponItemId == 0)
+                    {
+                        continue;
+                    }
+
+                    var couponItem = await wiserItemsService.GetItemDetailsAsync(couponItemId);
+                    if (couponItem is not { Id: > 0 })
+                    {
+                        continue;
+                    }
+
+                    var totalBasketPrice = await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, lineType: "product");
+                    await shoppingBasketsService.UseCouponAsync(couponItem, totalBasketPrice);
+                }
+            }
+
+            // TODO: Call "TransactionBeforeOut" site function.
+
+            var skipPaymentWhenOrderAmountEqualsZero = (await objectsService.FindSystemObjectByDomainNameAsync("PSP_skipPaymentWhenOrderAmountEqualsZero")).InList("1", "true");
+            if (skipPaymentWhenOrderAmountEqualsZero)
+            {
+                var totalPrice = 0M;
+                foreach (var (main, lines) in shoppingBaskets)
+                {
+                    totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings);
+                }
+
+                if (totalPrice == 0M)
+                {
+                    if (convertConceptOrderToOrder)
+                    {
+                        foreach (var (main, _) in shoppingBaskets)
+                        {
+                            await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
+                            // TODO: Call "TransactionFinished" site function.
+                        }
+                    }
+
+                    return new PaymentRequestResult
+                    {
+                        Successful = true,
+                        Action = PaymentRequestActions.Redirect,
+                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_successURL")
+                    };
+                }
+            }
+
+            // Get the correct service based on name.
+            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentServiceProvider);
+            paymentServiceProviderService.LogPaymentActions = (await objectsService.FindSystemObjectByDomainNameAsync("log_all_psp_requests")).Equals("true");
+
+            if (setOrderToFinished)
+            {
+                await ProcessStatusUpdateAsync(shoppingBaskets, "Success", true, convertConceptOrderToOrder);
+            }
+
+            return await paymentServiceProviderService.HandlePaymentRequestAsync(shoppingBaskets, userDetails, paymentMethod, invoiceNumber);
+        }
+
+        /// <inheritdoc />
         public async Task<bool> ProcessStatusUpdateAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, string newStatus, bool isSuccessfulStatus, bool convertConceptOrderToOrder = true)
         {
             var mailsToSendToUser = new List<SingleCommunicationModel>();
             var mailsToSendToMerchant = new List<SingleCommunicationModel>();
             var mailAttachment = await objectsService.FindSystemObjectByDomainNameAsync("PSP_mailAttachment");
-            var paymentHistoryPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_PaymentHistoryPropertyName", "paymenthistory");
+            var paymentHistoryPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_PaymentHistoryPropertyName", "paymenthistory");
+
+            //string invoiceNumber;
+
+            //if (!String.IsNullOrWhiteSpace(shoppingBaskets.First().Main.GetDetailValue("UniquePaymentNumber")))
+            //{
+            //    invoiceNumber = shoppingBaskets.First().Main.GetDetailValue("UniquePaymentNumber");
+            //}
+
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+
             var orderEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderEntityType", "order");
+            //var orderLineEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderLineEntityType", "orderline");
 
             var emailContent = "";
             var emailSubject = "";
@@ -308,12 +625,12 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
         private async Task<EmailValues> GetMailValuesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, bool forMerchantMail = false, bool forAttachment = false)
         {
-            var mailBodyPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_MailBodyPropertyName", "template");
-            var mailSubjectPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_MailSubjectPropertyName", "subject");
-            var mailToPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_MailToPropertyName", "mailto");
-            var emailAddressBasketPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_EmailAddressBasketPropertyName");
-            var languageCodePropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_LanguageCodePropertyName", "languagecode");
-            var emailAddressPropertyName = await shoppingBasketsService.GetCheckoutObjectValueAsync("CHECKOUT_EmailAddressPropertyName", "emailaddress");
+            var mailBodyPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailBodyPropertyName", "template");
+            var mailSubjectPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailSubjectPropertyName", "subject");
+            var mailToPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailToPropertyName", "mailto");
+            var emailAddressBasketPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_EmailAddressBasketPropertyName");
+            var languageCodePropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_LanguageCodePropertyName", "languagecode");
+            var emailAddressPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_EmailAddressPropertyName", "emailaddress");
             var getMailToBasedOnDeliveryMethod = (await objectsService.FindSystemObjectByDomainNameAsync("GetMailAdresBasedOnDeliveryMethod", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
 
             var userEmailAddress = "";
@@ -408,6 +725,23 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 User = new CommunicationReceiverModel { Address = userEmailAddress },
                 Merchant = new CommunicationReceiverModel { Address = merchantEmailAddress }
             };
+        }
+
+        /// <summary>
+        /// Retrieves an object by key. If the result is empty, it will try again by prepending "W2" to the key name to check if a legacy key is set.
+        /// </summary>
+        /// <param name="propertyName"></param>
+        /// <param name="defaultResult"></param>
+        /// <returns></returns>
+        private async Task<string> GetCheckoutObjectValueAsync(string propertyName, string defaultResult = "")
+        {
+            var result = await objectsService.FindSystemObjectByDomainNameAsync(propertyName);
+            if (String.IsNullOrEmpty(result))
+            {
+                result = await objectsService.FindSystemObjectByDomainNameAsync($"W2{propertyName}");
+            }
+
+            return String.IsNullOrEmpty(result) ? defaultResult : result;
         }
     }
 }

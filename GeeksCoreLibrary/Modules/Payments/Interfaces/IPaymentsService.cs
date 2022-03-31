@@ -8,6 +8,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Interfaces
 {
     public interface IPaymentsService
     {
+        Task<PaymentRequestResult> HandlePaymentRequestAsync();
 
         Task<bool> HandleStatusUpdateAsync();
 

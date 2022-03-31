@@ -109,7 +109,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
                 Id = 1,
                 SettingsJson = JsonConvert.SerializeObject(orderProcessSettings)
             };
-            var component = await viewComponentHelper.InvokeAsync("OrderProcess", new { dynamicContent, callMethod = "", forcedComponentMode = (int?)WebPage.WebPage.ComponentModes.Render });
+            var component = await viewComponentHelper.InvokeAsync("OrderProcess", new { dynamicContent, callMethod = "", forcedComponentMode = (int?)OrderProcess.ComponentModes.Checkout });
             await using (var stringWriter = new StringWriter())
             {
                 component.WriteTo(stringWriter, HtmlEncoder.Default);

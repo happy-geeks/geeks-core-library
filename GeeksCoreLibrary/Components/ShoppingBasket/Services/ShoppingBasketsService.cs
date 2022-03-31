@@ -67,12 +67,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 return result;
             }
 
-            var orderEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderEntityType", "order");
-            var orderLineEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderLineEntityType", "orderline");
-
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("uniquePaymentNumber", uniquePaymentNumber);
-            databaseConnection.AddParameter("orderEntityType", orderEntityType);
+            databaseConnection.AddParameter("orderEntityType", OrderProcess.Models.Constants.OrderEntityType);
             var getBasketIdsResult = await databaseConnection.GetAsync($@"
                 SELECT `order`.id
                 FROM `{WiserTableNames.WiserItem}` AS `order`
@@ -92,13 +89,13 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     continue;
                 }
 
-                var linkTypeOrderLineToOrder = await wiserItemsService.GetLinkTypeAsync(orderEntityType, orderLineEntityType);
+                var linkTypeOrderLineToOrder = await wiserItemsService.GetLinkTypeAsync(OrderProcess.Models.Constants.OrderEntityType, OrderProcess.Models.Constants.OrderLineEntityType);
                 if (linkTypeOrderLineToOrder == 0)
                 {
                     linkTypeOrderLineToOrder = 5002;
                 }
 
-                result.Add((await wiserItemsService.GetItemDetailsAsync(itemId), await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkTypeOrderLineToOrder, orderLineEntityType, itemIdEntityType: orderEntityType)));
+                result.Add((await wiserItemsService.GetItemDetailsAsync(itemId), await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkTypeOrderLineToOrder, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType)));
             }
 
             return result;
@@ -498,8 +495,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
 
             // Write basket item ID to cookie.
-            var orderEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderEntityType", "order");
-            if (!shoppingBasket.EntityType.InList(StringComparer.OrdinalIgnoreCase, "conceptorder", orderEntityType))
+            if (!shoppingBasket.EntityType.InList(StringComparer.OrdinalIgnoreCase, OrderProcess.Models.Constants.ConceptOrderEntityType, OrderProcess.Models.Constants.OrderEntityType))
             {
                 WriteEncryptedIdToCookie(shoppingBasket, settings);
             }
@@ -514,11 +510,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             var user = await accountsService.GetUserDataFromCookieAsync();
             var userId = user.MainUserId;
-            var orderEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderEntityType", "order");
             var createItemLinkBetweenBasketLineAndProduct = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_AlsoCreateItemLinkBetweenBasketLineAndProduct")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            var orderLineEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderLineEntityType", "orderline");
-            var linkTypeOrderToUser = await wiserItemsService.GetLinkTypeAsync(user.EntityType, orderEntityType);
-            var linkTypeOrderLineToOrder = await wiserItemsService.GetLinkTypeAsync(orderEntityType, orderLineEntityType);
+            var linkTypeOrderToUser = await wiserItemsService.GetLinkTypeAsync(user.EntityType, OrderProcess.Models.Constants.OrderEntityType);
+            var linkTypeOrderLineToOrder = await wiserItemsService.GetLinkTypeAsync(OrderProcess.Models.Constants.OrderEntityType, OrderProcess.Models.Constants.OrderLineEntityType);
             var newLines = new List<WiserItemModel>();
 
             if (linkTypeOrderToUser == 0)
@@ -550,7 +544,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     var getEntityTypeResult = await databaseConnection.GetAsync($"SELECT entity_type FROM `{WiserTableNames.WiserItem}` WHERE id = ?userId", true);
                     if (getEntityTypeResult.Rows.Count > 0)
                     {
-                        linkTypeOrderToUser = await wiserItemsService.GetLinkTypeAsync(getEntityTypeResult.Rows[0].Field<string>("entity_type"), orderEntityType);
+                        linkTypeOrderToUser = await wiserItemsService.GetLinkTypeAsync(getEntityTypeResult.Rows[0].Field<string>("entity_type"), OrderProcess.Models.Constants.OrderEntityType);
                         if (linkTypeOrderToUser == 0)
                         {
                             linkTypeOrderToUser = 5010;
@@ -560,7 +554,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
 
             // Make and save concept order.
-            var conceptOrder = new WiserItemModel { EntityType = "conceptorder", Details = new List<WiserItemDetailModel>(shoppingBasket.Details) };
+            var conceptOrder = new WiserItemModel { EntityType = OrderProcess.Models.Constants.ConceptOrderEntityType, Details = new List<WiserItemDetailModel>(shoppingBasket.Details) };
 
             // Save all fields, also the readonly fields, so actual prices etc. will be saved to the database.
             foreach (var detail in conceptOrder.Details)
@@ -585,7 +579,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 var conceptLine = new WiserItemModel
                 {
-                    EntityType = orderLineEntityType,
+                    EntityType = OrderProcess.Models.Constants.OrderLineEntityType,
                     Details = line.Details,
                     Title = line.Title
                 };
@@ -683,10 +677,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             try
             {
                 await databaseConnection.BeginTransactionAsync();
-
-                var orderEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderEntityType", "order");
-                var orderLineEntityType = await objectsService.FindSystemObjectByDomainNameAsync("orderLineEntityType", "orderline");
-                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, orderEntityType);
+                
+                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.OrderEntityType);
 
                 // Check if there is a AfterCreateConceptOrder query in the templates module and execute this query if present.
                 var afterConvertToOrderQuery = (await templatesService.GetTemplateAsync(0, "AfterConvertToOrder", TemplateTypes.Query)).Content;
@@ -696,8 +688,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
                     var replacementData = new Dictionary<string, object> { { "orderId", conceptOrder.Id } };
 
-                    var orderLineToOrderLinkType = await wiserItemsService.GetLinkTypeAsync(orderEntityType, orderLineEntityType);
-                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, orderLineToOrderLinkType, orderLineEntityType, itemIdEntityType: orderEntityType);
+                    var orderLineToOrderLinkType = await wiserItemsService.GetLinkTypeAsync(OrderProcess.Models.Constants.OrderEntityType, OrderProcess.Models.Constants.OrderLineEntityType);
+                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, orderLineToOrderLinkType, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType);
 
                     query = stringReplacementsService.DoReplacements(query, replacementData, forQuery: true);
                     query = await ReplaceBasketInTemplateAsync(conceptOrder, orderLines, settings, query, forQuery: true);
@@ -1026,7 +1018,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
                                 if (shoppingBasket.EntityType != settings.BasketEntityName)
                                 {
-                                    linkTypeToUse = await wiserItemsService.GetLinkTypeAsync(userEntityType, await objectsService.FindSystemObjectByDomainNameAsync("orderEntityType", "order"));
+                                    linkTypeToUse = await wiserItemsService.GetLinkTypeAsync(userEntityType, OrderProcess.Models.Constants.OrderEntityType);
                                 }
 
                                 userId = (await wiserItemsService.GetLinkedItemIdsAsync(shoppingBasket.Id, linkTypeToUse, reverse: true)).FirstOrDefault();

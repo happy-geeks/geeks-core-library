@@ -166,7 +166,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             {
                 case ComponentModes.Checkout:
                 {
-                    var html = await HandleAutomaticModeAsync();
+                    var html = await HandleCheckoutModeAsync();
                     resultHtml.Append(html);
                     break;
                 }
@@ -185,7 +185,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// Handles the automatic component mode and outputs the HTML for this mode.
         /// </summary>
         /// <returns></returns>
-        private async Task<string> HandleAutomaticModeAsync()
+        private async Task<string> HandleCheckoutModeAsync()
         {
             // Gather some data.
             var httpContext = HttpContext;
