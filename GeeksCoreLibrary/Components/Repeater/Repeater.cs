@@ -34,6 +34,7 @@ namespace GeeksCoreLibrary.Components.Repeater
         private readonly IRepeatersService repeatersService;
         private readonly IFiltersService filtersService;
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IPagesService pagesService;
 
         #region Enums
 
@@ -74,11 +75,12 @@ namespace GeeksCoreLibrary.Components.Repeater
 
         #region Constructor
 
-        public Repeater(ILogger<Repeater> logger, IRepeatersService repeatersService, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IFiltersService filtersService, IHttpContextAccessor httpContextAccessor)
+        public Repeater(ILogger<Repeater> logger, IRepeatersService repeatersService, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IFiltersService filtersService, IHttpContextAccessor httpContextAccessor, IPagesService pagesService)
         {
             this.repeatersService = repeatersService;
             this.filtersService = filtersService;
             this.httpContextAccessor = httpContextAccessor;
+            this.pagesService = pagesService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -227,7 +229,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     var noIndex = Convert.ToBoolean(parsedData.Rows[0].GetValueIfColumnExists("noindex"));
                     var noFollow = Convert.ToBoolean(parsedData.Rows[0].GetValueIfColumnExists("nofollow"));
                     var robots = parsedData.Rows[0].GetValueIfColumnExists<string>("SEOrobots");
-                    SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
+                    pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
                 }
 
                 if (Settings.GroupingTemplates.Keys.Count == 1)

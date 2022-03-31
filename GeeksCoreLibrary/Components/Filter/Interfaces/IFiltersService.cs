@@ -14,7 +14,7 @@ namespace GeeksCoreLibrary.Components.Filter.Interfaces
         /// <param name="productJoinPart">Join part for join on product-id in aggregation table</param>
         /// <param name="categoryJoinPart">Join part for join on category-id in aggregation table</param>
         /// <returns>A <see cref="string"/> containing the joins.</returns>
-        Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart= "");
+        Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart= "", string forActiveFilter = "");
 
         /// <summary>
         /// Function returns the filters keys from the GCLFilters parameter, which is used for search engine friendly URLs in combination with dynamic filters
