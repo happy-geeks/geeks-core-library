@@ -145,6 +145,15 @@ namespace GeeksCoreLibrary.Components.WebForm.Models
         )]
         public bool SaveFormInDatabase { get; set; }
 
+        [CmsProperty(
+            PrettyName = "reCAPTCHA v3 Score threshold",
+            Description = "The minimum score a user needs to be given by reCAPTCHA v3 to be allowed to submit this form. Scores can be between 0.0 and 1.0, where 0.0 means it's most likely a bot and 1.0 means it's most likely a good interaction.",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Validation,
+            DisplayOrder = 10
+        )]
+        public decimal ReCaptchaV3ScoreThreshold { get; set; }
+
         #endregion
     }
 }

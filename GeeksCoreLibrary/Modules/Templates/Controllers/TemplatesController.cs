@@ -8,8 +8,10 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Text;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 
@@ -76,6 +78,21 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 case TemplateTypes.Html:
                     // Execute the pre load query before any replacements are being done and before any dynamic components are handled.
                     await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(contentTemplate);
+
+                    // Set SEO information.
+                    if (HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
+                    {
+                        var dataRow = (DataRow)HttpContext.Items[Constants.TemplatePreLoadQueryResultKey];
+                        var seoTitle = dataRow.GetValueIfColumnExists<string>("SEOtitle");
+                        var seoDescription = dataRow.GetValueIfColumnExists<string>("SEOdescription");
+                        var seoKeyWords = dataRow.GetValueIfColumnExists<string>("SEOkeywords");
+                        var seoCanonical = dataRow.GetValueIfColumnExists<string>("SEOcanonical");
+                        var noIndex = Convert.ToBoolean(dataRow.GetValueIfColumnExists("noindex"));
+                        var noFollow = Convert.ToBoolean(dataRow.GetValueIfColumnExists("nofollow"));
+                        var robots = dataRow.GetValueIfColumnExists<string>("SEOrobots");
+                        pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
+                    }
+
                     break;
                 case TemplateTypes.Query:
                     context.Response.ContentType = "application/json";
@@ -146,16 +163,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             {
                 throw new ArgumentException("No template specified.");
             }
-            
+
             var result = (QueryTemplate)await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Query);
             if (result.Id <= 0)
             {
                 return NotFound();
             }
 
-            databaseConnection.ClearParameters();
             var jsonResult = await templatesService.GetJsonResponseFromQueryAsync(result);
-            
+
             return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
         }
 
@@ -214,7 +230,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 ? Content("The specified partial template can't be found on the current page", "text/html")
                 : Content(partialTemplateContent, "text/html");
         }
-        
+
         [HttpGet, Route("template/{templateId:int}/")]
         public async Task<TemplateDataModel> TemplateData(int templateId)
         {

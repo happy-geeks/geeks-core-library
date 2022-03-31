@@ -7,8 +7,6 @@ namespace GeeksCoreLibrary.Core.Cms
     {
         #region Constants
         
-        public const string PageMetaDataFromComponentKey = "PageMetaDataFromComponent";
-
         public const string ExternalJavaScriptLibrariesFromComponentKey = "ExternalJavaScriptLibrariesFromComponent";
 
         #endregion

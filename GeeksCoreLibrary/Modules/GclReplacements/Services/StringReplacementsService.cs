@@ -103,53 +103,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             input = await accountsService.DoAccountReplacementsAsync(input, forQuery);
 
-            // Translations.
-            if (input.Contains("[T{"))
-            {
-                dataDictionary.Clear();
-
-                r = new Regex(@"\[T{([^\}]+)}]");
-                foreach (Match m in r.Matches(input))
-                {
-                    var value = m.Groups[1].Value;
-                    if (dataDictionary.ContainsKey(value))
-                    {
-                        continue;
-                    }
-
-                    dataDictionary.Add(value, await languagesService.GetTranslationAsync(value));
-                }
-
-                input = DoReplacements(input, dataDictionary, "[T{", "}]", forQuery: forQuery);
-            }
-
-            // CMS objects.
-            if (input.Contains("[O{"))
-            {
-                dataDictionary.Clear();
-
-                // Try to get the type number by host name.
-                if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext)), out var objectsTypeNumber) || objectsTypeNumber == 0)
-                {
-                    // Revert to -100 if the parsing failed or if it returned 0. This is a special value that will look through all objects, ignoring the type number completely.
-                    objectsTypeNumber = -100;
-                }
-
-                r = new Regex(@"\[O{([^\}]+)}]");
-                foreach (Match m in r.Matches(input))
-                {
-                    var value = m.Groups[1].Value;
-                    if (dataDictionary.ContainsKey(value))
-                    {
-                        continue;
-                    }
-
-                    dataDictionary.Add(value, await objectsService.GetObjectValueAsync(value, objectsTypeNumber));
-                }
-
-                input = DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
-            }
-
             // Do replacements multiple times to handle double replacements such as "{price:Currency(true,{culture})}".
             var counter = 0;
             while (input.Contains("{") && counter < 3)
@@ -163,13 +116,58 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 }
 
                 // Request replacements.
-                if (!handleRequest || httpContextAccessor.HttpContext == null)
+                if (handleRequest && httpContextAccessor.HttpContext != null)
                 {
-                    continue;
+                    input = DoHttpRequestReplacements(input, forQuery);
+                    input = DoSessionReplacements(input, forQuery);
                 }
 
-                input = DoHttpRequestReplacements(input, forQuery);
-                input = DoSessionReplacements(input, forQuery);
+                // Translations.
+                if (input.Contains("[T{"))
+                {
+                    dataDictionary.Clear();
+
+                    r = new Regex(@"\[T{([^\}]+)}]");
+                    foreach (Match m in r.Matches(input))
+                    {
+                        var value = m.Groups[1].Value;
+                        if (dataDictionary.ContainsKey(value))
+                        {
+                            continue;
+                        }
+
+                        dataDictionary.Add(value, await languagesService.GetTranslationAsync(value));
+                    }
+
+                    input = DoReplacements(input, dataDictionary, "[T{", "}]", forQuery: forQuery);
+                }
+
+                // CMS objects.
+                if (input.Contains("[O{") && httpContextAccessor.HttpContext != null)
+                {
+                    dataDictionary.Clear();
+
+                    // Try to get the type number by host name.
+                    if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext)), out var objectsTypeNumber) || objectsTypeNumber == 0)
+                    {
+                        // Revert to -100 if the parsing failed or if it returned 0. This is a special value that will look through all objects, ignoring the type number completely.
+                        objectsTypeNumber = -100;
+                    }
+
+                    r = new Regex(@"\[O{([^\}]+)}]");
+                    foreach (Match m in r.Matches(input))
+                    {
+                        var value = m.Groups[1].Value;
+                        if (dataDictionary.ContainsKey(value))
+                        {
+                            continue;
+                        }
+
+                        dataDictionary.Add(value, await objectsService.GetObjectValueAsync(value, objectsTypeNumber));
+                    }
+
+                    input = DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
+                }
             }
 
             // Whether template variables that were not replaced should be removed.
@@ -213,7 +211,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             // Cookies.
             input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery);
-            
+
             // Request cache.
             input = DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery);
 
@@ -377,7 +375,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     // Simply replace the variable if there are no formatters found.
                     if (forQuery)
                     {
-                        var parameterName = DatabaseHelpers.CreateValidParameterName(variable.MatchString);
+                        var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.MatchString)}";
                         databaseConnection.AddParameter(parameterName, value);
                         value = $"?{parameterName}";
 
@@ -759,9 +757,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 variable.Formatters.AddRange(formatters.Split('|', StringSplitOptions.RemoveEmptyEntries));
 
                 // Add the default formatter, unless the raw formatter has been used.
-                if (!String.IsNullOrWhiteSpace(defaultFormatter) 
-                    && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase)) 
-                    && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase)) 
+                if (!String.IsNullOrWhiteSpace(defaultFormatter)
+                    && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase))
+                    && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase))
                     && !variable.Formatters.Any(f => String.Equals(f, "CurrencySup", StringComparison.OrdinalIgnoreCase)))
                 {
                     variable.Formatters.Add(defaultFormatter);

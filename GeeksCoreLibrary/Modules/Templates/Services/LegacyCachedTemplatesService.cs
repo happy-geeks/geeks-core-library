@@ -311,9 +311,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND d.itemid = 0
 
                         GROUP BY id";
-                        
 
-            databaseConnection.ClearParameters();
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {

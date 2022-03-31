@@ -5,11 +5,11 @@
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.3.3</Version>
+    <Version>1.3.4</Version>
     <Company>Happy Geeks B.V.</Company>
     <Description>Our base/core library that we use for most of our other projects.</Description>
-    <AssemblyVersion>1.3.3.0</AssemblyVersion>
-    <FileVersion>1.3.3.0</FileVersion>
+    <AssemblyVersion>1.3.4.0</AssemblyVersion>
+    <FileVersion>1.3.4.0</FileVersion>
     <PackageDescription>Geeks Core Library</PackageDescription>
     <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
@@ -19,8 +19,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Core\Cms\Models\" />
-    <Folder Include="Core\Cms\Services\" />
+    <Compile Remove="Core\Cms\Services\**" />
+    <Content Remove="Core\Cms\Services\**" />
+    <EmbeddedResource Remove="Core\Cms\Services\**" />
+    <None Remove="Core\Cms\Services\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Modules\Databases\Controllers\" />
     <Folder Include="Modules\PostalServices\PostNL\Models\" />
   </ItemGroup>

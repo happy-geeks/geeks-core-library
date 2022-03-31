@@ -29,6 +29,7 @@ namespace GeeksCoreLibrary.Components.WebPage
         private readonly GclSettings gclSettings;
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IPagesService pagesService;
 
         #region Enums
 
@@ -41,11 +42,12 @@ namespace GeeksCoreLibrary.Components.WebPage
 
         #region Constructor
 
-        public WebPage(IOptions<GclSettings> gclSettings, ILogger<WebPage> logger, IStringReplacementsService stringReplacementsService, ILanguagesService languagesService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor)
+        public WebPage(IOptions<GclSettings> gclSettings, ILogger<WebPage> logger, IStringReplacementsService stringReplacementsService, ILanguagesService languagesService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor, IPagesService pagesService)
         {
             this.gclSettings = gclSettings.Value;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
+            this.pagesService = pagesService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -156,7 +158,7 @@ namespace GeeksCoreLibrary.Components.WebPage
             var noIndex = Convert.ToBoolean(getWebPageResult.Rows[0].GetValueIfColumnExists("noindex"));
             var noFollow = Convert.ToBoolean(getWebPageResult.Rows[0].GetValueIfColumnExists<string>("nofollow"));
             var robots = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("robots");
-            SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
+            pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
 
             return html;
         }
@@ -225,11 +227,13 @@ namespace GeeksCoreLibrary.Components.WebPage
                 {
                     var itemLinkAlias = $"searchUpLink{i}";
                     var itemAlias = $"searchUpItem{i}";
+                    var titleAlias = $"item{i}Title";
                     var seoTitleAlias = $"item{i}SeoName";
                     var previousLink = i == 1 ? "webPage.id" : $"searchUpLink{i - 1}.destination_item_id";
 
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS `{itemLinkAlias}` ON `{itemLinkAlias}`.item_id = {previousLink}");
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItem}` AS `{itemAlias}` ON `{itemAlias}`.id = `{itemLinkAlias}`.destination_item_id");
+                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{titleAlias}` ON `{titleAlias}`.item_id = `{itemAlias}`.id AND `{titleAlias}`.`key` = 'title'");
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{seoTitleAlias}` ON `{seoTitleAlias}`.item_id = `{itemAlias}`.id AND `{seoTitleAlias}`.`key` = 'title_seo'");
                 }
             }
@@ -243,14 +247,14 @@ namespace GeeksCoreLibrary.Components.WebPage
             }
             else if (!String.IsNullOrWhiteSpace(Settings.PageName))
             {
-                query.Append(" AND webPageSeoName.`value` = ?pageName");
+                query.Append(" AND IFNULL(webPageSeoName.`value`, webPageTitle.`value`) = ?pageName");
 
                 if (!String.IsNullOrWhiteSpace(pathMustContain) && Settings.SearchNumberOfLevels > 0)
                 {
                     query.Append(" AND CONCAT_WS('/'");
                     for (var i = Settings.SearchNumberOfLevels; i > 0; i--)
                     {
-                        query.Append($", `item{i}SeoName`.`value`");
+                        query.Append($", IFNULL(`item{i}SeoName`.`value`, `item{i}SeoName`.`value`)");
                     }
                     query.Append(") LIKE CONCAT('%', ?path, '%')");
                 }
