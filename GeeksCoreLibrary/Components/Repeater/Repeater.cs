@@ -1,8 +1,4 @@
-﻿using GeeksCoreLibrary.Components.Repeater.Models;
-using GeeksCoreLibrary.Core.Cms;
-using GeeksCoreLibrary.Core.Cms.Attributes;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -12,6 +8,9 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Components.Repeater.Interfaces;
+using GeeksCoreLibrary.Components.Repeater.Models;
+using GeeksCoreLibrary.Core.Cms;
+using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -19,8 +18,9 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
-using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Components.Repeater
 {
@@ -320,9 +320,9 @@ namespace GeeksCoreLibrary.Components.Repeater
                             }
 
                             // Check if the property must be overruled
-                            bool.TryParse(httpContextAccessor.HttpContext.Request.Query["loadUptoPageNumberOverrule"].ToString(), out var loadUptoPageNumberOverrule);
+                            Boolean.TryParse(httpContextAccessor.HttpContext.Request.Query["loadUptoPageNumberOverrule"].ToString(), out var loadUpToPageNumberOverrule);
 
-                            if (Settings.LoadItemsUpToPageNumber && loadUptoPageNumberOverrule)
+                            if (Settings.LoadItemsUpToPageNumber && loadUpToPageNumberOverrule)
                             {
                                 limitClause = $" LIMIT 0, {Settings.ItemsPerPage * pageNumber - bannersForCurrentPage}";
                             }
@@ -461,7 +461,9 @@ namespace GeeksCoreLibrary.Components.Repeater
                 if (index > 0 && (Settings.CreateGroupsOfNItems == 1 || (Settings.CreateGroupsOfNItems > 1 && blocksPlaced % Settings.CreateGroupsOfNItems > 0)))
                 {
                     templateHtml = template.BetweenItemsTemplate;
-                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, data.Rows[0], Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                    templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
+
+                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
                 }
 
                 templateHtml = template.ItemTemplate;
@@ -577,7 +579,10 @@ namespace GeeksCoreLibrary.Components.Repeater
                 {
                     if (index > 0)
                     {
-                        html.Append(templateCollection[currentIdentifier].BetweenItemsTemplate);
+                        templateHtml = templateCollection[currentIdentifier].BetweenItemsTemplate;
+                        templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
+
+                        html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
                     }
 
                     templateHtml = templateCollection[currentIdentifier].ItemTemplate;
