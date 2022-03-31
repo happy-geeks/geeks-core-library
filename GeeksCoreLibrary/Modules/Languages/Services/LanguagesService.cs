@@ -93,7 +93,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             // Check if it should be overriden through a query string.
             if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Request.Query.ContainsKey(Constants.LanguageCodeQueryStringKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey]))
             {
-                CurrentLanguageCode = httpContextAccessor.HttpContext.Request.Headers[Constants.LanguageCodeQueryStringKey];
+                CurrentLanguageCode = httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey];
                 logger.LogDebug($"LanguageCode determined through query string: {CurrentLanguageCode}");
                 return CurrentLanguageCode;
             }
