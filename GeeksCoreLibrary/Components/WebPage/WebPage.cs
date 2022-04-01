@@ -61,7 +61,7 @@ namespace GeeksCoreLibrary.Components.WebPage
         #endregion
 
         #region Rendering
-        
+
         /// <inheritdoc />
         public override async Task<HtmlString> InvokeAsync(DynamicContent dynamicContent, string callMethod, int? forcedComponentMode, Dictionary<string, string> extraData)
         {
@@ -112,7 +112,7 @@ namespace GeeksCoreLibrary.Components.WebPage
                 default:
                     throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'GenerateHtmlAsync'.");
             }
-            
+
             return new HtmlString(resultHtml.ToString());
         }
 
@@ -149,7 +149,7 @@ namespace GeeksCoreLibrary.Components.WebPage
             {
                 return html;
             }
-            
+
             // Add SEO data.
             var seoTitle = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("title");
             var seoDescription = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("metadescription");
@@ -167,6 +167,7 @@ namespace GeeksCoreLibrary.Components.WebPage
 
         #region Handling settings
 
+        /// <inheritdoc />
         public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
         {
             Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<WebPageCmsSettingsModel>(settingsJson);
@@ -178,6 +179,7 @@ namespace GeeksCoreLibrary.Components.WebPage
             HandleDefaultSettingsFromComponentMode();
         }
 
+        /// <inheritdoc />
         public override string GetSettingsJson()
         {
             return Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
@@ -198,7 +200,7 @@ namespace GeeksCoreLibrary.Components.WebPage
             query.AppendLine($"FROM `{WiserTableNames.WiserItem}` AS webPage");
 
             // Web page SEO name.
-            query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageSeoName ON webPageSeoName.item_id = webPage.id AND webPageSeoName.`key` = 'title_seo'");
+            query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageSeoName ON webPageSeoName.item_id = webPage.id AND webPageSeoName.`key` = '{Core.Models.CoreConstants.SeoTitlePropertyName}'");
 
             // Web page HTML.
             query.Append($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageHtml ON webPageHtml.item_id = webPage.id AND webPageHtml.`key` = 'html'");
@@ -234,7 +236,7 @@ namespace GeeksCoreLibrary.Components.WebPage
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS `{itemLinkAlias}` ON `{itemLinkAlias}`.item_id = {previousLink}");
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItem}` AS `{itemAlias}` ON `{itemAlias}`.id = `{itemLinkAlias}`.destination_item_id");
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{titleAlias}` ON `{titleAlias}`.item_id = `{itemAlias}`.id AND `{titleAlias}`.`key` = 'title'");
-                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{seoTitleAlias}` ON `{seoTitleAlias}`.item_id = `{itemAlias}`.id AND `{seoTitleAlias}`.`key` = 'title_seo'");
+                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{seoTitleAlias}` ON `{seoTitleAlias}`.item_id = `{itemAlias}`.id AND `{seoTitleAlias}`.`key` = '{Core.Models.CoreConstants.SeoTitlePropertyName}'");
                 }
             }
 

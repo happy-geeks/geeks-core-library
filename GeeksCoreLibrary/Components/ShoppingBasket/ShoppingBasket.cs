@@ -235,9 +235,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         #endregion
 
         #region Manipulating basket contents (adding/removing/etc.)
-
-
-
+        
         public WiserItemModel GetLine(ulong id)
         {
             if (Lines == null || !Lines.Any())
@@ -312,11 +310,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             }
 
             output = StringReplacementsService.DoReplacements(output, replacementData);
-
-            if (Settings.HandleRequest)
-            {
-
-            }
 
             return output;
         }

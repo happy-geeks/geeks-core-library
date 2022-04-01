@@ -26,6 +26,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using Microsoft.AspNetCore.Http;
 
@@ -54,7 +55,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethods paymentMethod, string invoiceNumber)
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethod, string invoiceNumber)
         {
             // https://github.com/buckaroo-it/BuckarooSdk_DotNet/blob/master/BuckarooSdk.Tests/Services
 
@@ -67,6 +68,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             // Retrieve the website key and API key.
+            // TODO: Retrieve these settings from order process
             var websiteKey = await objectsService.FindSystemObjectByDomainNameAsync("BUCK_merchantid");
             var apiKey = await objectsService.FindSystemObjectByDomainNameAsync("BUCK_secret");
 
@@ -83,44 +85,54 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     Currency = "EUR",
                     AmountDebit = totalPrice,
                     Invoice = invoiceNumber,
-                    PushUrl = await objectsService.FindSystemObjectByDomainNameAsync("PSP_notifyurl"),
-                    Description = await objectsService.FindSystemObjectByDomainNameAsync("PSP_description"),
-                    ReturnUrl = await objectsService.FindSystemObjectByDomainNameAsync("PSP_successURL"),
-                    ReturnUrlCancel = await objectsService.FindSystemObjectByDomainNameAsync("PSP_cancelURL"),
-                    ReturnUrlError = await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL"),
-                    ReturnUrlReject = await objectsService.FindSystemObjectByDomainNameAsync("PSP_rejectURL"),
-                    ContinueOnIncomplete = CheckIfContinueOnIncompleteIsAllowed(shoppingBaskets, paymentMethod) ? ContinueOnIncomplete.RedirectToHTML : ContinueOnIncomplete.No
+                    PushUrl = paymentMethod.PaymentServiceProvider.WebhookUrl,
+                    ReturnUrl = paymentMethod.PaymentServiceProvider.SuccessUrl,
+                    ReturnUrlCancel = paymentMethod.PaymentServiceProvider.FailUrl,
+                    ReturnUrlError = paymentMethod.PaymentServiceProvider.FailUrl,
+                    ReturnUrlReject = paymentMethod.PaymentServiceProvider.FailUrl,
+                    ContinueOnIncomplete = CheckIfContinueOnIncompleteIsAllowed(shoppingBaskets, paymentMethod.ExternalName) ? ContinueOnIncomplete.RedirectToHTML : ContinueOnIncomplete.No
                 });
 
             ConfiguredServiceTransaction serviceTransaction;
-            switch (paymentMethod)
+            switch (paymentMethod.ExternalName.ToUpperInvariant())
             {
-                case PaymentMethods.Ideal:
+                case "IDEAL":
                     serviceTransaction = InitializeIdealPayment(transaction, shoppingBaskets);
                     break;
-                case PaymentMethods.Mastercard:
+                case "MASTERCARD":
                     serviceTransaction = InitializeMasterCardPayment(transaction);
                     break;
-                case PaymentMethods.Visa:
+                case "VISA":
                     serviceTransaction = InitializeVisaPayment(transaction);
                     break;
-                case PaymentMethods.PayPal:
+                case "PAYPAL":
                     serviceTransaction = InitializePayPalPayment(transaction);
                     break;
-                case PaymentMethods.Bancontact:
+                case "BANCONTACT":
                     serviceTransaction = InitializeBancontactPayment(transaction);
                     break;
                 default:
                     return new PaymentRequestResult
                     {
                         Action = PaymentRequestActions.Redirect,
-                        ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                        ActionData = paymentMethod.PaymentServiceProvider.FailUrl,
                         Successful = false,
-                        ErrorMessage = $"Unknown or unsupported payment method '{paymentMethod:G}'"
+                        ErrorMessage = $"Unknown or unsupported payment method '{paymentMethod}'"
                     };
             }
 
             var response = await serviceTransaction.ExecuteAsync();
+
+            if (response?.Status?.Code?.Code == null || response.Status.Code.Code != 190 || String.IsNullOrWhiteSpace(response.RequiredAction?.RedirectURL))
+            {
+                return new PaymentRequestResult
+                {
+                    Successful = false,
+                    Action = PaymentRequestActions.Redirect,
+                    ActionData = paymentMethod.PaymentServiceProvider.FailUrl,
+                    ErrorMessage = response?.Status?.Code?.Description
+                };
+            }
 
             return new PaymentRequestResult
             {
@@ -164,9 +176,9 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             return transaction.Bancontact().Pay(new BancontactPayRequest());
         }
 
-        private bool CheckIfContinueOnIncompleteIsAllowed(IEnumerable<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, PaymentMethods paymentMethod)
+        private bool CheckIfContinueOnIncompleteIsAllowed(IEnumerable<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, string paymentMethod)
         {
-            if (paymentMethod != PaymentMethods.Ideal)
+            if (!String.Equals(paymentMethod, "ideal", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }

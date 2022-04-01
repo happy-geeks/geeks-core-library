@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
@@ -39,10 +40,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         {
             this.objectsService = objectsService;
             this.databaseConnection = databaseConnection;
-
-            if (context.Request.Path == "/webpage.gcl" || context.Request.Path == "/template.gcl" || context.Request.Path == "/webpage.jcl" || context.Request.Path == "/template.jcl")
+            
+            if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
-                // If this happens, it means the RewriteUrlToWebPageMiddleware has already found something and we don't need to do this again.
+                // If this happens, it means that another middleware has already found something and we don't need to do this again.
                 await this.next.Invoke(context);
                 return;
             }
@@ -154,7 +155,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 // Payment service provider handling.
                 if (String.Equals(urlMatchLastPart, "M2", StringComparison.OrdinalIgnoreCase))
                 {
-                    context.Request.Path = "/payment_out.gcl";
+                    context.Request.Path = Components.OrderProcess.Models.Constants.PaymentOutPage;
                     context.Request.QueryString = QueryString.FromUriComponent($"?{queryString.ToString().Substring(1)}{queryStringFromUrl.Value}");
                     break;
                 }

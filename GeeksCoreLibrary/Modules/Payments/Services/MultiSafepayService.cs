@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
@@ -68,7 +69,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethods paymentMethod, string invoiceNumber)
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethod, string invoiceNumber)
         {
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();
 
@@ -79,35 +80,17 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             var totalPriceInCents = (int) Math.Round(totalPrice * 100);
-            string paymentMethodId;
-
-            try
-            {
-                paymentMethodId = ConvertPaymentMethodToId(paymentMethod);
-            }
-            //Converting payment method throws an argument exception if the method is not supported.
-            catch (ArgumentException)
-            {
-                return new PaymentRequestResult
-                {
-                    Action = PaymentRequestActions.Redirect,
-                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
-                    Successful = false,
-                    ErrorMessage = $"Unknown or unsupported payment method '{paymentMethod:G}'"
-                };
-            }
 
             var order = new Order
             {
                 Type = OrderType.Redirect,
                 OrderId = invoiceNumber,
-                GatewayId = paymentMethodId,
+                GatewayId = paymentMethod.ExternalName,
                 AmountInCents = totalPriceInCents,
                 CurrencyCode = "EUR",
-                Description = await objectsService.FindSystemObjectByDomainNameAsync("PSP_description"),
-                PaymentOptions = new PaymentOptions(await objectsService.FindSystemObjectByDomainNameAsync("PSP_notifyurl"),
-                                                    await objectsService.FindSystemObjectByDomainNameAsync("PSP_successURL"),
-                                                    await objectsService.FindSystemObjectByDomainNameAsync("PSP_cancelURL"))
+                PaymentOptions = new PaymentOptions(paymentMethod.PaymentServiceProvider.WebhookUrl,
+                                                    paymentMethod.PaymentServiceProvider.SuccessUrl,
+                                                    paymentMethod.PaymentServiceProvider.FailUrl)
             };
 
             await SetupEnvironment();
@@ -128,47 +111,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 return new PaymentRequestResult
                 {
                     Action = PaymentRequestActions.Redirect,
-                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                    ActionData = paymentMethod.PaymentServiceProvider.FailUrl,
                     Successful = false,
                     ErrorMessage = exception.Message
                 };
-            }
-        }
-
-        /// <summary>
-        /// Convert <see cref="PaymentMethods"/> to a string id that is supported.
-        /// Throws <see cref="ArgumentException"/> when the provided <see cref="PaymentMethods"/> is not supported by MultiSafepay.
-        /// </summary>
-        /// <param name="paymentMethod">The <see cref="PaymentMethods"/> tp convert.</param>
-        /// <returns>Returns the id of the corresponding method.</returns>
-        private string ConvertPaymentMethodToId(PaymentMethods paymentMethod)
-        {
-            switch (paymentMethod)
-            {
-                case PaymentMethods.Maestro:
-                    return "MAESTRO";
-                case PaymentMethods.WireTransfer:
-                    return "BANKTRANS";
-                case PaymentMethods.SofortBanking:
-                    return "DIRECTBANK";
-                case PaymentMethods.Giropay:
-                    return "GIROPAY";
-                case PaymentMethods.Bancontact:
-                    return "MISTERCASH";
-                case PaymentMethods.EPS:
-                    return "EPS";
-                case PaymentMethods.Ideal:
-                    return "IDEAL";
-                case PaymentMethods.Trustly:
-                    return "TRUSTLY";
-                case PaymentMethods.Mastercard:
-                    return "MASTERCARD";
-                case PaymentMethods.ApplePay:
-                    return "APPLEPAY";
-                case PaymentMethods.Visa:
-                    return "VISA";
-                default:
-                    throw new ArgumentException("The provided payment method can't be converted to the corresponding id.");
             }
         }
 
@@ -216,7 +162,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             };
         }
 
-        public async Task<bool> LogPaymentAction(string invoiceNumber, int status)
+        private async Task<bool> LogPaymentAction(string invoiceNumber, int status)
         {
             if (!LogPaymentActions || httpContextAccessor?.HttpContext == null)
             {

@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
@@ -74,7 +75,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethods paymentMethod, string invoiceNumber)
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethod, string invoiceNumber)
         {
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();
 
@@ -87,7 +88,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var orderBuilder = new MerchantOrder.Builder()
                 .WithMerchantOrderId(invoiceNumber)
                 .WithAmount(Money.FromDecimal(Currency.EUR, totalPrice))
-                .WithMerchantReturnURL(await objectsService.FindSystemObjectByDomainNameAsync("PSP_returnURL"))
+                .WithMerchantReturnURL(paymentMethod.PaymentServiceProvider.SuccessUrl)
                 .WithOrderItems(CreateOrderItems(shoppingBaskets));
 
             try
@@ -107,7 +108,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 return new PaymentRequestResult
                 {
                     Action = PaymentRequestActions.Redirect,
-                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                    ActionData = paymentMethod.PaymentServiceProvider.FailUrl,
                     Successful = false,
                     ErrorMessage = $"Unknown or unsupported payment method '{paymentMethod:G}'"
                 };
@@ -132,7 +133,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 return new PaymentRequestResult
                 {
                     Action = PaymentRequestActions.Redirect,
-                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed"),
+                    ActionData = paymentMethod.PaymentServiceProvider.FailUrl,
                     Successful = false,
                     ErrorMessage = "Failed to authenticate with Rabo omni kassa API"
                 };
@@ -167,7 +168,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     }
 
                     var orderItem = new OrderItem.Builder()
-                        .WithId(line.GetDetailValue("connecteditemid"))
+                        .WithId(line.GetDetailValue(Components.ShoppingBasket.Models.Constants.ConnectedItemIdProperty))
                         .WithName(name)
                         .WithDescription(name)
                         .WithQuantity(line.GetDetailValue<int>("quantity"))
@@ -748,28 +749,29 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// </summary>
         /// <param name="paymentMethod">The <see cref="PaymentMethods"/> to convert.</param>
         /// <returns>Returns the <see cref="PaymentBrand"/> of the corresponding brand.</returns>
-        private PaymentBrand ConvertPaymentMethodToPaymentBrand(PaymentMethods paymentMethod)
+        private PaymentBrand ConvertPaymentMethodToPaymentBrand(PaymentMethodSettingsModel paymentMethod)
         {
-            switch (paymentMethod)
+            switch (paymentMethod.ExternalName.ToUpperInvariant())
             {
-                case PaymentMethods.Ideal:
+                case "IDEAL":
                    return PaymentBrand.IDEAL;
-                case PaymentMethods.Afterpay:
+                case "AFTERPAY":
                     return PaymentBrand.AFTERPAY;
-                case PaymentMethods.PayPal:
+                case "PAYPAL":
                     return PaymentBrand.PAYPAL;
-                case PaymentMethods.Mastercard:
+                case "MASTERCARD":
                     return PaymentBrand.MASTERCARD;
-                case PaymentMethods.Visa:
+                case "VISA":
                     return PaymentBrand.VISA;
-                case PaymentMethods.Bancontact:
+                case "BANCONTACT":
                     return PaymentBrand.BANCONTACT;
-                case PaymentMethods.Maestro:
+                case "MAESTRO":
                     return PaymentBrand.MAESTRO;
-                case PaymentMethods.Vpay:
+                case "V_PAY":
+                case "VPAY":
                    return PaymentBrand.V_PAY;
                 default:
-                    throw new ArgumentException("Provided payment method can't be converted to payment brand.");
+                    throw new ArgumentOutOfRangeException(nameof(paymentMethod.ExternalName), paymentMethod.ExternalName);
             }
         }
 

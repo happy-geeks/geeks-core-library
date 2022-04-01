@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
+using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
@@ -31,6 +32,7 @@ using RestSharp.Authenticators;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
+    /// <inheritdoc cref="IPaymentServiceProviderService" />
     public class MollieService : IPaymentServiceProviderService, IScopedService
     {
         private const string ApiBaseUrl = "https://api.mollie.com/v2";
@@ -56,7 +58,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethods paymentMethod, string invoiceNumber)
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethod, string invoiceNumber)
         {
             if (httpContextAccessor.HttpContext == null)
             {
@@ -64,7 +66,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 {
                     Successful = false,
                     Action = PaymentRequestActions.Redirect,
-                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_PaymentStartFailed")
+                    ActionData = paymentMethod.PaymentServiceProvider.FailUrl
                 };
             }
 
@@ -80,12 +82,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var apiKey = await GetApiKeyAsync();
             var locale = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_locale");
 
-            var description = await objectsService.FindSystemObjectByDomainNameAsync("PSP_description");
-
-            if (String.IsNullOrWhiteSpace(description))
-            {
-                description = $"Order #{invoiceNumber}";
-            }
+            var description = $"Order #{invoiceNumber}";
 
             // Build and execute payment request.
             var restClient = new RestClient(ApiBaseUrl)
@@ -97,19 +94,19 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             restRequest.AddParameter("amount[value]", totalPrice.ToString("F2", CultureInfo.InvariantCulture), ParameterType.GetOrPost);
             restRequest.AddParameter("description", description, ParameterType.GetOrPost);
             restRequest.AddParameter("redirectUrl", BuildRedirectUrl(invoiceNumber), ParameterType.GetOrPost);
-            restRequest.AddParameter("webhookUrl", await BuildWebhookUrlAsync(invoiceNumber), ParameterType.GetOrPost);
+            restRequest.AddParameter("webhookUrl", await BuildWebhookUrlAsync(paymentMethod.PaymentServiceProvider.WebhookUrl, invoiceNumber), ParameterType.GetOrPost);
 
             if (!String.IsNullOrWhiteSpace(locale))
             {
                 restRequest.AddParameter("locale", locale, ParameterType.GetOrPost);
             }
 
-            if (paymentMethod != PaymentMethods.Unknown)
+            if (!String.IsNullOrWhiteSpace(paymentMethod?.ExternalName))
             {
-                restRequest.AddParameter("method", GetPaymentMethodName(paymentMethod), ParameterType.GetOrPost);
+                restRequest.AddParameter("method", paymentMethod.ExternalName, ParameterType.GetOrPost);
             }
 
-            if (paymentMethod == PaymentMethods.Ideal)
+            if (String.Equals(paymentMethod?.ExternalName, "ideal", StringComparison.OrdinalIgnoreCase))
             {
                 var issuerValue = shoppingBaskets.First().Main.GetDetailValue("issuer");
                 var issuerName = GetIssuerName(issuerValue);
@@ -132,7 +129,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 {
                     Successful = false,
                     Action = PaymentRequestActions.Redirect,
-                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL"),
+                    ActionData = paymentMethod.PaymentServiceProvider.FailUrl,
                     ErrorMessage = GetErrorMessageInResponse(JObject.Parse(restResponse.Content))
                 };
             }
@@ -163,19 +160,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 Action = PaymentRequestActions.Redirect,
                 ActionData = responseJson["_links"]?["checkout"]?["href"]?.ToString()
             };
-        }
-
-        private static string GetPaymentMethodName(PaymentMethods paymentMethod)
-        {
-            var result = paymentMethod switch
-            {
-                PaymentMethods.WireTransfer => "banktransfer",
-                PaymentMethods.Mastercard => "creditcard",
-                PaymentMethods.Visa => "creditcard",
-                PaymentMethods.SofortBanking => "sofort",
-                _ => paymentMethod.ToString("G").ToLowerInvariant()
-            };
-            return result;
         }
 
         private static string GetIssuerName(string issuerValue)
@@ -222,37 +206,22 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             return redirectUrl.ToString();
         }
 
-        private async Task<string> BuildWebhookUrlAsync(string invoiceNumber)
+        private async Task<string> BuildWebhookUrlAsync(string webhookUrl, string invoiceNumber)
         {
             if (httpContextAccessor.HttpContext == null)
             {
                 return String.Empty;
             }
-
-            var webhookUrlObjectValue = await objectsService.FindSystemObjectByDomainNameAsync("PSP_notifyurl");
-
-            UriBuilder webhookUrl;
-            if (String.IsNullOrWhiteSpace(webhookUrlObjectValue))
-            {
-                webhookUrl = new UriBuilder
-                {
-                    Host = httpContextAccessor.HttpContext.Request.Host.Host,
-                    Scheme = httpContextAccessor.HttpContext.Request.Scheme,
-                    Path = "payment_in.gcl"
-                };
-            }
-            else
-            {
-                webhookUrl = new UriBuilder(webhookUrlObjectValue);
-            }
-
-            var queryString = HttpUtility.ParseQueryString(webhookUrl.Query);
+            
+            // TODO: Refactor this method so that we can use it for all PSPs.
+            var webhookUrlBuilder =  new UriBuilder(webhookUrl);
+            var queryString = HttpUtility.ParseQueryString(webhookUrlBuilder.Query);
             queryString["gcl_psp"] = "mollie";
             queryString["invoice_number"] = invoiceNumber;
 
-            webhookUrl.Query = queryString.ToString() ?? String.Empty;
+            webhookUrlBuilder.Query = queryString.ToString() ?? String.Empty;
 
-            return webhookUrl.ToString();
+            return webhookUrlBuilder.ToString();
         }
 
         /// <inheritdoc />

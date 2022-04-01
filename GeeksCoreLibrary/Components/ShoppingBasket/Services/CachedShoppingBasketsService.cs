@@ -35,6 +35,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
+        public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync()
+        {
+            return await shoppingBasketsService.GetShoppingBasketsAsync();
+        }
+
+        /// <inheritdoc />
         public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync(string cookieName, ShoppingBasketCmsSettingsModel settings)
         {
             return await shoppingBasketsService.GetShoppingBasketsAsync(cookieName, settings);
@@ -68,12 +74,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         public async Task<bool> UseCouponAsync(WiserItemModel coupon, decimal totalProductsPrice)
         {
             return await shoppingBasketsService.UseCouponAsync(coupon, totalProductsPrice);
-        }
-
-        /// <inheritdoc />
-        public async Task UpdateShoppingBasketWithRequestDataAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings)
-        {
-            await shoppingBasketsService.UpdateShoppingBasketWithRequestDataAsync(shoppingBasket, settings);
         }
 
         /// <inheritdoc />
@@ -119,9 +119,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
-            return await shoppingBasketsService.SaveAsync(shoppingBasket, basketLines, settings);
+            return await shoppingBasketsService.SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
         }
 
         /// <inheritdoc />
@@ -222,6 +222,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         public async Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
         {
             return await shoppingBasketsService.GetVatRuleByRateAsync(shoppingBasket, settings, vatRate);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetCheckoutObjectValueAsync(string propertyName, string defaultResult = "")
+        {
+            return await shoppingBasketsService.GetCheckoutObjectValueAsync(propertyName, defaultResult);
         }
     }
 }

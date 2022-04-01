@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
-using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Payments.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,29 +15,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Controllers
         public PaymentsController(IPaymentsService paymentsService)
         {
             this.paymentsService = paymentsService;
-        }
-
-        /// <summary>
-        /// The route for handling payment requests.
-        /// </summary>
-        /// <returns></returns>
-        [Route("payment_out.gcl")]
-        [Route("payment_out.jcl")]
-        [HttpPost]
-        public async Task<IActionResult> PaymentOut()
-        {
-            var paymentRequestResult = await paymentsService.HandlePaymentRequestAsync();
-
-            switch (paymentRequestResult.Action)
-            {
-                case PaymentRequestActions.Redirect:
-                    Response.Redirect(paymentRequestResult.ActionData);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(paymentRequestResult.Action), paymentRequestResult.Action.ToString());
-            }
-
-            return Content("", "text/html");
         }
 
         /// <summary>

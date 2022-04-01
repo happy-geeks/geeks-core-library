@@ -599,7 +599,7 @@ namespace GeeksCoreLibrary.Core.Services
 
                         databaseConnection.AddParameter("languageCode_title", "");
                         databaseConnection.AddParameter("groupName_title", "");
-                        databaseConnection.AddParameter("key_title", "title_seo");
+                        databaseConnection.AddParameter("key_title", CoreConstants.SeoTitlePropertyName);
                         databaseConnection.AddParameter("value_title", useLongValueColumn ? "" : seoTitle);
                         databaseConnection.AddParameter("longValue_title", !useLongValueColumn ? "" : seoTitle);
                         insertAndUpdateQueryBuilder.Add("(?languageCode_title, ?itemId, ?groupName_title, ?key_title, ?value_title, ?longValue_title)");

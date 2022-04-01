@@ -18,6 +18,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <summary>
         /// Gets all baskets through a cookie name.
         /// </summary>
+        /// <returns></returns>
+        Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync();
+
+        /// <summary>
+        /// Gets all baskets through a cookie name.
+        /// </summary>
         /// <param name="cookieName"></param>
         /// <param name="settings"></param>
         /// <returns></returns>
@@ -63,14 +69,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         Task<bool> UseCouponAsync(WiserItemModel coupon, decimal totalProductsPrice);
 
         /// <summary>
-        /// Takes certain values from the request and adds them to the basket details.
-        /// </summary>
-        /// <param name="shoppingBasket"></param>
-        /// <param name="settings"></param>
-        /// <returns></returns>
-        Task UpdateShoppingBasketWithRequestDataAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings);
-
-        /// <summary>
         /// Create a concept order out of a basket.
         /// </summary>
         /// <returns></returns>
@@ -85,7 +83,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null, bool forQuery = false);
 
         Task<decimal> GetPriceAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, string lineType = "", int onlyIfVatRate = -1, bool includeDiscountGettingVat = true);
-
+        
         /// <summary>
         /// Gets the total price of a single basket line.
         /// </summary>
@@ -117,7 +115,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <summary>
         /// Saves the current basket to the database.
         /// </summary>
-        Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings);
+        Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true);
 
         /// <summary>
         /// Calculates the shipping costs based on the shipping costs query defined in the settings module.
@@ -202,7 +200,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         Task<IList<VatRule>> GetVatRulesAsync();
 
         Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate);
-
+        
         /// <summary>
         /// Function returns the VAT rule by given VAT rate, depending on the actual information and requirements of the rule.
         /// </summary>
@@ -217,5 +215,13 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// </summary>
         /// <returns>A <see cref="ShoppingBasketCmsSettingsModel"/> object.</returns>
         Task<ShoppingBasketCmsSettingsModel> GetSettingsAsync();
+
+        /// <summary>
+        /// Retrieves an object by key. If the result is empty, it will try again by prepending "W2" to the key name to check if a legacy key is set.
+        /// </summary>
+        /// <param name="propertyName"></param>
+        /// <param name="defaultResult"></param>
+        /// <returns></returns>
+        Task<string> GetCheckoutObjectValueAsync(string propertyName, string defaultResult = "");
     }
 }

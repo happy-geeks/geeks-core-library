@@ -2,6 +2,7 @@
 using GeeksCoreLibrary.Modules.Payments.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 
 namespace GeeksCoreLibrary.Modules.Payments.Interfaces
@@ -19,12 +20,12 @@ namespace GeeksCoreLibrary.Modules.Payments.Interfaces
         /// <summary>
         /// Starts a new payment request at the PSP.
         /// </summary>
-        /// <param name="shoppingBaskets">A list of one or more shopping baskets that the user is going to pay for.</param>
+        /// <param name="conceptOrders">A list of one or more (concept) orders that the user is going to pay for.</param>
         /// <param name="userDetails">The details of the user that is going to pay.</param>
         /// <param name="paymentMethod">The payment method that the user selected.</param>
         /// <param name="invoiceNumber">The invoice number for the order, this will be sent to the PSP.</param>
         /// <returns>A <see cref="PaymentRequestResult"/> with the results of the payment request.</returns>
-        Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethods paymentMethod, string invoiceNumber);
+        Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethod, string invoiceNumber);
 
         /// <summary>
         /// Processes a status update (webhook) from the PSP.
