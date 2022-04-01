@@ -70,7 +70,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public async Task<bool> HandleStatusUpdateAsync()
         {
-            var paymentServiceProvider = GetPaymentServiceProvider();
+            var paymentServiceProvider = GetPaymentServiceProviderFromRequest();
             var shoppingBaskets = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(GetInvoiceNumber(paymentServiceProvider));
 
             // Create the correct service for the payment service provider using the factory.
@@ -103,15 +103,16 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 PaymentServiceProviders.Buckaroo => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "brq_invoicenumber"),
                 PaymentServiceProviders.MultiSafepay => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "transactionid"),
                 PaymentServiceProviders.RaboOmniKassa => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "order_id"),
+                PaymentServiceProviders.Mollie => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "invoice_number"),
                 _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), $"Payment service provider '{paymentServiceProvider:G}' is not yet supported.")
             };
         }
 
         /// <summary>
-        /// Attempts to determine the invoice number by checking for various 
+        /// Attempts to determine the invoice number by checking various request values.
         /// </summary>
         /// <returns></returns>
-        private PaymentServiceProviders GetPaymentServiceProvider()
+        private PaymentServiceProviders GetPaymentServiceProviderFromRequest()
         {
             var paymentServiceProviderName = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "gcl_psp");
             if (String.IsNullOrWhiteSpace(paymentServiceProviderName))
@@ -452,7 +453,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 await ProcessStatusUpdateAsync(shoppingBaskets, "Success", true, convertConceptOrderToOrder);
             }
 
-            return await paymentServiceProviderService.HandlePaymentRequestAsync(shoppingBaskets, userDetails, paymentMethod, invoiceNumber);
+            return await paymentServiceProviderService.HandlePaymentRequestAsync(shoppingBaskets, userDetails, paymentMethod, uniquePaymentNumber);
         }
 
         /// <inheritdoc />
@@ -622,6 +623,25 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             return true;
         }
 
+        /// <inheritdoc />
+        public async Task<PaymentReturnResult> HandlePaymentReturnAsync()
+        {
+            var paymentServiceProvider = GetPaymentServiceProviderFromRequest();
+            if (paymentServiceProvider == PaymentServiceProviders.Unknown)
+            {
+                return new PaymentReturnResult
+                {
+                    Action = PaymentResultActions.Redirect,
+                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL")
+                };
+            }
+
+            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentServiceProvider);
+            paymentServiceProviderService.LogPaymentActions = (await objectsService.FindSystemObjectByDomainNameAsync("log_all_psp_requests")).Equals("true");
+
+            return await paymentServiceProviderService.HandlePaymentReturnAsync();
+        }
+
         private async Task<EmailValues> GetMailValuesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, bool forMerchantMail = false, bool forAttachment = false)
         {
             var mailBodyPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_MailBodyPropertyName", "template");
@@ -672,8 +692,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var user = await accountsService.GetUserDataFromCookieAsync();
             var templateItem = await wiserItemsService.GetItemDetailsAsync(templateItemId, languageCode: languageCode, userId: user.UserId) ?? await wiserItemsService.GetItemDetailsAsync(templateItemId, userId: user.UserId);
 
-            var templateContent = templateItem.GetDetailValue(mailBodyPropertyName);
-            var templateSubject = templateItem.GetDetailValue(mailSubjectPropertyName);
+            var templateContent = templateItem?.GetDetailValue(mailBodyPropertyName) ?? String.Empty;
+            var templateSubject = templateItem?.GetDetailValue(mailSubjectPropertyName) ?? String.Empty;
 
             if (getMailToBasedOnDeliveryMethod)
             {
@@ -690,7 +710,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
             else
             {
-                merchantEmailAddress = templateItem.GetDetailValue(mailToPropertyName);
+                merchantEmailAddress = templateItem?.GetDetailValue(mailToPropertyName) ?? String.Empty;
             }
 
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();

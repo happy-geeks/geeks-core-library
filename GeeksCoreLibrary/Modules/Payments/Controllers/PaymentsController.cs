@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
+using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Payments.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -49,7 +50,27 @@ namespace GeeksCoreLibrary.Modules.Payments.Controllers
         [HttpPost, HttpGet, IgnoreAntiforgeryToken]
         public async Task<IActionResult> PaymentIn()
         {
-            var statusUpdateResult = await paymentsService.HandleStatusUpdateAsync();
+            await paymentsService.HandleStatusUpdateAsync();
+            return Content("", "text/html");
+        }
+
+        [Route("payment_return.gcl")]
+        [Route("payment_return.jcl")]
+        public async Task<IActionResult> PaymentReturn()
+        {
+            var result = await paymentsService.HandlePaymentReturnAsync();
+
+            switch (result.Action)
+            {
+                case PaymentResultActions.Redirect:
+                    Response.Redirect(result.ActionData);
+                    break;
+                case PaymentResultActions.None:
+                    // Do nothing.
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(result.Action), result.Action.ToString());
+            }
 
             return Content("", "text/html");
         }
