@@ -178,6 +178,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                        groupType.value AS groupType,
 	                        CONCAT_WS('', groupHeader.value, groupHeader.long_value) AS groupHeader,
 	                        CONCAT_WS('', groupFooter.value, groupFooter.long_value) AS groupFooter,
+	                        groupCssClass.value AS groupCssClass,
 	                        
 	                        # Field
 	                        field.id AS fieldId,
@@ -191,6 +192,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                        fieldPattern.value AS fieldPattern,
 	                        fieldVisible.value AS fieldVisible,
 	                        fieldErrorMessage.value AS fieldErrorMessage,
+                            fieldCssClass.value AS fieldCssClass,
+                            fieldSaveTo.value AS fieldSaveTo,
 
                             # Field values
 	                        IF(NULLIF(fieldValues.`key`, '') IS NULL AND NULLIF(fieldValues.value, '') IS NULL, NULL, JSON_OBJECTAGG(IFNULL(fieldValues.`key`, ''), IFNULL(fieldValues.value, ''))) AS fieldValues
@@ -210,6 +213,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupType ON groupType.item_id = fieldGroup.id AND groupType.`key` = '{Constants.GroupTypeProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupHeader ON groupHeader.item_id = fieldGroup.id AND groupHeader.`key` = '{Constants.GroupHeaderProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupFooter ON groupFooter.item_id = fieldGroup.id AND groupFooter.`key` = '{Constants.GroupFooterProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupCssClass ON groupCssClass.item_id = fieldGroup.id AND groupCssClass.`key` = '{Constants.GroupCssClassProperty}'
 
                         # Fields
                         LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToField ON linkToField.destination_item_id = fieldGroup.id AND linkToField.type = {Constants.FieldToGroupLinkType}
@@ -223,6 +227,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldPattern ON fieldPattern.item_id = field.id AND fieldPattern.`key` = '{Constants.FieldValidationPatternProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldVisible ON fieldVisible.item_id = field.id AND fieldVisible.`key` = '{Constants.FieldVisibilityProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldErrorMessage ON fieldErrorMessage.item_id = field.id AND fieldErrorMessage.`key` = '{Constants.FieldErrorMessageProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldCssClass ON fieldCssClass.item_id = field.id AND fieldCssClass.`key` = '{Constants.FieldCssClassProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldSaveTo ON fieldSaveTo.item_id = field.id AND fieldSaveTo.`key` = '{Constants.FieldSaveToProperty}'
                         
                         # Field values
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldValues ON fieldValues.item_id = field.id AND fieldValues.groupname = '{Constants.FieldValuesGroupName}'
@@ -269,6 +275,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         Type = EnumHelpers.ToEnum<OrderProcessGroupTypes>(dataRow.Field<string>("groupType") ?? "Fields"),
                         Header = dataRow.Field<string>("groupHeader"),
                         Footer = dataRow.Field<string>("groupFooter"),
+                        CssClass = dataRow.Field<string>("groupCssClass"),
                         Fields = new List<OrderProcessFieldModel>()
                     };
 
@@ -320,7 +327,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     Pattern = dataRow.Field<string>("fieldPattern"),
                     Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("fieldVisible") ?? "Always"),
                     InputFieldType = EnumHelpers.ToEnum<OrderProcessInputTypes>(dataRow.Field<string>("fieldInputType") ?? "text"),
-                    ErrorMessage = dataRow.Field<string>("fieldErrorMessage")
+                    ErrorMessage = dataRow.Field<string>("fieldErrorMessage"),
+                    CssClass = dataRow.Field<string>("fieldCssClass"),
+                    SaveTo = dataRow.Field<string>("fieldSaveTo")
                 };
 
                 group.Fields.Add(field);
@@ -458,6 +467,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync();
             var selectedPaymentMethodId = shoppingBaskets.First().Main.GetDetailValue<ulong>(Constants.PaymentMethodProperty);
             var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
+            var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
 
             // Build the fail URL.
             var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) 
@@ -469,7 +479,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             if (orderProcessSettings.AmountOfSteps > 1)
             {
-                queryString[Constants.ActiveStepRequestKey] = orderProcessSettings.AmountOfSteps.ToString();
+                var stepForPaymentErrors = orderProcessSettings.AmountOfSteps;
+                var stepWithPaymentMethods = steps.LastOrDefault(step => step.Groups.Any(group => group.Type == OrderProcessGroupTypes.PaymentMethods));
+                if (stepWithPaymentMethods != null)
+                {
+                    stepForPaymentErrors = steps.IndexOf(stepWithPaymentMethods) + 1;
+                }
+
+                queryString[Constants.ActiveStepRequestKey] = stepForPaymentErrors.ToString();
             }
 
             failUrl.Query = queryString.ToString()!;

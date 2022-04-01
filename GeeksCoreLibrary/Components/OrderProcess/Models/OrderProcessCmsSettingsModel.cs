@@ -120,6 +120,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{header}</strong> The header of the group, which can be edited by the customer in the Wiser item for the group.</li>
     <li><strong>{paymentMethods}</strong> The fields of this group, will be replaced by the templates for the different fields.</li>
     <li><strong>{footer}</strong> The footer of the group, which can be edited by the customer in the Wiser item for the group.</li>
+    <li><strong>{groupClass}</strong> Any extra CSS classes for the group, which can be edited by the customer in the Wiser item for the group.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,
@@ -161,6 +162,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{required}</strong> This will be replaced with the 'required' attribute if the field is required, or with an empty string if it isn't.</li>
     <li><strong>{pattern}</strong> The regex validation pattern for the field. This will be replaced with the entire attribute (pattern='the pattern') if there is a pattern, or with an empty string if there isn't.</li>
     <li><strong>{value}</strong> The current value of the field, retrieved from the basket or logged in user, or POST variables.</li>
+    <li><strong>{fieldClass}</strong> Any extra CSS classes that are set in the settings of the a field in Wiser.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,
@@ -187,6 +189,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{placeholder}</strong> The placeholder for the field, should be used in the 'placeholder' attribute of the input.</li>
     <li><strong>{value}</strong> The current value of the field, retrieved from the basket or logged in user, or POST variables.</li>
     <li><strong>{options}</strong> The options for the radio button.</li>
+    <li><strong>{fieldClass}</strong> Any extra CSS classes that are set in the settings of the a field in Wiser.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,
@@ -235,6 +238,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{label}</strong> The label for this field.</li>
     <li><strong>{value}</strong> The current value of the field, retrieved from the basket or logged in user, or POST variables.</li>
     <li><strong>{options}</strong> The options for the radio button.</li>
+    <li><strong>{fieldClass}</strong> Any extra CSS classes that are set in the settings of the a field in Wiser.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,
@@ -282,6 +286,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{label}</strong> The label for this field.</li>
     <li><strong>{required}</strong> This will be replaced with the 'required' attribute if the field is required, or with an empty string if it isn't.</li>
     <li><strong>{checked}</strong> Whether this option should be checked, retrieved from the basket or logged in user, or POST variables. This will be replaced with the 'checked' attribute if it should, or an empty string if it shouldn't.</li>
+    <li><strong>{fieldClass}</strong> Any extra CSS classes that are set in the settings of the a field in Wiser.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,

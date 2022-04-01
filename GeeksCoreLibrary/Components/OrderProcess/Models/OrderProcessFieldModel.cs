@@ -67,5 +67,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets whether the value entered by the user is valid.
         /// </summary>
         public bool IsValid { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets any extra css class(es) for the container element of this field.
+        /// </summary>
+        public string CssClass { get; set; }
+
+        /// <summary>
+        /// Gets or sets the entity type(s) and property/properties where this field should be saved to.
+        /// </summary>
+        public string SaveTo { get; set; }
     }
 }

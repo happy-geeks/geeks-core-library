@@ -68,6 +68,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             // Retrieve the website key and API key.
+            // TODO: Retrieve these settings from order process
             var websiteKey = await objectsService.FindSystemObjectByDomainNameAsync("BUCK_merchantid");
             var apiKey = await objectsService.FindSystemObjectByDomainNameAsync("BUCK_secret");
 

@@ -28,7 +28,6 @@ using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Ubiety.Dns.Core;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.OrderProcess
@@ -205,7 +204,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                 // Get the logged in user, if any.
                 var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
-                var userData = loggedInUser.UserId == 0 ? new WiserItemModel() : await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
+                var userData = loggedInUser.UserId == 0 
+                    ? new WiserItemModel { EntityType = Account.Models.Constants.DefaultEntityType } 
+                    : await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
                 
                 // Get the available payment methods.
                 var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId, loggedInUser);
@@ -220,12 +221,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
                 if (isPostBack)
                 {
-                    fieldErrorsOccurred = ValidatePostBackAndSaveValues(step, loggedInUser, request, shoppingBasket, paymentMethods);
+                    fieldErrorsOccurred = ValidatePostBackAndSaveValues(step, loggedInUser, request, shoppingBasket, paymentMethods, userData);
 
                     // Save values to database if all validation succeeded.
                     if (!fieldErrorsOccurred)
                     {
-                        await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+                        shoppingBasket = await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+                        userData = await wiserItemsService.SaveAsync(userData, userId: userData.Id);
+                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userData.Id, 5010);
 
                         // Redirect to the next step.
                         var nextStep = ActiveStep + 1;
@@ -250,6 +253,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 var previousStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
                 var previousStep = ActiveStep - 1;
                 var previousStepQueryString = HttpUtility.ParseQueryString(previousStepUri.Query);
+                previousStepQueryString.Remove(Constants.ErrorFromPaymentOutRequestKey);
                 if (previousStep <= 1)
                 {
                     previousStepQueryString.Remove(Constants.ActiveStepRequestKey);
@@ -399,7 +403,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             var replaceData = new Dictionary<string, object>
             {
                 { "id", group.Id },
-                { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") }
+                { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") },
+                { "groupClass", group.CssClass }
             };
 
             var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateFieldsGroup, replaceData);
@@ -435,7 +440,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             var replaceData = new Dictionary<string, object>
             {
                 { "id", group.Id },
-                { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") }
+                { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") },
+                { "groupClass", group.CssClass }
             };
 
             var errorHtml = "";
@@ -495,10 +501,45 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             var fieldValue = field.Value;
             if (String.IsNullOrEmpty(fieldValue) && field.InputFieldType != OrderProcessInputTypes.Password)
             {
-                fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
-                if (String.IsNullOrWhiteSpace(fieldValue))
+                if (String.IsNullOrWhiteSpace(field.SaveTo))
                 {
-                    fieldValue = userData.GetDetailValue(field.FieldId);
+                    fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
+                }
+                else
+                {
+                    foreach (var saveLocation in field.SaveTo.Split(','))
+                    {
+                        var split = saveLocation.Split('.');
+                        if (split.Length != 2)
+                        {
+                            throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
+                        }
+
+                        var entityType = split[0];
+                        var propertyName = split[1];
+                        if (String.IsNullOrWhiteSpace(entityType) || String.IsNullOrWhiteSpace(propertyName))
+                        {
+                            throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
+                        }
+
+                        if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
+                        {
+                            fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
+                        }
+                        else if (String.Equals(entityType, Account.Models.Constants.DefaultEntityType))
+                        {
+                            fieldValue = userData.GetDetailValue(field.FieldId);
+                        }
+                        else
+                        {
+                            throw new NotImplementedException($"Unknown entity type '{entityType}' for field '{field.Id}' set for saving.");
+                        }
+                        
+                        if (!String.IsNullOrWhiteSpace(fieldValue))
+                        {
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -514,7 +555,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
                 { "required", field.Mandatory ? "required" : "" },
                 { "value", fieldValue },
-                { "checked", String.IsNullOrWhiteSpace(fieldValue) ? "" : "checked" }
+                { "checked", String.IsNullOrWhiteSpace(fieldValue) ? "" : "checked" },
+                { "fieldClass", field.CssClass }
             };
 
             var fieldHtml = field.Type switch
@@ -627,8 +669,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="request">The current <see cref="HttpRequest"/>.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
         /// <param name="paymentMethods">All available payment methods.</param>
+        /// <param name="userData">The <see cref="WiserItemModel"/> of the user.</param>
         /// <returns>A <see cref="Boolean"/> indicating whether any there were any errors in the validation.</returns>
-        private static bool ValidatePostBackAndSaveValues(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods)
+        private bool ValidatePostBackAndSaveValues(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods, WiserItemModel userData)
         {
             var fieldErrorsOccurred = false;
             foreach (var group in step.Groups)
@@ -668,10 +711,43 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                 field.Value = "";
                             }
 
-                            // Set the posted value in the basket. We do that here so that we can be sure that people can only save values that are configured in Wiser.
+                            // Set the posted value in the basket or user. We do that here so that we can be sure that people can only save values that are configured in Wiser.
                             // This way they can't just add a random field to the HTML to save that value in our database.
-                            // TODO: Some values should be saved in the account instead of basket.
-                            shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
+                            if (String.IsNullOrWhiteSpace(field.SaveTo))
+                            {
+                                shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
+                            }
+                            else
+                            {
+                                foreach (var saveLocation in field.SaveTo.Split(','))
+                                {
+                                    var split = saveLocation.Split('.');
+                                    if (split.Length != 2)
+                                    {
+                                        throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
+                                    }
+
+                                    var entityType = split[0];
+                                    var propertyName = split[1];
+                                    if (String.IsNullOrWhiteSpace(entityType) || String.IsNullOrWhiteSpace(propertyName))
+                                    {
+                                        throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
+                                    }
+                                    
+                                    if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
+                                    {
+                                        shoppingBasket.SetDetail(propertyName, valueForDatabase);
+                                    }
+                                    else if (String.Equals(entityType, Account.Models.Constants.DefaultEntityType))
+                                    {
+                                        userData.SetDetail(field.FieldId, valueForDatabase);
+                                    }
+                                    else
+                                    {
+                                        throw new NotImplementedException($"Unknown entity type '{entityType}' for field '{field.Id}' set for saving.");
+                                    }
+                                }
+                            }
                         }
 
                         break;

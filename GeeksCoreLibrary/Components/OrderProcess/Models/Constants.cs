@@ -75,6 +75,8 @@
 
         public const string GroupFooterProperty = "orderprocessgroupfooter";
 
+        public const string GroupCssClassProperty = "orderprocessgroupcssclass";
+
         public const string FieldIdProperty = "formfieldid";
 
         public const string FieldLabelProperty = "formfieldlabel";
@@ -94,6 +96,10 @@
         public const string FieldVisibilityProperty = "formfieldvisible";
 
         public const string FieldErrorMessageProperty = "formfielderrormessage";
+
+        public const string FieldCssClassProperty = "formfieldcssclass";
+
+        public const string FieldSaveToProperty = "formfieldsaveto";
 
         public const string PaymentServiceProviderSuccessUrlProperty = "pspsuccessurl";
 

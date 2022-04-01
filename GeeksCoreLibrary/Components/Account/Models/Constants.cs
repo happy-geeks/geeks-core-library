@@ -44,7 +44,7 @@
 
         #region Default settings
 
-        internal const string DefaultEntityType = "relatie";
+        internal const string DefaultEntityType = "account";
         internal const string DefaultResetPasswordSubject = "Wachtwoord vergeten";
         internal const string DefaultEmailFieldName = "email";
         internal const string DefaultPasswordFieldName = "password";

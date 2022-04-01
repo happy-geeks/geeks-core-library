@@ -36,7 +36,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </div>")]
         internal string TemplateStepError { get; }
 
-        [DefaultValue(@"<div class='form-row'>
+        [DefaultValue(@"<div class='form-row {groupClass}'>
     <h3>{title}</h3>
     <div class='group-header'>{header}</div>
     <div class='group-fields'>{fields}</div>
@@ -44,8 +44,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </fieldset>")]
         internal string TemplateFieldsGroup { get; }
 
-        [DefaultValue(@"<fieldset class='group-container'>
-    <legend>{title}</legend>
+        [DefaultValue(@"<div class='form-row {groupClass}'>
+    <h3>{title}</h3>
     <div class='group-header'>{header}</div>
     {error}
     <ul class='group-payment-methods'>{paymentMethods}</ul>
@@ -56,14 +56,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         [DefaultValue(@"<span class='field-error'>[if({errorMessage}=)][T{Vul a.u.b. een geldige waarde in}][else]{errorMessage}[endif]</span>")]
         internal string TemplateFieldError { get; }
 
-        [DefaultValue(@"<div id='container_{fieldId}' class='field {errorClass}'>
+        [DefaultValue(@"<div id='container_{fieldId}' class='field {errorClass} {fieldClass}'>
     <input type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern} value='{value}' />
     [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
     {error}
 </div>")]
         internal string TemplateInputField { get; }
 
-        [DefaultValue(@"<div id='container_{fieldId}' class='field full {errorClass}'>
+        [DefaultValue(@"<div id='container_{fieldId}' class='field full {errorClass} {fieldClass}'>
     <div class='field-group'>
         [if({label}!)]<label>{label}</label>[endif]
         {options}
@@ -78,7 +78,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </label>")]
         internal string TemplateRadioButtonFieldOption { get; }
         
-        [DefaultValue(@"<div id='container_{fieldId}' class='field full {errorClass}'>
+        [DefaultValue(@"<div id='container_{fieldId}' class='field full {errorClass} {fieldClass}'>
     <select id='{fieldId}' name='{fieldId}' {required}>
         {options}
     </select>
@@ -90,7 +90,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         [DefaultValue(@"<option id='{fieldId}_{optionValue}' value='{optionValue}' {selected} /> <span class='label'>{optionText}</span></label>")]
         internal string TemplateSelectFieldOption { get; }
         
-        [DefaultValue(@"<div id='container_{fieldId}' class='field {errorClass}'>
+        [DefaultValue(@"<div id='container_{fieldId}' class='field {errorClass} {fieldClass}'>
     <label>
         <input type='checkbox' id='{fieldId}' name='{fieldId}' {required} {checked} value='1' />
         <span class='label'>{label}</span>
