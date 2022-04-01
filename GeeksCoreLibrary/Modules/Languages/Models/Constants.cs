@@ -6,5 +6,6 @@
         public const string LegacyLanguageCodeSessionKey = "MlJclLanguageCode";
         public const string LanguageCodeCacheKey = "GCLLanguageCode";
         public const string LanguageCodeHeaderKey = "X-GCL-LanguageCode";
+        public const string LanguageCodeQueryStringKey = "GCLLanguageCode";
     }
 }

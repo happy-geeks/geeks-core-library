@@ -90,6 +90,14 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         /// <inheritdoc />
         public async Task<string> GetLanguageCodeAsync()
         {
+            // Check if it should be overriden through a query string.
+            if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Request.Query.ContainsKey(Constants.LanguageCodeQueryStringKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey]))
+            {
+                CurrentLanguageCode = httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey];
+                logger.LogDebug($"LanguageCode determined through query string: {CurrentLanguageCode}");
+                return CurrentLanguageCode;
+            }
+
             // First check for a system object.
             var languageCode = await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_LanguageCode");
             if (!String.IsNullOrWhiteSpace(languageCode))
@@ -102,7 +110,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Request.Headers.ContainsKey(Constants.LanguageCodeHeaderKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Headers[Constants.LanguageCodeHeaderKey]))
             {
                 CurrentLanguageCode = httpContextAccessor.HttpContext.Request.Headers[Constants.LanguageCodeHeaderKey];
-                logger.LogDebug($"LanguageCode determined through HTTP header: {languageCode}");
+                logger.LogDebug($"LanguageCode determined through HTTP header: {CurrentLanguageCode}");
                 return CurrentLanguageCode;
             }
 

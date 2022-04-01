@@ -102,7 +102,7 @@ namespace GeeksCoreLibrary.Core.Cms
             GroupName = CmsAttributes.CmsGroupName.Caching,
             DisplayOrder = 10
         )]
-        public TemplateCachingModes CachingMode { get; set; } = TemplateCachingModes.ServerSideCaching;
+        public TemplateCachingModes CachingMode { get; set; } = TemplateCachingModes.NoCaching;
         
         /// <summary>
         /// How the component should be cached. Default value is 'ServerSideCaching'.
