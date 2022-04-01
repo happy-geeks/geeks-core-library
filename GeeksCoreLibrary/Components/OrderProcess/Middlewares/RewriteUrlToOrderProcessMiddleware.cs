@@ -81,8 +81,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
             }
             
             logger.LogInformation($"Found order process with id '{orderProcess.Id}' and name '{orderProcess.Title}' for current URL '{currentUrl}'.");
-            queryStringFromUrl = queryStringFromUrl.Add("id", orderProcess.Id.ToString());
-            queryStringFromUrl = queryStringFromUrl.Add("title", orderProcess.Title);
+            queryStringFromUrl = queryStringFromUrl.Add(Models.Constants.OrderProcessIdRequestKey, orderProcess.Id.ToString());
 
             context.Request.Path = $"/{Models.Constants.CheckoutPage}";
             context.Request.QueryString = queryStringFromUrl;

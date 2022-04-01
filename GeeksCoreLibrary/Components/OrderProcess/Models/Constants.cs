@@ -113,6 +113,8 @@
 
         public const string PaymentMethodProperty = "paymentMethod";
 
+        public const string PaymentMethodExternalNameProperty = "paymentmethodexternalname";
+
         #endregion
 
         #region Fields for basket and orders
@@ -172,6 +174,10 @@
         public const string ActiveStepRequestKey = "activeStep";
 
         public const string ErrorFromPaymentOutRequestKey = "errorFromPaymentOut";
+
+        public const string OrderProcessIdRequestKey = "orderProcessId";
+
+        public const string SelectedPaymentMethodRequestKey = "paymentMethodId";
 
         #endregion
 

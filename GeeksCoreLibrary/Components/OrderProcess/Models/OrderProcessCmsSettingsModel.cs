@@ -77,6 +77,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 <ul>
     <li><strong>Server:</strong> This is any exception that occurred on the server. The actual exception will be written to the logs.</li>
     <li><strong>Client:</strong> This is any error from the client, when they entered invalid or no values in required fields. This is just to show a generic message that they can't procedure, specific errors will be shown near the field(s) with the problem(s).</li>
+    <li><strong>Payment:</strong> This is any error that occurred during the payment. This could be that the user cancelled their payment, or the API of the PSP returned an error etc.</li>
 </ul>",
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,

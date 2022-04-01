@@ -8,6 +8,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     public class PaymentMethodSettingsModel : OrderProcessBaseModel
     {
         /// <summary>
+        /// Gets or sets the external name for the payment method. This is the name that will be sent to the PSP.
+        /// </summary>
+        public string ExternalName { get; set; }
+
+        /// <summary>
         /// Gets or sets the PSP that should be used for this payment method.
         /// </summary>
         public PaymentServiceProviderSettingsModel PaymentServiceProvider { get; set; }

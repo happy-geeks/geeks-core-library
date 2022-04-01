@@ -6,8 +6,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     {
         #region Tab layout properties
 
-        [DefaultValue(@"<h1>Bestelproces</h1>
-{progress}
+        [DefaultValue(@"{progress}
 {step}")]
         internal string Template { get; }
 
@@ -31,11 +30,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     [if({errorType}=Server)]
     <p>[T{Er is een onbekende fout opgetreden. Probeer het a.u.b. nogmaals of neem contact op met ons.}]</p>
     [endif]
+    [if({errorType}=Payment)]
+    <p>[T{Er is iets fout gegaan met de betaling. Selecteer eventueel een andere betaalmethode en probeer het nogmaals, of neem contact op met ons.}]</p>
+    [endif]
 </div>")]
         internal string TemplateStepError { get; }
 
-        [DefaultValue(@"<fieldset class='group-container'>
-    <legend>{title}</legend>
+        [DefaultValue(@"<div class='form-row'>
+    <h3>{title}</h3>
     <div class='group-header'>{header}</div>
     <div class='group-fields'>{fields}</div>
     <div class='group-footer'>{footer}</div>
@@ -54,17 +56,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         [DefaultValue(@"<span class='field-error'>[if({errorMessage}=)][T{Vul a.u.b. een geldige waarde in}][else]{errorMessage}[endif]</span>")]
         internal string TemplateFieldError { get; }
 
-        [DefaultValue(@"<div id='container_{fieldId}' class='field-container {errorClass}'>
-    [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
+        [DefaultValue(@"<div id='container_{fieldId}' class='field {errorClass}'>
     <input type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern} value='{value}' />
+    [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
     {error}
 </div>")]
         internal string TemplateInputField { get; }
 
-        [DefaultValue(@"<div id='container_{fieldId}' class='field-container {errorClass}'>
-    [if({label}!)]<label>{label}</label>[endif]
-    {options}
-    {error}
+        [DefaultValue(@"<div id='container_{fieldId}' class='field full {errorClass}'>
+    <div class='field-group'>
+        [if({label}!)]<label>{label}</label>[endif]
+        {options}
+        {error}
+    </div>
 </div>")]
         internal string TemplateRadioButtonField { get; }
         
@@ -74,11 +78,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
 </label>")]
         internal string TemplateRadioButtonFieldOption { get; }
         
-        [DefaultValue(@"<div id='container_{fieldId}' class='field-container {errorClass}'>
-    [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
+        [DefaultValue(@"<div id='container_{fieldId}' class='field full {errorClass}'>
     <select id='{fieldId}' name='{fieldId}' {required}>
         {options}
     </select>
+    [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
     {error}
 </div>")]
         internal string TemplateSelectField { get; }
@@ -86,7 +90,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         [DefaultValue(@"<option id='{fieldId}_{optionValue}' value='{optionValue}' {selected} /> <span class='label'>{optionText}</span></label>")]
         internal string TemplateSelectFieldOption { get; }
         
-        [DefaultValue(@"<div id='container_{fieldId}' class='field-container {errorClass}'>
+        [DefaultValue(@"<div id='container_{fieldId}' class='field {errorClass}'>
     <label>
         <input type='checkbox' id='{fieldId}' name='{fieldId}' {required} {checked} value='1' />
         <span class='label'>{label}</span>

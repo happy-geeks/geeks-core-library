@@ -31,7 +31,7 @@ using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
@@ -45,33 +45,27 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IAccountsService accountsService;
         private readonly IWiserItemsService wiserItemsService;
-        private readonly ILogger<OrderProcessesService> logger;
         private readonly ILanguagesService languagesService;
         private readonly ITemplatesService templatesService;
         private readonly IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory;
-        private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly IHtmlToPdfConverterService htmlToPdfConverterService;
         private readonly ICommunicationsService communicationsService;
-        private readonly IItemFilesService itemFilesService;
+        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly GclSettings gclSettings;
 
         /// <summary>
         /// Creates a new instance of <see cref="OrderProcessesService"/>.
         /// </summary>
-        public OrderProcessesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, IShoppingBasketsService shoppingBasketsService, IAccountsService accountsService, IWiserItemsService wiserItemsService, ILogger<OrderProcessesService> logger, ILanguagesService languagesService, ITemplatesService templatesService, IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory, IWebHostEnvironment webHostEnvironment, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService, IItemFilesService itemFilesService)
+        public OrderProcessesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, IShoppingBasketsService shoppingBasketsService, IAccountsService accountsService, IWiserItemsService wiserItemsService, ILanguagesService languagesService, ITemplatesService templatesService, IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory, ICommunicationsService communicationsService, IHttpContextAccessor httpContextAccessor)
         {
             this.databaseConnection = databaseConnection;
             this.shoppingBasketsService = shoppingBasketsService;
             this.accountsService = accountsService;
             this.wiserItemsService = wiserItemsService;
-            this.logger = logger;
             this.languagesService = languagesService;
             this.templatesService = templatesService;
             this.paymentServiceProviderServiceFactory = paymentServiceProviderServiceFactory;
-            this.webHostEnvironment = webHostEnvironment;
-            this.htmlToPdfConverterService = htmlToPdfConverterService;
             this.communicationsService = communicationsService;
-            this.itemFilesService = itemFilesService;
+            this.httpContextAccessor = httpContextAccessor;
             this.gclSettings = gclSettings.Value;
         }
 
@@ -350,6 +344,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                            paymentServiceProvider.title AS paymentServiceProviderTitle,
 	                            paymentMethodFee.value AS paymentMethodFee,
 	                            paymentMethodVisibility.value AS paymentMethodVisibility,
+	                            paymentMethodExternalName.value AS paymentMethodExternalName,
 
                                 paymentServiceProviderLogAllRequests.value AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.value AS paymentServiceProviderSetOrdersDirectlyToFinished,
@@ -362,6 +357,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             JOIN {WiserTableNames.WiserItem} AS paymentMethod ON paymentMethod.id = paymentMethodLink.item_id AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
 
                             # PSP
                             JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
@@ -414,6 +410,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                            paymentServiceProvider.title AS paymentServiceProviderTitle,
 	                            paymentMethodFee.value AS paymentMethodFee,
 	                            paymentMethodVisibility.value AS paymentMethodVisibility,
+	                            paymentMethodExternalName.value AS paymentMethodExternalName,
 
                                 paymentServiceProviderLogAllRequests.value AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.value AS paymentServiceProviderSetOrdersDirectlyToFinished,
@@ -422,6 +419,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             FROM {WiserTableNames.WiserItem} AS paymentMethod
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
 
                             # PSP
                             JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
@@ -462,7 +460,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
 
             // Build the fail URL.
-            var failUrl = new UriBuilder(orderProcessSettings.FixedUrl);
+            var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) 
+            {
+                Path = orderProcessSettings.FixedUrl
+            };
             var queryString = HttpUtility.ParseQueryString(failUrl.Query);
             queryString[Constants.ErrorFromPaymentOutRequestKey] = "true";
 
@@ -496,6 +497,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     ErrorMessage = $"Invalid payment method '{selectedPaymentMethodId}'"
                 };
             }
+
+            paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl.ToString();
+            
+            // Build the webhook URL.
+            var webhookUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext))
+            {
+                Path = Constants.PaymentInPage
+            };
+            queryString = HttpUtility.ParseQueryString(failUrl.Query);
+            queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
+            queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
+            webhookUrl.Query = queryString.ToString()!;
+            paymentMethodSettings.PaymentServiceProvider.WebhookUrl = webhookUrl.ToString();
             
             // Get current user.
             var user = await accountsService.GetUserDataFromCookieAsync();
@@ -630,8 +644,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 await HandlePaymentStatusUpdateAsync(orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
             }
 
-            // TODO: PaymentMethods can't be an enum anymore, since you can now add new ones via Wiser.
-            return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, PaymentMethods.Unknown, invoiceNumber);
+            return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, paymentMethodSettings, uniquePaymentNumber);
         }
 
         /// <inheritdoc />
@@ -793,6 +806,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 Title = dataRow.Field<string>("paymentMethodTitle"),
                 Fee = fee,
                 Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("paymentMethodVisibility") ?? "Always"),
+                ExternalName = dataRow.Field<string>("paymentMethodExternalName"),
                 PaymentServiceProvider = new PaymentServiceProviderSettingsModel
                 {
                     Id = dataRow.Field<ulong>("paymentServiceProviderId"),
@@ -803,6 +817,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     SkipPaymentWhenOrderAmountEqualsZero = dataRow.Field<string>("paymentServiceProviderSkipWhenOrderAmountEqualsZero") == "1",
                 }
             };
+
+            if (String.IsNullOrEmpty(result.ExternalName))
+            {
+                result.ExternalName = result.Title;
+            }
+
             return result;
         }
 
@@ -844,9 +864,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var user = await accountsService.GetUserDataFromCookieAsync();
             var templateItem = await wiserItemsService.GetItemDetailsAsync(templateItemId, languageCode: languageCode, userId: user.UserId) ?? await wiserItemsService.GetItemDetailsAsync(templateItemId, userId: user.UserId);
 
-            var templateContent = templateItem.GetDetailValue(Constants.MailTemplateBodyProperty);
-            var templateSubject = templateItem.GetDetailValue(Constants.MailTemplateSubjectProperty);
-            var merchantEmailAddress = templateItem.GetDetailValue(Constants.MailTemplateToAddressProperty);
+            var templateContent = templateItem.GetDetailValue(Constants.MailTemplateBodyProperty) ?? "";
+            var templateSubject = templateItem.GetDetailValue(Constants.MailTemplateSubjectProperty) ?? "";
+            var merchantEmailAddress = templateItem.GetDetailValue(Constants.MailTemplateToAddressProperty) ?? "";
             var bcc = templateItem.GetDetailValue(Constants.MailTemplateBccProperty);
             var replyToAddress = templateItem.GetDetailValue(Constants.MailTemplateReplyToAddressProperty);
             var replyToName = templateItem.GetDetailValue(Constants.MailTemplateReplyToNameProperty);

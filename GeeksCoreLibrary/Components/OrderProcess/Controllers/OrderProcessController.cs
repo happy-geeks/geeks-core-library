@@ -56,8 +56,25 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
         [Route(Constants.CheckoutPage)]
         public async Task<IActionResult> OrderProcessAsync()
         {
+            return await HandleControllerAction(OrderProcess.ComponentModes.Checkout);
+        }
+
+        [Route(Constants.PaymentOutPage)]
+        public async Task<IActionResult> PaymentOutAsync()
+        {
+            return await HandleControllerAction(OrderProcess.ComponentModes.PaymentOut);
+        }
+
+        [Route(Constants.PaymentInPage)]
+        public async Task<IActionResult> PaymentInAsync()
+        {
+            return await HandleControllerAction(OrderProcess.ComponentModes.PaymentIn);
+        }
+
+        private async Task<IActionResult> HandleControllerAction(OrderProcess.ComponentModes componentMode)
+        {
             var context = HttpContext;
-            var orderProcessIdString = HttpContextHelpers.GetRequestValue(context, "id");
+            var orderProcessIdString = HttpContextHelpers.GetRequestValue(context, Constants.OrderProcessIdRequestKey);
 
             UInt64.TryParse(orderProcessIdString, out var orderProcessId);
             logger.LogDebug($"GetAsync content from order process, orderProcessIdString: '{orderProcessIdString}'.");
@@ -97,19 +114,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             // Dynamically invoke the correct ViewComponent.
             var orderProcessSettings = new OrderProcessCmsSettingsModel
             {
-                HandleRequest = false,
-                ComponentMode = OrderProcess.ComponentModes.Checkout,
+                HandleRequest = true,
+                ComponentMode = componentMode,
                 EvaluateIfElseInTemplates = true,
                 UserNeedsToBeLoggedIn = false,
                 OrderProcessId = orderProcessId
             };
-            
+
             var dynamicContent = new DynamicContent
             {
                 Id = 1,
                 SettingsJson = JsonConvert.SerializeObject(orderProcessSettings)
             };
-            var component = await viewComponentHelper.InvokeAsync("OrderProcess", new { dynamicContent, callMethod = "", forcedComponentMode = (int?)OrderProcess.ComponentModes.Checkout });
+            var component = await viewComponentHelper.InvokeAsync("OrderProcess", new { dynamicContent, callMethod = "", forcedComponentMode = (int?)componentMode });
             await using (var stringWriter = new StringWriter())
             {
                 component.WriteTo(stringWriter, HtmlEncoder.Default);

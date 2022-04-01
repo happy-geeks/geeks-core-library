@@ -155,7 +155,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 // Payment service provider handling.
                 if (String.Equals(urlMatchLastPart, "M2", StringComparison.OrdinalIgnoreCase))
                 {
-                    context.Request.Path = "/payment_out.gcl";
+                    context.Request.Path = Components.OrderProcess.Models.Constants.PaymentOutPage;
                     context.Request.QueryString = QueryString.FromUriComponent($"?{queryString.ToString().Substring(1)}{queryStringFromUrl.Value}");
                     break;
                 }

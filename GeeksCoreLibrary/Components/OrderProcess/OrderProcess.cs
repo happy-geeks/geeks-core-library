@@ -24,9 +24,11 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
+using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Ubiety.Dns.Core;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.OrderProcess
@@ -160,21 +162,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 throw new Exception("No order process ID set. Order process rendering cannot continue.");
             }
 
-            var resultHtml = new StringBuilder();
-
-            switch (Settings.ComponentMode)
+            var html = Settings.ComponentMode switch
             {
-                case ComponentModes.Checkout:
-                {
-                    var html = await HandleCheckoutModeAsync();
-                    resultHtml.Append(html);
-                    break;
-                }
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(Settings.ComponentMode), Settings.ComponentMode.ToString());
-            }
+                ComponentModes.Checkout => await HandleCheckoutModeAsync(),
+                ComponentModes.PaymentOut => await HandlePaymentOutModeAsync(),
+                ComponentModes.PaymentIn => await HandlePaymentInModeAsync(),
+                _ => throw new ArgumentOutOfRangeException(nameof(Settings.ComponentMode), Settings.ComponentMode.ToString())
+            };
             
-            return new HtmlString(resultHtml.ToString());
+            return new HtmlString(html);
         }
 
         #endregion
@@ -182,9 +178,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         #region Handling different component modes
         
         /// <summary>
-        /// Handles the automatic component mode and outputs the HTML for this mode.
+        /// Handles the checkout component mode and outputs the HTML for this mode.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The output HTML of the component.</returns>
         private async Task<string> HandleCheckoutModeAsync()
         {
             // Gather some data.
@@ -243,7 +239,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         }
                         else
                         {
-                            response.Redirect($"/{Constants.PaymentOutPage}");
+                            response.Redirect($"/{Constants.PaymentOutPage}?{Constants.OrderProcessIdRequestKey}={Settings.OrderProcessId}");
                         }
 
                         return null;
@@ -306,6 +302,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 {
                     resultHtml = AddStepErrorToResult(resultHtml, "Client");
                 }
+
+                if (String.Equals(HttpContextHelpers.GetRequestValue(httpContext, Constants.ErrorFromPaymentOutRequestKey), "true", StringComparison.OrdinalIgnoreCase))
+                {
+                    resultHtml = AddStepErrorToResult(resultHtml, "Payment");
+                }
             }
             catch (ThreadAbortException)
             {
@@ -319,6 +320,40 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
             // Do all generic replacement last and then return the final HTML.
             return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(resultHtml), Constants.ComponentIdFormKey);
+        }
+
+        /// <summary>
+        /// Handles the payment out component mode and outputs the HTML for this mode.
+        /// </summary>
+        /// <returns>The output HTML of the component.</returns>
+        private async Task<string> HandlePaymentOutModeAsync()
+        {
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return "HttpContext not available.";
+            }
+            
+            var paymentRequestResult = await orderProcessesService.HandlePaymentRequestAsync(Settings.OrderProcessId);
+
+            switch (paymentRequestResult.Action)
+            {
+                case PaymentRequestActions.Redirect:
+                    httpContextAccessor.HttpContext.Response.Redirect(paymentRequestResult.ActionData);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(paymentRequestResult.Action), paymentRequestResult.Action.ToString());
+            }
+
+            return "";
+        }
+
+        /// <summary>
+        /// Handles the payment out component mode and outputs the HTML for this mode.
+        /// </summary>
+        /// <returns>The output HTML of the component.</returns>
+        private async Task<string> HandlePaymentInModeAsync()
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>

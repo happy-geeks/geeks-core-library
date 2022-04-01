@@ -25,14 +25,14 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethods paymentMethod, string invoiceNumber)
+        public Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethod, string invoiceNumber)
         {
-            return new()
+            return Task.FromResult<PaymentRequestResult>(new()
             {
                 Successful = true,
                 Action = PaymentRequestActions.Redirect,
-                ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_successURL")
-            };
+                ActionData = paymentMethod.PaymentServiceProvider.SuccessUrl
+            });
         }
 
         /// <inheritdoc />
