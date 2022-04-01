@@ -2066,7 +2066,7 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             var formValue = Request.Form[Settings.RememberMeCheckboxName];
-            return String.IsNullOrWhiteSpace(formValue) || formValue == "0" ? Settings.AmountOfDaysToRememberCookie : null;
+            return String.IsNullOrWhiteSpace(formValue) || formValue == "0" ? null : Settings.AmountOfDaysToRememberCookie;
         }
     }
 }

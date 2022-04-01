@@ -63,6 +63,14 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         /// <inheritdoc />
         public async Task<string> GetLanguageCodeAsync()
         {
+            // Check if it should be overriden through a query string.
+            if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Request.Query.ContainsKey(Constants.LanguageCodeQueryStringKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey]))
+            {
+                CurrentLanguageCode = httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey];
+                logger.LogDebug($"LanguageCode determined through query string: {CurrentLanguageCode}");
+                return CurrentLanguageCode;
+            }
+            
             var cacheName = new StringBuilder(Constants.LanguageCodeCacheKey);
 
             if (gclSettings.MultiLanguageBasedOnUrlSegments)
