@@ -127,11 +127,14 @@ namespace GeeksCoreLibrary.Components.Filter
                 return new HtmlString("");
             }
 
-            var resultHtml = new StringBuilder();
+            var output = await GenerateFiltersAsync();
 
-            resultHtml.Append(await GenerateFiltersAsync());
+            if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
+            {
+                output = StringReplacementsService.DoReplacements(output, ExtraDataForReplacements);
+            }
 
-            return new HtmlString(resultHtml.ToString());
+            return new HtmlString(output);
         }
 
         /// <summary>
@@ -198,9 +201,7 @@ namespace GeeksCoreLibrary.Components.Filter
             // Get the category id from a query if query is given
             if (!String.IsNullOrEmpty(Settings.FilterCategoryIdQuery))
             {
-                var query = await TemplatesService.DoReplacesAsync(Settings.FilterCategoryIdQuery, true, false, true, forQuery: true);
-
-                dataTable = await DatabaseConnection.GetAsync(query);
+                dataTable = await RenderAndExecuteQueryAsync(Settings.FilterCategoryIdQuery);
 
                 if (dataTable.Rows.Count >= 1)
                 {
@@ -302,12 +303,10 @@ namespace GeeksCoreLibrary.Components.Filter
             filterItemsQuery = filterItemsQuery.Replace("{categoryId}", categoryId.ToString());
             filterItemsQuery = filterItemsQuery.Replace("{languageCode}", await languageService.GetLanguageCodeAsync());
             filterItemsQuery = filterItemsQuery.Replace("`wiser_filter_aggregation_`", "`wiser_filter_aggregation`"); // If no language code, trim trailing underscore
-            filterItemsQuery = await TemplatesService.DoReplacesAsync(filterItemsQuery, true, false, true, removeUnknownVariables: false, forQuery: true); // Support [include[x]] for including other templates.
 
             // Replace the {filters} variable with the join and where parts to exclude not possible filter values when filtered
             if (filterItemsQuery.Contains("{filters}"))
             {
-
                 if (Settings.ComponentMode == ComponentModes.Aggregation)
                 {
                     var filterItemsQueryNew = "";
@@ -317,9 +316,8 @@ namespace GeeksCoreLibrary.Components.Filter
                     {
                         if (filterGroup.Value.SelectedValues.Count > 0)
                         {
-                            var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups,
-                                forActiveFilter: filterGroup.Value.GetParamKey());
-                            if (!string.IsNullOrEmpty(filterItemsQueryNew))
+                            var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups, forActiveFilter: filterGroup.Value.GetParamKey());
+                            if (!String.IsNullOrEmpty(filterItemsQueryNew))
                             {
                                 filterItemsQueryNew += " UNION ALL ";
                             }
@@ -333,15 +331,14 @@ namespace GeeksCoreLibrary.Components.Filter
                         }
                     }
 
-                    if (string.IsNullOrEmpty(filterItemsQueryNew)) //No active filters
+                    if (String.IsNullOrEmpty(filterItemsQueryNew)) //No active filters
                     {
                         filterItemsQueryNew = filterItemsQuery.Replace("{filters}", "").Replace("{filterGroup}", "");
                     }
-                    else if (!string.IsNullOrEmpty(notActiveFilters)) //Active and no active filters combined
+                    else if (!String.IsNullOrEmpty(notActiveFilters)) //Active and no active filters combined
                     {
                         var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
-                        filterItemsQueryNew +=
-                            $" UNION ALL ({filterItemsQuery.Replace("{filters}", queryPart.JoinPart).Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
+                        filterItemsQueryNew += $" UNION ALL ({filterItemsQuery.Replace("{filters}", queryPart.JoinPart).Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
                     }
                     
                     filterItemsQuery = filterItemsQueryNew;
@@ -360,7 +357,7 @@ namespace GeeksCoreLibrary.Components.Filter
             // Replace user variables if present in query
             filterItemsQuery = await AccountsService.DoAccountReplacementsAsync(filterItemsQuery, true);
 
-            dataTable = await DatabaseConnection.GetAsync(filterItemsQuery);
+            dataTable = await RenderAndExecuteQueryAsync(filterItemsQuery);
 
             // Loop through filter groups and select rows in the dataset to add filteritems to the filter groups.
             foreach (DataRow row in dataTable.Rows)

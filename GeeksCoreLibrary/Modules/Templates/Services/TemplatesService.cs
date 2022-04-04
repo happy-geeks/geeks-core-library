@@ -211,11 +211,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             if (parentId > 0)
             {
                 databaseConnection.AddParameter("parentId", parentId);
+                joinPart += $" JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)";
                 whereClause.Add("template.parent_id = ?parentId");
             }
             else if (!String.IsNullOrWhiteSpace(parentName))
             {
                 databaseConnection.AddParameter("parentName", parentName);
+                joinPart += $" JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)";
                 whereClause.Add("parent1.template_name = ?parentName");
             }
 
