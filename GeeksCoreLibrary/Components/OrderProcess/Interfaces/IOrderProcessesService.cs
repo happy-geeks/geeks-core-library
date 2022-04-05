@@ -90,5 +90,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="isSuccessfulStatus">Whether or not the new status means that the payment was successful.</param>
         /// <param name="convertConceptOrderToOrder">Optional: Whether or not to convert the concept order(s) to order(s). Default value is <see langword="true"/>.</param>
         Task<bool> HandlePaymentStatusUpdateAsync(IOrderProcessesService orderProcessesService, OrderProcessSettingsModel orderProcessSettings, ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, string newStatus, bool isSuccessfulStatus, bool convertConceptOrderToOrder = true);
+
+        /// <summary>
+        /// Validates whether a value for a field is valid.
+        /// This checks if the field is mandatory, if the regex pattern matches and if the value is valid for the type of field (eg if an email field contains a valid e-mail address).
+        /// </summary>
+        /// <param name="field">The settings for the field.</param>
+        /// <param name="currentItems">Any items that the user already has in the database. This will be used to make sure that the user won't get an error if they enter the same value that is already saved for their own item. For example, if the user is logged in they will have an account item, add that item to this list.</param>
+        /// <returns>A <see cref="bool"/> indicating whether the value is valid or not.</returns>
+        Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<WiserItemModel> currentItems);
     }
 }

@@ -1829,7 +1829,7 @@ namespace GeeksCoreLibrary.Core.Services
                     {itemLinkJoin}
                     LEFT JOIN {WiserTableNames.WiserItemLinkDetail} AS details ON details.itemlink_id = link.id
                     {permissionsQueryPart}
-                    WHERE {String.Join(" AND ", where)};";
+                    WHERE {String.Join(" AND ", where)}";
             }
 
             var query = $@"# Item details.
@@ -1879,10 +1879,11 @@ namespace GeeksCoreLibrary.Core.Services
                         {itemLinkJoin}
                         LEFT JOIN {WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.itemlink_id = link.id
                         {permissionsQueryPart}
-                        WHERE {String.Join(" AND ", where)};";
+                        WHERE {String.Join(" AND ", where)}";
                 }
 
-                query += $@"UNION
+                query += $@"
+                            UNION
                             SELECT 
 	                            item.*,
 	                            details.`key`,	

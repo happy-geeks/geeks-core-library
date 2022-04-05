@@ -202,18 +202,26 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     return "";
                 }
 
-                // Get the logged in user, if any.
-                var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
-                var userData = loggedInUser.UserId == 0 
-                    ? new WiserItemModel { EntityType = Account.Models.Constants.DefaultEntityType } 
-                    : await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
-                
-                // Get the available payment methods.
-                var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId, loggedInUser);
-
                 // Get the active basket, if any.
                 var shoppingBasketSettings = await shoppingBasketsService.GetSettingsAsync();
                 var (shoppingBasket, shoppingBasketLines, _, _) = await shoppingBasketsService.LoadAsync(shoppingBasketSettings);
+
+                // Get the logged in user, if any.
+                var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
+                WiserItemModel userData;
+                if (loggedInUser.UserId > 0)
+                {
+                    userData = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
+                }
+                else
+                {
+                    var basketUser = (await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType, Account.Models.Constants.DefaultEntityType, reverse: true)).FirstOrDefault();
+                    userData = basketUser ?? new WiserItemModel { EntityType = Account.Models.Constants.DefaultEntityType } ;
+                    loggedInUser.UserId = userData.Id;
+                }
+
+                // Get the available payment methods.
+                var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId, loggedInUser);
 
                 // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
                 var step = steps[ActiveStep - 1];
@@ -228,7 +236,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     {
                         shoppingBasket = await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
                         userData = await wiserItemsService.SaveAsync(userData, userId: userData.Id);
-                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userData.Id, 5010);
+                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userData.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType);
 
                         // Redirect to the next step.
                         var nextStep = ActiveStep + 1;
@@ -524,11 +532,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                         if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
                         {
-                            fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
+                            fieldValue = shoppingBasket.GetDetailValue(propertyName);
                         }
                         else if (String.Equals(entityType, Account.Models.Constants.DefaultEntityType))
                         {
-                            fieldValue = userData.GetDetailValue(field.FieldId);
+                            fieldValue = userData.GetDetailValue(propertyName);
                         }
                         else
                         {
@@ -695,7 +703,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             field.Value = request.Form[field.FieldId].ToString();
 
                             // Do field validation.
-                            field.IsValid = FieldValueIsValid(field, field.Value);
+                            field.IsValid = await orderProcessesService.ValidateFieldValueAsync(field, new List<WiserItemModel> { userData });
 
                             if (!field.IsValid)
                             {
@@ -740,7 +748,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                     }
                                     else if (String.Equals(entityType, Account.Models.Constants.DefaultEntityType))
                                     {
-                                        userData.SetDetail(field.FieldId, valueForDatabase);
+                                        userData.SetDetail(propertyName, valueForDatabase);
                                     }
                                     else
                                     {
@@ -811,44 +819,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString())
                 };
             }).ToList();
-        }
-
-        /// <summary>
-        /// Validates whether a value for a field is valid.
-        /// This checks if the field is mandatory, if the regex pattern matches and if the value is valid for the type of field (eg if an email field contains a valid e-mail address).
-        /// </summary>
-        /// <param name="field">The settings for the field.</param>
-        /// <param name="fieldValue">The value that the user entered.</param>
-        /// <returns>A <see cref="bool"/> indicating whether the value is valid or not.</returns>
-        private static bool FieldValueIsValid(OrderProcessFieldModel field, string fieldValue)
-        {
-            try
-            {
-                if (!String.IsNullOrWhiteSpace(field.Pattern))
-                {
-                    // If the field is not mandatory, then it can be empty but must still pass validation if it's not empty.
-                    return (!field.Mandatory && String.IsNullOrEmpty(fieldValue)) || Regex.IsMatch(fieldValue, field.Pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
-                }
-
-                switch (field.Mandatory)
-                {
-                    case true when String.IsNullOrWhiteSpace(fieldValue):
-                        return false;
-                    case false when String.IsNullOrWhiteSpace(fieldValue):
-                        return true;
-                    default:
-                        return field.InputFieldType switch
-                        {
-                            OrderProcessInputTypes.Email => Regex.IsMatch(fieldValue, @"(@)(.+)$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(200)),
-                            OrderProcessInputTypes.Number => Decimal.TryParse(fieldValue, NumberStyles.Any, new CultureInfo("en-US"), out _),
-                            _ => true
-                        };
-                }
-            }
-            catch (RegexMatchTimeoutException)
-            {
-                return false;
-            }
         }
         
         /// <summary>

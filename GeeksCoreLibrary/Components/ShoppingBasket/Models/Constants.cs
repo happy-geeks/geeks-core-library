@@ -7,5 +7,7 @@
         public const string BasketEntityType = "basket";
 
         public const string BasketLineEntityType = "basketline";
+
+        public const int BasketToUserLinkType = 5010;
     }
 }

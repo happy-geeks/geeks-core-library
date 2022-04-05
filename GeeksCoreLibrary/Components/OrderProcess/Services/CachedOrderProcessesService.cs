@@ -112,5 +112,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         {
             return await orderProcessesService.HandlePaymentStatusUpdateAsync(service, orderProcessSettings, conceptOrders, newStatus, isSuccessfulStatus, convertConceptOrderToOrder);
         }
+
+        /// <inheritdoc />
+        public async Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<WiserItemModel> currentItems)
+        {
+            return await orderProcessesService.ValidateFieldValueAsync(field, currentItems);
+        }
     }
 }

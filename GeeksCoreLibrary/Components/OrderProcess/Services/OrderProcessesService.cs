@@ -4,6 +4,7 @@ using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 using GeeksCoreLibrary.Components.Account.Interfaces;
@@ -194,6 +195,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                        fieldErrorMessage.value AS fieldErrorMessage,
                             fieldCssClass.value AS fieldCssClass,
                             fieldSaveTo.value AS fieldSaveTo,
+                            fieldRequiresUniqueValue.value AS fieldRequiresUniqueValue,
 
                             # Field values
 	                        IF(NULLIF(fieldValues.`key`, '') IS NULL AND NULLIF(fieldValues.value, '') IS NULL, NULL, JSON_OBJECTAGG(IFNULL(fieldValues.`key`, ''), IFNULL(fieldValues.value, ''))) AS fieldValues
@@ -229,6 +231,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldErrorMessage ON fieldErrorMessage.item_id = field.id AND fieldErrorMessage.`key` = '{Constants.FieldErrorMessageProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldCssClass ON fieldCssClass.item_id = field.id AND fieldCssClass.`key` = '{Constants.FieldCssClassProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldSaveTo ON fieldSaveTo.item_id = field.id AND fieldSaveTo.`key` = '{Constants.FieldSaveToProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldRequiresUniqueValue ON fieldRequiresUniqueValue.item_id = field.id AND fieldRequiresUniqueValue.`key` = '{Constants.FieldRequiresUniqueValueProperty}'
                         
                         # Field values
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldValues ON fieldValues.item_id = field.id AND fieldValues.groupname = '{Constants.FieldValuesGroupName}'
@@ -329,7 +332,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     InputFieldType = EnumHelpers.ToEnum<OrderProcessInputTypes>(dataRow.Field<string>("fieldInputType") ?? "text"),
                     ErrorMessage = dataRow.Field<string>("fieldErrorMessage"),
                     CssClass = dataRow.Field<string>("fieldCssClass"),
-                    SaveTo = dataRow.Field<string>("fieldSaveTo")
+                    SaveTo = dataRow.Field<string>("fieldSaveTo"),
+                    RequireUniqueValue = dataRow.Field<string>("fieldRequiresUniqueValue") == "1"
                 };
 
                 group.Fields.Add(field);
@@ -812,6 +816,90 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             }
 
             return true;
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<WiserItemModel> currentItems)
+        {
+            try
+            {
+                if (!String.IsNullOrWhiteSpace(field.Pattern))
+                {
+                    // If the field is not mandatory, then it can be empty but must still pass validation if it's not empty.
+                    return (!field.Mandatory && String.IsNullOrEmpty(field.Value)) || Regex.IsMatch(field.Value, field.Pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                }
+
+                var isValid = field.Mandatory switch
+                {
+                    true when String.IsNullOrWhiteSpace(field.Value) => false,
+                    false when String.IsNullOrWhiteSpace(field.Value) => true,
+                    _ => field.InputFieldType switch
+                    {
+                        OrderProcessInputTypes.Email => Regex.IsMatch(field.Value, @"(@)(.+)$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(200)),
+                        OrderProcessInputTypes.Number => Decimal.TryParse(field.Value, NumberStyles.Any, new CultureInfo("en-US"), out _),
+                        _ => true
+                    }
+                };
+
+                if (!isValid || !field.RequireUniqueValue)
+                {
+                    return isValid;
+                }
+
+                var valuesToSave = String.IsNullOrWhiteSpace(field.SaveTo) ? new List<string> { $"{ShoppingBasket.Models.Constants.BasketEntityType}.{field.FieldId}" } : field.SaveTo.Split(',').ToList();
+                
+                // Check if the entered value is unique.
+                foreach (var saveLocation in valuesToSave)
+                {
+                    var split = saveLocation.Split('.');
+                    if (split.Length != 2)
+                    {
+                        throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
+                    }
+
+                    var entityType = split[0];
+                    var propertyName = split[1];
+                    if (String.IsNullOrWhiteSpace(entityType) || String.IsNullOrWhiteSpace(propertyName))
+                    {
+                        throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
+                    }
+                                    
+                    if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
+                    {
+                        continue;
+                    }
+
+                    var itemsOfEntityType = currentItems?.Where(item => String.Equals(item.EntityType, entityType, StringComparison.CurrentCultureIgnoreCase)).ToList();
+                    var idsClause = itemsOfEntityType == null || !itemsOfEntityType.Any() ? "" : $"AND item.id NOT IN ({String.Join(",", itemsOfEntityType.Select(item => item.Id))})";
+                    var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+                    
+                    databaseConnection.AddParameter("entityType", entityType);
+                    databaseConnection.AddParameter("propertyName", propertyName);
+                    databaseConnection.AddParameter("value", field.Value);
+                    var query = $@"SELECT NULL
+                                FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS detail ON detail.item_id = item.id AND detail.`key` = ?propertyName AND (detail.value = ?value OR detail.long_value = ?value)
+                                WHERE item.entity_type = ?entityType
+                                {idsClause}
+                                LIMIT 1";
+
+                    var dataTable = await databaseConnection.GetAsync(query);
+                    isValid = dataTable.Rows.Count == 0;
+                    if (isValid)
+                    {
+                        continue;
+                    }
+
+                    field.ErrorMessage = await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_notUniqueErrorMessage", defaultValue: field.ErrorMessage);
+                    break;
+                }
+
+                return isValid;
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return false;
+            }
         }
 
         private static PaymentMethodSettingsModel DataRowToPaymentMethodSettingsModel(DataRow dataRow)

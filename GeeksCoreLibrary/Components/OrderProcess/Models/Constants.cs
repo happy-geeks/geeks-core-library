@@ -101,6 +101,8 @@
 
         public const string FieldSaveToProperty = "formfieldsaveto";
 
+        public const string FieldRequiresUniqueValueProperty = "formfieldrequireuniquevalue";
+
         public const string PaymentServiceProviderSuccessUrlProperty = "pspsuccessurl";
 
         public const string PaymentServiceProviderLogAllRequestsProperty = "psplogallrequests";
