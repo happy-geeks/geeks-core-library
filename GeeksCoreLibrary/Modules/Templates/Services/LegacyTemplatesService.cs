@@ -250,6 +250,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public async Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc />
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
         {
             var joinPart = gclSettings.Environment switch

@@ -107,7 +107,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {
-                return null;
+                return new OrderProcessSettingsModel();
             }
 
             var firstRow = dataTable.Rows[0];

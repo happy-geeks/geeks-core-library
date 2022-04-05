@@ -180,6 +180,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public async Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
+        {
+            var cacheKey = $"GetTemplateIdFromName_{name}_{type}";
+            return await cache.GetOrAdd(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetTemplateIdFromNameAsync(name, type);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+        }
+
+        /// <inheritdoc />
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
         {
             var cacheKey = $"GeneralTemplateLastChangedDate_{templateType}";

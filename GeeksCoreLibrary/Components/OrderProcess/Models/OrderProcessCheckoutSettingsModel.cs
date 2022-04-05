@@ -41,7 +41,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <div class='group-header'>{header}</div>
     <div class='group-fields'>{fields}</div>
     <div class='group-footer'>{footer}</div>
-</fieldset>")]
+</div>")]
         internal string TemplateFieldsGroup { get; }
 
         [DefaultValue(@"<div class='form-row {groupClass}'>

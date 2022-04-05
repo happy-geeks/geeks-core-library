@@ -34,6 +34,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "");
 
         /// <summary>
+        /// Gets the ID of a template based on the name and type of a template.
+        /// </summary>
+        /// <param name="name">The name of the template.</param>
+        /// <param name="type">The type of template.</param>
+        /// <returns>The ID of the template or <see langword="0"/> if it wasn't found.</returns>
+        Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type);
+
+        /// <summary>
         /// Gets the last changed date of general templates of a specific type. This can be used for generating the URL for gcl_general.css for example.
         /// </summary>
         /// <param name="templateType">Optional: The template type to get the last change date of. Default is Css.</param>

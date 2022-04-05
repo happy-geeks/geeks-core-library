@@ -4,9 +4,11 @@ using System.IO;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.Services;
@@ -23,9 +25,9 @@ using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
 {
     [Area("Templates")]
-    public class OrderProcessController : Controller
+    public class OrderProcessesController : Controller
     {
-        private readonly ILogger<OrderProcessController> logger;
+        private readonly ILogger<OrderProcessesController> logger;
         private readonly ITemplatesService templatesService;
         private readonly IPagesService pagesService;
         private readonly IActionContextAccessor actionContextAccessor;
@@ -33,15 +35,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
         private readonly ITempDataProvider tempDataProvider;
         private readonly IViewComponentHelper viewComponentHelper;
         private readonly IDataSelectorsService dataSelectorsService;
+        private readonly IOrderProcessesService orderProcessesService;
 
-        public OrderProcessController(ILogger<OrderProcessController> logger,
+        public OrderProcessesController(ILogger<OrderProcessesController> logger,
             ITemplatesService templatesService,
             IPagesService pagesService,
             IActionContextAccessor actionContextAccessor,
             IHttpContextAccessor httpContextAccessor,
             ITempDataProvider tempDataProvider,
             IViewComponentHelper viewComponentHelper,
-            IDataSelectorsService dataSelectorsService)
+            IDataSelectorsService dataSelectorsService,
+            IOrderProcessesService orderProcessesService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -51,6 +55,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             this.tempDataProvider = tempDataProvider;
             this.viewComponentHelper = viewComponentHelper;
             this.dataSelectorsService = dataSelectorsService;
+            this.orderProcessesService = orderProcessesService;
         }
 
         [Route(Constants.CheckoutPage)]
@@ -84,6 +89,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
                 return NotFound();
             }
 
+            var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
+            if (orderProcessSettings == null || orderProcessSettings.Id == 0)
+            {
+                return NotFound();
+            }
+
             var javascriptTemplates = new List<int>();
             var cssTemplates = new List<int>();
             var externalJavascript = new List<string>();
@@ -97,6 +108,16 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             if (ombouw)
             {
                 contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates));
+
+                // Load (S)CSS file with the same name as the order process.
+                if (!String.IsNullOrWhiteSpace(orderProcessSettings.Title))
+                {
+                    var cssTemplateId = await templatesService.GetTemplateIdFromNameAsync(orderProcessSettings.Title, TemplateTypes.Scss);
+                    if (cssTemplateId > 0)
+                    {
+                        cssTemplates.Add(cssTemplateId);
+                    }
+                }
             }
 
             // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
@@ -112,7 +133,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             (viewComponentHelper as IViewContextAware)?.Contextualize(viewContext);
 
             // Dynamically invoke the correct ViewComponent.
-            var orderProcessSettings = new OrderProcessCmsSettingsModel
+            var orderProcessCmsSettings = new OrderProcessCmsSettingsModel
             {
                 HandleRequest = true,
                 ComponentMode = componentMode,
@@ -124,7 +145,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             var dynamicContent = new DynamicContent
             {
                 Id = 1,
-                SettingsJson = JsonConvert.SerializeObject(orderProcessSettings)
+                SettingsJson = JsonConvert.SerializeObject(orderProcessCmsSettings)
             };
             var component = await viewComponentHelper.InvokeAsync("OrderProcess", new { dynamicContent, callMethod = "", forcedComponentMode = (int?)componentMode });
             await using (var stringWriter = new StringWriter())

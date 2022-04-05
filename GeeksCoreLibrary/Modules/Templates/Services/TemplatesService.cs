@@ -170,12 +170,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         GROUP BY template.template_id
                         ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
-            using (var reader = await databaseConnection.GetReaderAsync(query))
-            {
-                var result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            await using var reader = await databaseConnection.GetReaderAsync(query);
+            var result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
 
-                return result;
-            }
+            return result;
         }
 
         /// <inheritdoc />
@@ -247,6 +245,51 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             };
 
             return result;
+        }
+
+        /// <inheritdoc />
+        public async Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
+        {
+            if (String.IsNullOrEmpty(name))
+            {
+                throw new ArgumentNullException($"The parameter {nameof(name)} must contain a value");
+            }
+
+            var joinPart = "";
+            var whereClause = new List<string>();
+            if (gclSettings.Environment == Environments.Development)
+            {
+                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+            }
+            else
+            {
+                whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
+            }
+
+            databaseConnection.AddParameter("name", name);
+            whereClause.Add("template.template_name = ?name");
+
+            if (type is TemplateTypes.Css or TemplateTypes.Scss)
+            {
+                whereClause.Add($"template.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})");
+            }
+            else
+            {
+                databaseConnection.AddParameter("type", (int)type);
+                whereClause.Add("template.template_type = ?type");
+            }
+
+            whereClause.Add("template.removed = 0");
+
+            var query = $@"SELECT template.template_id
+                        FROM {WiserTableNames.WiserTemplate} AS template
+                        {joinPart}
+
+                        WHERE {String.Join(" AND ", whereClause)}
+                        LIMIT 1";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            return dataTable.Rows.Count == 0 ? 0 : dataTable.Rows[0].Field<int>("template_id");
         }
 
         /// <inheritdoc />

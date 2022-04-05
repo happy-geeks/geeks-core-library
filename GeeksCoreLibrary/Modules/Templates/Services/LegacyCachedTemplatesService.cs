@@ -15,7 +15,6 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using LazyCache;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -155,6 +154,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+        }
+
+        /// <inheritdoc />
+        public async Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
+        {
+            throw new NotImplementedException();
         }
 
         /// <inheritdoc />
