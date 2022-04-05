@@ -221,7 +221,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
                 if (isPostBack)
                 {
-                    fieldErrorsOccurred = ValidatePostBackAndSaveValues(step, loggedInUser, request, shoppingBasket, paymentMethods, userData);
+                    fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(step, loggedInUser, request, shoppingBasket, paymentMethods, userData);
 
                     // Save values to database if all validation succeeded.
                     if (!fieldErrorsOccurred)
@@ -550,7 +550,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title ?? "") },
                 { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder ?? "") },
                 { "fieldId", field.FieldId },
-                { "inputType", EnumHelpers.ToEnumString(field.InputFieldType) },
+                { "inputType", EnumHelpers.ToEnumString(field.InputFieldType).ToLowerInvariant() },
                 { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label ?? "") },
                 { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
                 { "required", field.Mandatory ? "required" : "" },
@@ -671,7 +671,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="paymentMethods">All available payment methods.</param>
         /// <param name="userData">The <see cref="WiserItemModel"/> of the user.</param>
         /// <returns>A <see cref="Boolean"/> indicating whether any there were any errors in the validation.</returns>
-        private bool ValidatePostBackAndSaveValues(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods, WiserItemModel userData)
+        private async Task<bool> ValidatePostBackAndSaveValuesAsync(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods, WiserItemModel userData)
         {
             var fieldErrorsOccurred = false;
             foreach (var group in step.Groups)
@@ -746,6 +746,25 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                     {
                                         throw new NotImplementedException($"Unknown entity type '{entityType}' for field '{field.Id}' set for saving.");
                                     }
+                                }
+                            }
+                        }
+
+                        // If there are exactly 2 fields of type "password", we assume that this is for creating a new account and we'll check if both values are the same.
+                        var passwordFields = group.Fields.Where(field => field.InputFieldType == OrderProcessInputTypes.Password).ToList();
+                        if (passwordFields.Count == 2)
+                        {
+                            if (request.Form[passwordFields.First().FieldId].ToString() != request.Form[passwordFields.Last().FieldId].ToString())
+                            {
+                                passwordFields.First().IsValid = false;
+                                passwordFields.Last().IsValid = false;
+                                fieldErrorsOccurred = true;
+                                
+                                var errorMessage = await languagesService.GetTranslationAsync("orderProcess_passwords_not_the_same_errorMessage", defaultValue: "");
+                                if (!String.IsNullOrEmpty(errorMessage))
+                                {
+                                    passwordFields.First().ErrorMessage = errorMessage;
+                                    passwordFields.Last().ErrorMessage = errorMessage;
                                 }
                             }
                         }
