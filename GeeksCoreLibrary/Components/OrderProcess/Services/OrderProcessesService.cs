@@ -147,7 +147,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {
-                return null;
+                return new OrderProcessSettingsModel();
             }
 
             return await orderProcessesService.GetOrderProcessSettingsAsync(dataTable.Rows[0].Field<ulong>("id"));
