@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
+using GeeksCoreLibrary.Components.OrderProcess;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
@@ -93,8 +94,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             restRequest.AddParameter("amount[currency]", await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_currency", "EUR"), ParameterType.GetOrPost);
             restRequest.AddParameter("amount[value]", totalPrice.ToString("F2", CultureInfo.InvariantCulture), ParameterType.GetOrPost);
             restRequest.AddParameter("description", description, ParameterType.GetOrPost);
-            restRequest.AddParameter("redirectUrl", BuildRedirectUrl(invoiceNumber), ParameterType.GetOrPost);
-            restRequest.AddParameter("webhookUrl", await BuildWebhookUrlAsync(paymentMethod.PaymentServiceProvider.WebhookUrl, invoiceNumber), ParameterType.GetOrPost);
+            restRequest.AddParameter("redirectUrl", BuildUrl(paymentMethod.PaymentServiceProvider.ReturnUrl, invoiceNumber), ParameterType.GetOrPost);
+            restRequest.AddParameter("webhookUrl", BuildUrl(paymentMethod.PaymentServiceProvider.WebhookUrl, invoiceNumber), ParameterType.GetOrPost);
 
             if (!String.IsNullOrWhiteSpace(locale))
             {
@@ -175,38 +176,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             return null;
         }
 
-        private string BuildRedirectUrl(string invoiceNumber)
-        {
-            if (httpContextAccessor.HttpContext == null)
-            {
-                return String.Empty;
-            }
-
-            var request = httpContextAccessor.HttpContext.Request;
-
-            var redirectUrl = new UriBuilder
-            {
-                Host = request.Host.Host,
-                Scheme = request.Scheme,
-                Path = "payment_return.gcl"
-            };
-
-            if (request.Host.Port.HasValue && !request.Host.Port.Value.InList(80, 443))
-            {
-                redirectUrl.Port = request.Host.Port.Value;
-            }
-
-            var queryString = new NameValueCollection
-            {
-                ["gcl_psp"] = "mollie",
-                ["invoice_number"] = invoiceNumber
-            };
-            redirectUrl.Query = queryString.ToQueryString() ?? String.Empty;
-
-            return redirectUrl.ToString();
-        }
-
-        private async Task<string> BuildWebhookUrlAsync(string webhookUrl, string invoiceNumber)
+        private string BuildUrl(string webhookUrl, string invoiceNumber)
         {
             if (httpContextAccessor.HttpContext == null)
             {
@@ -216,7 +186,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // TODO: Refactor this method so that we can use it for all PSPs.
             var webhookUrlBuilder =  new UriBuilder(webhookUrl);
             var queryString = HttpUtility.ParseQueryString(webhookUrlBuilder.Query);
-            queryString["gcl_psp"] = "mollie";
             queryString["invoice_number"] = invoiceNumber;
 
             webhookUrlBuilder.Query = queryString.ToString() ?? String.Empty;

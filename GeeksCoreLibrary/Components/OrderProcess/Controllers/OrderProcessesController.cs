@@ -12,6 +12,7 @@ using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.Services;
+using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -67,13 +68,46 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
         [Route(Constants.PaymentOutPage)]
         public async Task<IActionResult> PaymentOutAsync()
         {
-            return await HandleControllerAction(OrderProcess.ComponentModes.PaymentOut);
+            var context = HttpContext;
+            var orderProcessIdString = HttpContextHelpers.GetRequestValue(context, Constants.OrderProcessIdRequestKey);
+
+            if (!UInt64.TryParse(orderProcessIdString, out var orderProcessId) || orderProcessId == 0)
+            {
+                return NotFound();
+            }
+            
+            var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentOut, orderProcessId);
+            return Content(html, "text/html");
         }
 
         [Route(Constants.PaymentInPage)]
         public async Task<IActionResult> PaymentInAsync()
         {
-            return await HandleControllerAction(OrderProcess.ComponentModes.PaymentIn);
+            var context = HttpContext;
+            var orderProcessIdString = HttpContextHelpers.GetRequestValue(context, Constants.OrderProcessIdRequestKey);
+
+            if (!UInt64.TryParse(orderProcessIdString, out var orderProcessId) || orderProcessId == 0)
+            {
+                return NotFound();
+            }
+            
+            var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentIn, orderProcessId);
+            return Content(html, "text/html");
+        }
+
+        [Route(Constants.PaymentReturnPage)]
+        public async Task<IActionResult> PaymentReturnAsync()
+        {
+            var context = HttpContext;
+            var orderProcessIdString = HttpContextHelpers.GetRequestValue(context, Constants.OrderProcessIdRequestKey);
+
+            if (!UInt64.TryParse(orderProcessIdString, out var orderProcessId) || orderProcessId == 0)
+            {
+                return NotFound();
+            }
+            
+            var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentReturn, orderProcessId);
+            return Content(html, "text/html");
         }
 
         private async Task<IActionResult> HandleControllerAction(OrderProcess.ComponentModes componentMode)
@@ -81,10 +115,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             var context = HttpContext;
             var orderProcessIdString = HttpContextHelpers.GetRequestValue(context, Constants.OrderProcessIdRequestKey);
 
-            UInt64.TryParse(orderProcessIdString, out var orderProcessId);
-            logger.LogDebug($"GetAsync content from order process, orderProcessIdString: '{orderProcessIdString}'.");
-
-            if (orderProcessId == 0)
+            if (!UInt64.TryParse(orderProcessIdString, out var orderProcessId) || orderProcessId == 0)
             {
                 return NotFound();
             }
@@ -120,6 +151,31 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
                 }
             }
 
+            // Content template.
+            var html = await RenderAndExecuteComponentAsync(componentMode, orderProcessId);
+            contentToWrite.Append(html);
+
+            // Footer template.
+            if (ombouw)
+            {
+                contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates));
+            }
+
+            var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString());
+            newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
+
+            if (!ombouw)
+            {
+                return Content(newBodyHtml, "text/html");
+            }
+
+            var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml);
+
+            return View("Template", viewModel);
+        }
+
+        private async Task<string> RenderAndExecuteComponentAsync(OrderProcess.ComponentModes componentMode, ulong orderProcessId)
+        {
             // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
             var viewContext = new ViewContext(
                 actionContextAccessor.ActionContext,
@@ -147,33 +203,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
                 Id = 1,
                 SettingsJson = JsonConvert.SerializeObject(orderProcessCmsSettings)
             };
-            var component = await viewComponentHelper.InvokeAsync("OrderProcess", new { dynamicContent, callMethod = "", forcedComponentMode = (int?)componentMode });
-            await using (var stringWriter = new StringWriter())
-            {
-                component.WriteTo(stringWriter, HtmlEncoder.Default);
-                var html = stringWriter.ToString();
+            var htmlContent = await viewComponentHelper.InvokeAsync("OrderProcess", new { dynamicContent, callMethod = "", forcedComponentMode = (int?)componentMode });
 
-                // Content template.
-                contentToWrite.Append(html);
-            }
-
-            // Footer template.
-            if (ombouw)
-            {
-                contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates));
-            }
-
-            var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString());
-            newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
-
-            if (!ombouw)
-            {
-                return Content(newBodyHtml, "text/html");
-            }
-
-            var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml);
-
-            return View("Template", viewModel);
+            await using var stringWriter = new StringWriter();
+            htmlContent.WriteTo(stringWriter, HtmlEncoder.Default);
+            return stringWriter.ToString();
         }
     }
 }

@@ -60,7 +60,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             /// <summary>
             /// For handling web hooks from PSPs and updating orders with the correct status based on what the PSP sends us.
             /// </summary>
-            PaymentIn
+            PaymentIn,
+            
+            /// <summary>
+            /// For PSPs that always send the user to the same page, no matter the result of their payment.
+            /// From this page, we can then send the user to the correct page based on the result of the payment.
+            /// </summary>
+            PaymentReturn
         }
 
         #endregion
@@ -166,6 +172,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 ComponentModes.Checkout => await HandleCheckoutModeAsync(),
                 ComponentModes.PaymentOut => await HandlePaymentOutModeAsync(),
                 ComponentModes.PaymentIn => await HandlePaymentInModeAsync(),
+                ComponentModes.PaymentReturn => await HandlePaymentReturnModeAsync(),
                 _ => throw new ArgumentOutOfRangeException(nameof(Settings.ComponentMode), Settings.ComponentMode.ToString())
             };
             
@@ -365,7 +372,59 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns>The output HTML of the component.</returns>
         private async Task<string> HandlePaymentInModeAsync()
         {
-            throw new NotImplementedException();
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return "HttpContext not available.";
+            }
+
+            var paymentMethodFromRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.SelectedPaymentMethodRequestKey);
+            if (!UInt64.TryParse(paymentMethodFromRequest, out var paymentMethodId) || paymentMethodId == 0)
+            {
+                throw new Exception($"Invalid payment method ID: {paymentMethodFromRequest}");
+            }
+
+            var success = await orderProcessesService.HandlePaymentServiceProviderWebhookAsync(Settings.OrderProcessId, paymentMethodId);
+            if (!success)
+            {
+                throw new Exception("Payment update webhook failed.");
+            }
+
+            return "";
+        }
+
+        /// <summary>
+        /// Handles the payment out component mode and outputs the HTML for this mode.
+        /// </summary>
+        /// <returns>The output HTML of the component.</returns>
+        private async Task<string> HandlePaymentReturnModeAsync()
+        {
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return "HttpContext not available.";
+            }
+            
+
+            var paymentMethodFromRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.SelectedPaymentMethodRequestKey);
+            if (!UInt64.TryParse(paymentMethodFromRequest, out var paymentMethodId) || paymentMethodId == 0)
+            {
+                throw new Exception($"Invalid payment method ID: {paymentMethodFromRequest}");
+            }
+            
+            var result = await orderProcessesService.HandlePaymentReturnAsync(Settings.OrderProcessId, paymentMethodId);
+
+            switch (result.Action)
+            {
+                case PaymentResultActions.Redirect:
+                    httpContextAccessor.HttpContext.Response.Redirect(result.ActionData);
+                    break;
+                case PaymentResultActions.None:
+                    // Do nothing.
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(result.Action), result.Action.ToString());
+            }
+
+            return "";
         }
 
         /// <summary>

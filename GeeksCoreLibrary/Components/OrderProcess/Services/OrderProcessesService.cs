@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -22,17 +21,14 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
-using GeeksCoreLibrary.Modules.GclConverters.Models;
-using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
@@ -51,12 +47,23 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         private readonly IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory;
         private readonly ICommunicationsService communicationsService;
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly ILogger<OrderProcessesService> logger;
         private readonly GclSettings gclSettings;
 
         /// <summary>
         /// Creates a new instance of <see cref="OrderProcessesService"/>.
         /// </summary>
-        public OrderProcessesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, IShoppingBasketsService shoppingBasketsService, IAccountsService accountsService, IWiserItemsService wiserItemsService, ILanguagesService languagesService, ITemplatesService templatesService, IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory, ICommunicationsService communicationsService, IHttpContextAccessor httpContextAccessor)
+        public OrderProcessesService(IDatabaseConnection databaseConnection,
+            IOptions<GclSettings> gclSettings,
+            IShoppingBasketsService shoppingBasketsService,
+            IAccountsService accountsService,
+            IWiserItemsService wiserItemsService,
+            ILanguagesService languagesService,
+            ITemplatesService templatesService,
+            IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory,
+            ICommunicationsService communicationsService,
+            IHttpContextAccessor httpContextAccessor,
+            ILogger<OrderProcessesService> logger)
         {
             this.databaseConnection = databaseConnection;
             this.shoppingBasketsService = shoppingBasketsService;
@@ -67,6 +74,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             this.paymentServiceProviderServiceFactory = paymentServiceProviderServiceFactory;
             this.communicationsService = communicationsService;
             this.httpContextAccessor = httpContextAccessor;
+            this.logger = logger;
             this.gclSettings = gclSettings.Value;
         }
 
@@ -355,6 +363,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                            paymentMethod.title AS paymentMethodTitle,
 	                            paymentServiceProvider.id AS paymentServiceProviderId,
 	                            paymentServiceProvider.title AS paymentServiceProviderTitle,
+                                paymentServiceProviderType.value AS paymentServiceProviderType,
 	                            paymentMethodFee.value AS paymentMethodFee,
 	                            paymentMethodVisibility.value AS paymentMethodVisibility,
 	                            paymentMethodExternalName.value AS paymentMethodExternalName,
@@ -375,6 +384,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             # PSP
                             JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
                             JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderType ON paymentServiceProviderType.item_id = paymentServiceProvider.id AND paymentServiceProviderType.`key` = '{Constants.PaymentServiceProviderTypeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
@@ -409,6 +419,90 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         }
 
         /// <inheritdoc />
+        public async Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<WiserItemModel> currentItems)
+        {
+            try
+            {
+                if (!String.IsNullOrWhiteSpace(field.Pattern))
+                {
+                    // If the field is not mandatory, then it can be empty but must still pass validation if it's not empty.
+                    return (!field.Mandatory && String.IsNullOrEmpty(field.Value)) || Regex.IsMatch(field.Value, field.Pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                }
+
+                var isValid = field.Mandatory switch
+                {
+                    true when String.IsNullOrWhiteSpace(field.Value) => false,
+                    false when String.IsNullOrWhiteSpace(field.Value) => true,
+                    _ => field.InputFieldType switch
+                    {
+                        OrderProcessInputTypes.Email => Regex.IsMatch(field.Value, @"(@)(.+)$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(200)),
+                        OrderProcessInputTypes.Number => Decimal.TryParse(field.Value, NumberStyles.Any, new CultureInfo("en-US"), out _),
+                        _ => true
+                    }
+                };
+
+                if (!isValid || !field.RequireUniqueValue)
+                {
+                    return isValid;
+                }
+
+                var valuesToSave = String.IsNullOrWhiteSpace(field.SaveTo) ? new List<string> { $"{ShoppingBasket.Models.Constants.BasketEntityType}.{field.FieldId}" } : field.SaveTo.Split(',').ToList();
+                
+                // Check if the entered value is unique.
+                foreach (var saveLocation in valuesToSave)
+                {
+                    var split = saveLocation.Split('.');
+                    if (split.Length != 2)
+                    {
+                        throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
+                    }
+
+                    var entityType = split[0];
+                    var propertyName = split[1];
+                    if (String.IsNullOrWhiteSpace(entityType) || String.IsNullOrWhiteSpace(propertyName))
+                    {
+                        throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
+                    }
+                                    
+                    if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
+                    {
+                        continue;
+                    }
+
+                    var itemsOfEntityType = currentItems?.Where(item => String.Equals(item.EntityType, entityType, StringComparison.CurrentCultureIgnoreCase)).ToList();
+                    var idsClause = itemsOfEntityType == null || !itemsOfEntityType.Any() ? "" : $"AND item.id NOT IN ({String.Join(",", itemsOfEntityType.Select(item => item.Id))})";
+                    var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+                    
+                    databaseConnection.AddParameter("entityType", entityType);
+                    databaseConnection.AddParameter("propertyName", propertyName);
+                    databaseConnection.AddParameter("value", field.Value);
+                    var query = $@"SELECT NULL
+                                FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS detail ON detail.item_id = item.id AND detail.`key` = ?propertyName AND (detail.value = ?value OR detail.long_value = ?value)
+                                WHERE item.entity_type = ?entityType
+                                {idsClause}
+                                LIMIT 1";
+
+                    var dataTable = await databaseConnection.GetAsync(query);
+                    isValid = dataTable.Rows.Count == 0;
+                    if (isValid)
+                    {
+                        continue;
+                    }
+
+                    field.ErrorMessage = await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_notUniqueErrorMessage", defaultValue: field.ErrorMessage);
+                    break;
+                }
+
+                return isValid;
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
         public async Task<PaymentMethodSettingsModel> GetPaymentMethodAsync(ulong paymentMethodId)
         {
             if (paymentMethodId == 0)
@@ -421,6 +515,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                            paymentMethod.title AS paymentMethodTitle,
 	                            paymentServiceProvider.id AS paymentServiceProviderId,
 	                            paymentServiceProvider.title AS paymentServiceProviderTitle,
+                                paymentServiceProviderType.value AS paymentServiceProviderType,
 	                            paymentMethodFee.value AS paymentMethodFee,
 	                            paymentMethodVisibility.value AS paymentMethodVisibility,
 	                            paymentMethodExternalName.value AS paymentMethodExternalName,
@@ -437,6 +532,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             # PSP
                             JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
                             JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderType ON paymentServiceProviderType.item_id = paymentServiceProvider.id AND paymentServiceProviderType.`key` = '{Constants.PaymentServiceProviderTypeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
@@ -526,11 +622,22 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             {
                 Path = Constants.PaymentInPage
             };
-            queryString = HttpUtility.ParseQueryString(failUrl.Query);
+            queryString = HttpUtility.ParseQueryString(webhookUrl.Query);
             queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
             queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
             webhookUrl.Query = queryString.ToString()!;
             paymentMethodSettings.PaymentServiceProvider.WebhookUrl = webhookUrl.ToString();
+            
+            // Build the return URL.
+            var returnUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext))
+            {
+                Path = Constants.PaymentReturnPage
+            };
+            queryString = HttpUtility.ParseQueryString(returnUrl.Query);
+            queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
+            queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
+            returnUrl.Query = queryString.ToString()!;
+            paymentMethodSettings.PaymentServiceProvider.ReturnUrl = returnUrl.ToString();
             
             // Get current user.
             var user = await accountsService.GetUserDataFromCookieAsync();
@@ -662,7 +769,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             if (convertConceptOrderToOrder)
             {
-                await HandlePaymentStatusUpdateAsync(orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
+                await HandlePaymentStatusUpdateAsync(orderProcessesService, orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
             }
 
             return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, paymentMethodSettings, uniquePaymentNumber);
@@ -819,87 +926,77 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         }
 
         /// <inheritdoc />
-        public async Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<WiserItemModel> currentItems)
+        public async Task<bool> HandlePaymentServiceProviderWebhookAsync(ulong orderProcessId, ulong paymentMethodId)
         {
-            try
+            return await HandlePaymentServiceProviderWebhookAsync(this, orderProcessId, paymentMethodId);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> HandlePaymentServiceProviderWebhookAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, ulong paymentMethodId)
+        {
+            var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
+            var paymentMethodSettings = await orderProcessesService.GetPaymentMethodAsync(paymentMethodId);
+            if (orderProcessSettings == null || orderProcessSettings.Id == 0 || paymentMethodSettings == null || paymentMethodSettings.Id == 0)
             {
-                if (!String.IsNullOrWhiteSpace(field.Pattern))
-                {
-                    // If the field is not mandatory, then it can be empty but must still pass validation if it's not empty.
-                    return (!field.Mandatory && String.IsNullOrEmpty(field.Value)) || Regex.IsMatch(field.Value, field.Pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
-                }
-
-                var isValid = field.Mandatory switch
-                {
-                    true when String.IsNullOrWhiteSpace(field.Value) => false,
-                    false when String.IsNullOrWhiteSpace(field.Value) => true,
-                    _ => field.InputFieldType switch
-                    {
-                        OrderProcessInputTypes.Email => Regex.IsMatch(field.Value, @"(@)(.+)$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(200)),
-                        OrderProcessInputTypes.Number => Decimal.TryParse(field.Value, NumberStyles.Any, new CultureInfo("en-US"), out _),
-                        _ => true
-                    }
-                };
-
-                if (!isValid || !field.RequireUniqueValue)
-                {
-                    return isValid;
-                }
-
-                var valuesToSave = String.IsNullOrWhiteSpace(field.SaveTo) ? new List<string> { $"{ShoppingBasket.Models.Constants.BasketEntityType}.{field.FieldId}" } : field.SaveTo.Split(',').ToList();
-                
-                // Check if the entered value is unique.
-                foreach (var saveLocation in valuesToSave)
-                {
-                    var split = saveLocation.Split('.');
-                    if (split.Length != 2)
-                    {
-                        throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
-                    }
-
-                    var entityType = split[0];
-                    var propertyName = split[1];
-                    if (String.IsNullOrWhiteSpace(entityType) || String.IsNullOrWhiteSpace(propertyName))
-                    {
-                        throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
-                    }
-                                    
-                    if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
-                    {
-                        continue;
-                    }
-
-                    var itemsOfEntityType = currentItems?.Where(item => String.Equals(item.EntityType, entityType, StringComparison.CurrentCultureIgnoreCase)).ToList();
-                    var idsClause = itemsOfEntityType == null || !itemsOfEntityType.Any() ? "" : $"AND item.id NOT IN ({String.Join(",", itemsOfEntityType.Select(item => item.Id))})";
-                    var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
-                    
-                    databaseConnection.AddParameter("entityType", entityType);
-                    databaseConnection.AddParameter("propertyName", propertyName);
-                    databaseConnection.AddParameter("value", field.Value);
-                    var query = $@"SELECT NULL
-                                FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS detail ON detail.item_id = item.id AND detail.`key` = ?propertyName AND (detail.value = ?value OR detail.long_value = ?value)
-                                WHERE item.entity_type = ?entityType
-                                {idsClause}
-                                LIMIT 1";
-
-                    var dataTable = await databaseConnection.GetAsync(query);
-                    isValid = dataTable.Rows.Count == 0;
-                    if (isValid)
-                    {
-                        continue;
-                    }
-
-                    field.ErrorMessage = await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_notUniqueErrorMessage", defaultValue: field.ErrorMessage);
-                    break;
-                }
-
-                return isValid;
-            }
-            catch (RegexMatchTimeoutException)
-            {
+                logger.LogError($"Called HandlePaymentServiceProviderWebhookAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)}");
                 return false;
             }
+
+            var invoiceNumber = GetInvoiceNumberFromRequest(paymentMethodSettings.PaymentServiceProvider.Type);
+            var conceptOrders = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(invoiceNumber);
+            
+            // Create the correct service for the payment service provider using the factory.
+            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Type);
+            paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
+            
+            // Let the payment service provider service handle the status update.
+            var pspUpdateResult = await paymentServiceProviderService.ProcessStatusUpdateAsync();
+
+            var result = await orderProcessesService.HandlePaymentStatusUpdateAsync(orderProcessSettings, conceptOrders, pspUpdateResult.Status, pspUpdateResult.Successful);
+
+            var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+            foreach (var (main, lines) in conceptOrders)
+            {
+                await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
+            }
+
+            return result;
+        }
+
+        /// <inheritdoc />
+        public async Task<PaymentReturnResult> HandlePaymentReturnAsync(ulong orderProcessId, ulong paymentMethodId)
+        {
+            return await HandlePaymentReturnAsync(this, orderProcessId, paymentMethodId);
+        }
+
+        /// <inheritdoc />
+        public async Task<PaymentReturnResult> HandlePaymentReturnAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, ulong paymentMethodId)
+        {
+            var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
+            var paymentMethodSettings = await orderProcessesService.GetPaymentMethodAsync(paymentMethodId);
+            if (orderProcessSettings == null || orderProcessSettings.Id == 0 || paymentMethodSettings == null || paymentMethodSettings.Id == 0)
+            {
+                logger.LogError($"Called HandlePaymentReturnAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)}");
+                return new PaymentReturnResult
+                {
+                    Action = PaymentResultActions.Redirect,
+                    ActionData = paymentMethodSettings?.PaymentServiceProvider?.FailUrl ?? "/"
+                };
+            }
+            
+            if (paymentMethodSettings.PaymentServiceProvider.Type == PaymentServiceProviders.Unknown)
+            {
+                return new PaymentReturnResult
+                {
+                    Action = PaymentResultActions.Redirect,
+                    ActionData = paymentMethodSettings.PaymentServiceProvider.FailUrl
+                };
+            }
+
+            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Type);
+            paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
+
+            return await paymentServiceProviderService.HandlePaymentReturnAsync();
         }
 
         private static PaymentMethodSettingsModel DataRowToPaymentMethodSettingsModel(DataRow dataRow)
@@ -916,6 +1013,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 {
                     Id = dataRow.Field<ulong>("paymentServiceProviderId"),
                     Title = dataRow.Field<string>("paymentServiceProviderTitle"),
+                    Type = EnumHelpers.ToEnum<PaymentServiceProviders>(dataRow.Field<string>("paymentServiceProviderType") ?? "0"),
                     SuccessUrl = dataRow.Field<string>("paymentServiceProviderSuccessUrl"),
                     LogAllRequests = dataRow.Field<string>("paymentServiceProviderLogAllRequests") == "1",
                     OrdersCanBeSetDirectlyToFinished = dataRow.Field<string>("paymentServiceProviderSetOrdersDirectlyToFinished") == "1",
@@ -1026,6 +1124,30 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     Address = senderAddress,
                     DisplayName = senderName
                 }
+            };
+        }
+        
+        /// <summary>
+        /// Gets the invoice number from the request.
+        /// Each PSP sends this number in their own way, this method will get the number from the request based on which PSP is being used.  
+        /// </summary>
+        /// <param name="paymentServiceProvider">The PSP that is being used.</param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException">If an unknown PSP has been used.</exception>
+        private string GetInvoiceNumberFromRequest(PaymentServiceProviders paymentServiceProvider)
+        {
+            if (paymentServiceProvider == PaymentServiceProviders.Unknown)
+            {
+                throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), "Unknown payment service provider.");
+            }
+
+            return paymentServiceProvider switch
+            {
+                PaymentServiceProviders.Buckaroo => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "brq_invoicenumber"),
+                PaymentServiceProviders.MultiSafepay => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "transactionid"),
+                PaymentServiceProviders.RaboOmniKassa => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "order_id"),
+                PaymentServiceProviders.Mollie => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "invoice_number"),
+                _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), $"Payment service provider '{paymentServiceProvider:G}' is not yet supported.")
             };
         }
     }

@@ -15,6 +15,8 @@
 
         public const string PaymentOutPage = "orderProcessPaymentOut.gcl";
 
+        public const string PaymentReturnPage = "orderProcessPaymentReturn.gcl";
+
         #endregion
 
         #region Entity types
@@ -102,6 +104,8 @@
         public const string FieldSaveToProperty = "formfieldsaveto";
 
         public const string FieldRequiresUniqueValueProperty = "formfieldrequireuniquevalue";
+
+        public const string PaymentServiceProviderTypeProperty = "psptype";
 
         public const string PaymentServiceProviderSuccessUrlProperty = "pspsuccessurl";
 

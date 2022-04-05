@@ -114,6 +114,30 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         }
 
         /// <inheritdoc />
+        public async Task<bool> HandlePaymentServiceProviderWebhookAsync(ulong orderProcessId, ulong paymentMethodId)
+        {
+            return await orderProcessesService.HandlePaymentServiceProviderWebhookAsync(this, orderProcessId, paymentMethodId);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> HandlePaymentServiceProviderWebhookAsync(IOrderProcessesService service, ulong orderProcessId, ulong paymentMethodId)
+        {
+            return await orderProcessesService.HandlePaymentServiceProviderWebhookAsync(service, orderProcessId, paymentMethodId);
+        }
+
+        /// <inheritdoc />
+        public async Task<PaymentReturnResult> HandlePaymentReturnAsync(ulong orderProcessId, ulong paymentMethodId)
+        {
+            return await orderProcessesService.HandlePaymentReturnAsync(this, orderProcessId, paymentMethodId);
+        }
+
+        /// <inheritdoc />
+        public async Task<PaymentReturnResult> HandlePaymentReturnAsync(IOrderProcessesService service, ulong orderProcessId, ulong paymentMethodId)
+        {
+            return await orderProcessesService.HandlePaymentReturnAsync(service, orderProcessId, paymentMethodId);
+        }
+
+        /// <inheritdoc />
         public async Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<WiserItemModel> currentItems)
         {
             return await orderProcessesService.ValidateFieldValueAsync(field, currentItems);
