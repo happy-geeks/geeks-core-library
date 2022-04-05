@@ -18,6 +18,7 @@ using GeeksCoreLibrary.Modules.Exports.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
+using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -37,8 +38,9 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
         private readonly IHtmlToPdfConverterService htmlToPdfConverterService;
         private readonly IExcelService excelService;
         private readonly ILogger<DataSelectorsService> logger;
+        private readonly ILanguagesService languagesService;
 
-        public DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IStringReplacementsService stringReplacementsService, ITemplatesService templatesService, IHtmlToPdfConverterService htmlToPdfConverterService, IExcelService excelService, ILogger<DataSelectorsService> logger)
+        public DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IStringReplacementsService stringReplacementsService, ITemplatesService templatesService, IHtmlToPdfConverterService htmlToPdfConverterService, IExcelService excelService, ILogger<DataSelectorsService> logger, ILanguagesService languagesService)
         {
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
@@ -47,6 +49,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             this.htmlToPdfConverterService = htmlToPdfConverterService;
             this.excelService = excelService;
             this.logger = logger;
+            this.languagesService = languagesService;
         }
 
         /// <inheritdoc />
@@ -953,11 +956,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                 if (String.IsNullOrWhiteSpace(data.LanguageCode))
                 {
-                    var getLanguageCodeResult = await databaseConnection.GetAsync("SELECT value FROM easy_objects WHERE typenr = -1 AND `key` = 'W2LANGUAGES_LanguageCode' LIMIT 1");
-                    if (getLanguageCodeResult.Rows.Count > 0)
-                    {
-                        data.LanguageCode = getLanguageCodeResult.Rows[0].Field<string>("value");
-                    }
+                    data.LanguageCode = languagesService.CurrentLanguageCode;
                 }
 
                 var query = $@"
@@ -1032,7 +1031,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     data.ContentPropertyName = "html_template";
                 }
 
-                var query = "SELECT `key`, `value` FROM easy_objects WHERE typenr = -1 AND `key` IN ('W2LANGUAGES_LanguageCode', 'pdf_documentoptionspropertyname', 'pdf_headerpropertyname', 'pdf_footerpropertyname', 'pdf_backgroundpropertyname')";
+                var query = "SELECT `key`, `value` FROM easy_objects WHERE typenr = -1 AND `key` IN ('pdf_documentoptionspropertyname', 'pdf_headerpropertyname', 'pdf_footerpropertyname', 'pdf_backgroundpropertyname')";
                 var dataTable = await databaseConnection.GetAsync(query);
                 if (dataTable.Rows.Count > 0)
                 {
@@ -1047,12 +1046,6 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                         switch (key?.ToLowerInvariant())
                         {
-                            case "w2languages_languagecode":
-                                if (String.IsNullOrWhiteSpace(data.LanguageCode))
-                                {
-                                    data.LanguageCode = value;
-                                }
-                                break;
                             case "pdf_documentoptionspropertyname":
                                 pdfDocumentOptionsPropertyName = value;
                                 break;
@@ -1067,8 +1060,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                 break;
                         }
                     }
-
-                    data.LanguageCode = dataTable.Rows[0].Field<string>("value");
+                }
+                
+                if (String.IsNullOrWhiteSpace(data.LanguageCode))
+                {
+                    data.LanguageCode = languagesService.CurrentLanguageCode;
                 }
 
                 query = $"SELECT `key`, CONCAT_WS('', `value`, `long_value`) AS value, language_code FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?contentItemId";

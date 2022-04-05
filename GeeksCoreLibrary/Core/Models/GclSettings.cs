@@ -62,6 +62,13 @@ namespace GeeksCoreLibrary.Core.Models
         public string DefaultEncryptionKey { get; set; }
 
         /// <summary>
+        /// The salt string that will be used in the AES encryption. This value should represent at least 8 bytes when converted into bytes using UTF-8.
+        /// Note that the functions EncryptWithAesWithSalt and DecryptWithAesWithSalt do NOT use this salt! Those functions use a random salt. Only the functions
+        /// EncryptWithAes and DecryptWithAes use this salt.
+        /// </summary>
+        public string DefaultEncryptionSalt { get; set; }
+
+        /// <summary>
         /// The encryption key key used for triple DES encryption.
         /// </summary>
         public string DefaultEncryptionKeyTripleDes { get; set; }

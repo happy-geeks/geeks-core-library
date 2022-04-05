@@ -1020,7 +1020,7 @@ namespace GeeksCoreLibrary.Components.Account
                     // Only update the user's account, if the password has been validated, or if the user is not changing their login name and password.
                     var createOrUpdateAccountResult = await CreateOrUpdateAccountAsync(userData.UserId, availableFields, selectedSubAccount);
                     selectedSubAccount = createOrUpdateAccountResult.SubAccountId;
-                    if (userIsChangingPassword)
+                    if (createOrUpdateAccountResult.Result == CreateOrUpdateAccountResults.Success && userIsChangingPassword)
                     {
                         // If we just created an account, save the password now, otherwise the password was already changed.
                         changePasswordResult = await ChangePasswordAsync(createOrUpdateAccountResult.SubAccountId, true);
@@ -1036,13 +1036,13 @@ namespace GeeksCoreLibrary.Components.Account
                         // If the template does not contain the replacement '{error}', we want to only return the error template.
                         resultHtml = changePasswordResult != ResetOrChangePasswordResults.Success ? Settings.TemplateError : createOrUpdateAccountResult.ErrorTemplate;
                     }
-                    else
-                    // In other cases, return the entire template with the error or success message somewhere inside it.
-                    if (userIsChangingPassword)
+                    else if (createOrUpdateAccountResult.Result != CreateOrUpdateAccountResults.Success)
                     {
-                        resultHtml = changePasswordResult != ResetOrChangePasswordResults.Success
-                            ? resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError).ReplaceCaseInsensitive("{success}", "")
-                            : resultHtml.ReplaceCaseInsensitive("{error}", "").ReplaceCaseInsensitive("{success}", Settings.TemplateSuccess);
+                        resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", createOrUpdateAccountResult.ErrorTemplate).ReplaceCaseInsensitive("{success}", createOrUpdateAccountResult.SuccessTemplate);
+                    }
+                    else if (userIsChangingPassword && changePasswordResult != ResetOrChangePasswordResults.Success)
+                    {
+                        resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError).ReplaceCaseInsensitive("{success}", "");
                     }
                     else
                     {

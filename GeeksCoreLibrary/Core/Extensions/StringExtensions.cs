@@ -174,7 +174,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         }
 
         /// <summary>
-        /// Encrypts a value with AES.
+        /// Encrypts a value with AES and returns the encrypted value as a Base64 string.
         /// </summary>
         /// <param name="input"></param>
         /// <param name="key"></param>
@@ -210,9 +210,20 @@ namespace GeeksCoreLibrary.Core.Extensions
                 stringToEncrypt.Append('~').Append(DateTime.Now.ToString("yyyyMMddHHmmss"));
             }
 
-            // Salt of at least 8 bytes is requires to derive key. A basic salt of 8 bytes with value 0 is created.
-            var basicSalt = new byte[8];
-            using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, basicSalt, 2);
+            // Salt of at least 8 bytes is required to derive key.
+            // If no salt is set in the appsettings, a basic 0-salt will be used.
+            var saltString = GclSettings.Current.DefaultEncryptionSalt;
+            var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : new byte[8];
+
+            // Salt must be at least 8 bytes.
+            if (salt.Length < 8)
+            {
+                var tempSalt = new byte[8];
+                Buffer.BlockCopy(salt, 0, tempSalt, 0, salt.Length);
+                salt = tempSalt;
+            }
+
+            using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, salt, 2);
             const int KeySize = 256;
             const int BlockSize = 128;
 
@@ -267,21 +278,32 @@ namespace GeeksCoreLibrary.Core.Extensions
                 throw new Exception("DecryptWithAes: No AES secret key set.");
             }
 
-            // Salt of at least 8 bytes is required to derive key. A basic salt of 8 bytes with value 0 is created.
-            var basicSalt = new byte[8];
+            // Salt of at least 8 bytes is required to derive key.
+            // If no salt is set in the appsettings, a basic 0-salt will be used.
+            var saltString = GclSettings.Current.DefaultEncryptionSalt;
+            var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : new byte[8];
+
+            // Salt must be at least 8 bytes.
+            if (salt.Length < 8)
+            {
+                var tempSalt = new byte[8];
+                Buffer.BlockCopy(salt, 0, tempSalt, 0, salt.Length);
+                salt = tempSalt;
+            }
+
             var inputBytes = Convert.FromBase64String(input);
             string output;
 
-            const int keySize = 256;
-            const int blockSize = 128;
+            using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, salt, 2);
+            const int KeySize = 256;
+            const int BlockSize = 128;
 
-            using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, basicSalt, 2);
             using var aesManaged = new AesManaged
             {
-                KeySize = keySize,
-                BlockSize = blockSize,
-                Key = deriveBytes.GetBytes(Convert.ToInt32(keySize / 8)),
-                IV = deriveBytes.GetBytes(Convert.ToInt32(blockSize / 8))
+                KeySize = KeySize,
+                BlockSize = BlockSize,
+                Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8)),
+                IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8))
             };
             using var decryptor = aesManaged.CreateDecryptor(aesManaged.Key, aesManaged.IV);
             using var ms = new MemoryStream(inputBytes);
@@ -532,6 +554,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// Hashes a string, adds a salt, and returns the salt + hashed bytes as a Base64 string.
         /// </summary>
         /// <param name="input"></param>
+        /// <param name="saltBytes"></param>
         /// <returns></returns>
         public static string ToSha512ForPasswords(this string input, byte[] saltBytes = null)
         {
@@ -644,8 +667,8 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <param name="useFirstEntryIfExist"></param>
         public static Dictionary<string, string> ToDictionary(this string input, string rowSplitter, string columnSplitter, bool addSortInKey = false, bool useFirstEntryIfExist = true)
         {
-            List<string> informationHolder = new List<string>();
-            Dictionary<string, string> parameterList = new Dictionary<string, string>();
+            var informationHolder = new List<string>();
+            var parameterList = new Dictionary<string, string>();
             var counter = 0;
 
             // Breek de string af en zet deze in een sortedList       
