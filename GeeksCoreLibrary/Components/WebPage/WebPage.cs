@@ -123,11 +123,11 @@ namespace GeeksCoreLibrary.Components.WebPage
         public async Task<string> HandleRenderModeAsync()
         {
             DatabaseConnection.ClearParameters();
-            DatabaseConnection.AddParameter("pageName", Settings.PageName);
+            DatabaseConnection.AddParameter("pageName", await StringReplacementsService.DoAllReplacementsAsync(Settings.PageName));
             DatabaseConnection.AddParameter("pageItemId", Settings.PageId);
-            DatabaseConnection.AddParameter("path", Settings.PathMustContainName);
-            DatabaseConnection.AddParameter("languageCode", languagesService?.CurrentLanguageCode ?? "");
-            DatabaseConnection.AddParameter("environment", ConvertEnvironmentToInt());
+            DatabaseConnection.AddParameter("path", await StringReplacementsService.DoAllReplacementsAsync(Settings.PathMustContainName));
+            DatabaseConnection.AddParameter("languageCode", await StringReplacementsService.DoAllReplacementsAsync(languagesService?.CurrentLanguageCode ?? ""));
+            DatabaseConnection.AddParameter("environment", (int)gclSettings.Environment);
 
             var getWebPageResult = await DatabaseConnection.GetAsync(GetWebPageQuery());
             if (getWebPageResult.Rows.Count == 0)
@@ -269,18 +269,6 @@ namespace GeeksCoreLibrary.Components.WebPage
             query.Append("LIMIT 1");
 
             return query.ToString();
-        }
-
-        private int ConvertEnvironmentToInt()
-        {
-            return gclSettings.Environment switch
-            {
-                Environments.Development => 1,
-                Environments.Test => 2,
-                Environments.Acceptance => 3,
-                Environments.Live => 4,
-                _ => throw new ArgumentOutOfRangeException()
-            };
         }
     }
 }
