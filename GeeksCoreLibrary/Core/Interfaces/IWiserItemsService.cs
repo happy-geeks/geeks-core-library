@@ -282,7 +282,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="entityType">Optional: Enter an entity type here to only get items of that type. Default is null.</param>
-        Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null);
+        /// <param name="createNewTransaction">Optional: Set to false if you don't want the DeleteAsync function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true);
 
         /// <summary>
         /// Moves all linked items of an item to a different destination item.
@@ -373,7 +374,6 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <summary>
         /// Gets the settings for a link type. These settings will be cached for 1 hour.
         /// </summary>
-        /// <param name="connection">The <see cref="SystemConnection"/> to the database.</param>
         /// <returns>A List of <see cref="EntitySettingsModel"/> containing all link settings.</returns>
         Task<List<LinkSettingsModel>> GetAllLinkTypeSettingsAsync();
 

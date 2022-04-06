@@ -2398,7 +2398,7 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null)
+        public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0UL, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
             var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
 
@@ -2466,7 +2466,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             foreach (DataRow dataRow in dataTable.Rows)
             {
-                await DeleteAsync(dataRow.Field<ulong>("id"), username: username, userId: userId, saveHistory: saveHistory, entityType: dataRow.Field<string>("entity_type"));
+                await DeleteAsync(dataRow.Field<ulong>("id"), username: username, userId: userId, saveHistory: saveHistory, entityType: dataRow.Field<string>("entity_type"), createNewTransaction: createNewTransaction);
             }
         }
 
