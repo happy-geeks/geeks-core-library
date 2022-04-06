@@ -77,7 +77,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     break;
                 case TemplateTypes.Html:
                     // Execute the pre load query before any replacements are being done and before any dynamic components are handled.
-                    await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(contentTemplate);
+                    var hasResults = await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(contentTemplate);
+                    if (contentTemplate.ReturnNotFoundWhenPreLoadQueryHasNoData && !hasResults)
+                    {
+                        return NotFound();
+                    }
 
                     // Set SEO information.
                     if (HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))

@@ -244,14 +244,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// Executes the pre load query for an HTML template, if it's set. After executing it, it will save the first <see cref="DataRow"/> of the results in the HttpContext.
         /// </summary>
         /// <param name="template">The template with a pre load query to execute.</param>
-        Task ExecutePreLoadQueryAndRememberResultsAsync(Template template);
+        /// <returns><see langword="true"/> if there is no query to execute or if the query returned 1 or more results, <see langword="false"/> if there is a query, but it returned 0 results.</returns>
+        Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(Template template);
 
         /// <summary>
         /// Executes the pre load query for an HTML template, if it's set. After executing it, it will save the first <see cref="DataRow"/> of the results in the HttpContext.
         /// </summary>
         /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetTemplateAsync() in this method.</param>
         /// <param name="template">The template with a pre load query to execute.</param>
-        Task ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template);
+        /// <returns><see langword="true"/> if there is no query to execute or if the query returned 1 or more results, <see langword="false"/> if there is a query, but it returned 0 results.</returns>
+        Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template);
 
         /// <summary>
         /// Creates the file name the cached HTML will be saved to and loaded from.

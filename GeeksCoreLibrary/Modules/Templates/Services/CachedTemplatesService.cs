@@ -527,15 +527,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+        public async Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(Template template)
         {
-            await ExecutePreLoadQueryAndRememberResultsAsync(this, template);
+            return await ExecutePreLoadQueryAndRememberResultsAsync(this, template);
         }
 
         /// <inheritdoc />
-        public async Task ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService service, Template template)
+        public async Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService service, Template template)
         {
-            await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(service, template);
+            return await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(service, template);
         }
 
         /// <inheritdoc />

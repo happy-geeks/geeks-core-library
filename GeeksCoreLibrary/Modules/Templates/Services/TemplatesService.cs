@@ -154,7 +154,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.grouping_value_column_name,
                             template.grouping_key,
                             template.grouping_prefix,
-                            template.pre_load_query
+                            template.pre_load_query,
+                            template.return_not_found_when_pre_load_query_has_no_data
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -371,7 +372,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.grouping_value_column_name,
                             template.grouping_key,
                             template.grouping_prefix,
-                            template.pre_load_query
+                            template.pre_load_query,
+                            template.return_not_found_when_pre_load_query_has_no_data
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -1144,27 +1146,28 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+        public async Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(Template template)
         {
-            await ExecutePreLoadQueryAndRememberResultsAsync(this, template);
+            return await ExecutePreLoadQueryAndRememberResultsAsync(this, template);
         }
 
         /// <inheritdoc />
-        public async Task ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
+        public async Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
         {
             if (httpContextAccessor.HttpContext == null || String.IsNullOrWhiteSpace(template?.PreLoadQuery))
             {
-                return;
+                return true;
             }
 
             var query = await DoReplacesAsync(templatesService, template.PreLoadQuery, forQuery: true);
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {
-                return;
+                return false;
             }
 
             httpContextAccessor.HttpContext.Items.Add(Constants.TemplatePreLoadQueryResultKey, dataTable.Rows[0]);
+            return true;
         }
 
         /// <inheritdoc />
