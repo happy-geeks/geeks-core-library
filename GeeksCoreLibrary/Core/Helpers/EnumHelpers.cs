@@ -56,6 +56,12 @@ namespace GeeksCoreLibrary.Core.Helpers
                 }
             }
 
+            // If we have no parsed value yet, see if the string is actually an int and parse that.
+            if (Int32.TryParse(input, out var intValue))
+            {
+                return (T)Enum.ToObject(enumType, intValue);
+            }
+
             return default;
         }
     }

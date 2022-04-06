@@ -399,14 +399,14 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                             {
                                 if (!settings.MultipleBasketsPossible && shoppingBasket.EntityType == "basket")
                                 {
-                                    foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, 5010, "basket")).Where(basketItemId => basketItemId != shoppingBasket.Id))
+                                    foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, Constants.BasketToUserLinkType, Constants.BasketEntityType)).Where(basketItemId => basketItemId != shoppingBasket.Id))
                                     {
                                         await wiserItemsService.DeleteAsync(basketItemId);
                                     }
                                 }
 
                                 // Connect this basket to the user.
-                                await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userId, 5010);
+                                await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userId, Constants.BasketToUserLinkType);
                             }
                         }
                     }
@@ -418,7 +418,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 // Check if the user is logged in and has basket from account.
                 if (user is { MainUserId: > 0 } && !settings.MultipleBasketsPossible)
                 {
-                    var linkedBaskets = await wiserItemsService.GetLinkedItemIdsAsync(user.MainUserId, 5010, settings.BasketEntityName);
+                    var linkedBaskets = await wiserItemsService.GetLinkedItemIdsAsync(user.MainUserId, Constants.BasketToUserLinkType, settings.BasketEntityName);
                     var basketId = linkedBaskets.FirstOrDefault(id => id > 0);
                     if (basketId > 0)
                     {
@@ -474,14 +474,14 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 {
                     if (user is { MainUserId: > 0 })
                     {
-                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, user.MainUserId, 5010);
+                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, user.MainUserId, Constants.BasketToUserLinkType);
                     }
                     else
                     {
                         var newlyCreatedAccount = accountsService.GetRecentlyCreateAccountId();
                         if (newlyCreatedAccount > 0)
                         {
-                            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, newlyCreatedAccount, 5010);
+                            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, newlyCreatedAccount, Constants.BasketToUserLinkType);
                         }
                     }
                 }
@@ -517,7 +517,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             if (linkTypeOrderToUser == 0)
             {
-                linkTypeOrderToUser = 5010;
+                linkTypeOrderToUser = Constants.BasketToUserLinkType;
             }
 
             if (linkTypeOrderLineToOrder == 0)
@@ -535,7 +535,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 userId = accountsService.GetRecentlyCreateAccountId();
                 if (userId == 0UL)
                 {
-                    userId = (await wiserItemsService.GetLinkedItemIdsAsync(shoppingBasket.Id, 5010, reverse: true)).FirstOrDefault();
+                    userId = (await wiserItemsService.GetLinkedItemIdsAsync(shoppingBasket.Id, Constants.BasketToUserLinkType, reverse: true)).FirstOrDefault();
                 }
 
                 if (userId > 0UL)
@@ -547,7 +547,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         linkTypeOrderToUser = await wiserItemsService.GetLinkTypeAsync(getEntityTypeResult.Rows[0].Field<string>("entity_type"), OrderProcess.Models.Constants.OrderEntityType);
                         if (linkTypeOrderToUser == 0)
                         {
-                            linkTypeOrderToUser = 5010;
+                            linkTypeOrderToUser = Constants.BasketToUserLinkType;
                         }
                     }
                 }
@@ -665,7 +665,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     INSERT INTO `{WiserTableNames.WiserItemLink}` (item_id, destination_item_id, ordering, type)
                     SELECT {conceptOrder.Id}, destination_item_id, ordering, type
                     FROM `{WiserTableNames.WiserItemLink}`
-                    WHERE item_id = {shoppingBasket.Id} AND type <> {5010}");
+                    WHERE item_id = {shoppingBasket.Id} AND type <> {Constants.BasketToUserLinkType}");
             }
 
             return (conceptOrder.Id, conceptOrder, newLines);
@@ -1014,7 +1014,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                             if (userId == 0)
                             {
                                 var userEntityType = await objectsService.FindSystemObjectByDomainNameAsync("userEntityType", "relatie");
-                                var linkTypeToUse = 5010;
+                                var linkTypeToUse = Constants.BasketToUserLinkType;
 
                                 if (shoppingBasket.EntityType != settings.BasketEntityName)
                                 {

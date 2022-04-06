@@ -60,7 +60,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             /// <summary>
             /// For handling web hooks from PSPs and updating orders with the correct status based on what the PSP sends us.
             /// </summary>
-            PaymentIn
+            PaymentIn,
+            
+            /// <summary>
+            /// For PSPs that always send the user to the same page, no matter the result of their payment.
+            /// From this page, we can then send the user to the correct page based on the result of the payment.
+            /// </summary>
+            PaymentReturn
         }
 
         #endregion
@@ -166,6 +172,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 ComponentModes.Checkout => await HandleCheckoutModeAsync(),
                 ComponentModes.PaymentOut => await HandlePaymentOutModeAsync(),
                 ComponentModes.PaymentIn => await HandlePaymentInModeAsync(),
+                ComponentModes.PaymentReturn => await HandlePaymentReturnModeAsync(),
                 _ => throw new ArgumentOutOfRangeException(nameof(Settings.ComponentMode), Settings.ComponentMode.ToString())
             };
             
@@ -202,18 +209,26 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     return "";
                 }
 
-                // Get the logged in user, if any.
-                var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
-                var userData = loggedInUser.UserId == 0 
-                    ? new WiserItemModel { EntityType = Account.Models.Constants.DefaultEntityType } 
-                    : await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
-                
-                // Get the available payment methods.
-                var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId, loggedInUser);
-
                 // Get the active basket, if any.
                 var shoppingBasketSettings = await shoppingBasketsService.GetSettingsAsync();
                 var (shoppingBasket, shoppingBasketLines, _, _) = await shoppingBasketsService.LoadAsync(shoppingBasketSettings);
+
+                // Get the logged in user, if any.
+                var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
+                WiserItemModel userData;
+                if (loggedInUser.UserId > 0)
+                {
+                    userData = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
+                }
+                else
+                {
+                    var basketUser = (await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType, Account.Models.Constants.DefaultEntityType, reverse: true)).FirstOrDefault();
+                    userData = basketUser ?? new WiserItemModel { EntityType = Account.Models.Constants.DefaultEntityType } ;
+                    loggedInUser.UserId = userData.Id;
+                }
+
+                // Get the available payment methods.
+                var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId, loggedInUser);
 
                 // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
                 var step = steps[ActiveStep - 1];
@@ -221,14 +236,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
                 if (isPostBack)
                 {
-                    fieldErrorsOccurred = ValidatePostBackAndSaveValues(step, loggedInUser, request, shoppingBasket, paymentMethods, userData);
+                    fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(step, loggedInUser, request, shoppingBasket, paymentMethods, userData);
 
                     // Save values to database if all validation succeeded.
                     if (!fieldErrorsOccurred)
                     {
                         shoppingBasket = await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
                         userData = await wiserItemsService.SaveAsync(userData, userId: userData.Id);
-                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userData.Id, 5010);
+                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userData.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType);
 
                         // Redirect to the next step.
                         var nextStep = ActiveStep + 1;
@@ -357,7 +372,59 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns>The output HTML of the component.</returns>
         private async Task<string> HandlePaymentInModeAsync()
         {
-            throw new NotImplementedException();
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return "HttpContext not available.";
+            }
+
+            var paymentMethodFromRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.SelectedPaymentMethodRequestKey);
+            if (!UInt64.TryParse(paymentMethodFromRequest, out var paymentMethodId) || paymentMethodId == 0)
+            {
+                throw new Exception($"Invalid payment method ID: {paymentMethodFromRequest}");
+            }
+
+            var success = await orderProcessesService.HandlePaymentServiceProviderWebhookAsync(Settings.OrderProcessId, paymentMethodId);
+            if (!success)
+            {
+                throw new Exception("Payment update webhook failed.");
+            }
+
+            return "";
+        }
+
+        /// <summary>
+        /// Handles the payment out component mode and outputs the HTML for this mode.
+        /// </summary>
+        /// <returns>The output HTML of the component.</returns>
+        private async Task<string> HandlePaymentReturnModeAsync()
+        {
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return "HttpContext not available.";
+            }
+            
+
+            var paymentMethodFromRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.SelectedPaymentMethodRequestKey);
+            if (!UInt64.TryParse(paymentMethodFromRequest, out var paymentMethodId) || paymentMethodId == 0)
+            {
+                throw new Exception($"Invalid payment method ID: {paymentMethodFromRequest}");
+            }
+            
+            var result = await orderProcessesService.HandlePaymentReturnAsync(Settings.OrderProcessId, paymentMethodId);
+
+            switch (result.Action)
+            {
+                case PaymentResultActions.Redirect:
+                    httpContextAccessor.HttpContext.Response.Redirect(result.ActionData);
+                    break;
+                case PaymentResultActions.None:
+                    // Do nothing.
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(result.Action), result.Action.ToString());
+            }
+
+            return "";
         }
 
         /// <summary>
@@ -524,11 +591,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                         if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
                         {
-                            fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
+                            fieldValue = shoppingBasket.GetDetailValue(propertyName);
                         }
                         else if (String.Equals(entityType, Account.Models.Constants.DefaultEntityType))
                         {
-                            fieldValue = userData.GetDetailValue(field.FieldId);
+                            fieldValue = userData.GetDetailValue(propertyName);
                         }
                         else
                         {
@@ -550,7 +617,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title ?? "") },
                 { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder ?? "") },
                 { "fieldId", field.FieldId },
-                { "inputType", EnumHelpers.ToEnumString(field.InputFieldType) },
+                { "inputType", EnumHelpers.ToEnumString(field.InputFieldType).ToLowerInvariant() },
                 { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label ?? "") },
                 { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
                 { "required", field.Mandatory ? "required" : "" },
@@ -671,7 +738,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="paymentMethods">All available payment methods.</param>
         /// <param name="userData">The <see cref="WiserItemModel"/> of the user.</param>
         /// <returns>A <see cref="Boolean"/> indicating whether any there were any errors in the validation.</returns>
-        private bool ValidatePostBackAndSaveValues(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods, WiserItemModel userData)
+        private async Task<bool> ValidatePostBackAndSaveValuesAsync(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods, WiserItemModel userData)
         {
             var fieldErrorsOccurred = false;
             foreach (var group in step.Groups)
@@ -695,7 +762,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             field.Value = request.Form[field.FieldId].ToString();
 
                             // Do field validation.
-                            field.IsValid = FieldValueIsValid(field, field.Value);
+                            field.IsValid = await orderProcessesService.ValidateFieldValueAsync(field, new List<WiserItemModel> { userData });
 
                             if (!field.IsValid)
                             {
@@ -740,12 +807,31 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                     }
                                     else if (String.Equals(entityType, Account.Models.Constants.DefaultEntityType))
                                     {
-                                        userData.SetDetail(field.FieldId, valueForDatabase);
+                                        userData.SetDetail(propertyName, valueForDatabase);
                                     }
                                     else
                                     {
                                         throw new NotImplementedException($"Unknown entity type '{entityType}' for field '{field.Id}' set for saving.");
                                     }
+                                }
+                            }
+                        }
+
+                        // If there are exactly 2 fields of type "password", we assume that this is for creating a new account and we'll check if both values are the same.
+                        var passwordFields = group.Fields.Where(field => field.InputFieldType == OrderProcessInputTypes.Password).ToList();
+                        if (passwordFields.Count == 2)
+                        {
+                            if (request.Form[passwordFields.First().FieldId].ToString() != request.Form[passwordFields.Last().FieldId].ToString())
+                            {
+                                passwordFields.First().IsValid = false;
+                                passwordFields.Last().IsValid = false;
+                                fieldErrorsOccurred = true;
+                                
+                                var errorMessage = await languagesService.GetTranslationAsync("orderProcess_passwords_not_the_same_errorMessage", defaultValue: "");
+                                if (!String.IsNullOrEmpty(errorMessage))
+                                {
+                                    passwordFields.First().ErrorMessage = errorMessage;
+                                    passwordFields.Last().ErrorMessage = errorMessage;
                                 }
                             }
                         }
@@ -792,44 +878,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString())
                 };
             }).ToList();
-        }
-
-        /// <summary>
-        /// Validates whether a value for a field is valid.
-        /// This checks if the field is mandatory, if the regex pattern matches and if the value is valid for the type of field (eg if an email field contains a valid e-mail address).
-        /// </summary>
-        /// <param name="field">The settings for the field.</param>
-        /// <param name="fieldValue">The value that the user entered.</param>
-        /// <returns>A <see cref="bool"/> indicating whether the value is valid or not.</returns>
-        private static bool FieldValueIsValid(OrderProcessFieldModel field, string fieldValue)
-        {
-            try
-            {
-                if (!String.IsNullOrWhiteSpace(field.Pattern))
-                {
-                    // If the field is not mandatory, then it can be empty but must still pass validation if it's not empty.
-                    return (!field.Mandatory && String.IsNullOrEmpty(fieldValue)) || Regex.IsMatch(fieldValue, field.Pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
-                }
-
-                switch (field.Mandatory)
-                {
-                    case true when String.IsNullOrWhiteSpace(fieldValue):
-                        return false;
-                    case false when String.IsNullOrWhiteSpace(fieldValue):
-                        return true;
-                    default:
-                        return field.InputFieldType switch
-                        {
-                            OrderProcessInputTypes.Email => Regex.IsMatch(fieldValue, @"(@)(.+)$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(200)),
-                            OrderProcessInputTypes.Number => Decimal.TryParse(fieldValue, NumberStyles.Any, new CultureInfo("en-US"), out _),
-                            _ => true
-                        };
-                }
-            }
-            catch (RegexMatchTimeoutException)
-            {
-                return false;
-            }
         }
         
         /// <summary>

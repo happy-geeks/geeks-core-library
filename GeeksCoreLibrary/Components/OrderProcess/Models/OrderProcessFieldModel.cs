@@ -77,5 +77,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the entity type(s) and property/properties where this field should be saved to.
         /// </summary>
         public string SaveTo { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether this field requires the user to enter a unique value that doesn't exist in the database yet.
+        /// </summary>
+        public bool RequireUniqueValue { get; set; }
     }
 }

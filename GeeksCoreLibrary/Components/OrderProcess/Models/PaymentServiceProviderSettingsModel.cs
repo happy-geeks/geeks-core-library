@@ -1,4 +1,5 @@
 ﻿using EvoPdf;
+using GeeksCoreLibrary.Modules.Payments.Enums;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Models
 {
@@ -7,6 +8,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     /// </summary>
     public class PaymentServiceProviderSettingsModel : OrderProcessBaseModel
     {
+        /// <summary>
+        /// Gets or sets the type of PSP.
+        /// </summary>
+        public PaymentServiceProviders Type { get; set; }
+        
         /// <summary>
         /// Gets or sets whether or not to log all requests done to the API of the PSP to the database.
         /// </summary>
@@ -36,5 +42,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the URL to send the user to after a failed or cancelled payment/order.
         /// </summary>
         public string FailUrl { get; set; }
+
+        /// <summary>
+        /// Gets or sets the URL to send the user to if we have to decide on-the-fly where to send the user to.
+        /// </summary>
+        public string ReturnUrl { get; set; }
     }
 }
