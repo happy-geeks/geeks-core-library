@@ -465,6 +465,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         queryBuilder.Append($" DEFAULT {settings.EnumValues.First().ToMySqlSafeValue(true)}");
                     }
                 }
+                else
+                {
+                    queryBuilder.Append(" DEFAULT ?defaultValue");
+                }
             }
 
             if (settings.UpdateTimeStampOnChange)
