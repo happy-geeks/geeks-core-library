@@ -176,10 +176,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                        # Step
 	                        step.id AS stepId,
 	                        step.title AS stepTitle,
+                            stepType.value AS stepType,
+	                        CONCAT_WS('', stepTemplate.value, stepTemplate.long_value) AS stepTemplate,
 	                        CONCAT_WS('', stepHeader.value, stepHeader.long_value) AS stepHeader,
 	                        CONCAT_WS('', stepFooter.value, stepFooter.long_value) AS stepFooter,
                             stepConfirmButtonText.value AS stepConfirmButtonText,
                             previousStepLinkText.value AS previousStepLinkText,
+                            stepRedirectUrl.value AS stepRedirectUrl,
 	                        
 	                        # Group
 	                        fieldGroup.id AS groupId,
@@ -212,14 +215,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         # Step
                         JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
                         JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepType ON stepType.item_id = step.id AND stepType.`key` = '{Constants.StepTypeProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepTemplate ON stepTemplate.item_id = step.id AND stepTemplate.`key` = '{Constants.StepTemplateProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepHeader ON stepHeader.item_id = step.id AND stepHeader.`key` = '{Constants.StepHeaderProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepFooter ON stepFooter.item_id = step.id AND stepFooter.`key` = '{Constants.StepFooterProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepConfirmButtonText ON stepConfirmButtonText.item_id = step.id AND stepConfirmButtonText.`key` = '{Constants.StepConfirmButtonTextProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS previousStepLinkText ON previousStepLinkText.item_id = step.id AND previousStepLinkText.`key` = '{Constants.StepPreviousStepLinkTextProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepRedirectUrl ON stepRedirectUrl.item_id = step.id AND stepRedirectUrl.`key` = '{Constants.StepRedirectUrl}'
 
                         # Group
-                        JOIN {WiserTableNames.WiserItemLink} AS linkToGroup ON linkToGroup.destination_item_id = step.id AND linkToGroup.type = {Constants.GroupToStepLinkType}
-                        JOIN {WiserTableNames.WiserItem} AS fieldGroup ON fieldGroup.id = linkToGroup.item_id AND fieldGroup.entity_type = '{Constants.GroupEntityType}'
+                        LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToGroup ON linkToGroup.destination_item_id = step.id AND linkToGroup.type = {Constants.GroupToStepLinkType}
+                        LEFT JOIN {WiserTableNames.WiserItem} AS fieldGroup ON fieldGroup.id = linkToGroup.item_id AND fieldGroup.entity_type = '{Constants.GroupEntityType}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupType ON groupType.item_id = fieldGroup.id AND groupType.`key` = '{Constants.GroupTypeProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupHeader ON groupHeader.item_id = fieldGroup.id AND groupHeader.`key` = '{Constants.GroupHeaderProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupFooter ON groupFooter.item_id = fieldGroup.id AND groupFooter.`key` = '{Constants.GroupFooterProperty}'
@@ -264,10 +270,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     {
                         Id = stepId,
                         Title = dataRow.Field<string>("stepTitle"),
+                        Type = EnumHelpers.ToEnum<OrderProcessStepTypes>(dataRow.Field<string>("stepType") ?? "GroupsAndFields"),
+                        Template = dataRow.Field<string>("stepTemplate"),
                         Header = dataRow.Field<string>("stepHeader"),
                         Footer = dataRow.Field<string>("stepFooter"),
                         ConfirmButtonText = dataRow.Field<string>("stepConfirmButtonText"),
                         PreviousStepLinkText = dataRow.Field<string>("previousStepLinkText"),
+                        StepRedirectUrl = dataRow.Field<string>("stepRedirectUrl"),
                         Groups = new List<OrderProcessGroupModel>()
                     };
 
@@ -275,13 +284,18 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 }
 
                 // Get the group if it already exists in the current step, or create a new one if it doesn't.
-                var groupId = dataRow.Field<ulong>("groupId");
-                var group = step.Groups.SingleOrDefault(g => g.Id == groupId);
+                var groupId = dataRow.Field<ulong?>("groupId");
+                if (!groupId.HasValue || groupId.Value == 0)
+                {
+                    continue;
+                }
+
+                var group = step.Groups.SingleOrDefault(g => g.Id == groupId.Value);
                 if (group == null)
                 {
                     group = new OrderProcessGroupModel
                     {
-                        Id = groupId,
+                        Id = groupId.Value,
                         Title = dataRow.Field<string>("groupTitle"),
                         Type = EnumHelpers.ToEnum<OrderProcessGroupTypes>(dataRow.Field<string>("groupType") ?? "Fields"),
                         Header = dataRow.Field<string>("groupHeader"),
@@ -370,8 +384,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                                 paymentServiceProviderLogAllRequests.value AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.value AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.value AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
-                                paymentServiceProviderSuccessUrl.value AS paymentServiceProviderSuccessUrl
+                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.value AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
                             FROM {WiserTableNames.WiserItem} AS orderProcess
 
                             # Payment method
@@ -388,7 +401,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSuccessUrl ON paymentServiceProviderSuccessUrl.item_id = paymentServiceProvider.id AND paymentServiceProviderSuccessUrl.`key` = '{Constants.PaymentServiceProviderSuccessUrlProperty}'
 
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'";
@@ -522,8 +534,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                                 paymentServiceProviderLogAllRequests.value AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.value AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.value AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
-                                paymentServiceProviderSuccessUrl.value AS paymentServiceProviderSuccessUrl
+                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.value AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
                             FROM {WiserTableNames.WiserItem} AS paymentMethod
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
@@ -536,7 +547,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSuccessUrl ON paymentServiceProviderSuccessUrl.item_id = paymentServiceProvider.id AND paymentServiceProviderSuccessUrl.`key` = '{Constants.PaymentServiceProviderSuccessUrlProperty}'
 
                             WHERE paymentMethod.id = ?id
                             AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'";
@@ -569,16 +579,18 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
             var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
 
-            // Build the fail URL.
-            var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) 
-            {
-                Path = orderProcessSettings.FixedUrl
-            };
-            var queryString = HttpUtility.ParseQueryString(failUrl.Query);
-            queryString[Constants.ErrorFromPaymentOutRequestKey] = "true";
+            // Build the fail and success URLs.
+            var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) { Path = orderProcessSettings.FixedUrl };
+            var successUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) { Path = orderProcessSettings.FixedUrl };
+            
+            var failUrlQueryString = HttpUtility.ParseQueryString(failUrl.Query);
+            failUrlQueryString[Constants.ErrorFromPaymentOutRequestKey] = "true";
+            
+            var successUrlQueryString = HttpUtility.ParseQueryString(failUrl.Query);
 
             if (orderProcessSettings.AmountOfSteps > 1)
             {
+                // Error page.
                 var stepForPaymentErrors = orderProcessSettings.AmountOfSteps;
                 var stepWithPaymentMethods = steps.LastOrDefault(step => step.Groups.Any(group => group.Type == OrderProcessGroupTypes.PaymentMethods));
                 if (stepWithPaymentMethods != null)
@@ -586,10 +598,21 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     stepForPaymentErrors = steps.IndexOf(stepWithPaymentMethods) + 1;
                 }
 
-                queryString[Constants.ActiveStepRequestKey] = stepForPaymentErrors.ToString();
+                failUrlQueryString[Constants.ActiveStepRequestKey] = stepForPaymentErrors.ToString();
+                
+                // Success page.
+                var stepForSuccessPage = orderProcessSettings.AmountOfSteps;
+                var stepWithConfirmation = steps.LastOrDefault(step => step.Type == OrderProcessStepTypes.OrderConfirmation);
+                if (stepWithConfirmation != null)
+                {
+                    stepForSuccessPage = steps.IndexOf(stepWithConfirmation) + 1;
+                }
+
+                successUrlQueryString[Constants.ActiveStepRequestKey] = stepForSuccessPage.ToString();
             }
 
-            failUrl.Query = queryString.ToString()!;
+            failUrl.Query = failUrlQueryString.ToString()!;
+            successUrl.Query = successUrlQueryString.ToString()!;
             
             // Check if we have a valid payment method.
             if (selectedPaymentMethodId == 0)
@@ -616,16 +639,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             }
 
             paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl.ToString();
+            paymentMethodSettings.PaymentServiceProvider.SuccessUrl = successUrl.ToString();
             
             // Build the webhook URL.
             var webhookUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext))
             {
                 Path = Constants.PaymentInPage
             };
-            queryString = HttpUtility.ParseQueryString(webhookUrl.Query);
-            queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
-            queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
-            webhookUrl.Query = queryString.ToString()!;
+            failUrlQueryString = HttpUtility.ParseQueryString(webhookUrl.Query);
+            failUrlQueryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
+            failUrlQueryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
+            webhookUrl.Query = failUrlQueryString.ToString()!;
             paymentMethodSettings.PaymentServiceProvider.WebhookUrl = webhookUrl.ToString();
             
             // Build the return URL.
@@ -633,10 +657,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             {
                 Path = Constants.PaymentReturnPage
             };
-            queryString = HttpUtility.ParseQueryString(returnUrl.Query);
-            queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
-            queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
-            returnUrl.Query = queryString.ToString()!;
+            failUrlQueryString = HttpUtility.ParseQueryString(returnUrl.Query);
+            failUrlQueryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
+            failUrlQueryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
+            returnUrl.Query = failUrlQueryString.ToString()!;
             paymentMethodSettings.PaymentServiceProvider.ReturnUrl = returnUrl.ToString();
             
             // Get current user.
@@ -703,7 +727,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 main.SetDetail(Constants.UniquePaymentNumberProperty, uniquePaymentNumber);
                 main.SetDetail(Constants.InvoiceNumberProperty, invoiceNumber);
                 main.SetDetail(Constants.LanguageCodeProperty, languagesService?.CurrentLanguageCode ?? "");
-                main.SetDetail(Constants.IsTestOrderProperty, isTestOrder.ToString());
+                main.SetDetail(Constants.IsTestOrderProperty, isTestOrder ? 1 : 0);
                 await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
             }
             
@@ -1014,10 +1038,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     Id = dataRow.Field<ulong>("paymentServiceProviderId"),
                     Title = dataRow.Field<string>("paymentServiceProviderTitle"),
                     Type = EnumHelpers.ToEnum<PaymentServiceProviders>(dataRow.Field<string>("paymentServiceProviderType") ?? "0"),
-                    SuccessUrl = dataRow.Field<string>("paymentServiceProviderSuccessUrl"),
                     LogAllRequests = dataRow.Field<string>("paymentServiceProviderLogAllRequests") == "1",
                     OrdersCanBeSetDirectlyToFinished = dataRow.Field<string>("paymentServiceProviderSetOrdersDirectlyToFinished") == "1",
-                    SkipPaymentWhenOrderAmountEqualsZero = dataRow.Field<string>("paymentServiceProviderSkipWhenOrderAmountEqualsZero") == "1",
+                    SkipPaymentWhenOrderAmountEqualsZero = dataRow.Field<string>("paymentServiceProviderSkipWhenOrderAmountEqualsZero") == "1"
                 }
             };
 

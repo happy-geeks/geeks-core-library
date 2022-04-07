@@ -4,10 +4,8 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -247,8 +245,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                         // Redirect to the next step.
                         var nextStep = ActiveStep + 1;
-                        if (nextStep <= steps.Count)
+                        if (nextStep <= steps.Count && steps[ActiveStep].Type != OrderProcessStepTypes.OrderConfirmation)
                         {
+                            // If we still have a next step and that step is not for the order confirmation, then go to the next step.
                             var nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
                             var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
                             nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
@@ -257,6 +256,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         }
                         else
                         {
+                            // If the next step is for the order confirmation, it means the user needs to do their payment first and will be redirected to that step after.
                             response.Redirect($"/{Constants.PaymentOutPage}?{Constants.OrderProcessIdRequestKey}={Settings.OrderProcessId}");
                         }
 
@@ -264,6 +264,18 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     }
                 }
                 
+                // Redirect the user if needed.
+                if (!String.IsNullOrWhiteSpace(step.StepRedirectUrl) && response != null)
+                {
+                    var uriBuilder = new UriBuilder(step.StepRedirectUrl);
+                    var queryString = HttpUtility.ParseQueryString(uriBuilder.Query);
+                    queryString[Constants.OrderProcessIdRequestKey] = Settings.OrderProcessId.ToString();
+                    queryString[Constants.OrderIdRequestKey] = shoppingBasket.Id.ToString();
+                    uriBuilder.Query = queryString.ToString()!;
+                    response.Redirect(uriBuilder.ToString());
+                    return "";
+                }
+
                 // Generate URI for previous step.
                 var previousStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
                 var previousStep = ActiveStep - 1;
@@ -287,7 +299,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title", defaultValue: step.Title ?? "") },
                     { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText", defaultValue: step.ConfirmButtonText) },
                     { "previousStepLinkText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_previousStepLinkText", defaultValue: step.PreviousStepLinkText) },
-                    { "previousStepUrl", previousStepUri.ToString() }
+                    { "previousStepUrl", previousStepUri.ToString() },
+                    { "type", step.Type.ToString() }
                 };
 
                 var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
@@ -295,15 +308,30 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                 // Build the groups HTML.
                 var groupsBuilder = new StringBuilder();
-                foreach (var group in step.Groups)
+                switch (step.Type)
                 {
-                    var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, userData, paymentMethods, fieldErrorsOccurred);
-                    if (groupHtml == null)
-                    {
-                        continue;
-                    }
+                    case OrderProcessStepTypes.GroupsAndFields:
+                        foreach (var group in step.Groups)
+                        {
+                            var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, userData, paymentMethods, fieldErrorsOccurred);
+                            if (groupHtml == null)
+                            {
+                                continue;
+                            }
 
-                    groupsBuilder.AppendLine(groupHtml);
+                            groupsBuilder.AppendLine(groupHtml);
+                        }
+                        break;
+                    case OrderProcessStepTypes.Summary:
+                        var summaryHtml = ReplaceBasketAndAccountDataInTemplate(shoppingBasket, userData, step.Template);
+                        groupsBuilder.AppendLine(summaryHtml);
+                        break;
+                    case OrderProcessStepTypes.OrderConfirmation:
+                        var confirmationHtml = ReplaceBasketAndAccountDataInTemplate(shoppingBasket, userData, step.Template);
+                        groupsBuilder.AppendLine(confirmationHtml);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(step.Type), step.Type.ToString());
                 }
 
                 stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.GroupsReplacement, groupsBuilder.ToString());
@@ -339,6 +367,36 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
             // Do all generic replacement last and then return the final HTML.
             return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(resultHtml), Constants.ComponentIdFormKey);
+        }
+
+        /// <summary>
+        /// Replaces data from the user and their shopping basket in a template. This uses the prefixes "basket", "order" and "account".
+        /// Examples: {order.Id}, {account.firstName}
+        /// </summary>
+        /// <param name="shoppingBasket">The active basket of the user.</param>
+        /// <param name="userData">The data of the user.</param>
+        /// <param name="template">The template to do the replacements in.</param>
+        private string ReplaceBasketAndAccountDataInTemplate(WiserItemModel shoppingBasket, WiserItemModel userData, string template)
+        {
+            var replaceData = new Dictionary<string, object>
+            {
+                { $"{ShoppingBasket.Models.Constants.BasketEntityType}.id", shoppingBasket.Id },
+                { $"{Constants.OrderEntityType}.id", shoppingBasket.Id },
+                { $"{Account.Models.Constants.DefaultEntityType}.id", userData.Id }
+            };
+
+            foreach (var basketDetail in shoppingBasket.Details)
+            {
+                replaceData.Add($"{ShoppingBasket.Models.Constants.BasketEntityType}.{basketDetail.Key}", basketDetail.Value);
+                replaceData.Add($"{Constants.OrderEntityType}.{basketDetail.Key}", basketDetail.Value);
+            }
+
+            foreach (var accountDetail in userData.Details)
+            {
+                replaceData.Add($"{Account.Models.Constants.DefaultEntityType}.{accountDetail.Key}", accountDetail.Value);
+            }
+
+            return StringReplacementsService.DoReplacements(template, replaceData);
         }
 
         /// <summary>
@@ -890,7 +948,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns>The result HTML with the error.</returns>
         private string AddStepErrorToResult(string resultHtml, string errorType)
         {
-            if (String.IsNullOrEmpty(resultHtml) || (!resultHtml.Contains(Constants.ErrorReplacement) && errorType != "Server"))
+            if (String.IsNullOrEmpty(resultHtml) || !resultHtml.Contains(Constants.ErrorReplacement))
             {
                 resultHtml = Settings.TemplateStepError;
             }

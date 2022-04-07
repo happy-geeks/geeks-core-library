@@ -31,21 +31,21 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// <summary>
         /// Gets or sets the URL to send the user to after a successful payment/order.
         /// </summary>
-        public string SuccessUrl { get; set; }
+        internal string SuccessUrl { get; set; }
 
         /// <summary>
         /// Gets or sets the URL for the WebHook of the PSP, to send status updates to us.
         /// </summary>
-        public string WebhookUrl { get; set; }
+        internal string WebhookUrl { get; set; }
 
         /// <summary>
         /// Gets or sets the URL to send the user to after a failed or cancelled payment/order.
         /// </summary>
-        public string FailUrl { get; set; }
+        internal string FailUrl { get; set; }
 
         /// <summary>
         /// Gets or sets the URL to send the user to if we have to decide on-the-fly where to send the user to.
         /// </summary>
-        public string ReturnUrl { get; set; }
+        internal string ReturnUrl { get; set; }
     }
 }
