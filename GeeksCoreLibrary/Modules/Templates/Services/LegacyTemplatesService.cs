@@ -1159,17 +1159,17 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public Task ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+        public Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(Template template)
         {
             // Do nothing here, this functionality is not supported for old/legacy the templates module.
-            return Task.FromResult(0);
+            return Task.FromResult(true);
         }
 
         /// <inheritdoc />
-        public Task ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
+        public Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
         {
             // Do nothing here, this functionality is not supported for old/legacy the templates module.
-            return Task.FromResult(0);
+            return Task.FromResult(true);
         }
 
         /// <inheritdoc />

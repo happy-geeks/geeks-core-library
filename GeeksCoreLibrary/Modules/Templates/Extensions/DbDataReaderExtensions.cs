@@ -106,6 +106,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             {
                 template.PreLoadQuery = reader.GetStringHandleNull("pre_load_query");
             }
+            
+            if (reader.HasColumn("return_not_found_when_pre_load_query_has_no_data"))
+            {
+                template.ReturnNotFoundWhenPreLoadQueryHasNoData = Convert.ToInt16(await reader.GetFieldValueAsync<object>("return_not_found_when_pre_load_query_has_no_data")) > 0;
+            }
 
             if (!isQuery)
             {

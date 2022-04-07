@@ -107,9 +107,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null)
+        public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true)
         {
-            await shoppingBasketsService.RecalculateVariablesAsync(shoppingBasket, basketLines, settings, skipType);
+            await shoppingBasketsService.RecalculateVariablesAsync(shoppingBasket, basketLines, settings, skipType, createNewTransaction);
         }
 
         /// <inheritdoc />

@@ -211,7 +211,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null)
+        public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true)
         {
             logger.LogTrace($"GCL ShoppingBasket RecalculateWiser2Variables - skipping type: {skipType ?? "N/A"}");
 
@@ -228,7 +228,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 }
             }
 
-            await SaveAsync(shoppingBasket, basketLines, settings);
+            await SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
         }
 
         /// <inheritdoc />
@@ -468,7 +468,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     lineIds.Add(line.Id);
                 }
 
-                await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, 5002, lineIds, entityType: settings.BasketLineEntityName);
+                await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, 5002, lineIds, entityType: settings.BasketLineEntityName, createNewTransaction: !createNewTransaction);
 
                 if (newBasket)
                 {
@@ -1463,7 +1463,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     await LoadAsync(settings, itemId);
                 }
 
-                await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, type);
+                await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, type, false);
 
                 await databaseConnection.CommitTransactionAsync();
             }
@@ -1548,7 +1548,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 }
                 
                 // Recalculate shipping costs, coupons etc. after getting the extra fields (price can be selected with extra fields query).
-                await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, items.First().Type);
+                await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, items.First().Type, false);
 
                 await databaseConnection.CommitTransactionAsync();
             }

@@ -105,7 +105,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketLines"></param>
         /// <param name="settings"></param>
         /// <param name="skipType">An optional parameter to skip lines of a certain type.</param>
-        Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null);
+        /// <param name="createNewTransaction">Will be passed to the SaveAsync call.</param>
+        Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true);
 
         /// <summary>
         /// Loads a basket from the database.

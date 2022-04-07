@@ -189,9 +189,9 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null)
+        public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0UL, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
-            await wiserItemsService.RemoveLinkedItemsAsync(destinationItemId, type, exceptItemIds, username, userId, saveHistory, entityType);
+            await wiserItemsService.RemoveLinkedItemsAsync(destinationItemId, type, exceptItemIds, username, userId, saveHistory, entityType, createNewTransaction);
         }
 
         /// <inheritdoc />
