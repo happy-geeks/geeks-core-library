@@ -55,6 +55,10 @@
 
         #region Fields for order process settings
 
+        public const string StepTypeProperty = "orderprocesssteptype";
+
+        public const string StepTemplateProperty = "orderprocesssteptemplate";
+
         public const string StepHeaderProperty = "orderprocessstepheader";
 
         public const string StepFooterProperty = "orderprocessstepfooter";
@@ -62,6 +66,8 @@
         public const string StepConfirmButtonTextProperty = "orderprocessstepconfirmbuttontext";
 
         public const string StepPreviousStepLinkTextProperty = "orderprocessstepprevioussteplinktext";
+
+        public const string StepRedirectUrl = "orderprocessstepredirecturl";
 
         public const string OrderProcessUrlProperty = "orderprocessurl";
 
@@ -106,8 +112,6 @@
         public const string FieldRequiresUniqueValueProperty = "formfieldrequireuniquevalue";
 
         public const string PaymentServiceProviderTypeProperty = "psptype";
-
-        public const string PaymentServiceProviderSuccessUrlProperty = "pspsuccessurl";
 
         public const string PaymentServiceProviderLogAllRequestsProperty = "psplogallrequests";
 
@@ -190,6 +194,8 @@
         public const string OrderProcessIdRequestKey = "orderProcessId";
 
         public const string SelectedPaymentMethodRequestKey = "paymentMethodId";
+
+        public const string OrderIdRequestKey = "orderId";
 
         #endregion
 

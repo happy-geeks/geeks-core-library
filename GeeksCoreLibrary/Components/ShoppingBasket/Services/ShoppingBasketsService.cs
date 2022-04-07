@@ -104,7 +104,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// <inheritdoc />
         public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync()
         {
-            var checkoutBasketsCookieName = await GetCheckoutObjectValueAsync("CHECKOUT_CheckoutBasketsCookieName", "checkout_baskets");
+            var checkoutBasketsCookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName", "shoppingBasket");
             
             var settings = await GetSettingsAsync();
             return await GetShoppingBasketsAsync(checkoutBasketsCookieName, settings);
@@ -1812,17 +1812,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             return new()
             {
-                CookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName"),
+                CookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName", "shoppingBasket"),
                 B2BPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_B2bPropertyName"),
                 CountryPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_CountryPropertyName"),
-                DiscountPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_DiscountPropertyName"),
-                FactorPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_FactorPropertyName"),
-                IncludesVatPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_IncludesVatPropertyName"),
-                PricePropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_PricePropertyName"),
-                QuantityPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_QuantityProductDataProperty"),
-                VatRatePropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_VatrateProductDataProperty"),
-                BasketEntityName = await objectsService.FindSystemObjectByDomainNameAsync("basketEntityType"),
-                BasketLineEntityName = await objectsService.FindSystemObjectByDomainNameAsync("basketLineEntityType"),
+                DiscountPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_DiscountPropertyName", "discount"),
+                FactorPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_FactorPropertyName", "factor"),
+                IncludesVatPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_IncludesVatPropertyName", "includesvat"),
+                PricePropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_PricePropertyName", "price"),
+                QuantityPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_QuantityProductDataProperty", "quantity"),
+                VatRatePropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_VatrateProductDataProperty", "vatrate"),
+                BasketEntityName = Constants.BasketEntityType,
+                BasketLineEntityName = Constants.BasketLineEntityType,
                 CookieAgeInDays = cookieAgeInDays,
                 HandleRequest = true
             };

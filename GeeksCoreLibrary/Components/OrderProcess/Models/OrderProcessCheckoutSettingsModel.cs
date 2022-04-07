@@ -6,20 +6,21 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     {
         #region Tab layout properties
 
-        [DefaultValue(@"{progress}
-{step}")]
+        [DefaultValue(@"<div class='order-container'>{progress}</div>
+<div class='order-container'>{step}</div>")]
         internal string Template { get; }
 
         [DefaultValue(@"<form method='POST' id='step{activeStep}' data-active-step='{activeStep}' class='step-container'>
-    <h2>{title}</h2>
     <div id='step_{title:Seo}' class='step-content'>
         <div class='step-header'>{header}</div>
         {error}
         <div class='step-groups'>{groups}</div>
         <div class='step-footer'>{footer}</div>
     </div>
+    [if({type}!OrderConfirmation)]
     [if({activeStep}>1)]<a href='{previousStepUrl}'>{previousStepLinkText}</a>[endif]
     <button type='submit' id='confirmButton'>{confirmButtonText}</button>
+    [endif]
 </form>")]
         internal string TemplateStep { get; }
 
@@ -37,7 +38,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         internal string TemplateStepError { get; }
 
         [DefaultValue(@"<div class='form-row {groupClass}'>
-    <h3>{title}</h3>
     <div class='group-header'>{header}</div>
     <div class='group-fields'>{fields}</div>
     <div class='group-footer'>{footer}</div>
@@ -50,7 +50,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     {error}
     <ul class='group-payment-methods'>{paymentMethods}</ul>
     <div class='group-footer'>{footer}</div>
-</fieldset>")]
+</div>")]
         internal string TemplatePaymentMethodsGroup { get; }
 
         [DefaultValue(@"<span class='field-error'>[if({errorMessage}=)][T{Vul a.u.b. een geldige waarde in}][else]{errorMessage}[endif]</span>")]

@@ -58,6 +58,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{confirmButtonText}</strong> The text for the button to go to the next step. This will be retrieved from the translations module from Wiser.</li>
     <li><strong>{previousStepLinkText}</strong> The text on the link to go back to the previous step.</li>
     <li><strong>{previousStepUrl}</strong> The URL of the previous step.</li>
+    <li><strong>{type}</strong> The type of step. Can be 'GroupsAndFields', 'Summary' or 'OrderConfirmation'.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,

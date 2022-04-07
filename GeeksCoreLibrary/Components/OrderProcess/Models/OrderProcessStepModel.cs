@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using GeeksCoreLibrary.Components.OrderProcess.Enums;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Models
 {
@@ -8,9 +9,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     public class OrderProcessStepModel : OrderProcessBaseModel
     {
         /// <summary>
+        /// Gets or sets the type of step this is.
+        /// </summary>
+        public OrderProcessStepTypes Type { get; set; }
+        
+        /// <summary>
         /// Gets or sets the list of groups that are contained on this step.
         /// </summary>
         public List<OrderProcessGroupModel> Groups { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the summary text.
+        /// </summary>
+        public string Template { get; set; }
 
         /// <summary>
         /// Gets or sets the header content / HTML.
@@ -31,5 +42,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the default text for the link to go back to the previous step. This value is only used when no translation can be found.
         /// </summary>
         public string PreviousStepLinkText { get; set; }
+
+        /// <summary>
+        /// Gets or sets the URL to redirect the user too once they reach this step.
+        /// </summary>
+        public string StepRedirectUrl { get; set; }
     }
 }
