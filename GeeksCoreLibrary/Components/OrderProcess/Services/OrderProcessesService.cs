@@ -94,7 +94,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 emailAddressField.value AS emailAddressField,
                                 IF(statusUpdateTemplate.value IS NULL OR statusUpdateTemplate.value = '', '0', statusUpdateTemplate.value) AS statusUpdateTemplate,
                                 IF(statusUpdateWebShopTemplate.value IS NULL OR statusUpdateWebShopTemplate.value = '', '0', statusUpdateWebShopTemplate.value) AS statusUpdateWebShopTemplate,
-                                IF(statusUpdateAttachmentTemplate.value IS NULL OR statusUpdateAttachmentTemplate.value = '', '0', statusUpdateAttachmentTemplate.value) AS statusUpdateAttachmentTemplate
+                                IF(statusUpdateAttachmentTemplate.value IS NULL OR statusUpdateAttachmentTemplate.value = '', '0', statusUpdateAttachmentTemplate.value) AS statusUpdateAttachmentTemplate,
+                                IF(clearBasketOnConfirmationPage.value IS NULL OR clearBasketOnConfirmationPage.value = '', '1', clearBasketOnConfirmationPage.value) AS clearBasketOnConfirmationPage
                             FROM {WiserTableNames.WiserItem} AS orderProcess
                             JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
                             JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
@@ -104,6 +105,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateTemplate ON statusUpdateTemplate.item_id = orderProcess.id AND statusUpdateTemplate.`key` = '{Constants.OrderProcessStatusUpdateTemplateProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateWebShopTemplate ON statusUpdateWebShopTemplate.item_id = orderProcess.id AND statusUpdateWebShopTemplate.`key` = '{Constants.OrderProcessStatusUpdateWebShopTemplateProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateAttachmentTemplate ON statusUpdateAttachmentTemplate.item_id = orderProcess.id AND statusUpdateAttachmentTemplate.`key` = '{Constants.StatusUpdateMailAttachmentProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS clearBasketOnConfirmationPage ON clearBasketOnConfirmationPage.item_id = orderProcess.id AND clearBasketOnConfirmationPage.`key` = '{Constants.OrderProcessClearBasketOnConfirmationPageProperty}'
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
                             AND orderProcess.published_environment >= ?publishedEnvironment
@@ -129,7 +131,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 EmailAddressProperty = firstRow.Field<string>("emailAddressField"),
                 StatusUpdateMailTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateTemplate")),
                 StatusUpdateMailWebShopTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateWebShopTemplate")),
-                StatusUpdateMailAttachmentTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateAttachmentTemplate"))
+                StatusUpdateMailAttachmentTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateAttachmentTemplate")),
+                ClearBasketOnConfirmationPage = firstRow.Field<string>("clearBasketOnConfirmationPage") == "1"
             };
         }
 

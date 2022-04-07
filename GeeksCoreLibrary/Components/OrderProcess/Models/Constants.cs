@@ -77,6 +77,8 @@
 
         public const string OrderProcessStatusUpdateWebShopTemplateProperty = "orderprocessstatusupdatewebshoptemplate";
 
+        public const string OrderProcessClearBasketOnConfirmationPageProperty = "orderprocessclearbasketonconfirmationpage";
+
         public const string GroupTypeProperty = "orderprocessgrouptype";
 
         public const string GroupHeaderProperty = "orderprocessgroupheader";

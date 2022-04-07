@@ -199,6 +199,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             {
                 // A single step can contain groups and a single group can contain fields.
                 var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(Settings.OrderProcessId);
+                var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(Settings.OrderProcessId);
 
                 // If we have an invalid active step, return a 404.
                 if (ActiveStep <= 0 || ActiveStep > steps.Count)
@@ -329,6 +330,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     case OrderProcessStepTypes.OrderConfirmation:
                         var confirmationHtml = ReplaceBasketAndAccountDataInTemplate(shoppingBasket, userData, step.Template);
                         groupsBuilder.AppendLine(confirmationHtml);
+
+                        // Delete the basket cookie.
+                        if (orderProcessSettings.ClearBasketOnConfirmationPage)
+                        {
+                            response?.Cookies.Delete(shoppingBasketSettings.CookieName);
+                        }
+
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(step.Type), step.Type.ToString());

@@ -36,5 +36,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the ID of the e-mail template that should be used for status updates to the web shop for orders that used this PSP.
         /// </summary>
         public ulong StatusUpdateMailWebShopTemplateId { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the basket of the user should be cleared on the confirmation page.
+        /// </summary>
+        public bool ClearBasketOnConfirmationPage { get; set; }
     }
 }
