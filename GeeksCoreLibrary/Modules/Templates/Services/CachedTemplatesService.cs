@@ -1,28 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
+using System.IO;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Seo.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
-using GeeksCoreLibrary.Modules.Templates.Extensions;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using LazyCache;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using GeeksCoreLibrary.Core.Extensions;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services
 {
@@ -35,8 +36,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly GclSettings gclSettings;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ICacheService cacheService;
+        private readonly IWebHostEnvironment webHostEnvironment;
+        private readonly IObjectsService objectsService;
 
-        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ICacheService cacheService)
+        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, ICacheService cacheService, IWebHostEnvironment webHostEnvironment, IObjectsService objectsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -45,191 +48,198 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.databaseConnection = databaseConnection;
             this.httpContextAccessor = httpContextAccessor;
             this.cacheService = cacheService;
-        }
-
-        /// <summary>
-        /// GetAsync templates from database and write them to the MemoryCache if they are not yet there.
-        /// </summary>
-        private async Task<List<Template>> CacheTemplatesAsync()
-        {
-            return await cache.GetOrAdd("Templates", GetTemplatesForCacheAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
-        }
-
-        /// <summary>
-        /// Gets all templates from database to be cached.
-        /// </summary>
-        /// <param name="cacheEntry"></param>
-        /// <returns></returns>
-        private async Task<List<Template>> GetTemplatesForCacheAsync(ICacheEntry cacheEntry)
-        {
-            logger.LogDebug("Caching of templates started");
-            var templates = new List<Template>();
-            var joinPart = "";
-            var whereClause = new List<string>();
-            if (gclSettings.Environment == Environments.Development)
-            {
-                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
-            }
-            else
-            {
-                whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
-            }
-
-            whereClause.Add("template.removed = 0");
-            
-            var query = $@"SELECT
-                            IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
-                            parent1.template_name AS parent_name, 
-                            template.parent_id,
-                            template.template_name,
-                            template.template_type,
-                            template.ordering,
-                            parent1.ordering AS parent_ordering,
-                            template.template_id,
-                            GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates, 
-                            GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
-                            template.load_always,
-                            template.changed_on,
-                            template.external_files,
-                            template.template_data_minified,
-                            template.template_data,
-                            template.url_regex,
-                            template.use_cache,
-                            template.cache_minutes,
-                            0 AS use_obfuscate,
-                            template.insert_mode,
-                            template.grouping_create_object_instead_of_array,
-                            template.grouping_key_column_name,
-                            template.grouping_value_column_name,
-                            template.grouping_key,
-                            template.grouping_prefix
-                        FROM {WiserTableNames.WiserTemplate} AS template
-                        {joinPart}
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
-
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN (2, 3) AND linkedCssTemplate.removed = 0
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = 4 AND linkedJavascriptTemplate.removed = 0
-
-                        WHERE {String.Join(" AND ", whereClause)}
-                        GROUP BY template.template_id
-                        ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
-
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
-            {
-                while (await reader.ReadAsync())
-                {
-                    var template = await reader.ToTemplateModelAsync();
-
-                    templates.Add(template);
-                }
-            }
-
-            logger.LogDebug("Templates loaded from database");
-            cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
-
-            logger.LogDebug("Caching of templates ended");
-
-            return templates;
+            this.webHostEnvironment = webHostEnvironment;
+            this.objectsService = objectsService;
         }
 
         /// <inheritdoc />
-        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
+        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "", bool includeContent = true)
         {
             if (id <= 0 && String.IsNullOrEmpty(name))
             {
                 throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
             }
 
-            var cachedTemplates = await CacheTemplatesAsync();
+            // Output caching for single/partial templates (such as header and footer).
+            var templateContent = "";
+            var foundInOutputCache = false;
+            string fullCachePath = null;
+            var cacheSettings = !includeContent ? new Template { CachingMode = TemplateCachingModes.NoCaching } : await GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
+            string contentCacheKey = null;
 
-            if (String.IsNullOrWhiteSpace(name))
+            // Check if cache should be skipped:
+            // - It can be skipped if on the development environment, but dev caching is not enabled.
+            // - It can be skipped if on the test environment, but test caching is not enabled.
+            var skipCache = false;
+
+            switch (this.gclSettings.Environment)
             {
-                return cachedTemplates.SingleOrDefault(template => template.Id == id) ?? new Template();
+                case Environments.Development when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
+                case Environments.Test when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_test_enabled")).Equals("true"):
+                    skipCache = true;
+                    break;
             }
 
-            return cachedTemplates.SingleOrDefault(template => template.Name.Equals(name) && template.Type == type) ?? new Template();
+            if (!skipCache && includeContent && cacheSettings.CachingMode != TemplateCachingModes.NoCaching && cacheSettings.CachingMinutes > 0)
+            {
+                // Get folder and file name.
+                var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+                var cacheFileName = await GetTemplateOutputCacheFileNameAsync(cacheSettings, cacheSettings.Type.ToString());
+                fullCachePath = Path.Combine(cacheFolder, cacheFileName);
+
+                switch (cacheSettings.CachingLocation)
+                {
+                    case TemplateCachingLocations.InMemory:
+                    {
+                        // Cache the template contents in memory.
+                        contentCacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
+                        logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache in memory with key: {contentCacheKey}.");
+                        templateContent = await cache.GetAsync<string>(contentCacheKey);
+                        foundInOutputCache = !String.IsNullOrEmpty(templateContent);
+                        break;
+                    }
+                    case TemplateCachingLocations.OnDisk:
+                    {
+                        logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
+
+                        // Check if a cache file already exists and if it hasn't expired yet.
+                        var fileInfo = new FileInfo(fullCachePath);
+                        if (fileInfo.Exists)
+                        {
+                            if (fileInfo.LastWriteTimeUtc.AddMinutes(cacheSettings.CachingMinutes) > DateTime.UtcNow)
+                            {
+                                using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
+                                var fileContents = await fileReader.ReadToEndAsync();
+                                templateContent = cacheSettings.Type != TemplateTypes.Html
+                                    ? fileContents
+                                    : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContents}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
+                                foundInOutputCache = true;
+                            }
+                            else
+                            {
+                                // Cleanup the old cache file if it has expired.
+                                fileInfo.Delete();
+                            }
+                        }
+
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
+                }
+            }
+
+            // Cache the template settings in memory.
+            var cacheKey = $"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}";
+            var template = await cache.GetOrAdd(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, !foundInOutputCache);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+
+            if (!includeContent)
+            {
+                return template;
+            }
+
+            if (foundInOutputCache)
+            {
+                template.Content = templateContent;
+            }
+            else if (!String.IsNullOrEmpty(fullCachePath))
+            {
+                switch (cacheSettings.CachingLocation)
+                {
+                    case TemplateCachingLocations.InMemory:
+                        cache.Add(contentCacheKey, template.Content, DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes));
+                        break;
+                    case TemplateCachingLocations.OnDisk:
+                        await File.WriteAllTextAsync(fullCachePath, template.Content);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
+                }
+            }
+
+            return template;
+        }
+
+        /// <inheritdoc />
+        public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            var cacheKey = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}";
+            return await cache.GetOrAdd(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+        }
+
+        /// <inheritdoc />
+        public async Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
+        {
+            var cacheKey = $"GetTemplateIdFromName_{name}_{type}";
+            return await cache.GetOrAdd(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetTemplateIdFromNameAsync(name, type);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
         {
-            var cachedTemplates = await CacheTemplatesAsync();
-            var generalTemplates = cachedTemplates.Where(template => template.LoadAlways && template.Type == templateType).ToList();
-            if (!generalTemplates.Any())
-            {
-                return null;
-            }
-
-            return generalTemplates.Max(template => template.LastChanged);
+            var cacheKey = $"GeneralTemplateLastChangedDate_{templateType}";
+            return await cache.GetOrAdd(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetGeneralTemplateLastChangedDateAsync(templateType);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
         {
-            var result = new TemplateResponse();
-            var resultBuilder = new StringBuilder();
-            var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
-            var cachedTemplates = await CacheTemplatesAsync();
-            var templatesToUse = cachedTemplates.Where(template => template.LoadAlways && template.Type == templateType);
-            foreach (var template in templatesToUse)
-            {
-                await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
-            }
-
-            result.Content = resultBuilder.ToString();
-
-            if (result.LastChangeDate == DateTime.MinValue)
-            {
-                result.LastChangeDate = DateTime.Now;
-            }
-
-            if (templateType == TemplateTypes.Css)
-            {
-                result.Content = CssHelpers.MoveImportStatementsToTop(result.Content);
-            }
-
-            return result;
+            var cacheKey = $"GeneralTemplateValue_{templateType}";
+            return await cache.GetOrAdd(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetGeneralTemplateValueAsync(templateType);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />
         public async Task<List<Template>> GetTemplatesAsync(ICollection<int> templateIds, bool includeContent)
         {
-            var cachedTemplates = await CacheTemplatesAsync();
-            return cachedTemplates.Where(template => templateIds.Contains(template.Id)).ToList();
+            var results = new List<Template>();
+            foreach (var id in templateIds)
+            {
+                results.Add(await GetTemplateAsync(id, includeContent: includeContent));
+            }
+
+            return results;
         }
 
         /// <inheritdoc />
-        public async Task<TemplateResponse> GetCombinedTemplateValueAsync(ICollection<int> templateIds, TemplateTypes templateType)
+        public Task<TemplateResponse> GetCombinedTemplateValueAsync(ICollection<int> templateIds, TemplateTypes templateType)
         {
-            var result = new TemplateResponse();
-            var resultBuilder = new StringBuilder();
-            var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
-            var cachedTemplates = await CacheTemplatesAsync();
-            var templatesToUse = cachedTemplates.Where(template => templateIds.Contains(template.Id) && template.Type == templateType);
-            foreach (var template in templatesToUse)
-            {
-                await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
-            }
+            return GetCombinedTemplateValueAsync(this, templateIds, templateType);
+        }
 
-            result.Content = resultBuilder.ToString();
-
-            if (result.LastChangeDate == DateTime.MinValue)
-            {
-                result.LastChangeDate = DateTime.Now;
-            }
-
-            if (templateType == TemplateTypes.Css)
-            {
-                result.Content = CssHelpers.MoveImportStatementsToTop(result.Content);
-            }
-
-            return result;
+        /// <inheritdoc />
+        public Task<TemplateResponse> GetCombinedTemplateValueAsync(ITemplatesService service, ICollection<int> templateIds, TemplateTypes templateType)
+        {
+            return templatesService.GetCombinedTemplateValueAsync(service, templateIds, templateType);
         }
 
         /// <inheritdoc />
@@ -247,13 +257,25 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false)
         {
-            return templatesService.DoReplacesAsync(input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery);
+            return DoReplacesAsync(this, input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery);
+        }
+
+        /// <inheritdoc />
+        public Task<string> DoReplacesAsync(ITemplatesService service, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false)
+        {
+            return templatesService.DoReplacesAsync(service, input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery);
         }
 
         /// <inheritdoc />
         public Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false)
         {
-            return templatesService.HandleIncludesAsync(input, handleStringReplacements, dataRow, handleRequest, forQuery);
+            return HandleIncludesAsync(this, input, handleStringReplacements, dataRow, handleRequest, forQuery);
+        }
+
+        /// <inheritdoc />
+        public Task<string> HandleIncludesAsync(ITemplatesService service, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false)
+        {
+            return templatesService.HandleIncludesAsync(service, input, handleStringReplacements, dataRow, handleRequest, forQuery);
         }
 
         public Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
@@ -262,9 +284,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public Task<string> HandleImageTemplating(string input)
+        public async Task<string> HandleImageTemplating(string input)
         {
-            return templatesService.HandleImageTemplating(input);
+            var cacheKey = $"image_template_{input.ToSha512Simple()}";
+            return await cache.GetOrAdd(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.HandleImageTemplating(input);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <summary>
@@ -275,24 +304,27 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private async Task<Dictionary<int, DynamicContent>> GetDynamicContentForCachingAsync(ICacheEntry cacheEntry)
         {
             var dynamicContent = new Dictionary<int, DynamicContent>();
-            var query = gclSettings.Environment == Environments.Development 
+            var query = gclSettings.Environment == Environments.Development
                 ? @$"SELECT 
                     component.content_id,
-                    component.settings, 
+                    component.settings,
                     component.component,
-                    component.version
+                    component.component_mode,
+                    component.version,
+                    component.title
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
-                WHERE otherVersion.id IS NULL" 
+                WHERE otherVersion.id IS NULL"
                 : @$"SELECT 
                     component.content_id,
-                    component.settings, 
+                    component.settings,
                     component.component,
-                    component.version
+                    component.component_mode,
+                    component.version,
+                    component.title
                 FROM {WiserTableNames.WiserDynamicContent} AS component
                 WHERE (component.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}";
 
-            databaseConnection.ClearParameters();
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {
@@ -301,16 +333,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             foreach (DataRow dataRow in dataTable.Rows)
             {
-                var contentId = dataRow.Field<int>("id");
-                dynamicContent.Add(contentId, new DynamicContent
-                {
-                    Id = contentId,
-                    Name = dataRow.Field<string>("component"),
-                    SettingsJson = dataRow.Field<string>("settings"),
-                    Version = dataRow.Field<int>("version")
-                });
+                var contentId = dataRow.Field<int>("content_id");
+                dynamicContent.Add(contentId,
+                    new DynamicContent
+                    {
+                        Id = contentId,
+                        Name = dataRow.Field<string>("component"),
+                        SettingsJson = dataRow.Field<string>("settings"),
+                        ComponentMode = dataRow.Field<string>("component_mode"),
+                        Version = dataRow.Field<int>("version"),
+                        Title = dataRow.Field<string>("title")
+                    });
             }
-            
+
             cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
 
             return dynamicContent;
@@ -343,67 +378,136 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+        public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
         {
             var dynamicContent = await GetDynamicContentData(componentId);
-            return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+            return await GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
         }
 
         /// <inheritdoc />
-        public Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+        public async Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
         {
-            return templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-        }
-
-        /// <inheritdoc />
-        public async Task<string> ReplaceAllDynamicContentAsync(string template)
-        {
-            // TODO: This code is exactly the same as in the normal TemplatesService, but that is needed because we need to call "GenerateDynamicContentHtmlAsync" inside the CachedTemplatesService instead of the TemplatesService.
-            // TODO: Figure out if there is a better way to do this.
-            if (String.IsNullOrWhiteSpace(template))
+            if (dynamicContent == null || dynamicContent.Id == 0 || String.IsNullOrWhiteSpace(dynamicContent.SettingsJson))
             {
-                return template;
+                return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
             }
-            
-            // Timeout on the regular expression to prevent denial of service attacks.
-            var regEx = new Regex(@"<div[^<>]*?(?:class=['""]dynamic-content['""][^<>]*?)?(?:data=['""](?<data>.*?)['""][^>]*?)?(component-id|content-id)=['""](?<contentId>\d+)['""][^>]*?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
 
-            var matches = regEx.Matches(template);
-            foreach (Match match in matches)
+            var settings = JsonConvert.DeserializeObject<CmsSettings>(dynamicContent.SettingsJson);
+            if (settings == null)
             {
-                if (!match.Success)
-                {
-                    continue;
-                }
+                return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+            }
 
-                if (!Int32.TryParse(match.Groups["contentId"].Value, out var contentId) || contentId <= 0)
-                {
-                    logger.LogWarning($"Found dynamic content with invalid contentId of '{match.Groups["contentId"].Value}', so ignoring it.");
-                    continue;
-                }
+            switch (this.gclSettings.Environment)
+            {
+                case Environments.Development when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
+                case Environments.Test when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_test_enabled")).Equals("true"):
+                    return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+            }
 
-                try
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var cacheKey = new StringBuilder($"dynamicContent_{dynamicContent.Id}_");
+            switch (settings.CachingMode)
+            {
+                case TemplateCachingModes.ServerSideCaching:
+                    break;
+                case TemplateCachingModes.ServerSideCachingPerUrl:
+                    cacheKey.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.ServerSideCachingPerUrlAndQueryString:
+                    cacheKey.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
+                    cacheKey.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.NoCaching:
+                    return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(settings.CachingMode), settings.CachingMode.ToString());
+            }
+
+            string html;
+            var addedToCache = false;
+            switch (settings.CachingLocation)
+            {
+                case TemplateCachingLocations.InMemory:
+                case TemplateCachingLocations.OnDisk when !String.IsNullOrWhiteSpace(callMethod):
+                    html = (string)await cache.GetOrAddAsync(cacheKey.ToString(),
+                        async cacheEntry =>
+                        {
+                            addedToCache = true;
+                            cacheEntry.SlidingExpiration = settings.CacheMinutes <= 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
+                            return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                        },
+                        cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                    break;
+                case TemplateCachingLocations.OnDisk:
                 {
-                    var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
-                    var (html, _) = await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
-                    template = template.Replace(match.Value, (string)html);
-                }
-                catch (Exception exception)
-                {
-                    logger.LogError($"An error while generating component with id '{contentId}': {exception}");
-                    var errorOnPage = $"An error occurred while generating component with id '{contentId}'";
-                    if (gclSettings.Environment is Environments.Development or Environments.Test)
+                    var fileName = $"{cacheKey}.html";
+                    var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+                    var fullCachePath = Path.Combine(cacheFolder, fileName);
+
+                    // Check if a cache file already exists and if it hasn't expired yet.
+                    var fileInfo = new FileInfo(fullCachePath);
+                    if (fileInfo.Exists)
                     {
-                        errorOnPage += $": {exception.Message}";
+                        if (fileInfo.LastWriteTimeUtc.AddMinutes(settings.CacheMinutes) > DateTime.UtcNow)
+                        {
+                            using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
+                            var fileContents = await fileReader.ReadToEndAsync();
+                            html = $"<!-- START DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->{fileContents}<!-- END DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->";
+                            return html;
+                        }
+
+                        // Cleanup the old cache file if it has expired.
+                        fileInfo.Delete();
                     }
 
-                    template = template.Replace(match.Value, errorOnPage);
+                    html = (string)await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                    addedToCache = true;
+                    await File.WriteAllTextAsync(fullCachePath, html);
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(settings.CachingLocation), settings.CachingLocation.ToString());
+            }
+
+            // Cache page SEO data,
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return html;
+            }
+
+            cacheKey.Append($"_{Constants.PageMetaDataFromComponentKey}");
+
+            if (addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
+            {
+                cache.Add(cacheKey.ToString(), componentSeoData);
+            }
+            else if (!addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] == null)
+            {
+                componentSeoData = cache.Get<PageMetaDataModel>(cacheKey.ToString());
+                if (componentSeoData != null)
+                {
+                    httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] = componentSeoData;
                 }
             }
 
-            return template;
+            return html;
         }
-        
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
+        {
+            return await ReplaceAllDynamicContentAsync(this, template, componentOverrides);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllDynamicContentAsync(ITemplatesService service, string template, List<DynamicContent> componentOverrides = null)
+        {
+            return await templatesService.ReplaceAllDynamicContentAsync(service, template, componentOverrides);
+        }
+
         /// <inheritdoc />
         public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false)
         {
@@ -411,9 +515,33 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
+        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
-            return await this.templatesService.GetTemplateDataAsync(id, name, type, parentId, parentName);
+            return await GetTemplateDataAsync(this, id, name, parentId, parentName);
+        }
+
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService service, int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            return await templatesService.GetTemplateDataAsync(service, id, name, parentId, parentName);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+        {
+            return await ExecutePreLoadQueryAndRememberResultsAsync(this, template);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService service, Template template)
+        {
+            return await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(service, template);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
+        {
+            return await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate, extension);
         }
     }
 }

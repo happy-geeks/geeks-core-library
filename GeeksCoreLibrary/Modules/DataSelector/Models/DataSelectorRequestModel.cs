@@ -77,7 +77,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
         /// <summary>
         /// Gets or sets the link type.
         /// </summary>
-        public string LinkType { get; set; }
+        public int? LinkType { get; set; }
 
         /// <summary>
         /// Gets or sets the query addition.

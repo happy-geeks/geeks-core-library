@@ -27,7 +27,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
 
         public string EntityTypes { get; set; }
 
-        public string LinkType { get; set; }
+        public int? LinkType { get; set; }
 
         public string QueryAddition { get; set; }
 

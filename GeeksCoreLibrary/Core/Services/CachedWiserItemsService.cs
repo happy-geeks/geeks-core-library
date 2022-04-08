@@ -30,14 +30,14 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null, bool useParentItemIdByDefault = false)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null)
         {
             entityTypeSettings ??= await GetEntityTypeSettingsAsync(wiserItem.EntityType);
-            return await wiserItemsService.SaveAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, entityTypeSettings, useParentItemIdByDefault);
+            return await wiserItemsService.SaveAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null, bool useParentItemIdByDefault = false)
+        public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null)
         {
             if (String.IsNullOrWhiteSpace(wiserItem?.EntityType))
             {
@@ -45,7 +45,7 @@ namespace GeeksCoreLibrary.Core.Services
             }
 
             entityTypeSettings ??= await GetEntityTypeSettingsAsync(wiserItem.EntityType);
-            return await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, entityTypeSettings, useParentItemIdByDefault);
+            return await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, entityTypeSettings);
         }
 
         /// <inheritdoc />
@@ -123,15 +123,15 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool useParentItemIdByDefault = false)
+        public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
         {
-            return await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType, useParentItemIdByDefault);
+            return await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType);
         }
 
         /// <inheritdoc />
-        public async Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool useParentItemIdByDefault = false)
+        public async Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
         {
-            return await wiserItemsService.GetLinkedItemIdsAsync(itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType, useParentItemIdByDefault);
+            return await wiserItemsService.GetLinkedItemIdsAsync(itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType);
         }
 
         /// <inheritdoc />
@@ -189,9 +189,9 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null)
+        public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0UL, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
-            await wiserItemsService.RemoveLinkedItemsAsync(destinationItemId, type, exceptItemIds, username, userId, saveHistory, entityType);
+            await wiserItemsService.RemoveLinkedItemsAsync(destinationItemId, type, exceptItemIds, username, userId, saveHistory, entityType, createNewTransaction);
         }
 
         /// <inheritdoc />
@@ -249,7 +249,7 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<LinkSettingsModel> GetLinkTypeSettingsAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null, LinkSettingsModel defaultSettings = null)
+        public async Task<LinkSettingsModel> GetLinkTypeSettingsAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null)
         {
             if (linkType <= 0 && String.IsNullOrWhiteSpace(sourceEntityType) && String.IsNullOrWhiteSpace(destinationEntityType))
             {
@@ -272,7 +272,7 @@ namespace GeeksCoreLibrary.Core.Services
                 result = result.Where(t => String.Equals(t.DestinationEntityType, destinationEntityType, StringComparison.OrdinalIgnoreCase));
             }
             
-            return result.FirstOrDefault() ?? defaultSettings ?? new LinkSettingsModel();
+            return result.FirstOrDefault() ?? new LinkSettingsModel();
         }
 
         /// <inheritdoc />

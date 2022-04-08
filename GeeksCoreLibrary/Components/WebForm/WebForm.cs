@@ -85,6 +85,7 @@ namespace GeeksCoreLibrary.Components.WebForm
             }
 
             ComponentId = dynamicContent.Id;
+            Settings.Description = dynamicContent.Title;
             if (dynamicContent.Name is "JuiceControlLibrary.Sendform" && !forcedComponentMode.HasValue)
             {
                 // Force component mode to Legacy mode if it was created through the JCL.
@@ -92,11 +93,16 @@ namespace GeeksCoreLibrary.Components.WebForm
                 allowLegacyEmailTemplateGeneration = true;
             }
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-
             if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+            else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
+            }
+
+            HandleDefaultSettingsFromComponentMode();
 
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
             if (!renderHtml)
@@ -113,18 +119,18 @@ namespace GeeksCoreLibrary.Components.WebForm
             }
 
             var resultHtml = new StringBuilder();
-            if (!Request.HasFormContentType || !await ValidateFormSubmitAsync())
+            if (!Request.HasFormContentType)
             {
-                resultHtml.Append(await CreateFormHtml());
+                resultHtml.Append(await CreateFormHtmlAsync());
             }
             else
             {
-                resultHtml.Append(await SubmitForm());
+                resultHtml.Append(await SubmitFormAsync());
             }
 
             if (!String.IsNullOrWhiteSpace(Settings.TemplateJavaScript))
             {
-                var javascript = Settings.TemplateJavaScript.ReplaceCaseInsensitive("{contentId}", ComponentId.ToString());
+                var javascript = Settings.TemplateJavaScript.ReplaceCaseInsensitive("{contentId}", ComponentId.ToString()).ReplaceCaseInsensitive("{WebFormName}", Settings.Description);
                 resultHtml.Append($"<script>{javascript}</script>");
             }
 
@@ -139,7 +145,7 @@ namespace GeeksCoreLibrary.Components.WebForm
         /// Creates the form HTML based on the form HTML template as set in the settings.
         /// </summary>
         /// <returns>The generated form HTML as a string.</returns>
-        public async Task<string> CreateFormHtml()
+        public async Task<string> CreateFormHtmlAsync()
         {
             if (String.IsNullOrWhiteSpace(Settings.FormHtmlTemplate))
             {
@@ -147,7 +153,6 @@ namespace GeeksCoreLibrary.Components.WebForm
             }
 
             var formHtml = Settings.FormHtmlTemplate;
-            formHtml = await TemplatesService.DoReplacesAsync(formHtml, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, handleRequest: Settings.HandleRequest, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
             formHtml = formHtml.ReplaceCaseInsensitive("{contentId}", ComponentId.ToString())
                 .ReplaceCaseInsensitive("<jform", "<form")
@@ -166,6 +171,8 @@ namespace GeeksCoreLibrary.Components.WebForm
                 var hiddenInputs = $"<input type=\"hidden\" name=\"__WebForm{ComponentId}\" value=\"{ComponentId}\" /><input type=\"hidden\" name=\"__WebFormCheck{ComponentId}\" value=\"\" />";
                 formHtml = formHtml.Insert(endTagIndex, hiddenInputs);
             }
+
+            formHtml = await TemplatesService.DoReplacesAsync(formHtml, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, handleRequest: Settings.HandleRequest, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
             return formHtml;
         }
@@ -197,6 +204,10 @@ namespace GeeksCoreLibrary.Components.WebForm
                         updatedHtml = updatedHtml.Replace(regexMatch.Value, $"<div class=\"g-recaptcha\" data-sitekey=\"{siteKey}\"></div>");
                         AddExternalJavaScriptLibrary("https://www.google.com/recaptcha/api.js", true, true);
                         break;
+                    case 3:
+                        // In version 3, the javascript will already be added by PagesService.
+                        updatedHtml = updatedHtml.Replace(regexMatch.Value, $"<input type=\"hidden\" name=\"g-recaptcha-response-v3\" id=\"RecaptchaResponseToken{ComponentId}\" value>");
+                        break;
                     default:
                         throw new ArgumentOutOfRangeException($"Unknown or unsupported reCAPTCHA version: {version}");
                 }
@@ -209,8 +220,13 @@ namespace GeeksCoreLibrary.Components.WebForm
         /// Submits the form, and returns either the HTML of the success template or the HTML of the failed template.
         /// </summary>
         /// <returns>The HTML of the success template or the HTML of the failed template.</returns>
-        public async Task<string> SubmitForm()
+        public async Task<string> SubmitFormAsync()
         {
+            if (!await ValidateFormSubmitAsync())
+            {
+                return await CreateFormHtmlAsync();
+            }
+
             var communication = new SingleCommunicationModel();
 
             // Check if there are files to upload.
@@ -306,7 +322,14 @@ namespace GeeksCoreLibrary.Components.WebForm
                 return false;
             }
 
-            if (Settings.FormHtmlTemplate.Contains("{recaptcha") && (!Request.Form.TryGetValue("g-recaptcha-response", out var recaptchaResponse) || String.IsNullOrWhiteSpace(recaptchaResponse.ToString()) || !await ValidateRecaptchaResponseAsync(recaptchaResponse.ToString())))
+            // reCAPTCHA v2
+            if (Settings.FormHtmlTemplate.Contains("{recaptcha_v2}") && (!Request.Form.TryGetValue("g-recaptcha-response", out var recaptchaResponse) || String.IsNullOrWhiteSpace(recaptchaResponse.ToString()) || !await ValidateRecaptchaResponseAsync(recaptchaResponse.ToString())))
+            {
+                return false;
+            }
+
+            // reCAPTCHA v3
+            if (Settings.FormHtmlTemplate.Contains("{recaptcha_v3}") && (!Request.Form.TryGetValue("g-recaptcha-response-v3", out recaptchaResponse) || String.IsNullOrWhiteSpace(recaptchaResponse.ToString()) || !await ValidateRecaptchaResponseAsync(recaptchaResponse.ToString())))
             {
                 return false;
             }
@@ -317,7 +340,8 @@ namespace GeeksCoreLibrary.Components.WebForm
 
         private async Task<bool> ValidateRecaptchaResponseAsync(string response)
         {
-            var secret = await objectsService.FindSystemObjectByDomainNameAsync("google_recaptcha_secretkey");
+            var isVersion3 = Settings.FormHtmlTemplate.Contains("{recaptcha_v3}");
+            var secret = await objectsService.FindSystemObjectByDomainNameAsync(isVersion3 ? "google_recaptcha_v3_secretkey" : "google_recaptcha_secretkey");
 
             var restClient = new RestClient("https://www.google.com");
             var restRequest = new RestRequest("/recaptcha/api/siteverify", Method.POST);
@@ -331,7 +355,15 @@ namespace GeeksCoreLibrary.Components.WebForm
             }
 
             var dataObject = JObject.Parse(restResult.Content);
-            return dataObject.Value<bool>("success");
+            var result = dataObject.Value<bool>("success");
+            if (!isVersion3 || !result)
+            {
+                return result;
+            }
+
+            // For reCAPTCHA v3 we need to check the score that was returned.
+            var score = dataObject.Value<decimal>("score");
+            return score >= Settings.ReCaptchaV3ScoreThreshold;
         }
 
         /// <summary>

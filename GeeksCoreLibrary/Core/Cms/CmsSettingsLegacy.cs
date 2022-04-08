@@ -1,6 +1,6 @@
 ﻿namespace GeeksCoreLibrary.Core.Cms
 {
-    public abstract class CmsSettingsLegacy
+    public class CmsSettingsLegacy
     {
         /// <summary>
         /// A description that describes the component for use in Wiser.
@@ -27,7 +27,7 @@
         /// <summary>
         /// If this is set to true, all left over variables after all replacements will be removed from the string.
         /// </summary>
-        public bool RemoveUnknownVariables { get; set; } = false;
+        public bool RemoveUnknownVariables { get; set; } = true;
         
         /// <summary>
         /// Will set a 404 status for the page if no data was found
@@ -83,6 +83,6 @@
         
         public string Html { get; set; } 
         
-        public string SQLQuery { get; set; } 
+        public string SQLQuery { get; set; }
     }
 }

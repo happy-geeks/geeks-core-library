@@ -41,6 +41,9 @@ using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Services;
 using GeeksCoreLibrary.Components.DataSelectorParser.Interfaces;
 using GeeksCoreLibrary.Components.DataSelectorParser.Services;
+using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
+using GeeksCoreLibrary.Components.OrderProcess.Middlewares;
+using GeeksCoreLibrary.Components.OrderProcess.Services;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -90,6 +93,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             builder.UseMiddleware<RedirectMiddleWare>();
 
             builder.UseWebMarkupMin();
+            builder.UseMiddleware<RewriteUrlToOrderProcessMiddleware>();
             builder.UseMiddleware<RewriteUrlToWebPageMiddleware>();
             builder.UseMiddleware<RewriteUrlToTemplateMiddleware>();
 
@@ -127,7 +131,6 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns></returns>
         public static IServiceCollection AddGclServices(this IServiceCollection services, IConfiguration configuration, bool useCaching = true, bool isApi = false)
         {
-
             // MVC looks in the directory "Areas" by default, but we use the directory "Modules", so we have to tell MC that.
             services.Configure<RazorViewEngineOptions>(options =>
             {
@@ -257,6 +260,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             services.Decorate<IConfiguratorsService, CachedConfiguratorsService>();
             services.Decorate<IShoppingBasketsService, CachedShoppingBasketsService>();
             services.Decorate<IDataSelectorParsersService, CachedDataSelectorParsersService>();
+            services.Decorate<IOrderProcessesService, CachedOrderProcessesService>();
             
             if (gclSettings.UseLegacyWiser1TemplateModule)
             {

@@ -16,6 +16,7 @@ using GeeksCoreLibrary.Modules.Languages.Models;
 
 namespace GeeksCoreLibrary.Modules.Languages.Services
 {
+    /// <inheritdoc cref="ILanguagesService" />
     public class LanguagesService : ILanguagesService, IScopedService
     {
         private readonly ILogger<LanguagesService> logger;
@@ -25,16 +26,10 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         private readonly GclSettings gclSettings;
 
         public string CurrentLanguageCode { get; set; }
-        public string Wiser2TranslationsGroupName { get; set; } = "translations";
 
         /// <summary>
         /// Creates a new instance of <see cref="LanguagesService"/>.
         /// </summary>
-        /// <param name="logger"></param>
-        /// <param name="databaseConnection"></param>
-        /// <param name="objectsService"></param>
-        /// <param name="gclSettings"></param>
-        /// <param name="httpContextAccessor"></param>
         public LanguagesService(ILogger<LanguagesService> logger, IDatabaseConnection databaseConnection, IObjectsService objectsService, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor)
         {
             this.logger = logger;
@@ -43,14 +38,9 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             this.httpContextAccessor = httpContextAccessor;
             this.gclSettings = gclSettings.Value;
         }
-
-        /// <summary>
-        /// Returns the translated word if exists in cache, if not it will return the original word
-        /// </summary>
-        /// <param name="original"></param>
-        /// <param name="languageCode"></param>
-        /// <returns></returns>
-        public async Task<string> GetTranslationAsync(string original, string languageCode = null)
+        
+        /// <inheritdoc />
+        public async Task<string> GetTranslationAsync(string original, string languageCode = null, string defaultValue = null)
         {
             try
             {
@@ -58,25 +48,23 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                 
                 databaseConnection.AddParameter("languageCode", languageCode);
                 databaseConnection.AddParameter("original", original);
-                databaseConnection.AddParameter("groupName", Wiser2TranslationsGroupName);
+                databaseConnection.AddParameter("groupName", Constants.TranslationsGroupName);
                 databaseConnection.AddParameter("translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));
-                string result;
-                await using (var reader = await databaseConnection.GetReaderAsync(
-                    @"SELECT
+                var dataTable = await databaseConnection.GetAsync(
+                    @$"SELECT
 	                    `key`,
 	                    CONCAT_WS('', `value`, long_value) AS `value`
-                    FROM wiser_itemdetail
+                    FROM {WiserTableNames.WiserItemDetail}
                     WHERE item_id = ?translationsItemId
                         AND groupname = ?groupName
                         AND language_code = ?languageCode
-                        AND (`value` = ?original OR long_value = ?original)"))
-                {
-                    result = await reader.ReadAsync() ? reader.GetStringHandleNull(1) : original;
-                }
+                        AND (`value` = ?original OR long_value = ?original)");
+
+                var result = dataTable.Rows.Count > 0 ? dataTable.Rows[0].Field<string>("value") ?? "" : original;
 
                 if (String.IsNullOrEmpty(result))
                 {
-                    result = original;
+                    result = defaultValue ?? original;
                 }
 
                 return result;
@@ -92,6 +80,14 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         /// <inheritdoc />
         public async Task<string> GetLanguageCodeAsync()
         {
+            // Check if it should be overriden through a query string.
+            if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Request.Query.ContainsKey(Constants.LanguageCodeQueryStringKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey]))
+            {
+                CurrentLanguageCode = httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey];
+                logger.LogDebug($"LanguageCode determined through query string: {CurrentLanguageCode}");
+                return CurrentLanguageCode;
+            }
+
             // First check for a system object.
             var languageCode = await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_LanguageCode");
             if (!String.IsNullOrWhiteSpace(languageCode))
@@ -104,7 +100,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Request.Headers.ContainsKey(Constants.LanguageCodeHeaderKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Headers[Constants.LanguageCodeHeaderKey]))
             {
                 CurrentLanguageCode = httpContextAccessor.HttpContext.Request.Headers[Constants.LanguageCodeHeaderKey];
-                logger.LogDebug($"LanguageCode determined through HTTP header: {languageCode}");
+                logger.LogDebug($"LanguageCode determined through HTTP header: {CurrentLanguageCode}");
                 return CurrentLanguageCode;
             }
 
@@ -126,11 +122,11 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             var userLanguages = httpContextAccessor.HttpContext?.Request.GetTypedHeaders().AcceptLanguage.OrderByDescending(v => v.Quality ?? 1).Select(v => v.Value.Value).ToList();
 
             var getDefaultLanguageResult = await databaseConnection.GetAsync(
-                @"SELECT c.`value`, IFNULL(d.`value`, '0') AS is_default_language
-                FROM wiser_item AS lang
-                JOIN wiser_itemdetail AS c ON c.item_id = lang.id AND c.`key` = 'language_code' AND c.`value` IS NOT NULL AND c.`value` <> ''
-                LEFT JOIN wiser_itemdetail AS d ON d.item_id = lang.id AND d.`key` = 'is_default_language'
-                LEFT JOIN wiser_itemlink AS link ON link.item_id = lang.id AND link.type = 1
+                $@"SELECT c.`value`, IFNULL(d.`value`, '0') AS is_default_language
+                FROM {WiserTableNames.WiserItem} AS lang
+                JOIN {WiserTableNames.WiserItemDetail} AS c ON c.item_id = lang.id AND c.`key` = 'language_code' AND c.`value` IS NOT NULL AND c.`value` <> ''
+                LEFT JOIN {WiserTableNames.WiserItemDetail} AS d ON d.item_id = lang.id AND d.`key` = 'is_default_language'
+                LEFT JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = lang.id AND link.type = 1
                 WHERE lang.entity_type = 'language'
                 AND lang.published_environment > 0
                 ORDER BY IFNULL(link.ordering, lang.title)");

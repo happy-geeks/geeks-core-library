@@ -13,9 +13,19 @@
         public string Name { get; set; }
 
         /// <summary>
+        /// Gets or sets the title of the component that was set in Wiser.
+        /// </summary>
+        public string Title { get; set; }
+
+        /// <summary>
         /// Gets or sets the full settings JSON of the dynamic content.
         /// </summary>
         public string SettingsJson { get; set; }
+
+        /// <summary>
+        /// Gets or sets the component mode the component of the dynamic content should be running in.
+        /// </summary>
+        public string ComponentMode { get; set; }
 
         /// <summary>
         /// Gets or sets the current version of the dynamic content.

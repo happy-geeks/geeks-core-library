@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -192,20 +193,19 @@ namespace GeeksCoreLibrary.Core.Cms
                 }
 
                 var currentValue = resultProperty.GetValue(Settings);
-                // TODO: Check for other types default values?
-                if (currentValue != null && (!(currentValue is string stringValue) || !String.IsNullOrEmpty(stringValue)))
+                if (currentValue != null && !Equals(currentValue, resultProperty.PropertyType.GetDefaultValue()) && (currentValue is not string stringValue || !String.IsNullOrEmpty(stringValue)))
                 {
                     continue;
                 }
-
-                // TODO: Maybe use constants instead of default value attribute?
+                
                 var defaultValueAttribute = propertyWithDefaultValue.GetCustomAttribute<DefaultValueAttribute>();
-                if (defaultValueAttribute == null)
+                if (defaultValueAttribute?.Value == null)
                 {
                     continue;
                 }
 
-                resultProperty.SetValue(Settings, defaultValueAttribute.Value);
+                var propertyType = Nullable.GetUnderlyingType(resultProperty.PropertyType) ?? resultProperty.PropertyType;
+                resultProperty.SetValue(Settings, Convert.ChangeType(defaultValueAttribute.Value, propertyType));
             }
         }
 
@@ -227,10 +227,10 @@ namespace GeeksCoreLibrary.Core.Cms
 
             if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
             {
-                queryToUse = StringReplacementsService.DoReplacements(queryToUse, ExtraDataForReplacements);
+                queryToUse = StringReplacementsService.DoReplacements(queryToUse, ExtraDataForReplacements, true);
             }
 
-            queryToUse = await TemplatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false, dataRow: dataRowForReplacements);
+            queryToUse = await TemplatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false, dataRow: dataRowForReplacements, forQuery: true);
 
             if (doVariablesCheck)
             {
@@ -273,67 +273,6 @@ namespace GeeksCoreLibrary.Core.Cms
             var renderHtml = !Settings.UserNeedsToBeLoggedIn || (AccountsService != null && (await AccountsService.GetUserDataFromCookieAsync()).UserId > 0);
             var debugInformation = renderHtml ? "" : $"<!-- Component {GetType().Name} ({ComponentId}) not rendered because the user is not logged in. -->";
             return (renderHtml, debugInformation);
-        }
-
-        /// <summary>
-        /// Sets the SEO meta data for the current page.
-        /// </summary>
-        /// <param name="seoTitle"></param>
-        /// <param name="seoDescription"></param>
-        /// <param name="seoKeyWords"></param>
-        /// <param name="seoCanonical"></param>
-        /// <param name="noIndex"></param>
-        /// <param name="noFollow"></param>
-        /// <param name="robots"></param>
-        protected void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null)
-        {
-            var componentSeoData = HttpContext.Items[CmsSettings.PageMetaDataFromComponentKey] as PageMetaDataModel ?? new PageMetaDataModel();
-            if (!String.IsNullOrWhiteSpace(seoTitle) && !componentSeoData.MetaTags.ContainsKey("title"))
-            {
-                componentSeoData.PageTitle = seoTitle;
-                componentSeoData.MetaTags.Add("title", seoTitle);
-            }
-
-            if (!String.IsNullOrWhiteSpace(seoDescription) && !componentSeoData.MetaTags.ContainsKey("description"))
-            {
-                componentSeoData.MetaTags.Add("description", seoDescription);
-            }
-
-            if (!String.IsNullOrWhiteSpace(seoKeyWords) && !componentSeoData.MetaTags.ContainsKey("keywords"))
-            {
-                componentSeoData.MetaTags.Add("keywords", seoKeyWords);
-            }
-
-            if (!String.IsNullOrWhiteSpace(seoCanonical) && String.IsNullOrWhiteSpace(componentSeoData.Canonical))
-            {
-                componentSeoData.Canonical = seoCanonical;
-            }
-
-            if (!componentSeoData.MetaTags.ContainsKey("robots"))
-            {
-                var allRobots = new List<string>();
-                if (robots != null)
-                {
-                    allRobots.AddRange(robots);
-                }
-
-                if (noIndex && !allRobots.Any(s => s.Equals("noindex", StringComparison.OrdinalIgnoreCase)))
-                {
-                    allRobots.Add("noindex");
-                }
-
-                if (noFollow && !allRobots.Any(s => s.Equals("nofollow", StringComparison.OrdinalIgnoreCase)))
-                {
-                    allRobots.Add("nofollow");
-                }
-
-                if (allRobots.Any())
-                {
-                    componentSeoData.MetaTags.Add("robots", String.Join(",", allRobots));
-                }
-            }
-
-            HttpContext.Items[CmsSettings.PageMetaDataFromComponentKey] = componentSeoData;
         }
 
         protected void AddExternalJavaScriptLibrary(string url, bool async = false, bool defer = false)

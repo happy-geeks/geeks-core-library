@@ -23,8 +23,8 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             Slider = 3
         }
 
-        private double selectedMinValue;
-        private double selectedMaxValue = 1000000000;
+        private decimal selectedMinValue;
+        private decimal selectedMaxValue = 1000000000;
         private string selectedValueString; // is comma separated list of selected values
 
         public FilterGroupType FilterType { get; set; } = FilterGroupType.MultiSelect;
@@ -101,22 +101,22 @@ namespace GeeksCoreLibrary.Components.Filter.Models
         /// <summary>
         /// Gets the minimum allowed value.
         /// </summary>
-        public double MinValue { get; set; } = 1000000000;
+        public decimal MinValue { get; set; } = 1000000000;
 
         /// <summary>
         /// Gets the maximum allowed value.
         /// </summary>
-        public double MaxValue { get; set; }
+        public decimal MaxValue { get; set; }
 
         /// <summary>
         /// Gets the selected min value. If it's less than the allowed min value, the min value is returned instead.
         /// </summary>
-        public double SelectedMinValue => selectedMinValue < MinValue ? MinValue : selectedMinValue;
+        public decimal SelectedMinValue => selectedMinValue < MinValue ? MinValue : selectedMinValue;
 
         /// <summary>
         /// Gets the selected max value. If it exceeds the allowed max value, the max value is returned instead.
         /// </summary>
-        public double SelectedMaxValue => selectedMaxValue > MaxValue ? MaxValue : selectedMaxValue;
+        public decimal SelectedMaxValue => selectedMaxValue > MaxValue ? MaxValue : selectedMaxValue;
 
         public string ParentColumnName { get; set; }
 
@@ -134,7 +134,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
         public bool UseAggregationTable { get; set; } = false;
 
         /// <summary>
-        ///  Adds an item to the list of items, or parses the value to a double to see if it's a valid value for the min or max value for a slider.
+        ///  Adds an item to the list of items, or parses the value to a decimal to see if it's a valid value for the min or max value for a slider.
         /// </summary>
         /// <param name="value"></param>
         /// <param name="count"></param>
@@ -144,17 +144,17 @@ namespace GeeksCoreLibrary.Components.Filter.Models
         {
             if (FilterType == FilterGroupType.Slider)
             {
-                // if the filter is a slider the value can be converted as double
+                // if the filter is a slider the value can be converted as decimal
                 try
                 {
-                    Double.TryParse(value.ToString()?.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator), out var doubleValue);
-                    if (doubleValue > MaxValue)
+                    Decimal.TryParse(value.ToString()?.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator), out var decimalValue);
+                    if (Math.Ceiling(decimalValue) > MaxValue)
                     {
-                        MaxValue = doubleValue;
+                        MaxValue = Math.Ceiling(decimalValue);
                     }
-                    if (doubleValue < MinValue)
+                    if (Math.Floor(decimalValue) < MinValue)
                     {
-                        MinValue = doubleValue;
+                        MinValue = Math.Floor(decimalValue);
                     }
                 }
                 catch (Exception ex)
@@ -164,7 +164,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             }
             else if (!String.IsNullOrWhiteSpace(value.ToString()))
             {
-                var valueString = value.ToString()?.Trim();
+                var valueString = value.ToString()?.Trim() ?? String.Empty;
 
                 // value must be string
                 if (!Items.Keys.Contains(valueString))
@@ -191,13 +191,13 @@ namespace GeeksCoreLibrary.Components.Filter.Models
                 {
                     if (value.Contains("-"))
                     {
-                        selectedMinValue = Double.Parse(value.Split('-')[0].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
-                        selectedMaxValue = Double.Parse(value.Split('-')[1].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                        selectedMinValue = Decimal.Parse(value.Split('-')[0].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                        selectedMaxValue = Decimal.Parse(value.Split('-')[1].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
                     }
                     else
                     {
                         selectedMinValue = 0;
-                        selectedMaxValue = Double.Parse(value.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                        selectedMaxValue = Decimal.Parse(value.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
                     }
                 }
                 

@@ -1,16 +1,16 @@
-﻿using GeeksCoreLibrary.Components.Repeater.Models;
-using GeeksCoreLibrary.Core.Cms;
-using GeeksCoreLibrary.Core.Cms.Attributes;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Components.Repeater.Interfaces;
+using GeeksCoreLibrary.Components.Repeater.Models;
+using GeeksCoreLibrary.Core.Cms;
+using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -18,8 +18,9 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
-using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Components.Repeater
 {
@@ -33,6 +34,7 @@ namespace GeeksCoreLibrary.Components.Repeater
         private readonly IRepeatersService repeatersService;
         private readonly IFiltersService filtersService;
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IPagesService pagesService;
 
         #region Enums
 
@@ -73,11 +75,12 @@ namespace GeeksCoreLibrary.Components.Repeater
 
         #region Constructor
 
-        public Repeater(ILogger<Repeater> logger, IRepeatersService repeatersService, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IFiltersService filtersService, IHttpContextAccessor httpContextAccessor)
+        public Repeater(ILogger<Repeater> logger, IRepeatersService repeatersService, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IFiltersService filtersService, IHttpContextAccessor httpContextAccessor, IPagesService pagesService)
         {
             this.repeatersService = repeatersService;
             this.filtersService = filtersService;
             this.httpContextAccessor = httpContextAccessor;
+            this.pagesService = pagesService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -165,6 +168,8 @@ namespace GeeksCoreLibrary.Components.Repeater
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
 
+            HandleDefaultSettingsFromComponentMode();
+
             // Security check by Account Component:
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
             if (!renderHtml)
@@ -224,7 +229,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     var noIndex = Convert.ToBoolean(parsedData.Rows[0].GetValueIfColumnExists("noindex"));
                     var noFollow = Convert.ToBoolean(parsedData.Rows[0].GetValueIfColumnExists("nofollow"));
                     var robots = parsedData.Rows[0].GetValueIfColumnExists<string>("SEOrobots");
-                    SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
+                    pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
                 }
 
                 if (Settings.GroupingTemplates.Keys.Count == 1)
@@ -280,6 +285,10 @@ namespace GeeksCoreLibrary.Components.Repeater
                     {
                         query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
                     }
+                    if (query.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
+                    {
+                        query = Regex.Replace(query, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart);
+                    }
 
                     // Replace the {page_limit} variable for paging.
                     if (query.Contains("{page_limit}", StringComparison.OrdinalIgnoreCase) || !query.Contains(" LIMIT ", StringComparison.OrdinalIgnoreCase))
@@ -310,7 +319,16 @@ namespace GeeksCoreLibrary.Components.Repeater
                                 }
                             }
 
-                            limitClause = $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
+                            // Check if the property must be overruled
+                            var loadUpToPageNumberOverrule = Settings.LoadItemsUpToPageNumber;
+                            if (Boolean.TryParse(httpContextAccessor.HttpContext?.Request.Query["loadUptoPageNumberOverrule"].ToString(), out var tempUpToPageNumberOverrule))
+                            {
+                                loadUpToPageNumberOverrule = tempUpToPageNumberOverrule;
+                            }
+
+                            limitClause = loadUpToPageNumberOverrule
+                                ? $" LIMIT 0, {Settings.ItemsPerPage * pageNumber - bannersForCurrentPage}"
+                                : $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
                         }
 
                         if (query.Contains("{page_limit}", StringComparison.OrdinalIgnoreCase))
@@ -377,7 +395,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     templateHtml = Settings.GroupHeader;
                     templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                    html.AppendLine(templateHtml);
+                    html.Append(templateHtml);
                 }
 
                 // Get the banner(s) that need to be places on this location. Usually this is only one, but in some cases there could be multiple that need to be placed in a row.
@@ -403,18 +421,18 @@ namespace GeeksCoreLibrary.Components.Repeater
                     if (Settings.CreateGroupsOfNItems > 1 && index > 0 && blocksPlaced % Settings.CreateGroupsOfNItems == 0)
                     {
                         // Place a new group header if we have already placed N items/blocks before this.
-                        html.AppendLine(Settings.GroupHeader);
+                        html.Append(Settings.GroupHeader);
                     }
                     else if (index > 0)
                     {
                         // Don't place BetweenItemsTemplate for the first item and also don't place it before the first item in a new group (if we're using groups).
-                        html.AppendLine(template.BetweenItemsTemplate);
+                        html.Append(template.BetweenItemsTemplate);
                     }
 
                     // Do replacements on the banner HTML and then add that HTML.
                     var productBannerHtml = await StringReplacementsService.DoAllReplacementsAsync(Settings.ProductBannerTemplate, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables);
                     productBannerHtml = productBannerProperties.Aggregate(productBannerHtml, (current, property) => current.ReplaceCaseInsensitive($"{{{property.Name}}}", property.GetValue(banner)?.ToString() ?? ""));
-                    html.AppendLine(productBannerHtml);
+                    html.Append(productBannerHtml);
                     blocksPlaced++;
 
                     // Check if we need to place a group footer. A group fouter needs to be placed after every N items, unless this is the very last item and ShowGroupFooterForLastGroup is disabled.
@@ -426,7 +444,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     templateHtml = Settings.GroupFooter;
                     templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                    html.AppendLine(templateHtml);
+                    html.Append(templateHtml);
 
                     // If we still have more items to place, then also add a group header again.
                     if (blocksPlaced < totalBlocks)
@@ -434,20 +452,23 @@ namespace GeeksCoreLibrary.Components.Repeater
                         templateHtml = Settings.GroupHeader;
                         templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                        html.AppendLine(templateHtml);
+                        html.Append(templateHtml);
                     }
                 }
 
                 // Don't place BetweenItemsTemplate for the first item and also don't place it before the first item in a new group (if we're using groups).
                 if (index > 0 && (Settings.CreateGroupsOfNItems == 1 || (Settings.CreateGroupsOfNItems > 1 && blocksPlaced % Settings.CreateGroupsOfNItems > 0)))
                 {
-                    html.AppendLine(template.BetweenItemsTemplate);
+                    templateHtml = template.BetweenItemsTemplate;
+                    templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
+
+                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
                 }
 
                 templateHtml = template.ItemTemplate;
                 templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                html.AppendLine(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
                 blocksPlaced++;
 
                 // Check if we need to place a group footer. A group fouter needs to be placed after every N items, unless this is the very last item and ShowGroupFooterForLastGroup is disabled.
@@ -456,7 +477,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     templateHtml = Settings.GroupFooter;
                     templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                    html.AppendLine(templateHtml);
+                    html.Append(templateHtml);
                 }
             }
 
@@ -475,14 +496,14 @@ namespace GeeksCoreLibrary.Components.Repeater
             // Add the EmptyGroupItemHtml template for the remaining items in the last group.
             for (var index = 0; index < Settings.CreateGroupsOfNItems - remainingItems; index++)
             {
-                html.AppendLine(template.BetweenItemsTemplate);
-                html.AppendLine(Settings.EmptyGroupItemHtml);
+                html.Append(template.BetweenItemsTemplate);
+                html.Append(Settings.EmptyGroupItemHtml);
             }
 
             // Add the last group footer if needed.
             if (Settings.ShowGroupFooterForLastGroup)
             {
-                html.AppendLine(Settings.GroupFooter);
+                html.Append(Settings.GroupFooter);
             }
 
             return html.ToString();
@@ -545,25 +566,28 @@ namespace GeeksCoreLibrary.Components.Repeater
                     templateHtml = templateCollection[currentIdentifier].HeaderTemplate;
                     templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                    html.AppendLine(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
                 }
 
                 // Add the items to the HTML.
                 if (relevantData.Rows.Count == 0)
                 {
-                    html.AppendLine(templateCollection[currentIdentifier].NoDataTemplate);
+                    html.Append(templateCollection[currentIdentifier].NoDataTemplate);
                 }
                 else
                 {
                     if (index > 0)
                     {
-                        html.AppendLine(templateCollection[currentIdentifier].BetweenItemsTemplate);
+                        templateHtml = templateCollection[currentIdentifier].BetweenItemsTemplate;
+                        templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
+
+                        html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
                     }
 
                     templateHtml = templateCollection[currentIdentifier].ItemTemplate;
                     templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                    html.AppendLine(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
 
                     // Recursive call to parse the next layer of data.
                     html.Append(await ParseMultiLayerDataAsync(relevantData, templateCollection, depth + 1));
@@ -575,7 +599,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     templateHtml = templateCollection[currentIdentifier].FooterTemplate;
                     templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                    html.AppendLine(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
                 }
             }
 

@@ -30,5 +30,18 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             return (IPaymentServiceProviderService)serviceProvider.GetRequiredService(serviceProviderType);
         }
+
+        public IPaymentServiceProviderService GetPaymentServiceProviderService(string paymentServiceProviderName)
+        {
+            var serviceProviderTypes = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
+            var serviceProviderType = serviceProviderTypes.FirstOrDefault(type => type.Name.Equals($"{paymentServiceProviderName}Service"));
+
+            if (serviceProviderType == null)
+            {
+                throw new ArgumentOutOfRangeException(nameof(paymentServiceProviderName), paymentServiceProviderName, $"A payment service provider with the name '{paymentServiceProviderName}Service' was not found.");
+            }
+
+            return (IPaymentServiceProviderService)serviceProvider.GetRequiredService(serviceProviderType);
+        }
     }
 }

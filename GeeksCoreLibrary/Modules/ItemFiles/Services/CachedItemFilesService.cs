@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Modules.ItemFiles.Models;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 {
@@ -101,7 +102,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         /// <returns></returns>
         private bool ValidateItemFile(string localFilename)
         {
-            var localDirectory = Path.Combine(webHostEnvironment.WebRootPath, "contentfiles");
+            var localDirectory = Path.Combine(webHostEnvironment.WebRootPath, Constants.DefaultFilesDirectory);
             if (!Directory.Exists(localDirectory))
             {
                 return false;
@@ -119,7 +120,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         /// <returns></returns>
         private async Task<(byte[] FileBytes, DateTime LastModified)> GetFileBytesAsync(string localFilename)
         {
-            var localDirectory = Path.Combine(webHostEnvironment.WebRootPath, "contentfiles");
+            var localDirectory = Path.Combine(webHostEnvironment.WebRootPath, Constants.DefaultFilesDirectory);
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             var fileBytes = await File.ReadAllBytesAsync(fileLocation);

@@ -37,14 +37,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             databaseConnection.AddParameter("columnName", columnName);
             
-            var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{tableName.ToMySqlSafeValue()}` LIKE ?columnName");
+            var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{tableName.ToMySqlSafeValue(false)}` LIKE ?columnName");
             return dataTable.Rows.Count > 0;
         }
         
         /// <inheritdoc />
         public async Task<List<string>> GetColumnNamesAsync(string tableName)
         {
-            var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{tableName.ToMySqlSafeValue()}`");
+            var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{tableName.ToMySqlSafeValue(false)}`");
             return dataTable.Rows.Cast<DataRow>().Select(dataRow => dataRow.Field<string>("Field")).ToList();
         }
 
@@ -69,7 +69,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 return;
             }
             
-            var queryBuilder = new StringBuilder($"ALTER TABLE `{tableName.ToMySqlSafeValue()}` ADD COLUMN ");
+            var queryBuilder = new StringBuilder($"ALTER TABLE `{tableName.ToMySqlSafeValue(false)}` ADD COLUMN ");
             queryBuilder.Append(GenerateColumnQueryPart(tableName, settings));
             queryBuilder.Append("; ");
 
@@ -83,7 +83,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     name = name[..64];
                 }
 
-                queryBuilder.Append($"CREATE {indexTypeName} INDEX `idx_{name.ToMySqlSafeValue()}` ON `{tableName.ToMySqlSafeValue()}` (?columnName);");
+                queryBuilder.Append($"CREATE {indexTypeName} INDEX `idx_{name.ToMySqlSafeValue(false)}` ON `{tableName.ToMySqlSafeValue(false)}` (?columnName);");
             }
 
             await databaseConnection.ExecuteAsync(queryBuilder.ToString());
@@ -93,13 +93,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public async Task DropColumnAsync(string tableName, string columnName)
         {
             databaseConnection.AddParameter("columnName", columnName);
-            await databaseConnection.ExecuteAsync($"ALTER TABLE `{tableName.ToMySqlSafeValue()}` DROP COLUMN ?columnName");
+            await databaseConnection.ExecuteAsync($"ALTER TABLE `{tableName.ToMySqlSafeValue(false)}` DROP COLUMN ?columnName");
         }
 
         /// <inheritdoc />
         public async Task CreateTableAsync(string tableName, IList<ColumnSettingsModel> primaryKeys, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci")
         {
-            var queryBuilder = new StringBuilder($"CREATE TABLE IF NOT EXISTS `{tableName.ToMySqlSafeValue()}`");
+            var queryBuilder = new StringBuilder($"CREATE TABLE IF NOT EXISTS `{tableName.ToMySqlSafeValue(false)}`");
             if (primaryKeys != null && primaryKeys.Any())
             {
                 queryBuilder.AppendLine(" (");
@@ -108,7 +108,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     queryBuilder.AppendLine($"{GenerateColumnQueryPart(tableName, primaryKey)},");
                 }
 
-                queryBuilder.AppendLine($"PRIMARY KEY (`{String.Join("`,`", primaryKeys.Select(p => p.Name.ToMySqlSafeValue()))}`)");
+                queryBuilder.AppendLine($"PRIMARY KEY (`{String.Join("`,`", primaryKeys.Select(p => p.Name.ToMySqlSafeValue(false)))}`)");
                 queryBuilder.AppendLine(")");
             }
 
@@ -163,14 +163,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 return;
             }
             
-            var dataTable = await databaseConnection.GetAsync($"SHOW KEYS FROM `{tableName.ToMySqlSafeValue()}` WHERE KEY_NAME = 'PRIMARY'");
+            var dataTable = await databaseConnection.GetAsync($"SHOW KEYS FROM `{tableName.ToMySqlSafeValue(false)}` WHERE KEY_NAME = 'PRIMARY'");
             var primaryKeyIsChanged = dataTable.Rows.Count != primaryKeys.Count || dataTable.Rows.Cast<DataRow>().Any(d => !primaryKeys.Any(p => p.Name.Equals(d.Field<string>("column_name"))));
             if (!primaryKeyIsChanged)
             {
                 return;
             }
 
-            await databaseConnection.ExecuteAsync($"ALTER TABLE `{tableName.ToMySqlSafeValue()}` DROP PRIMARY KEY, ADD PRIMARY KEY (`{String.Join("`,`", primaryKeys.Select(x => x.Name.ToMySqlSafeValue()))}`)");
+            await databaseConnection.ExecuteAsync($"ALTER TABLE `{tableName.ToMySqlSafeValue(false)}` DROP PRIMARY KEY, ADD PRIMARY KEY (`{String.Join("`,`", primaryKeys.Select(x => x.Name.ToMySqlSafeValue(false)))}`)");
         }
 
         /// <inheritdoc />
@@ -190,14 +190,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async Task<bool> DatabaseExistsAsync(string databaseName)
         {
-            var dataTable = await databaseConnection.GetAsync($"SELECT CATALOG_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE CATALOG_NAME = {databaseName.ToMySqlSafeValue()}");
+            var dataTable = await databaseConnection.GetAsync($"SELECT NULL FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = {databaseName.ToMySqlSafeValue(true)}");
             return dataTable.Rows.Count > 0;
         }
         
         /// <inheritdoc />
         public async Task DropTableAsync(string tableName, bool isTemporaryTable = false)
         {
-            await databaseConnection.ExecuteAsync($"DROP {(isTemporaryTable ? "TEMPORARY" : "")} TABLE IF EXISTS `{tableName.ToMySqlSafeValue()}`");
+            await databaseConnection.ExecuteAsync($"DROP {(isTemporaryTable ? "TEMPORARY" : "")} TABLE IF EXISTS `{tableName.ToMySqlSafeValue(false)}`");
         }
 
         /// <inheritdoc />
@@ -221,24 +221,46 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 throw new ArgumentNullException(nameof(indexes));
             }
+
+            var oldIndexes = new Dictionary<string, List<(string Name, List<string> Columns)>>();
             
             foreach (var index in indexes.Where(index => !String.IsNullOrWhiteSpace(index.Name) && index.Fields != null && index.Fields.Any()))
             {
-                var createIndexQuery = $"ALTER TABLE `{index.TableName.ToMySqlSafeValue()}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue()}` (`{String.Join("`,`", index.Fields.Select(f => f.ToMySqlSafeValue()))}`)";
+                var createIndexQuery = $"ALTER TABLE `{index.TableName.ToMySqlSafeValue(false)}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue(false)}` (`{String.Join("`,`", index.Fields.Select(f => f.ToMySqlSafeValue(false)))}`)";
                 
                 databaseConnection.AddParameter("indexName", index.Name);
-                var dataTable = await databaseConnection.GetAsync($"SHOW INDEX FROM `{index.TableName.ToMySqlSafeValue()}` WHERE key_name = ?indexName");
-                var recreateIndex = index.Fields.Count != dataTable.Rows.Count || dataTable.Rows.Cast<DataRow>().Any(dataRow => !index.Fields.Any(f => String.Equals(f, dataRow.Field<string>("column_name"), StringComparison.OrdinalIgnoreCase)));
+
+                if (!oldIndexes.ContainsKey(index.TableName))
+                {
+                    oldIndexes.Add(index.TableName, new List<(string Name, List<string> Columns)>());
+                    var dataTable = await databaseConnection.GetAsync($"SHOW INDEX FROM `{index.TableName.ToMySqlSafeValue(false)}`");
+                    foreach (var dataRow in dataTable.Rows.Cast<DataRow>().OrderBy(row => row.Field<string>("key_name")).ThenBy(row => Convert.ToInt32(row["seq_in_index"])))
+                    {
+                        var indexName = dataRow.Field<string>("key_name");
+                        var oldIndex = oldIndexes[index.TableName].FirstOrDefault(i => i.Name == indexName);
+                        if (oldIndex.Name == null)
+                        {
+                            oldIndex = (indexName, new List<string>());
+                            oldIndexes[index.TableName].Add(oldIndex);
+                        }
+
+                        var columnName = dataRow.Field<string>("column_name");
+                        oldIndex.Columns.Add(columnName);
+                    }
+                }
+
+                var existingIndex = oldIndexes[index.TableName].FirstOrDefault(i => String.Equals(i.Name, index.Name, StringComparison.OrdinalIgnoreCase) || String.Equals(String.Join(",", i.Columns.OrderBy(c => c)), String.Join(",", index.Fields.OrderBy(f => f)), StringComparison.OrdinalIgnoreCase));
+                var recreateIndex = existingIndex.Name == null || String.Join(",", existingIndex.Columns) != String.Join(",", index.Fields);
                 if (!recreateIndex)
                 {
                     // Index has not been changed, so do nothing.
                     continue;
                 }
 
-                if (dataTable.Rows.Count > 0)
+                if (existingIndex.Name != null)
                 {
                     // If an index with this name already exists, but the new one if different, drop the old index first.
-                    await databaseConnection.ExecuteAsync($"ALTER TABLE `{index.TableName.ToMySqlSafeValue()}` DROP INDEX `{index.Name.ToMySqlSafeValue()}`");
+                    await databaseConnection.ExecuteAsync($"ALTER TABLE `{index.TableName.ToMySqlSafeValue(false)}` DROP INDEX `{existingIndex.Name.ToMySqlSafeValue(false)}`");
                 }
 
                 // Create the new index.
@@ -360,7 +382,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 case MySqlDbType.Decimal:
                 case MySqlDbType.Float:
                     var columnLength = settings.Length == 0 ? "" : $"({settings.Length}, {settings.Decimals})";
-                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue()}` {databaseType}{columnLength}");
+                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue(false)}` {databaseType}{columnLength}");
                     break;
                 case MySqlDbType.Time:
                 case MySqlDbType.Timestamp:
@@ -373,7 +395,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 case MySqlDbType.MediumText:
                 case MySqlDbType.Text:
                 case MySqlDbType.LongText:
-                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue()}` {databaseType}");
+                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue(false)}` {databaseType}");
                     break;
                 case MySqlDbType.Enum:
                     if (settings.EnumValues == null || !settings.EnumValues.Any())
@@ -381,11 +403,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         throw new DatabaseColumnMissingEnumValuesException(tableName, settings.Name);
                     }
 
-                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue()}` {databaseType}({String.Join(",", settings.EnumValues.Select(v => v.ToMySqlSafeValue(true)))})");
+                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue(false)}` {databaseType}({String.Join(",", settings.EnumValues.Select(v => v.ToMySqlSafeValue(true)))})");
 
                     break;
                 default:
-                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue()}` {databaseType}");
+                    queryBuilder.Append($"`{settings.Name.ToMySqlSafeValue(false)}` {databaseType}");
                     if (settings.Length > 0)
                     {
                         queryBuilder.Append($"({settings.Length})");
@@ -442,6 +464,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         // Given default value doesn't exist, and null values aren't allowed, so use first value from list.
                         queryBuilder.Append($" DEFAULT {settings.EnumValues.First().ToMySqlSafeValue(true)}");
                     }
+                }
+                else
+                {
+                    queryBuilder.Append(" DEFAULT ?defaultValue");
                 }
             }
 

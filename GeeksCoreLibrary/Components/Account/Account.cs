@@ -14,6 +14,7 @@ using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -43,6 +44,7 @@ namespace GeeksCoreLibrary.Components.Account
         private readonly GclSettings gclSettings;
         private readonly IObjectsService objectsService;
         private readonly ICommunicationsService communicationsService;
+        private readonly IWiserItemsService wiserItemsService;
 
         #region Enums
 
@@ -236,11 +238,12 @@ namespace GeeksCoreLibrary.Components.Account
 
         #region Constructor
 
-        public Account(IOptions<GclSettings> gclSettings, ILogger<Account> logger, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, ICommunicationsService communicationsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IAntiforgery antiForgery)
+        public Account(IOptions<GclSettings> gclSettings, ILogger<Account> logger, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, ICommunicationsService communicationsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IAntiforgery antiForgery, IWiserItemsService wiserItemsService)
         {
             this.gclSettings = gclSettings.Value;
             this.objectsService = objectsService;
             this.communicationsService = communicationsService;
+            this.wiserItemsService = wiserItemsService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -263,8 +266,6 @@ namespace GeeksCoreLibrary.Components.Account
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
-
-            HandleDefaultSettingsFromComponentMode();
         }
 
         /// <inheritdoc />
@@ -288,11 +289,16 @@ namespace GeeksCoreLibrary.Components.Account
             ComponentId = dynamicContent.Id;
             ExtraDataForReplacements = extraData;
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-
             if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+            else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
+            }
+
+            HandleDefaultSettingsFromComponentMode();
 
             // Check if we need to call a specific method and then do so. Skip everything else, because we don't want to render the entire component then.
             if (!String.IsNullOrWhiteSpace(callMethod))
@@ -661,7 +667,7 @@ namespace GeeksCoreLibrary.Components.Account
                 var userLogin = "";
                 if (userIdFromQueryString > 0)
                 {
-                    var query = SetupAccountQuery(Settings.ValidatePasswordQuery, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
+                    var query = SetupAccountQuery(Settings.ValidateResetPasswordTokenQuery, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
                     var dataTable = await RenderAndExecuteQueryAsync(query);
 
                     if (dataTable == null || dataTable.Rows.Count == 0)
@@ -685,7 +691,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 // If there are form post variables and the correct content ID has been posted with them, it means the user is trying reset their password.
-                if (request == null || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
+                if (request == null || !request.HasFormContentType || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
                 {
                     resultHtml = Settings.Template;
                 }
@@ -862,9 +868,9 @@ namespace GeeksCoreLibrary.Components.Account
                         {
                             resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", createOrUpdateAccountResult.ErrorTemplate).ReplaceCaseInsensitive("{success}", createOrUpdateAccountResult.SuccessTemplate);
                         }
-
-                        resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "");
                     }
+
+                    resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "");
 
                     // Check if we can automatically login the user after creating a new account.
                     var isLoggedIn = false;
@@ -903,7 +909,7 @@ namespace GeeksCoreLibrary.Components.Account
                         // Replace details
                         var lineTemplate = await TemplatesService.DoReplacesAsync(subTemplate, dataRow: dataRow, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
-                        fieldsHtmlBuilder.AppendLine(lineTemplate);
+                        fieldsHtmlBuilder.Append(lineTemplate);
                     }
 
                     resultHtml = resultHtml.Replace(match.Value, fieldsHtmlBuilder.ToString());
@@ -1014,7 +1020,7 @@ namespace GeeksCoreLibrary.Components.Account
                     // Only update the user's account, if the password has been validated, or if the user is not changing their login name and password.
                     var createOrUpdateAccountResult = await CreateOrUpdateAccountAsync(userData.UserId, availableFields, selectedSubAccount);
                     selectedSubAccount = createOrUpdateAccountResult.SubAccountId;
-                    if (userIsChangingPassword)
+                    if (createOrUpdateAccountResult.Result == CreateOrUpdateAccountResults.Success && userIsChangingPassword)
                     {
                         // If we just created an account, save the password now, otherwise the password was already changed.
                         changePasswordResult = await ChangePasswordAsync(createOrUpdateAccountResult.SubAccountId, true);
@@ -1030,13 +1036,13 @@ namespace GeeksCoreLibrary.Components.Account
                         // If the template does not contain the replacement '{error}', we want to only return the error template.
                         resultHtml = changePasswordResult != ResetOrChangePasswordResults.Success ? Settings.TemplateError : createOrUpdateAccountResult.ErrorTemplate;
                     }
-                    else
-                    // In other cases, return the entire template with the error or success message somewhere inside it.
-                    if (userIsChangingPassword)
+                    else if (createOrUpdateAccountResult.Result != CreateOrUpdateAccountResults.Success)
                     {
-                        resultHtml = changePasswordResult != ResetOrChangePasswordResults.Success
-                            ? resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError).ReplaceCaseInsensitive("{success}", "")
-                            : resultHtml.ReplaceCaseInsensitive("{error}", "").ReplaceCaseInsensitive("{success}", Settings.TemplateSuccess);
+                        resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", createOrUpdateAccountResult.ErrorTemplate).ReplaceCaseInsensitive("{success}", createOrUpdateAccountResult.SuccessTemplate);
+                    }
+                    else if (userIsChangingPassword && changePasswordResult != ResetOrChangePasswordResults.Success)
+                    {
+                        resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError).ReplaceCaseInsensitive("{success}", "");
                     }
                     else
                     {
@@ -1068,7 +1074,7 @@ namespace GeeksCoreLibrary.Components.Account
                         // Replace details
                         var lineTemplate = await TemplatesService.DoReplacesAsync(subTemplate, dataRow: dataRow, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
-                        fieldsHtmlBuilder.AppendLine(lineTemplate);
+                        fieldsHtmlBuilder.Append(lineTemplate);
                     }
 
                     resultHtml = resultHtml.Replace(match.Value, fieldsHtmlBuilder.ToString());
@@ -1095,7 +1101,7 @@ namespace GeeksCoreLibrary.Components.Account
                         // Replace details
                         var lineTemplate = await TemplatesService.DoReplacesAsync(subTemplate.ReplaceCaseInsensitive("{selectedSubAccount}", selectedSubAccount.ToString()).ReplaceCaseInsensitive("{selectedSubAccount_htmlencode}", selectedSubAccount.ToString()), dataRow: dataRow, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
-                        fieldsHtmlBuilder.AppendLine(lineTemplate);
+                        fieldsHtmlBuilder.Append(lineTemplate);
                     }
 
                     resultHtml = resultHtml.Replace(match.Value, fieldsHtmlBuilder.ToString());
@@ -1186,8 +1192,8 @@ namespace GeeksCoreLibrary.Components.Account
             var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
             var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
             await SaveGoogleClientIdAsync(userId);
-
-            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : new DateTimeOffset(DateTime.Now, new TimeSpan(amountOfDaysToRememberCookie.Value, 0, 0));
+            
+            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
             HttpContextHelpers.WriteCookie(HttpContext, Constants.CookieName, cookieValue, offset, isEssential: true);
 
             await SaveLoginAttemptAsync(true, userId);
@@ -1705,11 +1711,13 @@ namespace GeeksCoreLibrary.Components.Account
 
             var googleClientId = String.Join(".", clientIdSplit.Skip(2));
 
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Settings.EntityType);
+
             DatabaseConnection.AddParameter("userId", userIdForGoogleCid);
             DatabaseConnection.AddParameter("name", String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? "google-cid" : Settings.GoogleClientIdFieldName);
             DatabaseConnection.AddParameter("value", googleClientId);
 
-            await RenderAndExecuteQueryAsync($"INSERT INTO {WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)");
+            await RenderAndExecuteQueryAsync($"INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)");
         }
 
         /// <summary>
@@ -1741,7 +1749,8 @@ namespace GeeksCoreLibrary.Components.Account
                 return;
             }
 
-            var userId = result.Rows[0][Constants.UserIdColumn];
+            var userDataRow = result.Rows[0];
+            var userId = userDataRow[Constants.UserIdColumn];
 
             // Generate a new token for the user.
             string token;
@@ -1846,11 +1855,11 @@ namespace GeeksCoreLibrary.Components.Account
                 .ReplaceCaseInsensitive("<jhead", "<head").ReplaceCaseInsensitive("</jhead", "</head").ReplaceCaseInsensitive("<jtitle", "<title").ReplaceCaseInsensitive("</jtitle", "</title").ReplaceCaseInsensitive("<jbody", "<body")
                 .ReplaceCaseInsensitive("</jbody", "</body");
 
-            await communicationsService.SendEmailAsync(await StringReplacementsService.DoAllReplacementsAsync(emailAddress, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                await StringReplacementsService.DoAllReplacementsAsync(subject, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                await StringReplacementsService.DoAllReplacementsAsync(body),
-                sender: await StringReplacementsService.DoAllReplacementsAsync(senderEmail, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                senderName: await StringReplacementsService.DoAllReplacementsAsync(senderName, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+            await communicationsService.SendEmailAsync(await StringReplacementsService.DoAllReplacementsAsync(emailAddress, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                await StringReplacementsService.DoAllReplacementsAsync(subject, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                await StringReplacementsService.DoAllReplacementsAsync(body, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                sender: await StringReplacementsService.DoAllReplacementsAsync(senderEmail, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                senderName: await StringReplacementsService.DoAllReplacementsAsync(senderName, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
         }
 
         /// <summary>
@@ -2057,7 +2066,7 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             var formValue = Request.Form[Settings.RememberMeCheckboxName];
-            return String.IsNullOrWhiteSpace(formValue) || formValue == "0" ? Settings.AmountOfDaysToRememberCookie : null;
+            return String.IsNullOrWhiteSpace(formValue) || formValue == "0" ? null : Settings.AmountOfDaysToRememberCookie;
         }
     }
 }

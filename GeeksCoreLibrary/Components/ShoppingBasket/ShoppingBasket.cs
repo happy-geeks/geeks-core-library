@@ -1,4 +1,14 @@
-﻿using GeeksCoreLibrary.Components.Account.Interfaces;
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.Cms;
@@ -7,7 +17,9 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
+using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
+using GeeksCoreLibrary.Modules.GclConverters.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -19,18 +31,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.GclConverters.Models;
+using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket
 {
@@ -40,6 +41,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
     )]
     public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, ShoppingBasket.ComponentModes>
     {
+        private readonly GclSettings gclSettings;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IWebHostEnvironment webHostEnvironment;
@@ -65,6 +67,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             /// </summary>
             [CmsEnum(PrettyName = "Add items")]
             AddItems = 2,
+
+            /// <summary>
+            /// For updating an item in the basket. This requires the ID of the basket line that should be updated/replaced to be present in the request.
+            /// </summary>
+            [CmsEnum(PrettyName = "Update item")]
+            UpdateItem = 11,
 
             /// <summary>
             /// For changing the quantity of one or more items in the shopping basket.
@@ -202,8 +210,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         }
 
         [ActivatorUtilitiesConstructor]
-        public ShoppingBasket(ILogger<ShoppingBasket> logger, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IShoppingBasketsService shoppingBasketsService, ITemplatesService templatesService, IWebHostEnvironment webHostEnvironment, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IAccountsService accountsService, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService)
+        public ShoppingBasket(IOptions<GclSettings> gclSettings, ILogger<ShoppingBasket> logger, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IShoppingBasketsService shoppingBasketsService, ITemplatesService templatesService, IWebHostEnvironment webHostEnvironment, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IAccountsService accountsService, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService)
         {
+            this.gclSettings = gclSettings.Value;
             this.httpContextAccessor = httpContextAccessor;
             this.shoppingBasketsService = shoppingBasketsService;
             this.webHostEnvironment = webHostEnvironment;
@@ -226,9 +235,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         #endregion
 
         #region Manipulating basket contents (adding/removing/etc.)
-
-
-
+        
         public WiserItemModel GetLine(ulong id)
         {
             if (Lines == null || !Lines.Any())
@@ -304,11 +311,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
 
             output = StringReplacementsService.DoReplacements(output, replacementData);
 
-            if (Settings.HandleRequest)
-            {
-
-            }
-
             return output;
         }
 
@@ -338,7 +340,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             else
             {
                 var template = Settings.Template ?? "";
-                template = await TemplatesService.DoReplacesAsync(template, false, false, false);
+                template = await TemplatesService.DoReplacesAsync(DoDefaultShoppingBasketHtmlReplacements(template), false, false, false);
 
                 var additionalReplacementData = new Dictionary<string, object>
                 {
@@ -371,12 +373,18 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 // Force component mode to Legacy mode if it was created through the JCL.
                 Settings.ComponentMode = ComponentModes.Legacy;
             }
-            ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
 
+            ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
             if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+            else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
+            }
+
+            HandleDefaultSettingsFromComponentMode();
 
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
             if (!renderHtml)
@@ -397,7 +405,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             }
             else if (!String.IsNullOrWhiteSpace(basketIdRequestValue))
             {
-                if (UInt64.TryParse(basketIdRequestValue.DecryptWithAesWithSalt("", true), out var decryptedId))
+                if (UInt64.TryParse(basketIdRequestValue.DecryptWithAesWithSalt(gclSettings.ShoppingBasketEncryptionKey, true), out var decryptedId))
                 {
                     // Load basket after decrypting ID from request variable basketId.
                     var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, decryptedId);
@@ -425,6 +433,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                     break;
                 case ComponentModes.AddItems:
                     resultHtml.Append(await HandleAddItemsModeAsync());
+                    break;
+                case ComponentModes.UpdateItem:
+                    resultHtml.Append(await HandleUpdateItemModeAsync());
                     break;
                 case ComponentModes.ChangeQuantity:
                     resultHtml.Append(await HandleChangeQuantityModeAsync());
@@ -475,10 +486,10 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         }
 
         /// <summary>
-        /// Adds a new item to the basket and returns the rendered template.
+        /// Adds a new item to the basket.
         /// </summary>
-        /// <param name="renderBasket"></param>
-        /// <returns></returns>
+        /// <param name="renderBasket">Whether the template should be rendered after adding is done.</param>
+        /// <returns>The rendered template, or an empty string if <paramref name="renderBasket"/> is <see langword="false"/>.</returns>
         public async Task<string> HandleAddItemsModeAsync(bool renderBasket = true)
         {
             if (HttpContext == null)
@@ -486,17 +497,52 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 return String.Empty;
             }
 
-            if (Request.HasFormContentType && !String.IsNullOrWhiteSpace(HttpContextHelpers.GetRequestValue(HttpContext, "additems")))
+            if (!String.IsNullOrWhiteSpace(HttpContextHelpers.GetRequestValue(HttpContext, "additem")))
             {
-                await AddMultipleItemsAsync();
+                await AddSingleItemAsync();
             }
             else
             {
-                if (!String.IsNullOrWhiteSpace(HttpContextHelpers.GetRequestValue(HttpContext, "additem")))
+                if (Request.Method.Equals("POST"))
                 {
-                    await AddSingleItemAsync();
+                    await AddMultipleItemsAsync();
                 }
             }
+
+            return renderBasket ? await GetRenderedBasketAsync() : String.Empty;
+        }
+
+        /// <summary>
+        /// Updates an existing item in the basket.
+        /// </summary>
+        /// <param name="renderBasket">Whether the template should be rendered after updating is done.</param>
+        /// <returns>The rendered template, or an empty string if <paramref name="renderBasket"/> is <see langword="false"/>.</returns>
+        public async Task<string> HandleUpdateItemModeAsync(bool renderBasket = true)
+        {
+            if (HttpContext == null)
+            {
+                return String.Empty;
+            }
+
+            using var reader = new StreamReader(Request.Body);
+            var itemJson = await reader.ReadToEndAsync();
+
+            // Convert the body to an UpdateItemModel object.
+            var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UpdateItemModel>(itemJson);
+            if (item == null)
+            {
+                return String.Empty;
+            }
+
+            // Check if this line belongs to the current basket.
+            if (Lines.All(l => l.Id != item.LineId))
+            {
+                Logger.LogWarning("Could not update line with ID '{lineId}'", item.LineId);
+                return String.Empty;
+            }
+
+            // Update the line.
+            await shoppingBasketsService.UpdateLineAsync(Main, Lines, Settings, item);
 
             return renderBasket ? await GetRenderedBasketAsync() : String.Empty;
         }
@@ -521,27 +567,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 type = "product";
             }
 
-            var languageCode = HttpContextHelpers.GetRequestValue(HttpContext, "langCode") ?? "";
-
-            Dictionary<string, string> details = null;
-
-            if (!String.IsNullOrWhiteSpace(Settings.SqlQuery))
-            {
-                var sqlQuery = Settings.SqlQuery;
-                sqlQuery = sqlQuery.Replace("{itemid}", itemId.ToString());
-                sqlQuery = sqlQuery.Replace("{quantity}", quantity.ToString(CultureInfo.InvariantCulture));
-                sqlQuery = sqlQuery.Replace("{language_code}", languageCode);
-
-                sqlQuery = StringReplacementsService.DoSessionReplacements(sqlQuery);
-
-                var getItemDetailsResult = await DatabaseConnection.GetAsync(sqlQuery, true);
-                if (getItemDetailsResult.Rows.Count > 0)
-                {
-                    details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
-                }
-            }
-
-            await shoppingBasketsService.AddLineAsync(Main, Lines, Settings, uniqueId, itemId, quantity, type, details);
+            await shoppingBasketsService.AddLineAsync(Main, Lines, Settings, uniqueId, itemId, quantity, type);
         }
 
         private async Task AddMultipleItemsAsync()
@@ -551,7 +577,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 return;
             }
 
-            Request.Body.Position = 0L;
             using var reader = new StreamReader(Request.Body);
             var itemsJson = await reader.ReadToEndAsync();
 
@@ -634,7 +659,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 return String.Empty;
             }
 
-            Request.Body.Position = 0L;
             using var reader = new StreamReader(Request.Body);
             var updateQuantitiesJson = await reader.ReadToEndAsync();
 
@@ -668,9 +692,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             {
                 await shoppingBasketsService.RemoveLinesAsync(Main, Lines, Settings, new[] { itemId });
             }
-            else if (Request.HasFormContentType)
+            else if (Request.HasFormContentType || Request.Method.InList("POST", "DELETE"))
             {
-                Request.Body.Position = 0L;
                 using var reader = new StreamReader(Request.Body);
                 var requestJson = await reader.ReadToEndAsync();
 
@@ -873,8 +896,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 {
                     Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
                 }
-
-                HandleDefaultSettingsFromComponentMode();
             }
         }
 

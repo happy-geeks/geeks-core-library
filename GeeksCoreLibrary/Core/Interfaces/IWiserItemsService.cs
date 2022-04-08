@@ -23,9 +23,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
         /// <param name="entityTypeSettings">Optional: If you already have the settings for this entity type, add them here. Otherwise leave empty, then they will be retrieved from the database. This parameter is mostly meant to be used in CachedItemsService.</param>
-        /// <param name="useParentItemIdByDefault">Optional: When parentId is set, this parameter will determine if the default link method should be parent_item_id instead of wiser_itemlink. Default is false.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again, with the new ID.</returns>
-        Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null, bool useParentItemIdByDefault = false);
+        Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null);
 
         /// <summary>
         /// Creates an item.
@@ -40,10 +39,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
         /// <param name="entityTypeSettings">Optional: If you already have the settings for this entity type, add them here. Otherwise leave empty, then they will be retrieved from the database. This parameter is mostly meant to be used in CachedItemsService.</param>
-        /// <param name="useParentItemIdByDefault"></param>
         /// <returns>The same <see cref="WiserItemModel"/> again, with the new ID.</returns>
         /// <exception cref="System.ArgumentNullException">If wiserItem or entityType is <see langword="null"/>.</exception>
-        Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null, bool useParentItemIdByDefault = false);
+        Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null);
 
         /// <summary>
         /// Duplicate an item. This could also duplicate links and linked items, depending on the settings in wiser_link.
@@ -184,9 +182,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user. If this is greater than 0, this function will check permissions and only return items that this user is allowed to see.</param>
         /// <param name="reverse">Optional: Set to true to get the items that this item is linked to, instead of the items linked to this item. Default is false.</param>
         /// <param name="itemIdEntityType">Optional: You can enter the entity type of the given itemId here, if you want to get items from a dedicated table and those items can have multiple different entity types. This only works if all those items exist in the same table. Default is null.</param>
-        /// <param name="useParentItemIdByDefault">Optional: Whether the link type should use the parent_item_id column to find linked items. Default is false.</param>
         /// <returns>A list of <see cref="WiserItemModel"/>. Empty list if no items have been found.</returns>
-        Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool useParentItemIdByDefault = false);
+        Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null);
 
         /// <summary>
         /// By default this function gets the IDs of all items linked to the given <see cref="itemId"/>, unless the parameter <see cref="reverse"/> is set to tue,
@@ -199,9 +196,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user. If this is greater than 0, this function will check permissions and only return items that this user is allowed to see.</param>
         /// <param name="reverse">Optional: Set to true to get the items that this item is linked to, instead of the items linked to this item. Default is false.</param>
         /// <param name="itemIdEntityType">Optional: You can enter the entity type of the given itemId here, if you want to get items from a dedicated table and those items can have multiple different entity types. This only works if all those items exist in the same table. Default is null.</param>
-        /// <param name="useParentItemIdByDefault">Optional: Whether the link type should use the parent_item_id column to find linked items. Default is false.</param>
         /// <returns>A list of <see cref="WiserItemModel"/>. Empty list if no items have been found.</returns>
-        Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool useParentItemIdByDefault = false);
+        Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null);
 
         /// <summary>
         /// Gets the settings for an entity type. These settings will be cached for 1 hour.
@@ -286,7 +282,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="entityType">Optional: Enter an entity type here to only get items of that type. Default is null.</param>
-        Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null);
+        /// <param name="createNewTransaction">Optional: Set to false if you don't want the DeleteAsync function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true);
 
         /// <summary>
         /// Moves all linked items of an item to a different destination item.
@@ -370,15 +367,13 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="linkType">Optional: The type number of the link type.</param>
         /// <param name="sourceEntityType">Optional: The entity type of the source item.</param>
         /// <param name="destinationEntityType">Optional: The entity type of the destination item.</param>
-        /// <param name="defaultSettings">Optional: The default settings if no link type was found. Default is null (which makes the function return a model with default settings).</param>
         /// <exception cref="ArgumentException">If linkType, sourceEntityType and destinationEntityType are all empty.</exception>
         /// <returns>A <see cref="EntitySettingsModel"/> containing all settings of the entity type.</returns>
-        Task<LinkSettingsModel> GetLinkTypeSettingsAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null, LinkSettingsModel defaultSettings = null);
+        Task<LinkSettingsModel> GetLinkTypeSettingsAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null);
 
         /// <summary>
         /// Gets the settings for a link type. These settings will be cached for 1 hour.
         /// </summary>
-        /// <param name="connection">The <see cref="SystemConnection"/> to the database.</param>
         /// <returns>A List of <see cref="EntitySettingsModel"/> containing all link settings.</returns>
         Task<List<LinkSettingsModel>> GetAllLinkTypeSettingsAsync();
 

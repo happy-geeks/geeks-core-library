@@ -6,8 +6,11 @@ using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using LazyCache;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Components.Configurator.Services
@@ -16,25 +19,35 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
     {
         private readonly IConfiguratorsService configuratorsService;
         private readonly IAppCache appCache;
+        private readonly IObjectsService objectsService;
+        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly GclSettings gclSettings;
 
-        public CachedConfiguratorsService(IConfiguratorsService configuratorsService, IAppCache appCache, IOptions<GclSettings> gclSettings)
+        public CachedConfiguratorsService(IConfiguratorsService configuratorsService, IAppCache appCache, IOptions<GclSettings> gclSettings, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor)
         {
             this.configuratorsService = configuratorsService;
             this.appCache = appCache;
+            this.objectsService = objectsService;
+            this.httpContextAccessor = httpContextAccessor;
             this.gclSettings = gclSettings.Value;
         }
 
         /// <inheritdoc />
         public async Task<DataTable> GetConfiguratorDataAsync(string name)
         {
-          
-            return await appCache.GetOrAdd($"GetConfiguratorDataAsync_{name}",
-                                        async cacheEntry =>
-                                        {
-                                            cacheEntry.SlidingExpiration = gclSettings.DefaultConfiguratorsCacheDuration;
-                                            return await configuratorsService.GetConfiguratorDataAsync(name);
-                                        });
+            var hostName = "";
+            var addHostNameToCache = String.Equals(await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_CacheDataByDomain"), "true", StringComparison.OrdinalIgnoreCase);
+            if (addHostNameToCache)
+            {
+                var httpContext = httpContextAccessor.HttpContext;
+                hostName = httpContext != null ? HttpContextHelpers.GetHostName(httpContext) : "";
+            }
+            return await appCache.GetOrAdd($"GetConfiguratorDataAsync_{(!String.IsNullOrWhiteSpace(hostName) && addHostNameToCache ? $"{hostName}_" : "")}{name}",
+                                           async cacheEntry =>
+                                           {
+                                               cacheEntry.SlidingExpiration = gclSettings.DefaultConfiguratorsCacheDuration;
+                                               return await configuratorsService.GetConfiguratorDataAsync(name);
+                                           });
         }
 
         /// <inheritdoc />

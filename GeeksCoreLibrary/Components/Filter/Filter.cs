@@ -1,27 +1,25 @@
-using GeeksCoreLibrary.Components.Filter.Models;
-using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
-using GeeksCoreLibrary.Modules.Templates.Interfaces;
-using GeeksCoreLibrary.Modules.Templates.Models;
-using Microsoft.AspNetCore.Html;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using GeeksCoreLibrary.Core.Extensions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
+using GeeksCoreLibrary.Components.Filter.Models;
 using GeeksCoreLibrary.Core.Cms;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
-using GeeksCoreLibrary.Modules.Languages.Services;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Models;
+using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Components.Filter
 {
@@ -81,12 +79,10 @@ namespace GeeksCoreLibrary.Components.Filter
         public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
         {
             Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<FilterCmsSettingsModel>(settingsJson);
-            if (forcedComponentMode.HasValue)
+            if (forcedComponentMode.HasValue && Settings != null)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
-
-            HandleDefaultSettingsFromComponentMode();
         }
 
         /// <inheritdoc />
@@ -105,11 +101,16 @@ namespace GeeksCoreLibrary.Components.Filter
             ComponentId = dynamicContent.Id;
             ExtraDataForReplacements = extraData;
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-            
             if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+            else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
+            }
+
+            HandleDefaultSettingsFromComponentMode();
 
             // Check if we should actually render this component for the current user.
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
@@ -126,11 +127,14 @@ namespace GeeksCoreLibrary.Components.Filter
                 return new HtmlString("");
             }
 
-            var resultHtml = new StringBuilder();
+            var output = await GenerateFiltersAsync();
 
-            resultHtml.Append(await GenerateFiltersAsync());
+            if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
+            {
+                output = StringReplacementsService.DoReplacements(output, ExtraDataForReplacements);
+            }
 
-            return new HtmlString(resultHtml.ToString());
+            return new HtmlString(output);
         }
 
         /// <summary>
@@ -148,10 +152,9 @@ namespace GeeksCoreLibrary.Components.Filter
             WriteToTrace("Start generating filters...");
 
             // Try to use the system objects if possible, reverting back to the previous value if they don't exist (by setting them as the default result)
-            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2");
+            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring");
             var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2")).Equals("1");
             var parametersToExclude = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude");
-            var filterGroups = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
             ulong categoryId = 0;
             DataTable dataTable;
             Dictionary<string, List<string>> currentFiltersMulti = null;
@@ -198,9 +201,7 @@ namespace GeeksCoreLibrary.Components.Filter
             // Get the category id from a query if query is given
             if (!String.IsNullOrEmpty(Settings.FilterCategoryIdQuery))
             {
-                Settings.FilterCategoryIdQuery = await TemplatesService.DoReplacesAsync(Settings.FilterCategoryIdQuery, true, false, true);
-
-                dataTable = await DatabaseConnection.GetAsync(Settings.FilterCategoryIdQuery);
+                dataTable = await RenderAndExecuteQueryAsync(Settings.FilterCategoryIdQuery);
 
                 if (dataTable.Rows.Count >= 1)
                 {
@@ -216,16 +217,15 @@ namespace GeeksCoreLibrary.Components.Filter
             }
 
             // Get filtergroups (items of entitytype "filter"), possibly connected to current category
-            filterGroups = await filterService.GetFilterGroupsAsync(categoryId, Settings.ExtraFilterProperties);
+            var filterGroups = await filterService.GetFilterGroupsAsync(categoryId, Settings.ExtraFilterProperties);
             if (filterGroups.Count == 0)
             {
-                WriteToTrace($"GCL Filter: No filter groups found", true);
+                WriteToTrace("GCL Filter: No filter groups found", true);
             }
 
             // Add selected values to filter group, so selected templates will be used
             foreach (var filterGroup in filterGroups)
             {
-                // If Not String.IsNullOrEmpty(HttpContext.Current.Request(filtergroup.Key)) Then
                 if (filterGroup.Value.FilterType == FilterGroup.FilterGroupType.MultiSelect)
                 {
                     if (currentFiltersMulti == null)
@@ -302,41 +302,62 @@ namespace GeeksCoreLibrary.Components.Filter
             var filterItemsQuery = Settings.FilterItemsQuery;
             filterItemsQuery = filterItemsQuery.Replace("{categoryId}", categoryId.ToString());
             filterItemsQuery = filterItemsQuery.Replace("{languageCode}", await languageService.GetLanguageCodeAsync());
-            filterItemsQuery = filterItemsQuery.Replace("`cust_filter_aggregation_`", "`cust_filter_aggregation`"); // If no language code, trim trailing underscore
-            filterItemsQuery = await TemplatesService.DoReplacesAsync(filterItemsQuery, true, false, true, removeUnknownVariables:false); // Support [include[x]] for including other templates.
+            filterItemsQuery = filterItemsQuery.Replace("`wiser_filter_aggregation_`", "`wiser_filter_aggregation`"); // If no language code, trim trailing underscore
 
             // Replace the {filters} variable with the join and where parts to exclude not possible filter values when filtered
             if (filterItemsQuery.Contains("{filters}"))
             {
-                var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
+                if (Settings.ComponentMode == ComponentModes.Aggregation)
+                {
+                    var filterItemsQueryNew = "";
+                    var notActiveFilters = "";
 
-                filterItemsQuery = filterItemsQuery.Replace("{filters}", queryPart.JoinPart);
-                filterItemsQuery = filterItemsQuery.Replace("{filtersWhere}", queryPart.WherePart);
-                filterItemsQuery = filterItemsQuery.Replace("{filtersSelectStart}", queryPart.SelectPartStart);
-                filterItemsQuery = filterItemsQuery.Replace("{filtersSelectEnd}", queryPart.SelectPartEnd);
+                    foreach (var filterGroup in filterGroups)
+                    {
+                        if (filterGroup.Value.SelectedValues.Count > 0)
+                        {
+                            var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups, forActiveFilter: filterGroup.Value.GetParamKey());
+                            if (!String.IsNullOrEmpty(filterItemsQueryNew))
+                            {
+                                filterItemsQueryNew += " UNION ALL ";
+                            }
+
+                            filterItemsQueryNew +=
+                                $"({filterItemsQuery.Replace("{filters}", queryPart.JoinPart).Replace("{filterGroup}", $"AND f.filtergroup='{filterGroup.Value.GetParamKey().ToMySqlSafeValue(false)}'")})";
+                        }
+                        else
+                        {
+                            notActiveFilters += $"'{filterGroup.Value.GetParamKey()}',";
+                        }
+                    }
+
+                    if (String.IsNullOrEmpty(filterItemsQueryNew)) //No active filters
+                    {
+                        filterItemsQueryNew = filterItemsQuery.Replace("{filters}", "").Replace("{filterGroup}", "");
+                    }
+                    else if (!String.IsNullOrEmpty(notActiveFilters)) //Active and no active filters combined
+                    {
+                        var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
+                        filterItemsQueryNew += $" UNION ALL ({filterItemsQuery.Replace("{filters}", queryPart.JoinPart).Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
+                    }
+                    
+                    filterItemsQuery = filterItemsQueryNew;
+                }
+                else
+                {
+                    var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
+
+                    filterItemsQuery = filterItemsQuery.Replace("{filters}", queryPart.JoinPart);
+                    filterItemsQuery = filterItemsQuery.Replace("{filtersWhere}", queryPart.WherePart);
+                    filterItemsQuery = filterItemsQuery.Replace("{filtersSelectStart}", queryPart.SelectPartStart);
+                    filterItemsQuery = filterItemsQuery.Replace("{filtersSelectEnd}", queryPart.SelectPartEnd);
+                }
             }
 
             // Replace user variables if present in query
-            if (filterItemsQuery.Contains("{AccountWiser2_"))
-            {
-                var user = await AccountsService.GetUserDataFromCookieAsync();
-                if (user.UserId > 0)
-                {
-                    filterItemsQuery = filterItemsQuery.Replace("{AccountWiser2_UserId}", user.UserId.ToString());
-                    filterItemsQuery = filterItemsQuery.Replace("{AccountWiser2_MainUserId}", user.MainUserId.ToString());
-                }
-            }
-            if (filterItemsQuery.Contains("{Account_"))
-            {
-                var user = await AccountsService.GetUserDataFromCookieAsync();
-                if (user.UserId > 0)
-                {
-                    filterItemsQuery = filterItemsQuery.Replace("{Account_UserId}", user.UserId.ToString());
-                    filterItemsQuery = filterItemsQuery.Replace("{Account_MainUserId}", user.MainUserId.ToString());
-                }
-            }
+            filterItemsQuery = await AccountsService.DoAccountReplacementsAsync(filterItemsQuery, true);
 
-            dataTable = await DatabaseConnection.GetAsync(filterItemsQuery);
+            dataTable = await RenderAndExecuteQueryAsync(filterItemsQuery);
 
             // Loop through filter groups and select rows in the dataset to add filteritems to the filter groups.
             foreach (DataRow row in dataTable.Rows)
@@ -406,7 +427,6 @@ namespace GeeksCoreLibrary.Components.Filter
             // NOTE: This code assumes that filters in the same group are sorted properly so that they are together in the results, otherwise this code gets too complicated.
             var groupHtml = new StringBuilder();
             var previousFilterType = "";
-            var result = "";
             var previousFilterGroup = new FilterGroup();
 
             foreach (var filterGroup in filterGroups.Values)
@@ -429,7 +449,7 @@ namespace GeeksCoreLibrary.Components.Filter
                             { "items", groupHtml.ToString() },
                             { "type", previousFilterType },
                             { "typename", previousFilterType }
-                        };
+                        }; 
                         filterGroup.AddExtraPropertiesToList(replaceData);
 
                         var template = StringReplacementsService.DoReplacements(Settings.TemplateFilterGroup, replaceData);
@@ -479,10 +499,7 @@ namespace GeeksCoreLibrary.Components.Filter
                     { "type", previousFilterType },
                     { "typename", previousFilterType }
                 };
-                if (previousFilterGroup != null)
-                {
-                    previousFilterGroup.AddExtraPropertiesToList(replaceData);
-                }
+                previousFilterGroup?.AddExtraPropertiesToList(replaceData);
 
                 var template = StringReplacementsService.DoReplacements(Settings.TemplateFilterGroup, replaceData);
 
@@ -500,13 +517,11 @@ namespace GeeksCoreLibrary.Components.Filter
                     continue;
                 }
 
-                var tempGroup = "";
                 var summaryGroupItems = new StringBuilder();
-                tempGroup = f.Name.Contains("/") ? f.Name.Split("/")[1] : f.Name;
+                var tempGroup = f.Name.Contains("/") ? f.Name.Split("/")[1] : f.Name;
                 foreach (var selectedFilterItem in f.SelectedValues)
                 {
-                    var tempName = "";
-                    tempName = f.ContainsOrder ? selectedFilterItem.Split("|")[1] : selectedFilterItem.ToLower();
+                    var tempName = f.ContainsOrder ? selectedFilterItem.Split("|")[1] : selectedFilterItem.ToLower();
                     WriteToTrace($"1 - CreateFilterURL({f.NameSeo}, {selectedFilterItem}), False");
 
                     replaceData = new Dictionary<string, string>
@@ -535,7 +550,7 @@ namespace GeeksCoreLibrary.Components.Filter
 
                     var summaryItem = StringReplacementsService.DoReplacements(Settings.TemplateSummaryFilterGroupItem, replaceData);
 
-                    summaryGroupItems.AppendLine(summaryItem);
+                    summaryGroupItems.Append(summaryItem);
                 }
                 WriteToTrace($"2 - CreateFilterURL({f.NameSeo}, , False)");
 
@@ -544,15 +559,16 @@ namespace GeeksCoreLibrary.Components.Filter
                     { "groupname", tempGroup },
                     { "group", f.NameSeo },
                     { "selectedvalues", summaryGroupItems.ToString() },
-                    { "url", CreateFilterUrl(filterGroups, f.NameSeo, "", false) }
+                    { "url", CreateFilterUrl(filterGroups, f.NameSeo, "") }
                 };
 
                 var summaryGroupHtml = StringReplacementsService.DoReplacements(Settings.TemplateSummaryFilterGroup, replaceData);
 
-                summaryGroups.AppendLine(summaryGroupHtml);
+                summaryGroups.Append(summaryGroupHtml);
             }
 
-            if (filterGroups.Any(x => (x.Value.SelectedValues.Count > 0 || !String.IsNullOrWhiteSpace(x.Value.SelectedValueString)) && (!x.Value.HideInSummary)))
+            var hasActiveFilters = filterGroups.Any(fg => fg.Value.SelectedValues.Count > 0 || !String.IsNullOrWhiteSpace(fg.Value.SelectedValueString));
+            if (hasActiveFilters && filterGroups.Any(x => !x.Value.HideInSummary))
             {
                 WriteToTrace("3 - CreateFilterURL(, , False)");
 
@@ -564,14 +580,17 @@ namespace GeeksCoreLibrary.Components.Filter
 
                 var templateSummaryHtml = StringReplacementsService.DoReplacements(Settings.TemplateSummary, replaceData);
 
-                summary.AppendLine(templateSummaryHtml);
+                summary.Append(templateSummaryHtml);
             }
 
             // Create the full filter HTML result
-            result = Settings.TemplateFull.Replace("{filters}", filtersHtml.ToString()).Replace("{summary}", summary.ToString());
+            var result = Settings.TemplateFull.Replace("{filters}", filtersHtml.ToString())
+                .Replace("{summary}", summary.ToString())
+                .Replace("{category_id}", categoryId.ToString())
+                .Replace("{has_active_filters}", hasActiveFilters ? "1" : "0");
 
             // Handle if-statements and translations
-            result = await TemplatesService.DoReplacesAsync(result, true, false, true);
+            result = await TemplatesService.DoReplacesAsync(result);
 
             return result;
         }
@@ -589,11 +608,11 @@ namespace GeeksCoreLibrary.Components.Filter
             try
             {
                 var parameterList = new SortedList<string, string>();
-                const string valueSplit = ",";
+                const string ValueSplit = ",";
 
                 foreach (var f in filterGroups.Values.Where(group => group.SelectedValueString != ""))
                 {
-                    var nameStr = "";
+                    string nameStr;
                     if (!String.IsNullOrEmpty(f.QueryString))
                     {
                         nameStr = f.QueryString;
@@ -617,8 +636,8 @@ namespace GeeksCoreLibrary.Components.Filter
                         }
                         else
                         {
-                            WriteToTrace($"2 - adding item to parameter list, key = {groupName.ToLower()}, value = {f.SelectedValueString}{valueSplit}{filter.ToLower()}");
-                            parameterList.Add(groupName.ToLower(), f.SelectedValueString + valueSplit + filter.ToLower());
+                            WriteToTrace($"2 - adding item to parameter list, key = {groupName.ToLower()}, value = {f.SelectedValueString}{ValueSplit}{filter.ToLower()}");
+                            parameterList.Add(groupName.ToLower(), f.SelectedValueString + ValueSplit + filter.ToLower());
                         }
                     }
                     else
@@ -695,7 +714,7 @@ namespace GeeksCoreLibrary.Components.Filter
 
                 // If there's no question mark, the index will become -1, which is fine
                 var startIndex = queryString.IndexOf("?", StringComparison.Ordinal);
-                curQs = curQs.Concat(queryString.Substring(startIndex + 1).ToDictionary("&", "=").Where(p => !curQs.Keys.Contains(p.Key))).ToDictionary(p => p.Key, p => p.Value);
+                curQs = curQs.Concat(queryString[(startIndex + 1)..].ToDictionary("&", "=").Where(p => !curQs.Keys.Contains(p.Key))).ToDictionary(p => p.Key, p => p.Value);
                 var exclude = parametersToExclude.Split(',');
                 chosenFilters.AddRange(curQs.Keys.Where(qs => !exclude.Contains(qs, StringComparer.OrdinalIgnoreCase)).ToList());
             }
@@ -881,37 +900,42 @@ namespace GeeksCoreLibrary.Components.Filter
                     {
                         WriteToTrace($"2 - BuildFilterGroupHtml Slider({filterGroup.NameSeo})");
 
-                        double selectedMinValue = 0;
-                        double selectedMaxValue = 0;
+                        var selectedMinValue = filterGroup.MinValue;
+                        var selectedMaxValue = filterGroup.MaxValue;
+                        var requestParameter = "";
 
-                        if (!String.IsNullOrEmpty(HttpContext.Request.Query[!String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo]))
+                        if (!String.IsNullOrEmpty(HttpContext.Request.Query[filterGroup.GetParamKey()]))
                         {
-                            var requestParameter = HttpContext.Request.Query[
-                                !String.IsNullOrEmpty(filterGroup.QueryString)
-                                    ? filterGroup.QueryString
-                                    : filterGroup.NameSeo].ToString();
+                            requestParameter = HttpContext.Request.Query[filterGroup.GetParamKey()].ToString();
+                        }
+                        else if (filterGroup.SelectedValues.Count > 0) // when one filter querystring instead of querystrings per filter
+                        {
+                            requestParameter = filterGroup.SelectedValues[0];
+                        }
 
+                        if (!string.IsNullOrEmpty(requestParameter))
+                        {
                             if (requestParameter.Contains("-"))
                             {
-                                selectedMinValue = Double.Parse(requestParameter.Split("-")[0].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
-                                selectedMaxValue = Double.Parse(requestParameter.Split("-")[1].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                                selectedMinValue = Decimal.Parse(requestParameter.Split("-")[0].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                                selectedMaxValue = Decimal.Parse(requestParameter.Split("-")[1].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
                             }
                             else
                             {
                                 selectedMinValue = 0;
-                                selectedMaxValue = Double.Parse(requestParameter.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
+                                selectedMaxValue = Decimal.Parse(requestParameter.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
                             }
 
                             WriteToTrace("Set selected slider values: " + filterGroup.SelectedValueString);
                         }
-
-                        filterHtml.Append(Settings.TemplateSlider.Replace("{minValue}", filterGroup.MinValue.ToString())
-                                             .Replace("{maxValue}", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture))
-                                             .Replace("{selectedMin}", selectedMinValue.ToString(CultureInfo.InvariantCulture))
-                                             .Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture))
-                                             .Replace("{filterName}", filterGroup.Name)
-                                             .Replace("{filterNameSeo}", filterGroup.NameSeo));
-                    }
+                            
+                        filterHtml.Append(Settings.TemplateSlider.Replace("{minValue}", filterGroup.MinValue.ToString(CultureInfo.InvariantCulture))
+                                            .Replace("{maxValue}", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture))
+                                            .Replace("{selectedMin}", selectedMinValue.ToString(CultureInfo.InvariantCulture))
+                                            .Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture))
+                                            .Replace("{filterName}", filterGroup.Name)
+                                            .Replace("{filterNameSeo}", filterGroup.NameSeo));
+                }
 
                     break;
                 }
@@ -946,7 +970,7 @@ namespace GeeksCoreLibrary.Components.Filter
                 }
                 else if (!String.IsNullOrEmpty(filterGroup.Group))
                 {
-                    htmlBuilder.Append(filterHtml.ToString());
+                    htmlBuilder.Append(filterHtml);
                 }
                 else
                 {

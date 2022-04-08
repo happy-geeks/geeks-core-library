@@ -102,8 +102,6 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
-
-            HandleDefaultSettingsFromComponentMode();
         }
 
         /// <inheritdoc />
@@ -133,6 +131,8 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+
+            HandleDefaultSettingsFromComponentMode();
 
             // Check if we should actually render this component for the current user.
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
@@ -314,7 +314,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             allStepsHtml.Replace("{progress_post}", renderedMobilePostProgressHtml);
 
             var resultHtml = new StringBuilder();
-            resultHtml.AppendLine("<div id=\"configurator\" data-customParameter=\"{customParam}|{customParamDependencies}\">".
+            resultHtml.Append("<div id=\"configurator\" data-customParameter=\"{customParam}|{customParamDependencies}\">".
                                       Replace("{customParam}", firstRow.Field<string>("custom_param_name")).
                                       Replace("{customParamDependencies}", firstRow.Field<string>("custom_param_dependencies")));
 
@@ -325,7 +325,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                                                                                       ReplaceCaseInsensitive("{totalsteps}", mainStepCount.ToString()).
                                                                                       ReplaceCaseInsensitive("{progress_post}", renderedMobilePostProgressHtml).
                                                                                       ReplaceCaseInsensitive("{progress_pre}", renderedMobilePreProgressHtml), removeUnknownVariables: false));
-            resultHtml.AppendLine("</div>");
+            resultHtml.Append("</div>");
             WriteToTrace("End generating HTML");
             return new HtmlString(await TemplatesService.DoReplacesAsync(resultHtml.ToString(), false, removeUnknownVariables: false));
         }
@@ -504,7 +504,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         foreach (DataRow subStepRow in subSteps)
                         {
                             subStepCount += 1;
-                            subStepContents.AppendLine(await DoRenderingOfSubStepAsync(currentConfiguratorName, subStepRow, mainStepNumber, stepNumber, subStepCount, configurator: configurator));
+                            subStepContents.Append(await DoRenderingOfSubStepAsync(currentConfiguratorName, subStepRow, mainStepNumber, stepNumber, subStepCount, configurator: configurator));
                         }
                         stepContent = stepContent.
                             ReplaceCaseInsensitive("{substeps}", subStepContents.ToString());
@@ -756,10 +756,11 @@ namespace GeeksCoreLibrary.Components.Configurator
                         {
                             if (connectedId != "-1" || !customQuery.Contains("{connectedid}"))
                             {
-                                query = customQuery.ReplaceCaseInsensitive("'{connectedId}'", connectedId.ToMySqlSafeValue());
+                                DatabaseConnection.AddParameter("connectedId", connectedId);
+                                query = customQuery.ReplaceCaseInsensitive("'{connectedId}'", "?connectedId");
                                 query = await  this.configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration);
-                                query = await TemplatesService.HandleIncludesAsync(query, false, null, false);
-                                query = query.ReplaceCaseInsensitive("{connectedId}", connectedId.ToMySqlSafeValue());
+                                query = await TemplatesService.HandleIncludesAsync(query, false, null, false, true);
+                                query = query.ReplaceCaseInsensitive("{connectedId}", "?connectedId");
                                 query = await StringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
                             }
                             break;
@@ -865,12 +866,12 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 DatabaseConnection.AddParameter("connectedId", connectedId);
                 DatabaseConnection.AddParameter("connectedType", connectedType);
-                var dt = await DatabaseConnection.GetAsync(query);
+                var dataTable = await DatabaseConnection.GetAsync(query);
 
-                if (dt != null && dt.Rows.Count > 0)
+                if (dataTable != null && dataTable.Rows.Count > 0)
                 {
-                    count = dt.Rows.Count;
-                    renderedValues.Append(String.Join("", StringReplacementsService.DoReplacements(template, dt)));
+                    count = dataTable.Rows.Count;
+                    renderedValues.Append(String.Join("", StringReplacementsService.DoReplacements(template, dataTable)));
                 }
             }
 
@@ -1174,14 +1175,14 @@ namespace GeeksCoreLibrary.Components.Configurator
             customParameter.Query = await this.configuratorsService.ReplaceConfiguratorItemsAsync(customParameter.Query, configuration);
 
             // Run Query
-            var dt = await DatabaseConnection.GetAsync(customParameter.Query);
+            dataTable = await DatabaseConnection.GetAsync(customParameter.Query);
 
-            if (dt == null || dt.Rows.Count == 0)
+            if (dataTable == null || dataTable.Rows.Count == 0)
             {
                 return null;
             }
 
-            customParameter.Value = dt.Rows[0][0].ToString();
+            customParameter.Value = dataTable.Rows[0][0].ToString();
 
             return customParameter;
         }

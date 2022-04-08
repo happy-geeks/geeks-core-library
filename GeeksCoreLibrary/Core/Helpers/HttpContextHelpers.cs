@@ -13,6 +13,17 @@ namespace GeeksCoreLibrary.Core.Helpers
 {
     public static class HttpContextHelpers
     {
+        public static readonly List<string> GclMiddleWarePages = new()
+        {
+            "/webpage.gcl",
+            "/template.gcl",
+            "/webpage.jcl",
+            "/template.jcl",
+            $"/{Components.OrderProcess.Models.Constants.CheckoutPage}",
+            $"/{Components.OrderProcess.Models.Constants.PaymentInPage}",
+            $"/{Components.OrderProcess.Models.Constants.PaymentOutPage}"
+        };
+
         /// <summary>
         /// Get the hostname, for example:
         /// www.[testdomain] returns testdomain
@@ -35,7 +46,16 @@ namespace GeeksCoreLibrary.Core.Helpers
 
             testDomains ??= GclSettings.Current.TestDomains?.ToList() ?? new List<string>();
 
-            var hostname = httpContext.Request.Host.Host.ToLower();
+            string hostname;
+            if (httpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
+            {
+                hostname = wiserUriOverride.Host;
+            }
+            else
+            {
+                hostname = httpContext.Request.Host.Host.ToLower();
+            }
+
             if (includingTestWww == false && hostname.StartsWith("www", StringComparison.OrdinalIgnoreCase))
             {
                 return hostname.Remove(0, hostname.IndexOf(".", StringComparison.OrdinalIgnoreCase) + 1);
@@ -90,6 +110,10 @@ namespace GeeksCoreLibrary.Core.Helpers
         public static string GetRequestValue(HttpContext httpContext, string key)
         {
             if (httpContext?.Request == null)
+            {
+                return null;
+            }
+            if (string.IsNullOrEmpty(key))
             {
                 return null;
             }
@@ -251,6 +275,11 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <returns>An <see cref="UriBuilder"/> containing the full URL.</returns>
         public static UriBuilder GetOriginalRequestUriBuilder(HttpContext httpContext)
         {
+            if (httpContext == null)
+            {
+                return new UriBuilder();
+            }
+
             var result = new UriBuilder
             {
                 Host = httpContext.Request.Host.Host,
@@ -312,7 +341,7 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <summary>
         /// Returns a 404
         /// </summary>
-        /// <param name="httpContext"></param>
+        /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
         public static void Return404(HttpContext httpContext)
         {
             // when 404 is thrown in wiser loading of template is aborted.
@@ -322,6 +351,15 @@ namespace GeeksCoreLibrary.Core.Helpers
             }
 
             httpContext.Response.StatusCode = 404;
+        }
+
+        /// <summary>
+        /// Is the current page a default page for one of our middlewares?
+        /// </summary>
+        /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
+        public static bool IsGclMiddleWarePage(HttpContext httpContext)
+        {
+            return httpContext?.Request?.Path != null && GclMiddleWarePages.Contains(httpContext.Request.Path);
         }
     }
 }

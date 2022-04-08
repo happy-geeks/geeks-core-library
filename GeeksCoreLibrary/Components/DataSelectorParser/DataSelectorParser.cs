@@ -24,6 +24,7 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser
     public class DataSelectorParser : CmsComponent<DataSelectorParserCmsSettingsModel, DataSelectorParser.ComponentModes>
     {
         private readonly IDataSelectorParsersService dataSelectorParsersService;
+        private readonly IPagesService pagesService;
 
         #region Enums
 
@@ -36,9 +37,10 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser
 
         #region Constructor
 
-        public DataSelectorParser(ILogger<DataSelectorParser> logger, ITemplatesService templatesService, IStringReplacementsService stringReplacementsService, IDataSelectorParsersService dataSelectorParsersService)
+        public DataSelectorParser(ILogger<DataSelectorParser> logger, ITemplatesService templatesService, IStringReplacementsService stringReplacementsService, IDataSelectorParsersService dataSelectorParsersService, IPagesService pagesService)
         {
             this.dataSelectorParsersService = dataSelectorParsersService;
+            this.pagesService = pagesService;
 
             Logger = logger;
             TemplatesService = templatesService;
@@ -56,11 +58,16 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser
             ComponentId = dynamicContent.Id;
             ExtraDataForReplacements = extraData;
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-
             if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+            else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
+            }
+
+            HandleDefaultSettingsFromComponentMode();
 
             // Check if we should actually render this component for the current user.
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
@@ -131,7 +138,7 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser
                         var seoNoIndex = dataSelectorResult.First?.Value<bool>(Settings.SeoNoIndexEntityPropertyName);
                         var seoNoFollow = dataSelectorResult.First?.Value<bool>(Settings.SeoNoFollowEntityPropertyName);
 
-                        SetPageSeoData(seoTitle, seoDescription, null, seoCanonicalUrl, seoNoIndex ?? false, seoNoFollow ?? false);
+                        pagesService.SetPageSeoData(seoTitle, seoDescription, null, seoCanonicalUrl, seoNoIndex ?? false, seoNoFollow ?? false);
                     }
                 }
 
@@ -166,8 +173,6 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
-
-            HandleDefaultSettingsFromComponentMode();
         }
 
         public override string GetSettingsJson()

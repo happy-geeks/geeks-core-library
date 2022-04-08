@@ -42,7 +42,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
             var redirectPermanent = true;
 
             // Redirect module.
-            var regEx = new Regex(@"(\.jpe?g|\.gif|\.png|\.webp|\.svg|\.bmp|\.tif|\.ico|\.woff2?|\.css|\.js|\.[gj]cl|\.webmanifest)(?:\?.*)?$"); // Only handle redirect module on pages, not on images, css, js, etc.
+            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex); // Only handle redirect module on pages, not on images, css, js, etc.
             var oldUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (!regEx.IsMatch(oldUrl.ToString()))
             {

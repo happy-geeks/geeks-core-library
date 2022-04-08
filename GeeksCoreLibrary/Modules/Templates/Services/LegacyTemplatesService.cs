@@ -1,5 +1,4 @@
-﻿using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Core.Enums;
+﻿using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -27,8 +26,10 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Newtonsoft.Json.Linq;
 using Template = GeeksCoreLibrary.Modules.Templates.Models.Template;
@@ -50,7 +51,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly ITempDataProvider tempDataProvider;
         private readonly IActionContextAccessor actionContextAccessor;
         private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly IObjectsService objectService;
+        private readonly IObjectsService objectsService;
+        private readonly ILanguagesService languagesService;
         private readonly IFiltersService filtersService;
         
         /// <summary>
@@ -66,7 +68,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IActionContextAccessor actionContextAccessor,
             IWebHostEnvironment webHostEnvironment,
             IFiltersService filtersService,
-            IObjectsService objectService)
+            IObjectsService objectsService,
+            ILanguagesService languagesService)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -78,11 +81,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.actionContextAccessor = actionContextAccessor;
             this.webHostEnvironment = webHostEnvironment;
             this.filtersService = filtersService;
-            this.objectService = objectService;
+            this.objectsService = objectsService;
+            this.languagesService = languagesService;
         }
 
         /// <inheritdoc />
-        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
+        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "", bool includeContent = true)
         {
             if (id <= 0 && String.IsNullOrEmpty(name))
             {
@@ -95,7 +99,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new NotImplementedException($"Unknown environment '{gclSettings.Environment}'!"),
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
             };
 
             string whereClause;
@@ -135,13 +139,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.loadalways AS load_always,
                             t.lastchanged AS changed_on,
                             t.externalfiles AS external_files,
-                            t.html_obfuscated,
-                            t.html_minified AS template_data_minified,
-                            t.html AS template_data,
-                            t.template,
+                            {(includeContent ? "t.html_obfuscated, t.html_minified AS template_data_minified, t.html AS template_data, t.template," : "")}
                             t.urlregex AS url_regex,
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
+                            1 AS cache_location,
                             t.useobfuscate AS use_obfuscate,
                             t.defaulttemplate AS wiser_cdn_files,
                             t.pagemode AS insert_mode,
@@ -172,6 +174,88 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            if (id <= 0 && String.IsNullOrEmpty(name))
+            {
+                throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
+            }
+            
+            var joinPart = gclSettings.Environment switch
+            {
+                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+                Environments.Acceptance => " AND t.isacceptance=1 ",
+                Environments.Test => " AND t.istest=1 ",
+                Environments.Live => " AND t.islive=1 ",
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+            };
+
+            string whereClause;
+            if (id > 0)
+            {
+                databaseConnection.AddParameter("id", id);
+                whereClause = "i.id = ?id";
+            }
+            else
+            {
+                databaseConnection.AddParameter("name", name);
+                whereClause = "i.name = ?name";
+            }
+
+            if (parentId > 0)
+            {
+                databaseConnection.AddParameter("parentId", parentId);
+                whereClause += " AND ip.id = ?parentId";
+            }
+            else if (!String.IsNullOrWhiteSpace(parentName))
+            {
+                databaseConnection.AddParameter("parentName", parentName);
+                whereClause = " AND ip.name = ?parentName";
+            }
+
+            var query = $@"SELECT
+                            i.`name` AS template_name,
+                            i.id AS template_id,
+                            t.usecache AS use_cache,
+                            t.cacheminutes AS cache_minutes,
+                            CASE t.templatetype
+                                WHEN 'html' THEN 1
+                                WHEN 'css' THEN 2
+                                WHEN 'scss' THEN 3
+                                WHEN 'js' THEN 4
+                                ELSE 0
+                            END AS template_type
+                        FROM easy_items i 
+                        JOIN easy_templates t ON i.id=t.itemid
+                        {joinPart}
+                        WHERE i.moduleid = 143 
+                        AND i.published = 1
+                        AND i.deleted <= 0
+                        AND t.deleted <= 0
+                        AND {whereClause}
+                        LIMIT 1";
+            
+            var dataTable = await databaseConnection.GetAsync(query);
+            var result = dataTable.Rows.Count == 0 ? new Template() : new Template
+            {
+                Id = dataTable.Rows[0].Field<int>("template_id"),
+                Name = dataTable.Rows[0].Field<string>("template_name"),
+                CachingMinutes = dataTable.Rows[0].Field<int>("cache_minutes"),
+                CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache"),
+                CachingLocation = TemplateCachingLocations.OnDisk,
+                Type = (TemplateTypes)Convert.ToInt32(dataTable.Rows[0]["template_type"])
+            };
+            
+            return result;
+        }
+
+        /// <inheritdoc />
+        public async Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc />
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
         {
             var joinPart = gclSettings.Environment switch
@@ -180,7 +264,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new NotImplementedException($"Unknown environment '{gclSettings.Environment}'!")
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
             };
 
             var query = $@"SELECT MAX(t.lastchanged) AS lastChanged
@@ -210,7 +294,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
         {
-            databaseConnection.AddParameter("templateType", templateType.ToString());
+            var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss 
+                ? $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')"
+                : $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'";
 
             var joinPart = gclSettings.Environment switch
             {
@@ -218,7 +304,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new NotImplementedException($"Unknown environment '{gclSettings.Environment}'!")
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
             };
 
             var query = $@"SELECT
@@ -242,6 +328,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.urlregex AS url_regex,
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
+                            1 AS cache_location,
                             t.useobfuscate AS use_obfuscate,
                             t.defaulttemplate AS wiser_cdn_files,
                             t.pagemode AS insert_mode,
@@ -263,7 +350,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND i.deleted <= 0
                         AND t.deleted <= 0
                         AND t.loadalways > 0
-                        AND t.templatetype = ?templateType
+                        AND {templateTypeQueryPart}
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
             var result = new TemplateResponse();
@@ -285,7 +372,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 result.LastChangeDate = DateTime.Now;
             }
 
-            if (templateType == TemplateTypes.Css)
+            if (templateType is TemplateTypes.Css or TemplateTypes.Scss)
             {
                 result.Content = CssHelpers.MoveImportStatementsToTop(result.Content);
             }
@@ -305,7 +392,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new NotImplementedException($"Unknown environment '{gclSettings.Environment}'!")
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
             };
 
             var query = $@"SELECT
@@ -329,6 +416,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.urlregex AS url_regex,
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
+                            1 AS cache_location,
                             t.useobfuscate AS use_obfuscate,
                             t.defaulttemplate AS wiser_cdn_files,
                             t.pagemode AS insert_mode,
@@ -366,15 +454,21 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<TemplateResponse> GetCombinedTemplateValueAsync(ICollection<int> templateIds, TemplateTypes templateType)
         {
+            return await GetCombinedTemplateValueAsync(this, templateIds, templateType);
+        }
+
+        /// <inheritdoc />
+        public async Task<TemplateResponse> GetCombinedTemplateValueAsync(ITemplatesService templatesService, ICollection<int> templateIds, TemplateTypes templateType)
+        {
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
-            var templates = await GetTemplatesAsync(templateIds, true);
+            var templates = await templatesService.GetTemplatesAsync(templateIds, true);
 
             foreach (var template in templates.Where(t => t.Type == templateType))
             {
-                await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
+                await templatesService.AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
             }
 
             result.Content = resultBuilder.ToString();
@@ -474,6 +568,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false)
         {
+            return await DoReplacesAsync(this, input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false)
+        {
             // Input cannot be empty.
             if (String.IsNullOrEmpty(input))
             {
@@ -489,13 +589,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             // HTML and mail templates.
             // Note: The string replacements service cannot handle the replacing of templates, because that would cause the StringReplacementsService to need
             // the TemplatesService, which in turn needs the StringReplacementsService, creating a circular dependency.
-            input = await HandleIncludesAsync(input, forQuery: forQuery);
-            input = await HandleImageTemplating(input);
+            input = await templatesService.HandleIncludesAsync(input, forQuery: forQuery);
+            input = await templatesService.HandleImageTemplating(input);
 
             // Replace dynamic content.
             if (handleDynamicContent && !forQuery)
             {
-                input = await ReplaceAllDynamicContentAsync(input);
+                input = await templatesService.ReplaceAllDynamicContentAsync(input);
             }
 
             if (evaluateLogicSnippets)
@@ -508,7 +608,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
         public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
         {
-            var imageUrlTemplate = await objectService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser2/<item_id>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
+            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser2/<item_id>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
 
             imageUrlTemplate = imageUrlTemplate.Replace("<item_id>", itemId);
             imageUrlTemplate = imageUrlTemplate.Replace("<filename>", filename);
@@ -614,7 +714,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                 foreach (Match s in items)
                 {
-                    var imageTemplate = await objectService.FindSystemObjectByDomainNameAsync("image_template", "<figure><picture>{images}</picture></figure>");
+                    var imageTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_template", "<figure><picture>{images}</picture></figure>");
 
                     // Get the specified parameters from the regex match
                     parameters = s.Value.Split(":")[1].Split("(");
@@ -632,8 +732,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     var imageWidth2X = (imageWidth * 2).ToString();
                     var imageHeight2X = (imageHeight * 2).ToString();
 
-                    outputBuilder.AppendLine(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
-                    outputBuilder.AppendLine(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-jpg-2x} 2x, {image-url-jpg}"" type=""image/jpeg"" />");
+                    outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
+                    outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-jpg-2x} 2x, {image-url-jpg}"" type=""image/jpeg"" />");
 
                     outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
                     outputBuilder.Replace("{image-url-jpg}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".jpg", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
@@ -644,7 +744,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     // If last item, than add the default image
                     if (index == totalItems)
                     {
-                        outputBuilder.AppendLine("<img width=\"100%\" height=\"auto\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
+                        outputBuilder.Append("<img width=\"100%\" height=\"auto\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
                         outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
                     }
 
@@ -663,6 +763,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
         /// <inheritdoc />
         public async Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false)
+        {
+            return await HandleIncludesAsync(this, input, handleStringReplacements, dataRow, handleRequest, forQuery);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false)
         {
             if (String.IsNullOrWhiteSpace(input))
             {
@@ -691,23 +797,25 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     {
                         // Contains a parent
                         var split = templateName.Split('\\');
-                        var template = await GetTemplateAsync(name: split[1], parentName: split[0]);
+                        var template = await templatesService.GetTemplateAsync(name: split[1], parentName: split[0]);
+                        var templateContent = template.Content;
                         if (handleStringReplacements)
                         {
-                            template.Content = await stringReplacementsService.DoAllReplacementsAsync(template.Content, dataRow, handleRequest, false, false, forQuery);
+                            templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery);
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, template.Content);
+                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, templateContent);
                     }
                     else
                     {
-                        var template = await GetTemplateAsync(name: templateName);
+                        var template = await templatesService.GetTemplateAsync(name: templateName);
+                        var templateContent = template.Content;
                         if (handleStringReplacements)
                         {
-                            template.Content = await stringReplacementsService.DoAllReplacementsAsync(template.Content, dataRow, handleRequest, false, false, forQuery);
+                            templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery);
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, template.Content);
+                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, templateContent);
                     }
                 }
 
@@ -727,7 +835,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     {
                         // Contains a parent
                         var split = templateName.Split('\\');
-                        var template = await GetTemplateAsync(name: split[1], parentName: split[0]);
+                        var template = await templatesService.GetTemplateAsync(name: split[1], parentName: split[0]);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
                         var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
@@ -744,7 +852,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                     else
                     {
-                        var template = await GetTemplateAsync(name: templateName);
+                        var template = await templatesService.GetTemplateAsync(name: templateName);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
                         var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
@@ -834,11 +942,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+        public async Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
         {
             if (String.IsNullOrWhiteSpace(dynamicContent?.Name) || String.IsNullOrWhiteSpace(dynamicContent?.SettingsJson))
             {
-                return ("", null);
+                return "";
             }
 
             string viewComponentName;
@@ -892,7 +1000,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     break;
                 }
                 default:
-                    return ($"<!-- Dynamic content type '{dynamicContent.Name}' not supported yet. Content ID: {dynamicContent.Id} -->", null);
+                    return $"<!-- Dynamic content type '{dynamicContent.Name}' not supported yet. Content ID: {dynamicContent.Id} -->";
             }
 
             // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
@@ -920,19 +1028,24 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             await using var stringWriter = new StringWriter();
             component.WriteTo(stringWriter, HtmlEncoder.Default);
             var html = stringWriter.ToString();
-
-            return (html, viewContext.ViewData);
+            return html;
         }
 
         /// <inheritdoc />
-        public async Task<(object result, ViewDataDictionary viewData)> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+        public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
         {
             var dynamicContent = await GetDynamicContentData(componentId);
             return await GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
         }
 
         /// <inheritdoc />
-        public async Task<string> ReplaceAllDynamicContentAsync(string template)
+        public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
+        {
+            return await ReplaceAllDynamicContentAsync(this, template, componentOverrides);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllDynamicContentAsync(ITemplatesService templatesService, string template, List<DynamicContent> componentOverrides = null)
         {
             if (String.IsNullOrWhiteSpace(template))
             {
@@ -960,7 +1073,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 try
                 {
                     var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
-                    var (html, _) = await GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
+                    var html = await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
                     template = template.Replace(match.Value, (string)html);
                 }
                 catch (Exception exception)
@@ -1017,6 +1130,109 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             return result;
         }
+        
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            return await GetTemplateDataAsync(this, id, name, parentId, parentName);
+        }
+        
+        /// <inheritdoc />
+        public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            var template = await templatesService.GetTemplateAsync(id, name, TemplateTypes.Html, parentId, parentName);
+
+            var cssStringBuilder = new StringBuilder();
+            var jsStringBuilder = new StringBuilder();
+            foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
+            {
+                var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
+                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+            }
+
+            return new TemplateDataModel
+            {
+                Content = template.Content, 
+                LinkedCss = cssStringBuilder.ToString(), 
+                LinkedJavascript = jsStringBuilder.ToString()
+            }; 
+        }
+
+        /// <inheritdoc />
+        public Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+        {
+            // Do nothing here, this functionality is not supported for old/legacy the templates module.
+            return Task.FromResult(true);
+        }
+
+        /// <inheritdoc />
+        public Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
+        {
+            // Do nothing here, this functionality is not supported for old/legacy the templates module.
+            return Task.FromResult(true);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
+        {
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
+            switch (contentTemplate.CachingMode)
+            {
+                case TemplateCachingModes.ServerSideCaching:
+                    break;
+                case TemplateCachingModes.ServerSideCachingPerUrl:
+                    cacheFileName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.ServerSideCachingPerUrlAndQueryString:
+                    cacheFileName.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
+                    cacheFileName.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.NoCaching:
+                    return "";
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingMode), contentTemplate.CachingMode.ToString());
+            }
+
+            // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
+            var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (cookieCacheDeviation.Length > 0)
+            {
+                var requestCookies = httpContextAccessor.HttpContext?.Request.Cookies;
+                foreach (var cookieName in cookieCacheDeviation)
+                {
+                    if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
+                    {
+                        continue;
+                    }
+
+                    var combinedCookiePart = $"{cookieName}:{cookieValue}";
+                    cacheFileName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
+                }
+            }
+
+            // And finally add the language code to the file name.
+            if (!String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                cacheFileName.Append($"_{languagesService.CurrentLanguageCode}");
+            }
+
+            if (String.IsNullOrEmpty(extension))
+            {
+                return cacheFileName.ToString();
+            }
+
+            if (!extension.StartsWith("."))
+            {
+                extension = $".{extension}";
+            }
+
+            cacheFileName.Append(extension);
+
+            return cacheFileName.ToString();
+        }
 
         /// <summary>
         /// Do all replacement which have to do with request, session or cookie.
@@ -1042,9 +1258,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Session replaces.
-            foreach (var variable in httpContext.Session.Keys)
+            if (httpContext?.Features.Get<ISessionFeature>() != null && httpContext.Session.IsAvailable)
             {
-                input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Session.GetString(variable));
+                foreach (var variable in httpContext.Session.Keys)
+                {
+                    input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Session.GetString(variable));
+                }
             }
 
             // Cookie replaces.
@@ -1054,28 +1273,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             return input;
-        }
-
-        /// <summary>
-        /// Get the template + linked css and js 
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="name"></param>
-        /// <param name="type"></param>
-        /// <param name="parentId"></param>
-        /// <param name="parentName"></param>
-        /// <returns></returns>
-        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "")
-        {
-            var template = await this.GetTemplateAsync(id, name, type, parentId, parentName);
-            var cssStringBuilder = new StringBuilder();
-            var jsStringBuilder = new StringBuilder();
-            foreach (var templateId in new[] { template.CssTemplates, template.JavascriptTemplates }.SelectMany(x => x).ToList())
-            {
-                var linkedTemplate = await this.GetTemplateAsync(templateId);
-                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
-            }
-            return new TemplateDataModel() { Content = template.Content, LinkedCss = cssStringBuilder.ToString(), LinkedJavascript = jsStringBuilder.ToString() }; 
         }
     }
 }

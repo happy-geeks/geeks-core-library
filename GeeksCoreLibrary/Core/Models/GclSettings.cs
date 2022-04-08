@@ -62,9 +62,26 @@ namespace GeeksCoreLibrary.Core.Models
         public string DefaultEncryptionKey { get; set; }
 
         /// <summary>
+        /// The salt string that will be used in the AES encryption. This value should represent at least 8 bytes when converted into bytes using UTF-8.
+        /// Note that the functions EncryptWithAesWithSalt and DecryptWithAesWithSalt do NOT use this salt! Those functions use a random salt. Only the functions
+        /// EncryptWithAes and DecryptWithAes use this salt.
+        /// </summary>
+        public string DefaultEncryptionSalt { get; set; }
+
+        /// <summary>
         /// The encryption key key used for triple DES encryption.
         /// </summary>
         public string DefaultEncryptionKeyTripleDes { get; set; }
+
+        /// <summary>
+        /// Base URL of the PostNL api
+        /// </summary>
+        public string PostNlShippingApiKey { get; set; }
+
+        /// <summary>
+        /// Api key to use for the PostNL api
+        /// </summary>
+        public string PostNlApiBaseUrl { get; set; }
 
         /// <summary>
         /// The encryption key the ShoppingBasketsService uses for AES encryption.
@@ -155,6 +172,11 @@ namespace GeeksCoreLibrary.Core.Models
         /// The amount of time to cache data selector responses for data selector parsers.
         /// </summary>
         public TimeSpan DefaultDataSelectorParsersCacheDuration { get; set; } = new(1, 0, 0);
+
+        /// <summary>
+        /// The amount of time to cache objects.
+        /// </summary>
+        public TimeSpan DefaultOrderProcessCacheDuration { get; set; } = new(1, 0, 0);
 
         /// <summary>
         /// The SMTP settings for sending emails.

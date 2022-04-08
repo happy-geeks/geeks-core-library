@@ -12,11 +12,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.DataSelector.Models;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 
 namespace GeeksCoreLibrary.Core.Services
@@ -27,16 +26,18 @@ namespace GeeksCoreLibrary.Core.Services
 
         private readonly IDatabaseConnection databaseConnection;
         private readonly IObjectsService objectsService;
+        private readonly IStringReplacementsService stringReplacementsService;
         private const int MaximumLevelsToDuplicate = 25;
 
         #endregion
 
         #region Constructor
 
-        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService)
+        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService)
         {
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
+            this.stringReplacementsService = stringReplacementsService;
         }
 
         #endregion
@@ -64,7 +65,7 @@ namespace GeeksCoreLibrary.Core.Services
         #region Implemented methods from interface
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null, bool useParentItemIdByDefault = false)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null)
         {
             if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
 
@@ -72,7 +73,7 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 if (wiserItem.Id == 0)
                 {
-                    wiserItem = await CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, entityTypeSettings, useParentItemIdByDefault);
+                    wiserItem = await CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, entityTypeSettings);
                 }
 
                 var result = await UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, entityTypeSettings);
@@ -89,7 +90,7 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null, bool useParentItemIdByDefault = false)
+        public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null)
         {
             if (String.IsNullOrWhiteSpace(wiserItem?.EntityType))
             {
@@ -160,7 +161,7 @@ namespace GeeksCoreLibrary.Core.Services
                     destinationEntityType = queryResult.Rows[0].Field<string>("entity_type");
                 }
 
-                var linkTypeSettings = await GetLinkTypeSettingsAsync(0, wiserItem.EntityType, destinationEntityType, new LinkSettingsModel { UseItemParentId = useParentItemIdByDefault });
+                var linkTypeSettings = await GetLinkTypeSettingsAsync(0, wiserItem.EntityType, destinationEntityType);
                 if (linkTypeSettings is { UseItemParentId: true })
                 {
                     // Save parent ID in parent_item_id column of wiser_item.
@@ -481,19 +482,18 @@ namespace GeeksCoreLibrary.Core.Services
                 // Check auto increment fields and save the correct value.
                 if (entityTypeSettings.AutoIncrementFields != null && entityTypeSettings.AutoIncrementFields.Any())
                 {
-                    var findAutoIncrementValuesQuery = $@"SELECT IFNULL(MAX(d.`value`), IFNULL(ep.default_value, 0)) AS maximumValue
-                                                    FROM {WiserTableNames.WiserEntityProperty} ep
-                                                    LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.key = ep.property_name AND d.language_code = ep.language_code AND d.item_id <> ?itemId
-                                                    WHERE ep.entity_name = i.entity_type 
-                                                    AND ep.inputtype = 'auto-increment' 
-                                                    AND ep.property_name = ?propertyName
-                                                    AND ((?languageCode IS NULL AND ep.language_code IS NULL) OR (?languageCode IS NOT NULL AND ep.language_code IS NOT NULL AND ep.language_code = ?languageCode))
-                                                    GROUP BY ep.property_name";
-
                     var fieldCounter = 0;
                     foreach (var (fieldName, languageCode) in entityTypeSettings.AutoIncrementFields)
                     {
                         fieldCounter++;
+                        var findAutoIncrementValuesQuery = $@"SELECT IFNULL(MAX(d.`value`), IFNULL(ep.default_value, 0)) AS maximumValue
+                                                        FROM {WiserTableNames.WiserEntityProperty} ep
+                                                        LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.key = ep.property_name AND d.language_code = ep.language_code AND d.item_id <> ?itemId
+                                                        WHERE ep.entity_name = i.entity_type 
+                                                        AND ep.inputtype = 'auto-increment' 
+                                                        AND ep.property_name = ?propertyName{AutoIncrementPropertySuffix}{fieldCounter}
+                                                        AND ((?languageCode{AutoIncrementPropertySuffix}{fieldCounter} IS NULL AND ep.language_code IS NULL) OR (?languageCode{AutoIncrementPropertySuffix}{fieldCounter} IS NOT NULL AND ep.language_code IS NOT NULL AND ep.language_code = ?languageCode{AutoIncrementPropertySuffix}{fieldCounter}))
+                                                        GROUP BY ep.property_name";
                         databaseConnection.AddParameter($"propertyName{AutoIncrementPropertySuffix}{fieldCounter}", fieldName);
                         databaseConnection.AddParameter($"languageCode{AutoIncrementPropertySuffix}{fieldCounter}", languageCode);
                         dataTable = await databaseConnection.GetAsync(findAutoIncrementValuesQuery, true);
@@ -599,7 +599,7 @@ namespace GeeksCoreLibrary.Core.Services
 
                         databaseConnection.AddParameter("languageCode_title", "");
                         databaseConnection.AddParameter("groupName_title", "");
-                        databaseConnection.AddParameter("key_title", "title_seo");
+                        databaseConnection.AddParameter("key_title", CoreConstants.SeoTitlePropertyName);
                         databaseConnection.AddParameter("value_title", useLongValueColumn ? "" : seoTitle);
                         databaseConnection.AddParameter("longValue_title", !useLongValueColumn ? "" : seoTitle);
                         insertAndUpdateQueryBuilder.Add("(?languageCode_title, ?itemId, ?groupName_title, ?key_title, ?value_title, ?longValue_title)");
@@ -1282,18 +1282,20 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 return false;
             }
-
+            
             workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{id}", itemId.ToString()).ReplaceCaseInsensitive("{itemId}", itemId.ToString());
-            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{title}", wiserItem?.Title?.ToMySqlSafeValue() ?? "");
+            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{title}", "?workFlowItemTitle");
             workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{moduleId}", wiserItem?.ModuleId.ToString());
             workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{userId}", userId.ToString());
-            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{username}", username ?? "");
+            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{username}", "?username");
 
             if (wiserItem?.Details != null)
             {
-                workFlowQuery = wiserItem.Details.Aggregate(workFlowQuery, (current, itemDetail) => current.ReplaceCaseInsensitive($"{{{itemDetail.Key}}}", itemDetail.Value?.ToString()?.ToMySqlSafeValue() ?? ""));
+                var dictionary = wiserItem.Details.ToDictionary(d => d.Key, d => d.Value ?? "");
+                workFlowQuery = stringReplacementsService.DoReplacements(workFlowQuery, dictionary, forQuery: true);
             }
 
+            databaseConnection.AddParameter("workFlowItemTitle", wiserItem?.Title ?? "");
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
@@ -1460,10 +1462,8 @@ namespace GeeksCoreLibrary.Core.Services
 
             if (wiserItem?.Details != null)
             {
-                foreach (var itemDetail in wiserItem.Details)
-                {
-                    queryToExecute = queryToExecute.ReplaceCaseInsensitive($"{{{itemDetail.Key}}}", itemDetail.Value?.ToString()?.ToMySqlSafeValue() ?? "");
-                }
+                var dictionary = wiserItem.Details.ToDictionary(d => d.Key, d => d.Value ?? "");
+                queryToExecute = stringReplacementsService.DoReplacements(queryToExecute, dictionary, forQuery: true);
             }
 
             var dataTable = await databaseConnection.GetAsync(queryToExecute, true);
@@ -1754,19 +1754,18 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool useParentItemIdByDefault = false)
+        public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
         {
             var result = new List<WiserItemModel>();
 
             LinkSettingsModel linkSettings;
             if (linkType > -1)
             {
-                var defaultSettings = new LinkSettingsModel { UseItemParentId = useParentItemIdByDefault };
-                linkSettings = await GetLinkTypeSettingsAsync(linkType, reverse ? itemIdEntityType : entityType, reverse ? entityType : itemIdEntityType, defaultSettings);
+                linkSettings = await GetLinkTypeSettingsAsync(linkType, reverse ? itemIdEntityType : entityType, reverse ? entityType : itemIdEntityType);
             }
             else
             {
-                linkSettings = new LinkSettingsModel { UseItemParentId = useParentItemIdByDefault };
+                linkSettings = new LinkSettingsModel();
             }
 
             var permissionsQueryPart = "";
@@ -1830,7 +1829,7 @@ namespace GeeksCoreLibrary.Core.Services
                     {itemLinkJoin}
                     LEFT JOIN {WiserTableNames.WiserItemLinkDetail} AS details ON details.itemlink_id = link.id
                     {permissionsQueryPart}
-                    WHERE {String.Join(" AND ", where)};";
+                    WHERE {String.Join(" AND ", where)}";
             }
 
             var query = $@"# Item details.
@@ -1880,10 +1879,11 @@ namespace GeeksCoreLibrary.Core.Services
                         {itemLinkJoin}
                         LEFT JOIN {WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.itemlink_id = link.id
                         {permissionsQueryPart}
-                        WHERE {String.Join(" AND ", where)};";
+                        WHERE {String.Join(" AND ", where)}";
                 }
 
-                query += $@"UNION
+                query += $@"
+                            UNION
                             SELECT 
 	                            item.*,
 	                            details.`key`,	
@@ -1922,10 +1922,10 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool useParentItemIdByDefault = false)
+        public async Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
         {
             var result = new List<ulong>();
-            var linkSettings = await GetLinkTypeSettingsAsync(linkType, reverse ? itemIdEntityType : entityType, reverse ? entityType : itemIdEntityType, new LinkSettingsModel { UseItemParentId = useParentItemIdByDefault });
+            var linkSettings = await GetLinkTypeSettingsAsync(linkType, reverse ? itemIdEntityType : entityType, reverse ? entityType : itemIdEntityType);
             var permissionsQueryPart = "";
             var itemLinkJoin = "";
 
@@ -2060,7 +2060,10 @@ namespace GeeksCoreLibrary.Core.Services
                         SaveTitleAsSeo = !dataRow.IsNull("save_title_as_seo") && Convert.ToInt16(dataRow["save_title_as_seo"]) > 0,
                         DedicatedTablePrefix = dataTable.Columns.Contains("dedicated_table_prefix") ? dataRow.Field<string>("dedicated_table_prefix") : "",
                         EnableMultipleEnvironments = dataTable.Columns.Contains("enable_multiple_environments") && !dataRow.IsNull("enable_multiple_environments") && Convert.ToInt32(dataRow["enable_multiple_environments"]) > 0,
-                        AcceptedChildTypes = (dataRow.Field<string>("accepted_childtypes") ?? "").Split(',').ToList()
+                        AcceptedChildTypes = (dataRow.Field<string>("accepted_childtypes") ?? "").Split(',').ToList(),
+                        ShowInTreeView = !dataRow.IsNull("show_in_tree_view") && Convert.ToBoolean(dataRow["show_in_tree_view"]),
+                        ShowOverviewTab = !dataRow.IsNull("show_overview_tab") && Convert.ToBoolean(dataRow["show_overview_tab"]),
+                        ShowTitleField = !dataRow.IsNull("show_title_field") && Convert.ToBoolean(dataRow["show_title_field"])
                     });
                 }
 
@@ -2395,7 +2398,7 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null)
+        public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0UL, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
             var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
 
@@ -2463,7 +2466,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             foreach (DataRow dataRow in dataTable.Rows)
             {
-                await DeleteAsync(dataRow.Field<ulong>("id"), username: username, userId: userId, saveHistory: saveHistory, entityType: dataRow.Field<string>("entity_type"));
+                await DeleteAsync(dataRow.Field<ulong>("id"), username: username, userId: userId, saveHistory: saveHistory, entityType: dataRow.Field<string>("entity_type"), createNewTransaction: createNewTransaction);
             }
         }
 
@@ -2731,7 +2734,7 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<LinkSettingsModel> GetLinkTypeSettingsAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null, LinkSettingsModel defaultSettings = null)
+        public async Task<LinkSettingsModel> GetLinkTypeSettingsAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null)
         {
             if (linkType <= 0 && String.IsNullOrWhiteSpace(sourceEntityType) && String.IsNullOrWhiteSpace(destinationEntityType))
             {
@@ -2760,7 +2763,7 @@ namespace GeeksCoreLibrary.Core.Services
             var query = $@"SELECT * FROM {WiserTableNames.WiserLink} WHERE {String.Join(" AND ", whereClause)}";
 
             var dataTable = await databaseConnection.GetAsync(query, true);
-            return dataTable.Rows.Count == 0 ? defaultSettings ?? new LinkSettingsModel() : DataRowToLinkSettingsModel(dataTable.Rows[0]);
+            return dataTable.Rows.Count == 0 ? new LinkSettingsModel() : DataRowToLinkSettingsModel(dataTable.Rows[0]);
         }
 
         /// <inheritdoc />

@@ -66,7 +66,7 @@ namespace GeeksCoreLibrary.Components.Account.Models
             DeveloperRemarks = @"<p>You can use the variable '{errorType}' to check which error was thrown. We have the following error types available, based on the chosen component mode:</p>
                                 <h2>All modes:</h2>
                                 <ul>
-                                    <li><strong>Server:</strong> This is any exception that occurred on the server. The actual exception will be written to the trace.</li>
+                                    <li><strong>Server:</strong> This is any exception that occurred on the server. The actual exception will be written to the logs.</li>
                                 </ul>
                                 <h2>LoginSingleStep:</h2>
                                 <ul>
@@ -488,7 +488,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                 </ul>",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 10
+            DisplayOrder = 10,
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string MainQuery { get; set; }
 
@@ -544,7 +545,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 30,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+            ComponentMode = "LoginSingleStep,LoginMultipleSteps,CreateOrUpdateAccount",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string SaveLoginAttemptQuery { get; set; }
 
@@ -565,7 +567,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 40,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string SaveResetPasswordValuesQuery { get; set; }
 
@@ -588,7 +591,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 50,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string ValidateResetPasswordTokenQuery { get; set; }
 
@@ -610,7 +614,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 55,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword,CreateOrUpdateAccount",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string ChangePasswordQuery { get; set; }
 
@@ -632,7 +637,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 60,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string GetUserIdViaEmailAddressQuery { get; set; }
 
@@ -656,7 +662,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 70,
-            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement"
+            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string CheckIfAccountExistsQuery { get; set; }
 
@@ -679,7 +686,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 80,
-            ComponentMode = "CreateOrUpdateAccount"
+            ComponentMode = "CreateOrUpdateAccount",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string ValidatePasswordQuery { get; set; }
 
@@ -694,7 +702,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 80,
-            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement"
+            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string CreateAccountQuery { get; set; }
 
@@ -717,7 +726,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 90,
-            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement"
+            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string UpdateAccountQuery { get; set; }
 
@@ -740,7 +750,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 100,
-            ComponentMode = "SubAccountsManagement"
+            ComponentMode = "SubAccountsManagement",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string DeleteAccountQuery { get; set; }
 
@@ -761,7 +772,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 110,
-            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement"
+            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string SetValueInWiserEntityPropertyQuery { get; set; }
 
@@ -782,7 +794,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
             DisplayOrder = 120,
-            ComponentMode = "SubAccountsManagement"
+            ComponentMode = "SubAccountsManagement",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string GetSubAccountQuery { get; set; }
 

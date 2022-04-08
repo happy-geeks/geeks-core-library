@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -10,13 +11,16 @@ using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Models;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
 
@@ -29,18 +33,22 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IAccountsService accountsService;
+        private readonly IDatabaseConnection databaseConnection;
 
         private readonly MethodInfo[] formatters;
 
         private readonly Regex formatterRegex;
         private readonly Regex logicSnippetRegex;
 
-        public StringReplacementsService(IObjectsService objectsService, ILanguagesService languagesService, IHttpContextAccessor httpContextAccessor, IAccountsService accountsService)
+        private const string RawFormatterName = "Raw";
+
+        public StringReplacementsService(IObjectsService objectsService, ILanguagesService languagesService, IHttpContextAccessor httpContextAccessor, IAccountsService accountsService, IDatabaseConnection databaseConnection)
         {
             this.objectsService = objectsService;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
             this.accountsService = accountsService;
+            this.databaseConnection = databaseConnection;
 
             formatters = typeof(StringReplacementsExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public);
 
@@ -95,76 +103,83 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             input = await accountsService.DoAccountReplacementsAsync(input, forQuery);
 
-            // Translations.
-            if (input.Contains("[T{"))
+            // Do replacements multiple times to handle double replacements such as "{price:Currency(true,{culture})}".
+            var counter = 0;
+            while (input.Contains("{") && counter < 3)
             {
-                dataDictionary.Clear();
+                counter++;
 
-                r = new Regex(@"\[T{([^\}]+)}]");
-                foreach (Match m in r.Matches(input))
+                // DataRow replacements.
+                if (dataRow != null)
                 {
-                    var value = m.Groups[1].Value;
-                    if (dataDictionary.ContainsKey(value))
+                    input = DoReplacements(input, dataRow, forQuery);
+                }
+
+                // Request replacements.
+                if (handleRequest && httpContextAccessor.HttpContext != null)
+                {
+                    input = DoHttpRequestReplacements(input, forQuery);
+                    input = DoSessionReplacements(input, forQuery);
+                }
+
+                // Translations.
+                if (input.Contains("[T{"))
+                {
+                    dataDictionary.Clear();
+
+                    r = new Regex(@"\[T{([^\}]+)}]");
+                    foreach (Match m in r.Matches(input))
                     {
-                        continue;
+                        var value = m.Groups[1].Value;
+                        if (dataDictionary.ContainsKey(value))
+                        {
+                            continue;
+                        }
+
+                        dataDictionary.Add(value, await languagesService.GetTranslationAsync(value));
                     }
 
-                    dataDictionary.Add(value, await languagesService.GetTranslationAsync(value));
+                    input = DoReplacements(input, dataDictionary, "[T{", "}]", forQuery: forQuery);
                 }
 
-                input = DoReplacements(input, dataDictionary, "[T{", "}]", forQuery: forQuery);
-            }
-
-            // CMS objects.
-            if (input.Contains("[O{"))
-            {
-                dataDictionary.Clear();
-
-                // Try to get the type number by host name.
-                if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext)), out var objectsTypeNumber) || objectsTypeNumber == 0)
+                // CMS objects.
+                if (input.Contains("[O{") && httpContextAccessor.HttpContext != null)
                 {
-                    // Revert to -100 if the parsing failed or if it returned 0. This is a special value that will look through all objects, ignoring the type number completely.
-                    objectsTypeNumber = -100;
-                }
+                    dataDictionary.Clear();
 
-                r = new Regex(@"\[O{([^\}]+)}]");
-                foreach (Match m in r.Matches(input))
-                {
-                    var value = m.Groups[1].Value;
-                    if (dataDictionary.ContainsKey(value))
+                    // Try to get the type number by host name.
+                    if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext)), out var objectsTypeNumber) || objectsTypeNumber == 0)
                     {
-                        continue;
+                        // Revert to -100 if the parsing failed or if it returned 0. This is a special value that will look through all objects, ignoring the type number completely.
+                        objectsTypeNumber = -100;
                     }
 
-                    dataDictionary.Add(value, await objectsService.GetObjectValueAsync(value, objectsTypeNumber));
+                    r = new Regex(@"\[O{([^\}]+)}]");
+                    foreach (Match m in r.Matches(input))
+                    {
+                        var value = m.Groups[1].Value;
+                        if (dataDictionary.ContainsKey(value))
+                        {
+                            continue;
+                        }
+
+                        dataDictionary.Add(value, await objectsService.GetObjectValueAsync(value, objectsTypeNumber));
+                    }
+
+                    input = DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
                 }
-
-                input = DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
-            }
-
-            // DataRow replacements.
-            if (dataRow != null)
-            {
-                input = DoReplacements(input, dataRow, forQuery);
-            }
-
-            // Request replacements.
-            if (handleRequest && httpContextAccessor.HttpContext != null)
-            {
-                input = DoHttpRequestReplacements(input, forQuery);
-                input = DoSessionReplacements(input, forQuery);
-            }
-
-            // Evaluate the [if][endif] logic snippets.
-            if (evaluateLogicSnippets)
-            {
-                input = EvaluateTemplate(input);
             }
 
             // Whether template variables that were not replaced should be removed.
             if (removeUnknownVariables)
             {
                 input = RemoveTemplateVariables(input);
+            }
+
+            // Evaluate the [if][endif] logic snippets.
+            if (evaluateLogicSnippets)
+            {
+                input = EvaluateTemplate(input);
             }
 
             return input;
@@ -179,7 +194,14 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             }
 
             // GET variables.
-            input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery);
+            if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
+            {
+                input = DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery);
+            }
+            else
+            {
+                input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery);
+            }
 
             // POST variables.
             if (httpContextAccessor.HttpContext.Request.HasFormContentType)
@@ -189,7 +211,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             // Cookies.
             input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery);
-            
+
             // Request cache.
             input = DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery);
 
@@ -236,7 +258,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         }
 
         /// <inheritdoc />
-        public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = false)
+        public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}")
         {
             if (replaceData == null)
             {
@@ -248,7 +270,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             {
                 dataDictionary.Add(column.ColumnName, replaceData[column]);
             }
-            return DoReplacements(input, dataDictionary, forQuery: forQuery);
+
+            return DoReplacements(input, dataDictionary, prefix, suffix, forQuery);
         }
 
         /// <inheritdoc />
@@ -308,7 +331,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             }
 
             // Find all replacement variables in the input string. Every replacement variable can also have multiple formatters.
-            var variables = GetReplacementVariables(input, prefix, suffix);
+            var variables = forQuery ? GetReplacementVariables(input, prefix, suffix, null) : GetReplacementVariables(input, prefix, suffix);
             if (variables.Length == 0)
             {
                 return input;
@@ -352,7 +375,12 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     // Simply replace the variable if there are no formatters found.
                     if (forQuery)
                     {
-                        value = value.ToMySqlSafeValue();
+                        var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.MatchString)}";
+                        databaseConnection.AddParameter(parameterName, value);
+                        value = $"?{parameterName}";
+
+                        // Make sure there won't be quotes around the variable in the query, otherwise it will be seen as a literal string by MySql.
+                        output.Replace($"'{variable.MatchString}'", value).Replace($"\"{variable.MatchString}\"", value);
                     }
 
                     output.Replace(variable.MatchString, value);
@@ -383,7 +411,12 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
                 if (forQuery)
                 {
-                    value = value.ToMySqlSafeValue();
+                    var parameterName = DatabaseHelpers.CreateValidParameterName(variable.MatchString);
+                    databaseConnection.AddParameter(parameterName, value);
+                    value = $"?{parameterName}";
+
+                    // Make sure there won't be quotes around the variable in the query, otherwise it will be seen as a literal string by MySql.
+                    output.Replace($"'{variable.MatchString}'", value).Replace($"\"{variable.MatchString}\"", value);
                 }
 
                 output.Replace(variable.MatchString, value);
@@ -683,8 +716,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <param name="input">The input string to check.</param>
         /// <param name="prefix">The prefix of replacement variables. The default is '{'.</param>
         /// <param name="suffix">The suffix of replacement variables. The default is '}'.</param>
+        /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
         /// <returns></returns>
-        private static StringReplacementVariable[] GetReplacementVariables(string input, string prefix = "{", string suffix = "}")
+        private static StringReplacementVariable[] GetReplacementVariables(string input, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
             if (String.IsNullOrWhiteSpace(input))
             {
@@ -694,7 +728,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             prefix = Regex.Escape(prefix);
             suffix = Regex.Escape(suffix);
 
-            var regex = new Regex($@"{prefix}(?<field>.*?){suffix}");
+            var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}");
 
             var result = new List<StringReplacementVariable>();
             foreach (Match match in regex.Matches(input))
@@ -721,6 +755,15 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
                 // Add the formatters to the list.
                 variable.Formatters.AddRange(formatters.Split('|', StringSplitOptions.RemoveEmptyEntries));
+
+                // Add the default formatter, unless the raw formatter has been used.
+                if (!String.IsNullOrWhiteSpace(defaultFormatter)
+                    && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase))
+                    && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase))
+                    && !variable.Formatters.Any(f => String.Equals(f, "CurrencySup", StringComparison.OrdinalIgnoreCase)))
+                {
+                    variable.Formatters.Add(defaultFormatter);
+                }
 
                 result.Add(variable);
             }
@@ -902,6 +945,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <returns></returns>
         private static object ConvertValue(string input, Type type)
         {
+            type = Nullable.GetUnderlyingType(type) ?? type;
+            if (type == typeof(decimal))
+            {
+                return Convert.ToDecimal(input, new CultureInfo("en-US"));
+            }
+            if (type == typeof(double))
+            {
+                return Convert.ToDouble(input, new CultureInfo("en-US"));
+            }
+
             return Convert.ChangeType(input, type);
         }
     }

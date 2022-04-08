@@ -35,9 +35,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync(string cookieName)
+        public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync()
         {
-            return await shoppingBasketsService.GetShoppingBasketsAsync(cookieName);
+            return await shoppingBasketsService.GetShoppingBasketsAsync();
+        }
+
+        /// <inheritdoc />
+        public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync(string cookieName, ShoppingBasketCmsSettingsModel settings)
+        {
+            return await shoppingBasketsService.GetShoppingBasketsAsync(cookieName, settings);
         }
 
         /// <inheritdoc />
@@ -71,12 +77,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task UpdateShoppingBasketWithRequestDataAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings)
-        {
-            await shoppingBasketsService.UpdateShoppingBasketWithRequestDataAsync(shoppingBasket, settings);
-        }
-
-        /// <inheritdoc />
         public async Task<(ulong ConceptOrderId, WiserItemModel ConceptOrder, List<WiserItemModel> ConceptOrderLines)> MakeConceptOrderFromBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
         {
             return await shoppingBasketsService.MakeConceptOrderFromBasketAsync(shoppingBasket, basketLines, settings);
@@ -89,9 +89,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null)
+        public async Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null, bool forQuery = false)
         {
-            return await shoppingBasketsService.ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, template, replaceUserAccountVariables, stripNotExistingVariables, userDetails, isForConfirmationEmail, additionalReplacementData);
+            return await shoppingBasketsService.ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, template, replaceUserAccountVariables, stripNotExistingVariables, userDetails, isForConfirmationEmail, additionalReplacementData, forQuery);
         }
 
         /// <inheritdoc />
@@ -107,9 +107,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null)
+        public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true)
         {
-            await shoppingBasketsService.RecalculateVariablesAsync(shoppingBasket, basketLines, settings, skipType);
+            await shoppingBasketsService.RecalculateVariablesAsync(shoppingBasket, basketLines, settings, skipType, createNewTransaction);
         }
 
         /// <inheritdoc />
@@ -119,9 +119,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
-            return await shoppingBasketsService.SaveAsync(shoppingBasket, basketLines, settings);
+            return await shoppingBasketsService.SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
         }
 
         /// <inheritdoc />
@@ -152,6 +152,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items)
         {
             await shoppingBasketsService.AddLinesAsync(shoppingBasket, basketLines, settings, items);
+        }
+        
+        /// <inheritdoc />
+        public async Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item)
+        {
+            await shoppingBasketsService.UpdateLineAsync(shoppingBasket, basketLines, settings, item);
         }
 
         /// <inheritdoc />
@@ -216,6 +222,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         public async Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
         {
             return await shoppingBasketsService.GetVatRuleByRateAsync(shoppingBasket, settings, vatRate);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetCheckoutObjectValueAsync(string propertyName, string defaultResult = "")
+        {
+            return await shoppingBasketsService.GetCheckoutObjectValueAsync(propertyName, defaultResult);
         }
     }
 }

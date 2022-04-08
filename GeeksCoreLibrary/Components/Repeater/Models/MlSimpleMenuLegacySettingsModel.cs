@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Text.Json.Serialization;
 using GeeksCoreLibrary.Core.Cms;
 
 namespace GeeksCoreLibrary.Components.Repeater.Models

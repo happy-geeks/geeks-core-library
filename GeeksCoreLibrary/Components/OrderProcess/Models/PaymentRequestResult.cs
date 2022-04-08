@@ -1,6 +1,6 @@
 ﻿using GeeksCoreLibrary.Modules.Payments.Enums;
 
-namespace GeeksCoreLibrary.Modules.Payments.Models
+namespace GeeksCoreLibrary.Components.OrderProcess.Models
 {
     public class PaymentRequestResult
     {

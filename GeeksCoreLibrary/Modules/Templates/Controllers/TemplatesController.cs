@@ -8,9 +8,12 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Text;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
 {
@@ -21,13 +24,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         private readonly ITemplatesService templatesService;
         private readonly IDatabaseConnection databaseConnection;
         private readonly IPagesService pagesService;
+        private readonly IDataSelectorsService dataSelectorsService;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IDatabaseConnection databaseConnection, IPagesService pagesService)
+        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IDatabaseConnection databaseConnection, IPagesService pagesService, IDataSelectorsService dataSelectorsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
             this.databaseConnection = databaseConnection;
             this.pagesService = pagesService;
+            this.dataSelectorsService = dataSelectorsService;
         }
 
         [Route("template.gcl")]
@@ -71,6 +76,27 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     ombouw = false;
                     break;
                 case TemplateTypes.Html:
+                    // Execute the pre load query before any replacements are being done and before any dynamic components are handled.
+                    var hasResults = await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(contentTemplate);
+                    if (contentTemplate.ReturnNotFoundWhenPreLoadQueryHasNoData && !hasResults)
+                    {
+                        return NotFound();
+                    }
+
+                    // Set SEO information.
+                    if (HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
+                    {
+                        var dataRow = (DataRow)HttpContext.Items[Constants.TemplatePreLoadQueryResultKey];
+                        var seoTitle = dataRow.GetValueIfColumnExists<string>("SEOtitle");
+                        var seoDescription = dataRow.GetValueIfColumnExists<string>("SEOdescription");
+                        var seoKeyWords = dataRow.GetValueIfColumnExists<string>("SEOkeywords");
+                        var seoCanonical = dataRow.GetValueIfColumnExists<string>("SEOcanonical");
+                        var noIndex = Convert.ToBoolean(dataRow.GetValueIfColumnExists("noindex"));
+                        var noFollow = Convert.ToBoolean(dataRow.GetValueIfColumnExists("nofollow"));
+                        var robots = dataRow.GetValueIfColumnExists<string>("SEOrobots");
+                        pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
+                    }
+
                     break;
                 case TemplateTypes.Query:
                     context.Response.ContentType = "application/json";
@@ -103,6 +129,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
 
             var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString());
+            newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
 
             if (!ombouw)
             {
@@ -140,16 +167,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             {
                 throw new ArgumentException("No template specified.");
             }
-            
+
             var result = (QueryTemplate)await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Query);
             if (result.Id <= 0)
             {
                 return NotFound();
             }
 
-            databaseConnection.ClearParameters();
             var jsonResult = await templatesService.GetJsonResponseFromQueryAsync(result);
-            
+
             return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
         }
 
@@ -170,7 +196,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 }
             }
 
-            var (result, _) = await templatesService.GenerateDynamicContentHtmlAsync(componentId, componentMode, callMethod);
+            var result = await templatesService.GenerateDynamicContentHtmlAsync(componentId, componentMode, callMethod);
 
             return result switch
             {
@@ -197,6 +223,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             var template = (await templatesService.GetTemplateAsync(templateId)).Content;
             template = await templatesService.HandleIncludesAsync(template);
             template = await templatesService.ReplaceAllDynamicContentAsync(template);
+            template = await dataSelectorsService.ReplaceAllDataSelectorsAsync(template);
 
             // Parse the html to get the partial template part.
             var htmlDocument = new HtmlDocument();
@@ -207,7 +234,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 ? Content("The specified partial template can't be found on the current page", "text/html")
                 : Content(partialTemplateContent, "text/html");
         }
-        
+
         [HttpGet, Route("template/{templateId:int}/")]
         public async Task<TemplateDataModel> TemplateData(int templateId)
         {

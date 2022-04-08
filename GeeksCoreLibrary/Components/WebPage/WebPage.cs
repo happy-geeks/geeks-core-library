@@ -29,6 +29,7 @@ namespace GeeksCoreLibrary.Components.WebPage
         private readonly GclSettings gclSettings;
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IPagesService pagesService;
 
         #region Enums
 
@@ -41,11 +42,12 @@ namespace GeeksCoreLibrary.Components.WebPage
 
         #region Constructor
 
-        public WebPage(IOptions<GclSettings> gclSettings, ILogger<WebPage> logger, IStringReplacementsService stringReplacementsService, ILanguagesService languagesService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor)
+        public WebPage(IOptions<GclSettings> gclSettings, ILogger<WebPage> logger, IStringReplacementsService stringReplacementsService, ILanguagesService languagesService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor, IPagesService pagesService)
         {
             this.gclSettings = gclSettings.Value;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
+            this.pagesService = pagesService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -59,18 +61,23 @@ namespace GeeksCoreLibrary.Components.WebPage
         #endregion
 
         #region Rendering
-        
+
         /// <inheritdoc />
         public override async Task<HtmlString> InvokeAsync(DynamicContent dynamicContent, string callMethod, int? forcedComponentMode, Dictionary<string, string> extraData)
         {
             ComponentId = dynamicContent.Id;
             ExtraDataForReplacements = extraData;
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-
             if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
+            else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
+            }
+
+            HandleDefaultSettingsFromComponentMode();
 
             // Check if we should actually render this component for the current user.
             var (renderHtml, debugInformation) = await ShouldRenderHtmlAsync();
@@ -105,7 +112,7 @@ namespace GeeksCoreLibrary.Components.WebPage
                 default:
                     throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'GenerateHtmlAsync'.");
             }
-            
+
             return new HtmlString(resultHtml.ToString());
         }
 
@@ -116,11 +123,11 @@ namespace GeeksCoreLibrary.Components.WebPage
         public async Task<string> HandleRenderModeAsync()
         {
             DatabaseConnection.ClearParameters();
-            DatabaseConnection.AddParameter("pageName", Settings.PageName);
+            DatabaseConnection.AddParameter("pageName", await StringReplacementsService.DoAllReplacementsAsync(Settings.PageName));
             DatabaseConnection.AddParameter("pageItemId", Settings.PageId);
-            DatabaseConnection.AddParameter("path", Settings.PathMustContainName);
-            DatabaseConnection.AddParameter("languageCode", languagesService?.CurrentLanguageCode ?? "");
-            DatabaseConnection.AddParameter("environment", ConvertEnvironmentToInt());
+            DatabaseConnection.AddParameter("path", await StringReplacementsService.DoAllReplacementsAsync(Settings.PathMustContainName));
+            DatabaseConnection.AddParameter("languageCode", await StringReplacementsService.DoAllReplacementsAsync(languagesService?.CurrentLanguageCode ?? ""));
+            DatabaseConnection.AddParameter("environment", (int)gclSettings.Environment);
 
             var getWebPageResult = await DatabaseConnection.GetAsync(GetWebPageQuery());
             if (getWebPageResult.Rows.Count == 0)
@@ -142,7 +149,7 @@ namespace GeeksCoreLibrary.Components.WebPage
             {
                 return html;
             }
-            
+
             // Add SEO data.
             var seoTitle = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("title");
             var seoDescription = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("metadescription");
@@ -151,7 +158,7 @@ namespace GeeksCoreLibrary.Components.WebPage
             var noIndex = Convert.ToBoolean(getWebPageResult.Rows[0].GetValueIfColumnExists("noindex"));
             var noFollow = Convert.ToBoolean(getWebPageResult.Rows[0].GetValueIfColumnExists<string>("nofollow"));
             var robots = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("robots");
-            SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
+            pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
 
             return html;
         }
@@ -160,6 +167,7 @@ namespace GeeksCoreLibrary.Components.WebPage
 
         #region Handling settings
 
+        /// <inheritdoc />
         public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
         {
             Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<WebPageCmsSettingsModel>(settingsJson);
@@ -171,6 +179,7 @@ namespace GeeksCoreLibrary.Components.WebPage
             HandleDefaultSettingsFromComponentMode();
         }
 
+        /// <inheritdoc />
         public override string GetSettingsJson()
         {
             return Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
@@ -191,7 +200,7 @@ namespace GeeksCoreLibrary.Components.WebPage
             query.AppendLine($"FROM `{WiserTableNames.WiserItem}` AS webPage");
 
             // Web page SEO name.
-            query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageSeoName ON webPageSeoName.item_id = webPage.id AND webPageSeoName.`key` = 'title_seo'");
+            query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageSeoName ON webPageSeoName.item_id = webPage.id AND webPageSeoName.`key` = '{Core.Models.CoreConstants.SeoTitlePropertyName}'");
 
             // Web page HTML.
             query.Append($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageHtml ON webPageHtml.item_id = webPage.id AND webPageHtml.`key` = 'html'");
@@ -220,12 +229,14 @@ namespace GeeksCoreLibrary.Components.WebPage
                 {
                     var itemLinkAlias = $"searchUpLink{i}";
                     var itemAlias = $"searchUpItem{i}";
+                    var titleAlias = $"item{i}Title";
                     var seoTitleAlias = $"item{i}SeoName";
                     var previousLink = i == 1 ? "webPage.id" : $"searchUpLink{i - 1}.destination_item_id";
 
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS `{itemLinkAlias}` ON `{itemLinkAlias}`.item_id = {previousLink}");
                     query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItem}` AS `{itemAlias}` ON `{itemAlias}`.id = `{itemLinkAlias}`.destination_item_id");
-                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{seoTitleAlias}` ON `{seoTitleAlias}`.item_id = `{itemAlias}`.id AND `{seoTitleAlias}`.`key` = 'title_seo'");
+                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{titleAlias}` ON `{titleAlias}`.item_id = `{itemAlias}`.id AND `{titleAlias}`.`key` = 'title'");
+                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{seoTitleAlias}` ON `{seoTitleAlias}`.item_id = `{itemAlias}`.id AND `{seoTitleAlias}`.`key` = '{Core.Models.CoreConstants.SeoTitlePropertyName}'");
                 }
             }
 
@@ -238,14 +249,14 @@ namespace GeeksCoreLibrary.Components.WebPage
             }
             else if (!String.IsNullOrWhiteSpace(Settings.PageName))
             {
-                query.Append(" AND webPageSeoName.`value` = ?pageName");
+                query.Append(" AND IFNULL(webPageSeoName.`value`, webPageTitle.`value`) = ?pageName");
 
                 if (!String.IsNullOrWhiteSpace(pathMustContain) && Settings.SearchNumberOfLevels > 0)
                 {
                     query.Append(" AND CONCAT_WS('/'");
                     for (var i = Settings.SearchNumberOfLevels; i > 0; i--)
                     {
-                        query.Append($", `item{i}SeoName`.`value`");
+                        query.Append($", IFNULL(`item{i}SeoName`.`value`, `item{i}SeoName`.`value`)");
                     }
                     query.Append(") LIKE CONCAT('%', ?path, '%')");
                 }
@@ -258,18 +269,6 @@ namespace GeeksCoreLibrary.Components.WebPage
             query.Append("LIMIT 1");
 
             return query.ToString();
-        }
-
-        private int ConvertEnvironmentToInt()
-        {
-            return gclSettings.Environment switch
-            {
-                Environments.Development => 1,
-                Environments.Test => 2,
-                Environments.Acceptance => 3,
-                Environments.Live => 4,
-                _ => throw new ArgumentOutOfRangeException()
-            };
         }
     }
 }

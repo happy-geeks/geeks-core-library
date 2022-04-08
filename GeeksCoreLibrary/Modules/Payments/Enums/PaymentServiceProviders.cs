@@ -8,6 +8,7 @@
         MultiSafepay,
         CM,
         RaboOmniKassa,
-        AfterPay
+        AfterPay,
+        Mollie
     }
 }

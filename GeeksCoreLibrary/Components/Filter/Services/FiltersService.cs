@@ -40,7 +40,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
         }
 
         /// <inheritdoc />
-        public async Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null)
+        public async Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart = "", string forActiveFilter = "")
         {
             var httpContext = httpContextAccessor.HttpContext;
 
@@ -56,7 +56,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 var output = new QueryPartModel();
                 var queryJoinPart = new StringBuilder();
                 var filters = new SortedList<string, string>();
-                var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2");
+                var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring");
                 var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2", defaultResult: "0")).Equals("1");
                 var filterParametersToExclude = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude", defaultResult: "templateid,pagenr,gclid,_ga");
 
@@ -253,21 +253,20 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         {
                                             if (filterGroup.IsMultiLanguage)
                                             {
-                                                queryJoinPart.Append($"JOIN wiser_itemlinkdetail fi{filterCounter} ON (fi{filterCounter}.language_code = '{languagesService.CurrentLanguageCode}' OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                                queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = '{languagesService.CurrentLanguageCode}' OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                             }
                                             else
                                             {
-                                                queryJoinPart.Append($"JOIN wiser_itemlinkdetail fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                                queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                             }
                                         }
                                         else if (filterGroup.IsMultiLanguage)
                                         {
-                                            queryJoinPart.Append($"JOIN wiser_itemdetail fi{filterCounter} ON (fi{filterCounter}.language_code = '{languagesService.CurrentLanguageCode}' OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
+                                            queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = '{languagesService.CurrentLanguageCode}' OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
                                         }
                                         else
                                         {
-                                            // queryJoinPart.Append($"JOIN wiser_itemdetail fi{filterCounter} FORCE INDEX(item_key) ON fi{filterCounter}.language_code = '' AND fi{filterCounter}.item_id = {filterConnectionPart} ")
-                                            queryJoinPart.Append($"JOIN wiser_itemdetail fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
+                                            queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemDetail} fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
                                         }
 
                                         var joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterV, filterGroup, false);
@@ -283,7 +282,6 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                 }
                                 else
                                 {
-                                    // If (Not filterGroup.IsGroupFilter) AndAlso forFilterItemsQuery AndAlso (Not filterGroup.FilterType = FilterGroup.FilterGroupType.Slider) Then
                                     if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
                                     {
                                         if (!filterGroup.UseAggregationTable)
@@ -329,36 +327,48 @@ namespace GeeksCoreLibrary.Components.Filter.Services
 
                                     if (filterGroup.UseAggregationTable)
                                     {
-                                        queryJoinPart.Append($"JOIN `cust_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : "_" + languagesService.CurrentLanguageCode)}` f{filterCounter} ON f{filterCounter}.category_id=f.category_id AND f{filterCounter}.product_id=f.product_id ");
+                                        if (forFilterItemsQuery)
+                                        {
+                                            if (filterGroup.GetParamKey() != forActiveFilter) //Don't include the JOIN of the filter for which the query - part is requested
+                                            {
+                                                // Join to table with alias "f" in FilterItemsQuery
+                                                queryJoinPart.Append($"JOIN `wiser_filter_aggregation{(string.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : "_" + languagesService.CurrentLanguageCode)}` f{filterCounter} ON f{filterCounter}.category_id=f.category_id AND f{filterCounter}.product_id=f.product_id ");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            // Join to product-part and category-part given to function (from variable in overview query)
+                                            queryJoinPart.Append($"JOIN `wiser_filter_aggregation{(string.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : "_" + languagesService.CurrentLanguageCode)}` f{filterCounter} ON f{filterCounter}.category_id={categoryJoinPart} AND f{filterCounter}.product_id={productJoinPart} ");
+                                        }
+
                                     }
                                     else if (filterNameFromGroup == "itemtitle")
                                     {
-                                        queryJoinPart.Append($"JOIN wiser_item fi{filterCounter} ON fi{filterCounter}.id = {filterConnectionPart} ");
+                                        queryJoinPart.Append($"JOIN {WiserTableNames.WiserItem} fi{filterCounter} ON fi{filterCounter}.id = {filterConnectionPart} ");
                                     }
                                     else if (filterConnectionPartIsLinkType)
                                     {
                                         if (filterGroup.IsMultiLanguage)
                                         {
-                                            queryJoinPart.Append($"JOIN wiser_itemlinkdetail fi{filterCounter} ON (fi{filterCounter}.language_code = '{languagesService.CurrentLanguageCode}' OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                            queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = '{languagesService.CurrentLanguageCode}' OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                         }
                                         else
                                         {
-                                            queryJoinPart.Append($"JOIN wiser_itemlinkdetail fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                            queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                         }
 
                                     }
                                     else if (!string.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
                                     {
-                                        queryJoinPart.Append($"JOIN wiser_itemlink fi{filterCounter}l ON fi{filterCounter}l.destination_item_id = {filterConnectionPart} "); // AND fi{filterCounter}l.type=800
+                                        queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLink} fi{filterCounter}l ON fi{filterCounter}l.destination_item_id = {filterConnectionPart} "); // AND fi{filterCounter}l.type=800
                                     }
                                     else if (filterGroup.IsMultiLanguage)
                                     {
-                                        queryJoinPart.Append($"JOIN wiser_itemdetail fi{filterCounter} ON (fi{filterCounter}.language_code = '{languagesService.CurrentLanguageCode}' OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
+                                        queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = '{languagesService.CurrentLanguageCode}' OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
                                     }
                                     else
                                     {
-                                        // queryJoinPart.Append($"JOIN wiser_itemdetail fi{filterCounter} FORCE INDEX (item_key) ON fi{filterCounter}.language_code = '' AND fi{filterCounter}.item_id = {filterConnectionPart} ")
-                                        queryJoinPart.Append($"JOIN wiser_itemdetail fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
+                                        queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemDetail} fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
                                     }
                                 }
                             }
@@ -366,7 +376,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                             if (!isAdvancedFilter)
                             {
                                 var joinPart = "";
-                                if (filterGroup != null && (String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType) || filterGroup.UseAggregationTable))
+                                if (filterGroup != null && ((!string.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType) && !filterGroup.UseAggregationTable) || (filterGroup.UseAggregationTable && forFilterItemsQuery && (filterGroup.GetParamKey() == forActiveFilter)) == false))
                                 {
                                     joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValue, filterGroup, false, filterGroup.UseAggregationTable);
                                     if (joinPart != "")
@@ -374,19 +384,20 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         queryJoinPart.Append("AND " + joinPart);
                                     }
                                 }
+
                                 queryJoinPart.AppendLine();
 
                                 // Handle join and join part if detail value is item-id
-                                if (filterGroup != null && !String.IsNullOrEmpty(filterGroup.ConnectedEntity) && !filterGroup.UseAggregationTable)
+                                if (filterGroup != null && !string.IsNullOrEmpty(filterGroup.ConnectedEntity) && !filterGroup.UseAggregationTable)
                                 {
                                     if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
                                     {
                                         queryJoinPart.Append("LEFT ");
                                     }
 
-                                    queryJoinPart.Append($"JOIN wiser_item fi{filterCounter}i ON fi{filterCounter}i.entity_type={filterGroup.ConnectedEntity.ToMySqlSafeValue(true)} ");
+                                    queryJoinPart.Append($"JOIN {WiserTableNames.WiserItem} fi{filterCounter}i ON fi{filterCounter}i.entity_type={filterGroup.ConnectedEntity.ToMySqlSafeValue(true)} ");
 
-                                    if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
+                                    if (!string.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
                                     {
                                         queryJoinPart.Append($"AND fi{filterCounter}i.id=fi{filterCounter}l.item_id ");
                                     }
@@ -405,8 +416,8 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         {
                                             queryJoinPart.Append("LEFT ");
                                         }
-                                        // queryJoinPart.Append($"JOIN wiser_itemdetail fi{filterCounter}d FORCE INDEX (item_key) ON fi{filterCounter}d.item_id=fi{filterCounter}i.id AND fi{filterCounter}d.`key`='{filterGroup.ConnectedEntityProperty.ConvertToDB(False) + If(filterGroup.FilterOnSeoValue, "_SEO", "")}' ")
-                                        queryJoinPart.Append($"JOIN wiser_itemdetail fi{filterCounter}d ON fi{filterCounter}d.item_id=fi{filterCounter}i.id AND fi{filterCounter}d.`key`='{filterGroup.ConnectedEntityProperty.ToMySqlSafeValue()}{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}' ");
+
+                                        queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemDetail} fi{filterCounter}d ON fi{filterCounter}d.item_id=fi{filterCounter}i.id AND fi{filterCounter}d.`key`='{filterGroup.ConnectedEntityProperty.ToMySqlSafeValue(false)}{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}' ");
                                         if (filterGroup.IsMultiLanguage)
                                         {
                                             queryJoinPart.Append($"AND fi{filterCounter}d.language_code='{languagesService.CurrentLanguageCode}' ");
@@ -417,7 +428,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         }
                                     }
 
-                                    joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValue, filterGroup,  true);
+                                    joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValue, filterGroup, true);
                                     if (joinPart != "")
                                     {
                                         queryJoinPart.Append("AND " + joinPart);
@@ -490,6 +501,9 @@ namespace GeeksCoreLibrary.Components.Filter.Services
             var languageCode = await languagesService.GetLanguageCodeAsync();
             var result = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
             var filterGroupConnectionPart = await objectsService.FindSystemObjectByDomainNameAsync("filtergroupconnectionpart");
+            var filtersToItemType = Int32.Parse(await objectsService.FindSystemObjectByDomainNameAsync("filtertoitemtype", "6001"));
+            var joinFiltersToItemPart = "";
+            var orderingPart = "";
 
             logger.LogTrace("1 - Filter connection: " + filterGroupConnectionPart);
             logger.LogTrace("1 - categoryId: " + categoryId.ToString());
@@ -522,34 +536,34 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                 IFNULL(minimumitemsrequired.`value`, '0') AS minimumitemsrequired,
                                 IFNULL(useaggregationtable.`value`, '0') AS useaggregationtable
                                 {{selectPart}}
-                            FROM wiser_item filters
+                            FROM {WiserTableNames.WiserItem} filters
                             {{joinFiltersToItem}}
-                            JOIN wiser_itemdetail filtertype ON filtertype.item_id=filters.id AND filtertype.`key`='filtertype' {GetLanguageQueryPart("filtertype", languageCode)}
-                            LEFT JOIN wiser_itemdetail property ON property.item_id=filters.id AND property.`key`='filtername' {GetLanguageQueryPart("property", languageCode)}
-                            LEFT JOIN wiser_itemdetail name ON name.item_id=filters.id AND name.`key`='name' {GetLanguageQueryPart("name", languageCode)}
-                            LEFT JOIN wiser_itemdetail filtergroupname ON filtergroupname.item_id=filters.id AND filtergroupname.`key`='filtergroupname' {GetLanguageQueryPart("filtergroupname", languageCode)}
-                            LEFT JOIN wiser_itemdetail showcount ON showcount.item_id=filters.id AND showcount.`key`='showcount' {GetLanguageQueryPart("showcount", languageCode)}
-                            LEFT JOIN wiser_itemdetail columnname ON columnname.item_id=filters.id AND columnname.`key`='columnname' {GetLanguageQueryPart("columnname", languageCode)}
-                            LEFT JOIN wiser_itemdetail dependson ON dependson.item_id=filters.id AND dependson.`key`='dependson' {GetLanguageQueryPart("dependson", languageCode)}
-                            LEFT JOIN wiser_itemdetail dependsontext ON dependsontext.item_id=filters.id AND dependsontext.`key`='dependsontext' {GetLanguageQueryPart("dependsontext", languageCode)}
-                            LEFT JOIN wiser_itemdetail dependsonvalue ON dependsonvalue.item_id=filters.id AND dependsonvalue.`key`='dependsonvalue' {GetLanguageQueryPart("dependsonvalue", languageCode)}
-                            LEFT JOIN wiser_itemdetail classes ON classes.item_id=filters.id AND classes.`key`='classes' {GetLanguageQueryPart("classes", languageCode)}
-                            LEFT JOIN wiser_itemdetail entity ON entity.item_id=filters.id AND entity.`key`='entity' {GetLanguageQueryPart("entity", languageCode)}
-                            LEFT JOIN wiser_itemdetail matchvalue ON matchvalue.item_id=filters.id AND matchvalue.`key`='matchvalue' {GetLanguageQueryPart("matchvalue", languageCode)}
-                            LEFT JOIN wiser_itemdetail advancedfilter ON advancedfilter.item_id=filters.id AND advancedfilter.`key`='advancedfilter' {GetLanguageQueryPart("advancedfilter", languageCode)}
-                            LEFT JOIN wiser_itemdetail customjoin ON customjoin.item_id=filters.id AND customjoin.`key`='customjoin' {GetLanguageQueryPart("customjoin", languageCode)}                                                            
-                            LEFT JOIN wiser_itemdetail customselect ON customselect.item_id=filters.id AND customselect.`key`='customselect' {GetLanguageQueryPart("customselect", languageCode)}                            
-                            LEFT JOIN wiser_itemdetail `group` ON `group`.item_id=filters.id AND `group`.`key`='group' {GetLanguageQueryPart("group", languageCode)}                            
-                            LEFT JOIN wiser_itemdetail connectedentity ON connectedentity.item_id=filters.id AND connectedentity.`key`='connectedentity' {GetLanguageQueryPart("connectedentity", languageCode)}
-                            LEFT JOIN wiser_itemdetail connectedentityproperty ON connectedentityproperty.item_id=filters.id AND connectedentityproperty.`key`='connectedentityproperty' {GetLanguageQueryPart("connectedentityproperty", languageCode)}
-                            LEFT JOIN wiser_itemdetail connectedentitylinktype ON connectedentitylinktype.item_id=filters.id AND connectedentitylinktype.`key`='connectedentitylinktype' {GetLanguageQueryPart("connectedentitylinktype", languageCode)}
-                            LEFT JOIN wiser_itemdetail ismultilanguage ON ismultilanguage.item_id=filters.id AND ismultilanguage.`key`='ismultilanguage' {GetLanguageQueryPart("ismultilanguage", languageCode)}
-                            LEFT JOIN wiser_itemdetail querystring ON querystring.item_id=filters.id AND querystring.`key`='querystring' {GetLanguageQueryPart("querystring", languageCode)}
-                            LEFT JOIN wiser_itemdetail hideinsummary ON hideinsummary.item_id=filters.id AND hideinsummary.`key`='hideinsummary' {GetLanguageQueryPart("hideinsummary", languageCode)}
-                            LEFT JOIN wiser_itemdetail filteronseovalue ON filteronseovalue.item_id=filters.id AND filteronseovalue.`key`='filteronseovalue' {GetLanguageQueryPart("filteronseovalue", languageCode)}
-                            LEFT JOIN wiser_itemdetail singleconnecteditem ON singleconnecteditem.item_id=filters.id AND singleconnecteditem.`key`='singleconnecteditem' {GetLanguageQueryPart("singleconnecteditem", languageCode)}
-                            LEFT JOIN wiser_itemdetail minimumitemsrequired ON minimumitemsrequired.item_id=filters.id AND minimumitemsrequired.`key`='minimumitemsrequired' {GetLanguageQueryPart("minimumitemsrequired", languageCode)}
-                            LEFT JOIN wiser_itemdetail useaggregationtable ON useaggregationtable.item_id=filters.id AND useaggregationtable.`key`='useaggregationtable' {GetLanguageQueryPart("useaggregationtable", languageCode)}
+                            JOIN {WiserTableNames.WiserItemDetail} filtertype ON filtertype.item_id=filters.id AND filtertype.`key`='filtertype' {GetLanguageQueryPart("filtertype", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} property ON property.item_id=filters.id AND property.`key`='filtername' {GetLanguageQueryPart("property", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} name ON name.item_id=filters.id AND name.`key`='name' {GetLanguageQueryPart("name", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} filtergroupname ON filtergroupname.item_id=filters.id AND filtergroupname.`key`='filtergroupname' {GetLanguageQueryPart("filtergroupname", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} showcount ON showcount.item_id=filters.id AND showcount.`key`='showcount' {GetLanguageQueryPart("showcount", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} columnname ON columnname.item_id=filters.id AND columnname.`key`='columnname' {GetLanguageQueryPart("columnname", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} dependson ON dependson.item_id=filters.id AND dependson.`key`='dependson' {GetLanguageQueryPart("dependson", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} dependsontext ON dependsontext.item_id=filters.id AND dependsontext.`key`='dependsontext' {GetLanguageQueryPart("dependsontext", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} dependsonvalue ON dependsonvalue.item_id=filters.id AND dependsonvalue.`key`='dependsonvalue' {GetLanguageQueryPart("dependsonvalue", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} classes ON classes.item_id=filters.id AND classes.`key`='classes' {GetLanguageQueryPart("classes", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} entity ON entity.item_id=filters.id AND entity.`key`='entity' {GetLanguageQueryPart("entity", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} matchvalue ON matchvalue.item_id=filters.id AND matchvalue.`key`='matchvalue' {GetLanguageQueryPart("matchvalue", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} advancedfilter ON advancedfilter.item_id=filters.id AND advancedfilter.`key`='advancedfilter' {GetLanguageQueryPart("advancedfilter", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} customjoin ON customjoin.item_id=filters.id AND customjoin.`key`='customjoin' {GetLanguageQueryPart("customjoin", languageCode)}                                                            
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} customselect ON customselect.item_id=filters.id AND customselect.`key`='customselect' {GetLanguageQueryPart("customselect", languageCode)}                            
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} `group` ON `group`.item_id=filters.id AND `group`.`key`='group' {GetLanguageQueryPart("group", languageCode)}                            
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} connectedentity ON connectedentity.item_id=filters.id AND connectedentity.`key`='connectedentity' {GetLanguageQueryPart("connectedentity", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} connectedentityproperty ON connectedentityproperty.item_id=filters.id AND connectedentityproperty.`key`='connectedentityproperty' {GetLanguageQueryPart("connectedentityproperty", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} connectedentitylinktype ON connectedentitylinktype.item_id=filters.id AND connectedentitylinktype.`key`='connectedentitylinktype' {GetLanguageQueryPart("connectedentitylinktype", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} ismultilanguage ON ismultilanguage.item_id=filters.id AND ismultilanguage.`key`='ismultilanguage' {GetLanguageQueryPart("ismultilanguage", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} querystring ON querystring.item_id=filters.id AND querystring.`key`='querystring' {GetLanguageQueryPart("querystring", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} hideinsummary ON hideinsummary.item_id=filters.id AND hideinsummary.`key`='hideinsummary' {GetLanguageQueryPart("hideinsummary", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} filteronseovalue ON filteronseovalue.item_id=filters.id AND filteronseovalue.`key`='filteronseovalue' {GetLanguageQueryPart("filteronseovalue", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} singleconnecteditem ON singleconnecteditem.item_id=filters.id AND singleconnecteditem.`key`='singleconnecteditem' {GetLanguageQueryPart("singleconnecteditem", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} minimumitemsrequired ON minimumitemsrequired.item_id=filters.id AND minimumitemsrequired.`key`='minimumitemsrequired' {GetLanguageQueryPart("minimumitemsrequired", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} useaggregationtable ON useaggregationtable.item_id=filters.id AND useaggregationtable.`key`='useaggregationtable' {GetLanguageQueryPart("useaggregationtable", languageCode)}
                             WHERE filters.entity_type='filter' {{levelsWherePart}}
                             {{ordering}}";
 
@@ -564,7 +578,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     if (!String.IsNullOrEmpty(prop))
                     {
                         selectPart += $"`{prop}`.`value` AS `{prop}`,";
-                        joinPart += $"LEFT JOIN wiser_itemdetail `{prop}` ON `{prop}`.item_id=filters.id AND `{prop}`.`key`='{prop}' {GetLanguageQueryPart(prop, languageCode)}" + Environment.NewLine;
+                        joinPart += $"LEFT JOIN {WiserTableNames.WiserItemDetail} `{prop}` ON `{prop}`.item_id=filters.id AND `{prop}`.`key`='{prop}' {GetLanguageQueryPart(prop, languageCode)}" + Environment.NewLine;
                     }
                 }
                 w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", selectPart.TrimEnd(','));
@@ -575,28 +589,13 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", "");
             }
 
-            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("lang_id", languageCode);
             databaseConnection.AddParameter("category_id", categoryId > 0 ? categoryId : 0);
-
-            var filtersToItemType = Int32.Parse(await objectsService.FindSystemObjectByDomainNameAsync("filtertoitemtype", "6001"));
-            string joinFiltersToItemPart;
-            string orderingPart;
-
             databaseConnection.AddParameter("filtertoitemtype", filtersToItemType);
 
-            if (categoryId > 0)
-            {
-                logger.LogTrace("Get filter groups, all items of entity_type 'filter' connected to item with id: " + categoryId.ToString());
-                joinFiltersToItemPart = "JOIN wiser_itemlink filterstoitem ON filterstoitem.item_id=filters.id AND filterstoitem.type=?filtertoitemtype AND filterstoitem.destination_item_id=?category_id";
-                orderingPart = "ORDER BY filterstoitem.ordering";
-            }
-            else
-            {
-                logger.LogTrace("Get filter groups, all items of entity_type 'filter'");
-                joinFiltersToItemPart = "LEFT JOIN wiser_itemlink filterstoparent ON filterstoparent.item_id=filters.id AND filterstoparent.type=1";
-                orderingPart = "ORDER BY filterstoparent.ordering";
-            }
+            joinFiltersToItemPart = $"LEFT JOIN {WiserTableNames.WiserItemLink} filterstoitem ON filterstoitem.item_id=filters.id AND filterstoitem.type=?filtertoitemtype AND filterstoitem.destination_item_id=?category_id ";
+            joinFiltersToItemPart += $"LEFT JOIN {WiserTableNames.WiserItemLink} filterstoparent ON filterstoparent.item_id=filters.id AND filterstoparent.type=1 ";
+            orderingPart = "ORDER BY filterstoitem.ordering,filterstoparent.ordering";
 
             var dataTable = await databaseConnection.GetAsync(w2FiltersQuery.Replace("{levelsWherePart}", "").Replace("{ordering}", orderingPart).Replace("{joinFiltersToItem}", joinFiltersToItemPart));
 
@@ -654,16 +653,15 @@ namespace GeeksCoreLibrary.Components.Filter.Services
 
                 // The "entity" columns property added later, so check for its availability
                 if (dataTable.Columns.Contains("entity") && row["entity"] != DBNull.Value && !String.IsNullOrEmpty(row.Field<string>("entity")))
+                {
                     f.EntityName = row.Field<string>("entity");
+                }
 
                 // Match value can be used in combination with Wiser 2 group filters to give the value on which the detail must match when the filter is selected
                 if (dataTable.Columns.Contains("matchvalue") && !String.IsNullOrEmpty(row["matchvalue"].ToString()))
+                {
                     f.MatchValue = row["matchvalue"].ToString();
-
-                // 'Operator is used in Wiser 2 "Multi Select" filters to set the logical operation between mulitple selected values (AND or OR)
-                // If con.DataSetTable.Columns.Contains("Operator") AndAlso (Not String.IsNullOrEmpty(row("Operator").ToString())) Then
-                // f.[Operator] = row("Operator").ToString()
-                // End If
+                }
 
                 // Advanced filter to give values and join statements
                 if (dataTable.Columns.Contains("advancedfilter") && !String.IsNullOrEmpty(row["advancedfilter"].ToString()))
@@ -675,10 +673,6 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 {
                     f.CustomJoin = row["customjoin"].ToString();
                 }
-
-                // If con.DataSetTable.Columns.Contains("customwhere") AndAlso (Not String.IsNullOrEmpty(row("customwhere").ToString())) Then
-                // f.CustomWhere = row("customwhere").ToString()
-                // End If
 
                 if (dataTable.Columns.Contains("customselect") && !String.IsNullOrEmpty(row["customselect"].ToString()))
                 {
@@ -717,14 +711,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
 
                 if (dataTable.Columns.Contains("minimumitemsrequired") && !String.IsNullOrWhiteSpace(row["minimumitemsrequired"].ToString()))
                 {
-                    if (Int32.TryParse(row["minimumitemsrequired"].ToString(), out var tempIntValue))
-                    {
-                        f.MinimumItemsRequired = tempIntValue;
-                    }
-                    else
-                    {
-                        f.MinimumItemsRequired = 0;
-                    }
+                    f.MinimumItemsRequired = Int32.TryParse(row["minimumitemsrequired"].ToString(), out var tempIntValue) ? tempIntValue : 0;
                 }
 
                 if (dataTable.Columns.Contains("useaggregationtable") && !String.IsNullOrEmpty(row["useaggregationtable"].ToString()))
@@ -775,10 +762,8 @@ namespace GeeksCoreLibrary.Components.Filter.Services
             {
                 return "AND `" + columnName + "`.language_code=''";
             }
-            else
-            {
-                return "AND (`" + columnName + "`.language_code='' OR `" + columnName + "`.language_code='" + languageCode + "')";
-            }
+
+            return "AND (`" + columnName + "`.language_code='' OR `" + columnName + "`.language_code='" + languageCode + "')";
         }
 
         private string AppendFilterJoinPart(int filterCounter, string filterName, string filterValue, FilterGroup filterGroup, bool forItemPart, bool forAggregationTable = false)
@@ -793,16 +778,28 @@ namespace GeeksCoreLibrary.Components.Filter.Services
 
             if (filterGroup.FilterType == FilterGroup.FilterGroupType.Slider)
             {
-                if (Information.IsNumeric(filterValue)) // One (minimum) value
+                if (forAggregationTable)
                 {
-                    output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND REPLACE(fi{filterCounter}.`value`,',','.') < {filterValue.ToMySqlSafeValue(true)})";
+                    if (Information.IsNumeric(filterValue)) // One (minimum) value
+                    {
+                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue < {filterValue.ToMySqlSafeValue(true)}";
+                    }
+                    else
+                    {
+                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue >= {filterValue.Split('-')[0].ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue <= {filterValue.Split('-')[1].ToMySqlSafeValue(true)}";
+                    }
                 }
-                else if (filterValue.Contains("-") && Information.IsNumeric(filterValue.Split('-')[0]) && Information.IsNumeric(filterValue.Split('-')[1])) // Two values (min and max)
+                else
                 {
-                    output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` >= {filterValue.Split('-')[0].ToMySqlSafeValue()} AND fi{filterCounter}.`value` <= {filterValue.Split('-')[1].ToMySqlSafeValue()})";
+                    if (Information.IsNumeric(filterValue)) // One (minimum) value
+                    {
+                        output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND REPLACE(fi{filterCounter}.`value`,',','.') < {filterValue.ToMySqlSafeValue(true)})";
+                    }
+                    else if (filterValue.Contains("-") && Information.IsNumeric(filterValue.Split('-')[0]) && Information.IsNumeric(filterValue.Split('-')[1])) // Two values (min and max)
+                    {
+                        output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` >= {filterValue.Split('-')[0].ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` <= {filterValue.Split('-')[1].ToMySqlSafeValue(true)})";
+                    }
                 }
-
-                // TODO: afhandeling via aggregatie tabel
             }
             else if (!String.IsNullOrWhiteSpace(filterValue))
             {
@@ -828,7 +825,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     // multiple values selected
                     if (forAggregationTable)
                     {
-                        output = $"f{filterCounter}.filtergroup='{(String.IsNullOrEmpty(filterGroup.QueryString) ? filterName.ToMySqlSafeValue() : filterGroup.QueryString.ToMySqlSafeValue())}' AND f{filterCounter}.filtervalue IN ({filterValue.ToMySqlSafeValue(true).Replace(ValueSplit, "','")})";
+                        output = $"f{filterCounter}.filtergroup={filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue IN ({filterValue.ToMySqlSafeValue(true).Replace(ValueSplit, "','")})";
                     }
                     else if (filterGroup.IsGroupFilter)
                     {
@@ -851,18 +848,18 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     }
                     else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) & !forItemPart)
                     {
-                        output = $"(fi{filterCounter}.`key` = '{filterName.ToMySqlSafeValue() + (filterGroup.FilterOnSeoValue ? "_SEO" : "")}')";
+                        output = $"(fi{filterCounter}.`key` = CONCAT('{filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}'))";
                     }
                     else
                     {
-                        output = $"(fi{filterCounter}.`key` = '{filterName.ToMySqlSafeValue() + (filterGroup.FilterOnSeoValue ? "_SEO" : "")}' AND (fi{filterCounter}.`value` IN ({filterValue.ToMySqlSafeValue(true).Replace(ValueSplit, "','")})))";
+                        output = $"(fi{filterCounter}.`key` = CONCAT('{filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}') AND (fi{filterCounter}.`value` IN ({filterValue.ToMySqlSafeValue(true).Replace(ValueSplit, "','")})))";
                     }
                 }
                 else // single value selected
                 {
                     if (forAggregationTable)
                     {
-                        output = $"f{filterCounter}.filtergroup='{(String.IsNullOrEmpty(filterGroup.QueryString) ? filterName.ToMySqlSafeValue() : filterGroup.QueryString.ToMySqlSafeValue())}' AND f{filterCounter}.filtervalue={filterValue.ToMySqlSafeValue(true)}";
+                        output = $"f{filterCounter}.filtergroup={filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue={filterValue.ToMySqlSafeValue(true)}";
                     }
                     else if (filterGroup.IsGroupFilter)
                     {
@@ -885,12 +882,12 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     }
                     else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) & !forItemPart)
                     {
-                        output = $"(fi{filterCounter}.`key` = '{filterName.ToMySqlSafeValue() + (filterGroup.FilterOnSeoValue ? "_SEO" : "")}')";
+                        output = $"(fi{filterCounter}.`key` = CONCAT({filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}')";
                     }
                     else
                     {
                         // if the filter name is genericFilter dont add it to the join statement, we want all items with the name, but there is no group
-                        var filterNamePart = filterName == "genericFilter" ? "TRUE" : $"fi{filterCounter}.`key` = '{filterName.ToMySqlSafeValue() + (filterGroup.FilterOnSeoValue ? "_SEO" : "")}'  ";
+                        var filterNamePart = filterName == "genericFilter" ? "TRUE" : $"fi{filterCounter}.`key` = CONCAT({filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}')  ";
                         output = $"({filterNamePart} AND (fi{filterCounter}.`value` = {filterValue.ToMySqlSafeValue(true)}))";
                     }
                 }
@@ -898,6 +895,5 @@ namespace GeeksCoreLibrary.Components.Filter.Services
 
             return output;
         }
-
     }
 }
