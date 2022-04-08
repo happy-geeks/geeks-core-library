@@ -147,6 +147,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.use_cache,
                             template.cache_minutes,
                             template.cache_location,
+                            template.cache_regex,
                             0 AS use_obfuscate,
                             template.insert_mode,
                             template.grouping_create_object_instead_of_array,
@@ -228,6 +229,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.use_cache,
                             template.cache_minutes,
                             template.cache_location, 
+                            template.cache_regex,
                             template.template_type
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
@@ -244,6 +246,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 CachingMinutes = dataTable.Rows[0].Field<int>("cache_minutes"),
                 CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache"),
                 CachingLocation = dataTable.Rows[0].Field<TemplateCachingLocations>("cache_location"),
+                CachingRegex = dataTable.Rows[0].Field<string>("cache_regex"),
                 Type = dataTable.Rows[0].Field<TemplateTypes>("template_type")
             };
 
@@ -365,6 +368,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.use_cache,
                             template.cache_minutes,
                             template.cache_location,
+                            template.cache_regex,
                             0 AS use_obfuscate,
                             template.insert_mode,
                             template.grouping_create_object_instead_of_array,
@@ -442,6 +446,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.use_cache,
                             template.cache_minutes,
                             template.cache_location,
+                            template.cache_regex,
                             0 AS use_obfuscate,
                             template.insert_mode,
                             template.grouping_create_object_instead_of_array,
