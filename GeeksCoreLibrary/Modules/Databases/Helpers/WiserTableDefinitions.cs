@@ -156,7 +156,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2022, 4, 6),
+                LastUpdate = new DateTime(2022, 4, 8),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -173,6 +173,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("use_cache", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("cache_minutes", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("cache_location", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("cache_regex", MySqlDbType.VarChar, 255),
                     new("handle_request", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
                     new("handle_session", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
                     new("handle_objects", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),

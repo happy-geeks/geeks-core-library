@@ -320,16 +320,15 @@ namespace GeeksCoreLibrary.Components.Repeater
                             }
 
                             // Check if the property must be overruled
-                            Boolean.TryParse(httpContextAccessor.HttpContext.Request.Query["loadUptoPageNumberOverrule"].ToString(), out var loadUpToPageNumberOverrule);
+                            var loadUpToPageNumberOverrule = Settings.LoadItemsUpToPageNumber;
+                            if (Boolean.TryParse(httpContextAccessor.HttpContext?.Request.Query["loadUptoPageNumberOverrule"].ToString(), out var tempUpToPageNumberOverrule))
+                            {
+                                loadUpToPageNumberOverrule = tempUpToPageNumberOverrule;
+                            }
 
-                            if (Settings.LoadItemsUpToPageNumber && loadUpToPageNumberOverrule)
-                            {
-                                limitClause = $" LIMIT 0, {Settings.ItemsPerPage * pageNumber - bannersForCurrentPage}";
-                            }
-                            else
-                            {
-                                limitClause = $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
-                            }
+                            limitClause = loadUpToPageNumberOverrule
+                                ? $" LIMIT 0, {Settings.ItemsPerPage * pageNumber - bannersForCurrentPage}"
+                                : $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
                         }
 
                         if (query.Contains("{page_limit}", StringComparison.OrdinalIgnoreCase))

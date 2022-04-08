@@ -144,6 +144,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
                             1 AS cache_location,
+                            t.cacheregex AS cache_regex,
                             t.useobfuscate AS use_obfuscate,
                             t.defaulttemplate AS wiser_cdn_files,
                             t.pagemode AS insert_mode,
@@ -218,6 +219,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             i.id AS template_id,
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
+                            t.cacheregex AS cache_regex,
                             CASE t.templatetype
                                 WHEN 'html' THEN 1
                                 WHEN 'css' THEN 2
@@ -243,6 +245,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 CachingMinutes = dataTable.Rows[0].Field<int>("cache_minutes"),
                 CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache"),
                 CachingLocation = TemplateCachingLocations.OnDisk,
+                CachingRegex = dataTable.Rows[0].Field<string>("cache_regex"),
                 Type = (TemplateTypes)Convert.ToInt32(dataTable.Rows[0]["template_type"])
             };
             
@@ -329,6 +332,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
                             1 AS cache_location,
+                            t.cacheregex AS cache_regex,
                             t.useobfuscate AS use_obfuscate,
                             t.defaulttemplate AS wiser_cdn_files,
                             t.pagemode AS insert_mode,
@@ -417,6 +421,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.usecache AS use_cache,
                             t.cacheminutes AS cache_minutes,
                             1 AS cache_location,
+                            t.cacheregex AS cache_regex,
                             t.useobfuscate AS use_obfuscate,
                             t.defaulttemplate AS wiser_cdn_files,
                             t.pagemode AS insert_mode,
