@@ -104,7 +104,7 @@ namespace GeeksCoreLibrary.Core.Models
         public string ExpiringEncryptionKey { get; set; }
 
         /// <summary>
-        /// The amount of hours an encrypted value is valid when it was encrypted with a date and time.
+        /// The encryption key that will be used for encrypting values with an expiry date.
         /// </summary>
         public int TemporaryEncryptionHoursValid { get; set; } = 24;
 

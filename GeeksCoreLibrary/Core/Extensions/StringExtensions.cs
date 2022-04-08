@@ -425,7 +425,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// Decrypts a value with AES. This method uses a salt, so it can decrypt values encrypted with <see cref="EncryptWithAesWithSalt"/>.
         /// </summary>
         /// <param name="input">The string to decrypt.</param>
-        /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" from the app settings.</param>
+        /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
         /// <param name="withDateTime">Optional: Set the <see langword="true"/> if the value contains a validation date and time. Default is <see langword="false"/>.</param>
         /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the appsettings, you can change that here.</param>
         /// <returns>The decrypted string.</returns>

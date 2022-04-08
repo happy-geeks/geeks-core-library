@@ -246,7 +246,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                         // Redirect to the next step.
                         var nextStep = ActiveStep + 1;
-                        if (nextStep <= steps.Count && steps[ActiveStep].Type != OrderProcessStepTypes.OrderConfirmation)
+                        if (nextStep <= steps.Count && steps[ActiveStep].Type != OrderProcessStepTypes.OrderConfirmation && steps[ActiveStep].Type != OrderProcessStepTypes.OrderPending)
                         {
                             // If we still have a next step and that step is not for the order confirmation, then go to the next step.
                             var nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
@@ -268,7 +268,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Redirect the user if needed.
                 if (!String.IsNullOrWhiteSpace(step.StepRedirectUrl) && response != null)
                 {
-                    var uriBuilder = new UriBuilder(step.StepRedirectUrl);
+                    var uriBuilder = new UriBuilder(await StringReplacementsService.DoAllReplacementsAsync(step.StepRedirectUrl));
                     var queryString = HttpUtility.ParseQueryString(uriBuilder.Query);
                     queryString[Constants.OrderProcessIdRequestKey] = Settings.OrderProcessId.ToString();
                     queryString[Constants.OrderIdRequestKey] = shoppingBasket.Id.ToString();
@@ -328,6 +328,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         groupsBuilder.AppendLine(summaryHtml);
                         break;
                     case OrderProcessStepTypes.OrderConfirmation:
+                    case OrderProcessStepTypes.OrderPending:
                         var confirmationHtml = ReplaceBasketAndAccountDataInTemplate(shoppingBasket, userData, step.Template);
                         groupsBuilder.AppendLine(confirmationHtml);
 
@@ -469,7 +470,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 return "HttpContext not available.";
             }
             
-
             var paymentMethodFromRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.SelectedPaymentMethodRequestKey);
             if (!UInt64.TryParse(paymentMethodFromRequest, out var paymentMethodId) || paymentMethodId == 0)
             {

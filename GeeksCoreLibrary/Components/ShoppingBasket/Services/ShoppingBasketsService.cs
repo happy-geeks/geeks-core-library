@@ -67,14 +67,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 return result;
             }
 
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(OrderProcess.Models.Constants.OrderEntityType);
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("uniquePaymentNumber", uniquePaymentNumber);
-            databaseConnection.AddParameter("orderEntityType", OrderProcess.Models.Constants.OrderEntityType);
             var getBasketIdsResult = await databaseConnection.GetAsync($@"
                 SELECT `order`.id
-                FROM `{WiserTableNames.WiserItem}` AS `order`
-                JOIN `{WiserTableNames.WiserItemDetail}` AS uniquepaymentnumber ON uniquepaymentnumber.item_id = `order`.id AND uniquepaymentnumber.`key` = 'UniquePaymentNumber' AND uniquepaymentnumber.`value` = ?uniquePaymentNumber
-                WHERE `order`.entity_type IN (?orderEntityType, 'conceptorder');", true);
+                FROM `{tablePrefix}{WiserTableNames.WiserItem}` AS `order`
+                JOIN `{tablePrefix}{WiserTableNames.WiserItemDetail}` AS uniquepaymentnumber ON uniquepaymentnumber.item_id = `order`.id AND uniquepaymentnumber.`key` = '{OrderProcess.Models.Constants.UniquePaymentNumberProperty}' AND uniquepaymentnumber.`value` = ?uniquePaymentNumber
+                WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}', '{OrderProcess.Models.Constants.ConceptOrderEntityType}');", true);
 
             if (getBasketIdsResult.Rows.Count == 0)
             {
@@ -95,7 +96,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     linkTypeOrderLineToOrder = 5002;
                 }
 
-                result.Add((await wiserItemsService.GetItemDetailsAsync(itemId), await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkTypeOrderLineToOrder, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType)));
+                result.Add((await wiserItemsService.GetItemDetailsAsync(itemId, entityType: OrderProcess.Models.Constants.OrderEntityType), await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkTypeOrderLineToOrder, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType)));
             }
 
             return result;
@@ -540,8 +541,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
                 if (userId > 0UL)
                 {
+                    var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Account.Models.Constants.DefaultEntityType);
                     databaseConnection.AddParameter("userId", userId);
-                    var getEntityTypeResult = await databaseConnection.GetAsync($"SELECT entity_type FROM `{WiserTableNames.WiserItem}` WHERE id = ?userId", true);
+                    var getEntityTypeResult = await databaseConnection.GetAsync($"SELECT entity_type FROM `{tablePrefix}{WiserTableNames.WiserItem}` WHERE id = ?userId", true);
                     if (getEntityTypeResult.Rows.Count > 0)
                     {
                         linkTypeOrderToUser = await wiserItemsService.GetLinkTypeAsync(getEntityTypeResult.Rows[0].Field<string>("entity_type"), OrderProcess.Models.Constants.OrderEntityType);
@@ -1026,10 +1028,11 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
                             if (userId > 0)
                             {
+                                var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Account.Models.Constants.DefaultEntityType);
                                 databaseConnection.ClearParameters();
                                 databaseConnection.AddParameter("userId", userId);
                                 databaseConnection.AddParameter("depositPercentagePropertyName", depositPercentagePropertyName);
-                                var getValueResult = await databaseConnection.GetAsync($"SELECT `value` FROM `{WiserTableNames.WiserItemDetail}` WHERE item_id = ?userId AND `key` = ?depositPercentagePropertyName", true);
+                                var getValueResult = await databaseConnection.GetAsync($"SELECT `value` FROM `{tablePrefix}{WiserTableNames.WiserItemDetail}` WHERE item_id = ?userId AND `key` = ?depositPercentagePropertyName", true);
                                 if (getValueResult.Rows.Count > 0)
                                 {
                                     depositPercentageValue = getValueResult.Rows[0].Field<string>("value");

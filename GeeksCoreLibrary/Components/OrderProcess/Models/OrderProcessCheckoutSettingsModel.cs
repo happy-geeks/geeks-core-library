@@ -17,10 +17,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         <div class='step-groups'>{groups}</div>
         <div class='step-footer'>{footer}</div>
     </div>
-    [if({type}!OrderConfirmation)]
+    [if({type}!OrderConfirmation)][if({type}!orderPending)]
     [if({activeStep}>1)]<a href='{previousStepUrl}'>{previousStepLinkText}</a>[endif]
     <button type='submit' id='confirmButton'>{confirmButtonText}</button>
-    [endif]
+    [endif][endif]
 </form>")]
         internal string TemplateStep { get; }
 
