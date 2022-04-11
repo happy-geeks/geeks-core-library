@@ -786,7 +786,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     }
                     else
                     {
-                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue >= {filterValue.Split('-')[0].ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue <= {filterValue.Split('-')[1].ToMySqlSafeValue(true)}";
+                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue >= {filterValue.Split('-')[0].ToMySqlSafeValue(false)} AND f{filterCounter}.filtervalue <= {filterValue.Split('-')[1].ToMySqlSafeValue(false)}";
                     }
                 }
                 else
