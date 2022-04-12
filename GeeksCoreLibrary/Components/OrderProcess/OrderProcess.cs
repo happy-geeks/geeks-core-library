@@ -207,6 +207,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     HttpContextHelpers.Return404(httpContextAccessor.HttpContext);
                     return "";
                 }
+                
+                // If we have no confirmation page and/or no payment methods, then the order process has not been fully configured and we want to throw an error.
+                if (steps.All(step => step.Type != OrderProcessStepTypes.OrderConfirmation))
+                {
+                    throw new Exception($"There is no step with type '{OrderProcessStepTypes.OrderConfirmation.ToString()}' configured yet, therefor we cannot proceed with the order process.");
+                }
+
+                if (steps.All(step => step.Groups.All(group => group.Type != OrderProcessGroupTypes.PaymentMethods)))
+                {
+                    throw new Exception($"There is no group with type '{OrderProcessGroupTypes.PaymentMethods.ToString()}' configured yet, therefor we cannot proceed with the order process.");
+                }
 
                 // Get the active basket, if any.
                 var shoppingBasketSettings = await shoppingBasketsService.GetSettingsAsync();
@@ -226,8 +237,52 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     loggedInUser.UserId = userData.Id;
                 }
 
+                // Get list of all items that are used in the order process, except basket.
+                var currentItems = new List<WiserItemModel> { userData };
+                var allLinkTypeSettings = await wiserItemsService.GetAllLinkTypeSettingsAsync();
+                foreach (var linkTypeSettings in allLinkTypeSettings)
+                {
+                    if (shoppingBasket.Id > 0 && String.Equals(linkTypeSettings.DestinationEntityType, ShoppingBasket.Models.Constants.BasketEntityType, StringComparison.OrdinalIgnoreCase))
+                    {
+                        currentItems.AddRange(await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id));
+                    }
+
+                    if (String.Equals(linkTypeSettings.DestinationEntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase))
+                    {
+                        currentItems.AddRange(await wiserItemsService.GetLinkedItemDetailsAsync(userData.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id));
+                    }
+                }
+
                 // Get the available payment methods.
                 var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId, loggedInUser);
+
+                // If there are no payment methods, throw an error.
+                if (paymentMethods == null || !paymentMethods.Any())
+                {
+                    throw new Exception("No payment methods have been configured, therefor we cannot proceed with the order process.");
+                }
+                
+                // Generate the URL for the next step, we'll need this for a few things.
+                var nextStep = ActiveStep + 1;
+                UriBuilder nextStepUri;
+                if (nextStep <= steps.Count && steps[ActiveStep].Type != OrderProcessStepTypes.OrderConfirmation && steps[ActiveStep].Type != OrderProcessStepTypes.OrderPending)
+                {
+                    // If we still have a next step and that step is not for the order confirmation, then go to the next step.
+                    nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                    var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
+                    nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
+                    nextStepQueryString.Remove(Constants.ErrorFromPaymentOutRequestKey);
+                    nextStepUri.Query = nextStepQueryString?.ToString() ?? "";
+                }
+                else
+                {
+                    // If the next step is for the order confirmation, it means the user needs to do their payment first and will be redirected to that step after.
+                    nextStepUri = new UriBuilder(HttpContextHelpers.GetOriginalRequestUri(httpContext))
+                    {
+                        Path = $"/{Constants.PaymentOutPage}",
+                        Query = $"?{Constants.OrderProcessIdRequestKey}={Settings.OrderProcessId}"
+                    };
+                }
 
                 // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
                 var step = steps[ActiveStep - 1];
@@ -235,31 +290,24 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
                 if (isPostBack)
                 {
-                    fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(step, loggedInUser, request, shoppingBasket, paymentMethods, userData);
+                    fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(step, loggedInUser, request, shoppingBasket, paymentMethods, currentItems);
 
                     // Save values to database if all validation succeeded.
                     if (!fieldErrorsOccurred)
                     {
+                        // Save basket to database.
                         shoppingBasket = await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
-                        userData = await wiserItemsService.SaveAsync(userData, userId: userData.Id);
+                        
+                        // Save all other items to database.
+                        foreach (var item in currentItems)
+                        {
+                            await wiserItemsService.SaveAsync(item, userId: userData.Id);
+                        }
+                        
+                        // Link basket to active user.
                         await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userData.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType);
 
-                        // Redirect to the next step.
-                        var nextStep = ActiveStep + 1;
-                        if (nextStep <= steps.Count && steps[ActiveStep].Type != OrderProcessStepTypes.OrderConfirmation && steps[ActiveStep].Type != OrderProcessStepTypes.OrderPending)
-                        {
-                            // If we still have a next step and that step is not for the order confirmation, then go to the next step.
-                            var nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
-                            var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
-                            nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
-                            nextStepUri.Query = nextStepQueryString?.ToString() ?? "";
-                            response.Redirect(nextStepUri.ToString());
-                        }
-                        else
-                        {
-                            // If the next step is for the order confirmation, it means the user needs to do their payment first and will be redirected to that step after.
-                            response.Redirect($"/{Constants.PaymentOutPage}?{Constants.OrderProcessIdRequestKey}={Settings.OrderProcessId}");
-                        }
+                        response.Redirect(nextStepUri.ToString());
 
                         return null;
                     }
@@ -274,7 +322,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     queryString[Constants.OrderIdRequestKey] = shoppingBasket.Id.ToString();
                     uriBuilder.Query = queryString.ToString()!;
                     response.Redirect(uriBuilder.ToString());
-                    return "";
+                    return null;
                 }
 
                 // Generate URI for previous step.
@@ -305,16 +353,36 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 };
 
                 var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
-                stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, step.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, step.Footer);
+                stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, orderProcessSettings.Header + step.Header)
+                    .ReplaceCaseInsensitive(Constants.FooterReplacement, step.Footer + orderProcessSettings.Footer);
 
                 // Build the groups HTML.
                 var groupsBuilder = new StringBuilder();
                 switch (step.Type)
                 {
                     case OrderProcessStepTypes.GroupsAndFields:
+                        // If this step contains only one group, that group is of type PaymentMethods and there exists only one payment method,
+                        // then save that payment method in the basket and redirect to the next step.
+                        if (response != null && step.Groups.Count == 1 && step.Groups.Single().Type == OrderProcessGroupTypes.PaymentMethods && paymentMethods.Count == 1)
+                        {
+                            shoppingBasket.SetDetail(Constants.PaymentMethodProperty, paymentMethods.Single().Id);
+                            await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+                            response.Redirect(nextStepUri.ToString());
+                            return null;
+                        }
+
+                        // Otherwise render the group(s) for this step.
                         foreach (var group in step.Groups)
                         {
-                            var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, userData, paymentMethods, fieldErrorsOccurred);
+                            // If we only have a single payment method, set that as the selected payment in the basket and don't render the group.
+                            if (group.Type == OrderProcessGroupTypes.PaymentMethods && paymentMethods.Count == 1)
+                            {
+                                shoppingBasket.SetDetail(Constants.PaymentMethodProperty, paymentMethods.Single().Id);
+                                await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+                                continue;
+                            }
+                            
+                            var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, currentItems, paymentMethods, fieldErrorsOccurred);
                             if (groupHtml == null)
                             {
                                 continue;
@@ -499,15 +567,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="group">The group to render.</param>
         /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
-        /// <param name="userData">The data of the user.</param>
+        /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
         /// <param name="paymentMethods">The list of available payment methods for the current order process.</param>
         /// <param name="fieldErrorsOccurred">Whether any errors occurred in this group.</param>
         /// <returns>The HTML for the group.</returns>
-        private async Task<string> RenderGroupAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, WiserItemModel userData, List<PaymentMethodSettingsModel> paymentMethods, bool fieldErrorsOccurred)
+        private async Task<string> RenderGroupAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, List<WiserItemModel> currentItems, List<PaymentMethodSettingsModel> paymentMethods, bool fieldErrorsOccurred)
         {
             return group.Type switch
             {
-                OrderProcessGroupTypes.Fields => await RenderGroupFieldsAsync(group, loggedInUser, shoppingBasket, userData),
+                OrderProcessGroupTypes.Fields => await RenderGroupFieldsAsync(group, loggedInUser, shoppingBasket, currentItems),
                 OrderProcessGroupTypes.PaymentMethods => await RenderGroupPaymentMethodsAsync(group, paymentMethods, fieldErrorsOccurred),
                 _ => throw new ArgumentOutOfRangeException(nameof(group.Type), group.Type.ToString())
             };
@@ -519,9 +587,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="group">The group to render.</param>
         /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
-        /// <param name="userData">The data of the user.</param>
+        /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
         /// <returns>The HTML for the group.</returns>
-        private async Task<string> RenderGroupFieldsAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, WiserItemModel userData)
+        private async Task<string> RenderGroupFieldsAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, List<WiserItemModel> currentItems)
         {
             // Get fields that we can show in this group, based on the visibility settings of each field.
             var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
@@ -547,7 +615,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             var fieldsBuilder = new StringBuilder();
             foreach (var field in fieldsToShow)
             {
-                var fieldHtml = await RenderFieldAsync(field, shoppingBasket, userData);
+                var fieldHtml = await RenderFieldAsync(field, shoppingBasket, currentItems);
                 fieldsBuilder.AppendLine(fieldHtml);
             }
 
@@ -627,9 +695,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// </summary>
         /// <param name="field">The field to generate HTML for.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
-        /// <param name="userData">The data of the user.</param>
+        /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
         /// <returns>The HTML for the field.</returns>
-        private async Task<string> RenderFieldAsync(OrderProcessFieldModel field, WiserItemModel shoppingBasket, WiserItemModel userData)
+        private async Task<string> RenderFieldAsync(OrderProcessFieldModel field, WiserItemModel shoppingBasket, List<WiserItemModel> currentItems)
         {
             var fieldValue = field.Value;
             if (String.IsNullOrEmpty(fieldValue) && field.InputFieldType != OrderProcessInputTypes.Password)
@@ -655,17 +723,22 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
                         }
 
-                        if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
+                        if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType, StringComparison.OrdinalIgnoreCase))
                         {
                             fieldValue = shoppingBasket.GetDetailValue(propertyName);
                         }
-                        else if (String.Equals(entityType, Account.Models.Constants.DefaultEntityType))
-                        {
-                            fieldValue = userData.GetDetailValue(propertyName);
-                        }
                         else
                         {
-                            throw new NotImplementedException($"Unknown entity type '{entityType}' for field '{field.Id}' set for saving.");
+                            // TODO: Think of a solution for when there are multiple items with the same entity type linked to the user/basket, such as 2x address (invoice address and delivery address).
+                            var itemsOfEntityType = currentItems.Where(item => String.Equals(item.EntityType, entityType, StringComparison.CurrentCultureIgnoreCase)).ToList();
+                            foreach (var item in itemsOfEntityType)
+                            {
+                                fieldValue = item.GetDetailValue(propertyName);
+                                if (!String.IsNullOrWhiteSpace(fieldValue))
+                                {
+                                    break;
+                                }
+                            }
                         }
                         
                         if (!String.IsNullOrWhiteSpace(fieldValue))
@@ -802,10 +875,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="request">The current <see cref="HttpRequest"/>.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
         /// <param name="paymentMethods">All available payment methods.</param>
-        /// <param name="userData">The <see cref="WiserItemModel"/> of the user.</param>
+        /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
         /// <returns>A <see cref="Boolean"/> indicating whether any there were any errors in the validation.</returns>
-        private async Task<bool> ValidatePostBackAndSaveValuesAsync(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods, WiserItemModel userData)
+        private async Task<bool> ValidatePostBackAndSaveValuesAsync(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods, List<WiserItemModel> currentItems)
         {
+            if (currentItems == null)
+            {
+                throw new ArgumentNullException(nameof(currentItems));
+            }
+
             var fieldErrorsOccurred = false;
             foreach (var group in step.Groups)
             {
@@ -828,7 +906,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             field.Value = request.Form[field.FieldId].ToString();
 
                             // Do field validation.
-                            field.IsValid = await orderProcessesService.ValidateFieldValueAsync(field, new List<WiserItemModel> { userData });
+                            field.IsValid = await orderProcessesService.ValidateFieldValueAsync(field, currentItems);
 
                             if (!field.IsValid)
                             {
@@ -867,17 +945,39 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                         throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
                                     }
                                     
-                                    if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
+                                    if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType, StringComparison.OrdinalIgnoreCase))
                                     {
                                         shoppingBasket.SetDetail(propertyName, valueForDatabase);
                                     }
-                                    else if (String.Equals(entityType, Account.Models.Constants.DefaultEntityType))
-                                    {
-                                        userData.SetDetail(propertyName, valueForDatabase);
-                                    }
                                     else
                                     {
-                                        throw new NotImplementedException($"Unknown entity type '{entityType}' for field '{field.Id}' set for saving.");
+                                        var itemsOfEntityType = currentItems.Where(item => String.Equals(item.EntityType, entityType, StringComparison.CurrentCultureIgnoreCase)).ToList();
+                                        if (itemsOfEntityType.Any())
+                                        {
+                                            // If we already have item(s) of the given entity type, save the value there.
+                                            itemsOfEntityType.ForEach(item => item.SetDetail(propertyName, valueForDatabase));
+                                        }
+                                        else
+                                        {
+                                            // If we don't have an item yet, see if we can create one.
+                                            var userId = currentItems.Single(item => item.EntityType == Account.Models.Constants.DefaultEntityType).Id;
+                                            var parentId = userId;
+                                            var linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(0, entityType, Account.Models.Constants.DefaultEntityType);
+                                            if (linkSettings == null || linkSettings.Id == 0)
+                                            {
+                                                parentId = shoppingBasket.Id;
+                                                linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(0, entityType, ShoppingBasket.Models.Constants.BasketEntityType);
+                                            }
+
+                                            if (linkSettings == null || linkSettings.Id == 0)
+                                            {
+                                                throw new NotImplementedException($"Unknown entity type '{entityType}' for field '{field.Id}' set for saving.");
+                                            }
+
+                                            var newItem = await wiserItemsService.CreateAsync(new WiserItemModel { EntityType = entityType }, parentId, linkSettings.Type, userId);
+                                            newItem.SetDetail(propertyName, valueForDatabase);
+                                            currentItems.Add(newItem);
+                                        }
                                     }
                                 }
                             }
@@ -907,6 +1007,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     case OrderProcessGroupTypes.PaymentMethods:
                     {
                         // Make sure the user selected a payment method and that the selected payment method is one of the available payment methods that are set in Wiser.
+                        if (paymentMethods.Count == 1 && !String.IsNullOrWhiteSpace(shoppingBasket.GetDetailValue(Constants.PaymentMethodProperty)))
+                        {
+                            // If there is only one payment method, we will have already set it.
+                            continue;
+                        }
+
                         var selectedPaymentMethod = request.Form[Constants.PaymentMethodProperty].ToString();
                         if (String.IsNullOrWhiteSpace(selectedPaymentMethod) || paymentMethods.All(p => p.Id.ToString() != selectedPaymentMethod))
                         {
