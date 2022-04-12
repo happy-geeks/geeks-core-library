@@ -237,6 +237,22 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     loggedInUser.UserId = userData.Id;
                 }
 
+                // Get list of all items that are used in the order process, except basket.
+                var currentItems = new List<WiserItemModel> { userData };
+                var allLinkTypeSettings = await wiserItemsService.GetAllLinkTypeSettingsAsync();
+                foreach (var linkTypeSettings in allLinkTypeSettings)
+                {
+                    if (shoppingBasket.Id > 0 && String.Equals(linkTypeSettings.DestinationEntityType, ShoppingBasket.Models.Constants.BasketEntityType, StringComparison.OrdinalIgnoreCase))
+                    {
+                        currentItems.AddRange(await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id));
+                    }
+
+                    if (String.Equals(linkTypeSettings.DestinationEntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase))
+                    {
+                        currentItems.AddRange(await wiserItemsService.GetLinkedItemDetailsAsync(userData.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id));
+                    }
+                }
+
                 // Get the available payment methods.
                 var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId, loggedInUser);
 
@@ -274,13 +290,21 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
                 if (isPostBack)
                 {
-                    fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(step, loggedInUser, request, shoppingBasket, paymentMethods, userData);
+                    fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(step, loggedInUser, request, shoppingBasket, paymentMethods, currentItems);
 
                     // Save values to database if all validation succeeded.
                     if (!fieldErrorsOccurred)
                     {
+                        // Save basket to database.
                         shoppingBasket = await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
-                        userData = await wiserItemsService.SaveAsync(userData, userId: userData.Id);
+                        
+                        // Save all other items to database.
+                        foreach (var item in currentItems)
+                        {
+                            await wiserItemsService.SaveAsync(item, userId: userData.Id);
+                        }
+                        
+                        // Link basket to active user.
                         await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userData.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType);
 
                         response.Redirect(nextStepUri.ToString());
@@ -358,7 +382,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                 continue;
                             }
                             
-                            var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, userData, paymentMethods, fieldErrorsOccurred);
+                            var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, currentItems, paymentMethods, fieldErrorsOccurred);
                             if (groupHtml == null)
                             {
                                 continue;
@@ -543,15 +567,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="group">The group to render.</param>
         /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
-        /// <param name="userData">The data of the user.</param>
+        /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
         /// <param name="paymentMethods">The list of available payment methods for the current order process.</param>
         /// <param name="fieldErrorsOccurred">Whether any errors occurred in this group.</param>
         /// <returns>The HTML for the group.</returns>
-        private async Task<string> RenderGroupAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, WiserItemModel userData, List<PaymentMethodSettingsModel> paymentMethods, bool fieldErrorsOccurred)
+        private async Task<string> RenderGroupAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, List<WiserItemModel> currentItems, List<PaymentMethodSettingsModel> paymentMethods, bool fieldErrorsOccurred)
         {
             return group.Type switch
             {
-                OrderProcessGroupTypes.Fields => await RenderGroupFieldsAsync(group, loggedInUser, shoppingBasket, userData),
+                OrderProcessGroupTypes.Fields => await RenderGroupFieldsAsync(group, loggedInUser, shoppingBasket, currentItems),
                 OrderProcessGroupTypes.PaymentMethods => await RenderGroupPaymentMethodsAsync(group, paymentMethods, fieldErrorsOccurred),
                 _ => throw new ArgumentOutOfRangeException(nameof(group.Type), group.Type.ToString())
             };
@@ -563,9 +587,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="group">The group to render.</param>
         /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
-        /// <param name="userData">The data of the user.</param>
+        /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
         /// <returns>The HTML for the group.</returns>
-        private async Task<string> RenderGroupFieldsAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, WiserItemModel userData)
+        private async Task<string> RenderGroupFieldsAsync(OrderProcessGroupModel group, UserCookieDataModel loggedInUser, WiserItemModel shoppingBasket, List<WiserItemModel> currentItems)
         {
             // Get fields that we can show in this group, based on the visibility settings of each field.
             var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
@@ -591,7 +615,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             var fieldsBuilder = new StringBuilder();
             foreach (var field in fieldsToShow)
             {
-                var fieldHtml = await RenderFieldAsync(field, shoppingBasket, userData);
+                var fieldHtml = await RenderFieldAsync(field, shoppingBasket, currentItems);
                 fieldsBuilder.AppendLine(fieldHtml);
             }
 
@@ -671,9 +695,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// </summary>
         /// <param name="field">The field to generate HTML for.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
-        /// <param name="userData">The data of the user.</param>
+        /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
         /// <returns>The HTML for the field.</returns>
-        private async Task<string> RenderFieldAsync(OrderProcessFieldModel field, WiserItemModel shoppingBasket, WiserItemModel userData)
+        private async Task<string> RenderFieldAsync(OrderProcessFieldModel field, WiserItemModel shoppingBasket, List<WiserItemModel> currentItems)
         {
             var fieldValue = field.Value;
             if (String.IsNullOrEmpty(fieldValue) && field.InputFieldType != OrderProcessInputTypes.Password)
@@ -699,17 +723,22 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
                         }
 
-                        if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
+                        if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType, StringComparison.OrdinalIgnoreCase))
                         {
                             fieldValue = shoppingBasket.GetDetailValue(propertyName);
                         }
-                        else if (String.Equals(entityType, Account.Models.Constants.DefaultEntityType))
-                        {
-                            fieldValue = userData.GetDetailValue(propertyName);
-                        }
                         else
                         {
-                            throw new NotImplementedException($"Unknown entity type '{entityType}' for field '{field.Id}' set for saving.");
+                            // TODO: Think of a solution for when there are multiple items with the same entity type linked to the user/basket, such as 2x address (invoice address and delivery address).
+                            var itemsOfEntityType = currentItems.Where(item => String.Equals(item.EntityType, entityType, StringComparison.CurrentCultureIgnoreCase)).ToList();
+                            foreach (var item in itemsOfEntityType)
+                            {
+                                fieldValue = item.GetDetailValue(propertyName);
+                                if (!String.IsNullOrWhiteSpace(fieldValue))
+                                {
+                                    break;
+                                }
+                            }
                         }
                         
                         if (!String.IsNullOrWhiteSpace(fieldValue))
@@ -846,10 +875,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="request">The current <see cref="HttpRequest"/>.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
         /// <param name="paymentMethods">All available payment methods.</param>
-        /// <param name="userData">The <see cref="WiserItemModel"/> of the user.</param>
+        /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
         /// <returns>A <see cref="Boolean"/> indicating whether any there were any errors in the validation.</returns>
-        private async Task<bool> ValidatePostBackAndSaveValuesAsync(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods, WiserItemModel userData)
+        private async Task<bool> ValidatePostBackAndSaveValuesAsync(OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<PaymentMethodSettingsModel> paymentMethods, List<WiserItemModel> currentItems)
         {
+            if (currentItems == null)
+            {
+                throw new ArgumentNullException(nameof(currentItems));
+            }
+
             var fieldErrorsOccurred = false;
             foreach (var group in step.Groups)
             {
@@ -872,7 +906,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             field.Value = request.Form[field.FieldId].ToString();
 
                             // Do field validation.
-                            field.IsValid = await orderProcessesService.ValidateFieldValueAsync(field, new List<WiserItemModel> { userData });
+                            field.IsValid = await orderProcessesService.ValidateFieldValueAsync(field, currentItems);
 
                             if (!field.IsValid)
                             {
@@ -911,17 +945,39 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                         throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
                                     }
                                     
-                                    if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
+                                    if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType, StringComparison.OrdinalIgnoreCase))
                                     {
                                         shoppingBasket.SetDetail(propertyName, valueForDatabase);
                                     }
-                                    else if (String.Equals(entityType, Account.Models.Constants.DefaultEntityType))
-                                    {
-                                        userData.SetDetail(propertyName, valueForDatabase);
-                                    }
                                     else
                                     {
-                                        throw new NotImplementedException($"Unknown entity type '{entityType}' for field '{field.Id}' set for saving.");
+                                        var itemsOfEntityType = currentItems.Where(item => String.Equals(item.EntityType, entityType, StringComparison.CurrentCultureIgnoreCase)).ToList();
+                                        if (itemsOfEntityType.Any())
+                                        {
+                                            // If we already have item(s) of the given entity type, save the value there.
+                                            itemsOfEntityType.ForEach(item => item.SetDetail(propertyName, valueForDatabase));
+                                        }
+                                        else
+                                        {
+                                            // If we don't have an item yet, see if we can create one.
+                                            var userId = currentItems.Single(item => item.EntityType == Account.Models.Constants.DefaultEntityType).Id;
+                                            var parentId = userId;
+                                            var linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(0, entityType, Account.Models.Constants.DefaultEntityType);
+                                            if (linkSettings == null || linkSettings.Id == 0)
+                                            {
+                                                parentId = shoppingBasket.Id;
+                                                linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(0, entityType, ShoppingBasket.Models.Constants.BasketEntityType);
+                                            }
+
+                                            if (linkSettings == null || linkSettings.Id == 0)
+                                            {
+                                                throw new NotImplementedException($"Unknown entity type '{entityType}' for field '{field.Id}' set for saving.");
+                                            }
+
+                                            var newItem = await wiserItemsService.CreateAsync(new WiserItemModel { EntityType = entityType }, parentId, linkSettings.Type, userId);
+                                            newItem.SetDetail(propertyName, valueForDatabase);
+                                            currentItems.Add(newItem);
+                                        }
                                     }
                                 }
                             }
