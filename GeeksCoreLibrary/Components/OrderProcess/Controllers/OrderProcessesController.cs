@@ -171,6 +171,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
 
             var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml);
 
+            // We never want the checkout process to be indexed.
+            viewModel.MetaData.MetaTags["robots"] = "noindex,nofollow";
+
             return View("Template", viewModel);
         }
 
