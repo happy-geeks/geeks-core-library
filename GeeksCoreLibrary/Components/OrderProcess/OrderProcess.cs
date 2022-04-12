@@ -207,6 +207,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     HttpContextHelpers.Return404(httpContextAccessor.HttpContext);
                     return "";
                 }
+                
+                // If we have no confirmation page and/or no payment methods, then the order process has not been fully configured and we want to throw an error.
+                if (steps.All(step => step.Type != OrderProcessStepTypes.OrderConfirmation))
+                {
+                    throw new Exception($"There is no step with type '{OrderProcessStepTypes.OrderConfirmation.ToString()}' configured yet, therefor we cannot proceed with the order process.");
+                }
+
+                if (steps.All(step => step.Groups.All(group => group.Type != OrderProcessGroupTypes.PaymentMethods)))
+                {
+                    throw new Exception($"There is no group with type '{OrderProcessGroupTypes.PaymentMethods.ToString()}' configured yet, therefor we cannot proceed with the order process.");
+                }
 
                 // Get the active basket, if any.
                 var shoppingBasketSettings = await shoppingBasketsService.GetSettingsAsync();
@@ -228,6 +239,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                 // Get the available payment methods.
                 var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId, loggedInUser);
+
+                // If there are no payment methods, throw an error.
+                if (paymentMethods == null || !paymentMethods.Any())
+                {
+                    throw new Exception("No payment methods have been configured, therefor we cannot proceed with the order process.");
+                }
 
                 // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
                 var step = steps[ActiveStep - 1];
@@ -252,6 +269,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             var nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
                             var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
                             nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
+                            nextStepQueryString.Remove(Constants.ErrorFromPaymentOutRequestKey);
                             nextStepUri.Query = nextStepQueryString?.ToString() ?? "";
                             response.Redirect(nextStepUri.ToString());
                         }
