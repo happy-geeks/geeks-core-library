@@ -1776,7 +1776,7 @@ namespace GeeksCoreLibrary.Core.Services
                 databaseConnection.AddParameter("userId", userId);
                 permissionsQueryPart = $@"# Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
 	                                    LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-	                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = i.id";
+	                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id";
                 where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
             }
 
@@ -1935,7 +1935,7 @@ namespace GeeksCoreLibrary.Core.Services
                 databaseConnection.AddParameter("userId", userId);
                 permissionsQueryPart = $@"# Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
 	                                    LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-	                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = i.id";
+	                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id";
                 where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
             }
 
