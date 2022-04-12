@@ -245,6 +245,28 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 {
                     throw new Exception("No payment methods have been configured, therefor we cannot proceed with the order process.");
                 }
+                
+                // Generate the URL for the next step, we'll need this for a few things.
+                var nextStep = ActiveStep + 1;
+                UriBuilder nextStepUri;
+                if (nextStep <= steps.Count && steps[ActiveStep].Type != OrderProcessStepTypes.OrderConfirmation && steps[ActiveStep].Type != OrderProcessStepTypes.OrderPending)
+                {
+                    // If we still have a next step and that step is not for the order confirmation, then go to the next step.
+                    nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                    var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
+                    nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
+                    nextStepQueryString.Remove(Constants.ErrorFromPaymentOutRequestKey);
+                    nextStepUri.Query = nextStepQueryString?.ToString() ?? "";
+                }
+                else
+                {
+                    // If the next step is for the order confirmation, it means the user needs to do their payment first and will be redirected to that step after.
+                    nextStepUri = new UriBuilder(HttpContextHelpers.GetOriginalRequestUri(httpContext))
+                    {
+                        Path = $"/{Constants.PaymentOutPage}",
+                        Query = $"?{Constants.OrderProcessIdRequestKey}={Settings.OrderProcessId}"
+                    };
+                }
 
                 // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
                 var step = steps[ActiveStep - 1];
@@ -261,23 +283,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         userData = await wiserItemsService.SaveAsync(userData, userId: userData.Id);
                         await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userData.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType);
 
-                        // Redirect to the next step.
-                        var nextStep = ActiveStep + 1;
-                        if (nextStep <= steps.Count && steps[ActiveStep].Type != OrderProcessStepTypes.OrderConfirmation && steps[ActiveStep].Type != OrderProcessStepTypes.OrderPending)
-                        {
-                            // If we still have a next step and that step is not for the order confirmation, then go to the next step.
-                            var nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
-                            var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
-                            nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
-                            nextStepQueryString.Remove(Constants.ErrorFromPaymentOutRequestKey);
-                            nextStepUri.Query = nextStepQueryString?.ToString() ?? "";
-                            response.Redirect(nextStepUri.ToString());
-                        }
-                        else
-                        {
-                            // If the next step is for the order confirmation, it means the user needs to do their payment first and will be redirected to that step after.
-                            response.Redirect($"/{Constants.PaymentOutPage}?{Constants.OrderProcessIdRequestKey}={Settings.OrderProcessId}");
-                        }
+                        response.Redirect(nextStepUri.ToString());
 
                         return null;
                     }
@@ -292,7 +298,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     queryString[Constants.OrderIdRequestKey] = shoppingBasket.Id.ToString();
                     uriBuilder.Query = queryString.ToString()!;
                     response.Redirect(uriBuilder.ToString());
-                    return "";
+                    return null;
                 }
 
                 // Generate URI for previous step.
@@ -330,8 +336,27 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 switch (step.Type)
                 {
                     case OrderProcessStepTypes.GroupsAndFields:
+                        // If this step contains only one group, that group is of type PaymentMethods and there exists only one payment method,
+                        // then save that payment method in the basket and redirect to the next step.
+                        if (response != null && step.Groups.Count == 1 && step.Groups.Single().Type == OrderProcessGroupTypes.PaymentMethods && paymentMethods.Count == 1)
+                        {
+                            shoppingBasket.SetDetail(Constants.PaymentMethodProperty, paymentMethods.Single().Id);
+                            await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+                            response.Redirect(nextStepUri.ToString());
+                            return null;
+                        }
+
+                        // Otherwise render the group(s) for this step.
                         foreach (var group in step.Groups)
                         {
+                            // If we only have a single payment method, set that as the selected payment in the basket and don't render the group.
+                            if (group.Type == OrderProcessGroupTypes.PaymentMethods && paymentMethods.Count == 1)
+                            {
+                                shoppingBasket.SetDetail(Constants.PaymentMethodProperty, paymentMethods.Single().Id);
+                                await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+                                continue;
+                            }
+                            
                             var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, userData, paymentMethods, fieldErrorsOccurred);
                             if (groupHtml == null)
                             {
@@ -925,6 +950,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     case OrderProcessGroupTypes.PaymentMethods:
                     {
                         // Make sure the user selected a payment method and that the selected payment method is one of the available payment methods that are set in Wiser.
+                        if (paymentMethods.Count == 1 && !String.IsNullOrWhiteSpace(shoppingBasket.GetDetailValue(Constants.PaymentMethodProperty)))
+                        {
+                            // If there is only one payment method, we will have already set it.
+                            continue;
+                        }
+
                         var selectedPaymentMethod = request.Form[Constants.PaymentMethodProperty].ToString();
                         if (String.IsNullOrWhiteSpace(selectedPaymentMethod) || paymentMethods.All(p => p.Id.ToString() != selectedPaymentMethod))
                         {
