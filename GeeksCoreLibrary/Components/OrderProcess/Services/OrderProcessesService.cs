@@ -683,193 +683,207 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl;
             paymentMethodSettings.PaymentServiceProvider.SuccessUrl = successUrl;
             paymentMethodSettings.PaymentServiceProvider.PendingUrl = pendingUrl;
-            
-            // Build the webhook URL.
-            UriBuilder webhookUrl;
-            // The PSP can't reach our development and test environments, so use the main domain in those cases.
-            if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
+
+            try
             {
-                var mainDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
-                if (String.IsNullOrWhiteSpace(mainDomain))
+                // Build the webhook URL.
+                UriBuilder webhookUrl;
+                // The PSP can't reach our development and test environments, so use the main domain in those cases.
+                if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
                 {
-                    throw new Exception("Please set the maindomain in easy_objects, otherwise we don't know what to use as webhook URL for the PSP.");
+                    var mainDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
+                    if (String.IsNullOrWhiteSpace(mainDomain))
+                    {
+                        throw new Exception("Please set the maindomain in easy_objects, otherwise we don't know what to use as webhook URL for the PSP.");
+                    }
+
+                    if (!mainDomain.StartsWith("http", StringComparison.Ordinal) && !mainDomain.StartsWith("//", StringComparison.Ordinal))
+                    {
+                        mainDomain = $"https://{mainDomain}";
+                    }
+
+                    webhookUrl = new UriBuilder(mainDomain);
+                }
+                else
+                {
+                    webhookUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext));
                 }
 
-                if (!mainDomain.StartsWith("http", StringComparison.Ordinal) && !mainDomain.StartsWith("//", StringComparison.Ordinal))
+                webhookUrl.Path = Constants.PaymentInPage;
+
+                var queryString = HttpUtility.ParseQueryString(webhookUrl.Query);
+                queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
+                queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
+                webhookUrl.Query = queryString.ToString()!;
+                paymentMethodSettings.PaymentServiceProvider.WebhookUrl = webhookUrl.ToString();
+
+                // Build the return URL.
+                var returnUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext))
                 {
-                    mainDomain = $"https://{mainDomain}";
+                    Path = Constants.PaymentReturnPage
+                };
+                queryString = HttpUtility.ParseQueryString(returnUrl.Query);
+                queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
+                queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
+                returnUrl.Query = queryString.ToString()!;
+                paymentMethodSettings.PaymentServiceProvider.ReturnUrl = returnUrl.ToString();
+
+                // Get current user.
+                var loggedInUser = await accountsService.GetUserDataFromCookieAsync();
+                WiserItemModel userDetails;
+                if (loggedInUser.UserId > 0)
+                {
+                    userDetails = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
+                }
+                else
+                {
+                    var basketUser = (await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBaskets.First().Main.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType, Account.Models.Constants.DefaultEntityType, reverse: true)).FirstOrDefault();
+                    userDetails = basketUser ?? new WiserItemModel { EntityType = Account.Models.Constants.DefaultEntityType };
+                    loggedInUser.UserId = userDetails.Id;
                 }
 
-                webhookUrl = new UriBuilder(mainDomain);
-            }
-            else
-            {
-                webhookUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext));
-            }
+                // Double check that we received a valid payment method.
+                var availablePaymentMethods = await orderProcessesService.GetPaymentMethodsAsync(orderProcessId, loggedInUser);
 
-            webhookUrl.Path = Constants.PaymentInPage;
+                if (availablePaymentMethods == null || availablePaymentMethods.All(p => p.Id != selectedPaymentMethodId))
+                {
+                    return new PaymentRequestResult
+                    {
+                        Successful = false,
+                        Action = PaymentRequestActions.Redirect,
+                        ActionData = failUrl,
+                        ErrorMessage = "This user is not allowed to pay"
+                    };
+                }
 
-            var queryString = HttpUtility.ParseQueryString(webhookUrl.Query);
-            queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
-            queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
-            webhookUrl.Query = queryString.ToString()!;
-            paymentMethodSettings.PaymentServiceProvider.WebhookUrl = webhookUrl.ToString();
-            
-            // Build the return URL.
-            var returnUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext))
-            {
-                Path = Constants.PaymentReturnPage
-            };
-            queryString = HttpUtility.ParseQueryString(returnUrl.Query);
-            queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
-            queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
-            returnUrl.Query = queryString.ToString()!;
-            paymentMethodSettings.PaymentServiceProvider.ReturnUrl = returnUrl.ToString();
-            
-            // Get current user.
-            var loggedInUser = await accountsService.GetUserDataFromCookieAsync();
-            WiserItemModel userDetails;
-            if (loggedInUser.UserId > 0)
-            {
-                userDetails = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
+                // Convert baskets to concept orders.
+                var orderId = 0UL;
+                var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+                var conceptOrders = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
+                foreach (var (main, lines) in shoppingBaskets)
+                {
+                    var (conceptOrderId, conceptOrder, conceptOrderLines) = await shoppingBasketsService.MakeConceptOrderFromBasketAsync(main, lines, basketSettings);
+
+                    conceptOrders.Add((conceptOrder, conceptOrderLines));
+
+                    orderId = conceptOrderId;
+                }
+
+                // Generate invoice number.
+                var invoiceNumber = "";
+                var invoiceNumberQuery = (await templatesService.GetTemplateAsync(name: Constants.InvoiceNumberQueryTemplate, type: TemplateTypes.Query))?.Content;
+                if (!String.IsNullOrWhiteSpace(invoiceNumberQuery))
+                {
+                    invoiceNumberQuery = invoiceNumberQuery.ReplaceCaseInsensitive("{oid}", orderId.ToString()).ReplaceCaseInsensitive("{orderId}", orderId.ToString());
+                    var getInvoiceNumberResult = await databaseConnection.GetAsync(invoiceNumberQuery);
+                    if (getInvoiceNumberResult.Rows.Count > 0)
+                    {
+                        invoiceNumber = Convert.ToString(getInvoiceNumberResult.Rows[0][0]);
+                    }
+                }
+
+                if (String.IsNullOrWhiteSpace(invoiceNumber))
+                {
+                    invoiceNumber = orderId.ToString();
+                }
+
+                var uniquePaymentNumber = $"{invoiceNumber}-{DateTime.Now:yyyyMMddHHmmss}";
+
+                // Check if the order is a test order.
+                var isTestOrder = gclSettings.Environment.InList(Environments.Test, Environments.Development);
+
+                // Save data to the concept order(s).
+                foreach (var (main, lines) in conceptOrders)
+                {
+                    main.SetDetail(Constants.PaymentMethodProperty, paymentMethodSettings.Id);
+                    main.SetDetail(Constants.PaymentMethodNameProperty, paymentMethodSettings.Title);
+                    main.SetDetail(Constants.PaymentProviderProperty, paymentMethodSettings.PaymentServiceProvider.Id);
+                    main.SetDetail(Constants.PaymentProviderNameProperty, paymentMethodSettings.PaymentServiceProvider.Title);
+                    main.SetDetail(Constants.UniquePaymentNumberProperty, uniquePaymentNumber);
+                    main.SetDetail(Constants.InvoiceNumberProperty, invoiceNumber);
+                    main.SetDetail(Constants.LanguageCodeProperty, languagesService?.CurrentLanguageCode ?? "");
+                    main.SetDetail(Constants.IsTestOrderProperty, isTestOrder ? 1 : 0);
+                    await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
+                }
+
+                var convertConceptOrderToOrder = paymentMethodSettings.PaymentServiceProvider.OrdersCanBeSetDirectlyToFinished;
+
+                // Increment use count of redeemed coupons.
+                foreach (var (main, lines) in conceptOrders)
+                {
+                    foreach (var basketLine in shoppingBasketsService.GetLines(lines, Constants.OrderLineCouponType))
+                    {
+                        var couponItemId = basketLine.GetDetailValue<ulong>(ShoppingBasket.Models.Constants.ConnectedItemIdProperty);
+                        if (couponItemId == 0)
+                        {
+                            continue;
+                        }
+
+                        var couponItem = await wiserItemsService.GetItemDetailsAsync(couponItemId);
+                        if (couponItem is not { Id: > 0 })
+                        {
+                            continue;
+                        }
+
+                        var totalBasketPrice = await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, lineType: Constants.OrderLineProductType);
+                        await shoppingBasketsService.UseCouponAsync(couponItem, totalBasketPrice);
+                    }
+                }
+
+                // TODO: Call "TransactionBeforeOut" site function.
+
+                if (!convertConceptOrderToOrder && paymentMethodSettings.PaymentServiceProvider.SkipPaymentWhenOrderAmountEqualsZero)
+                {
+                    var totalPrice = 0M;
+                    foreach (var (main, lines) in conceptOrders)
+                    {
+                        totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings);
+                    }
+
+                    if (totalPrice == 0M)
+                    {
+                        convertConceptOrderToOrder = true;
+                    }
+                }
+
+                if (convertConceptOrderToOrder)
+                {
+                    foreach (var (main, _) in conceptOrders)
+                    {
+                        await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
+                        // TODO: Call "TransactionFinished" site function.
+                    }
+
+                    return new PaymentRequestResult
+                    {
+                        Successful = true,
+                        Action = PaymentRequestActions.Redirect,
+                        ActionData = paymentMethodSettings.PaymentServiceProvider.SuccessUrl
+                    };
+                }
+
+                // Get the correct service based on name.
+                var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Title);
+                paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
+
+                if (convertConceptOrderToOrder)
+                {
+                    await HandlePaymentStatusUpdateAsync(orderProcessesService, orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
+                }
+
+                return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, paymentMethodSettings, uniquePaymentNumber);
             }
-            else
+            catch (Exception exception)
             {
-                var basketUser = (await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBaskets.First().Main.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType, Account.Models.Constants.DefaultEntityType, reverse: true)).FirstOrDefault();
-                userDetails = basketUser ?? new WiserItemModel { EntityType = Account.Models.Constants.DefaultEntityType } ;
-                loggedInUser.UserId = userDetails.Id;
-            }
-            
-            // Double check that we received a valid payment method.
-            var availablePaymentMethods = await orderProcessesService.GetPaymentMethodsAsync(orderProcessId, loggedInUser);
-            
-            if (availablePaymentMethods == null || availablePaymentMethods.All(p => p.Id != selectedPaymentMethodId))
-            {
+                logger.LogCritical(exception, $"An exception occurred in {Constants.PaymentOutPage}");
                 return new PaymentRequestResult
                 {
                     Successful = false,
                     Action = PaymentRequestActions.Redirect,
                     ActionData = failUrl,
-                    ErrorMessage = "This user is not allowed to pay"
+                    ErrorMessage = exception.Message
                 };
             }
-            
-            // Convert baskets to concept orders.
-            var orderId = 0UL;
-            var basketSettings = await shoppingBasketsService.GetSettingsAsync();
-            var conceptOrders = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
-            foreach (var (main, lines) in shoppingBaskets)
-            {
-                var (conceptOrderId, conceptOrder, conceptOrderLines) = await shoppingBasketsService.MakeConceptOrderFromBasketAsync(main, lines, basketSettings);
-
-                conceptOrders.Add((conceptOrder, conceptOrderLines));
-
-                orderId = conceptOrderId;
-            }
-            
-            // Generate invoice number.
-            var invoiceNumber = "";
-            var invoiceNumberQuery = (await templatesService.GetTemplateAsync(name: Constants.InvoiceNumberQueryTemplate, type: TemplateTypes.Query))?.Content;
-            if (!String.IsNullOrWhiteSpace(invoiceNumberQuery))
-            {
-                invoiceNumberQuery = invoiceNumberQuery.ReplaceCaseInsensitive("{oid}", orderId.ToString()).ReplaceCaseInsensitive("{orderId}", orderId.ToString());
-                var getInvoiceNumberResult = await databaseConnection.GetAsync(invoiceNumberQuery);
-                if (getInvoiceNumberResult.Rows.Count > 0)
-                {
-                    invoiceNumber = Convert.ToString(getInvoiceNumberResult.Rows[0][0]);
-                }
-            }
-
-            if (String.IsNullOrWhiteSpace(invoiceNumber))
-            {
-                invoiceNumber = orderId.ToString();
-            }
-            
-            var uniquePaymentNumber = $"{invoiceNumber}-{DateTime.Now:yyyyMMddHHmmss}";
-
-            // Check if the order is a test order.
-            var isTestOrder = gclSettings.Environment.InList(Environments.Test, Environments.Development);
-            
-            // Save data to the concept order(s).
-            foreach (var (main, lines) in conceptOrders)
-            {
-                main.SetDetail(Constants.PaymentMethodProperty, paymentMethodSettings.Id);
-                main.SetDetail(Constants.PaymentMethodNameProperty, paymentMethodSettings.Title);
-                main.SetDetail(Constants.PaymentProviderProperty, paymentMethodSettings.PaymentServiceProvider.Id);
-                main.SetDetail(Constants.PaymentProviderNameProperty, paymentMethodSettings.PaymentServiceProvider.Title);
-                main.SetDetail(Constants.UniquePaymentNumberProperty, uniquePaymentNumber);
-                main.SetDetail(Constants.InvoiceNumberProperty, invoiceNumber);
-                main.SetDetail(Constants.LanguageCodeProperty, languagesService?.CurrentLanguageCode ?? "");
-                main.SetDetail(Constants.IsTestOrderProperty, isTestOrder ? 1 : 0);
-                await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
-            }
-            
-            var convertConceptOrderToOrder = paymentMethodSettings.PaymentServiceProvider.OrdersCanBeSetDirectlyToFinished;
-            
-            // Increment use count of redeemed coupons.
-            foreach (var (main, lines) in conceptOrders)
-            {
-                foreach (var basketLine in shoppingBasketsService.GetLines(lines, Constants.OrderLineCouponType))
-                {
-                    var couponItemId = basketLine.GetDetailValue<ulong>(ShoppingBasket.Models.Constants.ConnectedItemIdProperty);
-                    if (couponItemId == 0)
-                    {
-                        continue;
-                    }
-
-                    var couponItem = await wiserItemsService.GetItemDetailsAsync(couponItemId);
-                    if (couponItem is not { Id: > 0 })
-                    {
-                        continue;
-                    }
-
-                    var totalBasketPrice = await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, lineType: Constants.OrderLineProductType);
-                    await shoppingBasketsService.UseCouponAsync(couponItem, totalBasketPrice);
-                }
-            }
-
-            // TODO: Call "TransactionBeforeOut" site function.
-            
-            if (!convertConceptOrderToOrder && paymentMethodSettings.PaymentServiceProvider.SkipPaymentWhenOrderAmountEqualsZero)
-            {
-                var totalPrice = 0M;
-                foreach (var (main, lines) in conceptOrders)
-                {
-                    totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings);
-                }
-
-                if (totalPrice == 0M)
-                {
-                    convertConceptOrderToOrder = true;
-                }
-            }
-            
-            if (convertConceptOrderToOrder)
-            {
-                foreach (var (main, _) in conceptOrders)
-                {
-                    await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
-                    // TODO: Call "TransactionFinished" site function.
-                }
-
-                return new PaymentRequestResult
-                {
-                    Successful = true,
-                    Action = PaymentRequestActions.Redirect,
-                    ActionData = paymentMethodSettings.PaymentServiceProvider.SuccessUrl
-                };
-            }
-            
-            // Get the correct service based on name.
-            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Title);
-            paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
-
-            if (convertConceptOrderToOrder)
-            {
-                await HandlePaymentStatusUpdateAsync(orderProcessesService, orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
-            }
-
-            return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, paymentMethodSettings, uniquePaymentNumber);
         }
 
         /// <inheritdoc />
