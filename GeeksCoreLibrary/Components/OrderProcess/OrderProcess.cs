@@ -329,7 +329,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 };
 
                 var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
-                stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, step.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, step.Footer);
+                stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, orderProcessSettings.Header + step.Header)
+                    .ReplaceCaseInsensitive(Constants.FooterReplacement, step.Footer + orderProcessSettings.Footer);
 
                 // Build the groups HTML.
                 var groupsBuilder = new StringBuilder();

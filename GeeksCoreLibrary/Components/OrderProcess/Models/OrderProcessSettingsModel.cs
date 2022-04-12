@@ -41,5 +41,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets whether the basket of the user should be cleared on the confirmation page.
         /// </summary>
         public bool ClearBasketOnConfirmationPage { get; set; }
+
+        /// <summary>
+        /// Gets or sets the header HTML.
+        /// </summary>
+        public string Header { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the footer HTML.
+        /// </summary>
+        public string Footer { get; set; }
     }
 }

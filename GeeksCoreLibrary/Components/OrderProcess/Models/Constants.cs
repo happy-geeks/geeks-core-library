@@ -55,6 +55,20 @@
 
         #region Fields for order process settings
 
+        public const string OrderProcessUrlProperty = "orderprocessurl";
+
+        public const string OrderProcessEmailAddressFieldProperty = "orderprocessemailaddressfield";
+
+        public const string OrderProcessStatusUpdateTemplateProperty = "orderprocessstatusupdatetemplate";
+
+        public const string OrderProcessStatusUpdateWebShopTemplateProperty = "orderprocessstatusupdatewebshoptemplate";
+
+        public const string OrderProcessClearBasketOnConfirmationPageProperty = "orderprocessclearbasketonconfirmationpage";
+
+        public const string OrderProcessHeaderProperty = "orderprocessheader";
+
+        public const string OrderProcessFooterProperty = "orderprocessfooter";
+
         public const string StepTypeProperty = "orderprocesssteptype";
 
         public const string StepTemplateProperty = "orderprocesssteptemplate";
@@ -68,16 +82,6 @@
         public const string StepPreviousStepLinkTextProperty = "orderprocessstepprevioussteplinktext";
 
         public const string StepRedirectUrl = "orderprocessstepredirecturl";
-
-        public const string OrderProcessUrlProperty = "orderprocessurl";
-
-        public const string OrderProcessEmailAddressFieldProperty = "orderprocessemailaddressfield";
-
-        public const string OrderProcessStatusUpdateTemplateProperty = "orderprocessstatusupdatetemplate";
-
-        public const string OrderProcessStatusUpdateWebShopTemplateProperty = "orderprocessstatusupdatewebshoptemplate";
-
-        public const string OrderProcessClearBasketOnConfirmationPageProperty = "orderprocessclearbasketonconfirmationpage";
 
         public const string GroupTypeProperty = "orderprocessgrouptype";
 
