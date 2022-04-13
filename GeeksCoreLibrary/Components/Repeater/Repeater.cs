@@ -342,7 +342,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     }
 
                     // Do all standard replacements
-                    return await RenderAndExecuteQueryAsync(query);
+                    return await RenderAndExecuteQueryAsync(query, skipCache: true);
                 case DataSource.Csv:
                     throw new NotImplementedException(); // Use Modules->DataParser
                 case DataSource.DataSelector:
