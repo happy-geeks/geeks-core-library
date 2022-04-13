@@ -106,7 +106,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync()
         {
             var checkoutBasketsCookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName", "shoppingBasket");
-            
+
             var settings = await GetSettingsAsync();
             return await GetShoppingBasketsAsync(checkoutBasketsCookieName, settings);
         }
@@ -679,7 +679,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             try
             {
                 await databaseConnection.BeginTransactionAsync();
-                
+
                 await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.OrderEntityType);
 
                 // Check if there is a AfterCreateConceptOrder query in the templates module and execute this query if present.
@@ -938,7 +938,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             else if (replaceUserAccountVariables)
             {
                 var details = await GetUserDetailsAsync();
-                if (details.Count > 0)
+                if (details is { Count: > 0 })
                 {
                     userDetails = details;
                     template = stringReplacementsService.DoReplacements(template, userDetails, forQuery);
@@ -1422,7 +1422,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     sqlQuery = await templatesService.HandleIncludesAsync(sqlQuery, false, null, false, true);
                     sqlQuery = sqlQuery.Replace("{itemid}", itemId.ToString());
                     sqlQuery = sqlQuery.Replace("{quantity}", quantity.ToString(CultureInfo.InvariantCulture));
-                    
+
                     sqlQuery = await stringReplacementsService.DoAllReplacementsAsync(sqlQuery, null, true, true, false, true);
 
                     var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
@@ -1437,7 +1437,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         }
                     }
                 }
-                
+
                 var addItemLine = AddLineInternal(basketLines, settings, uniqueId, itemId, quantity, type, lineDetails);
 
                 // Write changes to database.
@@ -1484,7 +1484,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 return;
             }
-            
+
             await databaseConnection.BeginTransactionAsync();
             try
             {
@@ -1497,7 +1497,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         sqlQuery = await templatesService.HandleIncludesAsync(sqlQuery, false, null, false, true);
                         sqlQuery = sqlQuery.Replace("{itemid}", item.ItemId.ToString());
                         sqlQuery = sqlQuery.Replace("{quantity}", item.Quantity.ToString(CultureInfo.InvariantCulture));
-                        
+
                         sqlQuery = await stringReplacementsService.DoAllReplacementsAsync(sqlQuery, null, true, true, false, true);
 
                         var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
@@ -1512,7 +1512,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                             }
                         }
                     }
-                    
+
                     var addItemLine = AddLineInternal(basketLines, settings, item.UniqueId, item.ItemId, item.Quantity, item.Type, item.LineDetails);
                     createLinksFor.Add(addItemLine);
                 }
@@ -1549,7 +1549,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 {
                     await LoadAsync(settings, shoppingBasket.Id);
                 }
-                
+
                 // Recalculate shipping costs, coupons etc. after getting the extra fields (price can be selected with extra fields query).
                 await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, items.First().Type, false);
 
@@ -2148,7 +2148,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             return round ? Math.Round(output, 2, MidpointRounding.AwayFromZero) : output;
         }
-        
+
         /// <inheritdoc />
         public async Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
         {
@@ -2615,12 +2615,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             if (user.MainUserId == user.UserId)
             {
-                return (await wiserItemsService.GetItemDetailsAsync(user.MainUserId)).GetSortedList(true);
+                return (await wiserItemsService.GetItemDetailsAsync(user.MainUserId, entityType: user.EntityType)).GetSortedList(true);
             }
 
-            var result = (await wiserItemsService.GetItemDetailsAsync(user.MainUserId)).GetSortedList(true);
+            var result = (await wiserItemsService.GetItemDetailsAsync(user.MainUserId, entityType: user.EntityType)).GetSortedList(true);
 
-            (await wiserItemsService.GetItemDetailsAsync(user.UserId)).GetSortedList(true).ToList().ForEach(entry => result[entry.Key] = entry.Value);
+            (await wiserItemsService.GetItemDetailsAsync(user.UserId, entityType: user.EntityType)).GetSortedList(true).ToList().ForEach(entry => result[entry.Key] = entry.Value);
 
             return result;
         }
