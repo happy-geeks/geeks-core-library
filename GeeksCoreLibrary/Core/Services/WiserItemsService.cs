@@ -15,6 +15,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 
@@ -27,17 +28,19 @@ namespace GeeksCoreLibrary.Core.Services
         private readonly IDatabaseConnection databaseConnection;
         private readonly IObjectsService objectsService;
         private readonly IStringReplacementsService stringReplacementsService;
+        private readonly IDataSelectorsService dataSelectorsService;
         private const int MaximumLevelsToDuplicate = 25;
 
         #endregion
 
         #region Constructor
 
-        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService)
+        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService)
         {
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
             this.stringReplacementsService = stringReplacementsService;
+            this.dataSelectorsService = dataSelectorsService;
         }
 
         #endregion
@@ -2838,14 +2841,14 @@ namespace GeeksCoreLibrary.Core.Services
             // If images should be saved with a relative path.
             if (!allowAbsoluteImageUrls && !String.IsNullOrWhiteSpace(mainDomain) && String.Equals(await objectsService.FindSystemObjectByDomainNameAsync("wiser_save_images_relative"), "true", StringComparison.OrdinalIgnoreCase))
             {
-                output = Regex.Replace(output, $@"src=""https?://{Regex.Escape(mainDomain)}", "src=\"");
-                output = Regex.Replace(output, $@"src=""//{Regex.Escape(mainDomain)}", "src=\"");
+                output = Regex.Replace(output, $@"src=""https?://{Regex.Escape(mainDomain)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"src=""//{Regex.Escape(mainDomain)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             }
 
-            // Make extra sure there's no juicedev domain saved in the image URLs
-            output = Regex.Replace(output, @"src=""http://.+?\.juicedev\.nl", "src=\"", RegexOptions.IgnoreCase);
+            // Make extra sure there's no juicedev domain saved in the image URLs.
+            output = Regex.Replace(output, @"src=""http://.+?\.juicedev\.nl", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
 
-            var regex = new Regex(@"<table[^>]*?(?:data=['""](?<data>.*?)['""][^>]*?)?(contentid|pageid|item-id)=['""](?<contentId>\d+)['""][^>]*?>.+<\/table>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            var regex = new Regex(@"<table[^>]*?(?:data=['""](?<data>.*?)['""][^>]*?)?(contentid|pageid|item-id)=['""](?<contentId>\d+)['""][^>]*?>.+<\/table>", RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var matchResults = regex.Match(output);
             while (matchResults.Success)
             {
@@ -2858,8 +2861,24 @@ namespace GeeksCoreLibrary.Core.Services
 
             output = output.Replace("~~table", "<table");
 
-            // Replace Office Word HTML XML
-            output = Regex.Replace(output, @"<\!--\[if.*?mso.*?\]>.*?<\!\[endif\]-->", "", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            // Replace Office Word HTML XML.
+            output = Regex.Replace(output, @"<\!--\[if.*?mso.*?\]>.*?<\!\[endif\]-->", "", RegexOptions.IgnoreCase | RegexOptions.Singleline, TimeSpan.FromMilliseconds(200));
+            
+            // Replace data selectors.
+            regex = new Regex(@"<!-- Start data selector with id (?<dataSelectorId>\d+) and template (?<templateId>\d+) -->.+?<!-- End data selector with id \d+ and template \d+ -->", RegexOptions.IgnoreCase | RegexOptions.Singleline, TimeSpan.FromMilliseconds(200));
+            var matches = regex.Matches(output);
+            foreach (Match match in matches)
+            {
+                if (!match.Success)
+                {
+                    continue;
+                }
+
+                var dataSelectorId = match.Groups["dataSelectorId"].Value;
+                var templateId = match.Groups["templateId"].Value;
+
+                output = output.Replace(match.Value, $"<div class=\"dynamic-content\" data-selector-id=\"{dataSelectorId}\" template-id=\"{templateId}\"><h2>Data selector</h2></div>");
+            }
 
             return output;
         }
@@ -2903,6 +2922,8 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
             }
+
+            output = await dataSelectorsService.ReplaceAllDataSelectorsAsync(output);
 
             return output;
         }
