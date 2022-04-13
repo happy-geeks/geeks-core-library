@@ -100,7 +100,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 
                 databaseConnection.AddParameter("selector", cookieValueParts[0]);
                 databaseConnection.AddParameter("entityType", cookieValueParts[2]);
-                var result = await databaseConnection.GetAsync(query);
+                var result = await databaseConnection.GetAsync(query, true);
 
                 if (result.Rows.Count == 0)
                 {
@@ -149,7 +149,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                             .Replace("{Account_UserId}", output.UserId.ToString())
                             .Replace("{AccountWiser2_UserId}", output.UserId.ToString())
                             .Replace("{Account_MainUserId}", output.MainUserId.ToString())
-                            .Replace("{AccountWiser2_MainUserId}", output.MainUserId.ToString()));
+                            .Replace("{AccountWiser2_MainUserId}", output.MainUserId.ToString()), true);
 
                         if (result.Rows.Count > 0)
                         {
