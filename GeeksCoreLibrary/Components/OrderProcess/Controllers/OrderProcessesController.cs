@@ -140,7 +140,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             {
                 contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates));
 
-                // Load (S)CSS file with the same name as the order process.
+                // Load (S)CSS and/or JavaScript files with the same name as the order process.
                 if (!String.IsNullOrWhiteSpace(orderProcessSettings.Title))
                 {
                     var cssTemplateId = await templatesService.GetTemplateIdFromNameAsync(orderProcessSettings.Title, TemplateTypes.Scss);
