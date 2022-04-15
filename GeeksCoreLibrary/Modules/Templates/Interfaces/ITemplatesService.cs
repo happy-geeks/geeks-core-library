@@ -180,6 +180,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
         
         Task<string> HandleImageTemplating(string input);
+
         Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "");
 
         /// <summary>

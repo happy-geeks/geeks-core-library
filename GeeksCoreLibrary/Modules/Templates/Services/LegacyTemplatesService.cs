@@ -54,7 +54,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IObjectsService objectsService;
         private readonly ILanguagesService languagesService;
         private readonly IFiltersService filtersService;
-        
+
         /// <summary>
         /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
         /// </summary>
@@ -92,7 +92,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
             }
-            
+
             var joinPart = gclSettings.Environment switch
             {
                 Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
@@ -181,7 +181,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
             }
-            
+
             var joinPart = gclSettings.Environment switch
             {
                 Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
@@ -236,7 +236,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND t.deleted <= 0
                         AND {whereClause}
                         LIMIT 1";
-            
+
             var dataTable = await databaseConnection.GetAsync(query);
             var result = dataTable.Rows.Count == 0 ? new Template() : new Template
             {
@@ -248,7 +248,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 CachingRegex = dataTable.Rows[0].Field<string>("cache_regex"),
                 Type = (TemplateTypes)Convert.ToInt32(dataTable.Rows[0]["template_type"])
             };
-            
+
             return result;
         }
 
@@ -297,7 +297,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
         {
-            var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss 
+            var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss
                 ? $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')"
                 : $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'";
 
@@ -611,6 +611,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             return input;
         }
 
+        /// <inheritdoc />
         public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
         {
             var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser2/<item_id>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
@@ -639,9 +640,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             return imageUrlTemplate;
         }
 
+        /// <inheritdoc />
         public async Task<string> HandleImageTemplating(string input)
         {
-            if (string.IsNullOrWhiteSpace(input))
+            if (String.IsNullOrWhiteSpace(input))
             {
                 return input;
             }
@@ -655,8 +657,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var resizeMode = "";
                 var propertyName = "";
                 var imageAltTag = "";
+                var fallbackImageExtension = "jpg";
                 var parameters = replacementParameters[0].Split(",");
                 var imageItemIdOrFilename = parameters[0];
+                var output = "";
 
                 // Only get the parameter if specified in the templating variable
                 if (parameters.Length > 1)
@@ -666,32 +670,37 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                 if (parameters.Length > 2)
                 {
-                    imageIndex = int.Parse(parameters[2].Trim());
+                    fallbackImageExtension = parameters[2].Trim();
                 }
 
                 if (parameters.Length > 3)
                 {
-                    resizeMode = parameters[3].Trim();
+                    imageIndex = Int32.Parse(parameters[3].Trim());
                 }
 
                 if (parameters.Length > 4)
                 {
-                    imageAltTag = parameters[4].Trim();
+                    resizeMode = parameters[4].Trim();
+                }
+
+                if (parameters.Length > 5)
+                {
+                    imageAltTag = parameters[5].Trim();
                 }
 
                 imageIndex = imageIndex == 0 ? 1 : imageIndex;
-                 
+
                 // Get the image from the database
                 databaseConnection.AddParameter("itemId", imageItemIdOrFilename);
                 databaseConnection.AddParameter("filename", imageItemIdOrFilename);
                 databaseConnection.AddParameter("propertyName", propertyName);
 
-                var queryWherePart = char.IsNumber(imageItemIdOrFilename, 0) ? "item_id = ?itemId" : "file_name = ?filename";
+                var queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
                 var dataTable = await databaseConnection.GetAsync(@$"SELECT * FROM `{WiserTableNames.WiserItemFile}` WHERE {queryWherePart} AND IF(?propertyName = '', 1=1, property_name = ?propertyName) AND content_type LIKE 'image%' ORDER BY id ASC");
 
                 if (dataTable.Rows.Count == 0)
                 {
-                    input = input.ReplaceCaseInsensitive(m.Value, "image not found");
+                    input = input.ReplaceCaseInsensitive(m.Value, $"<img src=\"/img/noimg.png\" />");
                     continue;
                 }
 
@@ -702,9 +711,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 }
 
                 // Get various values from the table
-                var imageItemId = dataTable.Rows[imageIndex-1].Field<int>("item_id").ToString();
-                var imageFilename = dataTable.Rows[imageIndex-1].Field<string>("file_name");
-                var imagePropertyType = dataTable.Rows[imageIndex-1].Field<string>("property_name");
+                var imageItemId = Convert.ToString(dataTable.Rows[imageIndex - 1]["item_id"]);
+                var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
+                var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
                 var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)");
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
@@ -726,7 +735,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     var imageParameters = parameters[1].Replace(")", "").Split("x");
                     var imageViewportParameter = parameters[0];
 
-                    if (string.IsNullOrWhiteSpace(imageViewportParameter))
+                    if (String.IsNullOrWhiteSpace(imageViewportParameter))
                     {
                         input = input.ReplaceCaseInsensitive(m.Value, "no viewport parameter specified");
                         continue;
@@ -738,29 +747,34 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     var imageHeight2X = (imageHeight * 2).ToString();
 
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
-                    outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-jpg-2x} 2x, {image-url-jpg}"" type=""image/jpeg"" />");
+                    outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-alt-2x} 2x, {image-url-alt}"" type=""{image-type-alt}"" />");
 
-                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-jpg}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".jpg", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".webp", imageWidth2X, imageHeight2X, resizeMode));
-                    outputBuilder.Replace("{image-url-jpg-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".jpg", imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-type-alt}", FileSystemHelpers.GetMediaTypeByExtension(fallbackImageExtension));
                     outputBuilder.Replace("{min-width}", imageViewportParameter);
 
                     // If last item, than add the default image
                     if (index == totalItems)
                     {
-                        outputBuilder.Append("<img width=\"100%\" height=\"auto\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
-                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                        outputBuilder.Append("<img width=\"{image_width}\" height=\"{image_height}\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
+                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                        outputBuilder.Replace("{image_width}", imageWidth.ToString());
+                        outputBuilder.Replace("{image_height}", imageHeight.ToString());
                     }
 
                     imageTemplate = imageTemplate.Replace("{images}", outputBuilder.ToString());
-                    imageTemplate = imageTemplate.Replace("{image_alt}", (string.IsNullOrWhiteSpace(imageAltTag) ? imageFilename : imageAltTag));
+                    imageTemplate = imageTemplate.Replace("{image_alt}", (String.IsNullOrWhiteSpace(imageAltTag) ? imageFilename : imageAltTag));
 
-                    // Replace the image in the template
-                    input = input.ReplaceCaseInsensitive(m.Value, imageTemplate);
+                    output = imageTemplate;
 
                     index += 1;
                 }
+
+                // Replace the image in the template
+                input = input.ReplaceCaseInsensitive(m.Value, output);
             }
 
             return input;
@@ -929,7 +943,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         WHERE d.version = 1 
                         AND d.itemid = 0
                         AND d.id = ?contentId";
-            
+
             databaseConnection.AddParameter("contentId", contentId);
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
@@ -960,40 +974,40 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 case "JuiceControlLibrary.MLSimpleMenu":
                 case "JuiceControlLibrary.SimpleMenu":
                 case "JuiceControlLibrary.ProductModule":
-                    {
-                        viewComponentName = "Repeater";
-                        break;
-                    }
+                {
+                    viewComponentName = "Repeater";
+                    break;
+                }
                 case "JuiceControlLibrary.AccountWiser2":
-                    {
-                        viewComponentName = "Account";
-                        break;
-                    }
+                {
+                    viewComponentName = "Account";
+                    break;
+                }
                 case "JuiceControlLibrary.ShoppingBasket":
-                    {
-                        viewComponentName = "ShoppingBasket";
-                        break;
-                    }
+                {
+                    viewComponentName = "ShoppingBasket";
+                    break;
+                }
                 case "JuiceControlLibrary.WebPage":
-                    {
-                        viewComponentName = "WebPage";
-                        break;
-                    }
+                {
+                    viewComponentName = "WebPage";
+                    break;
+                }
                 case "JuiceControlLibrary.Pagination":
-                    {
-                        viewComponentName = "Pagination";
-                        break;
-                    }
+                {
+                    viewComponentName = "Pagination";
+                    break;
+                }
                 case "JuiceControlLibrary.DynamicFilter":
-                    {
-                        viewComponentName = "Filter";
-                        break;
-                    }
+                {
+                    viewComponentName = "Filter";
+                    break;
+                }
                 case "JuiceControlLibrary.Sendform":
-                    {
-                        viewComponentName = "WebForm";
-                        break;
-                    }
+                {
+                    viewComponentName = "WebForm";
+                    break;
+                }
                 case "JuiceControlLibrary.Configurator":
                 {
                     viewComponentName = "Configurator";
@@ -1105,7 +1119,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 return null;
             }
-            
+
             queryTemplate.GroupingSettings ??= new QueryGroupingSettings();
             query = await DoReplacesAsync(query, true, false, true, null, true, false, true);
             if (query.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
@@ -1135,13 +1149,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             return result;
         }
-        
+
         /// <inheritdoc />
         public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             return await GetTemplateDataAsync(this, id, name, parentId, parentName);
         }
-        
+
         /// <inheritdoc />
         public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
@@ -1157,10 +1171,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             return new TemplateDataModel
             {
-                Content = template.Content, 
-                LinkedCss = cssStringBuilder.ToString(), 
+                Content = template.Content,
+                LinkedCss = cssStringBuilder.ToString(),
                 LinkedJavascript = jsStringBuilder.ToString()
-            }; 
+            };
         }
 
         /// <inheritdoc />
