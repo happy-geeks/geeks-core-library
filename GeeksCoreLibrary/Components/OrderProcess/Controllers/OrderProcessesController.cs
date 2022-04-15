@@ -148,6 +148,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
                     {
                         cssTemplates.Add(cssTemplateId);
                     }
+
+                    var javascriptTemplateId = await templatesService.GetTemplateIdFromNameAsync(orderProcessSettings.Title, TemplateTypes.Js);
+                    if (javascriptTemplateId > 0)
+                    {
+                        javascriptTemplates.Add(javascriptTemplateId);
+                    }
                 }
             }
 
