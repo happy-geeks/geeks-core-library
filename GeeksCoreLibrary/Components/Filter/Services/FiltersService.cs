@@ -534,7 +534,8 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                 IFNULL(filteronseovalue.`value`, '0') AS filteronseovalue,
                                 IFNULL(singleconnecteditem.`value`, '0') AS singleconnecteditem,
                                 IFNULL(minimumitemsrequired.`value`, '0') AS minimumitemsrequired,
-                                IFNULL(useaggregationtable.`value`, '0') AS useaggregationtable
+                                IFNULL(useaggregationtable.`value`, '0') AS useaggregationtable,
+                                urlregex.`value` AS urlregex
                                 {{selectPart}}
                             FROM {WiserTableNames.WiserItem} filters
                             {{joinFiltersToItem}}
@@ -564,6 +565,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} singleconnecteditem ON singleconnecteditem.item_id=filters.id AND singleconnecteditem.`key`='singleconnecteditem' {GetLanguageQueryPart("singleconnecteditem", languageCode)}
                             LEFT JOIN {WiserTableNames.WiserItemDetail} minimumitemsrequired ON minimumitemsrequired.item_id=filters.id AND minimumitemsrequired.`key`='minimumitemsrequired' {GetLanguageQueryPart("minimumitemsrequired", languageCode)}
                             LEFT JOIN {WiserTableNames.WiserItemDetail} useaggregationtable ON useaggregationtable.item_id=filters.id AND useaggregationtable.`key`='useaggregationtable' {GetLanguageQueryPart("useaggregationtable", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} urlregex ON urlregex.item_id=filters.id AND urlregex.`key`='urlregex' {GetLanguageQueryPart("urlregex", languageCode)}
                             WHERE filters.entity_type='filter' {{levelsWherePart}}
                             {{ordering}}";
 
@@ -601,6 +603,12 @@ namespace GeeksCoreLibrary.Components.Filter.Services
 
             foreach (DataRow row in dataTable.Rows)
             {
+                // If URL not matches with regex, then skip this filter
+                if (dataTable.Columns.Contains("urlregex") && !String.IsNullOrEmpty(row["urlregex"].ToString()) && !System.Text.RegularExpressions.Regex.IsMatch(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString(), dataTable.Columns.Contains("urlregex").ToString()))
+                {
+                    continue;
+                }
+
                 FilterGroup f;
                 if (dataTable.Columns.Contains("filtergroupnameseo") && !String.IsNullOrEmpty(row["filtergroupnameseo"].ToString()))
                 {
@@ -752,7 +760,6 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 }
             }
 
-
             return result;
         }
 
@@ -782,7 +789,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 {
                     if (Information.IsNumeric(filterValue)) // One (minimum) value
                     {
-                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue < {filterValue.ToMySqlSafeValue(true)}";
+                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue < {filterValue.ToMySqlSafeValue(false)}";
                     }
                     else
                     {
@@ -793,11 +800,11 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 {
                     if (Information.IsNumeric(filterValue)) // One (minimum) value
                     {
-                        output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND REPLACE(fi{filterCounter}.`value`,',','.') < {filterValue.ToMySqlSafeValue(true)})";
+                        output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND REPLACE(fi{filterCounter}.`value`,',','.') < {filterValue.ToMySqlSafeValue(false)})";
                     }
                     else if (filterValue.Contains("-") && Information.IsNumeric(filterValue.Split('-')[0]) && Information.IsNumeric(filterValue.Split('-')[1])) // Two values (min and max)
                     {
-                        output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` >= {filterValue.Split('-')[0].ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` <= {filterValue.Split('-')[1].ToMySqlSafeValue(true)})";
+                        output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` >= {filterValue.Split('-')[0].ToMySqlSafeValue(false)} AND fi{filterCounter}.`value` <= {filterValue.Split('-')[1].ToMySqlSafeValue(false)})";
                     }
                 }
             }
