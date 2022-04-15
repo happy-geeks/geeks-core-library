@@ -59,10 +59,12 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
             var context = HttpContext;
             string cmsPagePath;
             string webPageIdString;
+            bool isErrorPage = false;
             if (context.Request.Query.TryGetValue("errorCode", out var errorCodeString))
             {
                 cmsPagePath = $"error_{errorCodeString}";
                 webPageIdString = String.Empty;
+                isErrorPage = true;
             }
             else
             {
@@ -123,6 +125,11 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
                 EvaluateIfElseInTemplates = true,
                 UserNeedsToBeLoggedIn = false
             };
+
+            if (isErrorPage)
+            {
+                webPageSettings.SetSeoInfo = true;
+            }
 
             if (webPageId > 0)
             {
