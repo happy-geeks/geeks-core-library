@@ -51,5 +51,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the footer HTML.
         /// </summary>
         public string Footer { get; set; }
+
+        /// <summary>
+        /// Gets or sets the main template HTML.
+        /// </summary>
+        public string Template { get; set; }
     }
 }

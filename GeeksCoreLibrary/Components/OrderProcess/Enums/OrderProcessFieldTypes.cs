@@ -5,6 +5,7 @@
         Input,
         Radio,
         Select,
-        Checkbox
+        Checkbox,
+        Textarea
     }
 }

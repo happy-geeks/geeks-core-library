@@ -102,7 +102,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 IF(statusUpdateAttachmentTemplate.value IS NULL OR statusUpdateAttachmentTemplate.value = '', '0', statusUpdateAttachmentTemplate.value) AS statusUpdateAttachmentTemplate,
                                 IF(clearBasketOnConfirmationPage.value IS NULL OR clearBasketOnConfirmationPage.value = '', '1', clearBasketOnConfirmationPage.value) AS clearBasketOnConfirmationPage,
 	                            CONCAT_WS('', header.value, header.long_value) AS header,
-	                            CONCAT_WS('', footer.value, footer.long_value) AS footer
+	                            CONCAT_WS('', footer.value, footer.long_value) AS footer,
+                                CONCAT_WS('', template.value, template.long_value) AS template
                             FROM {WiserTableNames.WiserItem} AS orderProcess
                             JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
                             JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
@@ -115,6 +116,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS clearBasketOnConfirmationPage ON clearBasketOnConfirmationPage.item_id = orderProcess.id AND clearBasketOnConfirmationPage.`key` = '{Constants.OrderProcessClearBasketOnConfirmationPageProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS header ON header.item_id = orderProcess.id AND header.`key` = '{Constants.OrderProcessHeaderProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS footer ON footer.item_id = orderProcess.id AND footer.`key` = '{Constants.OrderProcessFooterProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS template ON template.item_id = orderProcess.id AND template.`key` = '{Constants.OrderProcessTemplateProperty}'
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
                             AND orderProcess.published_environment >= ?publishedEnvironment
@@ -143,7 +145,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 StatusUpdateMailAttachmentTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateAttachmentTemplate")),
                 ClearBasketOnConfirmationPage = firstRow.Field<string>("clearBasketOnConfirmationPage") == "1",
                 Header = firstRow.Field<string>("header"),
-                Footer = firstRow.Field<string>("footer")
+                Footer = firstRow.Field<string>("footer"),
+                Template = firstRow.Field<string>("template")
             };
         }
 
@@ -368,9 +371,54 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     InputFieldType = EnumHelpers.ToEnum<OrderProcessInputTypes>(dataRow.Field<string>("fieldInputType") ?? "text"),
                     ErrorMessage = dataRow.Field<string>("fieldErrorMessage"),
                     CssClass = dataRow.Field<string>("fieldCssClass"),
-                    SaveTo = dataRow.Field<string>("fieldSaveTo"),
                     RequireUniqueValue = dataRow.Field<string>("fieldRequiresUniqueValue") == "1"
                 };
+
+                if (String.IsNullOrWhiteSpace(field.FieldId))
+                {
+                    field.FieldId = field.Title;
+                }
+
+                var saveTo = dataRow.Field<string>("fieldSaveTo");
+                if (!String.IsNullOrWhiteSpace(saveTo))
+                {
+                    foreach (var saveLocation in saveTo.Split(','))
+                    {
+                        var split = saveLocation.Split('.');
+                        if (split.Length != 2)
+                        {
+                            throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
+                        }
+
+                        var saveToSettings = new OrderProcessFieldSaveToSettingsModel
+                        {
+                            EntityType = split[0],
+                            PropertyName = split[1]
+                        };
+
+                        if (String.IsNullOrWhiteSpace(saveToSettings.EntityType) || String.IsNullOrWhiteSpace(saveToSettings.PropertyName))
+                        {
+                            throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
+                        }
+                        
+                        if (!saveToSettings.PropertyName.Contains("[") || !saveToSettings.PropertyName.EndsWith("]"))
+                        {
+                            continue;
+                        }
+
+                        // We can indicate what type number to use with adding the suffix "[X]", but we don't need the type number here, so just strip that. 
+                        split = saveToSettings.PropertyName.Split('[');
+                        saveToSettings.PropertyName = split.First();
+                        var linkTypeString = split.Last().TrimEnd(']');
+                        if (!Int32.TryParse(linkTypeString, out var linkType) || linkType <= 0)
+                        {
+                            throw new Exception($"Invalid link type found ({linkTypeString}) in save location for field {field.Id}: {saveLocation}");
+                        }
+
+                        saveToSettings.LinkType = linkType;
+                        field.SaveTo.Add(saveToSettings);
+                    }
+                }
 
                 group.Fields.Add(field);
             }
@@ -478,7 +526,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         }
 
         /// <inheritdoc />
-        public async Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<WiserItemModel> currentItems)
+        public async Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems)
         {
             try
             {
@@ -504,36 +552,22 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 {
                     return isValid;
                 }
-
-                var valuesToSave = String.IsNullOrWhiteSpace(field.SaveTo) ? new List<string> { $"{ShoppingBasket.Models.Constants.BasketEntityType}.{field.FieldId}" } : field.SaveTo.Split(',').ToList();
                 
                 // Check if the entered value is unique.
-                foreach (var saveLocation in valuesToSave)
+                foreach (var saveLocation in field.SaveTo)
                 {
-                    var split = saveLocation.Split('.');
-                    if (split.Length != 2)
-                    {
-                        throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
-                    }
-
-                    var entityType = split[0];
-                    var propertyName = split[1];
-                    if (String.IsNullOrWhiteSpace(entityType) || String.IsNullOrWhiteSpace(propertyName))
-                    {
-                        throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
-                    }
-                                    
-                    if (String.Equals(entityType, ShoppingBasket.Models.Constants.BasketEntityType))
+                    // Don't check baskets, because a user can have multiple baskets and should always be able to have the same values in all baskets.
+                    if (String.Equals(saveLocation.EntityType, ShoppingBasket.Models.Constants.BasketEntityType))
                     {
                         continue;
                     }
 
-                    var itemsOfEntityType = currentItems?.Where(item => String.Equals(item.EntityType, entityType, StringComparison.CurrentCultureIgnoreCase)).ToList();
-                    var idsClause = itemsOfEntityType == null || !itemsOfEntityType.Any() ? "" : $"AND item.id NOT IN ({String.Join(",", itemsOfEntityType.Select(item => item.Id))})";
-                    var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+                    var itemsOfEntityType = currentItems?.Where(item => String.Equals(item.Item.EntityType, saveLocation.EntityType, StringComparison.CurrentCultureIgnoreCase) && item.LinkSettings.Type == saveLocation.LinkType).ToList();
+                    var idsClause = itemsOfEntityType == null || !itemsOfEntityType.Any() ? "" : $"AND item.id NOT IN ({String.Join(",", itemsOfEntityType.Select(item => item.Item.Id))})";
+                    var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(saveLocation.EntityType);
                     
-                    databaseConnection.AddParameter("entityType", entityType);
-                    databaseConnection.AddParameter("propertyName", propertyName);
+                    databaseConnection.AddParameter("entityType", saveLocation.EntityType);
+                    databaseConnection.AddParameter("propertyName", saveLocation.PropertyName);
                     databaseConnection.AddParameter("value", field.Value);
                     var query = $@"SELECT NULL
                                 FROM {tablePrefix}{WiserTableNames.WiserItem} AS item

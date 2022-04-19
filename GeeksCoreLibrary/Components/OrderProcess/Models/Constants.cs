@@ -69,6 +69,8 @@
 
         public const string OrderProcessFooterProperty = "orderprocessfooter";
 
+        public const string OrderProcessTemplateProperty = "orderprocesshtmltemplate";
+
         public const string StepTypeProperty = "orderprocesssteptype";
 
         public const string StepTemplateProperty = "orderprocesssteptemplate";
