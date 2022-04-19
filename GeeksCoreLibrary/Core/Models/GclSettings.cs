@@ -24,6 +24,11 @@ namespace GeeksCoreLibrary.Core.Models
         public string ConnectionStringForWriting { get; set; }
 
         /// <summary>
+        /// This will be used to set the correct timezone for the database before executing any query, so that all times will be shown in the requested timezone.
+        /// </summary>
+        public string DatabaseTimeZone { get; set; } = "Europe/Amsterdam";
+
+        /// <summary>
         /// The maximum amount of times the GCL should retry executing a query.
         /// The GCL only does this for the following MySQL error codes, any other error will not cause another attempt:
         /// <list type="ErrorCodes">
