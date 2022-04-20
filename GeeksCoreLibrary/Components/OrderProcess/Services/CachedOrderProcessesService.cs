@@ -30,7 +30,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             return await cache.GetOrAdd(key,
                 delegate(ICacheEntry cacheEntry)
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultOrderProcessCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
                     return orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
                 });
         }
@@ -41,8 +41,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var key = $"OrderProcessWithFixedUrl_{fixedUrl}";
             return await cache.GetOrAdd(key,
                 delegate(ICacheEntry cacheEntry)
-                {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultOrderProcessCacheDuration;
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
                     return orderProcessesService.GetOrderProcessViaFixedUrlAsync(this, fixedUrl);
                 });
         }
@@ -59,8 +59,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var key = $"OrderProcessGetAllStepsGroupsAndFields_{orderProcessId}";
             return await cache.GetOrAdd(key,
                 delegate(ICacheEntry cacheEntry)
-                {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultOrderProcessCacheDuration;
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
                     return orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
                 });
         }
@@ -71,8 +71,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var key = $"OrderProcessGetPaymentMethods_{orderProcessId}_{(loggedInUser == null ? "all" : loggedInUser.UserId.ToString())}";
             return await cache.GetOrAdd(key,
                 delegate(ICacheEntry cacheEntry)
-                {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultOrderProcessCacheDuration;
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
                     return orderProcessesService.GetPaymentMethodsAsync(orderProcessId, loggedInUser);
                 });
         }
@@ -83,8 +83,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var key = $"OrderProcessGetPaymentMethodAsync_{paymentMethodId}";
             return await cache.GetOrAdd(key,
                 delegate(ICacheEntry cacheEntry)
-                {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultOrderProcessCacheDuration;
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
                     return orderProcessesService.GetPaymentMethodAsync(paymentMethodId);
                 });
         }

@@ -190,7 +190,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             return await cache.GetOrAdd("GCLShoppingBasketFreeProductActions",
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultShoppingBasketsCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultShoppingBasketsCacheDuration;
                     return await shoppingBasketsService.GetFreeProductActionsAsync();
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.ShoppingBaskets));
         }
@@ -200,8 +200,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             return await cache.GetOrAdd("GCLShoppingBasketVatRules",
                 async cacheEntry =>
-                {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultShoppingBasketsCacheDuration;
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultShoppingBasketsCacheDuration;
                     return await shoppingBasketsService.GetVatRulesAsync();
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.ShoppingBaskets));
         }

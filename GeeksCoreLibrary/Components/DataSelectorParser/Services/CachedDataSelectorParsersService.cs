@@ -43,7 +43,7 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser.Services
                 cacheKey.ToString(),
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultDataSelectorParsersCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultDataSelectorParsersCacheDuration;
                     return await dataSelectorParsersService.GetDataSelectorResponseAsync(dataSelectorId, dataSelectorJson);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.DataSelectors));
         }
