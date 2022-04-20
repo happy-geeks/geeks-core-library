@@ -39,7 +39,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             return cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultQueryCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                     return await databaseHelpersService.ColumnExistsAsync(tableName, columnName);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
@@ -50,8 +50,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var cacheName = $"CachedDatabaseHelpersService_GetColumnNamesAsync_{tableName}";
             return cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
-                {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultQueryCacheDuration;
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                     return await databaseHelpersService.GetColumnNamesAsync(tableName);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
@@ -87,7 +87,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             return cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultQueryCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;                    
                     return await databaseHelpersService.TableExistsAsync(tableName, databaseName);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
@@ -98,8 +98,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var cacheName = $"CachedDatabaseHelpersService_DatabaseExistsAsync_{databaseName}";
             return cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
-                {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultQueryCacheDuration;
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                     return await databaseHelpersService.DatabaseExistsAsync(databaseName);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
@@ -135,7 +135,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             return cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultQueryCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;                    
                     return await databaseHelpersService.GetLastTableUpdatesAsync();
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }

@@ -591,6 +591,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", "");
             }
 
+            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("lang_id", languageCode);
             databaseConnection.AddParameter("category_id", categoryId > 0 ? categoryId : 0);
             databaseConnection.AddParameter("filtertoitemtype", filtersToItemType);

@@ -99,7 +99,7 @@ namespace GeeksCoreLibrary.Core.Services
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultWiserItemsCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
                     return await wiserItemsService.GetUserItemPermissionsAsync(itemId, userId, entityType);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }
@@ -111,7 +111,7 @@ namespace GeeksCoreLibrary.Core.Services
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultWiserItemsCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
                     return await wiserItemsService.GetUserModulePermissions(moduleId, userId);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }
@@ -141,7 +141,7 @@ namespace GeeksCoreLibrary.Core.Services
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultWiserItemsCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;                    
                     return await wiserItemsService.GetEntityTypeSettingsAsync(entityType, moduleId);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }
@@ -159,7 +159,7 @@ namespace GeeksCoreLibrary.Core.Services
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultWiserItemsCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
                     return await wiserItemsService.GetLinkTypeAsync(destinationEntityType, connectedEntityType);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }
@@ -281,8 +281,8 @@ namespace GeeksCoreLibrary.Core.Services
             var cacheKey = $"all_link_type_settings_{databaseConnection.GetDatabaseNameForCaching()}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultWiserItemsCacheDuration;
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
                     return await wiserItemsService.GetAllLinkTypeSettingsAsync();
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }

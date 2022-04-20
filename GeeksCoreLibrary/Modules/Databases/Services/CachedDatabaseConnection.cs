@@ -72,7 +72,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
 
             cacheName.Append(query.ToSha512Simple());
-            foreach (var (key, value) in parameters)
+            foreach (var (key, value) in parameters.OrderBy(item => item.Key))
             {
                 cacheName.Append($"{key}={value}");
             }
@@ -80,7 +80,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             return cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultQueryCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                     return await databaseConnection.GetAsync(query);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
@@ -102,7 +102,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
 
             cacheName.Append(query.ToSha512Simple());
-            foreach (var (key, value) in parameters)
+            foreach (var (key, value) in parameters.OrderBy(item => item.Key))
             {
                 cacheName.Append($"{key}={value}");
             }
@@ -110,7 +110,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             return cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultQueryCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                     return await databaseConnection.GetAsJsonAsync(query, formatResult);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }

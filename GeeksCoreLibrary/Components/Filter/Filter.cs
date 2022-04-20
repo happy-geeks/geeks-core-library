@@ -299,14 +299,35 @@ namespace GeeksCoreLibrary.Components.Filter
             var minimumItemsRequired = Int32.Parse(await objectsService.FindSystemObjectByDomainNameAsync("filterminimumitemsrequired", defaultResult: "1"));
 
             // Now retrieve the data and save the result in a dataset
+            var languageCode = await languageService.GetLanguageCodeAsync();
             var filterItemsQuery = Settings.FilterItemsQuery;
             filterItemsQuery = filterItemsQuery.Replace("{categoryId}", categoryId.ToString());
-            filterItemsQuery = filterItemsQuery.Replace("{languageCode}", await languageService.GetLanguageCodeAsync());
+            filterItemsQuery = filterItemsQuery.Replace("{languageCode}", languageCode);
             filterItemsQuery = filterItemsQuery.Replace("`wiser_filter_aggregation_`", "`wiser_filter_aggregation`"); // If no language code, trim trailing underscore
 
             // Replace the {filters} variable with the join and where parts to exclude not possible filter values when filtered
             if (filterItemsQuery.Contains("{filters}"))
             {
+                // Generate search part for filter items query.
+                // Multiple words in the search term are treated as one search term.
+                // Functionality can be expanded in the future with more search options / functionalities.
+                var searchPart = new StringBuilder();
+                if (!string.IsNullOrEmpty(Settings.SearchQuerystring) && !string.IsNullOrEmpty(Settings.SearchKeys) && !string.IsNullOrEmpty(HttpContext.Request.Query[Settings.SearchQuerystring].ToString()))
+                {
+                    if (Settings.SearchKeys.Contains(',')) // Multiple keys for search provided
+                    {
+                        foreach (var searchKey in Settings.SearchKeys.Split(','))
+                        {
+                            searchPart.AppendLine("");
+                            // TODO: Verder uitwerken
+                        }
+                    }
+                    else
+                    {
+                        searchPart.AppendLine($"JOIN wiser_itemdetail search1 ON search1.item_id=f.product_id AND search1.`key`={Settings.SearchKeys.ToMySqlSafeValue(true)} AND (search1.language_code='{languageCode}' OR search1.language_code='') AND search1.`value` LIKE CONCAT('%',{HttpContext.Request.Query[Settings.SearchQuerystring].ToString().ToMySqlSafeValue(true)},'%')");
+                    }
+                }                
+                
                 if (Settings.ComponentMode == ComponentModes.Aggregation)
                 {
                     var filterItemsQueryNew = "";
@@ -323,7 +344,7 @@ namespace GeeksCoreLibrary.Components.Filter
                             }
 
                             filterItemsQueryNew +=
-                                $"({filterItemsQuery.Replace("{filters}", queryPart.JoinPart).Replace("{filterGroup}", $"AND f.filtergroup='{filterGroup.Value.GetParamKey().ToMySqlSafeValue(false)}'")})";
+                                $"({filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart.ToString()).Replace("{filterGroup}", $"AND f.filtergroup='{filterGroup.Value.GetParamKey().ToMySqlSafeValue(false)}'")})";
                         }
                         else
                         {
@@ -333,12 +354,12 @@ namespace GeeksCoreLibrary.Components.Filter
 
                     if (String.IsNullOrEmpty(filterItemsQueryNew)) //No active filters
                     {
-                        filterItemsQueryNew = filterItemsQuery.Replace("{filters}", "").Replace("{filterGroup}", "");
+                        filterItemsQueryNew = filterItemsQuery.Replace("{filters}", searchPart.ToString()).Replace("{filterGroup}", "");
                     }
                     else if (!String.IsNullOrEmpty(notActiveFilters)) //Active and no active filters combined
                     {
                         var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
-                        filterItemsQueryNew += $" UNION ALL ({filterItemsQuery.Replace("{filters}", queryPart.JoinPart).Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
+                        filterItemsQueryNew += $" UNION ALL ({filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart.ToString()).Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
                     }
                     
                     filterItemsQuery = filterItemsQueryNew;
@@ -347,7 +368,7 @@ namespace GeeksCoreLibrary.Components.Filter
                 {
                     var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
 
-                    filterItemsQuery = filterItemsQuery.Replace("{filters}", queryPart.JoinPart);
+                    filterItemsQuery = filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart.ToString());
                     filterItemsQuery = filterItemsQuery.Replace("{filtersWhere}", queryPart.WherePart);
                     filterItemsQuery = filterItemsQuery.Replace("{filtersSelectStart}", queryPart.SelectPartStart);
                     filterItemsQuery = filterItemsQuery.Replace("{filtersSelectEnd}", queryPart.SelectPartEnd);
@@ -522,6 +543,7 @@ namespace GeeksCoreLibrary.Components.Filter
                 foreach (var selectedFilterItem in f.SelectedValues)
                 {
                     var tempName = f.ContainsOrder ? selectedFilterItem.Split("|")[1] : selectedFilterItem.ToLower();
+                    var filterItemFound = false;
                     WriteToTrace($"1 - CreateFilterURL({f.NameSeo}, {selectedFilterItem}), False");
 
                     replaceData = new Dictionary<string, string>
@@ -538,19 +560,23 @@ namespace GeeksCoreLibrary.Components.Filter
                     foreach (var item in f.Items)
                     {
                         if (!String.Equals(item.Key, tempName, StringComparison.OrdinalIgnoreCase) || item.Value.ItemDetails == null)
-                        {
+                        {                            
                             continue;
                         }
 
                         foreach (var itemDetail in item.Value.ItemDetails)
                         {
-                            replaceData[itemDetail.Key] = itemDetail.Value;
+                               filterItemFound = true;
+                               replaceData[itemDetail.Key] = itemDetail.Value;
                         }
                     }
 
-                    var summaryItem = StringReplacementsService.DoReplacements(Settings.TemplateSummaryFilterGroupItem, replaceData);
-
-                    summaryGroupItems.Append(summaryItem);
+                    // When aggregation is used, then skip the filter summary item if it is excluded by other active filters
+                    if ((Settings.ComponentMode != ComponentModes.Aggregation) || filterItemFound)
+                    {
+                        var summaryItem = StringReplacementsService.DoReplacements(Settings.TemplateSummaryFilterGroupItem, replaceData);
+                        summaryGroupItems.Append(summaryItem);
+                    }
                 }
                 WriteToTrace($"2 - CreateFilterURL({f.NameSeo}, , False)");
 
