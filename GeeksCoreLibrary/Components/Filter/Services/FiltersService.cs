@@ -509,6 +509,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
             logger.LogTrace("1 - categoryId: " + categoryId.ToString());
 
             var w2FiltersQuery = $@"SELECT 
+                                filterstoitem.id AS filterstoitemid,   
 	                            IFNULL(NULLIF(name.`value`,''),filters.title) AS filtername,
                                 property.`value` AS filternameseo,                                    
                                 filtergroupname.`value` AS filtergroupnameseo,
@@ -538,7 +539,9 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                 urlregex.`value` AS urlregex
                                 {{selectPart}}
                             FROM {WiserTableNames.WiserItem} filters
-                            {{joinFiltersToItem}}
+                            {{joinPart}}
+                            LEFT JOIN {WiserTableNames.WiserItemLink} filterstoitem ON filterstoitem.item_id=filters.id AND filterstoitem.type=?filtertoitemtype AND filterstoitem.destination_item_id=?category_id
+                            LEFT JOIN {WiserTableNames.WiserItemLink} filterstoparent ON filterstoparent.item_id=filters.id AND filterstoparent.type=1
                             JOIN {WiserTableNames.WiserItemDetail} filtertype ON filtertype.item_id=filters.id AND filtertype.`key`='filtertype' {GetLanguageQueryPart("filtertype", languageCode)}
                             LEFT JOIN {WiserTableNames.WiserItemDetail} property ON property.item_id=filters.id AND property.`key`='filtername' {GetLanguageQueryPart("property", languageCode)}
                             LEFT JOIN {WiserTableNames.WiserItemDetail} name ON name.item_id=filters.id AND name.`key`='name' {GetLanguageQueryPart("name", languageCode)}
@@ -566,8 +569,8 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} minimumitemsrequired ON minimumitemsrequired.item_id=filters.id AND minimumitemsrequired.`key`='minimumitemsrequired' {GetLanguageQueryPart("minimumitemsrequired", languageCode)}
                             LEFT JOIN {WiserTableNames.WiserItemDetail} useaggregationtable ON useaggregationtable.item_id=filters.id AND useaggregationtable.`key`='useaggregationtable' {GetLanguageQueryPart("useaggregationtable", languageCode)}
                             LEFT JOIN {WiserTableNames.WiserItemDetail} urlregex ON urlregex.item_id=filters.id AND urlregex.`key`='urlregex' {GetLanguageQueryPart("urlregex", languageCode)}
-                            WHERE filters.entity_type='filter' {{levelsWherePart}}
-                            {{ordering}}";
+                            WHERE filters.entity_type='filter'
+                            ORDER BY filterstoitem.ordering,filterstoparent.ordering";
 
             // Add extra joins and select-parts if extra properties are necessary for use in template
             if (!String.IsNullOrEmpty(extraFilterProperties))
@@ -584,11 +587,12 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     }
                 }
                 w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", selectPart.TrimEnd(','));
-                w2FiltersQuery = w2FiltersQuery.Replace("{joinFiltersToItem}", joinPart + " {joinFiltersToItem}");
+                w2FiltersQuery = w2FiltersQuery.Replace("{joinPart}", joinPart);
             }
             else
             {
                 w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", "");
+                w2FiltersQuery = w2FiltersQuery.Replace("{joinPart}", "");
             }
 
             databaseConnection.ClearParameters();
@@ -596,16 +600,31 @@ namespace GeeksCoreLibrary.Components.Filter.Services
             databaseConnection.AddParameter("category_id", categoryId > 0 ? categoryId : 0);
             databaseConnection.AddParameter("filtertoitemtype", filtersToItemType);
 
-            joinFiltersToItemPart = $"LEFT JOIN {WiserTableNames.WiserItemLink} filterstoitem ON filterstoitem.item_id=filters.id AND filterstoitem.type=?filtertoitemtype AND filterstoitem.destination_item_id=?category_id ";
-            joinFiltersToItemPart += $"LEFT JOIN {WiserTableNames.WiserItemLink} filterstoparent ON filterstoparent.item_id=filters.id AND filterstoparent.type=1 ";
-            orderingPart = "ORDER BY filterstoitem.ordering,filterstoparent.ordering";
+            var dataTable = await databaseConnection.GetAsync(w2FiltersQuery);
+            var ignoreNotLinkedFilters = false;
 
-            var dataTable = await databaseConnection.GetAsync(w2FiltersQuery.Replace("{levelsWherePart}", "").Replace("{ordering}", orderingPart).Replace("{joinFiltersToItem}", joinFiltersToItemPart));
+            // LEFT JOIN to filterstoitem because category id is always present for getting filter items from aggregation table
+            // filterstoitem.id is checked in code below. If this column has a value for one or more filters, then the filters where filterstoitem.id IS NULL are ignored
+            // The aggregation table ensures that only filters that apply to the relevant category are shown
+            foreach (DataRow row in dataTable.Rows)
+            {
+                if (!string.IsNullOrEmpty(row["filterstoitemid"].ToString()))
+                {
+                    ignoreNotLinkedFilters = true;
+                    break;
+                }
+            }
 
             foreach (DataRow row in dataTable.Rows)
             {
+                // Skip filter which is not connected to category (check in code above)
+                if (ignoreNotLinkedFilters && string.IsNullOrEmpty(row["filterstoitemid"].ToString()))
+                {
+                    continue;
+                }
+
                 // If URL not matches with regex, then skip this filter
-                if (dataTable.Columns.Contains("urlregex") && !String.IsNullOrEmpty(row["urlregex"].ToString()) && !System.Text.RegularExpressions.Regex.IsMatch(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString(), dataTable.Columns.Contains("urlregex").ToString()))
+                if (dataTable.Columns.Contains("urlregex") && !String.IsNullOrEmpty(row["urlregex"].ToString()) && !System.Text.RegularExpressions.Regex.IsMatch(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString(), row["urlregex"].ToString()))
                 {
                     continue;
                 }
