@@ -83,7 +83,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                 {
                     // Use the normal languages service to get the language code, which always looks in the database if necessary.
                     var languageCode = await languagesService.GetLanguageCodeAsync();
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultLanguagesCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultLanguagesCacheDuration;
                     logger.LogDebug($"Cached language code '{languageCode}' in cache key '{cacheName}'.");
                     return languageCode;
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Languages));
@@ -133,8 +133,8 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                 {
                     logger.LogError($"Error loading translations. Error message: {exception}");
                 }
-
-                cacheEntry.SlidingExpiration = gclSettings.DefaultLanguagesCacheDuration;
+                                
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultLanguagesCacheDuration;
                 logger.LogDebug("Caching of translations completed");
 
                 return translations;
