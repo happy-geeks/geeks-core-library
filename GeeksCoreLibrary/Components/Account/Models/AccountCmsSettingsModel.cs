@@ -83,7 +83,7 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li>TooManyAttempts</li>
                                     <li>UserNotActivated</li>
                                 </ul>
-                                <p>ResetPassword:</p>
+                                <h2>ResetPassword:</h2>
                                 <ul>
                                     <li>InvalidTokenOrUser</li>
                                     <li>PasswordsNotTheSame</li>
