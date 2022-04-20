@@ -43,6 +43,7 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
             // Do conversion
             return new()
             {
+                ComponentMode = Repeater.ComponentModes.Repeater,
                 Description = VisibleDescription,
                 GroupingTemplates = new SortedList<string, RepeaterTemplateModel>
                 {
