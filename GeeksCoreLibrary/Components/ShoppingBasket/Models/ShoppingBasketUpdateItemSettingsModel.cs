@@ -4,37 +4,31 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 {
     internal class ShoppingBasketUpdateItemSettingsModel
     {
-        [DefaultValue("shoppingbasket")]
+        [DefaultValue(Constants.DefaultCookieName)]
         internal string CookieName { get; }
 
-        [DefaultValue(7)]
+        [DefaultValue(Constants.DefaultCookieAgeInDays)]
         internal int CookieAgeInDays { get; }
 
-        [DefaultValue("basket")]
-        internal string BasketEntityName { get; }
-
-        [DefaultValue("basketline")]
-        internal string BasketLineEntityName { get; }
-
-        [DefaultValue("quantity")]
+        [DefaultValue(Constants.DefaultQuantityPropertyName)]
         internal string QuantityPropertyName { get; }
         
-        [DefaultValue("factor")]
+        [DefaultValue(Constants.DefaultFactorPropertyName)]
         internal string FactorPropertyName { get; }
         
-        [DefaultValue("price")]
+        [DefaultValue(Constants.DefaultPricePropertyName)]
         internal string PricePropertyName { get; }
         
-        [DefaultValue("includesvat")]
+        [DefaultValue(Constants.DefaultIncludesVatPropertyName)]
         internal string IncludesVatPropertyName { get; }
         
-        [DefaultValue("vatrate")]
+        [DefaultValue(Constants.DefaultVatRatePropertyName)]
         internal string VatRatePropertyName { get; }
         
-        [DefaultValue("discount")]
+        [DefaultValue(Constants.DefaultDiscountPropertyName)]
         internal string DiscountPropertyName { get; }
 
-        [DefaultValue(100)]
-        internal decimal MaxItemQuantity { get; }
+        [DefaultValue(Constants.DefaultMaxItemQuantity)]
+        internal int MaxItemQuantity { get; }
     }
 }
