@@ -396,7 +396,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 {
                     var parameterName = DatabaseHelpers.CreateValidParameterName(queryStringItem.Key);
                     databaseConnection.AddParameter(parameterName, queryStringItem.Value);
-                    templateOrQuery = templateOrQuery.Replace($"{{{queryStringItem.Key}}}", $"?{parameterName}");
+                    templateOrQuery = templateOrQuery.Replace($"'{{{queryStringItem.Key}}}'", $"?{parameterName}").Replace($"{{{queryStringItem.Key}}}", $"?{parameterName}");
                 }
             }
 
@@ -412,17 +412,17 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 if (!String.IsNullOrWhiteSpace(valuesCanContainDashes) && valuesCanContainDashes.Equals("true", StringComparison.OrdinalIgnoreCase) && configuration.Items[key].Value.Contains("-"))
                 {
                     databaseConnection.AddParameter(parameterName, configuration.Items[key].Value.Split('-')[1]);
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
+                    templateOrQuery = templateOrQuery.Replace($"'{{{configuration.Items[key].Id}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
                 }
                 else if (configuration.Items[key].Value == "-1")
                 {
                     databaseConnection.AddParameter(parameterName, configuration.Items[key].Value.Split('-')[1]);
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
+                    templateOrQuery = templateOrQuery.Replace($"'{{{configuration.Items[key].Id}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
                 }
                 else
                 {
                     databaseConnection.AddParameter(parameterName, configuration.Items[key].Value);
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
+                    templateOrQuery = templateOrQuery.Replace($"'{{{configuration.Items[key].Id}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
                 }
             }
 
