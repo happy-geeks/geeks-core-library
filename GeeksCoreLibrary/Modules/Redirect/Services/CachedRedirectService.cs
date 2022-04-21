@@ -31,7 +31,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Services
             return await cache.GetOrAdd($"Redirect_{uri}",
                                         async cacheEntry =>
                                         {
-                                            cacheEntry.SlidingExpiration = gclSettings.DefaultRedirectModuleCacheDuration;
+                                            cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultRedirectModuleCacheDuration;
                                             return await redirectService.GetRedirectAsync(uri);
                                         }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Redirects));
         }

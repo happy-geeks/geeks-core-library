@@ -54,7 +54,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
 
             async Task<Dictionary<string, SettingObject>> GetAllObjects(ICacheEntry cacheEntry)
             {
-                cacheEntry.SlidingExpiration = gclSettings.DefaultObjectsCacheDuration;
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultObjectsCacheDuration;
 
                 var objects = new Dictionary<string, SettingObject>(StringComparer.OrdinalIgnoreCase);
 

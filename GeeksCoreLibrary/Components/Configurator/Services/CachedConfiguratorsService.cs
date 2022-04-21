@@ -45,7 +45,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             return await appCache.GetOrAdd($"GetConfiguratorDataAsync_{(!String.IsNullOrWhiteSpace(hostName) && addHostNameToCache ? $"{hostName}_" : "")}{name}",
                                            async cacheEntry =>
                                            {
-                                               cacheEntry.SlidingExpiration = gclSettings.DefaultConfiguratorsCacheDuration;
+                                               cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultConfiguratorsCacheDuration;
                                                return await configuratorsService.GetConfiguratorDataAsync(name);
                                            });
         }
