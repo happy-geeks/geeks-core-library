@@ -1615,7 +1615,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             databaseConnection.AddParameter("moduleId", moduleId);
             databaseConnection.AddParameter("userId", userId);
-            var dataTable = await databaseConnection.GetAsync(permissionsQuery, true);
+            var dataTable = await databaseConnection.GetAsync(permissionsQuery);
 
             var userItemPermissions = AccessRights.Nothing;
 
@@ -2040,7 +2040,7 @@ namespace GeeksCoreLibrary.Core.Services
                             LEFT JOIN {WiserTableNames.WiserEntityProperty} AS property ON property.entity_name = ?entityType
                             ORDER BY entity.id ASC, property.ordering ASC";
 
-            var dataTable = await databaseConnection.GetAsync(query, true);
+            var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count <= 0)
             {
                 return new EntitySettingsModel();
@@ -2155,7 +2155,7 @@ namespace GeeksCoreLibrary.Core.Services
         {
             databaseConnection.AddParameter("destinationEntityType", destinationEntityType);
             databaseConnection.AddParameter("connectedEntityType", connectedEntityType);
-            var getResult = await databaseConnection.GetAsync($"SELECT type FROM {WiserTableNames.WiserLink} WHERE destination_entity_type = ?destinationEntityType AND connected_entity_type = ?connectedEntityType", true);
+            var getResult = await databaseConnection.GetAsync($"SELECT type FROM {WiserTableNames.WiserLink} WHERE destination_entity_type = ?destinationEntityType AND connected_entity_type = ?connectedEntityType");
 
             return getResult.Rows.Count == 0 ? 0 : getResult.Rows[0].Field<int>("type");
         }
@@ -2765,7 +2765,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             var query = $@"SELECT * FROM {WiserTableNames.WiserLink} WHERE {String.Join(" AND ", whereClause)}";
 
-            var dataTable = await databaseConnection.GetAsync(query, true);
+            var dataTable = await databaseConnection.GetAsync(query);
             return dataTable.Rows.Count == 0 ? new LinkSettingsModel() : DataRowToLinkSettingsModel(dataTable.Rows[0]);
         }
 
@@ -2776,7 +2776,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             var query = $@"SELECT * FROM {WiserTableNames.WiserLink} ORDER BY name";
 
-            var dataTable = await databaseConnection.GetAsync(query, true);
+            var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {
                 return allLinkSettings;
