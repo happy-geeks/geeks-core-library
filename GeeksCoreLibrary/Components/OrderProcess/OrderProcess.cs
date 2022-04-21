@@ -244,7 +244,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 {
                     if (shoppingBasket.Id > 0 && String.Equals(linkTypeSettings.DestinationEntityType, ShoppingBasket.Models.Constants.BasketEntityType, StringComparison.OrdinalIgnoreCase))
                     {
-                        currentItems.AddRange((await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id)).Select(item => (linkTypeSettings, item)));
+                        currentItems.AddRange((await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id))
+                            .Where(item => !String.Equals(item.EntityType, ShoppingBasket.Models.Constants.BasketLineEntityType, StringComparison.OrdinalIgnoreCase) && !String.Equals(item.EntityType, Constants.OrderLineEntityType, StringComparison.OrdinalIgnoreCase))
+                            .Select(item => (linkTypeSettings, item)));
                     }
 
                     if (String.Equals(linkTypeSettings.DestinationEntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase))
@@ -437,6 +439,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 {
                     resultHtml = AddStepErrorToResult(resultHtml, "Payment");
                 }
+
+                resultHtml = resultHtml.ReplaceCaseInsensitive("{activeStep}", ActiveStep.ToString());
             }
             catch (ThreadAbortException)
             {
@@ -509,6 +513,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             // Replace data of all other items.
             foreach (var (linkSettings, item) in currentItems)
             {
+                var idKey = $"{item.EntityType}.id";
+                if (replaceData.ContainsKey(idKey))
+                {
+                    continue;
+                }
+
                 replaceData.Add($"{item.EntityType}.id", item.Id);
 
                 foreach (var itemDetail in item.Details)
