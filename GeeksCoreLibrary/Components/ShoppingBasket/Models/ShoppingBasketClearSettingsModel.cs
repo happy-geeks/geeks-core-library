@@ -4,16 +4,10 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 {
     internal class ShoppingBasketClearSettingsModel
     {
-        [DefaultValue("shoppingbasket")]
+        [DefaultValue(Constants.DefaultCookieName)]
         internal string CookieName { get; }
 
-        [DefaultValue(7)]
+        [DefaultValue(Constants.DefaultCookieAgeInDays)]
         internal int CookieAgeInDays { get; }
-
-        [DefaultValue("basket")]
-        internal string BasketEntityName { get; }
-
-        [DefaultValue("basketline")]
-        internal string BasketLineEntityName { get; }
     }
 }
