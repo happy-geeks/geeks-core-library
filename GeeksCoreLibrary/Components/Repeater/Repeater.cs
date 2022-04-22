@@ -309,13 +309,17 @@ namespace GeeksCoreLibrary.Components.Repeater
                             var startIndex = (pageNumber - 1) * Settings.ItemsPerPage;
                             var totalBanners = 0;
                             var bannersForCurrentPage = 0;
-                            for (var index = 0; index < pageNumber * Settings.ItemsPerPage; index++)
+
+                            if (Settings.BannerUsesProductBlockSpace)
                             {
-                                var bannersCount = productBanners.Count(banner => (banner.Position == index + 1 + totalBanners && banner.Method == ProductBannerModel.PlacingMethods.Fixed) || ((index + 1 + totalBanners) % banner.Position == 0 && banner.Method == ProductBannerModel.PlacingMethods.Repeating));
-                                totalBanners += bannersCount;
-                                if (index >= startIndex)
+                                for (var index = 0; index < pageNumber * Settings.ItemsPerPage; index++)
                                 {
-                                    bannersForCurrentPage += bannersCount;
+                                    var bannersCount = productBanners.Count(banner => (banner.Position == index + 1 + totalBanners && banner.Method == ProductBannerModel.PlacingMethods.Fixed) || ((index + 1 + totalBanners) % banner.Position == 0 && banner.Method == ProductBannerModel.PlacingMethods.Repeating));
+                                    totalBanners += bannersCount;
+                                    if (index >= startIndex)
+                                    {
+                                        bannersForCurrentPage += bannersCount;
+                                    }
                                 }
                             }
 
@@ -327,7 +331,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                             }
 
                             limitClause = loadUpToPageNumberOverrule
-                                ? $" LIMIT 0, {Settings.ItemsPerPage * pageNumber - bannersForCurrentPage}"
+                                ? $" LIMIT 0, {Settings.ItemsPerPage * pageNumber + bannersForCurrentPage}"
                                 : $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
                         }
 
