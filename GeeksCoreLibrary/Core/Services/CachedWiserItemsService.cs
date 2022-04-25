@@ -434,5 +434,29 @@ namespace GeeksCoreLibrary.Core.Services
         {
             return await wiserItemsService.ReplaceHtmlForViewingAsync(input);
         }
+
+        /// <inheritdoc />
+        public async Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(string entityType)
+        {
+            var cacheKey = $"aggregation_settings_{entityType}_{databaseConnection.GetDatabaseNameForCaching()}";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
+                    return await wiserItemsService.GetAggregationSettingsAsync(entityType);
+                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
+        }
+
+        /// <inheritdoc />
+        public async Task HandleItemAggregationAsync(WiserItemModel itemModel)
+        {
+            await HandleItemAggregationAsync(this, itemModel);
+        }
+
+        /// <inheritdoc />
+        public async Task HandleItemAggregationAsync(IWiserItemsService service, WiserItemModel itemModel)
+        {
+            await wiserItemsService.HandleItemAggregationAsync(service, itemModel);
+        }
     }
 }

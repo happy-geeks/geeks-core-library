@@ -14,10 +14,13 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Exceptions;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Databases.Models;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using MySql.Data.MySqlClient;
 
 namespace GeeksCoreLibrary.Core.Services
 {
@@ -30,6 +33,7 @@ namespace GeeksCoreLibrary.Core.Services
         private readonly IObjectsService objectsService;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IDataSelectorsService dataSelectorsService;
+        private readonly IDatabaseHelpersService databaseHelpersService;
         private const int MaximumLevelsToDuplicate = 25;
 
         #endregion
@@ -39,12 +43,13 @@ namespace GeeksCoreLibrary.Core.Services
         /// <summary>
         /// Creates a new instance of <see cref="WiserItemsService"/>.
         /// </summary>
-        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService)
+        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService)
         {
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
             this.stringReplacementsService = stringReplacementsService;
             this.dataSelectorsService = dataSelectorsService;
+            this.databaseHelpersService = databaseHelpersService;
         }
 
         #endregion
@@ -996,6 +1001,8 @@ namespace GeeksCoreLibrary.Core.Services
                     insertAndUpdateQueryBuilder.Clear();
                 }
 
+                await wiserItemsService.HandleItemAggregationAsync(wiserItem);
+
                 // Execute the after update query, if one is entered.
                 await ExecuteWorkflowAsync(itemId, false, entityTypeSettings, wiserItem, userId, username);
 
@@ -1284,7 +1291,7 @@ namespace GeeksCoreLibrary.Core.Services
                         JOIN {WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link ON link.id = detail.itemlink_id AND (link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))";
                 await databaseConnection.ExecuteAsync(query);
 
-                // And finally delete the item from the original table (or vice versa, when undeleting).
+                // And then delete the item from the original table (or vice versa, when undeleting).
                 query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
                         SET @saveHistory = ?saveHistoryGcl;
@@ -1299,6 +1306,27 @@ namespace GeeksCoreLibrary.Core.Services
                                 VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), '', '', '');";
                 }
                 await databaseConnection.ExecuteAsync(query);
+                
+                // Now (un)delete the item from the aggregation table, if applicable.
+                if (!String.IsNullOrWhiteSpace(entityType))
+                {
+                    var aggregationSettings = await GetAggregationSettingsAsync(entityType);
+                    if (aggregationSettings != null && aggregationSettings.Any())
+                    {
+                        if (undelete)
+                        {
+                            foreach (var itemId in itemIds)
+                            {
+                                var item = await wiserItemsService.GetItemDetailsAsync(itemId, entityType: entityType);
+                                await wiserItemsService.HandleItemAggregationAsync(item);
+                            }
+                        }
+                        else
+                        {
+                            await databaseConnection.ExecuteAsync($"DELETE FROM `{aggregationSettings.First().TableName}` WHERE id IN ({formattedItemIds})");
+                        }
+                    }
+                }
 
                 if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
 
@@ -3073,6 +3101,199 @@ namespace GeeksCoreLibrary.Core.Services
             output = await dataSelectorsService.ReplaceAllDataSelectorsAsync(output);
 
             return output;
+        }
+
+        /// <inheritdoc />
+        public async Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(string entityType)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+            {
+                throw new ArgumentNullException(nameof(entityType));
+            }
+
+            var results = new List<WiserItemPropertyAggregateOptionsModel>();
+            databaseConnection.AddParameter("entityType", entityType);
+            var query = $@"SELECT property_name, display_name, language_code, aggregate_options, inputtype FROM {WiserTableNames.WiserEntityProperty} WHERE entity_name = ?entityType AND enable_aggregation = 1";
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count == 0)
+            {
+                return results;
+            }
+
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                var optionsModel = new WiserItemPropertyAggregateOptionsModel();
+                var options = dataRow.Field<string>("aggregate_options");
+                if (!String.IsNullOrWhiteSpace(options))
+                {
+                    optionsModel = JsonConvert.DeserializeObject<WiserItemPropertyAggregateOptionsModel>(options) ?? new WiserItemPropertyAggregateOptionsModel();
+                }
+
+                // Use a default table name if none is set in the options.
+                if (String.IsNullOrWhiteSpace(optionsModel.TableName))
+                {
+                    optionsModel.TableName = $"aggregate_{entityType.ToMySqlSafeValue(false)}";
+                }
+
+                // Get property name and use display name if there is no property name.
+                optionsModel.PropertyName = dataRow.Field<string>("property_name");
+                if (String.IsNullOrWhiteSpace(optionsModel.PropertyName))
+                {
+                    optionsModel.PropertyName = dataRow.Field<string>("display_name");
+                }
+                
+                optionsModel.LanguageCode = dataRow.Field<string>("language_code");
+
+                // If there is no column name set, use the property name as column name.
+                if (String.IsNullOrWhiteSpace(optionsModel.ColumnName))
+                {
+                    optionsModel.ColumnName = optionsModel.PropertyName;
+                }
+                
+                // Setup the column settings.
+                optionsModel.ColumnSettings = new ColumnSettingsModel
+                {
+                    Name = optionsModel.ColumnName
+                };
+
+                var inputType = dataRow.Field<string>("inputtype") ?? "";
+                switch (inputType.ToLowerInvariant())
+                {
+                    case "secure-input":
+                    case "input":
+                    case "radiobutton":
+                    case "combobox":
+                    case "multiselect":
+                    case "gpslocation":
+                    case "daterange":
+                    case "color-picker":
+                    case "qr":
+                        optionsModel.ColumnSettings.Type = MySqlDbType.VarChar;
+                        optionsModel.ColumnSettings.Length = 255;
+                        break;
+                    case "textbox":
+                    case "htmleditor":
+                        optionsModel.ColumnSettings.Type = MySqlDbType.MediumText;
+                        break;
+                    case "checkbox":
+                        optionsModel.ColumnSettings.Type = MySqlDbType.Int16;
+                        optionsModel.ColumnSettings.Length = 1;
+                        optionsModel.ColumnSettings.DefaultValue = "0";
+                        optionsModel.ColumnSettings.NotNull = true;
+                        break;
+                    case "numeric-input":
+                    case "auto-increment":
+                        optionsModel.ColumnSettings.Type = MySqlDbType.Decimal;
+                        break;
+                    case "date-time picker":
+                        optionsModel.ColumnSettings.Type = MySqlDbType.DateTime;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(inputType), inputType, $"Field with input type '{inputType}' is not supported for aggregation");
+                }
+
+
+                results.Add(optionsModel);
+            }
+
+            return results;
+        }
+
+        /// <inheritdoc />
+        public async Task HandleItemAggregationAsync(WiserItemModel wiserItem)
+        {
+            await HandleItemAggregationAsync(this, wiserItem);
+        }
+
+        /// <inheritdoc />
+        public async Task HandleItemAggregationAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem)
+        {
+            if (wiserItem == null)
+            {
+                throw new ArgumentNullException(nameof(wiserItem));
+            }
+
+            // Get the settings for aggregation.
+            var settings = await wiserItemsService.GetAggregationSettingsAsync(wiserItem.EntityType);
+            if (settings == null || !settings.Any())
+            {
+                return;
+            }
+
+            // Create table if it doesn't exist yet.
+            var tableName = settings.First().TableName;
+            if (!await databaseHelpersService.TableExistsAsync(tableName))
+            {
+                await databaseHelpersService.CreateTableAsync(tableName, new List<ColumnSettingsModel> { new("id", MySqlDbType.UInt64) });
+                await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("title", MySqlDbType.VarChar, 255));
+                foreach (var setting in settings)
+                {
+                    await databaseHelpersService.AddColumnToTableAsync(tableName, setting.ColumnSettings);
+                }
+            }
+            
+            // Insert and/or update data in the table.
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("id", wiserItem.Id);
+            databaseConnection.AddParameter("title", wiserItem.Title);
+            var columnsForQuery = new List<string> { "id", "title" };
+            var parametersForQuery = new List<string> { "?id", "?title" };
+            foreach (var setting in settings)
+            {
+                columnsForQuery.Add($"`{setting.ColumnName.ToMySqlSafeValue(false)}`");
+
+                var parameterName = DatabaseHelpers.CreateValidParameterName(setting.ColumnName);
+                parametersForQuery.Add($"?{parameterName}");
+                databaseConnection.AddParameter(parameterName, wiserItem.GetDetailValue(setting.PropertyName));
+            }
+
+            var query = $@"INSERT INTO `{tableName}` ({String.Join(",", columnsForQuery)})
+                        VALUES ({String.Join(",", parametersForQuery)})
+                        ON DUPLICATE KEY UPDATE {String.Join(",", columnsForQuery.Select(column => $"{column} = VALUES({column})"))}";
+            await databaseConnection.ExecuteAsync(query);
+            
+            // Handle any aggregation functions.
+            foreach (var setting in settings.Where(setting => setting.AggregationMethod != null && setting.AggregationMethod.Method != WiserItemPropertyAggregateMethods.None))
+            {
+                var parentItems = await wiserItemsService.GetLinkedItemDetailsAsync(wiserItem.Id, setting.AggregationMethod.ParentLinkType, reverse: true);
+                foreach (var parentItem in parentItems)
+                {
+                    var parentAggregationSettings = await wiserItemsService.GetAggregationSettingsAsync(parentItem.EntityType);
+                    if (parentAggregationSettings == null || !parentAggregationSettings.Any())
+                    {
+                        continue;
+                    }
+
+                    var parentTableName = parentAggregationSettings.First().TableName;
+                    if (String.IsNullOrWhiteSpace(parentTableName))
+                    {
+                        continue;
+                    }
+
+                    var aggregateColumnName = $"{wiserItem.EntityType}_{setting.ColumnName}_{setting.AggregationMethod.Method.ToString()}".ToLowerInvariant();
+                    if (!await databaseHelpersService.ColumnExistsAsync(parentTableName, aggregateColumnName))
+                    {
+                        await databaseHelpersService.AddColumnToTableAsync(parentTableName, new ColumnSettingsModel(aggregateColumnName, setting.ColumnSettings.Type, setting.ColumnSettings.Length, setting.ColumnSettings.Decimals, setting.ColumnSettings.DefaultValue, setting.ColumnSettings.NotNull));
+                    }
+
+                    var allChildren = await wiserItemsService.GetLinkedItemDetailsAsync(parentItem.Id, setting.AggregationMethod.ParentLinkType);
+
+                    var value = setting.AggregationMethod.Method switch
+                    {
+                        WiserItemPropertyAggregateMethods.None => wiserItem.GetDetailValue<decimal>(setting.PropertyName),
+                        WiserItemPropertyAggregateMethods.Sum => allChildren.Sum(child => child.Id == wiserItem.Id ? wiserItem.GetDetailValue<decimal>(setting.PropertyName) : child.GetDetailValue<decimal>(setting.PropertyName)),
+                        WiserItemPropertyAggregateMethods.Min => allChildren.Min(child => child.Id == wiserItem.Id ? wiserItem.GetDetailValue<decimal>(setting.PropertyName) : child.GetDetailValue<decimal>(setting.PropertyName)),
+                        WiserItemPropertyAggregateMethods.Max => allChildren.Max(child => child.Id == wiserItem.Id ? wiserItem.GetDetailValue<decimal>(setting.PropertyName) : child.GetDetailValue<decimal>(setting.PropertyName)),
+                        WiserItemPropertyAggregateMethods.Average => allChildren.Average(child => child.Id == wiserItem.Id ? wiserItem.GetDetailValue<decimal>(setting.PropertyName) : child.GetDetailValue<decimal>(setting.PropertyName)),
+                        _ => throw new ArgumentOutOfRangeException(nameof(setting.AggregationMethod.Method), setting.AggregationMethod.Method.ToString())
+                    };
+                    
+                    databaseConnection.AddParameter("parentId", parentItem.Id);
+                    databaseConnection.AddParameter("value", value);
+                    query = $"UPDATE `{parentTableName}` SET `{aggregateColumnName}` = ?value WHERE id = ?parentId";
+                    await databaseConnection.ExecuteAsync(query);
+                }
+            }
         }
 
         #endregion
