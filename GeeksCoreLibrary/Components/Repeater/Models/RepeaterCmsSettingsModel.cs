@@ -283,9 +283,9 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
             Description = "When enabled the banner uses product blocks otherwise it will just be added to the output html",
             TabName = CmsAttributes.CmsTabName.Behavior,
             GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 31
+            DisplayOrder = 40
         )]
-        public bool BannerUsesProductBlockSpace { get; set; } = false;
+        public bool BannerUsesProductBlockSpace { get; set; } = true;
 
         #endregion
     }
