@@ -285,7 +285,7 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
             GroupName = CmsAttributes.CmsGroupName.Basic,
             DisplayOrder = 40
         )]
-        public bool BannerUsesProductBlockSpace { get; set; } = true;
+        public bool BannerUsesProductBlockSpace { get; set; }
 
         #endregion
     }
