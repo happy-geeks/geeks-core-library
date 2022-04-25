@@ -21,6 +21,7 @@ using GeeksCoreLibrary.Modules.Objects.Interfaces;
 
 namespace GeeksCoreLibrary.Core.Services
 {
+    /// <inheritdoc cref="IWiserItemsService" />
     public class WiserItemsService : IWiserItemsService, IScopedService
     {
         #region Privates
@@ -35,6 +36,9 @@ namespace GeeksCoreLibrary.Core.Services
 
         #region Constructor
 
+        /// <summary>
+        /// Creates a new instance of <see cref="WiserItemsService"/>.
+        /// </summary>
         public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService)
         {
             this.databaseConnection = databaseConnection;
@@ -68,7 +72,13 @@ namespace GeeksCoreLibrary.Core.Services
         #region Implemented methods from interface
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true)
+        {
+            return await SaveAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction);
+        }
+
+        /// <inheritdoc />
+        public async Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "",             bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true)
         {
             if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
 
@@ -76,10 +86,10 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 if (wiserItem.Id == 0)
                 {
-                    wiserItem = await CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, entityTypeSettings);
+                    wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false);
                 }
 
-                var result = await UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, entityTypeSettings);
+                var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false);
 
                 if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
 
@@ -93,7 +103,13 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null)
+        public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true)
+        {
+            return await CreateAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction);
+        }
+
+        /// <inheritdoc />
+        public async Task<WiserItemModel> CreateAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true)
         {
             if (String.IsNullOrWhiteSpace(wiserItem?.EntityType))
             {
@@ -102,7 +118,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             if (parentId is > 0 && userId > 0)
             {
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(parentId.Value, EntityActions.Create, userId, wiserItem);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(parentId.Value, EntityActions.Create, userId, wiserItem);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to create items that are linked to '{parentId}'.")
@@ -114,8 +130,8 @@ namespace GeeksCoreLibrary.Core.Services
                 }
             }
 
-            entityTypeSettings ??= await GetEntityTypeSettingsAsync(wiserItem.EntityType);
-            var tablePrefix = GetTablePrefixForEntity(entityTypeSettings);
+            var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
+            var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
             if (wiserItem.ModuleId <= 0 && entityTypeSettings != null)
             {
                 wiserItem.ModuleId = entityTypeSettings.ModuleId;
@@ -164,7 +180,7 @@ namespace GeeksCoreLibrary.Core.Services
                     destinationEntityType = queryResult.Rows[0].Field<string>("entity_type");
                 }
 
-                var linkTypeSettings = await GetLinkTypeSettingsAsync(0, wiserItem.EntityType, destinationEntityType);
+                var linkTypeSettings = await wiserItemsService.GetLinkTypeSettingsAsync(0, wiserItem.EntityType, destinationEntityType);
                 if (linkTypeSettings is { UseItemParentId: true })
                 {
                     // Save parent ID in parent_item_id column of wiser_item.
@@ -204,6 +220,12 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<WiserItemDuplicationResultModel> DuplicateItemAsync(ulong itemId, ulong parentId, string username = "GCL", string encryptionKey = "", ulong userId = 0, string entityType = null, string parentEntityType = null, bool createNewTransaction = true)
         {
+            return await DuplicateItemAsync(this, itemId, parentId, username, encryptionKey, userId, entityType, parentEntityType, createNewTransaction);
+        }
+
+        /// <inheritdoc />
+        public async Task<WiserItemDuplicationResultModel> DuplicateItemAsync(IWiserItemsService wiserItemsService, ulong itemId, ulong parentId, string username = "GCL", string encryptionKey = "", ulong userId = 0, string entityType = null, string parentEntityType = null, bool createNewTransaction = true)
+        {
             if (itemId <= 0)
             {
                 throw new ArgumentException("Id must be greater than zero.");
@@ -223,7 +245,7 @@ namespace GeeksCoreLibrary.Core.Services
 
                 if (userId > 0)
                 {
-                    var isPossible = await CheckIfEntityActionIsPossibleAsync(itemIdToDuplicate, EntityActions.Read, userId, entityType: entityTypeToDuplicate);
+                    var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemIdToDuplicate, EntityActions.Read, userId, entityType: entityTypeToDuplicate);
                     if (!isPossible.ok)
                     {
                         throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to read item '{itemIdToDuplicate}' and therefore they cannot duplicate it.")
@@ -234,7 +256,7 @@ namespace GeeksCoreLibrary.Core.Services
                         };
                     }
 
-                    isPossible = await CheckIfEntityActionIsPossibleAsync(parentIdOfItemToDuplicate, EntityActions.Create, userId, entityType: parentEntityTypeInner);
+                    isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(parentIdOfItemToDuplicate, EntityActions.Create, userId, entityType: parentEntityTypeInner);
                     if (!isPossible.ok)
                     {
                         throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to create items that are linked to '{parentIdOfItemToDuplicate}'.")
@@ -252,11 +274,11 @@ namespace GeeksCoreLibrary.Core.Services
                 databaseConnection.AddParameter("parentId", parentIdOfItemToDuplicate);
                 databaseConnection.AddParameter("username", username);
 
-                var tablePrefix = await GetTablePrefixForEntityAsync(entityTypeToDuplicate);
+                var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityTypeToDuplicate);
                 var useItemParentId = false;
                 if (!String.IsNullOrWhiteSpace(entityTypeToDuplicate) && !String.IsNullOrWhiteSpace(parentEntityTypeInner))
                 {
-                    var linkTypeSettings = await GetLinkTypeSettingsAsync(0, entityTypeToDuplicate, parentEntityTypeInner);
+                    var linkTypeSettings = await wiserItemsService.GetLinkTypeSettingsAsync(0, entityTypeToDuplicate, parentEntityTypeInner);
                     useItemParentId = linkTypeSettings.UseItemParentId;
                 }
 
@@ -314,7 +336,7 @@ namespace GeeksCoreLibrary.Core.Services
             async Task<bool> DuplicateLinksAsync(ulong oldItemId, ulong newItemId, int duplicationLevel, string entityTypeToDuplicate)
             {
                 databaseConnection.AddParameter("oldItemId", oldItemId);
-                var tablePrefix = await GetTablePrefixForEntityAsync(entityTypeToDuplicate);
+                var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityTypeToDuplicate);
 
                 var query = $@"(
                                     SELECT 
@@ -407,16 +429,23 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, EntitySettingsModel entityTypeSettings = null)
+        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true)
+        {
+            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction);
+        }
+
+        /// <inheritdoc />
+        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true)
         {
             if (itemId <= 0)
             {
                 throw new ArgumentException("Id must be greater than zero.");
             }
 
+            // Check if the user has the correct permissions to do this.
             if (userId > 0)
             {
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId, wiserItem);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId, wiserItem);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{itemId}'.")
@@ -428,13 +457,15 @@ namespace GeeksCoreLibrary.Core.Services
                 }
             }
 
+            // Don't allow deletion of items via this method.
             if (wiserItem.Removed.HasValue && wiserItem.Removed.Value)
             {
                 throw new Exception("It's not possible to change deleted items or to delete items with this method. If you want to delete an existing item, please use the Delete method. If you want to change a previously deleted item, first undelete it via the Delete method.");
             }
 
-            entityTypeSettings ??= await GetEntityTypeSettingsAsync(wiserItem.EntityType, wiserItem.ModuleId);
-            var tablePrefix = GetTablePrefixForEntity(entityTypeSettings);
+            // Get the settings of the entity type.
+            var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType, wiserItem.ModuleId);
+            var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
 
             if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
 
@@ -1009,11 +1040,23 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<int> DeleteAsync(ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
-            return await DeleteAsync(new List<ulong>() { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+            return await DeleteAsync(this, new List<ulong>() { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+        }
+
+        /// <inheritdoc />
+        public async Task<int> DeleteAsync(IWiserItemsService wiserItemsService, ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
+        {
+            return await DeleteAsync(wiserItemsService, new List<ulong>() { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
         }
 
         /// <inheritdoc />
         public async Task<int> DeleteAsync(List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
+        {
+            return await DeleteAsync(this, itemIds, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+        }
+
+        /// <inheritdoc />
+        public async Task<int> DeleteAsync(IWiserItemsService wiserItemsService, List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
             var filteredItemIds = itemIds.Where(id => id > 0).ToList();
             if (!filteredItemIds.Any())
@@ -1027,7 +1070,7 @@ namespace GeeksCoreLibrary.Core.Services
 
                 foreach (var itemId in filteredItemIds)
                 {
-                    var isPossible = await CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Delete, userId, entityType: entityType);
+                    var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Delete, userId, entityType: entityType);
                     if (!isPossible.ok)
                     {
                         itemsWithNoPermissionToDelete.Add(itemId);
@@ -1045,7 +1088,7 @@ namespace GeeksCoreLibrary.Core.Services
                 }
             }
 
-            var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
 
             try
             {
@@ -1311,9 +1354,15 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<(bool ok, string errorMessage, AccessRights permissions)> CheckIfEntityActionIsPossibleAsync(ulong itemId, EntityActions action, ulong userId, WiserItemModel wiserItem = null, bool onlyCheckAccessRights = false, string entityType = null, AccessRights? permissions = null)
+        public async Task<(bool ok, string errorMessage, AccessRights permissions)> CheckIfEntityActionIsPossibleAsync(ulong itemId, EntityActions action, ulong userId, WiserItemModel wiserItem = null, bool onlyCheckAccessRights = false, string entityType = null)
         {
-            var tablePrefix = await GetTablePrefixForEntityAsync(String.IsNullOrWhiteSpace(entityType) ? wiserItem?.EntityType : entityType);
+            return await CheckIfEntityActionIsPossibleAsync(this, itemId, action, userId, wiserItem, onlyCheckAccessRights, entityType);
+        }
+
+        /// <inheritdoc />
+        public async Task<(bool ok, string errorMessage, AccessRights permissions)> CheckIfEntityActionIsPossibleAsync(IWiserItemsService wiserItemsService, ulong itemId, EntityActions action, ulong userId, WiserItemModel wiserItem = null, bool onlyCheckAccessRights = false, string entityType = null)
+        {
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(String.IsNullOrWhiteSpace(entityType) ? wiserItem?.EntityType : entityType);
             databaseConnection.AddParameter("itemId", itemId);
 
             var query = $@"SELECT readonly
@@ -1323,18 +1372,19 @@ namespace GeeksCoreLibrary.Core.Services
             var queryResult = await databaseConnection.GetAsync(query, true);
             var readOnly = queryResult.Rows.Count > 0 && Convert.ToBoolean(queryResult.Rows[0]["readonly"]);
 
+            AccessRights permissions;
             if (readOnly)
             {
-                permissions = AccessRights.Read;
+                permissions = AccessRights.Read;        
 
                 if (action != EntityActions.Read)
                 {
-                    return (false, "Dit item staat ingesteld als alleen lezen.", permissions.Value);
+                    return (false, "Dit item staat ingesteld als alleen lezen.", permissions);
                 }
             }
             else
             {
-                permissions ??= await GetUserItemPermissionsAsync(itemId, userId, entityType);
+                permissions = await wiserItemsService.GetUserItemPermissionsAsync(itemId, userId, entityType);
             }
 
             var hasPermission = action switch
@@ -1348,7 +1398,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             if (!hasPermission)
             {
-                return (false, "U heeft geen rechten om deze actie uit te voeren.", permissions.Value);
+                return (false, "U heeft geen rechten om deze actie uit te voeren.", permissions);
             }
 
             /* TODO: I was working on this code for also implementing permissions based on entity type, but since that was not the assignment and I was running out of time, I stopped with that.
@@ -1423,7 +1473,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             if (onlyCheckAccessRights)
             {
-                return (true, "", permissions.Value);
+                return (true, "", permissions);
             }
 
             string columnName;
@@ -1436,7 +1486,7 @@ namespace GeeksCoreLibrary.Core.Services
                     columnName = "query_before_update";
                     break;
                 default:
-                    return (true, "", permissions.Value);
+                    return (true, "", permissions);
             }
 
             query = $@"SELECT e.{columnName} AS `query`
@@ -1450,14 +1500,14 @@ namespace GeeksCoreLibrary.Core.Services
             if (queryResult.Rows.Count == 0)
             {
                 // If the query returns no results, we can't check anything, so return true.
-                return (true, "", permissions.Value);
+                return (true, "", permissions);
             }
 
             var queryToExecute = queryResult.Rows[0].Field<string>("query");
             if (String.IsNullOrWhiteSpace(queryToExecute))
             {
                 // If there is no query, then we don't need to check anything, so return true.
-                return (true, "", permissions.Value);
+                return (true, "", permissions);
             }
 
             // Execute the check query.
@@ -1473,7 +1523,7 @@ namespace GeeksCoreLibrary.Core.Services
             if (dataTable.Rows.Count == 0)
             {
                 // If the check query returned no results, the user is allowed to execute this action, so return true.
-                return (true, null, permissions.Value);
+                return (true, null, permissions);
             }
 
             var success = Convert.ToInt32(dataTable.Rows[0][0]);
@@ -1483,13 +1533,19 @@ namespace GeeksCoreLibrary.Core.Services
                 errorMessage = dataTable.Rows[0].Field<string>(1);
             }
 
-            return (success > 0, errorMessage, permissions.Value);
+            return (success > 0, errorMessage, permissions);
         }
 
         /// <inheritdoc />
         public async Task<AccessRights> GetUserItemPermissionsAsync(ulong itemId, ulong userId, string entityType = null)
         {
-            var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
+            return await GetUserItemPermissionsAsync(this, itemId, userId, entityType);
+        }
+
+        /// <inheritdoc />
+        public async Task<AccessRights> GetUserItemPermissionsAsync(IWiserItemsService wiserItemsService, ulong itemId, ulong userId, string entityType = null)
+        {
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
 
             // First check permissions based on module ID.
             var permissionsQuery = $@"SELECT permission.permissions
@@ -1661,6 +1717,12 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<WiserItemModel> GetItemDetailsAsync(ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null)
         {
+            return await GetItemDetailsAsync(this, itemId, uniqueId, languageCode, userId, detailKey, detailValue, returnNullIfDeleted, skipDetailsWithoutLanguageCode, entityType);
+        }
+
+        /// <inheritdoc />
+        public async Task<WiserItemModel> GetItemDetailsAsync(IWiserItemsService wiserItemsService, ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null)
+        {
             if (itemId == 0 && String.IsNullOrEmpty(uniqueId))
             {
                 return null;
@@ -1668,7 +1730,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             if (userId > 0 && itemId > 0)
             {
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Read, userId);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Read, userId);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to read item '{itemId}'.")
@@ -1680,7 +1742,7 @@ namespace GeeksCoreLibrary.Core.Services
                 }
             }
 
-            var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
 
             var where = new List<string>();
             var join = "";
@@ -1759,12 +1821,18 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
         {
+            return await GetLinkedItemDetailsAsync(this, itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(IWiserItemsService wiserItemsService, ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
+        {
             var result = new List<WiserItemModel>();
 
             LinkSettingsModel linkSettings;
             if (linkType > -1)
             {
-                linkSettings = await GetLinkTypeSettingsAsync(linkType, reverse ? itemIdEntityType : entityType, reverse ? entityType : itemIdEntityType);
+                linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(linkType, reverse ? itemIdEntityType : entityType, reverse ? entityType : itemIdEntityType);
             }
             else
             {
@@ -1786,13 +1854,13 @@ namespace GeeksCoreLibrary.Core.Services
             var tablePrefix = "";
             if (!String.IsNullOrWhiteSpace(entityType))
             {
-                tablePrefix = await GetTablePrefixForEntityAsync(entityType);
+                tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
                 databaseConnection.AddParameter("entityType", entityType);
                 where.Add("item.entity_type = ?entityType");
             }
             else if (!String.IsNullOrWhiteSpace(itemIdEntityType))
             {
-                tablePrefix = await GetTablePrefixForEntityAsync(itemIdEntityType);
+                tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
             }
 
             databaseConnection.AddParameter("itemId", itemId);
@@ -1926,6 +1994,12 @@ namespace GeeksCoreLibrary.Core.Services
 
         /// <inheritdoc />
         public async Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
+        {
+            return await GetLinkedItemIdsAsync(this, itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<ulong>> GetLinkedItemIdsAsync(IWiserItemsService wiserItemsService, ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
         {
             var result = new List<ulong>();
             var linkSettings = await GetLinkTypeSettingsAsync(linkType, reverse ? itemIdEntityType : entityType, reverse ? entityType : itemIdEntityType);
@@ -2111,9 +2185,15 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<(string template, DataRow dataRow)> GetTemplateAndDataForItemAsync(ulong itemId, string entityType = null)
         {
+            return await GetTemplateAndDataForItemAsync(this, itemId, entityType);
+        }
+
+        /// <inheritdoc />
+        public async Task<(string template, DataRow dataRow)> GetTemplateAndDataForItemAsync(IWiserItemsService wiserItemsService, ulong itemId, string entityType = null)
+        {
             try
             {
-                var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
+                var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
 
                 databaseConnection.AddParameter("itemId", itemId);
                 var dataTable = await databaseConnection.GetAsync($@"SELECT
@@ -2163,9 +2243,15 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<ulong> AddItemLinkAsync(ulong itemId, ulong destinationItemId, int type, int ordering = 1, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
+            return await AddItemLinkAsync(this, itemId, destinationItemId, type, ordering, username, userId, saveHistory);
+        }
+
+        /// <inheritdoc />
+        public async Task<ulong> AddItemLinkAsync(IWiserItemsService wiserItemsService, ulong itemId, ulong destinationItemId, int type, int ordering = 1, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        {
             if (userId > 0)
             {
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{itemId}'.")
@@ -2175,7 +2261,7 @@ namespace GeeksCoreLibrary.Core.Services
                         UserId = userId
                     };
                 }
-                isPossible = await CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
+                isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{destinationItemId}'.")
@@ -2212,9 +2298,15 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task RemoveItemLinksAsync(ulong destinationItemId, int type, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
+            await RemoveItemLinksAsync(this, destinationItemId, type, username, userId, saveHistory);
+        }
+
+        /// <inheritdoc />
+        public async Task RemoveItemLinksAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int type, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        {
             if (userId > 0)
             {
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{destinationItemId}'.")
@@ -2242,9 +2334,15 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task RemoveItemLinksByIdAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true)
         {
+            await RemoveItemLinksByIdAsync(this, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory);
+        }
+
+        /// <inheritdoc />
+        public async Task RemoveItemLinksByIdAsync(IWiserItemsService wiserItemsService, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true)
+        {
             if (userId > 0)
             {
-                var itemsWithNoPermissionToUpdate = await GetItemIdsWithNoPermissionToUpdateLinkAsync(sourceEntityType, sourceIds, destinationEntityType, destinationIds, userId);
+                var itemsWithNoPermissionToUpdate = await GetItemIdsWithNoPermissionToUpdateLinkAsync(wiserItemsService, sourceEntityType, sourceIds, destinationEntityType, destinationIds, userId);
 
                 if (itemsWithNoPermissionToUpdate.Any())
                 {
@@ -2323,9 +2421,15 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task RemoveParentLinkOfItemsAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true)
         {
+            await RemoveParentLinkOfItemsAsync(this, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory);
+        }
+
+        /// <inheritdoc />
+        public async Task RemoveParentLinkOfItemsAsync(IWiserItemsService wiserItemsService, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true)
+        {
             if (userId > 0)
             {
-                var itemsWithNoPermissionToUpdate = await GetItemIdsWithNoPermissionToUpdateLinkAsync(sourceEntityType, sourceIds, destinationEntityType, destinationIds, userId);
+                var itemsWithNoPermissionToUpdate = await GetItemIdsWithNoPermissionToUpdateLinkAsync(wiserItemsService, sourceEntityType, sourceIds, destinationEntityType, destinationIds, userId);
 
                 if (itemsWithNoPermissionToUpdate.Any())
                 {
@@ -2338,7 +2442,7 @@ namespace GeeksCoreLibrary.Core.Services
                 }
             }
 
-            var sourceTablePrefix = await GetTablePrefixForEntityAsync(sourceEntityType);
+            var sourceTablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(sourceEntityType);
             
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
@@ -2367,20 +2471,21 @@ namespace GeeksCoreLibrary.Core.Services
         /// Get all ids from items that the user does not have the permission to update a link from.
         /// Check both source as destination items.
         /// </summary>
+        /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
         /// <param name="sourceEntityType">The entity type of the source.</param>
         /// <param name="sourceIds">The ids of the source for permissions.</param>
         /// <param name="destinationEntityType">The entity type of the destination.</param>
         /// <param name="destinationIds">The dis of the destination for permissions.</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <returns>Returns a <see cref="List{T}"/> of ids of the items the user is not allowed to update.</returns>
-        private async Task<List<ulong>> GetItemIdsWithNoPermissionToUpdateLinkAsync(string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, ulong userId)
+        private async Task<List<ulong>> GetItemIdsWithNoPermissionToUpdateLinkAsync(IWiserItemsService wiserItemsService, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, ulong userId)
         {
             var itemsWithNoPermissionToUpdate = new List<ulong>();
 
             //Check if the user is allowed to update the source item.
             foreach (var itemId in sourceIds)
             {
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId, entityType: sourceEntityType);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId, entityType: sourceEntityType);
                 if (!isPossible.ok)
                 {
                     itemsWithNoPermissionToUpdate.Add(itemId);
@@ -2390,7 +2495,7 @@ namespace GeeksCoreLibrary.Core.Services
             //Check if the user is allowed to update the destination item.
             foreach (var itemId in destinationIds)
             {
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId, entityType: destinationEntityType);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId, entityType: destinationEntityType);
                 if (!isPossible.ok)
                 {
                     itemsWithNoPermissionToUpdate.Add(itemId);
@@ -2403,7 +2508,13 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0UL, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
-            var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
+            await RemoveLinkedItemsAsync(this, destinationItemId, type, exceptItemIds, username, userId, saveHistory, entityType, createNewTransaction);
+        }
+
+        /// <inheritdoc />
+        public async Task RemoveLinkedItemsAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
+        {
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
 
             databaseConnection.AddParameter("destinationItemId", destinationItemId);
             databaseConnection.AddParameter("username", username);
@@ -2469,16 +2580,22 @@ namespace GeeksCoreLibrary.Core.Services
 
             foreach (DataRow dataRow in dataTable.Rows)
             {
-                await DeleteAsync(dataRow.Field<ulong>("id"), username: username, userId: userId, saveHistory: saveHistory, entityType: dataRow.Field<string>("entity_type"), createNewTransaction: createNewTransaction);
+                await wiserItemsService.DeleteAsync(dataRow.Field<ulong>("id"), username: username, userId: userId, saveHistory: saveHistory, entityType: dataRow.Field<string>("entity_type"), createNewTransaction: createNewTransaction);
             }
         }
 
         /// <inheritdoc />
         public async Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
+            await ChangeItemLinksAsync(this, oldDestinationItemId, newDestinationItemId, type, username, userId, saveHistory);
+        }
+
+        /// <inheritdoc />
+        public async Task ChangeItemLinksAsync(IWiserItemsService wiserItemsService, ulong oldDestinationItemId, ulong newDestinationItemId, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        {
             if (userId > 0)
             {
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(oldDestinationItemId, EntityActions.Update, userId);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(oldDestinationItemId, EntityActions.Update, userId);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{oldDestinationItemId}'.")
@@ -2488,7 +2605,7 @@ namespace GeeksCoreLibrary.Core.Services
                         UserId = userId
                     };
                 }
-                isPossible = await CheckIfEntityActionIsPossibleAsync(newDestinationItemId, EntityActions.Update, userId);
+                isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(newDestinationItemId, EntityActions.Update, userId);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{newDestinationItemId}'.")
@@ -2525,9 +2642,15 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task ChangeLinkTypesAsync(ulong destinationItemId, int oldLinkType, int newLinkType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
+            await ChangeLinkTypesAsync(this, destinationItemId, oldLinkType, newLinkType, username, userId, saveHistory);
+        }
+
+        /// <inheritdoc />
+        public async Task ChangeLinkTypesAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int oldLinkType, int newLinkType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        {
             if (userId > 0)
             {
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{destinationItemId}'.")
@@ -2555,9 +2678,15 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task ChangeLinkTypeAsync(ulong destinationItemId, int oldLinkType, int newLinkType, ulong sourceItemId, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
+            await ChangeLinkTypeAsync(this, destinationItemId, oldLinkType, newLinkType, sourceItemId, username, userId, saveHistory);
+        }
+
+        /// <inheritdoc />
+        public async Task ChangeLinkTypeAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int oldLinkType, int newLinkType, ulong sourceItemId, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        {
             if (userId > 0)
             {
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{destinationItemId}'.")
@@ -2567,7 +2696,7 @@ namespace GeeksCoreLibrary.Core.Services
                         UserId = userId
                     };
                 }
-                isPossible = await CheckIfEntityActionIsPossibleAsync(sourceItemId, EntityActions.Update, userId);
+                isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(sourceItemId, EntityActions.Update, userId);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{sourceItemId}'.")
@@ -2596,6 +2725,12 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
+            return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory);
+        }
+
+        /// <inheritdoc />
+        public async Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        {
             if (userId > 0)
             {
                 var itemId = wiserItemFile.ItemId;
@@ -2615,7 +2750,7 @@ namespace GeeksCoreLibrary.Core.Services
                     destinationItemId = Convert.ToUInt64(queryResult.Rows[0]["destination_item_id"]);
                 }
 
-                var isPossible = await CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{itemId}'.")
@@ -2628,7 +2763,7 @@ namespace GeeksCoreLibrary.Core.Services
 
                 if (destinationItemId > 0)
                 {
-                    isPossible = await CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
+                    isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
                     if (!isPossible.ok)
                     {
                         throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{destinationItemId}'.")
@@ -2715,13 +2850,19 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<string> GetTablePrefixForEntityAsync(string entityType)
         {
+            return await GetTablePrefixForEntityAsync(this, entityType);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetTablePrefixForEntityAsync(IWiserItemsService wiserItemsService, string entityType)
+        {
             if (String.IsNullOrWhiteSpace(entityType))
             {
                 return "";
             }
 
-            var settings = await GetEntityTypeSettingsAsync(entityType);
-            return GetTablePrefixForEntity(settings);
+            var settings = await wiserItemsService.GetEntityTypeSettingsAsync(entityType);
+            return wiserItemsService.GetTablePrefixForEntity(settings);
         }
 
         /// <inheritdoc />
@@ -2790,7 +2931,13 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<LinkSettingsModel> GetLinkTypeSettingsByIdAsync(int linkId)
         {
-            IEnumerable<LinkSettingsModel> result = await GetAllLinkTypeSettingsAsync();
+            return await GetLinkTypeSettingsByIdAsync(this, linkId);
+        }
+
+        /// <inheritdoc />
+        public async Task<LinkSettingsModel> GetLinkTypeSettingsByIdAsync(IWiserItemsService wiserItemsService, int linkId)
+        {
+            IEnumerable<LinkSettingsModel> result = await wiserItemsService.GetAllLinkTypeSettingsAsync();
             if (linkId > 0)
             {
                 result = result.Where(t => t.Id == linkId);
