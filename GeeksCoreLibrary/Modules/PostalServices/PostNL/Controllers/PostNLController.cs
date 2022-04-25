@@ -5,8 +5,7 @@ using GeeksCoreLibrary.Modules.PostalServices.PostNL.Interfaces;
 
 namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Controllers
 {
-    [ApiController]
-    [Route("postal-services/post-nl")]
+    [Route("/postal-services/post-nl")]
     public class PostNLController : Controller
     {
         private readonly IPostNLService postNlService;
