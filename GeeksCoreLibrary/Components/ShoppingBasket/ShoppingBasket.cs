@@ -397,37 +397,18 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 return new HtmlString(debugInformation);
             }
 
-            var loadBasketRequestValue = Settings.HandleRequest ? HttpContextHelpers.GetRequestValue(HttpContext, "loadbasket") : String.Empty;
-            var basketIdRequestValue = Settings.HandleRequest ? HttpContextHelpers.GetRequestValue(HttpContext, "basketId") : String.Empty;
-            if (!String.IsNullOrWhiteSpace(loadBasketRequestValue))
+            // Load the current basket.
+            var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings);
+            Main = shoppingBasket;
+            Lines = basketLines;
+            basketLineValidityMessage = validityMessage;
+            basketLineStockActionMessage = stockActionMessage;
+
+            // Check if we need to call a specific method and then do so. Skip everything else, because we don't want to render the entire component then.
+            if (!String.IsNullOrWhiteSpace(callMethod))
             {
-                // Load basket with encrypted ID from request variable loadbasket.
-                var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, 0, loadBasketRequestValue);
-                Main = shoppingBasket;
-                Lines = basketLines;
-                basketLineValidityMessage = validityMessage;
-                basketLineStockActionMessage = stockActionMessage;
-            }
-            else if (!String.IsNullOrWhiteSpace(basketIdRequestValue))
-            {
-                if (UInt64.TryParse(basketIdRequestValue.DecryptWithAesWithSalt(gclSettings.ShoppingBasketEncryptionKey, true), out var decryptedId))
-                {
-                    // Load basket after decrypting ID from request variable basketId.
-                    var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, decryptedId);
-                    Main = shoppingBasket;
-                    Lines = basketLines;
-                    basketLineValidityMessage = validityMessage;
-                    basketLineStockActionMessage = stockActionMessage;
-                }
-            }
-            else
-            {
-                // Load the current basket.
-                var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings);
-                Main = shoppingBasket;
-                Lines = basketLines;
-                basketLineValidityMessage = validityMessage;
-                basketLineStockActionMessage = stockActionMessage;
+                TempData["InvokeMethodResult"] = await InvokeMethodAsync(callMethod);
+                return new HtmlString("");
             }
 
             var resultHtml = new StringBuilder();
@@ -470,7 +451,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                     resultHtml.Append(await HandleLegacyModeAsync());
                     break;
                 default:
-                    throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'GenerateHtmlAsync'.");
+                    throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'InvokeAsync'.");
             }
 
             if (String.IsNullOrWhiteSpace(Settings.TemplateJavaScript))

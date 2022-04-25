@@ -47,7 +47,7 @@
 </div>";
 
         internal const string DefaultTemplateJavaScript = @"function setupHttpRequest{contentId}_{basketId}(container, method, contentType, extraQueryStringParameters) {
-    const url = '/GclComponent.gcl?contentId={contentId}&callMethod=' + method + '&trace=false&ombouw=false&type=ShoppingBasket' + (extraQueryStringParameters || '');
+    const url = '/GclComponent.gcl?contentId={contentId}&callMethod=' + method + '&ombouw=false&type=ShoppingBasket' + (extraQueryStringParameters || '');
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
@@ -87,10 +87,10 @@ function initializeBasket{contentId}_{basketId}() {
 
             const payload = [this.dataset.basketLineUniqueId];
 
-            var xhr = setupHttpRequest{contentId}_{basketId}(container, 'RemoveFromBasket', 'application/json', '&componentMode=4');
+            const xhr = setupHttpRequest{contentId}_{basketId}(container, 'HandleRemoveItemsMode', 'application/json', '&componentMode=4');
             xhr.send(JSON.stringify(payload));
         });
-    }
+    });
 
     // Handle updating basket lines quantity
     const changeQuantityInputs = container.querySelectorAll('.changeQuantity');
@@ -107,7 +107,7 @@ function initializeBasket{contentId}_{basketId}() {
 
             // Make a new timeout set to go off in 1000ms (1 second)
             timeout = setTimeout(function () {
-                var xhr = setupHttpRequest{contentId}_{basketId}(container, 'ChangeQuantity', 'application/json', '&componentMode=3');
+                const xhr = setupHttpRequest{contentId}_{basketId}(container, 'HandleChangeQuantityMode', 'application/json', '&componentMode=3');
                 xhr.send(payload);
             }, 1000);
         });
@@ -123,10 +123,9 @@ function initializeBasket{contentId}_{basketId}() {
             const couponCode = couponCodeInput.value.trim();
             if (couponCode === '') return;
 
-            const payload = new FormData();
-            payload.append('couponcode', couponCode);
+            const payload = `couponcode=${couponCode}`;
 
-            const xhr = setupHttpRequest{contentId}_{basketId}(container, 'AddCoupon', 'application/json', '&componentMode=12');
+            const xhr = setupHttpRequest{contentId}_{basketId}(container, 'HandleAddCouponMode', 'application/x-www-form-urlencoded', '&componentMode=12');
             xhr.send(payload);
         });
     });
