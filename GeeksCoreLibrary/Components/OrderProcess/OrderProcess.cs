@@ -402,10 +402,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         var confirmationHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, step, steps, paymentMethods);
                         groupsBuilder.AppendLine(confirmationHtml);
 
-                        // Delete the basket cookie.
+                        // Empty the shopping basket.
                         if (orderProcessSettings.ClearBasketOnConfirmationPage)
                         {
-                            response?.Cookies.Delete(shoppingBasketSettings.CookieName);
+                            var id = shoppingBasket.Id;
+                            shoppingBasket = new WiserItemModel();
+                            shoppingBasketLines = new List<WiserItemModel>();
+                            shoppingBasket.Id = id;
+
+                            await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
                         }
 
                         break;
