@@ -105,7 +105,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// <inheritdoc />
         public async Task<List<(WiserItemModel Main, List<WiserItemModel> Lines)>> GetShoppingBasketsAsync()
         {
-            var checkoutBasketsCookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName", "shoppingBasket");
+            var checkoutBasketsCookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName", Constants.DefaultCookieName);
 
             var settings = await GetSettingsAsync();
             return await GetShoppingBasketsAsync(checkoutBasketsCookieName, settings);
@@ -1807,7 +1807,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             return new()
             {
-                CookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName", "shoppingBasket"),
+                CookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName", Constants.DefaultCookieName),
                 B2BPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_B2bPropertyName"),
                 CountryPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_CountryPropertyName"),
                 DiscountPropertyName = await GetCheckoutObjectValueAsync("CHECKOUT_DiscountPropertyName", "discount"),

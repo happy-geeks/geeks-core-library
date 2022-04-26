@@ -12,7 +12,7 @@
 
         #region Default settings
 
-        internal const string DefaultCookieName = "shoppingbasket";
+        internal const string DefaultCookieName = "shoppingBasket";
         internal const int DefaultCookieAgeInDays = 7;
         internal const string DefaultQuantityPropertyName = "quantity";
         internal const string DefaultFactorPropertyName = "factor";
