@@ -228,7 +228,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 WiserItemModel userData;
                 if (loggedInUser.UserId > 0)
                 {
-                    userData = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
+                    userData = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId, entityType: Account.Models.Constants.DefaultEntityType);
                 }
                 else
                 {
