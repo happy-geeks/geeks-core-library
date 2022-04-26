@@ -249,7 +249,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             .Select(item => (linkTypeSettings, item)));
                     }
 
-                    if (String.Equals(linkTypeSettings.DestinationEntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase))
+                    if (userData.Id > 0 && String.Equals(linkTypeSettings.DestinationEntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase))
                     {
                         currentItems.AddRange((await wiserItemsService.GetLinkedItemDetailsAsync(userData.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id)).Select(item => (linkTypeSettings, item)));
                     }
@@ -292,22 +292,32 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
                 if (isPostBack)
                 {
+                    await DatabaseConnection.BeginTransactionAsync();
+
+                    // If we have no user ID yet, create it here because the ValidatePostBackAndSaveValuesAsync method will need a user ID to link items that might be created there. 
+                    if (userData.Id == 0)
+                    {
+                        userData = await wiserItemsService.CreateAsync(userData, createNewTransaction: false);
+                    }
+
                     fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(step, loggedInUser, request, shoppingBasket, paymentMethods, currentItems);
 
                     // Save values to database if all validation succeeded.
                     if (!fieldErrorsOccurred)
                     {
                         // Save basket to database.
-                        shoppingBasket = await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
+                        shoppingBasket = await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings, createNewTransaction: false);
                         
                         // Save all other items to database.
                         foreach (var item in currentItems)
                         {
-                            await wiserItemsService.SaveAsync(item.Item, userId: userData.Id);
+                            await wiserItemsService.SaveAsync(item.Item, userId: userData.Id, createNewTransaction: false);
                         }
                         
                         // Link basket to active user.
                         await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userData.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType);
+
+                        await DatabaseConnection.CommitTransactionAsync();
 
                         response.Redirect(nextStepUri.ToString());
 
@@ -453,6 +463,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             }
             catch (Exception exception)
             {
+                await DatabaseConnection.RollbackTransactionAsync(false);
                 resultHtml = AddStepErrorToResult(resultHtml, "Server");
                 Logger.LogError(exception.ToString());
             }
@@ -1022,7 +1033,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                                 throw new NotImplementedException($"Unknown entity type '{saveLocation.EntityType}' for field '{field.Id}' set for saving.");
                                             }
 
-                                            var newItem = await wiserItemsService.CreateAsync(new WiserItemModel { EntityType = saveLocation.EntityType }, parentId, linkSettings.Type, userId);
+                                            var newItem = await wiserItemsService.CreateAsync(new WiserItemModel { EntityType = saveLocation.EntityType }, parentId > 0 ? parentId : null, linkSettings.Type, userId, createNewTransaction: false);
                                             newItem.SetDetail(saveLocation.PropertyName, valueForDatabase);
                                             currentItems.Add((new LinkSettingsModel { Type = saveLocation.LinkType, SourceEntityType = newItem.EntityType, DestinationEntityType = userData.EntityType }, newItem));
                                         }
