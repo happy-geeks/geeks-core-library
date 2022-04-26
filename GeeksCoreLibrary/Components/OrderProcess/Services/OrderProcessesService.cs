@@ -401,6 +401,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
                         }
                         
+                        field.SaveTo.Add(saveToSettings);
+                        
                         if (!saveToSettings.PropertyName.Contains("[") || !saveToSettings.PropertyName.EndsWith("]"))
                         {
                             continue;
@@ -416,7 +418,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         }
 
                         saveToSettings.LinkType = linkType;
-                        field.SaveTo.Add(saveToSettings);
                     }
                 }
 
