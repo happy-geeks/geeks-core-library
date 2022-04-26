@@ -157,31 +157,11 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
             GroupName = CmsAttributes.CmsGroupName.Handling,
             DisplayOrder = 10
         )]
-        public decimal MaxItemQuantity { get; set; }
+        public int MaxItemQuantity { get; set; }
 
         #endregion
 
         #region Tab DataSource properties
-
-        [CmsProperty(
-            PrettyName = "Basket entity name",
-            Description = "The name of the entity which is used for this shopping basket.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 10
-        )]
-        public string BasketEntityName { get; set; }
-
-        [CmsProperty(
-            PrettyName = "Basket line entity name",
-            Description = "The name of the entity which is used for the lines in this shopping basket.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 20
-        )]
-        public string BasketLineEntityName { get; set; }
 
         [CmsProperty(
             PrettyName = "Quantity property name",

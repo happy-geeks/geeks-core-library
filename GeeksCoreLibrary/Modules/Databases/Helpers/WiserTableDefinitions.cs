@@ -97,7 +97,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserEntityProperty,
-                LastUpdate = new DateTime(2022, 2, 22),
+                LastUpdate = new DateTime(2022, 4, 25),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -140,7 +140,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("save_on_change", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("extended_explanation", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("label_style", MySqlDbType.Enum, enumValues: new List<string> { "normal", "inline", "float" }),
-                    new("label_width", MySqlDbType.Enum, enumValues: new List<string> { "0", "10", "20", "30", "40", "50" })
+                    new("label_width", MySqlDbType.Enum, enumValues: new List<string> { "0", "10", "20", "30", "40", "50" }),
+                    new("enable_aggregation", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("aggregate_options", MySqlDbType.MediumText)
                 },
                 Indexes = new List<IndexSettingsModel>
                 {

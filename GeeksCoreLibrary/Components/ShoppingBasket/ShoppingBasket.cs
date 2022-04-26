@@ -24,7 +24,6 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
-using LazyCache;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
@@ -85,6 +84,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             /// </summary>
             [CmsEnum(PrettyName = "Remove items")]
             RemoveItems = 4,
+
+            /// <summary>
+            /// For adding a coupon to the shopping basket.
+            /// </summary>
+            [CmsEnum(PrettyName = "Add coupon")]
+            AddCoupon = 12,
 
             /// <summary>
             /// For clearing the basket's contents, but keeping the basket.
@@ -178,9 +183,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             MaximumCouponsReached = 5,
 
             /// <summary>
-            /// Coupon couldn't be saved due to the session state being unavailable.
+            /// Coupon couldn't be saved due to the HTTP context being unavailable.
             /// </summary>
-            SessionUnavailable = 6
+            HttpContextUnavailable = 6
         }
 
         #endregion
@@ -190,12 +195,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         public WiserItemModel Main { get; set; }
 
         public List<WiserItemModel> Lines { get; set; }
-
-        #endregion
-
-        #region Services
-
-        public IAppCache Cache { get; set; }
 
         #endregion
 
@@ -235,7 +234,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         #endregion
 
         #region Manipulating basket contents (adding/removing/etc.)
-        
+
         public WiserItemModel GetLine(ulong id)
         {
             if (Lines == null || !Lines.Any())
@@ -314,7 +313,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             return output;
         }
 
-        private async Task<string> GetRenderedBasketAsync()
+        private async Task<string> GetRenderedBasketAsync(IDictionary<string, object> extraData = null)
         {
             var result = new StringBuilder();
 
@@ -347,6 +346,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                     { "BasketLineStockActionMessage", basketLineStockActionMessage },
                     { "BasketLineValidityMessage", basketLineValidityMessage }
                 };
+
+                if (extraData is { Count: > 0 })
+                {
+                    extraData.ToList().ForEach(kvp => additionalReplacementData[kvp.Key] = kvp.Value);
+                }
+
                 template = await shoppingBasketsService.ReplaceBasketInTemplateAsync(Main, Lines, Settings, template, stripNotExistingVariables: false, additionalReplacementData: additionalReplacementData);
 
                 if (!template.Contains($"id=\"GclShoppingBasketContainer{ComponentId}\"") && !String.IsNullOrWhiteSpace(Settings.TemplateJavaScript))
@@ -392,37 +397,18 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 return new HtmlString(debugInformation);
             }
 
-            var loadBasketRequestValue = Settings.HandleRequest ? HttpContextHelpers.GetRequestValue(HttpContext, "loadbasket") : String.Empty;
-            var basketIdRequestValue = Settings.HandleRequest ? HttpContextHelpers.GetRequestValue(HttpContext, "basketId") : String.Empty;
-            if (!String.IsNullOrWhiteSpace(loadBasketRequestValue))
+            // Load the current basket.
+            var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings);
+            Main = shoppingBasket;
+            Lines = basketLines;
+            basketLineValidityMessage = validityMessage;
+            basketLineStockActionMessage = stockActionMessage;
+
+            // Check if we need to call a specific method and then do so. Skip everything else, because we don't want to render the entire component then.
+            if (!String.IsNullOrWhiteSpace(callMethod))
             {
-                // Load basket with encrypted ID from request variable loadbasket.
-                var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, 0, loadBasketRequestValue);
-                Main = shoppingBasket;
-                Lines = basketLines;
-                basketLineValidityMessage = validityMessage;
-                basketLineStockActionMessage = stockActionMessage;
-            }
-            else if (!String.IsNullOrWhiteSpace(basketIdRequestValue))
-            {
-                if (UInt64.TryParse(basketIdRequestValue.DecryptWithAesWithSalt(gclSettings.ShoppingBasketEncryptionKey, true), out var decryptedId))
-                {
-                    // Load basket after decrypting ID from request variable basketId.
-                    var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, decryptedId);
-                    Main = shoppingBasket;
-                    Lines = basketLines;
-                    basketLineValidityMessage = validityMessage;
-                    basketLineStockActionMessage = stockActionMessage;
-                }
-            }
-            else
-            {
-                // Load the current basket.
-                var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings);
-                Main = shoppingBasket;
-                Lines = basketLines;
-                basketLineValidityMessage = validityMessage;
-                basketLineStockActionMessage = stockActionMessage;
+                TempData["InvokeMethodResult"] = await InvokeMethodAsync(callMethod);
+                return new HtmlString("");
             }
 
             var resultHtml = new StringBuilder();
@@ -443,6 +429,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 case ComponentModes.RemoveItems:
                     resultHtml.Append(await HandleRemoveItemsModeAsync());
                     break;
+                case ComponentModes.AddCoupon:
+                    resultHtml.Append(await HandleAddCouponModeAsync());
+                    break;
                 case ComponentModes.ClearContents:
                     resultHtml.Append(await HandleClearContentsModeAsync());
                     break;
@@ -462,7 +451,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                     resultHtml.Append(await HandleLegacyModeAsync());
                     break;
                 default:
-                    throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'GenerateHtmlAsync'.");
+                    throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'InvokeAsync'.");
             }
 
             if (String.IsNullOrWhiteSpace(Settings.TemplateJavaScript))
@@ -556,9 +545,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 return;
             }
 
-            if (!Decimal.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, "quantity"), NumberStyles.Float, CultureInfo.InvariantCulture, out var quantity))
+            if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, "quantity"), NumberStyles.Float, CultureInfo.InvariantCulture, out var quantity))
             {
-                quantity = 1M;
+                quantity = 1;
             }
 
             var type = HttpContextHelpers.GetRequestValue(HttpContext, "type");
@@ -679,6 +668,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         /// <summary>
         /// Attempts to remove an item from the basket and returns the rendered template.
         /// </summary>
+        /// <param name="renderBasket">Whether the component should render the template.</param>
         /// <returns></returns>
         public async Task<string> HandleRemoveItemsModeAsync(bool renderBasket = true)
         {
@@ -702,6 +692,28 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             }
 
             return renderBasket ? await GetRenderedBasketAsync() : String.Empty;
+        }
+
+        /// <summary>
+        /// Attempts to add a coupon to the shopping basket and returns the rendered basket.
+        /// </summary>
+        /// <param name="renderBasket">Whether the component should render the template.</param>
+        /// <returns></returns>
+        public async Task<string> HandleAddCouponModeAsync(bool renderBasket = true)
+        {
+            if (HttpContext == null)
+            {
+                return String.Empty;
+            }
+
+            var addCouponResult = await shoppingBasketsService.AddCouponToBasketAsync(Main, Lines, Settings);
+            var replacementData = new Dictionary<string, object>
+            {
+                { "addCouponResult", addCouponResult.ToString("G") }
+            };
+            var result = renderBasket ? await GetRenderedBasketAsync(replacementData) : String.Empty;
+
+            return result;
         }
 
         /// <summary>
@@ -827,7 +839,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                     foreach (var key in Request.Query.Keys.Where(key => key.StartsWith("aantal_", StringComparison.OrdinalIgnoreCase)))
                     {
                         var id = key[7..];
-                        var quantity = Convert.ToDecimal(Request.Query[key].First());
+                        var quantity = Convert.ToInt32(Request.Query[key].First());
                         await shoppingBasketsService.UpdateBasketLineQuantityAsync(Main, Lines, Settings, id, quantity);
                     }
 
@@ -836,7 +848,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                         foreach (var key in Request.Form.Keys.Where(key => key.StartsWith("aantal_", StringComparison.OrdinalIgnoreCase)))
                         {
                             var id = key[7..];
-                            var quantity = Convert.ToDecimal(Request.Form[key].First());
+                            var quantity = Convert.ToInt32(Request.Form[key].First());
                             await shoppingBasketsService.UpdateBasketLineQuantityAsync(Main, Lines, Settings, id, quantity);
                         }
                     }

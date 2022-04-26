@@ -144,7 +144,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="type">The type of the item. Defaults to "product".</param>
         /// <param name="lineDetails">Additional properties for the basket line.</param>
         /// <returns></returns>
-        Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, decimal quantity = 1M, string type = "product", IDictionary<string, string> lineDetails = null);
+        Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null);
 
         /// <summary>
         /// Adds multiple items to the basket.
@@ -175,9 +175,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="itemIdOrUniqueId"></param>
         /// <param name="quantity"></param>
         /// <returns></returns>
-        Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity);
+        Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, int quantity);
 
-        Task<ShoppingBasket.HandleCouponResults> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool recalculateCoupon = false);
+        /// <summary>
+        /// Will attempt to add a coupon to the shopping basket by checking if the request variable "couponcode" is present and using that value to see if it matches with a valid coupon.
+        /// </summary>
+        /// <param name="shoppingBasket">A <see cref="WiserItemModel"/> that references the shopping basket.</param>
+        /// <param name="basketLines">The current basket lines in the form of a list of <see cref="WiserItemModel"/> objects.</param>
+        /// <param name="settings">The settings of the basket, either the global ones or the ones passed from a <see cref="ShoppingBasket"/> component.</param>
+        /// <param name="couponCode">The coupon code to check and process.</param>
+        /// <returns></returns>
+        Task<ShoppingBasket.HandleCouponResults> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "");
 
         /// <summary>
         /// Get lines of a specific type.

@@ -2,7 +2,7 @@
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 {
-    internal class ShoppingBasketAddItemsSettingsModel
+    internal class ShoppingBasketAddCouponSettingsModel
     {
         [DefaultValue(Constants.DefaultCookieName)]
         internal string CookieName { get; }
