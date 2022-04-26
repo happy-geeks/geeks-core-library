@@ -571,6 +571,11 @@ namespace GeeksCoreLibrary.Components.Filter
                         }
                     }
 
+                    if (f.FilterType== FilterGroup.FilterGroupType.Slider)
+                    {
+                        filterItemFound = true;
+                    }
+
                     // When aggregation is used, then skip the filter summary item if it is excluded by other active filters
                     if ((Settings.ComponentMode != ComponentModes.Aggregation) || filterItemFound)
                     {
