@@ -2624,17 +2624,17 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
-            await ChangeItemLinksAsync(this, oldDestinationItemId, newDestinationItemId, type, username, userId, saveHistory);
+            await ChangeItemLinksAsync(this, oldDestinationItemId, newDestinationItemId, entityType, type, username, userId, saveHistory);
         }
 
         /// <inheritdoc />
-        public async Task ChangeItemLinksAsync(IWiserItemsService wiserItemsService, ulong oldDestinationItemId, ulong newDestinationItemId, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task ChangeItemLinksAsync(IWiserItemsService wiserItemsService, ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
             if (userId > 0)
             {
-                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(oldDestinationItemId, EntityActions.Update, userId);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(oldDestinationItemId, EntityActions.Update, userId, entityType: entityType);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{oldDestinationItemId}'.")
@@ -2644,7 +2644,7 @@ namespace GeeksCoreLibrary.Core.Services
                         UserId = userId
                     };
                 }
-                isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(newDestinationItemId, EntityActions.Update, userId);
+                isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(newDestinationItemId, EntityActions.Update, userId, entityType: entityType);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{newDestinationItemId}'.")
@@ -2656,6 +2656,8 @@ namespace GeeksCoreLibrary.Core.Services
                 }
             }
 
+            var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
+            
             databaseConnection.AddParameter("oldDestinationItemId", oldDestinationItemId);
             databaseConnection.AddParameter("newDestinationItemId", newDestinationItemId);
             databaseConnection.AddParameter("type", type);
@@ -2671,9 +2673,9 @@ namespace GeeksCoreLibrary.Core.Services
                                                         AND (?type = 0 OR type = ?type);
 
                                                         # Update links via parent_item_id from {WiserTableNames.WiserItem}.
-                                                        UPDATE {WiserTableNames.WiserItem} AS item
-                                                        JOIN {WiserTableNames.WiserItem} AS parent ON parent.id = ?oldDestinationItemId
-                                                        JOIN {WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1
+                                                        UPDATE {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                                        JOIN {tablePrefix}{WiserTableNames.WiserItem} AS parent ON parent.id = ?oldDestinationItemId
+                                                        JOIN {tablePrefix}{WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1
                                                         SET item.parent_item_id = ?newDestinationItemId
                                                         WHERE item.parent_item_id = ?oldDestinationItemId");
         }
