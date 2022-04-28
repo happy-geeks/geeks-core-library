@@ -101,10 +101,16 @@ namespace GeeksCoreLibrary.Core.Cms
 
             var parameterValues = new List<object>();
             var methodParameters = method.GetParameters();
-            if (HttpContext.Request.ContentType == null || !HttpContext.Request.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
+            if (!HttpContext.Request.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
             {
                 foreach (var parameter in methodParameters)
                 {
+                    if (parameter.IsOptional && !HttpContextHelpers.RequestContainsKey(HttpContext, parameter.Name))
+                    {
+                        parameterValues.Add(parameter.DefaultValue);
+                        continue;
+                    }
+
                     parameterValues.Add(Convert.ChangeType(HttpContextHelpers.GetRequestValue(HttpContext, parameter.Name), parameter.ParameterType));
                 }
             }
@@ -122,6 +128,12 @@ namespace GeeksCoreLibrary.Core.Cms
                 foreach (var parameter in methodParameters)
                 {
                     var (key, value) = contentObject.FirstOrDefault(p => p.Key.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase));
+                    if (parameter.IsOptional && !contentObject.ContainsKey(key))
+                    {
+                        parameterValues.Add(parameter.DefaultValue);
+                        continue;
+                    }
+
                     if (String.IsNullOrWhiteSpace(key))
                     {
                         continue;

@@ -423,7 +423,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     var basketId = linkedBaskets.FirstOrDefault(id => id > 0);
                     if (basketId > 0)
                     {
-                        await LoadAsync(settings, basketId, "", false, true);
+                        (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, basketId, "", false, true);
                         WriteEncryptedIdToCookie(shoppingBasket, settings);
                     }
                 }
@@ -1392,6 +1392,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             foreach (var line in basketLines)
             {
+                // Check separated into three separate if-statements for readability.
                 if (line.ContainsDetail("uniqueid") && itemIdsOrUniqueIds.Any(id => id == line.GetDetailValue("uniqueid")))
                     linesToRemove.Add(line);
                 else if (line.Id > 0 && itemIdsOrUniqueIds.Any(id => id == line.Id.ToString()))
@@ -1403,6 +1404,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             foreach (var line in linesToRemove)
             {
                 basketLines.Remove(line);
+            }
+
+            // If no product lines remain in the shopping basket, then remove all remaining lines that are not product lines (such as coupons, shipping costs, etc.).
+            if (basketLines.Count == basketLines.Count(line => line.GetDetailValue("type").InList(StringComparer.OrdinalIgnoreCase, "shipping_costs", "paymentmethod_costs", "coupon")))
+            {
+                linesToRemove.Clear();
+                linesToRemove.AddRange(basketLines);
+                foreach (var line in linesToRemove)
+                {
+                    basketLines.Remove(line);
+                }
             }
 
             await SaveAsync(shoppingBasket, basketLines, settings);
@@ -1463,7 +1475,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 // Reload basket (for getting item details of added item).
                 if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
                 {
-                    await LoadAsync(settings, itemId);
+                    (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id);
                 }
 
                 await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, type, false);
@@ -1547,7 +1559,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
                 if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
                 {
-                    await LoadAsync(settings, shoppingBasket.Id);
+                    (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id);
                 }
 
                 // Recalculate shipping costs, coupons etc. after getting the extra fields (price can be selected with extra fields query).
@@ -1618,7 +1630,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
             {
-                await LoadAsync(settings, shoppingBasket.Id);
+                (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id);
             }
 
             // Recalculate sendcosts, coupons etc. after getting the extra fields (price can be selected with extra fields query).
@@ -1788,7 +1800,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 quantity = settings.MaxItemQuantity;
             }
 
-            foreach (var line in basketLines.Where(line => (line.ContainsDetail("uniqueid") && line.GetDetailValue("uniqueid") == itemIdOrUniqueId) || line.Id > 0 && line.Id.ToString() == itemIdOrUniqueId || (line.ContainsDetail(Constants.ConnectedItemIdProperty) && line.GetDetailValue(Constants.ConnectedItemIdProperty) == itemIdOrUniqueId)))
+            foreach (var line in basketLines.Where(line => (line.ContainsDetail("uniqueid") && line.GetDetailValue("uniqueid") == itemIdOrUniqueId) || (line.Id > 0 && line.Id.ToString() == itemIdOrUniqueId) || (line.ContainsDetail(Constants.ConnectedItemIdProperty) && line.GetDetailValue(Constants.ConnectedItemIdProperty) == itemIdOrUniqueId)))
             {
                 line.SetDetail(settings.QuantityPropertyName, quantity.ToString());
             }
