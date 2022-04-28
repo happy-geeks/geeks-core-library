@@ -136,12 +136,13 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// Changes an entity type of an item.
         /// </summary>
         /// <param name="itemId">The ID of the item to change entity type from.</param>
+        /// <param name="currentEntityType">The name of the entity type that the item currently has.</param>
         /// <param name="newEntityType">The new entity type for the item.</param>
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> ChangeEntityTypeAsync(ulong itemId, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true);
 
         /// <summary>
         /// Deletes or un-deletes an item.
@@ -524,11 +525,12 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// </summary>
         /// <param name="oldDestinationItemId">The current destination item ID.</param>
         /// <param name="newDestinationItemId">The new destination item ID.</param>
+        /// <param name="entityType">The entity type of the destination item. This is needed to check whether the items are saved in a different table than wiser_item. This method assumes that the old destination, new destination and all linked items are all saved in the same table. If that is not the case, this might not work properly.</param>
         /// <param name="type">Optional: The type number of the links to move. If 0, all links will be moved. Default value is 0.</param>
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true);
 
         /// <summary>
         /// Moves all linked items of an item to a different destination item.
@@ -536,11 +538,12 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
         /// <param name="oldDestinationItemId">The current destination item ID.</param>
         /// <param name="newDestinationItemId">The new destination item ID.</param>
+        /// <param name="entityType">The entity type of the destination item. This is needed to check whether the items are saved in a different table than wiser_item. This method assumes that the old destination, new destination and all linked items are all saved in the same table. If that is not the case, this might not work properly.</param>
         /// <param name="type">Optional: The type number of the links to move. If 0, all links will be moved. Default value is 0.</param>
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task ChangeItemLinksAsync(IWiserItemsService wiserItemsService, ulong oldDestinationItemId, ulong newDestinationItemId, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        Task ChangeItemLinksAsync(IWiserItemsService wiserItemsService, ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true);
 
         /// <summary>
         /// Changes the type of all items linked to the given destination item from one specific type to another.

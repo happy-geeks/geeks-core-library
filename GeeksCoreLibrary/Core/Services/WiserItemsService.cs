@@ -1018,7 +1018,7 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
             if (userId > 0)
             {
@@ -1034,26 +1034,37 @@ namespace GeeksCoreLibrary.Core.Services
                 }
             }
 
+            var oldEntityTypeTablePrefix = await GetTablePrefixForEntityAsync(currentEntityType);
+            var newEntityTypeTablePrefix = await GetTablePrefixForEntityAsync(newEntityType);
+
+            if (!String.Equals(oldEntityTypeTablePrefix, newEntityTypeTablePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception($"The new entity type has a different table prefix ('{newEntityTypeTablePrefix}') than the current one ('{oldEntityTypeTablePrefix}'). This means we would need to move the item to a different database table and this method does not support that (yet).");
+            }
+
             databaseConnection.AddParameter("itemId", itemId);
+            databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("entityType", newEntityType);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
 
-            var query = $@"SET @saveHistory = ?saveHistoryGcl; 
-                        UPDATE {WiserTableNames.WiserItem} SET entity_type = ?entitytype, changed_by = ?username WHERE id = ?itemId LIMIT 1;";
+            var query = $@"SET @_username = ?username;
+                        SET @_userId = ?userId;
+                        SET @saveHistory = ?saveHistoryGcl; 
+                        UPDATE {newEntityTypeTablePrefix}{WiserTableNames.WiserItem} SET entity_type = ?entityType, changed_by = ?username WHERE id = ?itemId LIMIT 1;";
             return await databaseConnection.ExecuteAsync(query);
         }
 
         /// <inheritdoc />
         public async Task<int> DeleteAsync(ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
-            return await DeleteAsync(this, new List<ulong>() { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+            return await DeleteAsync(this, new List<ulong> { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
         }
 
         /// <inheritdoc />
         public async Task<int> DeleteAsync(IWiserItemsService wiserItemsService, ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
-            return await DeleteAsync(wiserItemsService, new List<ulong>() { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+            return await DeleteAsync(wiserItemsService, new List<ulong> { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
         }
 
         /// <inheritdoc />
@@ -2613,17 +2624,17 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
-            await ChangeItemLinksAsync(this, oldDestinationItemId, newDestinationItemId, type, username, userId, saveHistory);
+            await ChangeItemLinksAsync(this, oldDestinationItemId, newDestinationItemId, entityType, type, username, userId, saveHistory);
         }
 
         /// <inheritdoc />
-        public async Task ChangeItemLinksAsync(IWiserItemsService wiserItemsService, ulong oldDestinationItemId, ulong newDestinationItemId, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task ChangeItemLinksAsync(IWiserItemsService wiserItemsService, ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
             if (userId > 0)
             {
-                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(oldDestinationItemId, EntityActions.Update, userId);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(oldDestinationItemId, EntityActions.Update, userId, entityType: entityType);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{oldDestinationItemId}'.")
@@ -2633,7 +2644,7 @@ namespace GeeksCoreLibrary.Core.Services
                         UserId = userId
                     };
                 }
-                isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(newDestinationItemId, EntityActions.Update, userId);
+                isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(newDestinationItemId, EntityActions.Update, userId, entityType: entityType);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{newDestinationItemId}'.")
@@ -2645,6 +2656,8 @@ namespace GeeksCoreLibrary.Core.Services
                 }
             }
 
+            var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
+            
             databaseConnection.AddParameter("oldDestinationItemId", oldDestinationItemId);
             databaseConnection.AddParameter("newDestinationItemId", newDestinationItemId);
             databaseConnection.AddParameter("type", type);
@@ -2660,9 +2673,9 @@ namespace GeeksCoreLibrary.Core.Services
                                                         AND (?type = 0 OR type = ?type);
 
                                                         # Update links via parent_item_id from {WiserTableNames.WiserItem}.
-                                                        UPDATE {WiserTableNames.WiserItem} AS item
-                                                        JOIN {WiserTableNames.WiserItem} AS parent ON parent.id = ?oldDestinationItemId
-                                                        JOIN {WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1
+                                                        UPDATE {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                                        JOIN {tablePrefix}{WiserTableNames.WiserItem} AS parent ON parent.id = ?oldDestinationItemId
+                                                        JOIN {tablePrefix}{WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1
                                                         SET item.parent_item_id = ?newDestinationItemId
                                                         WHERE item.parent_item_id = ?oldDestinationItemId");
         }

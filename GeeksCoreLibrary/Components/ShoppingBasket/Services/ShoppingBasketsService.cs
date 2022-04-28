@@ -680,7 +680,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 await databaseConnection.BeginTransactionAsync();
 
-                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.OrderEntityType);
+                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.ConceptOrderEntityType, OrderProcess.Models.Constants.OrderEntityType);
 
                 // Check if there is a AfterCreateConceptOrder query in the templates module and execute this query if present.
                 var afterConvertToOrderQuery = (await templatesService.GetTemplateAsync(0, "AfterConvertToOrder", TemplateTypes.Query)).Content;
