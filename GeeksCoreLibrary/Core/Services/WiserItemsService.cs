@@ -935,11 +935,22 @@ namespace GeeksCoreLibrary.Core.Services
                     // If this is the ordering field, update the ordering column of the table 'wiser_itemlink'.
                     if (LinkOrderingFieldName.Equals(itemDetail.Key, StringComparison.OrdinalIgnoreCase))
                     {
-                        databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
-                        databaseConnection.AddParameter($"ordering{counter}", itemDetail.Value);
+                        if (itemDetail.ItemLinkId > 0)
+                        {
+                            databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
+                            databaseConnection.AddParameter($"ordering{counter}", itemDetail.Value);
 
-                        var updateOrderingQuery = $@"UPDATE {WiserTableNames.WiserItemLink} SET ordering = ?ordering{counter} WHERE id = ?itemLinkId{counter}";
-                        await databaseConnection.ExecuteAsync(updateOrderingQuery);
+                            var updateOrderingQuery = $@"UPDATE {WiserTableNames.WiserItemLink} SET ordering = ?ordering{counter} WHERE id = ?itemLinkId{counter}";
+                            await databaseConnection.ExecuteAsync(updateOrderingQuery);
+                        }
+                        else
+                        {
+                            databaseConnection.AddParameter($"ordering{counter}", itemDetail.Value);
+
+                            var updateOrderingQuery = $@"UPDATE {WiserTableNames.WiserItem} SET ordering = ?ordering{counter} WHERE id = ?itemId";
+                            await databaseConnection.ExecuteAsync(updateOrderingQuery);
+                        }
+
                         continue;
                     }
 
