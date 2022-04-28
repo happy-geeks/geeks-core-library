@@ -79,9 +79,9 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
-            return await wiserItemsService.ChangeEntityTypeAsync(itemId, newEntityType, username, userId, saveHistory);
+            return await wiserItemsService.ChangeEntityTypeAsync(itemId, currentEntityType, newEntityType, username, userId, saveHistory);
         }
 
         /// <inheritdoc />

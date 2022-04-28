@@ -793,7 +793,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         Successful = false,
                         Action = PaymentRequestActions.Redirect,
                         ActionData = failUrl,
-                        ErrorMessage = "This user is not allowed to pay"
+                        ErrorMessage = "Invalid payment method selected"
                     };
                 }
 

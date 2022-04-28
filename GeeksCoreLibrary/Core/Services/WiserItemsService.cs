@@ -1018,7 +1018,7 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
         {
             if (userId > 0)
             {
@@ -1034,26 +1034,37 @@ namespace GeeksCoreLibrary.Core.Services
                 }
             }
 
+            var oldEntityTypeTablePrefix = await GetTablePrefixForEntityAsync(currentEntityType);
+            var newEntityTypeTablePrefix = await GetTablePrefixForEntityAsync(newEntityType);
+
+            if (!String.Equals(oldEntityTypeTablePrefix, newEntityTypeTablePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception($"The new entity type has a different table prefix ('{newEntityTypeTablePrefix}') than the current one ('{oldEntityTypeTablePrefix}'). This means we would need to move the item to a different database table and this method does not support that (yet).");
+            }
+
             databaseConnection.AddParameter("itemId", itemId);
+            databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("entityType", newEntityType);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
 
-            var query = $@"SET @saveHistory = ?saveHistoryGcl; 
-                        UPDATE {WiserTableNames.WiserItem} SET entity_type = ?entitytype, changed_by = ?username WHERE id = ?itemId LIMIT 1;";
+            var query = $@"SET @_username = ?username;
+                        SET @_userId = ?userId;
+                        SET @saveHistory = ?saveHistoryGcl; 
+                        UPDATE {newEntityTypeTablePrefix}{WiserTableNames.WiserItem} SET entity_type = ?entityType, changed_by = ?username WHERE id = ?itemId LIMIT 1;";
             return await databaseConnection.ExecuteAsync(query);
         }
 
         /// <inheritdoc />
         public async Task<int> DeleteAsync(ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
-            return await DeleteAsync(this, new List<ulong>() { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+            return await DeleteAsync(this, new List<ulong> { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
         }
 
         /// <inheritdoc />
         public async Task<int> DeleteAsync(IWiserItemsService wiserItemsService, ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
         {
-            return await DeleteAsync(wiserItemsService, new List<ulong>() { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+            return await DeleteAsync(wiserItemsService, new List<ulong> { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction);
         }
 
         /// <inheritdoc />

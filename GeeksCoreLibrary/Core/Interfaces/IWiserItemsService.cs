@@ -136,12 +136,13 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// Changes an entity type of an item.
         /// </summary>
         /// <param name="itemId">The ID of the item to change entity type from.</param>
+        /// <param name="currentEntityType">The name of the entity type that the item currently has.</param>
         /// <param name="newEntityType">The new entity type for the item.</param>
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> ChangeEntityTypeAsync(ulong itemId, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true);
 
         /// <summary>
         /// Deletes or un-deletes an item.
