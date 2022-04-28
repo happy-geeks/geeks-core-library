@@ -149,6 +149,30 @@ namespace GeeksCoreLibrary.Core.Helpers
         }
 
         /// <summary>
+        /// Checks if the specified key is present in <see cref="P:HttpContext.Request.Query" />, <see cref="P:HttpContext.Request.Form" />, <see cref="P:HttpContext.Request.Cookies" />, or <see cref="P:HttpContext.Request.ServerVariables" /> collection.
+        /// </summary>
+        /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
+        /// <param name="key">The name of the collection member to get.</param>
+        /// <param name="includeServerVariables">Optional: Whether the server variables collection should also be checked. Default is <see langword="true"/>.</param>
+        /// <returns><see langword="true"/> if one of the collections (<see cref="P:HttpContext.Request.Query" />, <see cref="P:HttpContext.Request.Form" />, <see cref="P:HttpContext.Request.Cookies" />, and <see cref="P:HttpContext.Request.ServerVariables" />) contains an element with the key; otherwise, <see langword="false"/>.</returns>
+        public static bool RequestContainsKey(HttpContext httpContext, string key, bool includeServerVariables = true)
+        {
+            if (httpContext?.Request == null)
+            {
+                return false;
+            }
+            if (String.IsNullOrEmpty(key))
+            {
+                return false;
+            }
+
+            return httpContext.Request.Query.ContainsKey(key)
+                   || (httpContext.Request.HasFormContentType && httpContext.Request.Form.ContainsKey(key))
+                   || httpContext.Request.Cookies.ContainsKey(key)
+                   || (includeServerVariables && httpContext.GetServerVariable(key) != null);
+        }
+
+        /// <summary>
         /// Adds a new cookie to the response.
         /// </summary>
         /// <param name="httpContext">The <see cref="HttpContext"/>.</param>

@@ -30,7 +30,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket
 {
@@ -40,7 +39,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
     )]
     public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, ShoppingBasket.ComponentModes>
     {
-        private readonly GclSettings gclSettings;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IWebHostEnvironment webHostEnvironment;
@@ -209,9 +207,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         }
 
         [ActivatorUtilitiesConstructor]
-        public ShoppingBasket(IOptions<GclSettings> gclSettings, ILogger<ShoppingBasket> logger, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IShoppingBasketsService shoppingBasketsService, ITemplatesService templatesService, IWebHostEnvironment webHostEnvironment, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IAccountsService accountsService, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService)
+        public ShoppingBasket(ILogger<ShoppingBasket> logger, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IShoppingBasketsService shoppingBasketsService, ITemplatesService templatesService, IWebHostEnvironment webHostEnvironment, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IAccountsService accountsService, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService)
         {
-            this.gclSettings = gclSettings.Value;
             this.httpContextAccessor = httpContextAccessor;
             this.shoppingBasketsService = shoppingBasketsService;
             this.webHostEnvironment = webHostEnvironment;
@@ -403,13 +400,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             Lines = basketLines;
             basketLineValidityMessage = validityMessage;
             basketLineStockActionMessage = stockActionMessage;
-
-            // Check if we need to call a specific method and then do so. Skip everything else, because we don't want to render the entire component then.
-            if (!String.IsNullOrWhiteSpace(callMethod))
-            {
-                TempData["InvokeMethodResult"] = await InvokeMethodAsync(callMethod);
-                return new HtmlString("");
-            }
 
             var resultHtml = new StringBuilder();
             switch (Settings.ComponentMode)
