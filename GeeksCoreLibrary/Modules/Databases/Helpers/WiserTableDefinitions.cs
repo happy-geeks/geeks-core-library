@@ -158,7 +158,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2022, 4, 8),
+                LastUpdate = new DateTime(2022, 4, 29),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -188,6 +188,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("login_user_type", MySqlDbType.VarChar, 50),
                     new("login_session_prefix", MySqlDbType.VarChar, 255),
                     new("login_role", MySqlDbType.VarChar, 50),
+                    new("login_redirect_url", MySqlDbType.VarChar, 255),
                     new("linked_templates", MySqlDbType.MediumText),
                     new("ordering", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("insert_mode", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
