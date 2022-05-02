@@ -1,4 +1,5 @@
-﻿using GeeksCoreLibrary.Modules.Databases.Models;
+﻿using System.Collections.Generic;
+using GeeksCoreLibrary.Modules.Databases.Models;
 using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Core.Models
@@ -36,9 +37,9 @@ namespace GeeksCoreLibrary.Core.Models
         public ColumnSettingsModel ColumnSettings { get; set; }
 
         /// <summary>
-        /// Gets or sets the aggregation method for this field/property.
+        /// Gets or sets the aggregation methods for this field/property.
         /// This can be used for executing functions on values, such as calculating the sum of a field of all other children with the same parent.
         /// </summary>
-        public WiserItemPropertyAggregateMethodModel AggregationMethod { get; set; } = new();
+        public List<WiserItemPropertyAggregateMethodModel> AggregationMethods { get; set; } = new();
     }
 }

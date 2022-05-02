@@ -705,21 +705,24 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <summary>
         /// Gets the aggregation settings of all fields/properties of an entity type.
         /// </summary>
-        /// <param name="entityType">The name of the entity type.</param>
+        /// <param name="entityType">The name of the entity type, if this is a property for an entity.</param>
+        /// <param name="linkType">The type of the link, if this is for properties of a link between items.</param>
         /// <returns>A list of <see cref="WiserItemPropertyAggregateOptionsModel"/> of the settings per field.</returns>
-        Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(string entityType);
+        Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(string entityType = null, int linkType = 0);
 
         /// <summary>
         /// Handles aggregation settings for an item.
         /// </summary>
         /// <param name="itemModel">The item to handle the aggregation of.</param>
-        Task HandleItemAggregationAsync(WiserItemModel itemModel);
+        /// <param name="encryptionKey">Optional: The key used for encrypting the new item ID. Default value is the key from the web.config setting "QueryTemplatesDecryptionKey".</param>
+        Task HandleItemAggregationAsync(WiserItemModel itemModel, string encryptionKey = "");
 
         /// <summary>
         /// Handles aggregation settings for an item.
         /// </summary>
         /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
         /// <param name="itemModel">The item to handle the aggregation of.</param>
-        Task HandleItemAggregationAsync(IWiserItemsService wiserItemsService, WiserItemModel itemModel);
+        /// <param name="encryptionKey">Optional: The key used for encrypting values of secure-input fields. This will only be used the there is no specific encryption key set for the secure-input field. Default value is the key from the web.config setting "QueryTemplatesDecryptionKey".</param>
+        Task HandleItemAggregationAsync(IWiserItemsService wiserItemsService, WiserItemModel itemModel, string encryptionKey = "");
     }
 }

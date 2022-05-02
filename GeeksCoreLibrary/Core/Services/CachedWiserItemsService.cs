@@ -436,9 +436,9 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(string entityType)
+        public async Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(string entityType = null, int linkType = 0)
         {
-            var cacheKey = $"aggregation_settings_{entityType}_{databaseConnection.GetDatabaseNameForCaching()}";
+            var cacheKey = $"aggregation_settings_{(String.IsNullOrWhiteSpace(entityType) ? linkType.ToString() : entityType)}_{databaseConnection.GetDatabaseNameForCaching()}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {                    
@@ -448,15 +448,15 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task HandleItemAggregationAsync(WiserItemModel itemModel)
+        public async Task HandleItemAggregationAsync(WiserItemModel itemModel, string encryptionKey = "")
         {
-            await HandleItemAggregationAsync(this, itemModel);
+            await HandleItemAggregationAsync(this, itemModel, encryptionKey);
         }
 
         /// <inheritdoc />
-        public async Task HandleItemAggregationAsync(IWiserItemsService service, WiserItemModel itemModel)
+        public async Task HandleItemAggregationAsync(IWiserItemsService service, WiserItemModel itemModel, string encryptionKey = "")
         {
-            await wiserItemsService.HandleItemAggregationAsync(service, itemModel);
+            await wiserItemsService.HandleItemAggregationAsync(service, itemModel, encryptionKey);
         }
     }
 }
