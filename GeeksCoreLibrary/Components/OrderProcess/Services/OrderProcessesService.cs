@@ -200,6 +200,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             stepConfirmButtonText.value AS stepConfirmButtonText,
                             previousStepLinkText.value AS previousStepLinkText,
                             stepRedirectUrl.value AS stepRedirectUrl,
+                            IF(stepHideInProgress.value = '1', TRUE, FALSE) AS stepHideInProgress,
 	                        
 	                        # Group
 	                        fieldGroup.id AS groupId,
@@ -238,7 +239,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepFooter ON stepFooter.item_id = step.id AND stepFooter.`key` = '{Constants.StepFooterProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepConfirmButtonText ON stepConfirmButtonText.item_id = step.id AND stepConfirmButtonText.`key` = '{Constants.StepConfirmButtonTextProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS previousStepLinkText ON previousStepLinkText.item_id = step.id AND previousStepLinkText.`key` = '{Constants.StepPreviousStepLinkTextProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepRedirectUrl ON stepRedirectUrl.item_id = step.id AND stepRedirectUrl.`key` = '{Constants.StepRedirectUrl}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepRedirectUrl ON stepRedirectUrl.item_id = step.id AND stepRedirectUrl.`key` = '{Constants.StepRedirectUrlProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepHideInProgress ON stepHideInProgress.item_id = step.id AND stepHideInProgress.`key` = '{Constants.StepHideInProgressProperty}'
 
                         # Group
                         LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToGroup ON linkToGroup.destination_item_id = step.id AND linkToGroup.type = {Constants.GroupToStepLinkType}
@@ -294,6 +296,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         ConfirmButtonText = dataRow.Field<string>("stepConfirmButtonText"),
                         PreviousStepLinkText = dataRow.Field<string>("previousStepLinkText"),
                         StepRedirectUrl = dataRow.Field<string>("stepRedirectUrl"),
+                        HideInProgress = Convert.ToBoolean(dataRow["stepHideInProgress"]),
                         Groups = new List<OrderProcessGroupModel>()
                     };
 

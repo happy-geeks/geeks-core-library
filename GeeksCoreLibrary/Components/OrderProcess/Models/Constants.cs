@@ -83,7 +83,9 @@
 
         public const string StepPreviousStepLinkTextProperty = "orderprocessstepprevioussteplinktext";
 
-        public const string StepRedirectUrl = "orderprocessstepredirecturl";
+        public const string StepRedirectUrlProperty = "orderprocessstepredirecturl";
+
+        public const string StepHideInProgressProperty = "orderprocessstephideinprogress";
 
         public const string GroupTypeProperty = "orderprocessgrouptype";
 

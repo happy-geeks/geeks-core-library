@@ -916,6 +916,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             {
                 var stepNumber = index + 1;
                 var progressStep = steps[index];
+                if (progressStep.HideInProgress)
+                {
+                    continue;
+                }
 
                 // Create dictionary for replacements.
                 var replaceData = new Dictionary<string, object>
