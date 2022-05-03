@@ -199,6 +199,8 @@
 
         public const string StatusUpdateMailToConsumerProperty = "MailToConsumerTemplate";
 
+        public const string PaymentCompleteProperty = "PaymentComplete";
+
         #endregion
 
         #region Fields for mail/pdf templates

@@ -898,6 +898,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         // TODO: Call "TransactionFinished" site function.
                     }
 
+                    await HandlePaymentStatusUpdateAsync(orderProcessesService, orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
+
                     return new PaymentRequestResult
                     {
                         Successful = true,
@@ -909,12 +911,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 // Get the correct service based on name.
                 var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Title);
                 paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
-
-                if (convertConceptOrderToOrder)
-                {
-                    await HandlePaymentStatusUpdateAsync(orderProcessesService, orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
-                }
-
+                
                 return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, paymentMethodSettings, uniquePaymentNumber);
             }
             catch (Exception exception)
@@ -1112,6 +1109,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();
             foreach (var (main, lines) in conceptOrders)
             {
+                // Set payment completed to true if the PSP indicated that the payment was successful.
+                // This should not be done in orderProcessesService.HandlePaymentStatusUpdateAsync, because that method is also called for NOPSP.
+                main.SetDetail(Constants.PaymentCompleteProperty, result);
                 await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
             }
 
