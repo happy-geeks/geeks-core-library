@@ -760,7 +760,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 if (!String.IsNullOrWhiteSpace(defaultFormatter)
                     && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase))
                     && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase))
-                    && !variable.Formatters.Any(f => String.Equals(f, "CurrencySup", StringComparison.OrdinalIgnoreCase)))
+                    && !variable.Formatters.Any(f => f != null && f.StartsWith("CurrencySup", StringComparison.OrdinalIgnoreCase)))
                 {
                     variable.Formatters.Add(defaultFormatter);
                 }
