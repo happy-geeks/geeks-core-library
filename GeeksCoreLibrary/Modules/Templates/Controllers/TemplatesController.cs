@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
 {
@@ -197,12 +198,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
 
             var result = await templatesService.GenerateDynamicContentHtmlAsync(componentId, componentMode, callMethod);
+            var resultObject = result as (object Data, ViewDataDictionary ViewData)?;
 
             return result switch
             {
                 null => Content("", "text/html"),
                 string resultString => Content(resultString, "text/html"),
-                _ => Content(JsonConvert.SerializeObject(result), "application/json")
+                _ => Content(JsonConvert.SerializeObject(resultObject.Value.Data), "application/json")
             };
         }
 

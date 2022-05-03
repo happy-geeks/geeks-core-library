@@ -383,7 +383,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration)
+        public async Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration, bool isQuery)
         {
             if ((configuration == null) || (!templateOrQuery.Contains("{")))
             {
@@ -392,11 +392,20 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 
             foreach (var queryStringItem in configuration.QueryStringItems)
             {
-                if (templateOrQuery.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase))
+                if (!templateOrQuery.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!isQuery)
+                {
+                    templateOrQuery = templateOrQuery.Replace($"{{{queryStringItem.Key}}}", queryStringItem.Value);
+                }
+                else
                 {
                     var parameterName = DatabaseHelpers.CreateValidParameterName(queryStringItem.Key);
                     databaseConnection.AddParameter(parameterName, queryStringItem.Value);
-                    templateOrQuery = templateOrQuery.Replace($"{{{queryStringItem.Key}}}", $"?{parameterName}");
+                    templateOrQuery = templateOrQuery.Replace($"'{{{queryStringItem.Key}}}'", $"?{parameterName}").Replace($"{{{queryStringItem.Key}}}", $"?{parameterName}");
                 }
             }
 
@@ -411,18 +420,42 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 var valuesCanContainDashes = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_ValuesCanContainDashes");
                 if (!String.IsNullOrWhiteSpace(valuesCanContainDashes) && valuesCanContainDashes.Equals("true", StringComparison.OrdinalIgnoreCase) && configuration.Items[key].Value.Contains("-"))
                 {
-                    databaseConnection.AddParameter(parameterName, configuration.Items[key].Value.Split('-')[1]);
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
+                    var value = configuration.Items[key].Value.Split('-')[1];
+                    if (!isQuery)
+                    {
+                        templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", value);
+                    }
+                    else
+                    {
+                        databaseConnection.AddParameter(parameterName, value);
+                        templateOrQuery = templateOrQuery.Replace($"'{{{configuration.Items[key].Id}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
+                    }
                 }
                 else if (configuration.Items[key].Value == "-1")
                 {
-                    databaseConnection.AddParameter(parameterName, configuration.Items[key].Value.Split('-')[1]);
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
+                    var value = configuration.Items[key].Value.Split('-')[1];
+                    if (!isQuery)
+                    {
+                        templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", value);
+                    }
+                    else
+                    {
+                        databaseConnection.AddParameter(parameterName, value);
+                        templateOrQuery = templateOrQuery.Replace($"'{{{configuration.Items[key].Id}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
+                    }
                 }
                 else
                 {
-                    databaseConnection.AddParameter(parameterName, configuration.Items[key].Value);
-                    templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
+                    var value = configuration.Items[key].Value;
+                    if (!isQuery)
+                    {
+                        templateOrQuery = templateOrQuery.Replace($"{{{configuration.Items[key].Id}}}", value);
+                    }
+                    else
+                    {
+                        databaseConnection.AddParameter(parameterName, value);
+                        templateOrQuery = templateOrQuery.Replace($"'{{{configuration.Items[key].Id}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].Id}}}", $"?{parameterName}");
+                    }
                 }
             }
 
@@ -446,7 +479,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 return ("", "");
             }
 
-            query = await ReplaceConfiguratorItemsAsync(query, configuration);
+            query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
 
             var deliveryTimeResultDataTable = await databaseConnection.GetAsync(query);
             if (deliveryTimeResultDataTable.Rows.Count == 0)
@@ -483,7 +516,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             }
 
             query = await stringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
-            query = await ReplaceConfiguratorItemsAsync(query, input);
+            query = await ReplaceConfiguratorItemsAsync(query, input, true);
 
             var priceResultDataTable = await databaseConnection.GetAsync(query);
             if (priceResultDataTable.Rows.Count == 0)
@@ -579,13 +612,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     new() { Key = "sub_step", Value = item.SubStep }
                 });
 
-                foreach (Dictionary<string, object> extraDataDictionary in item.ExtraData.Where(extraDataDictionary => item.ExtraData.Any()))
+                foreach (var extraDataDictionary in item.ExtraData.Where(extraDataDictionary => extraDataDictionary.Any()))
                 {
-                    // extra check to prevent saving of empty dictionaries 
-                    if (extraDataDictionary.Any())
-                    {
-                        configurationItem.Details.AddRange(extraDataDictionary.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
-                    }
+                    configurationItem.Details.AddRange(extraDataDictionary.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
                 }
 
                 // save configuration line
@@ -608,7 +637,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             if (!String.IsNullOrWhiteSpace(query))
             {
                 databaseConnection.ClearParameters();
-                if (parameters != null && parameters.Count > 0)
+                if (parameters is {Count: > 0})
                 {
                     foreach (var parameter in parameters)
                     {

@@ -63,9 +63,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
-        public Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration)
+        public Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration, bool isQuery)
         {
-            return configuratorsService.ReplaceConfiguratorItemsAsync(templateOrQuery, configuration);
+            return configuratorsService.ReplaceConfiguratorItemsAsync(templateOrQuery, configuration, isQuery);
         }
 
         /// <inheritdoc />

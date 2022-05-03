@@ -362,7 +362,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     skipFormatters = true;
                 }
 
-                var value = Convert.ToString(replaceData[variableName]);
+                var value = Convert.ToString(replaceData[variableName], new CultureInfo("en-US"));
                 if (String.IsNullOrWhiteSpace(value))
                 {
                     // Replace the variable if it's an empty string or if it only contains whitespace and continue with the next variable.
@@ -760,7 +760,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 if (!String.IsNullOrWhiteSpace(defaultFormatter)
                     && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase))
                     && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase))
-                    && !variable.Formatters.Any(f => String.Equals(f, "CurrencySup", StringComparison.OrdinalIgnoreCase)))
+                    && !variable.Formatters.Any(f => f != null && f.StartsWith("CurrencySup", StringComparison.OrdinalIgnoreCase)))
                 {
                     variable.Formatters.Add(defaultFormatter);
                 }
