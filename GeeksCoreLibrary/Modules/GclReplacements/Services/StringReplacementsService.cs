@@ -362,7 +362,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     skipFormatters = true;
                 }
 
-                var value = Convert.ToString(replaceData[variableName]);
+                var value = Convert.ToString(replaceData[variableName], new CultureInfo("en-US"));
                 if (String.IsNullOrWhiteSpace(value))
                 {
                     // Replace the variable if it's an empty string or if it only contains whitespace and continue with the next variable.
