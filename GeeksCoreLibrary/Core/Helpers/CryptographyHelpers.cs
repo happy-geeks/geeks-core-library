@@ -6,7 +6,16 @@ using System.Security.Cryptography;
 
 namespace GeeksCoreLibrary.Core.Helpers
 {
-    // This has been copied from https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode
+    // ==++==
+    //
+    //   Copyright (c) Microsoft Corporation.  All rights reserved.
+    //
+    //   Shared under the terms of the Microsoft Public License,
+    //   https://opensource.org/licenses/MS-PL
+    //
+    //   This has been copied from https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode
+    //
+    // ==--==
     public enum AeCipher : byte
     {
         Unknown,
