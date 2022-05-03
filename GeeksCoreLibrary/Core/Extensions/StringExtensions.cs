@@ -6,7 +6,9 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 
 namespace GeeksCoreLibrary.Core.Extensions
 {
@@ -176,11 +178,12 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <summary>
         /// Encrypts a value with AES and returns the encrypted value as a Base64 string.
         /// </summary>
-        /// <param name="input"></param>
-        /// <param name="key"></param>
-        /// <param name="withDateTime"></param>
-        /// <returns></returns>
-        public static string EncryptWithAes(this string input, string key = "", bool withDateTime = false)
+        /// <param name="input">The string to encrypt.</param>
+        /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
+        /// <param name="withDateTime">Optional: Whether to add a timestamp to the encrypted value, so that the the value can have an expire date. The decrypt method decides how long the value is valid.</param>
+        /// <param name="useSlowerButMoreSecureMethod">Optional: Whether to use a more secure encryption, but that method is a lot slower. This method will use the code from this article: https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode</param>
+        /// <returns>The encrypted string.</returns>
+        public static string EncryptWithAes(this string input, string key = "", bool withDateTime = false, bool useSlowerButMoreSecureMethod = false)
         {
             string encryptionKey;
             var stringToEncrypt = new StringBuilder(input);
@@ -210,52 +213,69 @@ namespace GeeksCoreLibrary.Core.Extensions
                 stringToEncrypt.Append('~').Append(DateTime.Now.ToString("yyyyMMddHHmmss"));
             }
 
-            // Salt of at least 8 bytes is required to derive key.
-            // If no salt is set in the appsettings, a basic 0-salt will be used.
-            var saltString = GclSettings.Current.DefaultEncryptionSalt;
-            var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : new byte[8];
-
-            // Salt must be at least 8 bytes.
-            if (salt.Length < 8)
+            if (useSlowerButMoreSecureMethod)
             {
-                var tempSalt = new byte[8];
-                Buffer.BlockCopy(salt, 0, tempSalt, 0, salt.Length);
-                salt = tempSalt;
+                // Salt of at least 8 bytes is required to derive key.
+                // If no salt is set in the appsettings, a basic 0-salt will be used.
+                var saltString = GclSettings.Current.DefaultEncryptionSalt;
+                var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : Array.Empty<byte>();
+
+                var keyBytes = KeyDerivation.Pbkdf2(encryptionKey, salt, KeyDerivationPrf.HMACSHA512, 100000, 256 / 8);
+                var inputBytes = Encoding.UTF8.GetBytes(stringToEncrypt.ToString());
+                var encryptedBytes = CryptographyHelpers.Encrypt(keyBytes, inputBytes);
+
+                return Convert.ToBase64String(encryptedBytes);
             }
-
-            using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, salt, 2);
-            const int KeySize = 256;
-            const int BlockSize = 128;
-
-            using var aesManaged = new AesManaged
+            else
             {
-                KeySize = KeySize,
-                BlockSize = BlockSize,
-                Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8)),
-                IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8))
-            };
-            using var encryptor = aesManaged.CreateEncryptor(aesManaged.Key, aesManaged.IV);
-            using var ms = new MemoryStream();
-            using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-            {
-                using var sw = new StreamWriter(cs);
-                sw.Write(stringToEncrypt.ToString());
+                // Salt of at least 8 bytes is required to derive key.
+                // If no salt is set in the appsettings, a basic 0-salt will be used.
+                var saltString = GclSettings.Current.DefaultEncryptionSalt;
+                var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : new byte[8];
+
+                // Salt must be at least 8 bytes.
+                if (salt.Length < 8)
+                {
+                    var tempSalt = new byte[8];
+                    Buffer.BlockCopy(salt, 0, tempSalt, 0, salt.Length);
+                    salt = tempSalt;
+                }
+
+                using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, salt, 2);
+                const int KeySize = 256;
+                const int BlockSize = 128;
+
+                using var aesManaged = new AesManaged
+                {
+                    KeySize = KeySize,
+                    BlockSize = BlockSize,
+                    Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8)),
+                    IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8))
+                };
+                using var encryptor = aesManaged.CreateEncryptor(aesManaged.Key, aesManaged.IV);
+                using var ms = new MemoryStream();
+                using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                {
+                    using var sw = new StreamWriter(cs);
+                    sw.Write(stringToEncrypt.ToString());
+                }
+
+                var encryptedBytes = ms.ToArray();
+
+                return Convert.ToBase64String(encryptedBytes);
             }
-
-            var encryptedBytes = ms.ToArray();
-
-            return Convert.ToBase64String(encryptedBytes);
         }
 
         /// <summary>
         /// Decrypts a value with AES.
         /// </summary>
         /// <param name="input">The string to decrypt.</param>
-        /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" from the app settings.</param>
+        /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
         /// <param name="withDateTime">Optional: Set the <see langword="true"/> if the value contains a validation date and time. Default is <see langword="false"/>.</param>
         /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the appsettings, you can change that here.</param>
+        /// <param name="useSlowerButMoreSecureMethod">Optional: Whether to use a more secure encryption, but that method is a lot slower. This method will use the code from this article: https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode</param>
         /// <returns>The decrypted string.</returns>
-        public static string DecryptWithAes(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0)
+        public static string DecryptWithAes(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0, bool useSlowerButMoreSecureMethod = false)
         {
             string encryptionKey;
             if (!String.IsNullOrWhiteSpace(key))
@@ -277,40 +297,55 @@ namespace GeeksCoreLibrary.Core.Extensions
             {
                 throw new Exception("DecryptWithAes: No AES secret key set.");
             }
-
-            // Salt of at least 8 bytes is required to derive key.
-            // If no salt is set in the appsettings, a basic 0-salt will be used.
-            var saltString = GclSettings.Current.DefaultEncryptionSalt;
-            var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : new byte[8];
-
-            // Salt must be at least 8 bytes.
-            if (salt.Length < 8)
-            {
-                var tempSalt = new byte[8];
-                Buffer.BlockCopy(salt, 0, tempSalt, 0, salt.Length);
-                salt = tempSalt;
-            }
-
-            var inputBytes = Convert.FromBase64String(input);
+            
             string output;
 
-            using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, salt, 2);
-            const int KeySize = 256;
-            const int BlockSize = 128;
+            if (useSlowerButMoreSecureMethod)
+            {
+                // Salt of at least 8 bytes is required to derive key.
+                // If no salt is set in the appsettings, a basic 0-salt will be used.
+                var saltString = GclSettings.Current.DefaultEncryptionSalt;
+                var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : Array.Empty<byte>();
+                var inputBytes = Convert.FromBase64String(input);
+                var keyBytes = KeyDerivation.Pbkdf2(encryptionKey, salt, KeyDerivationPrf.HMACSHA512, 100000, 256 / 8);
+                var decryptedBytes = CryptographyHelpers.Decrypt(keyBytes, inputBytes);
+                output = Encoding.UTF8.GetString(decryptedBytes);
+            }
+            else
+            {
+                // Salt of at least 8 bytes is required to derive key.
+                // If no salt is set in the appsettings, a basic 0-salt will be used.
+                var saltString = GclSettings.Current.DefaultEncryptionSalt;
+                var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : new byte[8];
 
-            using var aesManaged = new AesManaged
-            {
-                KeySize = KeySize,
-                BlockSize = BlockSize,
-                Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8)),
-                IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8))
-            };
-            using var decryptor = aesManaged.CreateDecryptor(aesManaged.Key, aesManaged.IV);
-            using var ms = new MemoryStream(inputBytes);
-            using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
-            {
-                using var sr = new StreamReader(cs);
-                output = sr.ReadToEnd();
+                // Salt must be at least 8 bytes.
+                if (salt.Length < 8)
+                {
+                    var tempSalt = new byte[8];
+                    Buffer.BlockCopy(salt, 0, tempSalt, 0, salt.Length);
+                    salt = tempSalt;
+                }
+
+                var inputBytes = Convert.FromBase64String(input);
+
+                using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, salt, 2);
+                const int KeySize = 256;
+                const int BlockSize = 128;
+
+                using var aesManaged = new AesManaged
+                {
+                    KeySize = KeySize,
+                    BlockSize = BlockSize,
+                    Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8)),
+                    IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8))
+                };
+                using var decryptor = aesManaged.CreateDecryptor(aesManaged.Key, aesManaged.IV);
+                using var ms = new MemoryStream(inputBytes);
+                using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
+                {
+                    using var sr = new StreamReader(cs);
+                    output = sr.ReadToEnd();
+                }
             }
 
             if (!withDateTime)
@@ -349,11 +384,12 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <summary>
         /// Encrypts a value with AES. This method uses a salt, so it's random every time.
         /// </summary>
-        /// <param name="input"></param>
-        /// <param name="key"></param>
-        /// <param name="withDateTime"></param>
-        /// <returns></returns>
-        public static string EncryptWithAesWithSalt(this string input, string key = "", bool withDateTime = false)
+        /// <param name="input">The value to encrypt.</param>
+        /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
+        /// <param name="withDateTime">Optional: Whether to add a timestamp to the encrypted value, so that the the value can have an expire date. The decrypt method decides how long the value is valid.</param>
+        /// <param name="useSlowerButMoreSecureMethod">Optional: Whether to use a more secure encryption, but that method is a lot slower. This method will use the code from this article: https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode</param>
+        /// <returns>The encrypted value with the salt prepended to it.</returns>
+        public static string EncryptWithAesWithSalt(this string input, string key = "", bool withDateTime = false, bool useSlowerButMoreSecureMethod = false)
         {
             string encryptionKey;
             var stringToEncrypt = new StringBuilder(input);
@@ -385,40 +421,59 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             var inputBytes = Encoding.UTF8.GetBytes(stringToEncrypt.ToString());
 
-            // Create salt.
-            var random = new Random();
-            var saltSize = random.Next(8, 12);
-            var saltBytes = new byte[saltSize];
-            using (var rng = new RNGCryptoServiceProvider())
+            if (useSlowerButMoreSecureMethod)
             {
-                rng.GetBytes(saltBytes);
+                // Generate a 128-bit salt using a cryptographically strong random sequence of nonzero values.
+                var saltBytes = new byte[128 / 8];
+                using (var rngCsp = new RNGCryptoServiceProvider())
+                {
+                    rngCsp.GetNonZeroBytes(saltBytes);
+                }
+            
+                var keyBytes = KeyDerivation.Pbkdf2(encryptionKey, saltBytes, KeyDerivationPrf.HMACSHA512, 100000, 256 / 8);
+                var encryptedBytes = CryptographyHelpers.Encrypt(keyBytes, inputBytes);
+                var outputBytes = new byte[encryptedBytes.Length + saltBytes.Length];
+                Buffer.BlockCopy(encryptedBytes, 0, outputBytes, 0, encryptedBytes.Length);
+                Buffer.BlockCopy(saltBytes, 0, outputBytes, encryptedBytes.Length, saltBytes.Length);
+                return Convert.ToBase64String(outputBytes);
             }
-
-            using var rijndael = new RijndaelManaged
+            else
             {
-                Mode = CipherMode.CBC
-            };
+                // Create salt.
+                var random = new Random();
+                var saltSize = random.Next(8, 12);
+                var saltBytes = new byte[saltSize];
+                using (var rng = new RNGCryptoServiceProvider())
+                {
+                    rng.GetBytes(saltBytes);
+                }
 
-            // Derive the key and IV from the password and the salt.
-            var rfc2898DeriveBytes = new Rfc2898DeriveBytes(encryptionKey, saltBytes, 2);
-            var keyBytes = rfc2898DeriveBytes.GetBytes(rijndael.KeySize / 8);
-            var ivBytes = rfc2898DeriveBytes.GetBytes(rijndael.BlockSize / 8);
+                using var rijndael = new RijndaelManaged
+                {
+                    Mode = CipherMode.CBC
+                };
 
-            using var encryptor = rijndael.CreateEncryptor(keyBytes, ivBytes);
-            using var memoryStream = new MemoryStream();
-            using var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write);
-            cryptoStream.Write(inputBytes, 0, inputBytes.Length);
-            cryptoStream.FlushFinalBlock();
-            var resultBytes = memoryStream.ToArray();
+                // Derive the key and IV from the password and the salt.
+                var rfc2898DeriveBytes = new Rfc2898DeriveBytes(encryptionKey, saltBytes, 2);
+                var keyBytes = rfc2898DeriveBytes.GetBytes(rijndael.KeySize / 8);
+                var ivBytes = rfc2898DeriveBytes.GetBytes(rijndael.BlockSize / 8);
 
-            var outputBytes = new byte[resultBytes.Length + saltBytes.Length];
-            Buffer.BlockCopy(resultBytes, 0, outputBytes, 0, resultBytes.Length);
-            Buffer.BlockCopy(saltBytes, 0, outputBytes, resultBytes.Length, saltBytes.Length);
+                using var encryptor = rijndael.CreateEncryptor(keyBytes, ivBytes);
+                using var memoryStream = new MemoryStream();
+                using var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write);
+                cryptoStream.Write(inputBytes, 0, inputBytes.Length);
+                cryptoStream.FlushFinalBlock();
+                var resultBytes = memoryStream.ToArray();
 
-            var output = new StringBuilder(Convert.ToBase64String(outputBytes));
-            output.Replace("/", "-");
+                var outputBytes = new byte[resultBytes.Length + saltBytes.Length];
+                Buffer.BlockCopy(resultBytes, 0, outputBytes, 0, resultBytes.Length);
+                Buffer.BlockCopy(saltBytes, 0, outputBytes, resultBytes.Length, saltBytes.Length);
 
-            return output.ToString();
+                var output = new StringBuilder(Convert.ToBase64String(outputBytes));
+                output.Replace("/", "-");
+
+                return output.ToString();
+            }
         }
 
         /// <summary>
@@ -428,11 +483,11 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
         /// <param name="withDateTime">Optional: Set the <see langword="true"/> if the value contains a validation date and time. Default is <see langword="false"/>.</param>
         /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the appsettings, you can change that here.</param>
+        /// <param name="useSlowerButMoreSecureMethod">Optional: Whether to use a more secure encryption, but that method is a lot slower. This method will use the code from this article: https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode</param>
         /// <returns>The decrypted string.</returns>
-        public static string DecryptWithAesWithSalt(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0)
+        public static string DecryptWithAesWithSalt(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0, bool useSlowerButMoreSecureMethod = false)
         {
             string encryptionKey;
-            var stringToDecrypt = new StringBuilder(input);
 
             if (!String.IsNullOrWhiteSpace(key))
             {
@@ -454,36 +509,58 @@ namespace GeeksCoreLibrary.Core.Extensions
                 throw new Exception("DecryptWithAesWithSalt: No AES secret key set.");
             }
 
-            stringToDecrypt.Replace("-", "/");
+            string output;
+            if (useSlowerButMoreSecureMethod)
+            {
+                var inputWithSaltBytes = Convert.FromBase64String(Uri.UnescapeDataString(input));
 
-            var inputWithSaltBytes = Convert.FromBase64String(Uri.UnescapeDataString(stringToDecrypt.ToString()));
+                var saltByteLength = 128 / 8;
 
-            var saltByteLength = inputWithSaltBytes.Length % 16;
+                var inputBytes = new byte[inputWithSaltBytes.Length - saltByteLength];
+                var saltBytes = new byte[saltByteLength];
 
-            var inputBytes = new byte[16 * (inputWithSaltBytes.Length / 16)];
-            var saltBytes = new byte[saltByteLength];
+                Buffer.BlockCopy(inputWithSaltBytes, 0, inputBytes, 0, inputBytes.Length);
+                Buffer.BlockCopy(inputWithSaltBytes, inputBytes.Length, saltBytes, 0, saltBytes.Length);
+                var keyBytes = KeyDerivation.Pbkdf2(encryptionKey, saltBytes, KeyDerivationPrf.HMACSHA512, 100000, 256 / 8);
+                var outputBytes = CryptographyHelpers.Decrypt(keyBytes, inputBytes);
 
-            Buffer.BlockCopy(inputWithSaltBytes, 0, inputBytes, 0, inputBytes.Length);
-            Buffer.BlockCopy(inputWithSaltBytes, inputBytes.Length, saltBytes, 0, saltBytes.Length);
+                // Turn the decrypted bytes into a string. It is assumed here that the string was encrypted with UTF-8.
+                output = Encoding.UTF8.GetString(outputBytes);
+            }
+            else
+            {
+                var stringToDecrypt = new StringBuilder(input);
+                stringToDecrypt.Replace("-", "/");
 
-            using var rijndael = new RijndaelManaged { Mode = CipherMode.CBC };
+                var inputWithSaltBytes = Convert.FromBase64String(Uri.UnescapeDataString(stringToDecrypt.ToString()));
 
-            // Derive the key and IV from the password and the salt.
-            var rfc2898DeriveBytes = new Rfc2898DeriveBytes(encryptionKey, saltBytes, 2);
-            var keyBytes = rfc2898DeriveBytes.GetBytes(rijndael.KeySize / 8);
-            var ivBytes = rfc2898DeriveBytes.GetBytes(rijndael.BlockSize / 8);
+                var saltByteLength = inputWithSaltBytes.Length % 16;
 
-            // Declare various usings here. They will be disposed at the end of the function.
-            using var decryptor = rijndael.CreateDecryptor(keyBytes, ivBytes);
-            using var memoryStream = new MemoryStream(inputBytes);
-            using var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
-            var outputBytes = new byte[inputBytes.Length];
+                var inputBytes = new byte[16 * (inputWithSaltBytes.Length / 16)];
+                var saltBytes = new byte[saltByteLength];
 
-            // Perform the decryption.
-            var bytesCount = cryptoStream.Read(outputBytes, 0, outputBytes.Length);
+                Buffer.BlockCopy(inputWithSaltBytes, 0, inputBytes, 0, inputBytes.Length);
+                Buffer.BlockCopy(inputWithSaltBytes, inputBytes.Length, saltBytes, 0, saltBytes.Length);
 
-            // Turn the decrypted bytes into a string. It is assumed here that the string was encrypted with UTF-8.
-            var output = Encoding.UTF8.GetString(outputBytes, 0, bytesCount);
+                using var rijndael = new RijndaelManaged { Mode = CipherMode.CBC };
+
+                // Derive the key and IV from the password and the salt.
+                var rfc2898DeriveBytes = new Rfc2898DeriveBytes(encryptionKey, saltBytes, 2);
+                var keyBytes = rfc2898DeriveBytes.GetBytes(rijndael.KeySize / 8);
+                var ivBytes = rfc2898DeriveBytes.GetBytes(rijndael.BlockSize / 8);
+
+                // Declare various usings here. They will be disposed at the end of the function.
+                using var decryptor = rijndael.CreateDecryptor(keyBytes, ivBytes);
+                using var memoryStream = new MemoryStream(inputBytes);
+                using var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
+                var outputBytes = new byte[inputBytes.Length];
+
+                // Perform the decryption.
+                var bytesCount = cryptoStream.Read(outputBytes, 0, outputBytes.Length);
+
+                // Turn the decrypted bytes into a string. It is assumed here that the string was encrypted with UTF-8.
+                output = Encoding.UTF8.GetString(outputBytes, 0, bytesCount);
+            }
 
             if (!withDateTime)
             {
