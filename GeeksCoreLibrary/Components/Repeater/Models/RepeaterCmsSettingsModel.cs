@@ -278,6 +278,15 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
         )]
         public bool LoadItemsUpToPageNumber { get; set; }
 
+        [CmsProperty(
+            PrettyName = "Banner uses product block space",
+            Description = "When enabled the banner uses product blocks otherwise it will just be added to the output html",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Basic,
+            DisplayOrder = 40
+        )]
+        public bool BannerUsesProductBlockSpace { get; set; }
+
         #endregion
     }
 }

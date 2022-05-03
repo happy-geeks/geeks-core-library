@@ -18,7 +18,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         <div class='step-footer'>{footer}</div>
     </div>
     [if({type}!OrderConfirmation)][if({type}!orderPending)]
-    [if({activeStep}>1)]<a href='{previousStepUrl}'>{previousStepLinkText}</a>[endif]
+    [if({activeStep}>1)]<a href='{previousStepUrl}' id='previousStepLink'>{previousStepLinkText}</a>[endif]
     <button type='submit' id='confirmButton'>{confirmButtonText}</button>
     [endif][endif]
 </form>")]
