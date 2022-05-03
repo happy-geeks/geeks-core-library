@@ -53,25 +53,16 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <summary>
         /// Create the client based on the environment.
         /// </summary>
-        /// <returns></returns>
-        private async Task SetupEnvironment()
+        private void SetupEnvironment(string apiKey)
         {
-            if (gclSettings.Environment.InList(Environments.Live, Environments.Acceptance))
-            {
-                var apiKey = await objectsService.FindSystemObjectByDomainNameAsync("MSP_apiKey");
-                client = new MultiSafepayClient(apiKey, "https://api.multisafepay.com/v1/json/");
-            }
-            else
-            {
-                var apiKey = await objectsService.FindSystemObjectByDomainNameAsync("MSP_apiKey_test");
-                client = new MultiSafepayClient(apiKey, "https://testapi.multisafepay.com/v1/json/");
-            }
+            client = new MultiSafepayClient(apiKey, gclSettings.Environment.InList(Environments.Live, Environments.Acceptance) ? "https://api.multisafepay.com/v1/json/" : "https://testapi.multisafepay.com/v1/json/");
         }
 
         /// <inheritdoc />
-        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethod, string invoiceNumber)
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
         {
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+            var multiSafepaySettings = (MultiSafepaySettingsModel)paymentMethodSettings.PaymentServiceProvider;
 
             var totalPrice = 0M;
             foreach (var (main, lines) in shoppingBaskets)
@@ -85,15 +76,15 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             {
                 Type = OrderType.Redirect,
                 OrderId = invoiceNumber,
-                GatewayId = paymentMethod.ExternalName,
+                GatewayId = paymentMethodSettings.ExternalName,
                 AmountInCents = totalPriceInCents,
-                CurrencyCode = "EUR",
-                PaymentOptions = new PaymentOptions(paymentMethod.PaymentServiceProvider.WebhookUrl,
-                                                    paymentMethod.PaymentServiceProvider.SuccessUrl,
-                                                    paymentMethod.PaymentServiceProvider.FailUrl)
+                CurrencyCode = multiSafepaySettings.Currency,
+                PaymentOptions = new PaymentOptions(multiSafepaySettings.WebhookUrl,
+                    multiSafepaySettings.SuccessUrl,
+                    multiSafepaySettings.FailUrl)
             };
 
-            await SetupEnvironment();
+            SetupEnvironment(multiSafepaySettings.ApiKey);
 
             try
             {
@@ -111,7 +102,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 return new PaymentRequestResult
                 {
                     Action = PaymentRequestActions.Redirect,
-                    ActionData = paymentMethod.PaymentServiceProvider.FailUrl,
+                    ActionData = paymentMethodSettings.PaymentServiceProvider.FailUrl,
                     Successful = false,
                     ErrorMessage = exception.Message
                 };
@@ -119,7 +110,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public async Task<StatusUpdateResult> ProcessStatusUpdateAsync()
+        public async Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
         {
             if (httpContextAccessor?.HttpContext == null)
             {
@@ -130,11 +121,12 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 };
             }
 
-            //Retrieve the order with the given transaction id/order id to check the status.
+            // Retrieve the order with the given transaction id/order id to check the status.
             var orderId = httpContextAccessor.HttpContext.Request.Query["transactionid"].ToString();
+            var multiSafepaySettings = (MultiSafepaySettingsModel)paymentMethodSettings.PaymentServiceProvider;
             OrderResponse response;
 
-            await SetupEnvironment();
+            SetupEnvironment(multiSafepaySettings.ApiKey);
 
             try
             {

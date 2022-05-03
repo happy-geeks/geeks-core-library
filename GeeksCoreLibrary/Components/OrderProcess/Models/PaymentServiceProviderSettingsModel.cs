@@ -29,6 +29,16 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         public bool SkipPaymentWhenOrderAmountEqualsZero { get; set; }
 
         /// <summary>
+        /// Gets or sets the currency to use with the PSP.
+        /// </summary>
+        public string Currency { get; set; } = "EUR";
+
+        /// <summary>
+        /// Gets or sets the locale to use with the PSP.
+        /// </summary>
+        public string Locale { get; set; }
+
+        /// <summary>
         /// Gets or sets the URL to send the user to after a successful payment/order.
         /// </summary>
         internal string SuccessUrl { get; set; }
@@ -47,5 +57,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the URL to send the user to if we have to decide on-the-fly where to send the user to.
         /// </summary>
         internal string ReturnUrl { get; set; }
+
+        /// <summary>
+        /// Gets or sets the URL to send the user to if their payment is still pending.
+        /// </summary>
+        internal string PendingUrl { get; set; }
     }
 }

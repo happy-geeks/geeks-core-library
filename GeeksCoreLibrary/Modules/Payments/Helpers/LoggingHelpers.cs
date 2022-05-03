@@ -7,7 +7,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Helpers
 {
     public static class LoggingHelpers
     {
-        public static async Task CreateLogTableIfMissingAsync(IDatabaseConnection databaseConnection)
+        private static async Task CreateLogTableIfMissingAsync(IDatabaseConnection databaseConnection)
         {
             await databaseConnection.ExecuteAsync($@"
                 CREATE TABLE IF NOT EXISTS `{Constants.PaymentServiceProviderLogTableName}` (

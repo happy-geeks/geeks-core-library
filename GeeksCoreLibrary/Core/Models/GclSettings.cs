@@ -24,6 +24,11 @@ namespace GeeksCoreLibrary.Core.Models
         public string ConnectionStringForWriting { get; set; }
 
         /// <summary>
+        /// This will be used to set the correct timezone for the database before executing any query, so that all times will be shown in the requested timezone.
+        /// </summary>
+        public string DatabaseTimeZone { get; set; } = "Europe/Amsterdam";
+
+        /// <summary>
         /// The maximum amount of times the GCL should retry executing a query.
         /// The GCL only does this for the following MySQL error codes, any other error will not cause another attempt:
         /// <list type="ErrorCodes">
@@ -104,7 +109,7 @@ namespace GeeksCoreLibrary.Core.Models
         public string ExpiringEncryptionKey { get; set; }
 
         /// <summary>
-        /// The amount of hours an encrypted value is valid when it was encrypted with a date and time.
+        /// The encryption key that will be used for encrypting values with an expiry date.
         /// </summary>
         public int TemporaryEncryptionHoursValid { get; set; } = 24;
 

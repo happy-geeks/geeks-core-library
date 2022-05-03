@@ -47,5 +47,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the URL to redirect the user too once they reach this step.
         /// </summary>
         public string StepRedirectUrl { get; set; }
+        
+        /// <summary>
+        /// Gets or sets whether to hide this step in the progress part of the order process.
+        /// </summary>
+        public bool HideInProgress { get; set; }
     }
 }

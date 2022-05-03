@@ -4,6 +4,7 @@
     {
         GroupsAndFields,
         Summary,
-        OrderConfirmation
+        OrderConfirmation,
+        OrderPending
     }
 }

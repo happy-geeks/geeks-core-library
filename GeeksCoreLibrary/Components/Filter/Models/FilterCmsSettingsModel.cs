@@ -215,7 +215,40 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             DisplayOrder = 30
         )]
         public string ExtraFilterProperties { get; set; }
-        
+
+        #endregion
+
+        #region Tab Behavior properties
+
+        /// <summary>
+        /// The name of the query-string which contains the search value.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Search querystring name",
+            Description = "The name of the query-string which contains the search value",
+            DeveloperRemarks = "",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Search,
+            TextEditorType = CmsAttributes.CmsTextEditorType.TextBox,
+            DisplayOrder = 10
+        )]
+        public string SearchQuerystring { get; set; }
+
+        /// <summary>
+        /// The keys of the detail(s) on which the search function should be performed
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Search keys",
+            Description = "The name of the query-string which contains the search value",
+            DeveloperRemarks = "",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Search,
+            TextEditorType = CmsAttributes.CmsTextEditorType.TextBox,
+            DisplayOrder = 20
+        )]
+        public string SearchKeys { get; set; }
+
+
         #endregion
     }
 }

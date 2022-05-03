@@ -147,6 +147,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.use_cache,
                             template.cache_minutes,
                             template.cache_location,
+                            template.cache_regex,
                             0 AS use_obfuscate,
                             template.insert_mode,
                             template.grouping_create_object_instead_of_array,
@@ -228,6 +229,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.use_cache,
                             template.cache_minutes,
                             template.cache_location, 
+                            template.cache_regex,
                             template.template_type
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
@@ -244,6 +246,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 CachingMinutes = dataTable.Rows[0].Field<int>("cache_minutes"),
                 CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache"),
                 CachingLocation = dataTable.Rows[0].Field<TemplateCachingLocations>("cache_location"),
+                CachingRegex = dataTable.Rows[0].Field<string>("cache_regex"),
                 Type = dataTable.Rows[0].Field<TemplateTypes>("template_type")
             };
 
@@ -365,6 +368,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.use_cache,
                             template.cache_minutes,
                             template.cache_location,
+                            template.cache_regex,
                             0 AS use_obfuscate,
                             template.insert_mode,
                             template.grouping_create_object_instead_of_array,
@@ -442,6 +446,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.use_cache,
                             template.cache_minutes,
                             template.cache_location,
+                            template.cache_regex,
                             0 AS use_obfuscate,
                             template.insert_mode,
                             template.grouping_create_object_instead_of_array,
@@ -790,19 +795,20 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     var imageHeight2X = (imageHeight * 2).ToString();
 
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
-                    outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-jpg-2x} 2x, {image-url-jpg}"" type=""image/jpeg"" />");
+                    outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-alt-2x} 2x, {image-url-alt}"" type=""{image-type-alt}"" />");
 
-                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-jpg}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + "." + fallbackImageExtension, imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".webp", imageWidth2X, imageHeight2X, resizeMode));
-                    outputBuilder.Replace("{image-url-jpg-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + "." + fallbackImageExtension, imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-type-alt}", FileSystemHelpers.GetMediaTypeByExtension(fallbackImageExtension));
                     outputBuilder.Replace("{min-width}", imageViewportParameter);
 
                     // If last item, than add the default image
                     if (index == totalItems)
                     {
                         outputBuilder.Append("<img width=\"{image_width}\" height=\"{image_height}\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
-                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, imageFilenameWithoutExt + ".webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
                         outputBuilder.Replace("{image_width}", imageWidth.ToString());
                         outputBuilder.Replace("{image_height}", imageHeight.ToString());
                     }

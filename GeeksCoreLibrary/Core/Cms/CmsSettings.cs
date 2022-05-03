@@ -1,4 +1,5 @@
-﻿using GeeksCoreLibrary.Core.Cms.Attributes;
+﻿using System.ComponentModel;
+using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 
 namespace GeeksCoreLibrary.Core.Cms
@@ -6,13 +7,13 @@ namespace GeeksCoreLibrary.Core.Cms
     public class CmsSettings
     {
         #region Constants
-        
+
         public const string ExternalJavaScriptLibrariesFromComponentKey = "ExternalJavaScriptLibrariesFromComponent";
 
         #endregion
 
         #region Other properties
-        
+
         /// <summary>
         /// A description that describes the component for use in Wiser.
         /// </summary>
@@ -40,7 +41,7 @@ namespace GeeksCoreLibrary.Core.Cms
             DisplayOrder = 10
         )]
         public bool UserNeedsToBeLoggedIn { get; set; } = false;
-        
+
         /// <summary>
         /// If set to true, the templates of this component replaces request variables. For example {requestvariablename} is replaced by the value of the parameter named 'requestvariablename' in the querystring or form variables.
         /// </summary>
@@ -64,7 +65,7 @@ namespace GeeksCoreLibrary.Core.Cms
             TabName = CmsAttributes.CmsTabName.Behavior,
             GroupName = CmsAttributes.CmsGroupName.Handling,
             DisplayOrder = 20
-        )]
+        ), DefaultValue(true)]
         public bool EvaluateIfElseInTemplates { get; set; } = true;
 
         /// <summary>
@@ -77,13 +78,13 @@ namespace GeeksCoreLibrary.Core.Cms
             TabName = CmsAttributes.CmsTabName.Behavior,
             GroupName = CmsAttributes.CmsGroupName.Handling,
             DisplayOrder = 30
-        )]
+        ), DefaultValue(true)]
         public bool RemoveUnknownVariables { get; set; } = true;
 
         #endregion
 
         #region Tab developer properties
-        
+
         /// <summary>
         /// How the component should be cached. Default value is 'ServerSideCaching'.
         /// </summary>
@@ -101,9 +102,9 @@ namespace GeeksCoreLibrary.Core.Cms
             TabName = CmsAttributes.CmsTabName.Developer,
             GroupName = CmsAttributes.CmsGroupName.Caching,
             DisplayOrder = 10
-        )]
+        ), DefaultValue(TemplateCachingModes.NoCaching)]
         public TemplateCachingModes CachingMode { get; set; } = TemplateCachingModes.NoCaching;
-        
+
         /// <summary>
         /// How the component should be cached. Default value is 'ServerSideCaching'.
         /// </summary>
@@ -118,9 +119,9 @@ namespace GeeksCoreLibrary.Core.Cms
             TabName = CmsAttributes.CmsTabName.Developer,
             GroupName = CmsAttributes.CmsGroupName.Caching,
             DisplayOrder = 20
-        )]
+        ), DefaultValue(TemplateCachingLocations.InMemory)]
         public TemplateCachingLocations CachingLocation { get; set; } = TemplateCachingLocations.InMemory;
-        
+
         /// <summary>
         /// The amount of time the component should stay cached. Default value is '0', which means that the setting 'DefaultTemplateCacheDuration' from the appsettings will be used. Set it to any other value to overwrite the appsettings.
         /// </summary>

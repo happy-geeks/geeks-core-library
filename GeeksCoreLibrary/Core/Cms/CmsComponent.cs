@@ -101,10 +101,16 @@ namespace GeeksCoreLibrary.Core.Cms
 
             var parameterValues = new List<object>();
             var methodParameters = method.GetParameters();
-            if (HttpContext.Request.ContentType == null || !HttpContext.Request.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
+            if (!HttpContext.Request.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
             {
                 foreach (var parameter in methodParameters)
                 {
+                    if (parameter.IsOptional && !HttpContextHelpers.RequestContainsKey(HttpContext, parameter.Name))
+                    {
+                        parameterValues.Add(parameter.DefaultValue);
+                        continue;
+                    }
+
                     parameterValues.Add(Convert.ChangeType(HttpContextHelpers.GetRequestValue(HttpContext, parameter.Name), parameter.ParameterType));
                 }
             }
@@ -122,6 +128,12 @@ namespace GeeksCoreLibrary.Core.Cms
                 foreach (var parameter in methodParameters)
                 {
                     var (key, value) = contentObject.FirstOrDefault(p => p.Key.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase));
+                    if (parameter.IsOptional && !contentObject.ContainsKey(key))
+                    {
+                        parameterValues.Add(parameter.DefaultValue);
+                        continue;
+                    }
+
                     if (String.IsNullOrWhiteSpace(key))
                     {
                         continue;
@@ -153,7 +165,7 @@ namespace GeeksCoreLibrary.Core.Cms
             {
                 result = method.Invoke(this, BindingFlags.Public | BindingFlags.Instance, null, parameterValues.ToArray(), Thread.CurrentThread.CurrentCulture);
             }
-            
+
             if (result is Task<object> resultTask)
             {
                 result = await resultTask.ConfigureAwait(false);
@@ -197,7 +209,7 @@ namespace GeeksCoreLibrary.Core.Cms
                 {
                     continue;
                 }
-                
+
                 var defaultValueAttribute = propertyWithDefaultValue.GetCustomAttribute<DefaultValueAttribute>();
                 if (defaultValueAttribute?.Value == null)
                 {
@@ -216,8 +228,9 @@ namespace GeeksCoreLibrary.Core.Cms
         /// <param name="queryToUse">The query to render and execute.</param>
         /// <param name="dataRowForReplacements">Optional: A <see cref="DataRow"/> to use for replacements from the result of a query.</param>
         /// <param name="doVariablesCheck">Optional: If this is set to true and the query still contains unhandled replacements after doing all of the replacements, then the query will not be executed. Default value is <see langword="false" />.</param>
+        /// <param name="skipCache">Optional: Set to true to ensure the caching is never used for the query. Default value is <see langword="false" />.</param>
         /// <returns>A <see cref="DataTable" /> with the result(s), or NULL if the query was empty.</returns>
-        protected async Task<DataTable> RenderAndExecuteQueryAsync(string queryToUse, DataRow dataRowForReplacements = null, bool doVariablesCheck = false)
+        protected async Task<DataTable> RenderAndExecuteQueryAsync(string queryToUse, DataRow dataRowForReplacements = null, bool doVariablesCheck = false, bool skipCache = false)
         {
             if (String.IsNullOrWhiteSpace(queryToUse))
             {
@@ -242,7 +255,7 @@ namespace GeeksCoreLibrary.Core.Cms
                 }
             }
 
-            return await DatabaseConnection.GetAsync(queryToUse);
+            return await DatabaseConnection.GetAsync(queryToUse, skipCache);
         }
 
         /// <summary>
@@ -311,7 +324,7 @@ namespace GeeksCoreLibrary.Core.Cms
             {
                 return html;
             }
-            
+
             var componentIdInput = $"<input type='hidden' name='{componentIdFieldName}' value='{ComponentId}' />";
             var formTagLength = 7;
             var closeFormIndex = html.IndexOf("</form>", StringComparison.Ordinal);

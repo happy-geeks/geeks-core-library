@@ -31,7 +31,6 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
         public string MobilePostProgressHtml { get; set; }
         public ConfiguratorCmsSettingsModel ToSettingsModel()
         {
-
             return new ConfiguratorCmsSettingsModel()
             {
                 MainConfiguratorDataQuery = this.MainConfiguratorDataQuery,
@@ -43,7 +42,6 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
                 EvaluateIfElseInTemplates = this.EvaluateIfElseInTemplates,
                 FinalSummaryHtml = this.FinalSummaryHtml,
                 HandleRequest = this.HandleRequest,
-                Html = this.Html,
                 MainStepHtml = this.MainStepHtml,
                 MobilePostProgressHtml = this.MobilePostProgressHtml,
                 MobilePreProgressHtml = this.MobilePreProgressHtml,

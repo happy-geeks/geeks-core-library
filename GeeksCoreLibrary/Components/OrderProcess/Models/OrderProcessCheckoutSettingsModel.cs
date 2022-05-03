@@ -17,10 +17,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         <div class='step-groups'>{groups}</div>
         <div class='step-footer'>{footer}</div>
     </div>
-    [if({type}!OrderConfirmation)]
-    [if({activeStep}>1)]<a href='{previousStepUrl}'>{previousStepLinkText}</a>[endif]
+    [if({type}!OrderConfirmation)][if({type}!orderPending)]
+    [if({activeStep}>1)]<a href='{previousStepUrl}' id='previousStepLink'>{previousStepLinkText}</a>[endif]
     <button type='submit' id='confirmButton'>{confirmButtonText}</button>
-    [endif]
+    [endif][endif]
 </form>")]
         internal string TemplateStep { get; }
 
@@ -62,6 +62,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     {error}
 </div>")]
         internal string TemplateInputField { get; }
+
+        [DefaultValue(@"<div id='container_{fieldId}' class='field multi-line {errorClass} {fieldClass}'>
+    <textarea type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern}>{value}</textarea>
+    [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
+    {error}
+</div>")]
+        internal string TemplateTextareaField { get; }
 
         [DefaultValue(@"<div id='container_{fieldId}' class='field full {errorClass} {fieldClass}'>
     <div class='field-group'>

@@ -62,7 +62,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="field">The settings for the field.</param>
         /// <param name="currentItems">Any items that the user already has in the database. This will be used to make sure that the user won't get an error if they enter the same value that is already saved for their own item. For example, if the user is logged in they will have an account item, add that item to this list.</param>
         /// <returns>A <see cref="bool"/> indicating whether the value is valid or not.</returns>
-        Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<WiserItemModel> currentItems);
+        Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems);
         
         /// <summary>
         /// Handles a request to start a new payment for a basket/checkout.

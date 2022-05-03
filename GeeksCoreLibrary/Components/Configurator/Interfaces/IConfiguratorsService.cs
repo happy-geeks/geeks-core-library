@@ -37,8 +37,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Interfaces
         /// </summary>
         /// <param name="templateOrQuery"></param>
         /// <param name="configuration"></param>
+        /// <param name="isQuery"></param>
         /// <returns></returns>
-        Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration);
+        Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration, bool isQuery);
 
         /// <summary>
         ///  <para>Calculates the price and purchase price of a product.</para>

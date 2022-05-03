@@ -40,26 +40,25 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private readonly ILogger<BuckarooService> logger;
         private readonly GclSettings gclSettings;
         private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IObjectsService objectsService;
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IDatabaseConnection databaseConnection;
 
-        public BuckarooService(ILogger<BuckarooService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection)
+        public BuckarooService(ILogger<BuckarooService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection)
         {
             this.logger = logger;
             this.gclSettings = gclSettings.Value;
             this.httpContextAccessor = httpContextAccessor;
-            this.objectsService = objectsService;
             this.shoppingBasketsService = shoppingBasketsService;
             this.databaseConnection = databaseConnection;
         }
 
         /// <inheritdoc />
-        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethod, string invoiceNumber)
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
         {
             // https://github.com/buckaroo-it/BuckarooSdk_DotNet/blob/master/BuckarooSdk.Tests/Services
 
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+            var buckarooSettings = (BuckarooSettingsModel)paymentMethodSettings.PaymentServiceProvider;
 
             var totalPrice = 0M;
             foreach (var (main, lines) in shoppingBaskets)
@@ -67,34 +66,29 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, ShoppingBasket.PriceTypes.PspPriceInVat);
             }
 
-            // Retrieve the website key and API key.
-            // TODO: Retrieve these settings from order process
-            var websiteKey = await objectsService.FindSystemObjectByDomainNameAsync("BUCK_merchantid");
-            var apiKey = await objectsService.FindSystemObjectByDomainNameAsync("BUCK_secret");
-
             // Check if the test environment should be used.
             var useTestEnvironment = gclSettings.Environment.InList(Environments.Test, Environments.Development);
 
             var buckarooClient = new BuckarooSdk.SdkClient();
 
             var transaction = buckarooClient.CreateRequest()
-                .Authenticate(websiteKey, apiKey, !useTestEnvironment, CultureInfo.CurrentCulture)
+                .Authenticate(buckarooSettings.WebsiteKey, buckarooSettings.SecretKey, !useTestEnvironment, CultureInfo.CurrentCulture)
                 .TransactionRequest()
                 .SetBasicFields(new TransactionBase
                 {
-                    Currency = "EUR",
+                    Currency = buckarooSettings.Currency,
                     AmountDebit = totalPrice,
                     Invoice = invoiceNumber,
-                    PushUrl = paymentMethod.PaymentServiceProvider.WebhookUrl,
-                    ReturnUrl = paymentMethod.PaymentServiceProvider.SuccessUrl,
-                    ReturnUrlCancel = paymentMethod.PaymentServiceProvider.FailUrl,
-                    ReturnUrlError = paymentMethod.PaymentServiceProvider.FailUrl,
-                    ReturnUrlReject = paymentMethod.PaymentServiceProvider.FailUrl,
-                    ContinueOnIncomplete = CheckIfContinueOnIncompleteIsAllowed(shoppingBaskets, paymentMethod.ExternalName) ? ContinueOnIncomplete.RedirectToHTML : ContinueOnIncomplete.No
+                    PushUrl = buckarooSettings.WebhookUrl,
+                    ReturnUrl = buckarooSettings.SuccessUrl,
+                    ReturnUrlCancel = buckarooSettings.FailUrl,
+                    ReturnUrlError = buckarooSettings.FailUrl,
+                    ReturnUrlReject = buckarooSettings.FailUrl,
+                    ContinueOnIncomplete = CheckIfContinueOnIncompleteIsAllowed(shoppingBaskets, paymentMethodSettings.ExternalName) ? ContinueOnIncomplete.RedirectToHTML : ContinueOnIncomplete.No
                 });
 
             ConfiguredServiceTransaction serviceTransaction;
-            switch (paymentMethod.ExternalName.ToUpperInvariant())
+            switch (paymentMethodSettings.ExternalName.ToUpperInvariant())
             {
                 case "IDEAL":
                     serviceTransaction = InitializeIdealPayment(transaction, shoppingBaskets);
@@ -115,21 +109,22 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     return new PaymentRequestResult
                     {
                         Action = PaymentRequestActions.Redirect,
-                        ActionData = paymentMethod.PaymentServiceProvider.FailUrl,
+                        ActionData = buckarooSettings.FailUrl,
                         Successful = false,
-                        ErrorMessage = $"Unknown or unsupported payment method '{paymentMethod}'"
+                        ErrorMessage = $"Unknown or unsupported payment method '{paymentMethodSettings}'"
                     };
             }
 
             var response = await serviceTransaction.ExecuteAsync();
 
-            if (response?.Status?.Code?.Code == null || response.Status.Code.Code != 190 || String.IsNullOrWhiteSpace(response.RequiredAction?.RedirectURL))
+            var successStatusCodes = new List<int> {190, 790};
+            if (response?.Status?.Code?.Code == null || !successStatusCodes.Contains(response.Status.Code.Code) || String.IsNullOrWhiteSpace(response.RequiredAction?.RedirectURL))
             {
                 return new PaymentRequestResult
                 {
                     Successful = false,
                     Action = PaymentRequestActions.Redirect,
-                    ActionData = paymentMethod.PaymentServiceProvider.FailUrl,
+                    ActionData = buckarooSettings.FailUrl,
                     ErrorMessage = response?.Status?.Code?.Description
                 };
             }
@@ -145,7 +140,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private ConfiguredServiceTransaction InitializeIdealPayment(ConfiguredTransaction transaction, IEnumerable<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets)
         {
             // Bank name.
-            var issuerValue = shoppingBaskets.First().Main.GetDetailValue("issuer");
+            var issuerValue = shoppingBaskets.First().Main.GetDetailValue(Components.OrderProcess.Models.Constants.PaymentMethodIssuerProperty);
             var issuerName = GetIssuerName(issuerValue);
 
             return transaction.Ideal()
@@ -189,7 +184,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public async Task<StatusUpdateResult> ProcessStatusUpdateAsync()
+        public async Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
         {
             if (httpContextAccessor?.HttpContext == null)
             {
@@ -210,11 +205,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 };
             }
 
+            var buckarooSettings = (BuckarooSettingsModel)paymentMethodSettings.PaymentServiceProvider;
             var buckarooClient = new BuckarooSdk.SdkClient();
-
-            // Retrieve the website key and API key.
-            var websiteKey = await objectsService.FindSystemObjectByDomainNameAsync("BUCK_merchantid");
-            var apiKey = await objectsService.FindSystemObjectByDomainNameAsync("BUCK_secret");
 
             // Read the entire body, which should be a JSON body from Buckaroo.
             using var reader = new StreamReader(httpContextAccessor.HttpContext.Request.Body);
@@ -224,16 +216,15 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // Create nonce.
             var timeSpan = DateTime.UtcNow - DateTime.UnixEpoch;
             var requestTimeStamp = Convert.ToUInt64(timeSpan.TotalSeconds).ToString();
-            var pushUrl = await objectsService.FindSystemObjectByDomainNameAsync("PSP_notifyurl");
 
-            var pushSignature = buckarooClient.GetSignatureCalculationService().CalculateSignature(bodyAsBytes, HttpMethods.Post, requestTimeStamp, Guid.NewGuid().ToString("N"), pushUrl, websiteKey, apiKey);
+            var pushSignature = buckarooClient.GetSignatureCalculationService().CalculateSignature(bodyAsBytes, HttpMethods.Post, requestTimeStamp, Guid.NewGuid().ToString("N"), buckarooSettings.WebhookUrl, buckarooSettings.WebsiteKey, buckarooSettings.SecretKey);
             var authHeader = $"hmac {pushSignature}";
 
             BuckarooSdk.DataTypes.Push.Push push;
 
             try
             {
-                push = buckarooClient.GetPushHandler(apiKey).DeserializePush(bodyAsBytes, pushUrl, authHeader);
+                push = buckarooClient.GetPushHandler(buckarooSettings.SecretKey).DeserializePush(bodyAsBytes, buckarooSettings.WebhookUrl, authHeader);
             }
             catch (System.Security.Authentication.AuthenticationException)
             {
@@ -258,7 +249,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             };
         }
 
-        public async Task<bool> LogPaymentAction(string invoiceNumber, int status, string bodyJson)
+        private async Task<bool> LogPaymentAction(string invoiceNumber, int status, string bodyJson)
         {
             if (!LogPaymentActions || httpContextAccessor?.HttpContext == null)
             {

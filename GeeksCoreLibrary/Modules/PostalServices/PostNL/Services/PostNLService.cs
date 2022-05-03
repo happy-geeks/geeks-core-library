@@ -132,8 +132,8 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             foreach (var encryptedId in encryptedOrderIds.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 var postNlDetailsItemId = UInt64.Parse(await this.objectService.FindSystemObjectByDomainNameAsync("postnl_details_item_id"));
-                var orderId = encryptedId.DecryptWithAes(withDateTime: true, minutesValidOverride: 30);
-                var postNLDetails = await wiserItemsService.GetItemDetailsAsync(postNlDetailsItemId);
+                var orderId = encryptedId.DecryptWithAesWithSalt(withDateTime: true, minutesValidOverride: 30);
+                var postNlDetails = await wiserItemsService.GetItemDetailsAsync(postNlDetailsItemId);
                 var orderDetails = await wiserItemsService.GetItemDetailsAsync(UInt64.Parse(orderId));
 
                 if (orderDetails == null || orderDetails.Id == 0)
@@ -191,13 +191,13 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                         Address = new AddressModel
                         {
                             AddressType = "02",
-                            CompanyName = postNLDetails.GetDetailValue("company_name"),
-                            City = postNLDetails.GetDetailValue("city"),
-                            Countrycode = postNLDetails.GetDetailValue("country"),
-                            HouseNumberAddition = postNLDetails.GetDetailValue("number_ex"),
-                            HouseNumber = postNLDetails.GetDetailValue("number"),
-                            Street = postNLDetails.GetDetailValue("street"),
-                            Zipcode = postNLDetails.GetDetailValue("zipcode")
+                            CompanyName = postNlDetails.GetDetailValue("company_name"),
+                            City = postNlDetails.GetDetailValue("city"),
+                            Countrycode = postNlDetails.GetDetailValue("country"),
+                            HouseNumberAddition = postNlDetails.GetDetailValue("number_ex"),
+                            HouseNumber = postNlDetails.GetDetailValue("number"),
+                            Street = postNlDetails.GetDetailValue("street"),
+                            Zipcode = postNlDetails.GetDetailValue("zipcode")
                         },
                         Email = orderDetails.GetDetailValue("email")
                     },

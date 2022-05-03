@@ -535,7 +535,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             WriteToTrace("End ReplaceCaseInsensitive stepContent");
 
-            template = await this.configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator);
+            template = await this.configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator, false);
 
             WriteToTrace("End ReplaceConfiguratorItems (mainstep)");
 
@@ -655,7 +655,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             template = template.ReplaceCaseInsensitive("{subStepContent}", subStepContent);
 
 
-            template = await this.configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator);
+            template = await this.configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator, false);
 
             WriteToTrace("End ReplaceConfiguratorItems (substep)");
 
@@ -758,7 +758,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                             {
                                 DatabaseConnection.AddParameter("connectedId", connectedId);
                                 query = customQuery.ReplaceCaseInsensitive("'{connectedId}'", "?connectedId");
-                                query = await  this.configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration);
+                                query = await  this.configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration, true);
                                 query = await TemplatesService.HandleIncludesAsync(query, false, null, false, true);
                                 query = query.ReplaceCaseInsensitive("{connectedId}", "?connectedId");
                                 query = await StringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
@@ -787,7 +787,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                             }
                             else
                             {
-                                ownDataValues = await this.configuratorsService.ReplaceConfiguratorItemsAsync(ownDataValues, configuration);
+                                ownDataValues = await this.configuratorsService.ReplaceConfiguratorItemsAsync(ownDataValues, configuration, true);
                                 var dt = await DatabaseConnection.GetAsync(ownDataValues);
 
                                 if (dt.Rows.Count == 0)
@@ -856,7 +856,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                             query = await dataSelectorsService.GetQueryAsync(itemsRequest);
                             query = await StringReplacementsService.DoAllReplacementsAsync(query, null, false, false, false, true);
-                            query = await this.configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration);
+                            query = await this.configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration, true);
                             break;
                         }
                 }
@@ -940,7 +940,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             if (!String.IsNullOrWhiteSpace(preRenderStepsQuery))
             {
-                await DatabaseConnection.ExecuteAsync(await this.configuratorsService.ReplaceConfiguratorItemsAsync(preRenderStepsQuery, configuration));
+                await DatabaseConnection.ExecuteAsync(await this.configuratorsService.ReplaceConfiguratorItemsAsync(preRenderStepsQuery, configuration, true));
             }
 
             var customParam = await GetCustomParameters(configuration, dataTable);
@@ -995,7 +995,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             if (!String.IsNullOrWhiteSpace(preRenderStepsQuery))
             {
-                await DatabaseConnection.ExecuteAsync(await this.configuratorsService.ReplaceConfiguratorItemsAsync(preRenderStepsQuery, configurator));
+                await DatabaseConnection.ExecuteAsync(await this.configuratorsService.ReplaceConfiguratorItemsAsync(preRenderStepsQuery, configurator, true));
             }
 
             var mainStepCount = 0;
@@ -1093,7 +1093,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             WriteToTrace($"preRenderStepsQuery 4: {preRenderStepsQuery}");
             if (!String.IsNullOrWhiteSpace(preRenderStepsQuery))
             {
-                await DatabaseConnection.ExecuteAsync(await this.configuratorsService.ReplaceConfiguratorItemsAsync(preRenderStepsQuery, configurator));
+                await DatabaseConnection.ExecuteAsync(await this.configuratorsService.ReplaceConfiguratorItemsAsync(preRenderStepsQuery, configurator, true));
             }
 
             var mainStepCounter = 0;
@@ -1172,7 +1172,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             }
 
             // Prepare Query
-            customParameter.Query = await this.configuratorsService.ReplaceConfiguratorItemsAsync(customParameter.Query, configuration);
+            customParameter.Query = await this.configuratorsService.ReplaceConfiguratorItemsAsync(customParameter.Query, configuration, true);
 
             // Run Query
             dataTable = await DatabaseConnection.GetAsync(customParameter.Query);

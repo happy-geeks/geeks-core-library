@@ -34,7 +34,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
             return await cache.GetOrAdd(key,
                 delegate(ICacheEntry cacheEntry)
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultWebPageCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWebPageCacheDuration;
                     return webPagesService.GetWebPageViaFixedUrl(fixedUrl);
                 });
         }

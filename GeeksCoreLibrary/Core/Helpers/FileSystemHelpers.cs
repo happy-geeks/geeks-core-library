@@ -120,5 +120,53 @@ namespace GeeksCoreLibrary.Core.Helpers
 
             return mimeType;
         }
+
+        /// <summary>
+        /// <para>
+        /// Turns an image extension into a IANA media type (a.k.a. MIME type). Most extensions will just turn into "image/{extension}" but there are a few exceptions.
+        /// See below for the exceptions.
+        /// </para>
+        /// <list>
+        ///     <item>
+        ///         <term>jpg, jpe, jif, jfif, jfi</term>
+        ///         <description>image/jpeg</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>svg</term>
+        ///         <description>image/svg+xml</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>tif</term>
+        ///         <description>image/tiff</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>ico</term>
+        ///         <description>image/x-icon</description>
+        ///     </item>
+        /// </list>
+        /// </summary>
+        /// <param name="extension">The extension of an image. The dot in front will be trimmed if present.</param>
+        /// <returns>The correct media type.</returns>
+        public static string GetMediaTypeByExtension(string extension)
+        {
+            if (String.IsNullOrWhiteSpace(extension))
+            {
+                return String.Empty;
+            }
+
+            extension = extension.ToLowerInvariant().TrimStart('.');
+            return extension switch
+            {
+                "jpg" => "image/jpeg",
+                "jpe" => "image/jpeg",
+                "jif" => "image/jpeg",
+                "jfif" => "image/jpeg",
+                "jfi" => "image/jpeg",
+                "svg" => "image/svg+xml",
+                "tif" => "image/tiff",
+                "ico" => "image/x-icon",
+                _ => $"image/{extension}"
+            };
+        }
     }
 }

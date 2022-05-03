@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Globalization;
 using System.Linq;
 using System.Net;
@@ -8,13 +7,10 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
-using GeeksCoreLibrary.Components.OrderProcess;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Core.Enums;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -26,7 +22,6 @@ using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Payments.Models.Mollie;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using RestSharp;
 using RestSharp.Authenticators;
@@ -42,24 +37,22 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         public bool LogPaymentActions { get; set; }
 
         private readonly ILogger<MollieService> logger;
-        private readonly GclSettings gclSettings;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IObjectsService objectsService;
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IDatabaseConnection databaseConnection;
 
-        public MollieService(ILogger<MollieService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection)
+        public MollieService(ILogger<MollieService> logger, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection)
         {
             this.logger = logger;
             this.httpContextAccessor = httpContextAccessor;
             this.objectsService = objectsService;
             this.shoppingBasketsService = shoppingBasketsService;
             this.databaseConnection = databaseConnection;
-            this.gclSettings = gclSettings.Value;
         }
 
         /// <inheritdoc />
-        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethod, string invoiceNumber)
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
         {
             if (httpContextAccessor.HttpContext == null)
             {
@@ -67,7 +60,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 {
                     Successful = false,
                     Action = PaymentRequestActions.Redirect,
-                    ActionData = paymentMethod.PaymentServiceProvider.FailUrl
+                    ActionData = paymentMethodSettings.PaymentServiceProvider.FailUrl
                 };
             }
 
@@ -80,36 +73,36 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             // Retrieve the API key. A development-specific one can be set for testing on development environments.
-            var apiKey = await GetApiKeyAsync();
-            var locale = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_locale");
+            var mollieSettings = (MollieSettingsModel)paymentMethodSettings.PaymentServiceProvider;
+            mollieSettings.Locale = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_locale");
 
             var description = $"Order #{invoiceNumber}";
 
             // Build and execute payment request.
             var restClient = new RestClient(ApiBaseUrl)
             {
-                Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(apiKey, "Bearer")
+                Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
             };
             var restRequest = new RestRequest("/payments", Method.POST);
-            restRequest.AddParameter("amount[currency]", await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_currency", "EUR"), ParameterType.GetOrPost);
+            restRequest.AddParameter("amount[currency]", mollieSettings.Currency, ParameterType.GetOrPost);
             restRequest.AddParameter("amount[value]", totalPrice.ToString("F2", CultureInfo.InvariantCulture), ParameterType.GetOrPost);
             restRequest.AddParameter("description", description, ParameterType.GetOrPost);
-            restRequest.AddParameter("redirectUrl", BuildUrl(paymentMethod.PaymentServiceProvider.ReturnUrl, invoiceNumber), ParameterType.GetOrPost);
-            restRequest.AddParameter("webhookUrl", BuildUrl(paymentMethod.PaymentServiceProvider.WebhookUrl, invoiceNumber), ParameterType.GetOrPost);
+            restRequest.AddParameter("redirectUrl", BuildUrl(mollieSettings.ReturnUrl, invoiceNumber), ParameterType.GetOrPost);
+            restRequest.AddParameter("webhookUrl", BuildUrl(mollieSettings.WebhookUrl, invoiceNumber), ParameterType.GetOrPost);
 
-            if (!String.IsNullOrWhiteSpace(locale))
+            if (!String.IsNullOrWhiteSpace(mollieSettings.Locale))
             {
-                restRequest.AddParameter("locale", locale, ParameterType.GetOrPost);
+                restRequest.AddParameter("locale", mollieSettings.Locale, ParameterType.GetOrPost);
             }
 
-            if (!String.IsNullOrWhiteSpace(paymentMethod?.ExternalName))
+            if (!String.IsNullOrWhiteSpace(paymentMethodSettings?.ExternalName))
             {
-                restRequest.AddParameter("method", paymentMethod.ExternalName, ParameterType.GetOrPost);
+                restRequest.AddParameter("method", paymentMethodSettings.ExternalName, ParameterType.GetOrPost);
             }
 
-            if (String.Equals(paymentMethod?.ExternalName, "ideal", StringComparison.OrdinalIgnoreCase))
+            if (String.Equals(paymentMethodSettings?.ExternalName, "ideal", StringComparison.OrdinalIgnoreCase))
             {
-                var issuerValue = shoppingBaskets.First().Main.GetDetailValue("issuer");
+                var issuerValue = shoppingBaskets.First().Main.GetDetailValue(Components.OrderProcess.Models.Constants.PaymentMethodIssuerProperty);
                 var issuerName = GetIssuerName(issuerValue);
 
                 if (!String.IsNullOrWhiteSpace(issuerName))
@@ -130,7 +123,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 {
                     Successful = false,
                     Action = PaymentRequestActions.Redirect,
-                    ActionData = paymentMethod.PaymentServiceProvider.FailUrl,
+                    ActionData = mollieSettings.FailUrl,
                     ErrorMessage = GetErrorMessageInResponse(JObject.Parse(restResponse.Content))
                 };
             }
@@ -141,16 +134,16 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var status = responseJson["status"]?.ToString();
             foreach (var (main, lines) in shoppingBaskets)
             {
-                var history = new StringBuilder(main.GetDetailValue("psptransactionstatushistory"));
+                var history = new StringBuilder(main.GetDetailValue(Components.OrderProcess.Models.Constants.PaymentHistoryProperty));
                 if (history.Length > 0)
                 {
                     history.Append(", ");
                 }
                 history.Append(status);
 
-                main.SetDetail("psptransactionid", paymentId);
-                main.SetDetail("psptransactionstatus", status);
-                main.SetDetail("psptransactionstatushistory", history.ToString());
+                main.SetDetail(Components.OrderProcess.Models.Constants.PaymentProviderTransactionId, paymentId);
+                main.SetDetail(Components.OrderProcess.Models.Constants.PaymentProviderTransactionStatus, status);
+                main.SetDetail(Components.OrderProcess.Models.Constants.PaymentHistoryProperty, history.ToString());
 
                 await shoppingBasketsService.SaveAsync(main, lines, await shoppingBasketsService.GetSettingsAsync());
             }
@@ -194,7 +187,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public async Task<StatusUpdateResult> ProcessStatusUpdateAsync()
+        public async Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
         {
             if (httpContextAccessor.HttpContext == null)
             {
@@ -205,15 +198,14 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 };
             }
 
+            var mollieSettings = (MollieSettingsModel)paymentMethodSettings.PaymentServiceProvider;
+
             // Mollie sends one POST parameter called "id".
             var mollieOrderId = httpContextAccessor.HttpContext.Request.Form["id"];
 
-            // Retrieve the API key. A development-specific one can be set for testing on development environments.
-            var apiKey = await GetApiKeyAsync();
-
             var restClient = new RestClient(ApiBaseUrl)
             {
-                Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(apiKey, "Bearer")
+                Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
             };
             var restRequest = new RestRequest($"/payments/{mollieOrderId}", Method.GET);
 
@@ -256,9 +248,9 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public async Task<PaymentReturnResult> HandlePaymentReturnAsync()
+        public async Task<PaymentReturnResult> HandlePaymentReturnAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
         {
-            var apiKey = await GetApiKeyAsync();
+            var mollieSettings = (MollieSettingsModel)paymentMethodSettings.PaymentServiceProvider;
             var invoiceNumber = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "invoice_number");
 
             var baskets = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(invoiceNumber);
@@ -270,16 +262,16 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 return new PaymentReturnResult
                 {
                     Action = PaymentResultActions.Redirect,
-                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL")
+                    ActionData = paymentMethodSettings.PaymentServiceProvider.FailUrl
                 };
             }
 
             // The Mollie payment ID is saved in all baskets, so just use the one from the first basket.
-            var molliePaymentId = baskets.First().ShoppingBasket.GetDetailValue("psptransactionid");
+            var molliePaymentId = baskets.First().ShoppingBasket.GetDetailValue(Components.OrderProcess.Models.Constants.PaymentProviderTransactionId);
 
             var restClient = new RestClient(ApiBaseUrl)
             {
-                Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(apiKey, "Bearer")
+                Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
             };
             var restRequest = new RestRequest($"/payments/{molliePaymentId}", Method.GET);
 
@@ -293,7 +285,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 return new PaymentReturnResult
                 {
                     Action = PaymentResultActions.Redirect,
-                    ActionData = await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL")
+                    ActionData = paymentMethodSettings.PaymentServiceProvider.FailUrl
                 };
             }
 
@@ -301,8 +293,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var responseJson = JObject.Parse(restResponse.Content);
             var status = responseJson["status"]?.ToString() ?? String.Empty;
 
-            var successUrl = await objectsService.FindSystemObjectByDomainNameAsync("PSP_successURL");
-            var pendingUrl = await objectsService.FindSystemObjectByDomainNameAsync("PSP_pendingURL");
+            var successUrl = paymentMethodSettings.PaymentServiceProvider.SuccessUrl;
+            var pendingUrl = paymentMethodSettings.PaymentServiceProvider.PendingUrl;
             if (String.IsNullOrWhiteSpace(pendingUrl))
             {
                 pendingUrl = successUrl;
@@ -312,7 +304,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             {
                 "paid" => successUrl,
                 "pending" => pendingUrl,
-                _ => await objectsService.FindSystemObjectByDomainNameAsync("PSP_errorURL")
+                _ => paymentMethodSettings.PaymentServiceProvider.FailUrl
             };
 
             return new PaymentReturnResult
@@ -320,28 +312,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 Action = PaymentResultActions.Redirect,
                 ActionData = redirectUrl
             };
-        }
-
-        /// <summary>
-        /// Returns the live API key for acceptance and live environments, and the dev API key for development and test environments.
-        /// If no dev API key is set, the live API key will always be returned.
-        /// </summary>
-        /// <returns></returns>
-        private async Task<string> GetApiKeyAsync()
-        {
-            string result = null;
-
-            if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
-            {
-                result = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_apikey_dev");
-            }
-
-            if (String.IsNullOrWhiteSpace(result))
-            {
-                result = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_apikey_live");
-            }
-
-            return result;
         }
 
         /// <summary>
@@ -359,7 +329,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             return "Unknown error";
         }
 
-        public async Task<bool> LogPaymentActionAsync(string invoiceNumber, int status, string requestBody = "", string responseBody = "", string error = "")
+        private async Task<bool> LogPaymentActionAsync(string invoiceNumber, int status, string requestBody = "", string responseBody = "", string error = "")
         {
             if (!LogPaymentActions || httpContextAccessor?.HttpContext == null)
             {

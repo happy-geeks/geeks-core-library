@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Primitives;
 
 namespace GeeksCoreLibrary.Core.Helpers
 {
@@ -36,7 +35,6 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <param name="testDomains"></param>
         /// <param name="includingTestWww"></param>
         /// <returns></returns>
-        /// <remarks></remarks>
         public static string GetHostName(HttpContext httpContext, List<string> testDomains = null, bool includingTestWww = false)
         {
             if (httpContext == null)
@@ -84,7 +82,6 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// </summary>
         /// <param name="httpContext"></param>
         /// <returns></returns>
-        /// <remarks></remarks>
         public static string GetUrlPrefix(HttpContext httpContext)
         {
             if (httpContext == null)
@@ -106,14 +103,15 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// </summary>
         /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
         /// <param name="key">The name of the collection member to get.</param>
+        /// <param name="includeServerVariables">Optional: Whether the server variables collection should also be checked. Default is <see langword="true"/>.</param>
         /// <returns>The <see cref="P:HttpContext.Request.Query" />, <see cref="P:HttpContext.Request.Form" />, <see cref="P:HttpContext.Request.Cookies" />, or <see cref="P:HttpContext.Request.ServerVariables" /> collection member specified in the <paramref name="key" /> parameter. If the specified <paramref name="key" /> is not found, then <see langword="null" /> or <see langword="empty" /> is returned.</returns>
-        public static string GetRequestValue(HttpContext httpContext, string key)
+        public static string GetRequestValue(HttpContext httpContext, string key, bool includeServerVariables = true)
         {
             if (httpContext?.Request == null)
             {
                 return null;
             }
-            if (string.IsNullOrEmpty(key))
+            if (String.IsNullOrEmpty(key))
             {
                 return null;
             }
@@ -136,7 +134,42 @@ namespace GeeksCoreLibrary.Core.Helpers
 
             result = httpContext.Request.Cookies[key];
 
-            return !String.IsNullOrEmpty(result) ? result : httpContext.GetServerVariable(key);
+            if (!String.IsNullOrEmpty(result))
+            {
+                return result;
+            }
+
+            // Finally check if server variables should also be checked.
+            if (includeServerVariables)
+            {
+                result = httpContext.GetServerVariable(key);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Checks if the specified key is present in <see cref="P:HttpContext.Request.Query" />, <see cref="P:HttpContext.Request.Form" />, <see cref="P:HttpContext.Request.Cookies" />, or <see cref="P:HttpContext.Request.ServerVariables" /> collection.
+        /// </summary>
+        /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
+        /// <param name="key">The name of the collection member to get.</param>
+        /// <param name="includeServerVariables">Optional: Whether the server variables collection should also be checked. Default is <see langword="true"/>.</param>
+        /// <returns><see langword="true"/> if one of the collections (<see cref="P:HttpContext.Request.Query" />, <see cref="P:HttpContext.Request.Form" />, <see cref="P:HttpContext.Request.Cookies" />, and <see cref="P:HttpContext.Request.ServerVariables" />) contains an element with the key; otherwise, <see langword="false"/>.</returns>
+        public static bool RequestContainsKey(HttpContext httpContext, string key, bool includeServerVariables = true)
+        {
+            if (httpContext?.Request == null)
+            {
+                return false;
+            }
+            if (String.IsNullOrEmpty(key))
+            {
+                return false;
+            }
+
+            return httpContext.Request.Query.ContainsKey(key)
+                   || (httpContext.Request.HasFormContentType && httpContext.Request.Form.ContainsKey(key))
+                   || httpContext.Request.Cookies.ContainsKey(key)
+                   || (includeServerVariables && httpContext.GetServerVariable(key) != null);
         }
 
         /// <summary>
@@ -229,8 +262,7 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <returns></returns>
         public static T GetHeaderValueAs<T>(HttpContext httpContext, string headerName)
         {
-            StringValues values = default(StringValues);
-            if (!(httpContext?.Request?.Headers?.TryGetValue(headerName, out values) ?? false))
+            if (httpContext == null || !httpContext.Request.Headers.TryGetValue(headerName, out var values))
             {
                 return default;
             }
@@ -359,7 +391,7 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
         public static bool IsGclMiddleWarePage(HttpContext httpContext)
         {
-            return httpContext?.Request?.Path != null && GclMiddleWarePages.Contains(httpContext.Request.Path);
+            return httpContext?.Request.Path != null && GclMiddleWarePages.Contains(httpContext.Request.Path);
         }
     }
 }

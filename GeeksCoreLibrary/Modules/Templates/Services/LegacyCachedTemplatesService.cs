@@ -113,7 +113,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var template = await cache.GetOrAdd(cacheKey,
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, !foundInOutputCache);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
 
@@ -150,8 +150,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cacheKey = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}";
             return await cache.GetOrAdd(cacheKey,
                 async cacheEntry =>
-                {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
@@ -169,7 +169,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             return await cache.GetOrAdd(cacheKey,
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetGeneralTemplateLastChangedDateAsync(templateType);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
@@ -181,7 +181,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             return await cache.GetOrAdd(cacheKey,
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetGeneralTemplateValueAsync(templateType);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
@@ -245,7 +245,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             return templatesService.HandleIncludesAsync(service, input, handleStringReplacements, dataRow, handleRequest, forQuery);
         }
-
+        
+        /// <inheritdoc />
         public Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
         {
             return templatesService.GenerateImageUrl(itemId, type, number, filename, width, height);
@@ -334,8 +335,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     Version = dataRow.Field<int>("version")
                 });
             }
-            
-            cacheEntry.SlidingExpiration = gclSettings.DefaultTemplateCacheDuration;
+                        
+            cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
 
             return dynamicContent;
         }

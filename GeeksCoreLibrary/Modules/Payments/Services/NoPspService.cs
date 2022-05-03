@@ -17,26 +17,19 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public bool LogPaymentActions { get; set; }
 
-        private readonly IObjectsService objectsService;
-
-        public NoPspService(IObjectsService objectsService)
-        {
-            this.objectsService = objectsService;
-        }
-
         /// <inheritdoc />
-        public Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethod, string invoiceNumber)
+        public Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
         {
-            return Task.FromResult<PaymentRequestResult>(new()
+            return Task.FromResult(new PaymentRequestResult
             {
                 Successful = true,
                 Action = PaymentRequestActions.Redirect,
-                ActionData = paymentMethod.PaymentServiceProvider.SuccessUrl
+                ActionData = paymentMethodSettings.PaymentServiceProvider.SuccessUrl
             });
         }
 
         /// <inheritdoc />
-        public Task<StatusUpdateResult> ProcessStatusUpdateAsync()
+        public Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
         {
             // There is no payment_in call for "No PSP".
             throw new NotImplementedException();

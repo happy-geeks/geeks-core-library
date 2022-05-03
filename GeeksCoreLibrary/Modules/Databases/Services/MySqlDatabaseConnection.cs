@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -469,14 +470,23 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 CommandForReading.Parameters.AddWithValue(parameter.Key, parameter.Value);
             }
 
-            if (ConnectionForReading.State == ConnectionState.Open)
-            {
-                return;
-            }
-
             if (ConnectionForReading.State == ConnectionState.Closed)
             {
                 await ConnectionForReading.OpenAsync();
+
+                try
+                {
+                    // Make sure we always use the correct timezone.
+                    if (!String.IsNullOrWhiteSpace(gclSettings.DatabaseTimeZone))
+                    {
+                        CommandForReading.CommandText = $"SET @@time_zone = {gclSettings.DatabaseTimeZone.ToMySqlSafeValue(true)};";
+                        await CommandForReading.ExecuteNonQueryAsync();
+                    }
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, $"An error occurred while trying to set the time zone to '{gclSettings.DatabaseTimeZone}'");
+                }
             }
         }
 
@@ -517,6 +527,20 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             if (ConnectionForWriting.State == ConnectionState.Closed)
             {
                 await ConnectionForWriting.OpenAsync();
+
+                try
+                {
+                    // Make sure we always use the correct timezone.
+                    if (!String.IsNullOrWhiteSpace(gclSettings.DatabaseTimeZone))
+                    {
+                        CommandForWriting.CommandText = $"SET @@time_zone = {gclSettings.DatabaseTimeZone.ToMySqlSafeValue(true)};";
+                        await CommandForWriting.ExecuteNonQueryAsync();
+                    }
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, $"An error occurred while trying to set the time zone to '{gclSettings.DatabaseTimeZone}'");
+                }
             }
         }
 

@@ -55,6 +55,22 @@
 
         #region Fields for order process settings
 
+        public const string OrderProcessUrlProperty = "orderprocessurl";
+
+        public const string OrderProcessEmailAddressFieldProperty = "orderprocessemailaddressfield";
+
+        public const string OrderProcessStatusUpdateTemplateProperty = "orderprocessstatusupdatetemplate";
+
+        public const string OrderProcessStatusUpdateWebShopTemplateProperty = "orderprocessstatusupdatewebshoptemplate";
+
+        public const string OrderProcessClearBasketOnConfirmationPageProperty = "orderprocessclearbasketonconfirmationpage";
+
+        public const string OrderProcessHeaderProperty = "orderprocessheader";
+
+        public const string OrderProcessFooterProperty = "orderprocessfooter";
+
+        public const string OrderProcessTemplateProperty = "orderprocesshtmltemplate";
+
         public const string StepTypeProperty = "orderprocesssteptype";
 
         public const string StepTemplateProperty = "orderprocesssteptemplate";
@@ -67,15 +83,9 @@
 
         public const string StepPreviousStepLinkTextProperty = "orderprocessstepprevioussteplinktext";
 
-        public const string StepRedirectUrl = "orderprocessstepredirecturl";
+        public const string StepRedirectUrlProperty = "orderprocessstepredirecturl";
 
-        public const string OrderProcessUrlProperty = "orderprocessurl";
-
-        public const string OrderProcessEmailAddressFieldProperty = "orderprocessemailaddressfield";
-
-        public const string OrderProcessStatusUpdateTemplateProperty = "orderprocessstatusupdatetemplate";
-
-        public const string OrderProcessStatusUpdateWebShopTemplateProperty = "orderprocessstatusupdatewebshoptemplate";
+        public const string StepHideInProgressProperty = "orderprocessstephideinprogress";
 
         public const string GroupTypeProperty = "orderprocessgrouptype";
 
@@ -119,6 +129,30 @@
 
         public const string PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty = "pspkippaymentwhenorderamountequalszero";
 
+        public const string MollieApiKeyLiveProperty = "mollieapikeylive";
+
+        public const string MollieApiKeyTestProperty = "mollieapikeytest";
+
+        public const string BuckarooWebsiteKeyLiveProperty = "buckaroowebsitekeylive";
+
+        public const string BuckarooWebsiteKeyTestProperty = "buckaroowebsitekeytest";
+
+        public const string BuckarooSecretKeyLiveProperty = "buckaroosecretkeylive";
+
+        public const string BuckarooSecretKeyTestProperty = "buckaroosecretkeytest";
+
+        public const string MultiSafepayApiKeyLiveProperty = "multisafepayapikeylive";
+
+        public const string MultiSafepayApiKeyTestProperty = "multisafepayapikeytest";
+
+        public const string RaboOmniKassaRefreshTokenLiveProperty = "raboomnikassarefreshtokenlive";
+
+        public const string RaboOmniKassaRefreshTokenTestProperty = "raboomnikassarefreshtokentest";
+
+        public const string RaboOmniKassaSigningKeyLiveProperty = "raboomnikassasigningkeylive";
+
+        public const string RaboOmniKassaSigningKeyTestProperty = "raboomnikassasigningkeytest";
+
         public const string PaymentMethodServiceProviderProperty = "paymentmethodprovider";
 
         public const string PaymentMethodFeeProperty = "paymentmethodfee";
@@ -135,9 +169,11 @@
 
         #region Fields for basket and orders
         
-        public const string PaymentMethodNameProperty = "paymentMethodName";
+        public const string PaymentMethodNameProperty = "PaymentMethodName";
 
-        public const string PaymentProviderProperty = "paymentProvider";
+        public const string PaymentProviderProperty = "PaymentProvider";
+
+        public const string PaymentMethodIssuerProperty = "PaymentMethodIssuer";
 
         public const string PaymentProviderNameProperty = "paymentProviderName";
 
@@ -149,7 +185,11 @@
 
         public const string IsTestOrderProperty = "IsTestOrder";
 
-        public const string PaymentHistoryProperty = "Paymenthistory";
+        public const string PaymentHistoryProperty = "PaymentHistory";
+
+        public const string PaymentProviderTransactionId = "PspTransactionId";
+
+        public const string PaymentProviderTransactionStatus = "PspTransactionStatus";
 
         public const string ShippingMethodProperty = "ShippingMethod";
 
@@ -158,6 +198,8 @@
         public const string StatusUpdateMailWebShopProperty = "MailToWebShopTemplate";
 
         public const string StatusUpdateMailToConsumerProperty = "MailToConsumerTemplate";
+
+        public const string PaymentCompleteProperty = "PaymentComplete";
 
         #endregion
 

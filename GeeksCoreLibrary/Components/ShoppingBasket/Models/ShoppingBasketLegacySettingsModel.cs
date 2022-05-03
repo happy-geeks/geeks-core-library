@@ -8,10 +8,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 
         public int AantalDagenCookie { get; set; }
 
-        public string BasketEntityName { get; set; }
-
-        public string BasketLineEntityName { get; set; }
-
         public string PropertynameQuantity { get; set; }
 
         public string PropertynameFactor { get; set; }
@@ -88,8 +84,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
                 CookieName = CookieName,
                 CookieAgeInDays = AantalDagenCookie,
 
-                BasketEntityName = BasketEntityName,
-                BasketLineEntityName = BasketLineEntityName,
                 QuantityPropertyName = PropertynameQuantity,
                 FactorPropertyName = PropertynameFactor,
                 PricePropertyName = PropertynamePrice,
@@ -138,8 +132,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
                 CookieName = settings.CookieName,
                 AantalDagenCookie = settings.CookieAgeInDays,
 
-                BasketEntityName = settings.BasketEntityName,
-                BasketLineEntityName = settings.BasketLineEntityName,
                 PropertynameQuantity = settings.QuantityPropertyName,
                 PropertynameFactor = settings.FactorPropertyName,
                 PropertynamePrice = settings.PricePropertyName,
@@ -157,7 +149,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
                 EmptyWinkelmandje = settings.TemplateEmpty,
                 vatPercentageTemplate = settings.VatPercentageTemplate,
                 DeleteProductWhenAmmountIsZero = settings.RemoveItemWhenQuantityIsZero,
-                MaxCountProduct = System.Convert.ToInt32(settings.MaxItemQuantity),
+                MaxCountProduct = settings.MaxItemQuantity,
 
                 EmptyBasket = settings.ClearContentsOnLoad,
                 ClearBasketOnLoad = settings.ResetOnLoad,

@@ -32,7 +32,7 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
             return await cache.GetOrAdd($"Seo_{pageUri.AbsolutePath}",
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultSeoModuleCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultSeoModuleCacheDuration;
                     return await seoService.GetSeoDataForPageAsync(pageUri);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Seo));
         }
@@ -49,7 +49,7 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
             return await cache.GetOrAdd("Sitemap",
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultSeoModuleCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultSeoModuleCacheDuration;
                     return await seoService.GenerateSiteMap();
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Seo));
         }
@@ -60,7 +60,7 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
             return await cache.GetOrAdd("ImageSitemap",
                 async cacheEntry =>
                 {
-                    cacheEntry.SlidingExpiration = gclSettings.DefaultSeoModuleCacheDuration;
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultSeoModuleCacheDuration;
                     return await seoService.GenerateImageSiteMap();
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Seo));
         }

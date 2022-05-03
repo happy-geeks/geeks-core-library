@@ -83,6 +83,7 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
             // Do conversion
             var repeaterCmsSettingsModel = new RepeaterCmsSettingsModel
             {
+                ComponentMode = Repeater.ComponentModes.Repeater,
                 Description = VisibleDescription,
                 GroupingTemplates = new SortedList<string, RepeaterTemplateModel>
                 {

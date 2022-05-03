@@ -16,6 +16,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using LazyCache;
 
@@ -92,7 +93,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 await next.Invoke(context);
                 return;
             }
-            
+
+            // Check regular expression for caching.
+            if (!String.IsNullOrWhiteSpace(contentTemplate.CachingRegex))
+            {
+                var requestUri = HttpContextHelpers.GetOriginalRequestUri(context);
+                if (!Regex.IsMatch(requestUri.AbsolutePath, contentTemplate.CachingRegex, RegexOptions.None, TimeSpan.FromMilliseconds(200)))
+                {
+                    logger.LogDebug($"Content cache disabled for page '{HttpContextHelpers.GetOriginalRequestUri(context)}', because the regular expression ({contentTemplate.CachingRegex}) from the template settings ({contentTemplate.Id}) does not match the current URL ({requestUri.AbsolutePath}).");
+                    await next.Invoke(context);
+                    return;
+                }
+            }
+
             // Get folder and file name.
             var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
             var cacheFileName = await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate);

@@ -36,7 +36,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic,PaymentMethods",
+            ComponentMode = "Checkout",
             DisplayOrder = 10
         )]
         public string Template { get; set; }
@@ -58,13 +58,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{confirmButtonText}</strong> The text for the button to go to the next step. This will be retrieved from the translations module from Wiser.</li>
     <li><strong>{previousStepLinkText}</strong> The text on the link to go back to the previous step.</li>
     <li><strong>{previousStepUrl}</strong> The URL of the previous step.</li>
-    <li><strong>{type}</strong> The type of step. Can be 'GroupsAndFields', 'Summary' or 'OrderConfirmation'.</li>
+    <li><strong>{type}</strong> The type of step. Can be 'GroupsAndFields', 'Summary', 'OrderConfirmation' or 'orderPending'.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic",
+            ComponentMode = "Checkout",
             DisplayOrder = 20
         )]
         public string TemplateStep { get; set; }
@@ -104,7 +104,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic",
+            ComponentMode = "Checkout",
             DisplayOrder = 30
         )]
         public string TemplateFieldsGroup { get; set; }
@@ -127,7 +127,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic,PaymentMethods",
+            ComponentMode = "Checkout",
             DisplayOrder = 35
         )]
         public string TemplatePaymentMethodsGroup { get; set; }
@@ -169,10 +169,38 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic",
+            ComponentMode = "Checkout",
             DisplayOrder = 40
         )]
         public string TemplateInputField { get; set; }
+        
+        /// <summary>
+        /// The template for a normal input field in the order process.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Template textarea field",
+            Description = @"The template for a textarea field in the order process. You can use the following variables here:
+<ul>
+    <li><strong>{id}</strong> The ID of the Wiser item with the settings for the field.</li>
+    <li><strong>{title}</strong> The title of the Wiser item with the settings for the field.</li>
+    <li><strong>{error}</strong> If a validation error occurred with this field, this variable will be replaced by the value of 'TemplateFieldError', otherwise it will be replaced by an empty string.</li>
+    <li><strong>{errorClass}</strong> If a validation error occurred with this field, this variable will be replaced by the literal text 'error', otherwise it will be replaced by en empty string.</li>
+    <li><strong>{fieldId}</strong> The ID of the field as it's set in the settings for the field. This value should be used in the 'name' and 'id' attributes of the input and the 'for' attribute of the label.</li>
+    <li><strong>{label}</strong> The label for this field.</li>
+    <li><strong>{placeholder}</strong> The placeholder for the field, should be used in the 'placeholder' attribute of the input.</li>
+    <li><strong>{required}</strong> This will be replaced with the 'required' attribute if the field is required, or with an empty string if it isn't.</li>
+    <li><strong>{pattern}</strong> The regex validation pattern for the field. This will be replaced with the entire attribute (pattern='the pattern') if there is a pattern, or with an empty string if there isn't.</li>
+    <li><strong>{value}</strong> The current value of the field, retrieved from the basket or logged in user, or POST variables.</li>
+    <li><strong>{fieldClass}</strong> Any extra CSS classes that are set in the settings of the a field in Wiser.</li>
+</ul>",
+            DeveloperRemarks = "",
+            TabName = CmsAttributes.CmsTabName.Layout,
+            GroupName = CmsAttributes.CmsGroupName.Templates,
+            TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
+            ComponentMode = "Checkout",
+            DisplayOrder = 45
+        )]
+        public string TemplateTextareaField { get; set; }
         
         /// <summary>
         /// The template for a radio button field in the order process.
@@ -196,7 +224,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic",
+            ComponentMode = "Checkout",
             DisplayOrder = 50
         )]
         public string TemplateRadioButtonField { get; set; }
@@ -218,7 +246,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic",
+            ComponentMode = "Checkout",
             DisplayOrder = 55
         )]
         public string TemplateRadioButtonFieldOption { get; set; }
@@ -245,7 +273,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic",
+            ComponentMode = "Checkout",
             DisplayOrder = 60
         )]
         public string TemplateSelectField { get; set; }
@@ -267,7 +295,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic",
+            ComponentMode = "Checkout",
             DisplayOrder = 65
         )]
         public string TemplateSelectFieldOption { get; set; }
@@ -293,7 +321,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic",
+            ComponentMode = "Checkout",
             DisplayOrder = 70
         )]
         public string TemplateCheckboxField { get; set; }
@@ -308,7 +336,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic",
+            ComponentMode = "Checkout",
             DisplayOrder = 80
         )]
         public string TemplateProgress { get; set; }
@@ -329,7 +357,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic",
+            ComponentMode = "Checkout",
             DisplayOrder = 80
         )]
         public string TemplateProgressStep { get; set; }
@@ -350,7 +378,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            ComponentMode = "Automatic,PaymentMethods",
+            ComponentMode = "Checkout",
             DisplayOrder = 90
         )]
         public string TemplatePaymentMethod { get; set; }

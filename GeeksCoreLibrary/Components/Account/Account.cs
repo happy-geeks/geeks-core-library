@@ -607,7 +607,7 @@ namespace GeeksCoreLibrary.Components.Account
                 if (userId > 0 && !String.IsNullOrWhiteSpace(Settings.MainQuery))
                 {
                     var query = SetupAccountQuery(Settings.MainQuery, userId);
-                    var queryResult = await RenderAndExecuteQueryAsync(query);
+                    var queryResult = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                     if (queryResult.Rows.Count > 0)
                     {
@@ -668,7 +668,7 @@ namespace GeeksCoreLibrary.Components.Account
                 if (userIdFromQueryString > 0)
                 {
                     var query = SetupAccountQuery(Settings.ValidateResetPasswordTokenQuery, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
-                    var dataTable = await RenderAndExecuteQueryAsync(query);
+                    var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                     if (dataTable == null || dataTable.Rows.Count == 0)
                     {
@@ -775,7 +775,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                 var userData = await AccountsService.GetUserDataFromCookieAsync();
                 var query = SetupAccountQuery(Settings.MainQuery, userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreateAccountId());
-                var accountDataTable = await RenderAndExecuteQueryAsync(query);
+                var accountDataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 var availableFields = new List<string>();
 
                 if (accountDataTable.Rows.Count > 0)
@@ -962,7 +962,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                 // Add fields to the page.
                 var query = SetupAccountQuery(Settings.GetSubAccountQuery, userData.MainUserId, subAccountId: selectedSubAccount);
-                var dataTable = await RenderAndExecuteQueryAsync(query);
+                var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 var availableFields = new List<string> { Settings.PasswordFieldName, Settings.NewPasswordFieldName, Settings.NewPasswordConfirmationFieldName, Settings.LoginFieldName, Settings.EmailAddressFieldName, Settings.RoleFieldName };
 
                 if (dataTable.Rows.Count > 0)
@@ -1004,7 +1004,7 @@ namespace GeeksCoreLibrary.Components.Account
                 if (UInt64.TryParse(request.Query[$"{Constants.DeleteSubAccountQueryStringKey}{ComponentId}"].ToString(), out var deleteSubAccountId) && deleteSubAccountId > 0)
                 {
                     query = SetupAccountQuery(Settings.DeleteAccountQuery, userData.MainUserId, subAccountId: deleteSubAccountId);
-                    await RenderAndExecuteQueryAsync(query);
+                    await RenderAndExecuteQueryAsync(query, skipCache: true);
                     resultHtml = !resultHtml.Contains("{success}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateSuccess : resultHtml.ReplaceCaseInsensitive("{error}", "").ReplaceCaseInsensitive("{success}", Settings.TemplateSuccess);
                 }
                 else if (!request.HasFormContentType || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
@@ -1053,7 +1053,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                     // Execute the GetSubAccountQuery again, so that have can show the new values in the HTML.
                     query = SetupAccountQuery(Settings.GetSubAccountQuery, userData.MainUserId, subAccountId: selectedSubAccount);
-                    dataTable = await RenderAndExecuteQueryAsync(query);
+                    dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                     fieldsDataRows = dataTable.Rows;
                 }
 
@@ -1082,7 +1082,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                 // List of sub accounts.
                 query = SetupAccountQuery(Settings.MainQuery, userData.MainUserId, subAccountId: selectedSubAccount);
-                dataTable = await RenderAndExecuteQueryAsync(query);
+                dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 resultHtml = resultHtml.ReplaceCaseInsensitive("{amountOfSubAccounts}", dataTable.Rows.Count.ToString());
 
                 foreach (Match match in Regex.Matches(resultHtml, "{repeat:subAccounts}(.*?){/repeat:subAccounts}", RegexOptions.Singleline))
@@ -1258,7 +1258,7 @@ namespace GeeksCoreLibrary.Components.Account
                     query = query.ReplaceCaseInsensitive($"'{{{parameterName}}}'", $"?{parameterName}").ReplaceCaseInsensitive($"{{{parameterName}}}", $"?{parameterName}");
                 }
 
-                var dataTable = await RenderAndExecuteQueryAsync(query);
+                var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                 if (dataTable.Rows.Count > 0)
                 {
@@ -1291,7 +1291,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 // Add / update the account.
-                dataTable = await RenderAndExecuteQueryAsync(query);
+                dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                 // Get the user ID, if a new account was created. This will throw an exception if the CreateAccountQuery did not return a new ID, so that the changes will be rolled back and it's a developer mistake, not a user mistake.
                 if (userId <= 0)
@@ -1345,7 +1345,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                         DatabaseConnection.AddParameter("name", field);
                         DatabaseConnection.AddParameter("value", formValue);
-                        await RenderAndExecuteQueryAsync(query);
+                        await RenderAndExecuteQueryAsync(query, skipCache: true);
                     }
                 }
 
@@ -1391,7 +1391,7 @@ namespace GeeksCoreLibrary.Components.Account
             if (!String.IsNullOrWhiteSpace(Settings.QueryNotificationEmail))
             {
                 var query = Settings.QueryNotificationEmail.ReplaceCaseInsensitive("'{userId}'", "?userId").ReplaceCaseInsensitive("{userId}", "?userId");
-                var dataTable = await RenderAndExecuteQueryAsync(query);
+                var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                 if (dataTable.Rows.Count == 0)
                 {
@@ -1573,7 +1573,7 @@ namespace GeeksCoreLibrary.Components.Account
 
             // Get user information.
             var query = decryptedUserId > 0 ? SetupAccountQuery(Settings.AutoLoginQuery, decryptedUserId) : SetupAccountQuery(Settings.LoginQuery, loginValue: loginValue);
-            var accountResult = await RenderAndExecuteQueryAsync(query);
+            var accountResult = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
             // User doesn't exist.
             if (accountResult == null || accountResult.Rows.Count == 0)
@@ -1717,7 +1717,7 @@ namespace GeeksCoreLibrary.Components.Account
             DatabaseConnection.AddParameter("name", String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? "google-cid" : Settings.GoogleClientIdFieldName);
             DatabaseConnection.AddParameter("value", googleClientId);
 
-            await RenderAndExecuteQueryAsync($"INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)");
+            await RenderAndExecuteQueryAsync($"INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)", skipCache: true);
         }
 
         /// <summary>
@@ -1741,7 +1741,7 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             var query = SetupAccountQuery(Settings.GetUserIdViaEmailAddressQuery, emailAddress: emailAddress);
-            var result = await RenderAndExecuteQueryAsync(query);
+            var result = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
             if (result.Rows.Count == 0)
             {
@@ -1775,7 +1775,7 @@ namespace GeeksCoreLibrary.Components.Account
             DatabaseConnection.AddParameter("resetPasswordTokenFieldName", Settings.ResetPasswordTokenFieldName);
             DatabaseConnection.AddParameter("resetPasswordExpireDate", tokenExpireDate);
             DatabaseConnection.AddParameter("resetPasswordExpireDateFieldName", Settings.ResetPasswordExpireDateFieldName);
-            await RenderAndExecuteQueryAsync(query);
+            await RenderAndExecuteQueryAsync(query, skipCache: true);
 
             // Get the data we need to send the mail.
             var subject = "";
@@ -1786,7 +1786,7 @@ namespace GeeksCoreLibrary.Components.Account
             if (!String.IsNullOrWhiteSpace(Settings.QueryPasswordForgottenEmail))
             {
                 query = Settings.QueryPasswordForgottenEmail.ReplaceCaseInsensitive("'{userId}'", "?userId").ReplaceCaseInsensitive("{userId}", "?userId");
-                result = await RenderAndExecuteQueryAsync(query);
+                result = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                 if (result.Rows.Count == 0)
                 {
@@ -1875,7 +1875,7 @@ namespace GeeksCoreLibrary.Components.Account
                 return;
             }
 
-            await RenderAndExecuteQueryAsync(query);
+            await RenderAndExecuteQueryAsync(query, skipCache: true);
         }
 
         /// <summary>
@@ -1906,7 +1906,7 @@ namespace GeeksCoreLibrary.Components.Account
             if (Settings.ComponentMode != ComponentModes.ResetPassword && Settings.ComponentMode != ComponentModes.SubAccountsManagement && userId > 0 && !isMakingNewAccount && Settings.RequireCurrentPasswordForChangingPassword)
             {
                 query = SetupAccountQuery(Settings.ValidatePasswordQuery, userId);
-                var dataTable = await RenderAndExecuteQueryAsync(query);
+                var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 if (dataTable == null || dataTable.Rows.Count == 0)
                 {
                     return ResetOrChangePasswordResults.InvalidTokenOrUser;
@@ -1944,7 +1944,7 @@ namespace GeeksCoreLibrary.Components.Account
             {
                 var newPasswordHash = newPassword.ToSha512ForPasswords();
                 query = SetupAccountQuery(Settings.ChangePasswordQuery, userId, passwordHash: newPasswordHash);
-                await RenderAndExecuteQueryAsync(query);
+                await RenderAndExecuteQueryAsync(query, skipCache: true);
             }
 
             return ResetOrChangePasswordResults.Success;

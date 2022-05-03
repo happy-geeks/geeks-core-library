@@ -45,7 +45,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             return await appCache.GetOrAdd($"GetConfiguratorDataAsync_{(!String.IsNullOrWhiteSpace(hostName) && addHostNameToCache ? $"{hostName}_" : "")}{name}",
                                            async cacheEntry =>
                                            {
-                                               cacheEntry.SlidingExpiration = gclSettings.DefaultConfiguratorsCacheDuration;
+                                               cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultConfiguratorsCacheDuration;
                                                return await configuratorsService.GetConfiguratorDataAsync(name);
                                            });
         }
@@ -63,9 +63,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
-        public Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration)
+        public Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration, bool isQuery)
         {
-            return configuratorsService.ReplaceConfiguratorItemsAsync(templateOrQuery, configuration);
+            return configuratorsService.ReplaceConfiguratorItemsAsync(templateOrQuery, configuration, isQuery);
         }
 
         /// <inheritdoc />

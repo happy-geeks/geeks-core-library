@@ -140,13 +140,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             {
                 contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates));
 
-                // Load (S)CSS file with the same name as the order process.
+                // Load (S)CSS and/or JavaScript files with the same name as the order process.
                 if (!String.IsNullOrWhiteSpace(orderProcessSettings.Title))
                 {
                     var cssTemplateId = await templatesService.GetTemplateIdFromNameAsync(orderProcessSettings.Title, TemplateTypes.Scss);
                     if (cssTemplateId > 0)
                     {
                         cssTemplates.Add(cssTemplateId);
+                    }
+
+                    var javascriptTemplateId = await templatesService.GetTemplateIdFromNameAsync(orderProcessSettings.Title, TemplateTypes.Js);
+                    if (javascriptTemplateId > 0)
+                    {
+                        javascriptTemplates.Add(javascriptTemplateId);
                     }
                 }
             }
@@ -170,6 +176,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             }
 
             var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml);
+
+            // We never want the checkout process to be indexed.
+            viewModel.MetaData.MetaTags["robots"] = "noindex,nofollow";
 
             return View("Template", viewModel);
         }
