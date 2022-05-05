@@ -109,7 +109,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
 
             if (UInt64.TryParse(orderCountryCode, out var countryId))
             {
-                var countryItem = await wiserItemsService.GetItemDetailsAsync(countryId);
+                var countryItem = await wiserItemsService.GetItemDetailsAsync(countryId, skipPermissionsCheck: true);
                 countryCode = countryItem.GetDetailValue("name_short")?.ToUpper();
             }
             else
@@ -133,8 +133,8 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             {
                 var postNlDetailsItemId = UInt64.Parse(await this.objectService.FindSystemObjectByDomainNameAsync("postnl_details_item_id"));
                 var orderId = encryptedId.DecryptWithAesWithSalt(withDateTime: true, minutesValidOverride: 30);
-                var postNlDetails = await wiserItemsService.GetItemDetailsAsync(postNlDetailsItemId);
-                var orderDetails = await wiserItemsService.GetItemDetailsAsync(UInt64.Parse(orderId));
+                var postNlDetails = await wiserItemsService.GetItemDetailsAsync(postNlDetailsItemId, skipPermissionsCheck: true);
+                var orderDetails = await wiserItemsService.GetItemDetailsAsync(UInt64.Parse(orderId), skipPermissionsCheck: true);
 
                 if (orderDetails == null || orderDetails.Id == 0)
                 {
@@ -237,7 +237,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                         InvoiceNumber = orderId,
                         ShipmentType = "Commercial Goods"
                     };
-                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(UInt64.Parse(orderId), 5002, "orderline");
+                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(UInt64.Parse(orderId), 5002, "orderline", skipPermissionsCheck: true);
                     foreach (WiserItemModel orderLine in orderLines)
                     {
                         postNlRequest.Shipments.First()
@@ -265,7 +265,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                 orderDetails.SetDetail("postnl_barcode", barcode);
                 orderDetails.SetDetail("country_code", await GetCountryCodeAsync(orderDetails, "country"));
 
-                await wiserItemsService.UpdateAsync(orderDetails.Id, orderDetails);
+                await wiserItemsService.UpdateAsync(orderDetails.Id, orderDetails, skipPermissionsCheck: true);
                 foreach (var labelResponseShipment in postNlResponse.ResponseShipments)
                 {
                     if (labelResponseShipment.Errors.Any())
@@ -285,7 +285,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                             ContentType = "application/pdf",
                             PropertyName = "postnl_label",
                             Title = barcode
-                        });
+                        }, skipPermissionsCheck: true);
                     }
                 }
 

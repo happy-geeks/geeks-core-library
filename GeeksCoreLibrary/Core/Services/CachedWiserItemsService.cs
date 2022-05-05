@@ -31,81 +31,87 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await SaveAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction);
+            return await SaveAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(IWiserItemsService service, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true)
+        public async Task<WiserItemModel> SaveAsync(IWiserItemsService service, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.SaveAsync(service, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction);
+            return await wiserItemsService.SaveAsync(service, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true)
+        public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await CreateAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction);
+            return await CreateAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> CreateAsync(IWiserItemsService service, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true)
+        public async Task<WiserItemModel> CreateAsync(IWiserItemsService service, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.CreateAsync(service, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction);
+            return await wiserItemsService.CreateAsync(service, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemDuplicationResultModel> DuplicateItemAsync(ulong itemId, ulong parentId, string username = "GCL", string encryptionKey = "", ulong userId = 0, string entityType = null, string parentEntityType = null, bool createNewTransaction = true)
+        public async Task<WiserItemDuplicationResultModel> DuplicateItemAsync(ulong itemId, ulong parentId, string username = "GCL", string encryptionKey = "", ulong userId = 0, string entityType = null, string parentEntityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await DuplicateItemAsync(this, itemId, parentId, username, encryptionKey, userId, entityType, parentEntityType, createNewTransaction);
+            return await DuplicateItemAsync(this, itemId, parentId, username, encryptionKey, userId, entityType, parentEntityType, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemDuplicationResultModel> DuplicateItemAsync(IWiserItemsService service, ulong itemId, ulong parentId, string username = "GCL", string encryptionKey = "", ulong userId = 0, string entityType = null, string parentEntityType = null, bool createNewTransaction = true)
+        public async Task<WiserItemDuplicationResultModel> DuplicateItemAsync(IWiserItemsService service, ulong itemId, ulong parentId, string username = "GCL", string encryptionKey = "", ulong userId = 0, string entityType = null, string parentEntityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.DuplicateItemAsync(service, itemId, parentId, username, encryptionKey, userId, entityType, parentEntityType, createNewTransaction);
+            return await wiserItemsService.DuplicateItemAsync(service, itemId, parentId, username, encryptionKey, userId, entityType, parentEntityType, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true)
+        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction);
+            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService service, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true)
+        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService service, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.UpdateAsync(service, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction);
+            return await wiserItemsService.UpdateAsync(service, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.ChangeEntityTypeAsync(itemId, currentEntityType, newEntityType, username, userId, saveHistory);
+            return await ChangeEntityTypeAsync(this, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<int> DeleteAsync(ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
+        public async Task<int> ChangeEntityTypeAsync(IWiserItemsService service, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            return await DeleteAsync(this, itemId, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+            return await wiserItemsService.ChangeEntityTypeAsync(service, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<int> DeleteAsync(IWiserItemsService service, ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
+        public async Task<int> DeleteAsync(ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.DeleteAsync(service, itemId, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+            return await DeleteAsync(this, itemId, undelete, username, userId, saveHistory, entityType, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<int> DeleteAsync(List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
+        public async Task<int> DeleteAsync(IWiserItemsService service, ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await DeleteAsync(this, itemIds, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+            return await wiserItemsService.DeleteAsync(service, itemId, undelete, username, userId, saveHistory, entityType, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<int> DeleteAsync(IWiserItemsService service, List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
+        public async Task<int> DeleteAsync(List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.DeleteAsync(service, itemIds, undelete, username, userId, saveHistory, entityType, createNewTransaction);
+            return await DeleteAsync(this, itemIds, undelete, username, userId, saveHistory, entityType, createNewTransaction, skipPermissionsCheck);
+        }
+
+        /// <inheritdoc />
+        public async Task<int> DeleteAsync(IWiserItemsService service, List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
+        {
+            return await wiserItemsService.DeleteAsync(service, itemIds, undelete, username, userId, saveHistory, entityType, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
@@ -157,39 +163,39 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> GetItemDetailsAsync(ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null)
+        public async Task<WiserItemModel> GetItemDetailsAsync(ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null, bool skipPermissionsCheck = false)
         {
-            return await GetItemDetailsAsync(this, itemId, uniqueId, languageCode, userId, detailKey, detailValue, returnNullIfDeleted, skipDetailsWithoutLanguageCode, entityType);
+            return await GetItemDetailsAsync(this, itemId, uniqueId, languageCode, userId, detailKey, detailValue, returnNullIfDeleted, skipDetailsWithoutLanguageCode, entityType, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> GetItemDetailsAsync(IWiserItemsService service, ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null)
+        public async Task<WiserItemModel> GetItemDetailsAsync(IWiserItemsService service, ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.GetItemDetailsAsync(service, itemId, uniqueId, languageCode, userId, detailKey, detailValue, returnNullIfDeleted, skipDetailsWithoutLanguageCode, entityType);
+            return await wiserItemsService.GetItemDetailsAsync(service, itemId, uniqueId, languageCode, userId, detailKey, detailValue, returnNullIfDeleted, skipDetailsWithoutLanguageCode, entityType, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
+        public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool skipPermissionsCheck = false)
         {
-            return await GetLinkedItemDetailsAsync(this, itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType);
+            return await GetLinkedItemDetailsAsync(this, itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(IWiserItemsService service, ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
+        public async Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(IWiserItemsService service, ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.GetLinkedItemDetailsAsync(service, itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType);
+            return await wiserItemsService.GetLinkedItemDetailsAsync(service, itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
+        public async Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool skipPermissionsCheck = false)
         {
-            return await GetLinkedItemIdsAsync(this, itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType);
+            return await GetLinkedItemIdsAsync(this, itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<List<ulong>> GetLinkedItemIdsAsync(IWiserItemsService service, ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null)
+        public async Task<List<ulong>> GetLinkedItemIdsAsync(IWiserItemsService service, ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.GetLinkedItemIdsAsync(service, itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType);
+            return await wiserItemsService.GetLinkedItemIdsAsync(service, itemId, linkType, entityType, includeDeletedItems, userId, reverse, itemIdEntityType, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
@@ -241,111 +247,111 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<ulong> AddItemLinkAsync(ulong itemId, ulong destinationItemId, int type, int ordering = 1, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task<ulong> AddItemLinkAsync(ulong itemId, ulong destinationItemId, int type, int ordering = 1, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            return await AddItemLinkAsync(this, itemId, destinationItemId, type, ordering, username, userId, saveHistory);
+            return await AddItemLinkAsync(this, itemId, destinationItemId, type, ordering, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<ulong> AddItemLinkAsync(IWiserItemsService service, ulong itemId, ulong destinationItemId, int type, int ordering = 1, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task<ulong> AddItemLinkAsync(IWiserItemsService service, ulong itemId, ulong destinationItemId, int type, int ordering = 1, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.AddItemLinkAsync(service, itemId, destinationItemId, type, ordering, username, userId, saveHistory);
+            return await wiserItemsService.AddItemLinkAsync(service, itemId, destinationItemId, type, ordering, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveItemLinksAsync(ulong destinationItemId, int type, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task RemoveItemLinksAsync(ulong destinationItemId, int type, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await RemoveItemLinksAsync(this, destinationItemId, type, username, userId, saveHistory);
+            await RemoveItemLinksAsync(this, destinationItemId, type, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveItemLinksAsync(IWiserItemsService service, ulong destinationItemId, int type, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task RemoveItemLinksAsync(IWiserItemsService service, ulong destinationItemId, int type, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await wiserItemsService.RemoveItemLinksAsync(service, destinationItemId, type, username, userId, saveHistory);
+            await wiserItemsService.RemoveItemLinksAsync(service, destinationItemId, type, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveItemLinksByIdAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true)
+        public async Task RemoveItemLinksByIdAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await RemoveItemLinksByIdAsync(this, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory);
+            await RemoveItemLinksByIdAsync(this, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveItemLinksByIdAsync(IWiserItemsService service, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true)
+        public async Task RemoveItemLinksByIdAsync(IWiserItemsService service, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await wiserItemsService.RemoveItemLinksByIdAsync(service, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory);
+            await wiserItemsService.RemoveItemLinksByIdAsync(service, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveParentLinkOfItemsAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true)
+        public async Task RemoveParentLinkOfItemsAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await RemoveParentLinkOfItemsAsync(this, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory);
+            await RemoveParentLinkOfItemsAsync(this, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveParentLinkOfItemsAsync(IWiserItemsService service, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true)
+        public async Task RemoveParentLinkOfItemsAsync(IWiserItemsService service, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await wiserItemsService.RemoveParentLinkOfItemsAsync(service, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory);
+            await wiserItemsService.RemoveParentLinkOfItemsAsync(service, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0UL, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
+        public async Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0UL, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            await RemoveLinkedItemsAsync(this, destinationItemId, type, exceptItemIds, username, userId, saveHistory, entityType, createNewTransaction);
+            await RemoveLinkedItemsAsync(this, destinationItemId, type, exceptItemIds, username, userId, saveHistory, entityType, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveLinkedItemsAsync(IWiserItemsService service, ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true)
+        public async Task RemoveLinkedItemsAsync(IWiserItemsService service, ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            await wiserItemsService.RemoveLinkedItemsAsync(service, destinationItemId, type, exceptItemIds, username, userId, saveHistory, entityType, createNewTransaction);
+            await wiserItemsService.RemoveLinkedItemsAsync(service, destinationItemId, type, exceptItemIds, username, userId, saveHistory, entityType, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await ChangeItemLinksAsync(this, oldDestinationItemId, newDestinationItemId, entityType, type, username, userId, saveHistory);
+            await ChangeItemLinksAsync(this, oldDestinationItemId, newDestinationItemId, entityType, type, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task ChangeItemLinksAsync(IWiserItemsService service, ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task ChangeItemLinksAsync(IWiserItemsService service, ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await wiserItemsService.ChangeItemLinksAsync(service, oldDestinationItemId, newDestinationItemId, entityType, type, username, userId, saveHistory);
+            await wiserItemsService.ChangeItemLinksAsync(service, oldDestinationItemId, newDestinationItemId, entityType, type, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task ChangeLinkTypesAsync(ulong destinationItemId, int oldLinkType, int newLinkType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task ChangeLinkTypesAsync(ulong destinationItemId, int oldLinkType, int newLinkType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await ChangeLinkTypesAsync(this, destinationItemId, oldLinkType, newLinkType, username, userId, saveHistory);
+            await ChangeLinkTypesAsync(this, destinationItemId, oldLinkType, newLinkType, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task ChangeLinkTypesAsync(IWiserItemsService service, ulong destinationItemId, int oldLinkType, int newLinkType, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task ChangeLinkTypesAsync(IWiserItemsService service, ulong destinationItemId, int oldLinkType, int newLinkType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await wiserItemsService.ChangeLinkTypesAsync(service, destinationItemId, oldLinkType, newLinkType, username, userId, saveHistory);
+            await wiserItemsService.ChangeLinkTypesAsync(service, destinationItemId, oldLinkType, newLinkType, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task ChangeLinkTypeAsync(ulong destinationItemId, int oldLinkType, int newLinkType, ulong sourceItemId, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task ChangeLinkTypeAsync(ulong destinationItemId, int oldLinkType, int newLinkType, ulong sourceItemId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await ChangeLinkTypeAsync(this, destinationItemId, oldLinkType, newLinkType, sourceItemId, username, userId, saveHistory);
+            await ChangeLinkTypeAsync(this, destinationItemId, oldLinkType, newLinkType, sourceItemId, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task ChangeLinkTypeAsync(IWiserItemsService service, ulong destinationItemId, int oldLinkType, int newLinkType, ulong sourceItemId, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task ChangeLinkTypeAsync(IWiserItemsService service, ulong destinationItemId, int oldLinkType, int newLinkType, ulong sourceItemId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            await wiserItemsService.ChangeLinkTypeAsync(service, destinationItemId, oldLinkType, newLinkType, sourceItemId, username, userId, saveHistory);
+            await wiserItemsService.ChangeLinkTypeAsync(service, destinationItemId, oldLinkType, newLinkType, sourceItemId, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory);
+            return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task<ulong> AddItemFileAsync(IWiserItemsService service, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true)
+        public async Task<ulong> AddItemFileAsync(IWiserItemsService service, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
-            return await wiserItemsService.AddItemFileAsync(service, wiserItemFile, username, userId, saveHistory);
+            return await wiserItemsService.AddItemFileAsync(service, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />

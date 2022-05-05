@@ -22,8 +22,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="alwaysSaveValues">Optional: This function gets the current values in the database and only saves values that have been changed. Set this parameter to true to disable that functionality and force the function to always save all values (except read only fields).</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again, with the new ID.</returns>
-        Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true);
+        Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false);
         
         /// <summary>
         /// Saves an item. If the item has an ID of 0, a new item will be created.
@@ -38,8 +39,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="alwaysSaveValues">Optional: This function gets the current values in the database and only saves values that have been changed. Set this parameter to true to disable that functionality and force the function to always save all values (except read only fields).</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again, with the new ID.</returns>
-        Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true);
+        Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Creates an item.
@@ -53,9 +55,10 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="encryptionKey">Optional: The key used for encrypting the new item ID. Default value is the key from the web.config setting "QueryTemplatesDecryptionKey".</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again, with the new ID.</returns>
         /// <exception cref="System.ArgumentNullException">If wiserItem or entityType is <see langword="null"/>.</exception>
-        Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true);
+        Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Creates an item.
@@ -70,9 +73,10 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="encryptionKey">Optional: The key used for encrypting the new item ID. Default value is the key from the web.config setting "QueryTemplatesDecryptionKey".</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again, with the new ID.</returns>
         /// <exception cref="System.ArgumentNullException">If wiserItem or entityType is <see langword="null"/>.</exception>
-        Task<WiserItemModel> CreateAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true);
+        Task<WiserItemModel> CreateAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Duplicate an item. This could also duplicate links and linked items, depending on the settings in wiser_link.
@@ -85,8 +89,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="entityType">Optional: The entity type of the item that you're duplicating. This is needed for entities that have a dedicated table, instead of wiser_item.</param>
         /// <param name="parentEntityType">Optional: The entity type of the parent of the item that you're duplicating. This is needed for entities that have a dedicated table, instead of wiser_item.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>An <see cref="WiserItemDuplicationResultModel"/> with the results.</returns>
-        Task<WiserItemDuplicationResultModel> DuplicateItemAsync(ulong itemId, ulong parentId, string username = "GCL", string encryptionKey = "", ulong userId = 0, string entityType = null, string parentEntityType = null, bool createNewTransaction = true);
+        Task<WiserItemDuplicationResultModel> DuplicateItemAsync(ulong itemId, ulong parentId, string username = "GCL", string encryptionKey = "", ulong userId = 0, string entityType = null, string parentEntityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Duplicate an item. This could also duplicate links and linked items, depending on the settings in wiser_link.
@@ -100,8 +105,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="entityType">Optional: The entity type of the item that you're duplicating. This is needed for entities that have a dedicated table, instead of wiser_item.</param>
         /// <param name="parentEntityType">Optional: The entity type of the parent of the item that you're duplicating. This is needed for entities that have a dedicated table, instead of wiser_item.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>An <see cref="WiserItemDuplicationResultModel"/> with the results.</returns>
-        Task<WiserItemDuplicationResultModel> DuplicateItemAsync(IWiserItemsService wiserItemsService, ulong itemId, ulong parentId, string username = "GCL", string encryptionKey = "", ulong userId = 0, string entityType = null, string parentEntityType = null, bool createNewTransaction = true);
+        Task<WiserItemDuplicationResultModel> DuplicateItemAsync(IWiserItemsService wiserItemsService, ulong itemId, ulong parentId, string username = "GCL", string encryptionKey = "", ulong userId = 0, string entityType = null, string parentEntityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Updates an item.
@@ -114,8 +120,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="alwaysSaveValues">Optional: This function gets the current values in the database and only saves values that have been changed. Set this parameter to true to disable that functionality and force the function to always save all values (except read only fields).</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again.</returns>
-        Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true);
+        Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Updates an item.
@@ -129,8 +136,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="alwaysSaveValues">Optional: This function gets the current values in the database and only saves values that have been changed. Set this parameter to true to disable that functionality and force the function to always save all values (except read only fields).</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again.</returns>
-        Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true);
+        Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Changes an entity type of an item.
@@ -142,7 +150,21 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
+
+        /// <summary>
+        /// Changes an entity type of an item.
+        /// </summary>
+        /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
+        /// <param name="itemId">The ID of the item to change entity type from.</param>
+        /// <param name="currentEntityType">The name of the entity type that the item currently has.</param>
+        /// <param name="newEntityType">The new entity type for the item.</param>
+        /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
+        /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
+        /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        /// <returns>The amount of affected rows.</returns>
+        Task<int> ChangeEntityTypeAsync(IWiserItemsService wiserItemsService, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Deletes or un-deletes an item.
@@ -154,8 +176,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="entityType">Optional: The entity type of the item that you're (un)deleting. This is needed for entities that have a dedicated table.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> DeleteAsync(ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true);
+        Task<int> DeleteAsync(ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Deletes or un-deletes an item.
@@ -168,8 +191,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="entityType">Optional: The entity type of the item that you're (un)deleting. This is needed for entities that have a dedicated table.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> DeleteAsync(IWiserItemsService wiserItemsService, ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true);
+        Task<int> DeleteAsync(IWiserItemsService wiserItemsService, ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Deletes or un-deletes items.
@@ -183,8 +207,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
         /// <param name="entityType">Optional: The entity type of the item that you're (un)deleting. This is needed for entities that have a dedicated table.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> DeleteAsync(List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true);
+        Task<int> DeleteAsync(List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Deletes or un-deletes items.
@@ -199,8 +224,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
         /// <param name="entityType">Optional: The entity type of the item that you're (un)deleting. This is needed for entities that have a dedicated table.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> DeleteAsync(IWiserItemsService wiserItemsService, List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true);
+        Task<int> DeleteAsync(IWiserItemsService wiserItemsService, List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Executes the workflow of an item after it has been created or updated.
@@ -284,7 +310,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="returnNullIfDeleted">Optional: Whether to return nothing/null if the item has been marked as deleted. Default is true.</param>
         /// <param name="skipDetailsWithoutLanguageCode">Optional: Set to true to ONLY get details with the given language code. Otherwise it will get all details with the given language code and all details without a specified language code.</param>
         /// <param name="entityType">Optional: Enter an entity type here. This is required for entities that have a dedicated table. Default is null.</param>
-        Task<WiserItemModel> GetItemDetailsAsync(ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task<WiserItemModel> GetItemDetailsAsync(ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Function gets an item from the database and returns all details in list.
@@ -299,7 +326,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="returnNullIfDeleted">Optional: Whether to return nothing/null if the item has been marked as deleted. Default is true.</param>
         /// <param name="skipDetailsWithoutLanguageCode">Optional: Set to true to ONLY get details with the given language code. Otherwise it will get all details with the given language code and all details without a specified language code.</param>
         /// <param name="entityType">Optional: Enter an entity type here. This is required for entities that have a dedicated table. Default is null.</param>
-        Task<WiserItemModel> GetItemDetailsAsync(IWiserItemsService wiserItemsService, ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task<WiserItemModel> GetItemDetailsAsync(IWiserItemsService wiserItemsService, ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// By default this function gets all items linked to the given <see cref="itemId"/>, unless the parameter <see cref="reverse"/> is set to true,
@@ -312,8 +340,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user. If this is greater than 0, this function will check permissions and only return items that this user is allowed to see.</param>
         /// <param name="reverse">Optional: Set to true to get the items that this item is linked to, instead of the items linked to this item. Default is false.</param>
         /// <param name="itemIdEntityType">Optional: You can enter the entity type of the given itemId here, if you want to get items from a dedicated table and those items can have multiple different entity types. This only works if all those items exist in the same table. Default is null.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>A list of <see cref="WiserItemModel"/>. Empty list if no items have been found.</returns>
-        Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null);
+        Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// By default this function gets all items linked to the given <see cref="itemId"/>, unless the parameter <see cref="reverse"/> is set to true,
@@ -327,8 +356,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user. If this is greater than 0, this function will check permissions and only return items that this user is allowed to see.</param>
         /// <param name="reverse">Optional: Set to true to get the items that this item is linked to, instead of the items linked to this item. Default is false.</param>
         /// <param name="itemIdEntityType">Optional: You can enter the entity type of the given itemId here, if you want to get items from a dedicated table and those items can have multiple different entity types. This only works if all those items exist in the same table. Default is null.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>A list of <see cref="WiserItemModel"/>. Empty list if no items have been found.</returns>
-        Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(IWiserItemsService wiserItemsService, ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null);
+        Task<List<WiserItemModel>> GetLinkedItemDetailsAsync(IWiserItemsService wiserItemsService, ulong itemId, int linkType = -1, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// By default this function gets the IDs of all items linked to the given <see cref="itemId"/>, unless the parameter <see cref="reverse"/> is set to tue,
@@ -341,8 +371,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user. If this is greater than 0, this function will check permissions and only return items that this user is allowed to see.</param>
         /// <param name="reverse">Optional: Set to true to get the items that this item is linked to, instead of the items linked to this item. Default is false.</param>
         /// <param name="itemIdEntityType">Optional: You can enter the entity type of the given itemId here, if you want to get items from a dedicated table and those items can have multiple different entity types. This only works if all those items exist in the same table. Default is null.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>A list of <see cref="WiserItemModel"/>. Empty list if no items have been found.</returns>
-        Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null);
+        Task<List<ulong>> GetLinkedItemIdsAsync(ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// By default this function gets the IDs of all items linked to the given <see cref="itemId"/>, unless the parameter <see cref="reverse"/> is set to tue,
@@ -356,8 +387,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user. If this is greater than 0, this function will check permissions and only return items that this user is allowed to see.</param>
         /// <param name="reverse">Optional: Set to true to get the items that this item is linked to, instead of the items linked to this item. Default is false.</param>
         /// <param name="itemIdEntityType">Optional: You can enter the entity type of the given itemId here, if you want to get items from a dedicated table and those items can have multiple different entity types. This only works if all those items exist in the same table. Default is null.</param>
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <returns>A list of <see cref="WiserItemModel"/>. Empty list if no items have been found.</returns>
-        Task<List<ulong>> GetLinkedItemIdsAsync(IWiserItemsService wiserItemsService, ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null);
+        Task<List<ulong>> GetLinkedItemIdsAsync(IWiserItemsService wiserItemsService, ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Gets the settings for an entity type.
@@ -410,7 +442,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task<ulong> AddItemLinkAsync(ulong itemId, ulong destinationItemId, int type, int ordering = 1, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task<ulong> AddItemLinkAsync(ulong itemId, ulong destinationItemId, int type, int ordering = 1, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Adds a link between 2 items. If a link already exists with the exact same parameters, nothing happens.
@@ -423,7 +456,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task<ulong> AddItemLinkAsync(IWiserItemsService wiserItemsService, ulong itemId, ulong destinationItemId, int type, int ordering = 1, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task<ulong> AddItemLinkAsync(IWiserItemsService wiserItemsService, ulong itemId, ulong destinationItemId, int type, int ordering = 1, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Deletes all links to an item with a specific type number.
@@ -433,7 +467,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task RemoveItemLinksAsync(ulong destinationItemId, int type, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task RemoveItemLinksAsync(ulong destinationItemId, int type, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Deletes all links to an item with a specific type number.
@@ -444,7 +479,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task RemoveItemLinksAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int type, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task RemoveItemLinksAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int type, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Remove the item link between items based on the item link id.
@@ -457,7 +493,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "JCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
-        Task RemoveItemLinksByIdAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task RemoveItemLinksByIdAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Remove the item link between items based on the item link id.
@@ -471,7 +508,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "JCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
-        Task RemoveItemLinksByIdAsync(IWiserItemsService wiserItemsService, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task RemoveItemLinksByIdAsync(IWiserItemsService wiserItemsService, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Remove a parent link of an item.
@@ -484,7 +522,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "JCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
-        Task RemoveParentLinkOfItemsAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task RemoveParentLinkOfItemsAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Remove a parent link of an item.
@@ -498,7 +537,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "JCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
-        Task RemoveParentLinkOfItemsAsync(IWiserItemsService wiserItemsService, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task RemoveParentLinkOfItemsAsync(IWiserItemsService wiserItemsService, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Marks items that are linked to the given destination item as removed.
@@ -511,7 +551,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="entityType">Optional: Enter an entity type here to only get items of that type. Default is null.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want the DeleteAsync function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
-        Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task RemoveLinkedItemsAsync(ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Marks items that are linked to the given destination item as removed.
@@ -525,7 +566,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
         /// <param name="entityType">Optional: Enter an entity type here to only get items of that type. Default is null.</param>
         /// <param name="createNewTransaction">Optional: Set to false if you don't want the DeleteAsync function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
-        Task RemoveLinkedItemsAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task RemoveLinkedItemsAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Moves all linked items of an item to a different destination item.
@@ -537,7 +579,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task ChangeItemLinksAsync(ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Moves all linked items of an item to a different destination item.
@@ -550,7 +593,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task ChangeItemLinksAsync(IWiserItemsService wiserItemsService, ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task ChangeItemLinksAsync(IWiserItemsService wiserItemsService, ulong oldDestinationItemId, ulong newDestinationItemId, string entityType, int type = 0, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Changes the type of all items linked to the given destination item from one specific type to another.
@@ -561,7 +605,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task ChangeLinkTypesAsync(ulong destinationItemId, int oldLinkType, int newLinkType, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task ChangeLinkTypesAsync(ulong destinationItemId, int oldLinkType, int newLinkType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Changes the type of all items linked to the given destination item from one specific type to another.
@@ -573,7 +618,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task ChangeLinkTypesAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int oldLinkType, int newLinkType, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task ChangeLinkTypesAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int oldLinkType, int newLinkType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Changes the type number of a specific link between two items.
@@ -585,7 +631,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task ChangeLinkTypeAsync(ulong destinationItemId, int oldLinkType, int newLinkType, ulong sourceItemId, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task ChangeLinkTypeAsync(ulong destinationItemId, int oldLinkType, int newLinkType, ulong sourceItemId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Changes the type number of a specific link between two items.
@@ -598,7 +645,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is false.</param>
-        Task ChangeLinkTypeAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int oldLinkType, int newLinkType, ulong sourceItemId, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task ChangeLinkTypeAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int oldLinkType, int newLinkType, ulong sourceItemId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Adds a file to an item.
@@ -607,7 +655,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
-        Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Adds a file to an item.
@@ -617,7 +666,8 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
-        Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true);
+        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
 
         /// <summary>
         /// Gets a file from the database.

@@ -6,6 +6,7 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GeeksCoreLibrary.Core.Controllers
@@ -40,7 +41,7 @@ namespace GeeksCoreLibrary.Core.Controllers
                 return BadRequest("No ID given");
             }
 
-            if (!StringHelpers.TryDecryptWithAes(id, out var decryptedId, withDateTime: true) || !UInt64.TryParse(decryptedId, out var itemId) || itemId == 0) 
+            if (!StringHelpers.TryDecryptWithAesWithSalt(id, out var decryptedId, withDateTime: true) || !UInt64.TryParse(decryptedId, out var itemId) || itemId == 0) 
             {
                 return BadRequest("Invalid ID given");
             }
@@ -49,7 +50,7 @@ namespace GeeksCoreLibrary.Core.Controllers
             var (isPossible, _, _) = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Read, onlyCheckAccessRights: true, entityType: entityType, userId: userData.UserId);
             if (!isPossible)
             {
-                return Forbid();
+                return new ObjectResult("Forbidden") { StatusCode = StatusCodes.Status403Forbidden };
             }
 
             var item = await wiserItemsService.GetItemDetailsAsync(itemId, languageCode: languagesService.CurrentLanguageCode, entityType: entityType);
@@ -74,7 +75,7 @@ namespace GeeksCoreLibrary.Core.Controllers
             }
 
             ulong itemId = 0;
-            if (!String.IsNullOrWhiteSpace(parentItemId) && (!StringHelpers.TryDecryptWithAes(parentItemId, out var decryptedId, withDateTime: true) || !UInt64.TryParse(decryptedId, out itemId))) 
+            if (!String.IsNullOrWhiteSpace(parentItemId) && (!StringHelpers.TryDecryptWithAesWithSalt(parentItemId, out var decryptedId, withDateTime: true) || !UInt64.TryParse(decryptedId, out itemId))) 
             {
                 return BadRequest("Invalid parent item ID given");
             }
@@ -83,7 +84,7 @@ namespace GeeksCoreLibrary.Core.Controllers
             var (isPossible, _, _) = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Create, entityType: item.EntityType, userId: userData.UserId);
             if (!isPossible)
             {
-                return Forbid();
+                return new ObjectResult("Forbidden") { StatusCode = StatusCodes.Status403Forbidden };
             }
 
             // Make sure to set the ID to 0, so that we can't accidentally update an existing item.
@@ -109,7 +110,7 @@ namespace GeeksCoreLibrary.Core.Controllers
                 return BadRequest("No ID given");
             }
 
-            if (!StringHelpers.TryDecryptWithAes(id, out var decryptedId, withDateTime: true) || !UInt64.TryParse(decryptedId, out var itemId) || itemId == 0) 
+            if (!StringHelpers.TryDecryptWithAesWithSalt(id, out var decryptedId, withDateTime: true) || !UInt64.TryParse(decryptedId, out var itemId) || itemId == 0) 
             {
                 return BadRequest("Invalid ID given");
             }
@@ -123,7 +124,7 @@ namespace GeeksCoreLibrary.Core.Controllers
             var (isPossible, _, _) = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, entityType: item.EntityType, userId: userData.UserId);
             if (!isPossible)
             {
-                return Forbid();
+                return new ObjectResult("Forbidden") { StatusCode = StatusCodes.Status403Forbidden };
             }
             
             await wiserItemsService.UpdateAsync(itemId, item, userData.UserId);
@@ -146,7 +147,7 @@ namespace GeeksCoreLibrary.Core.Controllers
                 return BadRequest("No ID given");
             }
 
-            if (!StringHelpers.TryDecryptWithAes(id, out var decryptedId, withDateTime: true) || !UInt64.TryParse(decryptedId, out var itemId) || itemId == 0) 
+            if (!StringHelpers.TryDecryptWithAesWithSalt(id, out var decryptedId, withDateTime: true) || !UInt64.TryParse(decryptedId, out var itemId) || itemId == 0) 
             {
                 return BadRequest("Invalid ID given");
             }
@@ -155,7 +156,7 @@ namespace GeeksCoreLibrary.Core.Controllers
             var (isPossible, _, _) = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Delete, entityType: entityType, userId: userData.UserId);
             if (!isPossible)
             {
-                return Forbid();
+                return new ObjectResult("Forbidden") { StatusCode = StatusCodes.Status403Forbidden };
             }
             
             await wiserItemsService.DeleteAsync(itemId, userId: userData.UserId, entityType: entityType);
