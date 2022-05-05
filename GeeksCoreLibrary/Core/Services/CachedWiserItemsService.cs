@@ -195,12 +195,24 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<EntitySettingsModel> GetEntityTypeSettingsAsync(string entityType, int moduleId = 0)
         {
-            var cacheKey = $"entity_type_settings{entityType}_{moduleId}_{databaseConnection.GetDatabaseNameForCaching()}";
+            var cacheKey = $"entity_type_settings_{entityType}_{moduleId}_{databaseConnection.GetDatabaseNameForCaching()}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;                    
                     return await wiserItemsService.GetEntityTypeSettingsAsync(entityType, moduleId);
+                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
+        }
+
+        /// <inheritdoc />
+        public async Task<Dictionary<string, Dictionary<string, object>>> GetFieldOptionsForLinkFieldsAsync(int linkType)
+        {
+            var cacheKey = $"link_type_field_options_{linkType}_{databaseConnection.GetDatabaseNameForCaching()}";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;                    
+                    return await wiserItemsService.GetFieldOptionsForLinkFieldsAsync(linkType);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }
 
@@ -438,13 +450,19 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(string entityType = null, int linkType = 0)
         {
+            return await GetAggregationSettingsAsync(this, entityType, linkType);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(IWiserItemsService service, string entityType = null, int linkType = 0)
+        {
             var cacheKey = $"aggregation_settings_{(String.IsNullOrWhiteSpace(entityType) ? linkType.ToString() : entityType)}_{databaseConnection.GetDatabaseNameForCaching()}";
             return await cache.GetOrAddAsync(cacheKey,
-                async cacheEntry =>
-                {                    
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
-                    return await wiserItemsService.GetAggregationSettingsAsync(entityType);
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
+                 async cacheEntry =>
+                 {                    
+                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
+                     return await wiserItemsService.GetAggregationSettingsAsync(service, entityType);
+                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }
 
         /// <inheritdoc />

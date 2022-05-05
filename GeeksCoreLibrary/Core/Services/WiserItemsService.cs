@@ -14,7 +14,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Exceptions;
-using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
@@ -2212,7 +2211,7 @@ namespace GeeksCoreLibrary.Core.Services
                 var options = new Dictionary<string, object>();
                 if (!String.IsNullOrWhiteSpace(optionsJson))
                 {
-                    options = JsonConvert.DeserializeObject<Dictionary<string, object>>(optionsJson);
+                    options = JsonConvert.DeserializeObject<Dictionary<string, object>>(optionsJson) ?? new Dictionary<string, object>();
                 }
 
                 options.Add(FieldTypeKey, fieldType);
@@ -2230,6 +2229,59 @@ namespace GeeksCoreLibrary.Core.Services
             // If there is an entity type for the specified module, prefer that one, otherwise just take the first one.
             // An entity type can exist multiple times in wiser_entity, for different modules. This almost never actually happens though.
             return allEntityTypeSettings.OrderBy(e => e.ModuleId == moduleId ? 0 : 1).FirstOrDefault() ?? new EntitySettingsModel();
+        }
+
+        /// <inheritdoc />
+        public async Task<Dictionary<string, Dictionary<string, object>>> GetFieldOptionsForLinkFieldsAsync(int linkType)
+        {
+            var results = new Dictionary<string, Dictionary<string, object>>();
+            databaseConnection.AddParameter("linkType", linkType);
+            var query = $@"SELECT 
+                                property.id AS property_id,
+                                IF(property.property_name IS NULL OR property.property_name = '', property.display_name, property.property_name) AS property_name, 
+                                property.inputtype,
+                                property.language_code,
+                                property.options,
+                                property.also_save_seo_value,
+                                property.readonly
+                            FROM {WiserTableNames.WiserEntityProperty} AS property
+                            WHERE property.link_type = ?linkType
+                            ORDER BY property.ordering ASC";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count <= 0)
+            {
+                return results;
+            }
+
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                if (dataRow.IsNull("property_id"))
+                {
+                    continue;
+                }
+
+                var propertyName = dataRow.Field<string>("property_name");
+                var optionsJson = dataRow.Field<string>("options");
+                var fieldType = dataRow.Field<string>("inputtype");
+                var languageCode = dataRow.Field<string>("language_code");
+                var alsoSaveSeoValue = Convert.ToBoolean(dataRow["also_save_seo_value"]);
+                var readOnly = Convert.ToBoolean(dataRow["readonly"]);
+
+                var options = new Dictionary<string, object>();
+                if (!String.IsNullOrWhiteSpace(optionsJson))
+                {
+                    options = JsonConvert.DeserializeObject<Dictionary<string, object>>(optionsJson) ?? new Dictionary<string, object>();
+                }
+
+                options.Add(FieldTypeKey, fieldType);
+                options.Add(SaveSeoValueKey, alsoSaveSeoValue);
+                options.Add(ReadOnlyKey, readOnly);
+
+                results[$"{propertyName}_{languageCode}"] = options;
+            }
+
+            return results;
         }
 
         /// <inheritdoc />
@@ -3130,6 +3182,12 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(string entityType = null, int linkType = 0)
         {
+            return await GetAggregationSettingsAsync(this, entityType, linkType);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(IWiserItemsService wiserItemsService, string entityType = null, int linkType = 0)
+        {
             if (String.IsNullOrWhiteSpace(entityType) && linkType <= 0)
             {
                 throw new ArgumentException("Entity type and link type are both empty.");
@@ -3139,8 +3197,18 @@ namespace GeeksCoreLibrary.Core.Services
             databaseConnection.AddParameter("entityType", entityType);
             databaseConnection.AddParameter("linkType", linkType);
 
-            var whereClause = String.IsNullOrWhiteSpace(entityType) ? "link_type = ?linkType" : "entity_name = ?entityType";
-            var query = $@"SELECT property_name, display_name, language_code, aggregate_options, inputtype FROM {WiserTableNames.WiserEntityProperty} WHERE {whereClause} AND enable_aggregation = 1";
+            var whereClause = new List<string>();
+            if (!String.IsNullOrWhiteSpace(entityType))
+            {
+                whereClause.Add("entity_name = ?entityType");
+            }
+
+            if (linkType > 0)
+            {
+                whereClause.Add("link_type = ?linkType");
+            }
+
+            var query = $@"SELECT property_name, display_name, language_code, aggregate_options, inputtype, entity_name, link_type FROM {WiserTableNames.WiserEntityProperty} WHERE ({String.Join(" OR ", whereClause)}) AND enable_aggregation = 1";
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {
@@ -3156,10 +3224,28 @@ namespace GeeksCoreLibrary.Core.Services
                     optionsModel = JsonConvert.DeserializeObject<WiserItemPropertyAggregateOptionsModel>(options) ?? new WiserItemPropertyAggregateOptionsModel();
                 }
 
+                optionsModel.EntityType = dataRow.Field<string>("entity_name");
+                optionsModel.LinkType = dataRow.Field<int>("link_type");
+                
                 // Use a default table name if none is set in the options.
                 if (String.IsNullOrWhiteSpace(optionsModel.TableName))
                 {
-                    optionsModel.TableName = $"aggregate_{entityType.ToMySqlSafeValue(false)}";
+                    if (optionsModel.LinkType > 0)
+                    {
+                        var linkTypeSettings = await wiserItemsService.GetLinkTypeSettingsAsync(optionsModel.LinkType);
+                        if (!String.IsNullOrWhiteSpace(linkTypeSettings?.DestinationEntityType) && !String.IsNullOrWhiteSpace(linkTypeSettings.SourceEntityType))
+                        {
+                            optionsModel.TableName = $"aggregate_{linkTypeSettings.SourceEntityType.ToMySqlSafeValue(false)}_to_{linkTypeSettings.DestinationEntityType.ToMySqlSafeValue(false)}";
+                        }
+                        else
+                        {
+                            optionsModel.TableName = $"aggregate_link_{optionsModel.LinkType}";
+                        }
+                    }
+                    else
+                    {
+                        optionsModel.TableName = $"aggregate_{optionsModel.EntityType.ToMySqlSafeValue(false)}";
+                    }
                 }
 
                 // Get property name and use display name if there is no property name.
@@ -3245,16 +3331,35 @@ namespace GeeksCoreLibrary.Core.Services
                 throw new ArgumentNullException(nameof(wiserItem));
             }
 
-            // Get the settings for aggregation.
-            var settings = await wiserItemsService.GetAggregationSettingsAsync(wiserItem.EntityType);
-            if (settings == null || !settings.Any())
-            {
-                return;
-            }
-
             // Get options from fields. Some fields need to be saved differently based on what options are set.
             var entityTypeSettings = await GetEntityTypeSettingsAsync(wiserItem.EntityType);
             var fieldOptions = entityTypeSettings.FieldOptions;
+
+            // Get the settings for aggregation.
+            var settings = await wiserItemsService.GetAggregationSettingsAsync(wiserItem.EntityType);
+            var detailsForLinks = wiserItem.Details.Where(detail => detail.ItemLinkId > 0);
+            foreach (var itemLinkId in detailsForLinks.Select(detail => detail.ItemLinkId).Distinct())
+            {
+                databaseConnection.AddParameter("linkId", itemLinkId);
+                var dataTable = await databaseConnection.GetAsync($"SELECT type FROM {WiserTableNames.WiserItemLink} WHERE id = ?linkId");
+                if (dataTable.Rows.Count == 0)
+                {
+                    continue;
+                }
+
+                var linkType = dataTable.Rows[0].Field<int>("type");
+                if (settings.Any(setting => setting.LinkType == linkType))
+                {
+                    continue;
+                }
+
+                settings.AddRange(await wiserItemsService.GetAggregationSettingsAsync(linkType: linkType));
+            }
+
+            if (!settings.Any())
+            {
+                return;
+            }
 
             // Create tables if they don't exist yet.
             foreach (var tableName in settings.Select(setting => setting.TableName).Distinct())
@@ -3263,20 +3368,36 @@ namespace GeeksCoreLibrary.Core.Services
                 {
                     continue;
                 }
-                
-                await databaseHelpersService.CreateTableAsync(tableName, new List<ColumnSettingsModel> {new("id", MySqlDbType.UInt64)});
+
+                await databaseHelpersService.CreateTableAsync(tableName, new List<ColumnSettingsModel> { new("id", MySqlDbType.UInt64) });
                 await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("title", MySqlDbType.VarChar, 255));
-                foreach (var setting in settings.Where(setting => setting.TableName == tableName))
+                
+                var settingsForThisTable = settings.Where(setting => setting.TableName == tableName).ToList();
+                if (settingsForThisTable.First().LinkType > 0)
+                {
+                    await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("source_item_id", MySqlDbType.UInt64));
+                    await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("destination_item_id", MySqlDbType.UInt64));
+                    await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("link_type", MySqlDbType.Int32));
+                }
+
+                foreach (var setting in settingsForThisTable)
                 {
                     await databaseHelpersService.AddColumnToTableAsync(tableName, setting.ColumnSettings);
+
+                    var fieldOptionsToUse = fieldOptions;
+
+                    if (setting.LinkType > 0)
+                    {
+                        fieldOptionsToUse = await wiserItemsService.GetFieldOptionsForLinkFieldsAsync(setting.LinkType);
+                    }
                     
                     var key = $"{setting.PropertyName}_{setting.LanguageCode}";
-                    if (fieldOptions == null || !fieldOptions.ContainsKey(key))
+                    if (fieldOptionsToUse == null || !fieldOptionsToUse.ContainsKey(key))
                     {
                         continue;
                     }
 
-                    var options = fieldOptions[key];
+                    var options = fieldOptionsToUse[key];
                     if (!(bool)options[SaveSeoValueKey])
                     {
                         continue;
@@ -3288,7 +3409,6 @@ namespace GeeksCoreLibrary.Core.Services
 
             // Insert and/or update data in the table.
             databaseConnection.ClearParameters();
-            databaseConnection.AddParameter("id", wiserItem.Id);
             databaseConnection.AddParameter("title", wiserItem.Title);
             var columnsForQuery = new Dictionary<string, List<string>>();
             var parametersForQuery = new Dictionary<string, List<string>>();
@@ -3300,10 +3420,34 @@ namespace GeeksCoreLibrary.Core.Services
                     columnsForQuery.Add(setting.TableName, new List<string> { "id", "title" });
                     parametersForQuery.Add(setting.TableName, new List<string> { "?id", "?title" });
                 }
+                
+                var itemDetail = wiserItem.Details.FirstOrDefault(detail => String.Equals(detail.Key, setting.PropertyName, StringComparison.OrdinalIgnoreCase) && String.Equals(detail.LanguageCode ?? "", setting.LanguageCode ?? "", StringComparison.OrdinalIgnoreCase));
+                if (setting.LinkType <= 0)
+                {
+                    databaseConnection.AddParameter("id", wiserItem.Id);
+                }
+                else
+                {
+                    databaseConnection.AddParameter("id", itemDetail.ItemLinkId);
+                    databaseConnection.AddParameter("linkType", setting.LinkType);
+                    columnsForQuery[setting.TableName].Add("link_type");
+                    parametersForQuery[setting.TableName].Add("?linkType");
+
+                    var dataTable = await databaseConnection.GetAsync($"SELECT item_id, destination_item_id FROM {WiserTableNames.WiserItemLink} WHERE id = ?id");
+                    if (dataTable.Rows.Count > 0)
+                    {
+                        databaseConnection.AddParameter("sourceItemId", dataTable.Rows[0]["item_id"]);
+                        columnsForQuery[setting.TableName].Add("source_item_id");
+                        parametersForQuery[setting.TableName].Add("?sourceItemId");
+
+                        databaseConnection.AddParameter("destinationItemId", dataTable.Rows[0]["destination_item_id"]);
+                        columnsForQuery[setting.TableName].Add("destination_item_id");
+                        parametersForQuery[setting.TableName].Add("?destinationItemId");
+                    }
+                }
 
                 columnsForQuery[setting.TableName].Add($"`{setting.ColumnName.ToMySqlSafeValue(false)}`");
 
-                var itemDetail = wiserItem.GetDetail(setting.PropertyName);
                 var (useLongValueColumn, _, deleteValue, alsoSaveSeoValue) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, true);
                 parametersForQuery[setting.TableName].Add(deleteValue ? "NULL" : $"?{(useLongValueColumn ? "longValue" : "value")}{counter}");
 
