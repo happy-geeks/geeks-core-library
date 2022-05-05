@@ -481,7 +481,9 @@ namespace GeeksCoreLibrary.Core.Services
                 databaseConnection.AddParameter("itemId", itemId);
                 databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
 
-                var dataTable = await databaseConnection.GetAsync($"SELECT readonly FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE id = ?itemId", true);
+                // The word "update" at the end of the query is to force the GCL to use the write database (for customers that use multiple databases).
+                // Otherwise the GCL might throw the exception that the item doesn't exist, if it has just been created and not synchronised to the slave database(s) yet.
+                var dataTable = await databaseConnection.GetAsync($"SELECT readonly, entity_type FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE id = ?itemId #UPDATE", true);
                 if (dataTable.Rows.Count == 0)
                 {
                     throw new Exception($"Item with id '{itemId}' does not exist.");
@@ -492,6 +494,8 @@ namespace GeeksCoreLibrary.Core.Services
                     throw new Exception($"Item with id '{itemId}' is set to read only.");
                 }
 
+                var entityTypeInDatabase = dataTable.Rows[0].Field<string>("entity_type");
+
                 // Remember the current changed value, because it will always be set to true when setting the Id/EncryptedId/EntityType.
                 var originalChangedValue = wiserItem.Changed;
 
@@ -501,11 +505,7 @@ namespace GeeksCoreLibrary.Core.Services
                 // Get entity type of item, we need this later in javascript for executing API work flows.
                 if (String.IsNullOrWhiteSpace(wiserItem.EntityType))
                 {
-                    dataTable = await databaseConnection.GetAsync($"SELECT entity_type FROM {WiserTableNames.WiserItem} WHERE id = ?itemId", true);
-                    if (dataTable.Rows.Count > 0)
-                    {
-                        wiserItem.EntityType = dataTable.Rows[0].Field<string>("entity_type");
-                    }
+                    wiserItem.EntityType = entityTypeInDatabase;
                 }
 
                 wiserItem.Changed = originalChangedValue;
@@ -525,13 +525,13 @@ namespace GeeksCoreLibrary.Core.Services
                     {
                         fieldCounter++;
                         var findAutoIncrementValuesQuery = $@"SELECT IFNULL(MAX(d.`value`), IFNULL(ep.default_value, 0)) AS maximumValue
-                                                        FROM {WiserTableNames.WiserEntityProperty} ep
-                                                        LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.key = ep.property_name AND d.language_code = ep.language_code AND d.item_id <> ?itemId
-                                                        WHERE ep.entity_name = i.entity_type 
-                                                        AND ep.inputtype = 'auto-increment' 
-                                                        AND ep.property_name = ?propertyName{AutoIncrementPropertySuffix}{fieldCounter}
-                                                        AND ((?languageCode{AutoIncrementPropertySuffix}{fieldCounter} IS NULL AND ep.language_code IS NULL) OR (?languageCode{AutoIncrementPropertySuffix}{fieldCounter} IS NOT NULL AND ep.language_code IS NOT NULL AND ep.language_code = ?languageCode{AutoIncrementPropertySuffix}{fieldCounter}))
-                                                        GROUP BY ep.property_name";
+                                                            FROM {WiserTableNames.WiserEntityProperty} ep
+                                                            LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.key = ep.property_name AND d.language_code = ep.language_code AND d.item_id <> ?itemId
+                                                            WHERE ep.entity_name = i.entity_type 
+                                                            AND ep.inputtype = 'auto-increment' 
+                                                            AND ep.property_name = ?propertyName{AutoIncrementPropertySuffix}{fieldCounter}
+                                                            AND ((?languageCode{AutoIncrementPropertySuffix}{fieldCounter} IS NULL AND ep.language_code IS NULL) OR (?languageCode{AutoIncrementPropertySuffix}{fieldCounter} IS NOT NULL AND ep.language_code IS NOT NULL AND ep.language_code = ?languageCode{AutoIncrementPropertySuffix}{fieldCounter}))
+                                                            GROUP BY ep.property_name";
                         databaseConnection.AddParameter($"propertyName{AutoIncrementPropertySuffix}{fieldCounter}", fieldName);
                         databaseConnection.AddParameter($"languageCode{AutoIncrementPropertySuffix}{fieldCounter}", languageCode);
                         dataTable = await databaseConnection.GetAsync(findAutoIncrementValuesQuery, true);
@@ -615,7 +615,8 @@ namespace GeeksCoreLibrary.Core.Services
                         updateQueryParts.Add("changed_by = ?changed_by");
                     }
 
-                    if (!String.IsNullOrEmpty(wiserItem.EntityType))
+                    // You should never change the entity type of an item with this function, unless the entity type is still empty in the database.
+                    if (!String.IsNullOrEmpty(wiserItem.EntityType) && String.IsNullOrEmpty(entityTypeInDatabase))
                     {
                         databaseConnection.AddParameter("entity_type", wiserItem.EntityType);
                         updateQueryParts.Add("entity_type = ?entity_type");
