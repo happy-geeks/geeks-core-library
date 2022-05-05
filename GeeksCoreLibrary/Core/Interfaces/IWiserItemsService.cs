@@ -360,12 +360,19 @@ namespace GeeksCoreLibrary.Core.Interfaces
         Task<List<ulong>> GetLinkedItemIdsAsync(IWiserItemsService wiserItemsService, ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null);
 
         /// <summary>
-        /// Gets the settings for an entity type. These settings will be cached for 1 hour.
+        /// Gets the settings for an entity type.
         /// </summary>
         /// <param name="entityType">The name of the entity type.</param>
         /// <param name="moduleId">Optional: The ID of the module, in case the entity type has different settings for different modules.</param>
         /// <returns>A <see cref="EntitySettingsModel"/> containing all settings of the entity type.</returns>
         Task<EntitySettingsModel> GetEntityTypeSettingsAsync(string entityType, int moduleId = 0);
+
+        /// <summary>
+        /// Gets the field options for a link type.
+        /// </summary>
+        /// <param name="linkType">The link type.</param>
+        /// <returns>The options of all fields set for this link type.</returns>
+        Task<Dictionary<string, Dictionary<string, object>>> GetFieldOptionsForLinkFieldsAsync(int linkType);
 
         /// <summary>
         /// Gets the HTML template and a <see cref="DataRow"/> with the data for an item, so that it can be added anywhere on the page.
@@ -703,12 +710,21 @@ namespace GeeksCoreLibrary.Core.Interfaces
         Task<string> ReplaceHtmlForViewingAsync(string input);
 
         /// <summary>
-        /// Gets the aggregation settings of all fields/properties of an entity type.
+        /// Gets the aggregation settings of all fields/properties of an entity type and/or link type.
         /// </summary>
         /// <param name="entityType">The name of the entity type, if this is a property for an entity.</param>
         /// <param name="linkType">The type of the link, if this is for properties of a link between items.</param>
         /// <returns>A list of <see cref="WiserItemPropertyAggregateOptionsModel"/> of the settings per field.</returns>
         Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(string entityType = null, int linkType = 0);
+
+        /// <summary>
+        /// Gets the aggregation settings of all fields/properties of an entity type and/or link type.
+        /// </summary>
+        /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
+        /// <param name="entityType">The name of the entity type, if this is a property for an entity.</param>
+        /// <param name="linkType">The type of the link, if this is for properties of a link between items.</param>
+        /// <returns>A list of <see cref="WiserItemPropertyAggregateOptionsModel"/> of the settings per field.</returns>
+        Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(IWiserItemsService wiserItemsService, string entityType = null, int linkType = 0);
 
         /// <summary>
         /// Handles aggregation settings for an item.
