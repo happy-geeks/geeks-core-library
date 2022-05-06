@@ -378,6 +378,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                         var parameterName = DatabaseHelpers.CreateValidParameterName(match.Value);
                         databaseConnection.AddParameter(parameterName, value);
                         value = $"?{parameterName}";
+                        input = input.Replace($"'{match.Value}'", value);
                     }
 
                     input = input.Replace(match.Value, value);
