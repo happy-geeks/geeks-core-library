@@ -46,19 +46,19 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             {
                 languageCode ??= await GetLanguageCodeAsync();
                 
-                databaseConnection.AddParameter("languageCode", languageCode);
-                databaseConnection.AddParameter("original", original);
-                databaseConnection.AddParameter("groupName", Constants.TranslationsGroupName);
-                databaseConnection.AddParameter("translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));
+                databaseConnection.AddParameter("gcl_languageCode", languageCode);
+                databaseConnection.AddParameter("gcl_original", original);
+                databaseConnection.AddParameter("gcl_groupName", Constants.TranslationsGroupName);
+                databaseConnection.AddParameter("gcl_translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));
                 var dataTable = await databaseConnection.GetAsync(
                     @$"SELECT
 	                    `key`,
 	                    CONCAT_WS('', `value`, long_value) AS `value`
                     FROM {WiserTableNames.WiserItemDetail}
-                    WHERE item_id = ?translationsItemId
-                        AND groupname = ?groupName
-                        AND language_code = ?languageCode
-                        AND (`value` = ?original OR long_value = ?original)");
+                    WHERE item_id = ?gcl_translationsItemId
+                        AND groupname = ?gcl_groupName
+                        AND language_code = ?gcl_languageCode
+                        AND (`value` = ?gcl_original OR long_value = ?gcl_original)");
 
                 var result = dataTable.Rows.Count > 0 ? dataTable.Rows[0].Field<string>("value") ?? "" : original;
 
