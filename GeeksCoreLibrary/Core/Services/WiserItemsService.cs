@@ -1345,7 +1345,7 @@ namespace GeeksCoreLibrary.Core.Services
                         {
                             foreach (var itemId in itemIds)
                             {
-                                var item = await wiserItemsService.GetItemDetailsAsync(itemId, entityType: entityType);
+                                var item = await wiserItemsService.GetItemDetailsAsync(itemId, entityType: entityType, skipPermissionsCheck: skipPermissionsCheck);
                                 await wiserItemsService.HandleItemAggregationAsync(item);
                             }
                         }
@@ -2697,7 +2697,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             foreach (DataRow dataRow in dataTable.Rows)
             {
-                await wiserItemsService.DeleteAsync(dataRow.Field<ulong>("id"), username: username, userId: userId, saveHistory: saveHistory, entityType: dataRow.Field<string>("entity_type"), createNewTransaction: createNewTransaction);
+                await wiserItemsService.DeleteAsync(dataRow.Field<ulong>("id"), username: username, userId: userId, saveHistory: saveHistory, entityType: dataRow.Field<string>("entity_type"), createNewTransaction: createNewTransaction, skipPermissionsCheck: skipPermissionsCheck);
             }
         }
 
@@ -3487,7 +3487,7 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 foreach (var aggregationMethod in setting.AggregationMethods)
                 {
-                    var parentItems = await wiserItemsService.GetLinkedItemDetailsAsync(wiserItem.Id, aggregationMethod.ParentLinkType, reverse: true);
+                    var parentItems = await wiserItemsService.GetLinkedItemDetailsAsync(wiserItem.Id, aggregationMethod.ParentLinkType, reverse: true, skipPermissionsCheck: true);
                     foreach (var parentItem in parentItems)
                     {
                         var parentAggregationSettings = await wiserItemsService.GetAggregationSettingsAsync(parentItem.EntityType);
@@ -3509,7 +3509,7 @@ namespace GeeksCoreLibrary.Core.Services
                                 await databaseHelpersService.AddColumnToTableAsync(parentTableName, new ColumnSettingsModel(aggregateColumnName, setting.ColumnSettings.Type, setting.ColumnSettings.Length, setting.ColumnSettings.Decimals, setting.ColumnSettings.DefaultValue, setting.ColumnSettings.NotNull));
                             }
 
-                            var allChildren = await wiserItemsService.GetLinkedItemDetailsAsync(parentItem.Id, aggregationMethod.ParentLinkType);
+                            var allChildren = await wiserItemsService.GetLinkedItemDetailsAsync(parentItem.Id, aggregationMethod.ParentLinkType, skipPermissionsCheck: true);
 
                             var value = aggregationMethod.Method switch
                             {

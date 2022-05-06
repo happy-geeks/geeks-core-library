@@ -244,14 +244,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 {
                     if (shoppingBasket.Id > 0 && String.Equals(linkTypeSettings.DestinationEntityType, ShoppingBasket.Models.Constants.BasketEntityType, StringComparison.OrdinalIgnoreCase))
                     {
-                        currentItems.AddRange((await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id))
+                        currentItems.AddRange((await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id, skipPermissionsCheck: true))
                             .Where(item => !String.Equals(item.EntityType, ShoppingBasket.Models.Constants.BasketLineEntityType, StringComparison.OrdinalIgnoreCase) && !String.Equals(item.EntityType, Constants.OrderLineEntityType, StringComparison.OrdinalIgnoreCase))
                             .Select(item => (linkTypeSettings, item)));
                     }
 
                     if (userData.Id > 0 && String.Equals(linkTypeSettings.DestinationEntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase))
                     {
-                        currentItems.AddRange((await wiserItemsService.GetLinkedItemDetailsAsync(userData.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id)).Select(item => (linkTypeSettings, item)));
+                        currentItems.AddRange((await wiserItemsService.GetLinkedItemDetailsAsync(userData.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id, skipPermissionsCheck: true)).Select(item => (linkTypeSettings, item)));
                     }
                 }
 
