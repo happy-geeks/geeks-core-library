@@ -49,6 +49,7 @@ using GeeksCoreLibrary.Components.ShoppingBasket.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Services;
 using JetBrains.Annotations;
+using Microsoft.AspNetCore.Server.IISIntegration;
 using WebMarkupMin.AspNetCore3;
 using WebMarkupMin.Core;
 

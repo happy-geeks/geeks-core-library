@@ -574,7 +574,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             configuration.Details.AddRange(input.QueryStringItems.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
 
             // save main item
-            await wiserItemsService.SaveAsync(configuration);
+            await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
 
             // save configuration line query, we run this query to get all the other variables that need to be added to the configuration line like ean, purchaseprice etc.
             var saveConfigLineQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationLineQuery");
@@ -618,7 +618,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 }
 
                 // save configuration line
-                await wiserItemsService.SaveAsync(configurationItem);
+                await wiserItemsService.SaveAsync(configurationItem, skipPermissionsCheck: true);
             }
 
             return configuration.Id;

@@ -96,7 +96,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     linkTypeOrderLineToOrder = 5002;
                 }
 
-                result.Add((await wiserItemsService.GetItemDetailsAsync(itemId, entityType: OrderProcess.Models.Constants.OrderEntityType), await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkTypeOrderLineToOrder, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType)));
+                result.Add((await wiserItemsService.GetItemDetailsAsync(itemId, entityType: OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true), await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkTypeOrderLineToOrder, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true)));
             }
 
             return result;
@@ -121,8 +121,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             foreach (var basketId in basketIds)
             {
-                var basket = await wiserItemsService.GetItemDetailsAsync(basketId, entityType: Constants.BasketEntityType);
-                var lines = await wiserItemsService.GetLinkedItemDetailsAsync(basketId, 5002, Constants.BasketLineEntityType, itemIdEntityType: Constants.BasketEntityType);
+                var basket = await wiserItemsService.GetItemDetailsAsync(basketId, entityType: Constants.BasketEntityType, skipPermissionsCheck: true);
+                var lines = await wiserItemsService.GetLinkedItemDetailsAsync(basketId, 5002, Constants.BasketLineEntityType, itemIdEntityType: Constants.BasketEntityType, skipPermissionsCheck: true);
                 result.Add((basket, lines));
             }
 
@@ -206,7 +206,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 var currentUsedCount = coupon.GetDetailValue<int>(CouponConstants.UsedCountKey);
                 coupon.SetDetail(CouponConstants.UsedCountKey, (currentUsedCount + 1).ToString());
             }
-            await wiserItemsService.SaveAsync(coupon);
+            await wiserItemsService.SaveAsync(coupon, skipPermissionsCheck: true);
 
             return true;
         }
@@ -301,7 +301,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             if (!loadBasketFromUser && itemId > 0)
             {
                 // Get details on basket level.
-                shoppingBasket = await wiserItemsService.GetItemDetailsAsync(itemId, entityType: Constants.BasketEntityType);
+                shoppingBasket = await wiserItemsService.GetItemDetailsAsync(itemId, entityType: Constants.BasketEntityType, skipPermissionsCheck: true);
 
                 if (shoppingBasket == null || shoppingBasket.EntityType != Constants.BasketEntityType)
                 {
@@ -319,14 +319,14 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     }
                     else
                     {
-                        basketLines = await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, 5002, Constants.BasketLineEntityType, itemIdEntityType: Constants.BasketEntityType);
+                        basketLines = await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, 5002, Constants.BasketLineEntityType, itemIdEntityType: Constants.BasketEntityType, skipPermissionsCheck: true);
 
                         // UniqueUuid is not used anymore for baskets; Update basket lines to set the UniqueUuid value
                         // to a separate detail called "uniqueid". UniqueUuid is not cleared though.
                         foreach (var basketLine in basketLines.Where(basketLine => !basketLine.ContainsDetail("uniqueid") && !String.IsNullOrWhiteSpace(basketLine.UniqueUuid)))
                         {
                             basketLine.SetDetail("uniqueid", basketLine.UniqueUuid);
-                            await wiserItemsService.UpdateAsync(basketLine.Id, basketLine);
+                            await wiserItemsService.UpdateAsync(basketLine.Id, basketLine, skipPermissionsCheck: true);
                         }
                     }
 
@@ -400,14 +400,14 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                             {
                                 if (!settings.MultipleBasketsPossible && shoppingBasket.EntityType == "basket")
                                 {
-                                    foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, Constants.BasketToUserLinkType, Constants.BasketEntityType)).Where(basketItemId => basketItemId != shoppingBasket.Id))
+                                    foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, Constants.BasketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true)).Where(basketItemId => basketItemId != shoppingBasket.Id))
                                     {
-                                        await wiserItemsService.DeleteAsync(basketItemId);
+                                        await wiserItemsService.DeleteAsync(basketItemId, skipPermissionsCheck: true);
                                     }
                                 }
 
                                 // Connect this basket to the user.
-                                await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userId, Constants.BasketToUserLinkType);
+                                await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userId, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
                             }
                         }
                     }
@@ -419,7 +419,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 // Check if the user is logged in and has basket from account.
                 if (user is { MainUserId: > 0 } && !settings.MultipleBasketsPossible)
                 {
-                    var linkedBaskets = await wiserItemsService.GetLinkedItemIdsAsync(user.MainUserId, Constants.BasketToUserLinkType, Constants.BasketEntityType);
+                    var linkedBaskets = await wiserItemsService.GetLinkedItemIdsAsync(user.MainUserId, Constants.BasketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true);
                     var basketId = linkedBaskets.FirstOrDefault(id => id > 0);
                     if (basketId > 0)
                     {
@@ -451,7 +451,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
             try
             {
-                shoppingBasket = await wiserItemsService.SaveAsync(shoppingBasket, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false);
+                shoppingBasket = await wiserItemsService.SaveAsync(shoppingBasket, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false, skipPermissionsCheck: true);
 
                 var lineIds = new List<ulong>();
 
@@ -463,26 +463,26 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         line.AddedBy = "GCL";
                     }
 
-                    var lineSaveResult = await wiserItemsService.SaveAsync(line, shoppingBasket.Id, 5002, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false);
+                    var lineSaveResult = await wiserItemsService.SaveAsync(line, shoppingBasket.Id, 5002, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false, skipPermissionsCheck: true);
                     line.Id = lineSaveResult.Id;
 
                     lineIds.Add(line.Id);
                 }
 
-                await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, 5002, lineIds, entityType: Constants.BasketLineEntityType, createNewTransaction: !createNewTransaction);
+                await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, 5002, lineIds, entityType: Constants.BasketLineEntityType, createNewTransaction: !createNewTransaction, skipPermissionsCheck: true);
 
                 if (newBasket)
                 {
                     if (user is { MainUserId: > 0 })
                     {
-                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, user.MainUserId, Constants.BasketToUserLinkType);
+                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, user.MainUserId, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
                     }
                     else
                     {
                         var newlyCreatedAccount = accountsService.GetRecentlyCreateAccountId();
                         if (newlyCreatedAccount > 0)
                         {
-                            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, newlyCreatedAccount, Constants.BasketToUserLinkType);
+                            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, newlyCreatedAccount, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
                         }
                     }
                 }
@@ -536,7 +536,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 userId = accountsService.GetRecentlyCreateAccountId();
                 if (userId == 0UL)
                 {
-                    userId = (await wiserItemsService.GetLinkedItemIdsAsync(shoppingBasket.Id, Constants.BasketToUserLinkType, reverse: true)).FirstOrDefault();
+                    userId = (await wiserItemsService.GetLinkedItemIdsAsync(shoppingBasket.Id, Constants.BasketToUserLinkType, reverse: true, skipPermissionsCheck: true)).FirstOrDefault();
                 }
 
                 if (userId > 0UL)
@@ -569,7 +569,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 }
             }
 
-            await wiserItemsService.SaveAsync(conceptOrder, userId, linkTypeOrderToUser, alwaysSaveValues: true);
+            await wiserItemsService.SaveAsync(conceptOrder, userId, linkTypeOrderToUser, alwaysSaveValues: true, skipPermissionsCheck: true);
 
             // Check if child item links of the order lines should be copied over to the concept order.
             var copyBasketLinesLinkedItems = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_CopyLinkedItemsToConceptOrderLines")).Equals("true", StringComparison.OrdinalIgnoreCase);
@@ -597,14 +597,14 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     }
                 }
 
-                conceptLine = await wiserItemsService.SaveAsync(conceptLine, conceptOrder.Id, linkTypeOrderLineToOrder, alwaysSaveValues: true);
+                conceptLine = await wiserItemsService.SaveAsync(conceptLine, conceptOrder.Id, linkTypeOrderLineToOrder, alwaysSaveValues: true, skipPermissionsCheck: true);
 
                 if (createItemLinkBetweenBasketLineAndProduct)
                 {
                     var productId = conceptLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
                     if (productId > 0)
                     {
-                        await wiserItemsService.AddItemLinkAsync(productId, conceptLine.Id, productToBasketLineLinkType);
+                        await wiserItemsService.AddItemLinkAsync(productId, conceptLine.Id, productToBasketLineLinkType, skipPermissionsCheck: true);
                     }
                 }
 
@@ -680,7 +680,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 await databaseConnection.BeginTransactionAsync();
 
-                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.ConceptOrderEntityType, OrderProcess.Models.Constants.OrderEntityType);
+                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.ConceptOrderEntityType, OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true);
 
                 // Check if there is a AfterCreateConceptOrder query in the templates module and execute this query if present.
                 var afterConvertToOrderQuery = (await templatesService.GetTemplateAsync(0, "AfterConvertToOrder", TemplateTypes.Query)).Content;
@@ -691,7 +691,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     var replacementData = new Dictionary<string, object> { { "orderId", conceptOrder.Id } };
 
                     var orderLineToOrderLinkType = await wiserItemsService.GetLinkTypeAsync(OrderProcess.Models.Constants.OrderEntityType, OrderProcess.Models.Constants.OrderLineEntityType);
-                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, orderLineToOrderLinkType, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType);
+                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, orderLineToOrderLinkType, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true);
 
                     query = stringReplacementsService.DoReplacements(query, replacementData, forQuery: true);
                     query = await ReplaceBasketInTemplateAsync(conceptOrder, orderLines, settings, query, forQuery: true);
@@ -1023,7 +1023,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                                     linkTypeToUse = await wiserItemsService.GetLinkTypeAsync(userEntityType, OrderProcess.Models.Constants.OrderEntityType);
                                 }
 
-                                userId = (await wiserItemsService.GetLinkedItemIdsAsync(shoppingBasket.Id, linkTypeToUse, reverse: true)).FirstOrDefault();
+                                userId = (await wiserItemsService.GetLinkedItemIdsAsync(shoppingBasket.Id, linkTypeToUse, reverse: true, skipPermissionsCheck: true)).FirstOrDefault();
                             }
 
                             if (userId > 0)
@@ -1132,7 +1132,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 foreach (var couponLine in couponLines)
                 {
-                    var coupon = await wiserItemsService.GetItemDetailsAsync(couponLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty));
+                    var coupon = await wiserItemsService.GetItemDetailsAsync(couponLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty), skipPermissionsCheck: true);
                     if (coupon.GetDetailValue<bool>(CouponConstants.FreeShippingCostsKey))
                     {
                         RemoveShippingCostsLine(basketLines);
@@ -1296,7 +1296,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 foreach (var couponLine in couponLines)
                 {
-                    var coupon = await wiserItemsService.GetItemDetailsAsync(Convert.ToUInt64(couponLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty)));
+                    var coupon = await wiserItemsService.GetItemDetailsAsync(Convert.ToUInt64(couponLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty)), skipPermissionsCheck: true);
                     if (coupon.ContainsDetail("freepaymentserviceprovidercosts") && coupon.GetDetailValue<bool>("freepaymentserviceprovidercosts"))
                     {
                         RemovePaymentMethodCostsLine(basketLines);
@@ -1466,7 +1466,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     var productId = addItemLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
                     if (productId > 0)
                     {
-                        await wiserItemsService.AddItemLinkAsync(productId, addItemLine.Id, productToBasketLinkType);
+                        await wiserItemsService.AddItemLinkAsync(productId, addItemLine.Id, productToBasketLinkType, skipPermissionsCheck: true);
                     }
                 }
 
@@ -1550,7 +1550,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                                 continue;
                             }
 
-                            await wiserItemsService.AddItemLinkAsync(productId, item.Id, productToBasketLinkType);
+                            await wiserItemsService.AddItemLinkAsync(productId, item.Id, productToBasketLinkType, skipPermissionsCheck: true);
                         }
                     }
                 }
@@ -1969,7 +1969,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             // Populate list.
             foreach (DataRow dataRow in getActionsResult.Rows)
             {
-                result.Add(await wiserItemsService.GetItemDetailsAsync(dataRow.Field<ulong>("id")));
+                result.Add(await wiserItemsService.GetItemDetailsAsync(dataRow.Field<ulong>("id"), skipPermissionsCheck: true));
             }
 
             return result;
@@ -2345,7 +2345,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
 
             var couponId = getCouponIdResult.Rows[0].Field<ulong>("id");
-            var coupon = await wiserItemsService.GetItemDetailsAsync(couponId);
+            var coupon = await wiserItemsService.GetItemDetailsAsync(couponId, skipPermissionsCheck: true);
 
             return await HandleCouponAsync(shoppingBasket, basketLines, settings, coupon);
         }
@@ -2617,12 +2617,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             if (user.MainUserId == user.UserId)
             {
-                return (await wiserItemsService.GetItemDetailsAsync(user.MainUserId, entityType: user.EntityType)).GetSortedList(true);
+                return (await wiserItemsService.GetItemDetailsAsync(user.MainUserId, entityType: user.EntityType, skipPermissionsCheck: true)).GetSortedList(true);
             }
 
-            var result = (await wiserItemsService.GetItemDetailsAsync(user.MainUserId, entityType: user.EntityType)).GetSortedList(true);
+            var result = (await wiserItemsService.GetItemDetailsAsync(user.MainUserId, entityType: user.EntityType, skipPermissionsCheck: true)).GetSortedList(true);
 
-            (await wiserItemsService.GetItemDetailsAsync(user.UserId, entityType: user.EntityType)).GetSortedList(true).ToList().ForEach(entry => result[entry.Key] = entry.Value);
+            (await wiserItemsService.GetItemDetailsAsync(user.UserId, entityType: user.EntityType, skipPermissionsCheck: true)).GetSortedList(true).ToList().ForEach(entry => result[entry.Key] = entry.Value);
 
             return result;
         }

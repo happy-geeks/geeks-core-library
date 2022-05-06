@@ -777,11 +777,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 WiserItemModel userDetails;
                 if (loggedInUser.UserId > 0)
                 {
-                    userDetails = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId);
+                    userDetails = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId, skipPermissionsCheck: true);
                 }
                 else
                 {
-                    var basketUser = (await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBaskets.First().Main.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType, Account.Models.Constants.DefaultEntityType, reverse: true)).FirstOrDefault();
+                    var basketUser = (await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBaskets.First().Main.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType, Account.Models.Constants.DefaultEntityType, reverse: true, skipPermissionsCheck: true)).FirstOrDefault();
                     userDetails = basketUser ?? new WiserItemModel { EntityType = Account.Models.Constants.DefaultEntityType };
                     loggedInUser.UserId = userDetails.Id;
                 }
@@ -863,7 +863,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             continue;
                         }
 
-                        var couponItem = await wiserItemsService.GetItemDetailsAsync(couponItemId);
+                        var couponItem = await wiserItemsService.GetItemDetailsAsync(couponItemId, skipPermissionsCheck: true);
                         if (couponItem is not { Id: > 0 })
                         {
                             continue;
@@ -1235,7 +1235,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         {
             var userEmailAddress = "";
 
-            var linkedUsers = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, reverse: true);
+            var linkedUsers = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, reverse: true, skipPermissionsCheck: true);
 
             ulong templateItemId;
             string templatePropertyName;
@@ -1267,7 +1267,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             var languageCode = conceptOrder.GetDetailValue(Constants.LanguageCodeProperty);
             var user = await accountsService.GetUserDataFromCookieAsync();
-            var templateItem = await wiserItemsService.GetItemDetailsAsync(templateItemId, languageCode: languageCode, userId: user.UserId) ?? await wiserItemsService.GetItemDetailsAsync(templateItemId, userId: user.UserId);
+            var templateItem = await wiserItemsService.GetItemDetailsAsync(templateItemId, languageCode: languageCode, userId: user.UserId, skipPermissionsCheck: true) ?? await wiserItemsService.GetItemDetailsAsync(templateItemId, userId: user.UserId, skipPermissionsCheck: true);
 
             var templateContent = templateItem.GetDetailValue(Constants.MailTemplateBodyProperty) ?? "";
             var templateSubject = templateItem.GetDetailValue(Constants.MailTemplateSubjectProperty) ?? "";

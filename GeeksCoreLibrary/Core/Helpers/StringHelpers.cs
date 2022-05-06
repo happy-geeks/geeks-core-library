@@ -14,7 +14,7 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <param name="key">Optional: The encryption key to use. Default value is the value of "QueryTemplatesDecryptionKey" from the app settings.</param>
         /// <param name="withDateTime">Optional: Set the <see langword="true"/> if the value contains a validation date and time. Default is <see langword="false"/>.</param>
         /// <returns>A <see langword="bool"/> indicating whether the decryption was successful or not.</returns>
-        public static bool TryDecryptWithAes(string input, out string output, string key = "", bool withDateTime = false)
+        public static bool TryDecryptWithAesWithSalt(string input, out string output, string key = "", bool withDateTime = false)
         {
             output = null;
             try
@@ -24,7 +24,7 @@ namespace GeeksCoreLibrary.Core.Helpers
                     return false;
                 }
 
-                output = input.DecryptWithAes(key, withDateTime);
+                output = input.DecryptWithAesWithSalt(key, withDateTime);
                 return true;
             }
             catch
