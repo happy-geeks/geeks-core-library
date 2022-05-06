@@ -175,7 +175,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="itemIdOrUniqueId"></param>
         /// <param name="quantity"></param>
         /// <returns></returns>
-        Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, int quantity);
+        Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity);
 
         /// <summary>
         /// Will attempt to add a coupon to the shopping basket by checking if the request variable "couponcode" is present and using that value to see if it matches with a valid coupon.

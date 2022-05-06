@@ -38,6 +38,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
         internal string DiscountPropertyName { get; }
 
         [DefaultValue(Constants.DefaultMaxItemQuantity)]
-        internal int MaxItemQuantity { get; }
+        internal decimal MaxItemQuantity { get; }
     }
 }

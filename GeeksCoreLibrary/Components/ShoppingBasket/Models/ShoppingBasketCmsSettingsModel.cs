@@ -157,7 +157,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
             GroupName = CmsAttributes.CmsGroupName.Handling,
             DisplayOrder = 10
         )]
-        public int MaxItemQuantity { get; set; }
+        public decimal MaxItemQuantity { get; set; }
 
         #endregion
 
