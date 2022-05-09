@@ -131,6 +131,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         Task EnsureOpenConnectionForWritingAsync();
 
         /// <summary>
+        /// Change the connection strings that are used by the connections.
+        /// </summary>
+        /// <param name="newConnectionStringForReading">The new connection string to use for reading.</param>
+        /// <param name="newConnectionStringForWriting">The new connection string to use for writing.</param>
+        /// <returns></returns>
+        Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting);
+
+        /// <summary>
         /// Sets the command timeout in seconds for the connection.
         /// </summary>
         /// <param name="value"></param>

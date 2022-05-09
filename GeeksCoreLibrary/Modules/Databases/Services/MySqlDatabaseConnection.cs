@@ -23,8 +23,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
     {
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ILogger<MySqlDatabaseConnection> logger;
-        private readonly string connectionStringForReading;
-        private readonly string connectionStringForWriting;
+        private string connectionStringForReading;
+        private string connectionStringForWriting;
 
         private MySqlConnection ConnectionForReading { get; set; }
         private MySqlConnection ConnectionForWriting { get; set; }
@@ -542,6 +542,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     logger.LogWarning(exception, $"An error occurred while trying to set the time zone to '{gclSettings.DatabaseTimeZone}'");
                 }
             }
+        }
+
+        /// <inheritdoc />
+        public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting)
+        {
+            connectionStringForReading = newConnectionStringForReading;
+            connectionStringForWriting = newConnectionStringForReading;
+            await CleanUpAsync();
         }
 
         /// <inheritdoc />

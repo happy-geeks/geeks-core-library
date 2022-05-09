@@ -190,6 +190,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
+        public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting)
+        {
+            await databaseConnection.ChangeConnectionStringsAsync(newConnectionStringForReading, newConnectionStringForWriting);
+        }
+
+        /// <inheritdoc />
         public void SetCommandTimeout(int value)
         {
             databaseConnection.SetCommandTimeout(value);

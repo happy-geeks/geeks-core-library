@@ -103,6 +103,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
+        public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        /// <inheritdoc />
         public void SetCommandTimeout(int value)
         {
             throw new System.NotImplementedException();
