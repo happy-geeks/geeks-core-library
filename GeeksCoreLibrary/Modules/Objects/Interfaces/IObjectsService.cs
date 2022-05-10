@@ -15,5 +15,9 @@ namespace GeeksCoreLibrary.Modules.Objects.Interfaces
         Task<string> GetObjectValueAsync(string key, int typeNumber = -1);
 
         Task<string> GetSystemObjectValueAsync(string key);
+
+        Task SetObjectValueAsync(string key, string value, int typeNumber);
+
+        Task SetSystemObjectValueAsync(string key, string value);
     }
 }
