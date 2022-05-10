@@ -299,6 +299,18 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public async Task<List<Template>> GetTemplateTreeViewAsync(int parentId, string startFrom)
+        {
+            var templates = new List<Template>();
+            var path = startFrom.Split(',');
+            var remainingStartFrom = startFrom[(path[0].Length + (path.Length > 1 ? 1 : 0))..];
+
+            //var dataTable = await databaseConnection.GetAsync($"SELECT id, template_name")
+
+            return templates;
+        }
+
+        /// <inheritdoc />
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
         {
             var joinPart = "";

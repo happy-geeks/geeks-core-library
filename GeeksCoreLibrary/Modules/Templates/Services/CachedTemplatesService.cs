@@ -193,6 +193,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public async Task<List<Template>> GetTemplateTreeViewAsync(int parentId, string startFrom)
+        {
+            //TODO Use cache data?
+            return await templatesService.GetTemplateTreeViewAsync(parentId, startFrom);
+        }
+
+        /// <inheritdoc />
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
         {
             var cacheKey = $"GeneralTemplateLastChangedDate_{templateType}";

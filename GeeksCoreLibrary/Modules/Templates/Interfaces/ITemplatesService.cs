@@ -42,6 +42,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type);
 
         /// <summary>
+        /// Get all templates under a specified folder.
+        /// </summary>
+        /// <param name="parentId">The id of the parent item.</param>
+        /// <param name="startFrom">Set the place from which to start the tree view, folders separated by comma.</param>
+        /// <returns></returns>
+        Task<List<Template>> GetTemplateTreeViewAsync(int parentId, string startFrom);
+
+        /// <summary>
         /// Gets the last changed date of general templates of a specific type. This can be used for generating the URL for gcl_general.css for example.
         /// </summary>
         /// <param name="templateType">Optional: The template type to get the last change date of. Default is Css.</param>
