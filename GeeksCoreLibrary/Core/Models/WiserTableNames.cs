@@ -140,5 +140,9 @@
         /// All deleted items will be moved to archive tables, this is the suffix for those archive tables.
         /// </summary>
         public const string ArchiveSuffix = "_archive";
+        /// <summary>
+        /// This table is used by the AIS to write logs to.
+        /// </summary>
+        public const string AisLogs = "ais_logs";
     }
 }

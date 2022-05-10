@@ -351,6 +351,30 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 {
                     new(WiserTableNames.WiserDataSelector, "idx_name", IndexTypes.Unique, new List<string> { "name" })
                 }
+            },
+
+            // ais_logs
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.AisLogs,
+                LastUpdate = new DateTime(2022, 5, 10),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey:true, autoIncrement: true),
+                    new("message", MySqlDbType.MediumText, notNull: true),
+                    new("level", MySqlDbType.VarChar, 64, notNull: true),
+                    new("scope", MySqlDbType.VarChar, 64, notNull: true),
+                    new("source", MySqlDbType.VarChar, 256, notNull: true),
+                    new("configuration", MySqlDbType.VarChar, 256),
+                    new("time_id", MySqlDbType.Int32),
+                    new("order", MySqlDbType.Int32),
+                    new("added_on", MySqlDbType.DateTime, notNull:true)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.AisLogs, "idx_configuration", IndexTypes.Normal, new List<string> { "configuration", "time_id", "order" }),
+                    new(WiserTableNames.AisLogs, "idx_level", IndexTypes.Normal, new List<string> { "level", "configuration", "time_id", "order" })
+                }
             }
         };
     }

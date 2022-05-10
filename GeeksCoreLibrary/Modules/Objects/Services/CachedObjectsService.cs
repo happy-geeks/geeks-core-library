@@ -212,5 +212,17 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
         {
             return GetObjectValueAsync(key, -1);
         }
+
+        /// <inheritdoc />
+        public async Task SetObjectValueAsync(string key, string value, int typeNumber)
+        {
+            await objectsService.SetObjectValueAsync(key, value, typeNumber);
+        }
+
+        /// <inheritdoc />
+        public async Task SetSystemObjectValueAsync(string key, string value)
+        {
+            await SetObjectValueAsync(key, value, -1);
+        }
     }
 }

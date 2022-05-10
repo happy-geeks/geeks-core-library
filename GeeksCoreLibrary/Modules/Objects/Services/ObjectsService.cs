@@ -166,5 +166,25 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
         {
             return GetObjectValueAsync(key, -1);
         }
+
+        /// <inheritdoc />
+        public async Task SetObjectValueAsync(string key, string value, int typeNumber)
+        {
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("key", key);
+            databaseConnection.AddParameter("value", value);
+            databaseConnection.AddParameter("typeNumber", typeNumber);
+            var query = @"INSERT INTO easy_objects (typenr, `key`, `value`)
+                            VALUES (?typeNumber, ?key, ?value)
+                            ON DUPLICATE KEY UPDATE `value` = ?value";
+
+            await databaseConnection.ExecuteAsync(query);
+        }
+
+        /// <inheritdoc />
+        public async Task SetSystemObjectValueAsync(string key, string value)
+        {
+            await SetObjectValueAsync(key, value, -1);
+        }
     }
 }
