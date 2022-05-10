@@ -109,17 +109,17 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
 
                 try
                 {
-                    databaseConnection.AddParameter("languageCode", languageCode);
-                    databaseConnection.AddParameter("groupName", Constants.TranslationsGroupName);
-                    databaseConnection.AddParameter("translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));
+                    databaseConnection.AddParameter("gcl_languageCode", languageCode);
+                    databaseConnection.AddParameter("gcl_groupName", Constants.TranslationsGroupName);
+                    databaseConnection.AddParameter("gcl_translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));
                     await using (var reader = await databaseConnection.GetReaderAsync(
                         @$"SELECT
 	                            `key`,
 	                            CONCAT_WS('', `value`, long_value) AS `value`
                             FROM {WiserTableNames.WiserItemDetail}
-                            WHERE item_id = ?translationsItemId
-                                AND groupname = ?groupName
-                                AND language_code = ?languageCode"))
+                            WHERE item_id = ?gcl_translationsItemId
+                                AND groupname = ?gcl_groupName
+                                AND language_code = ?gcl_languageCode"))
                     {
                         while (await reader.ReadAsync())
                         {

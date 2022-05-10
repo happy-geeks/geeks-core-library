@@ -17,7 +17,19 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         [JsonIgnore]
         public string LanguageCode { get; set; }
-        
+
+        /// <summary>
+        /// Gets or sets the entity type, if this is a property for an entity.
+        /// </summary>
+        [JsonIgnore]
+        public string EntityType { get; set; }
+
+        /// <summary>
+        /// Gets or sets the link type, if this is a property for a link between two items.
+        /// </summary>
+        [JsonIgnore]
+        public int LinkType { get; set; }
+
         /// <summary>
         /// Gets or sets the name of the table that contains the aggregated values.
         /// If this contains no value, the name "aggregate_[entityName]" will be used.

@@ -39,9 +39,9 @@ namespace GeeksCoreLibrary.Components.Repeater.Services
             }
 
             var fullUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).PathAndQuery;
-            databaseConnection.AddParameter("baseUrl", fullUrl);
-            databaseConnection.AddParameter("languageCode", languagesService.CurrentLanguageCode ?? "");
-            databaseConnection.AddParameter("publishedEnvironment", (int)gclSettings.Environment);
+            databaseConnection.AddParameter("gcl_baseUrl", fullUrl);
+            databaseConnection.AddParameter("gcl_languageCode", languagesService.CurrentLanguageCode ?? "");
+            databaseConnection.AddParameter("gcl_publishedEnvironment", (int)gclSettings.Environment);
             var dataTable = await databaseConnection.GetAsync($@"
                     SELECT
                         productbanner.id,
@@ -64,9 +64,9 @@ namespace GeeksCoreLibrary.Components.Repeater.Services
                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS language_code ON language_code.item_id = productbanner.id AND language_code.`key` = 'language_code'
                     WHERE
                         productbanner.entity_type = 'productbanner'
-                        AND productbanner.published_environment >= ?publishedEnvironment
-                        AND base_url.`value` IN (?baseurl, '*')
-                        AND (language_code.`value` IS NULL OR language_code.`value` IN (?languageCode, '', '*'))
+                        AND productbanner.published_environment >= ?gcl_publishedEnvironment
+                        AND base_url.`value` IN (?gcl_baseurl, '*')
+                        AND (language_code.`value` IS NULL OR language_code.`value` IN (?gcl_languageCode, '', '*'))
                         AND (start_date.`value` IS NULL OR start_date.`value` = '' OR CONVERT(start_date.`value`, DATETIME) < NOW())
                         AND (end_date.`value` IS NULL OR end_date.`value` = '' OR CONVERT(end_date.`value`, DATETIME) > NOW())");
 

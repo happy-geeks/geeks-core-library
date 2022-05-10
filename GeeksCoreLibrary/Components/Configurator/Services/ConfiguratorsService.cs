@@ -155,12 +155,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             var languageCode = await languagesService.GetLanguageCodeAsync();
 
             databaseConnection.ClearParameters();
-            databaseConnection.AddParameter("languageCode", languageCode);
+            databaseConnection.AddParameter("gcl_languageCode", languageCode);
             dataTable = await databaseConnection.GetAsync(@$"
                     SELECT item.id, IFNULL(namePart.`value`, item.title) AS title, item.entity_type, detail.`key`, CONCAT_WS('', detail.`value`, detail.long_value) AS `value`
                     FROM {WiserTableNames.WiserItem} item
                     JOIN {WiserTableNames.WiserItemDetail} detail ON detail.item_id = item.id
-                    LEFT JOIN {WiserTableNames.WiserItemDetail} namePart ON namePart.item_id = item.id AND namePart.key = 'title' AND namePart.language_code = ?languageCode
+                    LEFT JOIN {WiserTableNames.WiserItemDetail} namePart ON namePart.item_id = item.id AND namePart.key = 'title' AND namePart.language_code = ?gcl_languageCode
                     WHERE item.id IN ({String.Join(",", idList)});");
 
             if (dataTable.Rows.Count == 0)
@@ -574,7 +574,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             configuration.Details.AddRange(input.QueryStringItems.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
 
             // save main item
-            await wiserItemsService.SaveAsync(configuration);
+            await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
 
             // save configuration line query, we run this query to get all the other variables that need to be added to the configuration line like ean, purchaseprice etc.
             var saveConfigLineQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationLineQuery");
@@ -618,7 +618,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 }
 
                 // save configuration line
-                await wiserItemsService.SaveAsync(configurationItem);
+                await wiserItemsService.SaveAsync(configurationItem, skipPermissionsCheck: true);
             }
 
             return configuration.Id;

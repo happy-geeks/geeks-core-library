@@ -248,13 +248,13 @@ namespace GeeksCoreLibrary.Components.WebForm
                         Title = Path.GetFileNameWithoutExtension(formFile.FileName),
                         PropertyName = "form_attachment"
                     };
-                    communication.WiserItemFiles.Add(await wiserItemsService.AddItemFileAsync(itemFile));
+                    communication.WiserItemFiles.Add(await wiserItemsService.AddItemFileAsync(itemFile, skipPermissionsCheck: true));
                 }
             }
 
             if (Settings.EmailTemplateItemId > 0)
             {
-                var wiserItem = await wiserItemsService.GetItemDetailsAsync(Settings.EmailTemplateItemId, languageCode: languagesService.CurrentLanguageCode);
+                var wiserItem = await wiserItemsService.GetItemDetailsAsync(Settings.EmailTemplateItemId, languageCode: languagesService.CurrentLanguageCode, skipPermissionsCheck: true);
                 if (wiserItem is { Id: > 0 })
                 {
                     communication.Content = await StringReplacementsService.DoAllReplacementsAsync(wiserItem.GetDetailValue("template"), handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
@@ -412,7 +412,7 @@ namespace GeeksCoreLibrary.Components.WebForm
                 wiserItem.SetDetail(formKey, Request.Form[formKey].ToString());
             }
 
-            await wiserItemsService.SaveAsync(wiserItem);
+            await wiserItemsService.SaveAsync(wiserItem, skipPermissionsCheck: true);
         }
 
         #region Handling settings

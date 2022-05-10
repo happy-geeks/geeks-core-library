@@ -411,7 +411,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
                 if (forQuery)
                 {
-                    var parameterName = DatabaseHelpers.CreateValidParameterName(variable.MatchString);
+                    var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.MatchString)}";
                     databaseConnection.AddParameter(parameterName, value);
                     value = $"?{parameterName}";
 

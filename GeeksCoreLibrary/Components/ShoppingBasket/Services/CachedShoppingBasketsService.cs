@@ -161,7 +161,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, int quantity)
+        public async Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity)
         {
             await shoppingBasketsService.UpdateBasketLineQuantityAsync(shoppingBasket, basketLines, settings, itemIdOrUniqueId, quantity);
         }

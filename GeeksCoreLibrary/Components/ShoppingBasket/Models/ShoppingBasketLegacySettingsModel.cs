@@ -54,7 +54,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 
         public bool DeleteProductWhenAmmountIsZero { get; set; }
 
-        public int MaxCountProduct { get; set; }
+        public decimal MaxCountProduct { get; set; }
 
         public bool ClearBasketOnLoad { get; set; }
 
