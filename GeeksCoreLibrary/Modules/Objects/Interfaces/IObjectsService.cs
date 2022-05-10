@@ -16,8 +16,21 @@ namespace GeeksCoreLibrary.Modules.Objects.Interfaces
 
         Task<string> GetSystemObjectValueAsync(string key);
 
+        /// <summary>
+        /// Set an object value for the specified key and type number.
+        /// </summary>
+        /// <param name="key">The key to create or update.</param>
+        /// <param name="value">The value to set/</param>
+        /// <param name="typeNumber">The type number of the key.</param>
+        /// <returns></returns>
         Task SetObjectValueAsync(string key, string value, int typeNumber);
 
+        /// <summary>
+        /// Set an object value for the specified key.
+        /// </summary>
+        /// <param name="key">The key to create or update.</param>
+        /// <param name="value">The value to set/</param>
+        /// <returns></returns>
         Task SetSystemObjectValueAsync(string key, string value);
     }
 }
