@@ -1012,6 +1012,7 @@ namespace GeeksCoreLibrary.Core.Services
                     insertAndUpdateQueryBuilder.Clear();
                 }
 
+                // Add or update item in aggregation table(s) when needed.
                 await wiserItemsService.HandleItemAggregationAsync(wiserItem, encryptionKey);
 
                 // Execute the after update query, if one is entered.
