@@ -97,6 +97,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 IFNULL(fixedUrl.value, '/payment.html') AS fixedUrl,
                                 COUNT(step.id) AS amountOfSteps,
                                 emailAddressField.value AS emailAddressField,
+                                merchantEmailAddressField.value AS merchantEmailAddressField,
                                 IF(statusUpdateTemplate.value IS NULL OR statusUpdateTemplate.value = '', '0', statusUpdateTemplate.value) AS statusUpdateTemplate,
                                 IF(statusUpdateWebShopTemplate.value IS NULL OR statusUpdateWebShopTemplate.value = '', '0', statusUpdateWebShopTemplate.value) AS statusUpdateWebShopTemplate,
                                 IF(statusUpdateAttachmentTemplate.value IS NULL OR statusUpdateAttachmentTemplate.value = '', '0', statusUpdateAttachmentTemplate.value) AS statusUpdateAttachmentTemplate,
@@ -110,6 +111,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fixedUrl ON fixedUrl.item_id = orderProcess.id AND fixedUrl.`key` = '{Constants.OrderProcessUrlProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS titleSeo ON titleSeo.item_id = orderProcess.id AND titleSeo.`key` = '{CoreConstants.SeoTitlePropertyName}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS emailAddressField ON emailAddressField.item_id = orderProcess.id AND emailAddressField.`key` = '{Constants.OrderProcessEmailAddressFieldProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS merchantEmailAddressField ON merchantEmailAddressField.item_id = orderProcess.id AND merchantEmailAddressField.`key` = '{Constants.OrderProcessMerchantEmailAddressFieldProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateTemplate ON statusUpdateTemplate.item_id = orderProcess.id AND statusUpdateTemplate.`key` = '{Constants.OrderProcessStatusUpdateTemplateProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateWebShopTemplate ON statusUpdateWebShopTemplate.item_id = orderProcess.id AND statusUpdateWebShopTemplate.`key` = '{Constants.OrderProcessStatusUpdateWebShopTemplateProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateAttachmentTemplate ON statusUpdateAttachmentTemplate.item_id = orderProcess.id AND statusUpdateAttachmentTemplate.`key` = '{Constants.StatusUpdateMailAttachmentProperty}'
@@ -140,6 +142,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 FixedUrl = firstRow.Field<string>("fixedUrl"),
                 AmountOfSteps = Convert.ToInt32(firstRow["amountOfSteps"]),
                 EmailAddressProperty = firstRow.Field<string>("emailAddressField"),
+                MerchantEmailAddressProperty = firstRow.Field<string>("merchantEmailAddressField"),
                 StatusUpdateMailTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateTemplate")),
                 StatusUpdateMailWebShopTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateWebShopTemplate")),
                 StatusUpdateMailAttachmentTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateAttachmentTemplate")),
@@ -1301,6 +1304,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             if (!String.IsNullOrWhiteSpace(orderProcessSettings.EmailAddressProperty) && !String.IsNullOrWhiteSpace(conceptOrder.GetDetailValue(orderProcessSettings.EmailAddressProperty)))
             {
                 userEmailAddress = conceptOrder.GetDetailValue(orderProcessSettings.EmailAddressProperty);
+            }
+
+            //get merchant basket email instead of the potentially linked merchant email address
+            if (!String.IsNullOrWhiteSpace(orderProcessSettings.MerchantEmailAddressProperty) && !String.IsNullOrWhiteSpace(conceptOrder.GetDetailValue(orderProcessSettings.MerchantEmailAddressProperty)))
+            {
+                merchantEmailAddress = conceptOrder.GetDetailValue(orderProcessSettings.MerchantEmailAddressProperty);
             }
 
             return new EmailValues

@@ -21,7 +21,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the property / field that contains the e-mail address of the user in their account and/or order.
         /// </summary>
         public string EmailAddressProperty { get; set; }
-        
+
+        /// <summary>
+        /// Gets or sets the property / field that contains the e-mail address of the merchant in the basket/order.
+        /// </summary>
+        public string MerchantEmailAddressProperty { get; set; }
+
         /// <summary>
         /// Gets or sets the ID of the e-mail template that should be used for status updates to the consumer for orders that used this PSP.
         /// </summary>

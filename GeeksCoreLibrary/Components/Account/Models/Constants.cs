@@ -44,7 +44,7 @@
 
         #region Default settings
 
-        internal const string DefaultEntityType = "account";
+        public const string DefaultEntityType = "account";
         internal const string DefaultResetPasswordSubject = "Wachtwoord vergeten";
         internal const string DefaultEmailFieldName = "email";
         internal const string DefaultPasswordFieldName = "password";
@@ -56,7 +56,7 @@
         internal const string DefaultNewPasswordFieldName = "new-password";
         internal const string DefaultNewPasswordConfirmationFieldName = "new-password-confirmation";
         internal const string DefaultGoogleCidFieldName = "google-cid";
-        internal const string DefaultSubAccountEntityType = "sub-account";
+        public const string DefaultSubAccountEntityType = "sub-account";
         internal const string DefaultPunchOutSessionTableName = "punchout_sessions";
         internal const string DefaultPunchOutSessionQueryStringParameterName = "ociSessionToken";
         internal const int DefaultAmountOfDaysToRememberCookie = 7;

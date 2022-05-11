@@ -59,6 +59,8 @@
 
         public const string OrderProcessEmailAddressFieldProperty = "orderprocessemailaddressfield";
 
+        public const string OrderProcessMerchantEmailAddressFieldProperty = "orderprocessmerchantemailaddressfield";
+
         public const string OrderProcessStatusUpdateTemplateProperty = "orderprocessstatusupdatetemplate";
 
         public const string OrderProcessStatusUpdateWebShopTemplateProperty = "orderprocessstatusupdatewebshoptemplate";
