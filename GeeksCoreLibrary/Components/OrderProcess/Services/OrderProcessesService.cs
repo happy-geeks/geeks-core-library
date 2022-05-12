@@ -104,7 +104,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 IF(clearBasketOnConfirmationPage.value IS NULL OR clearBasketOnConfirmationPage.value = '', '1', clearBasketOnConfirmationPage.value) AS clearBasketOnConfirmationPage,
 	                            CONCAT_WS('', header.value, header.long_value) AS header,
 	                            CONCAT_WS('', footer.value, footer.long_value) AS footer,
-                                CONCAT_WS('', template.value, template.long_value) AS template
+                                CONCAT_WS('', template.value, template.long_value) AS template,
+                                IF(measurementProtocolActive.`value` = 1, TRUE, FALSE) AS measurementProtocolActive,
+                                measurementProtocolItemJson.`value` AS measurementProtocolItemJson,
+                                measurementProtocolBeginCheckoutJson.`value` AS measurementProtocolBeginCheckoutJson
                             FROM {WiserTableNames.WiserItem} AS orderProcess
                             JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
                             JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
@@ -119,6 +122,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS header ON header.item_id = orderProcess.id AND header.`key` = '{Constants.OrderProcessHeaderProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS footer ON footer.item_id = orderProcess.id AND footer.`key` = '{Constants.OrderProcessFooterProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS template ON template.item_id = orderProcess.id AND template.`key` = '{Constants.OrderProcessTemplateProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolActive ON measurementProtocolActive.item_id = orderProcess.id AND measurementProtocolActive.`key` = '{Constants.MeasurementProtocolActive}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolItemJson ON measurementProtocolItemJson.item_id = orderProcess.id AND measurementProtocolItemJson.`key` = '{Constants.MeasurementProtocolItemJson}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolBeginCheckoutJson ON measurementProtocolBeginCheckoutJson.item_id = orderProcess.id AND measurementProtocolBeginCheckoutJson.`key` = '{Constants.MeasurementProtocolBeginCheckoutJson}'
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
                             AND orderProcess.published_environment >= ?publishedEnvironment
@@ -149,7 +155,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 ClearBasketOnConfirmationPage = firstRow.Field<string>("clearBasketOnConfirmationPage") == "1",
                 Header = firstRow.Field<string>("header"),
                 Footer = firstRow.Field<string>("footer"),
-                Template = firstRow.Field<string>("template")
+                Template = firstRow.Field<string>("template"),
+                MeasurementProtocolActive = Convert.ToBoolean(firstRow["measurementProtocolActive"]),
+                MeasurementProtocolItemJson = firstRow.Field<string>("measurementProtocolItemJson"),
+                MeasurementProtocolBeginCheckoutJson = firstRow.Field<string>("measurementProtocolBeginCheckoutJson")
             };
         }
 

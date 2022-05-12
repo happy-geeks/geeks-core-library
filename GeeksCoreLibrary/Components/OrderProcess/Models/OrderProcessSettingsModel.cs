@@ -31,12 +31,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the ID of the e-mail template that should be used for status updates to the consumer for orders that used this PSP.
         /// </summary>
         public ulong StatusUpdateMailTemplateId { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the ID of the e-mail attachment template that should be used for status updates to the consumer for orders that used this PSP.
         /// </summary>
         public ulong StatusUpdateMailAttachmentTemplateId { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the ID of the e-mail template that should be used for status updates to the web shop for orders that used this PSP.
         /// </summary>
@@ -51,7 +51,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the header HTML.
         /// </summary>
         public string Header { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the footer HTML.
         /// </summary>
@@ -61,5 +61,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the main template HTML.
         /// </summary>
         public string Template { get; set; }
+
+        public bool MeasurementProtocolActive { get; set; }
+
+        public string MeasurementProtocolItemJson { get; set; }
+
+        public string MeasurementProtocolBeginCheckoutJson { get; set; }
     }
 }

@@ -22,6 +22,7 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
+using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
@@ -38,6 +39,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         private readonly IOrderProcessesService orderProcessesService;
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IWiserItemsService wiserItemsService;
+        private readonly IMeasurementProtocolService measurementProtocolService;
 
         private int ActiveStep { get; set; }
 
@@ -80,13 +82,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             IHttpContextAccessor httpContextAccessor,
             IOrderProcessesService orderProcessesService,
             IShoppingBasketsService shoppingBasketsService,
-            IWiserItemsService wiserItemsService)
+            IWiserItemsService wiserItemsService,
+            IMeasurementProtocolService measurementProtocolService)
         {
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
             this.orderProcessesService = orderProcessesService;
             this.shoppingBasketsService = shoppingBasketsService;
             this.wiserItemsService = wiserItemsService;
+            this.measurementProtocolService = measurementProtocolService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -262,6 +266,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 if (paymentMethods == null || !paymentMethods.Any())
                 {
                     throw new Exception("No payment methods have been configured, therefor we cannot proceed with the order process.");
+                }
+
+                // Start the measurement protocol if it is active.
+                if (orderProcessSettings.MeasurementProtocolActive)
+                {
+                    var totalBasketPrice = await shoppingBasketsService.GetPriceAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings, lineType: Constants.OrderLineProductType);
+                    await measurementProtocolService.BeginCheckoutEventAsync(totalBasketPrice, orderProcessSettings, shoppingBasketLines);
                 }
                 
                 // Generate the URL for the next step, we'll need this for a few things.
