@@ -158,7 +158,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2022, 4, 29),
+                LastUpdate = new DateTime(2022, 5, 12),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -204,7 +204,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("is_scss_include_template", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("use_in_wiser_html_editors", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("pre_load_query", MySqlDbType.MediumText),
-                    new("return_not_found_when_pre_load_query_has_no_data", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
+                    new("return_not_found_when_pre_load_query_has_no_data", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("routine_type", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: "For routine templates only"),
+                    new("routine_parameters", MySqlDbType.Text, comment: "For routine templates only"),
+                    new("routine_return_type", MySqlDbType.VarChar, 25, comment: "For routine templates only")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
