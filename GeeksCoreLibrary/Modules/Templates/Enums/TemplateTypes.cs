@@ -10,6 +10,7 @@
         Query,
         Normal,
         Directory,
-        Xml
+        Xml,
+        Routine
     }
 }
