@@ -214,17 +214,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// <inheritdoc />
         public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true)
         {
-            logger.LogTrace($"GCL ShoppingBasket RecalculateWiser2Variables - skipping type: {skipType ?? "N/A"}");
+            logger.LogTrace($"GCL ShoppingBasket RecalculateVariablesAsync - skipping type: {skipType ?? "N/A"}");
 
-            if (!skipType.InList("shipping_costs", "paymentmethod_costs", "coupon"))
+            if (!skipType.InList("shipping_costs", "paymentmethod_costs", Constants.BasketLineCouponType))
             {
                 await CalculateShippingCostsAsync(shoppingBasket, basketLines, settings);
                 await CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings);
 
-                foreach (var couponLine in GetLines(basketLines, "coupon"))
+                foreach (var couponLine in GetLines(basketLines, Constants.BasketLineCouponType))
                 {
                     var code = couponLine.GetDetailValue("code");
-                    var handleCouponResult = AddCouponToBasketAsync(shoppingBasket, basketLines, settings, code);
+                    var handleCouponResult = await AddCouponToBasketAsync(shoppingBasket, basketLines, settings, code, createNewTransaction);
                     logger.LogTrace($"GCL ShoppingBasket coupon result: {handleCouponResult:G}.");
                 }
             }
@@ -1127,7 +1127,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 return shippingCosts;
             }
 
-            var couponLines = GetLines(basketLines, "coupon");
+            var couponLines = GetLines(basketLines, Constants.BasketLineCouponType);
             if (couponLines.Count > 0)
             {
                 foreach (var couponLine in couponLines)
@@ -1291,7 +1291,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 return paymentMethodCosts;
             }
 
-            var couponLines = GetLines(basketLines, "coupon");
+            var couponLines = GetLines(basketLines, Constants.BasketLineCouponType);
             if (couponLines.Count > 0)
             {
                 foreach (var couponLine in couponLines)
@@ -1407,7 +1407,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
 
             // If no product lines remain in the shopping basket, then remove all remaining lines that are not product lines (such as coupons, shipping costs, etc.).
-            if (basketLines.Count == basketLines.Count(line => line.GetDetailValue("type").InList(StringComparer.OrdinalIgnoreCase, "shipping_costs", "paymentmethod_costs", "coupon")))
+            if (basketLines.Count == basketLines.Count(line => line.GetDetailValue("type").InList(StringComparer.OrdinalIgnoreCase, "shipping_costs", "paymentmethod_costs", Constants.BasketLineCouponType)))
             {
                 linesToRemove.Clear();
                 linesToRemove.AddRange(basketLines);
@@ -1417,15 +1417,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 }
             }
 
-            await SaveAsync(shoppingBasket, basketLines, settings);
+            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings);
 
             return basketLines;
         }
 
         /// <inheritdoc />
-        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null)
+        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null, bool createNewTransaction = true)
         {
-            await databaseConnection.BeginTransactionAsync();
+            if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
             try
             {
                 if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
@@ -1480,24 +1480,24 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
                 await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, type, false);
 
-                await databaseConnection.CommitTransactionAsync();
+                if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
             }
             catch
             {
-                await databaseConnection.RollbackTransactionAsync();
+                if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
                 throw;
             }
         }
 
         /// <inheritdoc />
-        public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items)
+        public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items, bool createNewTransaction = true)
         {
             if (items == null || items.Count == 0)
             {
                 return;
             }
 
-            await databaseConnection.BeginTransactionAsync();
+            if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
             try
             {
                 var createLinksFor = new List<WiserItemModel>();
@@ -1565,11 +1565,11 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 // Recalculate shipping costs, coupons etc. after getting the extra fields (price can be selected with extra fields query).
                 await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, items.First().Type, false);
 
-                await databaseConnection.CommitTransactionAsync();
+                if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
             }
             catch
             {
-                await databaseConnection.RollbackTransactionAsync();
+                if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
                 throw;
             }
         }
@@ -1638,7 +1638,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<ShoppingBasket.HandleCouponResults> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "")
+        public async Task<ShoppingBasket.HandleCouponResults> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true)
         {
             var httpContext = httpContextAccessor.HttpContext;
 
@@ -1652,16 +1652,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             if (!String.IsNullOrWhiteSpace(couponCode))
             {
                 handleCouponResult = await HandleCouponAsync(shoppingBasket, basketLines, settings, couponCode);
-                return handleCouponResult.ResultCode;
             }
-
-            couponCode = HttpContextHelpers.GetRequestValue(httpContext, "couponcode", false);
-            if (String.IsNullOrWhiteSpace(couponCode))
+            else
             {
-                return ShoppingBasket.HandleCouponResults.InvalidCouponCode;
-            }
+                couponCode = HttpContextHelpers.GetRequestValue(httpContext, "couponcode", false);
+                if (String.IsNullOrWhiteSpace(couponCode))
+                {
+                    return ShoppingBasket.HandleCouponResults.InvalidCouponCode;
+                }
 
-            handleCouponResult = await HandleCouponAsync(shoppingBasket, basketLines, settings, couponCode);
+                handleCouponResult = await HandleCouponAsync(shoppingBasket, basketLines, settings, couponCode);
+            }
 
             var couponProductId = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_productid");
             var couponId = String.IsNullOrWhiteSpace(couponProductId) ? handleCouponResult.Coupon?.Id.ToString() ?? "" : couponProductId;
@@ -1680,7 +1681,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             // Check if the maximum amount of coupons has been reached yet.
             if (Int64.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("BASKET_numberOfCouponsAllowed", "0"), out var nrOfCouponsAllowed) && nrOfCouponsAllowed > 0)
             {
-                var nrOfCoupons = basketLines.Count(line => line.GetDetailValue("type") == "coupon");
+                var nrOfCoupons = basketLines.Count(line => line.GetDetailValue("type") == Constants.BasketLineCouponType);
 
                 logger.LogTrace($"Nr of coupons used: {nrOfCoupons}");
 
@@ -1696,13 +1697,13 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             if (handleCouponResult.OnlyChangePrice)
             {
-                foreach (var line in GetLines(basketLines, "coupon").Where(line => line.GetDetailValue(Constants.ConnectedItemIdProperty) == couponId))
+                foreach (var line in GetLines(basketLines, Constants.BasketLineCouponType).Where(line => line.GetDetailValue(Constants.ConnectedItemIdProperty) == couponId))
                 {
                     line.SetDetail("price", (handleCouponResult.Discount * -1).ToString(CultureInfo.InvariantCulture));
                     logger.LogTrace($"Changed coupon price to: {handleCouponResult.Discount * -1}");
                 }
 
-                await SaveAsync(shoppingBasket, basketLines, settings);
+                await SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
             }
             else
             {
@@ -1715,7 +1716,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                     { "description", "Kortingscode" }
                 };
 
-                await AddLineAsync(shoppingBasket, basketLines, settings, couponId, Convert.ToUInt64(couponId), 1, "coupon", details);
+                await AddLineAsync(shoppingBasket, basketLines, settings, couponId, Convert.ToUInt64(couponId), 1, Constants.BasketLineCouponType, details, createNewTransaction);
             }
 
             return handleCouponResult.ResultCode;
@@ -1954,7 +1955,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("environment", (int)gclSettings.Environment);
             var getActionsResult = await databaseConnection.GetAsync($@"
-                SELECT id
+                SELECT id, entity_type
                 FROM `{WiserTableNames.WiserItem}`
                 WHERE entity_type = 'actie' AND published_environment & ?environment = ?environment");
 
@@ -1969,7 +1970,10 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             // Populate list.
             foreach (DataRow dataRow in getActionsResult.Rows)
             {
-                result.Add(await wiserItemsService.GetItemDetailsAsync(dataRow.Field<ulong>("id"), skipPermissionsCheck: true));
+                var itemId = dataRow.Field<ulong>("id");
+                var entityType = dataRow.Field<string>("entity_type");
+
+                result.Add(await wiserItemsService.GetItemDetailsAsync(itemId, entityType: entityType, skipPermissionsCheck: true));
             }
 
             return result;
@@ -2324,7 +2328,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
         }
 
-        private async Task<(bool Valid, decimal Discount, ShoppingBasket.HandleCouponResults HandleCouponResult, WiserItemModel Coupon, bool OnlyChangePrice, bool DoRemove)> HandleCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode)
+        private async Task<(bool Valid, decimal Discount, ShoppingBasket.HandleCouponResults HandleCouponResult, WiserItemModel Coupon, bool OnlyChangePrice, bool DoRemove)> HandleCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode, bool createNewTransaction = true)
         {
             if (String.IsNullOrWhiteSpace(couponCode))
             {
@@ -2345,12 +2349,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
 
             var couponId = getCouponIdResult.Rows[0].Field<ulong>("id");
-            var coupon = await wiserItemsService.GetItemDetailsAsync(couponId, skipPermissionsCheck: true);
+            var coupon = await wiserItemsService.GetItemDetailsAsync(couponId, entityType: Constants.CouponEntityType, skipPermissionsCheck: true);
 
-            return await HandleCouponAsync(shoppingBasket, basketLines, settings, coupon);
+            return await HandleCouponAsync(shoppingBasket, basketLines, settings, coupon, createNewTransaction);
         }
 
-        private async Task<(bool Valid, decimal Discount, ShoppingBasket.HandleCouponResults HandleCouponResult, WiserItemModel Coupon, bool OnlyChangePrice, bool DoRemove)> HandleCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, WiserItemModel coupon)
+        private async Task<(bool Valid, decimal Discount, ShoppingBasket.HandleCouponResults HandleCouponResult, WiserItemModel Coupon, bool OnlyChangePrice, bool DoRemove)> HandleCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, WiserItemModel coupon, bool createNewTransaction = true)
         {
             if (coupon == null || coupon.Id == 0)
             {
@@ -2366,13 +2370,13 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
             else
             {
-                foreach (var line in basketLines.Where(l => l.GetDetailValue("type") != "coupon"))
+                foreach (var line in basketLines.Where(l => l.GetDetailValue("type") != Constants.BasketLineCouponType))
                 {
                     totalPrice += await GetLinePriceAsync(shoppingBasket, line, settings);
                 }
             }
 
-            var existingCoupon = GetLines(basketLines, "coupon").FirstOrDefault(l => l.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty) == coupon.Id);
+            var existingCoupon = GetLines(basketLines, Constants.BasketLineCouponType).FirstOrDefault(l => l.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty) == coupon.Id);
 
             // Check if the coupon is only valid for certain items.
             var discountOnSpecificItems = false;
@@ -2423,14 +2427,14 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
             else
             {
-                var productLines = basketLines.Where(l => l.GetDetailValue("type") != "coupon");
+                var productLines = basketLines.Where(l => l.GetDetailValue("type") != Constants.BasketLineCouponType);
                 foreach (var line in productLines)
                 {
                     totalProductsPrice += await GetLinePriceAsync(shoppingBasket, line, settings, calculateOverPriceWithoutVat ? ShoppingBasket.PriceTypes.ExVatInDiscount : ShoppingBasket.PriceTypes.InVatExDiscount);
                 }
             }
 
-            var currentDiscountAmount = await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.InVatExDiscount, "coupon", includeDiscountGettingVat: false);
+            var currentDiscountAmount = await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.InVatExDiscount, Constants.BasketLineCouponType, includeDiscountGettingVat: false);
             var discount = CalculateCouponValue(coupon, totalProductsPrice, maxDiscountIsTotalAmountProducts, currentDiscountAmount);
 
             var useRounding = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_use_rounding")).Equals("true", StringComparison.OrdinalIgnoreCase);
