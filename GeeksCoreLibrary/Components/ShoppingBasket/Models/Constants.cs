@@ -4,6 +4,10 @@
     {
         public const string ConnectedItemIdProperty = "connecteditemid";
 
+        public const string CouponEntityType = "coupon";
+
+        public const string BasketLineCouponType = "coupon";
+
         public const string BasketEntityType = "basket";
 
         public const string BasketLineEntityType = "basketline";
