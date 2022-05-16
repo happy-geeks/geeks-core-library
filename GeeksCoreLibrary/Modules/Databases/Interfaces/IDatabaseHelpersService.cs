@@ -101,6 +101,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         Task CreateDatabaseAsync(string databaseName, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci");
 
         /// <summary>
+        /// Deletes a database scheme from the server.
+        /// WARNING: This cannot be undone, even with transactions. Only use this method if you're 100% sure of doing this!
+        /// </summary>
+        /// <param name="databaseName">The name of the database scheme to delete.</param>
+        Task DropDatabaseAsync(string databaseName);
+
+        /// <summary>
         /// Gets when all Wiser tables have been updated last.
         /// </summary>
         /// <returns>A Dictionary with table name and last update datetime.</returns>
