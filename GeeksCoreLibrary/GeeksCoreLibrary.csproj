@@ -5,7 +5,7 @@
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.4.276</Version>
+    <Version>1.4.27</Version>
     <Company>Happy Geeks B.V.</Company>
     <Description>Our base/core library that we use for most of our other projects.</Description>
     <AssemblyVersion>1.4.27.0</AssemblyVersion>
