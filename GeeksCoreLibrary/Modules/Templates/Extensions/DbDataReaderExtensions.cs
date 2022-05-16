@@ -113,6 +113,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 template.ReturnNotFoundWhenPreLoadQueryHasNoData = Convert.ToInt16(await reader.GetFieldValueAsync<object>("return_not_found_when_pre_load_query_has_no_data")) > 0;
             }
 
+            if (reader.HasColumn("login_required"))
+            {
+                template.LoginRequired = Convert.ToBoolean(await reader.GetFieldValueAsync<object>("login_required"));
+            }
+
+            if (reader.HasColumn("login_redirect_url"))
+            {
+                template.LoginRedirectUrl = reader.GetStringHandleNull("login_redirect_url");
+            }
+
             if (!isQuery)
             {
                 return template;
