@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -116,6 +117,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, !foundInOutputCache);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+
+            // Check if a login is required (only for HTML and query templates.
+            if (template.Type.InList(TemplateTypes.Html, TemplateTypes.Query) && template.LoginRequired && template.Id == 0)
+            {
+                // If the template ID is 0, but "LoginRequired" is true, it means no user is logged in.
+                return template;
+            }
 
             if (!includeContent)
             {

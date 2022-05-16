@@ -61,7 +61,21 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
 
             if (contentTemplate.Id <= 0)
             {
-                return NotFound();
+                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+                if (!contentTemplate.LoginRequired)
+                {
+                    // Login not required; return 404 (Not Found).
+                    return NotFound();
+                }
+
+                if (contentTemplate.Type == TemplateTypes.Html && !String.IsNullOrWhiteSpace(contentTemplate.LoginRedirectUrl))
+                {
+                    // Login required and a redirect URL is set; return redirect.
+                    return Redirect(contentTemplate.LoginRedirectUrl);
+                }
+
+                // Return unauthorized.
+                return Unauthorized();
             }
 
             var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase);
@@ -172,6 +186,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             var result = (QueryTemplate)await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Query);
             if (result.Id <= 0)
             {
+                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+                if (result.LoginRequired)
+                {
+                    return Unauthorized();
+                }
+
                 return NotFound();
             }
 
@@ -222,14 +242,22 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
 
             // Get the template and replace the dynamic content.
-            var template = (await templatesService.GetTemplateAsync(templateId)).Content;
-            template = await templatesService.HandleIncludesAsync(template);
-            template = await templatesService.ReplaceAllDynamicContentAsync(template);
-            template = await dataSelectorsService.ReplaceAllDataSelectorsAsync(template);
+            var template = await templatesService.GetTemplateAsync(templateId);
+
+            // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+            if (template.Id <= 0 && template.LoginRequired)
+            {
+                return Unauthorized();
+            }
+
+            var templateContent = template.Content;
+            templateContent = await templatesService.HandleIncludesAsync(templateContent);
+            templateContent = await templatesService.ReplaceAllDynamicContentAsync(templateContent);
+            templateContent = await dataSelectorsService.ReplaceAllDataSelectorsAsync(templateContent);
 
             // Parse the html to get the partial template part.
             var htmlDocument = new HtmlDocument();
-            htmlDocument.LoadHtml(template);
+            htmlDocument.LoadHtml(templateContent);
             var partialTemplateContent = htmlDocument.DocumentNode.SelectSingleNode($"//div[@data-type='partial-template'][@data-name='{partialTemplateName}']")?.InnerHtml;
 
             return String.IsNullOrWhiteSpace(partialTemplateContent)

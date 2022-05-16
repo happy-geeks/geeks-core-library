@@ -1,19 +1,4 @@
-﻿using GeeksCoreLibrary.Core.Enums;
-using GeeksCoreLibrary.Core.Extensions;
-using GeeksCoreLibrary.Core.Models;
-using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
-using GeeksCoreLibrary.Modules.Templates.Enums;
-using GeeksCoreLibrary.Modules.Templates.Extensions;
-using GeeksCoreLibrary.Modules.Templates.Interfaces;
-using GeeksCoreLibrary.Modules.Templates.Models;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -23,14 +8,30 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
+using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Enums;
+using GeeksCoreLibrary.Modules.Templates.Extensions;
+using GeeksCoreLibrary.Modules.Templates.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using Template = GeeksCoreLibrary.Modules.Templates.Models.Template;
 
@@ -54,6 +55,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IObjectsService objectsService;
         private readonly ILanguagesService languagesService;
         private readonly IFiltersService filtersService;
+        private readonly IAccountsService accountsService;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
@@ -69,7 +71,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IWebHostEnvironment webHostEnvironment,
             IFiltersService filtersService,
             IObjectsService objectsService,
-            ILanguagesService languagesService)
+            ILanguagesService languagesService,
+            IAccountsService accountsService)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -83,6 +86,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.filtersService = filtersService;
             this.objectsService = objectsService;
             this.languagesService = languagesService;
+            this.accountsService = accountsService;
         }
 
         /// <inheritdoc />
@@ -156,7 +160,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.grouping_key,
                             template.grouping_prefix,
                             template.pre_load_query,
-                            template.return_not_found_when_pre_load_query_has_no_data
+                            template.return_not_found_when_pre_load_query_has_no_data,
+                            template.login_required,
+                            template.login_redirect_url
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -175,7 +181,29 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             await using var reader = await databaseConnection.GetReaderAsync(query);
             var result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
 
-            return result;
+            // Check login requirement.
+            if (!result.Type.InList(TemplateTypes.Html, TemplateTypes.Query) || !result.LoginRequired)
+            {
+                // No login required; return template.
+                return result;
+            }
+
+            var emptyTemplate = new Template
+            {
+                Type = result.Type,
+                LoginRequired = true,
+                LoginRedirectUrl = result.LoginRedirectUrl
+            };
+
+            if (httpContextAccessor.HttpContext == null)
+            {
+                // No context available; return empty template without doing a login check.
+                return emptyTemplate;
+            }
+
+            // Check current login.
+            var userData = await accountsService.GetUserDataFromCookieAsync();
+            return userData is { UserId: > 0 } ? result : emptyTemplate;
         }
 
         /// <inheritdoc />
