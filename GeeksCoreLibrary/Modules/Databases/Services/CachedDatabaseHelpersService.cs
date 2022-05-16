@@ -129,6 +129,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
+        public async Task DropDatabaseAsync(string databaseName)
+        {
+            await databaseHelpersService.DropDatabaseAsync(databaseName);
+        }
+
+        /// <inheritdoc />
         public Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync()
         {
             var cacheName = "CachedDatabaseHelpersService_GetLastTableUpdates";
