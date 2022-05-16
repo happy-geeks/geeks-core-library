@@ -258,7 +258,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             templateContent = await templatesService.HandleIncludesAsync(templateContent);
             templateContent = await templatesService.ReplaceAllDynamicContentAsync(templateContent);
             templateContent = await dataSelectorsService.ReplaceAllDataSelectorsAsync(templateContent);
-            templateContent = await wiserItemsService.ReplaceAllEntityBlocksAsync(template);
+            templateContent = await wiserItemsService.ReplaceAllEntityBlocksAsync(templateContent);
 
             // Parse the html to get the partial template part.
             var htmlDocument = new HtmlDocument();
