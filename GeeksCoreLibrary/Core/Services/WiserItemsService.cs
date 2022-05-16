@@ -17,8 +17,11 @@ using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
+using GeeksCoreLibrary.Modules.DataSelector.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 
 namespace GeeksCoreLibrary.Core.Services
@@ -33,6 +36,8 @@ namespace GeeksCoreLibrary.Core.Services
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IDataSelectorsService dataSelectorsService;
         private readonly IDatabaseHelpersService databaseHelpersService;
+        private readonly ILogger<WiserItemsService> logger;
+        private readonly GclSettings gclSettings;
         private const int MaximumLevelsToDuplicate = 25;
 
         #endregion
@@ -42,13 +47,15 @@ namespace GeeksCoreLibrary.Core.Services
         /// <summary>
         /// Creates a new instance of <see cref="WiserItemsService"/>.
         /// </summary>
-        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService)
+        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService, IOptions<GclSettings> gclSettings, ILogger<WiserItemsService> logger)
         {
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
             this.stringReplacementsService = stringReplacementsService;
             this.dataSelectorsService = dataSelectorsService;
             this.databaseHelpersService = databaseHelpersService;
+            this.logger = logger;
+            this.gclSettings = gclSettings.Value;
         }
 
         #endregion
@@ -3115,15 +3122,19 @@ namespace GeeksCoreLibrary.Core.Services
             // Make extra sure there's no juicedev domain saved in the image URLs.
             output = Regex.Replace(output, @"src=""http://.+?\.juicedev\.nl", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
 
-            var regex = new Regex(@"<table[^>]*?(?:data=['""](?<data>.*?)['""][^>]*?)?(contentid|pageid|item-id)=['""](?<contentId>\d+)['""][^>]*?>.+<\/table>", RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
-            var matchResults = regex.Match(output);
-            while (matchResults.Success)
+            Regex regex;
+            if (gclSettings.UseLegacyWiser1TemplateModule)
             {
-                var contentId = Int32.Parse(matchResults.Groups[3].Value);
-                var type = matchResults.Groups[1].Value;
-                output = output.Replace(GetFullTableHtml(matchResults.Value, matchResults), $"<img src=\"/preview_image.aspx?{type}={contentId}\" {type}=\"{contentId}\" />");
+                regex = new Regex(@"<table[^>]*?(?:data=['""](?<data>.*?)['""][^>]*?)?(contentid|pageid|item-id)=['""](?<contentId>\d+)['""][^>]*?>.+<\/table>", RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                var matchResults = regex.Match(output);
+                while (matchResults.Success)
+                {
+                    var contentId = Int32.Parse(matchResults.Groups[3].Value);
+                    var type = matchResults.Groups[1].Value;
+                    output = output.Replace(GetFullTableHtml(matchResults.Value, matchResults), $"<img src=\"/preview_image.aspx?{type}={contentId}\" {type}=\"{contentId}\" />");
 
-                matchResults = regex.Match(output);
+                    matchResults = regex.Match(output);
+                }
             }
 
             output = output.Replace("~~table", "<table");
@@ -3145,6 +3156,21 @@ namespace GeeksCoreLibrary.Core.Services
                 var templateId = match.Groups["templateId"].Value;
 
                 output = output.Replace(match.Value, $"<div class=\"dynamic-content\" data-selector-id=\"{dataSelectorId}\" template-id=\"{templateId}\"><h2>Data selector</h2></div>");
+            }
+            
+            // Replace entity blocks.
+            regex = new Regex(@"<!-- Start entity block with id (?<itemId>\d+) -->.+?<!-- End entity block with id \d+ -->", RegexOptions.IgnoreCase | RegexOptions.Singleline, TimeSpan.FromMilliseconds(200));
+            matches = regex.Matches(output);
+            foreach (Match match in matches)
+            {
+                if (!match.Success)
+                {
+                    continue;
+                }
+
+                var itemId = match.Groups["itemId"].Value;
+
+                output = output.Replace(match.Value, $"<div class=\"dynamic-content\" entity-block-item-id=\"{itemId}\"><h2>Entity block</h2></div>");
             }
 
             return output;
@@ -3191,6 +3217,7 @@ namespace GeeksCoreLibrary.Core.Services
             }
 
             output = await dataSelectorsService.ReplaceAllDataSelectorsAsync(output);
+            output = await ReplaceAllEntityBlocksAsync(output);
 
             return output;
         }
@@ -3530,6 +3557,56 @@ namespace GeeksCoreLibrary.Core.Services
                     }
                 }
             }
+        }
+        
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllEntityBlocksAsync(string template)
+        {
+            if (String.IsNullOrWhiteSpace(template))
+            {
+                return template;
+            }
+
+            // Entity blocks with templates.
+            var regEx = new Regex(@"<div[^<>]*?(?:class=['""]dynamic-content['""][^<>]*?)?(entity-block-item-id)=['""](?<itemId>\d+)['""]([^<>]*?)?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
+
+            var matches = regEx.Matches(template);
+            foreach (Match match in matches)
+            {
+                if (!match.Success)
+                {
+                    continue;
+                }
+
+                if (!UInt64.TryParse(match.Groups["itemId"].Value, out var itemId) || itemId <= 0)
+                {
+                    logger.LogWarning($"Found dynamic content with invalid dataSelectorId of '{match.Groups["dataSelectorId"].Value}', so ignoring it.");
+                    continue;
+                }
+
+                try
+                {
+                    
+                    await databaseConnection.EnsureOpenConnectionForReadingAsync();
+                    var (entityTemplate, dataRow) = await GetTemplateAndDataForItemAsync(itemId);
+                    var html = await stringReplacementsService.DoAllReplacementsAsync(entityTemplate, dataRow, removeUnknownVariables: false);
+
+                    template = template.Replace(match.Value, $"<!-- Start entity block with id {itemId} -->{html}<!-- End entity block with id {itemId} -->");
+                }
+                catch (Exception exception)
+                {
+                    logger.LogError($"An error while generating entity block with id '{itemId}'': {exception}");
+                    var errorOnPage = $"An error occurred while generating entity block with id '{itemId}'";
+                    if (gclSettings.Environment is Environments.Development or Environments.Test)
+                    {
+                        errorOnPage += $": {exception.Message}";
+                    }
+
+                    template = template.Replace(match.Value, errorOnPage);
+                }
+            }
+
+            return template;
         }
 
         #endregion
