@@ -276,10 +276,20 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 throw new ArgumentNullException(nameof(databaseName));
             }
             
-            databaseConnection.AddParameter("databaseName", databaseName);
             databaseConnection.AddParameter("characterSet", characterSet);
             databaseConnection.AddParameter("collation", collation);
-            await databaseConnection.ExecuteAsync("CREATE DATABASE IF NOT EXISTS ?databaseName DEFAULT CHARACTER SET = ?characterSet DEFAULT COLLATE = ?collation");
+            await databaseConnection.ExecuteAsync($"CREATE DATABASE IF NOT EXISTS `{databaseName.ToMySqlSafeValue(false)}` DEFAULT CHARACTER SET = ?characterSet DEFAULT COLLATE = ?collation");
+        }
+
+        /// <inheritdoc />
+        public async Task DropDatabaseAsync(string databaseName)
+        {
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                throw new ArgumentNullException(nameof(databaseName));
+            }
+            
+            await databaseConnection.ExecuteAsync($"DROP DATABASE IF EXISTS `{databaseName.ToMySqlSafeValue(false)}`");
         }
 
         /// <inheritdoc />

@@ -6,6 +6,7 @@ using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.WebPage.Models;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
@@ -32,15 +33,17 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
         private readonly ITempDataProvider tempDataProvider;
         private readonly IViewComponentHelper viewComponentHelper;
         private readonly IDataSelectorsService dataSelectorsService;
+        private readonly IWiserItemsService wiserItemsService;
 
         public WebPageController(ILogger<WebPageController> logger,
-            ITemplatesService templatesService,
-            IPagesService pagesService,
-            IActionContextAccessor actionContextAccessor,
-            IHttpContextAccessor httpContextAccessor,
-            ITempDataProvider tempDataProvider,
-            IViewComponentHelper viewComponentHelper,
-            IDataSelectorsService dataSelectorsService)
+                                 ITemplatesService templatesService,
+                                 IPagesService pagesService,
+                                 IActionContextAccessor actionContextAccessor,
+                                 IHttpContextAccessor httpContextAccessor,
+                                 ITempDataProvider tempDataProvider,
+                                 IViewComponentHelper viewComponentHelper,
+                                 IDataSelectorsService dataSelectorsService,
+                                 IWiserItemsService wiserItemsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -50,6 +53,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
             this.tempDataProvider = tempDataProvider;
             this.viewComponentHelper = viewComponentHelper;
             this.dataSelectorsService = dataSelectorsService;
+            this.wiserItemsService = wiserItemsService;
         }
 
         [Route("webpage.gcl")]
@@ -173,6 +177,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
 
             var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString());
             newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
+            newBodyHtml = await wiserItemsService.ReplaceAllEntityBlocksAsync(newBodyHtml);
 
             if (!ombouw)
             {

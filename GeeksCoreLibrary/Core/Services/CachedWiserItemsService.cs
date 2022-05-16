@@ -482,5 +482,11 @@ namespace GeeksCoreLibrary.Core.Services
         {
             await wiserItemsService.HandleItemAggregationAsync(service, itemModel, encryptionKey);
         }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllEntityBlocksAsync(string template)
+        {
+            return await wiserItemsService.ReplaceAllEntityBlocksAsync(template);
+        }
     }
 }

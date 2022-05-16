@@ -790,5 +790,12 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="itemModel">The item to handle the aggregation of.</param>
         /// <param name="encryptionKey">Optional: The key used for encrypting values of secure-input fields. This will only be used the there is no specific encryption key set for the secure-input field. Default value is the key from the web.config setting "QueryTemplatesDecryptionKey".</param>
         Task HandleItemAggregationAsync(IWiserItemsService wiserItemsService, WiserItemModel itemModel, string encryptionKey = "");
+
+        /// <summary>
+        /// Replaces all entity blocks in a HTML template with the rendered versions.
+        /// </summary>
+        /// <param name="template">The HTML template that might contain one or more entity blocks.</param>
+        /// <returns>The same template but with all entity blocks fully rendered.</returns>
+        Task<string> ReplaceAllEntityBlocksAsync(string template);
     }
 }

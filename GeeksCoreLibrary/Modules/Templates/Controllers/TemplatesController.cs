@@ -12,6 +12,7 @@ using System.Data;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -26,14 +27,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         private readonly IDatabaseConnection databaseConnection;
         private readonly IPagesService pagesService;
         private readonly IDataSelectorsService dataSelectorsService;
+        private readonly IWiserItemsService wiserItemsService;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IDatabaseConnection databaseConnection, IPagesService pagesService, IDataSelectorsService dataSelectorsService)
+        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IDatabaseConnection databaseConnection, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
             this.databaseConnection = databaseConnection;
             this.pagesService = pagesService;
             this.dataSelectorsService = dataSelectorsService;
+            this.wiserItemsService = wiserItemsService;
         }
 
         [Route("template.gcl")]
@@ -145,6 +148,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
 
             var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString());
             newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
+            newBodyHtml = await wiserItemsService.ReplaceAllEntityBlocksAsync(newBodyHtml);
 
             if (!ombouw)
             {
@@ -254,6 +258,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             templateContent = await templatesService.HandleIncludesAsync(templateContent);
             templateContent = await templatesService.ReplaceAllDynamicContentAsync(templateContent);
             templateContent = await dataSelectorsService.ReplaceAllDataSelectorsAsync(templateContent);
+            templateContent = await wiserItemsService.ReplaceAllEntityBlocksAsync(template);
 
             // Parse the html to get the partial template part.
             var htmlDocument = new HtmlDocument();
