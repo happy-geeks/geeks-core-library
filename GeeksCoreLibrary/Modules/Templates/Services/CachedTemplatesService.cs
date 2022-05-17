@@ -139,6 +139,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 },
                 cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
 
+            // Check if a login is required (only for HTML and query templates.
+            if (template.Type.InList(TemplateTypes.Html, TemplateTypes.Query) && template.LoginRequired && template.Id == 0)
+            {
+                // If the template ID is 0, but "LoginRequired" is true, it means no user is logged in.
+                return template;
+            }
+
             if (!includeContent)
             {
                 return template;

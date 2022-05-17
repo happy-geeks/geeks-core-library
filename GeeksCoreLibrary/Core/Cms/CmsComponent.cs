@@ -18,6 +18,7 @@ using GeeksCoreLibrary.Modules.Seo.Models;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -101,7 +102,7 @@ namespace GeeksCoreLibrary.Core.Cms
 
             var parameterValues = new List<object>();
             var methodParameters = method.GetParameters();
-            if (!HttpContext.Request.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(HttpContext.Request.ContentType) && !HttpContext.Request.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
             {
                 foreach (var parameter in methodParameters)
                 {
