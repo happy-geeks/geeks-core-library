@@ -164,6 +164,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{pattern}</strong> The regex validation pattern for the field. This will be replaced with the entire attribute (pattern='the pattern') if there is a pattern, or with an empty string if there isn't.</li>
     <li><strong>{value}</strong> The current value of the field, retrieved from the basket or logged in user, or POST variables.</li>
     <li><strong>{fieldClass}</strong> Any extra CSS classes that are set in the settings of the a field in Wiser.</li>
+    <li><strong>{tabIndex}</strong> The tabindex attribute with the value that is set in the settings of this field in Wiser. If no tab index has been set in Wiser, this will be replaced by an empty string.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,
@@ -192,6 +193,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{pattern}</strong> The regex validation pattern for the field. This will be replaced with the entire attribute (pattern='the pattern') if there is a pattern, or with an empty string if there isn't.</li>
     <li><strong>{value}</strong> The current value of the field, retrieved from the basket or logged in user, or POST variables.</li>
     <li><strong>{fieldClass}</strong> Any extra CSS classes that are set in the settings of the a field in Wiser.</li>
+    <li><strong>{tabIndex}</strong> The tabindex attribute with the value that is set in the settings of this field in Wiser. If no tab index has been set in Wiser, this will be replaced by an empty string.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,
@@ -241,6 +243,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{checked}</strong> Whether this option should be checked, retrieved from the basket or logged in user, or POST variables. This will be replaced with the 'checked' attribute if it should, or an empty string if it shouldn't.</li>
     <li><strong>{optionText}</strong> The text for the option that the user should see.</li>
     <li><strong>{optionValue}</strong> The value of the option that should be saved to database.</li>
+    <li><strong>{tabIndex}</strong> The tabindex attribute with the value that is set in the settings of this field in Wiser. If no tab index has been set in Wiser, this will be replaced by an empty string.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,
@@ -268,6 +271,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{value}</strong> The current value of the field, retrieved from the basket or logged in user, or POST variables.</li>
     <li><strong>{options}</strong> The options for the radio button.</li>
     <li><strong>{fieldClass}</strong> Any extra CSS classes that are set in the settings of the a field in Wiser.</li>
+    <li><strong>{tabIndex}</strong> The tabindex attribute with the value that is set in the settings of this field in Wiser. If no tab index has been set in Wiser, this will be replaced by an empty string.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,
@@ -316,6 +320,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
     <li><strong>{required}</strong> This will be replaced with the 'required' attribute if the field is required, or with an empty string if it isn't.</li>
     <li><strong>{checked}</strong> Whether this option should be checked, retrieved from the basket or logged in user, or POST variables. This will be replaced with the 'checked' attribute if it should, or an empty string if it shouldn't.</li>
     <li><strong>{fieldClass}</strong> Any extra CSS classes that are set in the settings of the a field in Wiser.</li>
+    <li><strong>{tabIndex}</strong> The tabindex attribute with the value that is set in the settings of this field in Wiser. If no tab index has been set in Wiser, this will be replaced by an empty string.</li>
 </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Layout,

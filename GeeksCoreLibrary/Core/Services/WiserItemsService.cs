@@ -3097,9 +3097,10 @@ namespace GeeksCoreLibrary.Core.Services
 
             // Determine main domain, using either the "maindomain" object or the "maindomain_wiser" object.
             var mainDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
-            if (String.IsNullOrWhiteSpace(mainDomain))
+            var mainDomainForWiser = await objectsService.FindSystemObjectByDomainNameAsync("maindomain_wiser");
+            if (!String.IsNullOrWhiteSpace(mainDomainForWiser))
             {
-                mainDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain_wiser");
+                mainDomain = mainDomainForWiser;
             }
 
             // Replace the use of the full domain name for the image if setup.
@@ -3111,17 +3112,32 @@ namespace GeeksCoreLibrary.Core.Services
                     !String.IsNullOrWhiteSpace(mainDomain)
                     ? $"src=\"{(requireSsl ? "https" : "http")}://{mainDomain}"
                     : "src=\"");
+                output = output.Replace($"srcset=\"http://{testDomain}",
+                    !String.IsNullOrWhiteSpace(mainDomain)
+                    ? $"srcset=\"{(requireSsl ? "https" : "http")}://{mainDomain}"
+                    : "srcset=\"");
             }
 
             // If images should be saved with a relative path.
-            if (!allowAbsoluteImageUrls && !String.IsNullOrWhiteSpace(mainDomain) && String.Equals(await objectsService.FindSystemObjectByDomainNameAsync("wiser_save_images_relative"), "true", StringComparison.OrdinalIgnoreCase))
+            var saveImagesRelative = String.Equals(await objectsService.FindSystemObjectByDomainNameAsync("wiser_save_images_relative"), "true", StringComparison.OrdinalIgnoreCase);
+            if (!allowAbsoluteImageUrls && !String.IsNullOrWhiteSpace(mainDomain) && saveImagesRelative)
             {
                 output = Regex.Replace(output, $@"src=""https?://{Regex.Escape(mainDomain)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 output = Regex.Replace(output, $@"src=""//{Regex.Escape(mainDomain)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"srcset=""https?://{Regex.Escape(mainDomain)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"srcset=""//{Regex.Escape(mainDomain)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            }
+            if (!allowAbsoluteImageUrls && !String.IsNullOrWhiteSpace(mainDomainForWiser) && saveImagesRelative)
+            {
+                output = Regex.Replace(output, $@"src=""https?://{Regex.Escape(mainDomainForWiser)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"src=""//{Regex.Escape(mainDomainForWiser)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"srcset=""https?://{Regex.Escape(mainDomainForWiser)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"srcset=""//{Regex.Escape(mainDomainForWiser)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             }
 
             // Make extra sure there's no juicedev domain saved in the image URLs.
             output = Regex.Replace(output, @"src=""http://.+?\.juicedev\.nl", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            output = Regex.Replace(output, @"srcset=""http://.+?\.juicedev\.nl", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
 
             Regex regex;
             if (gclSettings.UseLegacyWiser1TemplateModule)
@@ -3196,23 +3212,27 @@ namespace GeeksCoreLibrary.Core.Services
             }
 
             // Get the domain that will be used to prefix the image URLs
-            var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
+            var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain_wiser");
             if (String.IsNullOrEmpty(imagesDomain))
             {
-                imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain_wiser");
+                imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
             }
 
             if (imagesDomain != "")
             {
-                output = output.Replace("src=\"//", "src=\"~//");
-                output = output.Replace("src=\"/preview_image", "src=\"~/preview_image");
-                output = output.Replace("src=\"/", $"src=\"//{imagesDomain}/");
-                output = output.Replace("src=\"~//", "src=\"//");
-                output = output.Replace("src=\"~/preview_image", "src=\"/preview_image");
+                output = output.Replace("src=\"//", "src=\"~//").Replace("srcset=\"//", "srcset=\"~//");
+                output = output.Replace("src=\"/preview_image", "src=\"~/preview_image").Replace("srcset=\"/preview_image", "srcset=\"~/preview_image");
+                output = output.Replace("src=\"/", $"src=\"//{imagesDomain}/").Replace("srcset=\"/", $"srcset=\"//{imagesDomain}/");
+                output = output.Replace("src=\"~//", "src=\"//").Replace("srcset=\"~//", "srcset=\"//");
+                output = output.Replace("src=\"~/preview_image", "src=\"/preview_image").Replace("srcset=\"~/preview_image", "srcset=\"/preview_image");
             }
 
             // Replace with HTTPS
             foreach (Match imageMatch in Regex.Matches(output, @"<img.*?src=[""'](http:\/\/.*?)[""']", RegexOptions.Singleline | RegexOptions.IgnoreCase))
+            {
+                output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
+            }
+            foreach (Match imageMatch in Regex.Matches(output, @"<source.*?srcset=[""'](http:\/\/.*?)[""']", RegexOptions.Singleline | RegexOptions.IgnoreCase))
             {
                 output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
             }

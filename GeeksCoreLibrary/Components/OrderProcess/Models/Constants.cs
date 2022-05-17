@@ -122,6 +122,8 @@
         public const string FieldSaveToProperty = "formfieldsaveto";
 
         public const string FieldRequiresUniqueValueProperty = "formfieldrequireuniquevalue";
+        
+        public const string FieldTabIndexProperty = "formfieldtabindex";
 
         public const string PaymentServiceProviderTypeProperty = "psptype";
 
