@@ -800,9 +800,9 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
         }
 
         /// <inheritdoc />
-        public async Task<(JArray Result, HttpStatusCode StatusCode, string Error)> GetJsonResponseAsync(DataSelectorRequestModel data)
+        public async Task<(JArray Result, HttpStatusCode StatusCode, string Error)> GetJsonResponseAsync(DataSelectorRequestModel data, bool skipSecurity = false)
         {
-            var (itemsRequest, statusCode, error) = await InitializeItemsRequestAsync(data);
+            var (itemsRequest, statusCode, error) = await InitializeItemsRequestAsync(data, skipSecurity);
             if (statusCode != HttpStatusCode.OK)
             {
                 return (null, statusCode, error);
@@ -819,7 +819,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
         }
         
         /// <inheritdoc />
-        public async Task<(ItemsRequest Result, HttpStatusCode StatusCode, string Error)> InitializeItemsRequestAsync(DataSelectorRequestModel data)
+        public async Task<(ItemsRequest Result, HttpStatusCode StatusCode, string Error)> InitializeItemsRequestAsync(DataSelectorRequestModel data, bool skipSecurity = false)
         {
             var itemsRequest = new ItemsRequest();
 
@@ -827,7 +827,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             {
                 itemsRequest.Selector = data.Settings;
 
-                if (itemsRequest.Selector.Insecure)
+                if (!itemsRequest.Selector.Insecure && !skipSecurity)
                 {
                     return (null, HttpStatusCode.BadRequest, "This data selector may not be invoked unsecured.");
                 }
@@ -837,7 +837,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 var json = await GetDataSelectorJsonAsync(data.DataSelectorId.Value);
                 var dataSelector = JsonConvert.DeserializeObject<Models.DataSelector>(json);
 
-                if (dataSelector is { Insecure: false })
+                if (!skipSecurity && dataSelector is { Insecure: false })
                 {
                     // When trying to load the data selector without security.
                     if (String.IsNullOrWhiteSpace(data.Hash))
