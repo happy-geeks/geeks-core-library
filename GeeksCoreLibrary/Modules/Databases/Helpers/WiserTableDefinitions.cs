@@ -193,6 +193,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("ordering", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("insert_mode", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("load_always", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("disable_minifier", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("url_regex", MySqlDbType.VarChar, 255),
                     new("external_files", MySqlDbType.MediumText),
                     new("grouping_create_object_instead_of_array", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
