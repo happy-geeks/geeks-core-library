@@ -846,6 +846,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             };
 
             fieldHtml = StringReplacementsService.DoReplacements(fieldHtml, replaceData);
+            fieldHtml = fieldHtml.ReplaceCaseInsensitive("{tabindex}", field.TabIndex > 0 ? $"tabindex='{field.TabIndex}'" : "");
 
             // Build the field options HTML, if applicable.
             if (field.Values != null && field.Values.Any() && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
@@ -898,6 +899,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 };
 
                 optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
+                optionHtml = optionHtml.ReplaceCaseInsensitive("{tabindex}", field.TabIndex > 0 ? $"tabindex='{field.TabIndex}'" : "");
                 optionsBuilder.AppendLine(optionHtml);
             }
 

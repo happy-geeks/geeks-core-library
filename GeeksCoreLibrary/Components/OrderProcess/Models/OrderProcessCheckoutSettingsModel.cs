@@ -57,14 +57,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         internal string TemplateFieldError { get; }
 
         [DefaultValue(@"<div id='container_{fieldId}' class='field {errorClass} {fieldClass}'>
-    <input type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern} value='{value}' />
+    <input type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern} value='{value}' {tabindex} />
     [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
     {error}
 </div>")]
         internal string TemplateInputField { get; }
 
         [DefaultValue(@"<div id='container_{fieldId}' class='field multi-line {errorClass} {fieldClass}'>
-    <textarea type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern}>{value}</textarea>
+    <textarea type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern} {tabindex}>{value}</textarea>
     [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
     {error}
 </div>")]
@@ -80,13 +80,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         internal string TemplateRadioButtonField { get; }
         
         [DefaultValue(@"<label>
-    <input type='radio' id='{fieldId}_{optionValue}' name='{fieldId}' value='{optionValue}' {required} {checked} />
+    <input type='radio' id='{fieldId}_{optionValue}' name='{fieldId}' value='{optionValue}' {required} {checked} {tabindex} />
     <span class='label'>{optionText}</span>
 </label>")]
         internal string TemplateRadioButtonFieldOption { get; }
         
         [DefaultValue(@"<div id='container_{fieldId}' class='field full {errorClass} {fieldClass}'>
-    <select id='{fieldId}' name='{fieldId}' {required}>
+    <select id='{fieldId}' name='{fieldId}' {required} {tabindex}>
         {options}
     </select>
     [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
@@ -99,7 +99,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         
         [DefaultValue(@"<div id='container_{fieldId}' class='field {errorClass} {fieldClass}'>
     <label>
-        <input type='checkbox' id='{fieldId}' name='{fieldId}' {required} {checked} value='1' />
+        <input type='checkbox' id='{fieldId}' name='{fieldId}' {required} {checked} value='1' {tabindex} />
         <span class='label'>{label}</span>
     </label>
     {error}

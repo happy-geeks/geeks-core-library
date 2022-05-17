@@ -228,6 +228,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             fieldCssClass.value AS fieldCssClass,
                             fieldSaveTo.value AS fieldSaveTo,
                             fieldRequiresUniqueValue.value AS fieldRequiresUniqueValue,
+                            fieldTabIndex.value AS fieldTabIndex,
 
                             # Field values
 	                        IF(NULLIF(fieldValues.`key`, '') IS NULL AND NULLIF(fieldValues.value, '') IS NULL, NULL, JSON_OBJECTAGG(IFNULL(fieldValues.`key`, ''), IFNULL(fieldValues.value, ''))) AS fieldValues
@@ -268,6 +269,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldCssClass ON fieldCssClass.item_id = field.id AND fieldCssClass.`key` = '{Constants.FieldCssClassProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldSaveTo ON fieldSaveTo.item_id = field.id AND fieldSaveTo.`key` = '{Constants.FieldSaveToProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldRequiresUniqueValue ON fieldRequiresUniqueValue.item_id = field.id AND fieldRequiresUniqueValue.`key` = '{Constants.FieldRequiresUniqueValueProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldTabIndex ON fieldTabIndex.item_id = field.id AND fieldTabIndex.`key` = '{Constants.FieldTabIndexProperty}'
                         
                         # Field values
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldValues ON fieldValues.item_id = field.id AND fieldValues.groupname = '{Constants.FieldValuesGroupName}'
@@ -383,6 +385,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 if (String.IsNullOrWhiteSpace(field.FieldId))
                 {
                     field.FieldId = field.Title;
+                }
+
+                var tabIndexStringValue = dataRow.Field<string>("fieldTabIndex");
+                if (Int32.TryParse(tabIndexStringValue, out var tabIndex))
+                {
+                    field.TabIndex = tabIndex;
                 }
 
                 var saveTo = dataRow.Field<string>("fieldSaveTo");
