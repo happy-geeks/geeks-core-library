@@ -26,7 +26,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Modules\Databases\Controllers\" />
     <Folder Include="Modules\PostalServices\PostNL\Models\" />
   </ItemGroup>
 

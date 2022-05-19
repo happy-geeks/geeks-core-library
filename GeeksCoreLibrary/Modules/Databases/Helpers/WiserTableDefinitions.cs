@@ -364,7 +364,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 LastUpdate = new DateTime(2022, 5, 10),
                 Columns = new List<ColumnSettingsModel>
                 {
-                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey:true, autoIncrement: true),
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("message", MySqlDbType.MediumText, notNull: true),
                     new("level", MySqlDbType.VarChar, 64, notNull: true),
                     new("scope", MySqlDbType.VarChar, 64, notNull: true),
@@ -378,6 +378,24 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 {
                     new(WiserTableNames.AisLogs, "idx_configuration", IndexTypes.Normal, new List<string> { "configuration", "time_id", "order" }),
                     new(WiserTableNames.AisLogs, "idx_level", IndexTypes.Normal, new List<string> { "level", "configuration", "time_id", "order" })
+                }
+            },
+            
+            // wiser_id_mappings
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserIdMappings,
+                LastUpdate = new DateTime(2022, 5, 19),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("table_name", MySqlDbType.VarChar, 255, notNull: true),
+                    new("our_id", MySqlDbType.UInt64, notNull: true),
+                    new("production_id", MySqlDbType.UInt64, notNull: true)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserIdMappings, "idx_unique", IndexTypes.Unique, new List<string> { "table_name", "our_id" })
                 }
             }
         };

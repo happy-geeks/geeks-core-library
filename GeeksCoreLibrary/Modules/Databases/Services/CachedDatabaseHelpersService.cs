@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
@@ -8,7 +7,6 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using LazyCache;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Databases.Services
@@ -18,24 +16,27 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
     {
         private readonly IDatabaseHelpersService databaseHelpersService;
         private readonly IAppCache cache;
-        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ICacheService cacheService;
-        private readonly ConcurrentDictionary<string, object> parameters = new();
+        private readonly IDatabaseConnection databaseConnection;
         private readonly GclSettings gclSettings;
 
-        public CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelpersService, IAppCache cache, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, ICacheService cacheService)
+        public CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelpersService, IAppCache cache, IOptions<GclSettings> gclSettings, ICacheService cacheService, IDatabaseConnection databaseConnection)
         {
             this.databaseHelpersService = databaseHelpersService;
             this.cache = cache;
-            this.httpContextAccessor = httpContextAccessor;
             this.cacheService = cacheService;
+            this.databaseConnection = databaseConnection;
             this.gclSettings = gclSettings.Value;
         }
 
         /// <inheritdoc />
-        public Task<bool> ColumnExistsAsync(string tableName, string columnName)
+        public Task<bool> ColumnExistsAsync(string tableName, string columnName, string databaseName = null)
         {
-            var cacheName = $"CachedDatabaseHelpersService_ColumnExistsAsync_{tableName}_{columnName}";
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            var cacheName = $"CachedDatabaseHelpersService_ColumnExistsAsync_{databaseName}_{tableName}_{columnName}";
             return cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
@@ -45,45 +46,65 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public Task<List<string>> GetColumnNamesAsync(string tableName)
+        public Task<List<string>> GetColumnNamesAsync(string tableName, string databaseName = null)
         {
-            var cacheName = $"CachedDatabaseHelpersService_GetColumnNamesAsync_{tableName}";
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            var cacheName = $"CachedDatabaseHelpersService_GetColumnNamesAsync_{databaseName}_{tableName}";
             return cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
-                    return await databaseHelpersService.GetColumnNamesAsync(tableName);
+                    return await databaseHelpersService.GetColumnNamesAsync(tableName, databaseName);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
 
         /// <inheritdoc />
-        public async Task AddColumnToTableAsync(string tableName, ColumnSettingsModel settings, bool throwExceptionIfColumnAlreadyExists = true)
+        public async Task AddColumnToTableAsync(string tableName, ColumnSettingsModel settings, bool throwExceptionIfColumnAlreadyExists = true, string databaseName = null)
         {
-            await databaseHelpersService.AddColumnToTableAsync(tableName, settings, throwExceptionIfColumnAlreadyExists);
+            await AddColumnToTableAsync(this, tableName, settings, throwExceptionIfColumnAlreadyExists, databaseName);
         }
 
         /// <inheritdoc />
-        public async Task DropColumnAsync(string tableName, string columnName)
+        public async Task AddColumnToTableAsync(IDatabaseHelpersService service, string tableName, ColumnSettingsModel settings, bool throwExceptionIfColumnAlreadyExists = true, string databaseName = null)
         {
-            await databaseHelpersService.DropColumnAsync(tableName, columnName);
+            await databaseHelpersService.AddColumnToTableAsync(service, tableName, settings, throwExceptionIfColumnAlreadyExists, databaseName);
         }
 
         /// <inheritdoc />
-        public async Task CreateTableAsync(string tableName, IList<ColumnSettingsModel> primaryKeys, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci")
+        public async Task DropColumnAsync(string tableName, string columnName, string databaseName = null)
         {
-            await databaseHelpersService.CreateTableAsync(tableName, primaryKeys, characterSet, collation);
+            await databaseHelpersService.DropColumnAsync(tableName, columnName, databaseName);
         }
 
         /// <inheritdoc />
-        public async Task CreateOrUpdateTableAsync(string tableName, IList<ColumnSettingsModel> columns, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci")
+        public async Task CreateTableAsync(string tableName, IList<ColumnSettingsModel> primaryKeys, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", string databaseName = null)
         {
-            await databaseHelpersService.CreateOrUpdateTableAsync(tableName, columns, characterSet, collation);
+            await databaseHelpersService.CreateTableAsync(tableName, primaryKeys, characterSet, collation, databaseName);
+        }
+
+        /// <inheritdoc />
+        public async Task CreateOrUpdateTableAsync(string tableName, IList<ColumnSettingsModel> columns, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", string databaseName = null)
+        {
+            await CreateOrUpdateTableAsync(this, tableName, columns, characterSet, collation, databaseName);
+        }
+
+        /// <inheritdoc />
+        public async Task CreateOrUpdateTableAsync(IDatabaseHelpersService service, string tableName, IList<ColumnSettingsModel> columns, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", string databaseName = null)
+        {
+            await databaseHelpersService.CreateOrUpdateTableAsync(service, tableName, columns, characterSet, collation, databaseName);
         }
 
         /// <inheritdoc />
         public Task<bool> TableExistsAsync(string tableName, string databaseName = null)
         {
-            var cacheName = $"CachedDatabaseHelpersService_TableExistsAsync_{tableName}";
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            var cacheName = $"CachedDatabaseHelpersService_TableExistsAsync_{databaseName}_{tableName}";
             return cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
@@ -105,21 +126,21 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public async Task DropTableAsync(string tableName, bool isTemporaryTable = false)
+        public async Task DropTableAsync(string tableName, bool isTemporaryTable = false, string databaseName = null)
         {
-            await databaseHelpersService.DropTableAsync(tableName, isTemporaryTable);
+            await databaseHelpersService.DropTableAsync(tableName, isTemporaryTable, databaseName);
         }
 
         /// <inheritdoc />
-        public async Task DuplicateTableAsync(string tableToDuplicate, string newTableName, bool includeData = true)
+        public async Task DuplicateTableAsync(string tableToDuplicate, string newTableName, bool includeData = true, string sourceDatabaseName = null, string destinationTableName = null)
         {
-            await databaseHelpersService.DuplicateTableAsync(tableToDuplicate, newTableName, includeData);
+            await databaseHelpersService.DuplicateTableAsync(tableToDuplicate, newTableName, includeData, sourceDatabaseName, destinationTableName);
         }
 
         /// <inheritdoc />
-        public async Task CreateOrUpdateIndexesAsync(List<IndexSettingsModel> indexes)
+        public async Task CreateOrUpdateIndexesAsync(List<IndexSettingsModel> indexes, string databaseName = null)
         {
-            await databaseHelpersService.CreateOrUpdateIndexesAsync(indexes);
+            await databaseHelpersService.CreateOrUpdateIndexesAsync(indexes, databaseName);
         }
 
         /// <inheritdoc />
@@ -135,27 +156,45 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync()
+        public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(string databaseName = null)
         {
-            var cacheName = "CachedDatabaseHelpersService_GetLastTableUpdates";
-            return cache.GetOrAddAsync(cacheName,
-                async cacheEntry =>
-                {
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;                    
-                    return await databaseHelpersService.GetLastTableUpdatesAsync();
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+            return await GetLastTableUpdatesAsync(this, databaseName);
         }
 
         /// <inheritdoc />
-        public async Task CheckAndUpdateTablesAsync(List<string> tablesToUpdate, Dictionary<string, DateTime> tableChanges = null)
+        public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(IDatabaseHelpersService service, string databaseName = null)
         {
-            tableChanges ??= await GetLastTableUpdatesAsync();
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            var cacheName = $"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}";
+            return await cache.GetOrAddAsync(cacheName,
+                                           async cacheEntry =>
+                                           {
+                                               cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;                    
+                                               return await databaseHelpersService.GetLastTableUpdatesAsync(service, databaseName);
+                                           }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+        }
 
-            await databaseHelpersService.CheckAndUpdateTablesAsync(tablesToUpdate, tableChanges);
+        /// <inheritdoc />
+        public async Task CheckAndUpdateTablesAsync(List<string> tablesToUpdate, string databaseName = null)
+        {
+            await CheckAndUpdateTablesAsync(this, tablesToUpdate, databaseName);
+        }
+
+        /// <inheritdoc />
+        public async Task CheckAndUpdateTablesAsync(IDatabaseHelpersService service, List<string> tablesToUpdate, string databaseName = null)
+        {
+            await databaseHelpersService.CheckAndUpdateTablesAsync(service, tablesToUpdate, databaseName);
 
             // Remove the cache for last table updates, so that they will be retrieved from database next time.
             // Otherwise we will get problems that we try to do the same changes multiple times, because the cache will have old dates then.
-            cache.Remove("CachedDatabaseHelpersService_GetLastTableUpdates");
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            cache.Remove($"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}");
         }
     }
 }
