@@ -289,7 +289,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
                 commandToUse.CommandText = finalQuery.ToString();
 
-                var reader = await commandToUse.ExecuteReaderAsync();
+                await using var reader = await commandToUse.ExecuteReaderAsync();
                 if (!await reader.ReadAsync())
                 {
                     return 0L;
