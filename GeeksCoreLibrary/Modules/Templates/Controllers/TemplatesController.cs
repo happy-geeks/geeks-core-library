@@ -146,7 +146,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates));
             }
 
-            var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString());
+            var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString(), templateType: contentTemplate.Type);
             newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
             newBodyHtml = await wiserItemsService.ReplaceAllEntityBlocksAsync(newBodyHtml);
 
@@ -255,7 +255,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
 
             var templateContent = template.Content;
-            templateContent = await templatesService.HandleIncludesAsync(templateContent);
+            templateContent = await templatesService.HandleIncludesAsync(templateContent, templateType: TemplateTypes.Html);
             templateContent = await templatesService.ReplaceAllDynamicContentAsync(templateContent);
             templateContent = await dataSelectorsService.ReplaceAllDataSelectorsAsync(templateContent);
             templateContent = await wiserItemsService.ReplaceAllEntityBlocksAsync(templateContent);
