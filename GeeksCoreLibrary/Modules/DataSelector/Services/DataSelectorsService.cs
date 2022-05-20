@@ -990,6 +990,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 }
             }
 
+            if (String.IsNullOrWhiteSpace(data.OutputTemplate))
+            {
+                return (data.OutputTemplate, HttpStatusCode.OK, String.Empty);
+            }
+
             var outputTemplate = data.OutputTemplate;
             var output = stringReplacementsService.FillStringByClassList(jsonResult, outputTemplate);
 
