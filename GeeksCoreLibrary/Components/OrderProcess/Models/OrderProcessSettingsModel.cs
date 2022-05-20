@@ -67,5 +67,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         public string MeasurementProtocolItemJson { get; set; }
 
         public string MeasurementProtocolBeginCheckoutJson { get; set; }
+
+        public string MeasurementProtocolAddPaymentInfoJson { get; set; }
+
+        public string MeasurementProtocolPurchaseJson { get; set; }
     }
 }

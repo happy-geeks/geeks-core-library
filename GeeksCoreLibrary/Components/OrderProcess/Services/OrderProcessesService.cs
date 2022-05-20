@@ -23,6 +23,7 @@ using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
+using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
@@ -52,6 +53,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         private readonly ILogger<OrderProcessesService> logger;
         private readonly IObjectsService objectsService;
         private readonly GclSettings gclSettings;
+        private readonly IMeasurementProtocolService measurementProtocolService;
 
         /// <summary>
         /// Creates a new instance of <see cref="OrderProcessesService"/>.
@@ -67,7 +69,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             ICommunicationsService communicationsService,
             IHttpContextAccessor httpContextAccessor,
             ILogger<OrderProcessesService> logger,
-            IObjectsService objectsService)
+            IObjectsService objectsService,
+            IMeasurementProtocolService measurementProtocolService)
         {
             this.databaseConnection = databaseConnection;
             this.shoppingBasketsService = shoppingBasketsService;
@@ -81,6 +84,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             this.logger = logger;
             this.objectsService = objectsService;
             this.gclSettings = gclSettings.Value;
+            this.measurementProtocolService = measurementProtocolService;
         }
 
         /// <inheritdoc />
@@ -107,7 +111,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 CONCAT_WS('', template.value, template.long_value) AS template,
                                 IF(measurementProtocolActive.`value` = 1, TRUE, FALSE) AS measurementProtocolActive,
                                 measurementProtocolItemJson.`value` AS measurementProtocolItemJson,
-                                measurementProtocolBeginCheckoutJson.`value` AS measurementProtocolBeginCheckoutJson
+                                measurementProtocolBeginCheckoutJson.`value` AS measurementProtocolBeginCheckoutJson,
+                                measurementProtocolAddPaymentInfoJson.`value` AS measurementProtocolAddPaymentInfoJson,
+                                measurementProtocolPurchaseJson.`value` AS measurementProtocolPurchaseJson
                             FROM {WiserTableNames.WiserItem} AS orderProcess
                             JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
                             JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
@@ -125,6 +131,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolActive ON measurementProtocolActive.item_id = orderProcess.id AND measurementProtocolActive.`key` = '{Constants.MeasurementProtocolActive}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolItemJson ON measurementProtocolItemJson.item_id = orderProcess.id AND measurementProtocolItemJson.`key` = '{Constants.MeasurementProtocolItemJson}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolBeginCheckoutJson ON measurementProtocolBeginCheckoutJson.item_id = orderProcess.id AND measurementProtocolBeginCheckoutJson.`key` = '{Constants.MeasurementProtocolBeginCheckoutJson}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolAddPaymentInfoJson ON measurementProtocolAddPaymentInfoJson.item_id = orderProcess.id AND measurementProtocolAddPaymentInfoJson.`key` = '{Constants.MeasurementProtocolAddPaymentInfoJson}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolPurchaseJson ON measurementProtocolPurchaseJson.item_id = orderProcess.id AND measurementProtocolPurchaseJson.`key` = '{Constants.MeasurementProtocolPurchaseJson}'
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
                             AND orderProcess.published_environment >= ?publishedEnvironment
@@ -158,7 +166,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 Template = firstRow.Field<string>("template"),
                 MeasurementProtocolActive = Convert.ToBoolean(firstRow["measurementProtocolActive"]),
                 MeasurementProtocolItemJson = firstRow.Field<string>("measurementProtocolItemJson"),
-                MeasurementProtocolBeginCheckoutJson = firstRow.Field<string>("measurementProtocolBeginCheckoutJson")
+                MeasurementProtocolBeginCheckoutJson = firstRow.Field<string>("measurementProtocolBeginCheckoutJson"),
+                MeasurementProtocolAddPaymentInfoJson = firstRow.Field<string>("measurementProtocolAddPaymentInfoJson"),
+                MeasurementProtocolPurchaseJson = firstRow.Field<string>("measurementProtocolPurchaseJson")
             };
         }
 
@@ -1060,6 +1070,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         Sender = merchantSenderAddress,
                         SenderName = merchantSenderName
                     });
+                }
+
+                if (isSuccessfulStatus && orderProcessSettings.MeasurementProtocolActive)
+                {
+                    var totalBasketPrice = await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, lineType: Constants.OrderLineProductType);
+                    var tax = await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, lineType: Constants.OrderLineProductType, priceType: ShoppingBasket.ShoppingBasket.PriceTypes.VatOnly);
+                    await measurementProtocolService.PurchaseEventAsync(orderProcessSettings, lines, totalBasketPrice, tax, main.Details.First(detail => detail.Key == Constants.UniquePaymentNumberProperty).Value.ToString());
                 }
             }
 

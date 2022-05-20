@@ -173,6 +173,10 @@
 
         public const string MeasurementProtocolBeginCheckoutJson = "measurementprotocolbegincheckoutjson";
 
+        public const string MeasurementProtocolAddPaymentInfoJson = "measurementprotocoladdpaymentinfojson";
+
+        public const string MeasurementProtocolPurchaseJson = "measurementprotocolpurchasejson";
+
         #endregion
 
         #region Fields for basket and orders
