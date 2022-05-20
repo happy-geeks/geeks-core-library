@@ -138,6 +138,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         }
 
         /// <inheritdoc />
+        public async Task<WiserItemFileModel> GetInvoicePdfAsync(ulong orderId)
+        {
+            return await orderProcessesService.GetInvoicePdfAsync(orderId);
+        }
+
+        /// <inheritdoc />
         public async Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems)
         {
             return await orderProcessesService.ValidateFieldValueAsync(field, currentItems);

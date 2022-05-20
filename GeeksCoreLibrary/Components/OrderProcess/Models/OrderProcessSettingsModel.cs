@@ -35,7 +35,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// <summary>
         /// Gets or sets the ID of the e-mail attachment template that should be used for status updates to the consumer for orders that used this PSP.
         /// </summary>
-        public ulong StatusUpdateMailAttachmentTemplateId { get; set; }
+        public ulong StatusUpdateInvoiceTemplateId { get; set; }
         
         /// <summary>
         /// Gets or sets the ID of the e-mail template that should be used for status updates to the web shop for orders that used this PSP.

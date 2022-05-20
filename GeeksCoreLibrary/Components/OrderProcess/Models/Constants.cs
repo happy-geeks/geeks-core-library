@@ -17,6 +17,8 @@
 
         public const string PaymentReturnPage = "orderProcessPaymentReturn.gcl";
 
+        public const string DownloadInvoicePage = "/orders/invoice/";
+
         #endregion
 
         #region Entity types
@@ -66,6 +68,8 @@
         public const string OrderProcessStatusUpdateWebShopTemplateProperty = "orderprocessstatusupdatewebshoptemplate";
 
         public const string OrderProcessClearBasketOnConfirmationPageProperty = "orderprocessclearbasketonconfirmationpage";
+
+        public const string OrderProcessStatusUpdateAttachmentTemplateProperty = "orderprocessinvoicetemplate";
 
         public const string OrderProcessHeaderProperty = "orderprocessheader";
 
@@ -204,6 +208,10 @@
         public const string StatusUpdateMailToConsumerProperty = "MailToConsumerTemplate";
 
         public const string PaymentCompleteProperty = "PaymentComplete";
+
+        public const string InvoiceHtmlProperty = "InvoiceHtml";
+
+        public const string InvoicePdfProperty = "InvoicePdf";
 
         #endregion
 

@@ -1012,114 +1012,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             {
                 contentItemId = Convert.ToUInt64(data.ContentItemId.DecryptWithAesWithSalt(withDateTime: true));
             }
-            
-            var pdfSettings = new HtmlToPdfRequestModel
-            {
-                FileName = data.FileName,
-                Html = htmlResult,
-                ItemId = contentItemId
-            };
 
-            if (contentItemId > 0)
-            {
-                var pdfDocumentOptionsPropertyName = "documentoptions";
-                var pdfHeaderPropertyName = "header";
-                var pdfFooterPropertyName = "footer";
+            var pdfSettings = await htmlToPdfConverterService.GetHtmlToPdfSettingsAsync(contentItemId, data.LanguageCode, data.ContentPropertyName);
 
-                if (String.IsNullOrWhiteSpace(data.ContentPropertyName))
-                {
-                    data.ContentPropertyName = "html_template";
-                }
-
-                var query = "SELECT `key`, `value` FROM easy_objects WHERE typenr = -1 AND `key` IN ('pdf_documentoptionspropertyname', 'pdf_headerpropertyname', 'pdf_footerpropertyname', 'pdf_backgroundpropertyname')";
-                var dataTable = await databaseConnection.GetAsync(query);
-                if (dataTable.Rows.Count > 0)
-                {
-                    foreach (DataRow dataRow in dataTable.Rows)
-                    {
-                        var key = dataRow.Field<string>("key");
-                        var value = dataRow.Field<string>("value");
-                        if (String.IsNullOrWhiteSpace(value))
-                        {
-                            continue;
-                        }
-
-                        switch (key?.ToLowerInvariant())
-                        {
-                            case "pdf_documentoptionspropertyname":
-                                pdfDocumentOptionsPropertyName = value;
-                                break;
-                            case "pdf_headerpropertyname":
-                                pdfHeaderPropertyName = value;
-                                break;
-                            case "pdf_footerpropertyname":
-                                pdfFooterPropertyName = value;
-                                break;
-                            case "pdf_backgroundpropertyname":
-                                pdfSettings.BackgroundPropertyName = value;
-                                break;
-                        }
-                    }
-                }
-                
-                if (String.IsNullOrWhiteSpace(data.LanguageCode))
-                {
-                    data.LanguageCode = languagesService.CurrentLanguageCode;
-                }
-
-                query = $"SELECT `key`, CONCAT_WS('', `value`, `long_value`) AS value, language_code FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?contentItemId";
-                databaseConnection.AddParameter("contentItemId", contentItemId);
-                databaseConnection.AddParameter("contentPropertyName", data.ContentPropertyName);
-                dataTable = await databaseConnection.GetAsync(query);
-                if (dataTable.Rows.Count > 0)
-                {
-                    // Get values with correct language code.
-                    if (!String.IsNullOrWhiteSpace(data.LanguageCode))
-                    {
-                        foreach (DataRow dataRow in dataTable.Rows)
-                        {
-                            if (!String.Equals(data.LanguageCode, dataRow.Field<string>("language_code")))
-                            {
-                                continue;
-                            }
-
-                            var key = dataRow.Field<string>("key");
-                            var value = dataRow.Field<string>("value");
-                            if (String.Equals(key, pdfDocumentOptionsPropertyName))
-                            {
-                                pdfSettings.DocumentOptions = value;
-                            }
-                            else if (String.Equals(key, pdfHeaderPropertyName))
-                            {
-                                pdfSettings.Header = value;
-                            }
-                            else if (String.Equals(key, pdfFooterPropertyName))
-                            {
-                                pdfSettings.Footer = value;
-                            }
-                        }
-                    }
-
-                    // Fall back to default language or no language.
-                    foreach (DataRow dataRow in dataTable.Rows)
-                    {
-                        var key = dataRow.Field<string>("key");
-                        var value = dataRow.Field<string>("value");
-                        if (String.Equals(key, pdfDocumentOptionsPropertyName) && String.IsNullOrWhiteSpace(pdfSettings.DocumentOptions))
-                        {
-                            pdfSettings.DocumentOptions = value;
-                        }
-                        else if (String.Equals(key, pdfHeaderPropertyName) && String.IsNullOrWhiteSpace(pdfSettings.Header))
-                        {
-                            pdfSettings.Header = value;
-                        }
-                        else if (String.Equals(key, pdfFooterPropertyName) && String.IsNullOrWhiteSpace(pdfSettings.Footer))
-                        {
-                            pdfSettings.Footer = value;
-                        }
-                    }
-                }
-            }
+            pdfSettings.FileName = data.FileName;
+            pdfSettings.Html = htmlResult;
             
             var pdfFile = await htmlToPdfConverterService.ConvertHtmlStringToPdfAsync(pdfSettings);
             return (pdfFile, HttpStatusCode.OK, String.Empty);

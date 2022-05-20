@@ -210,7 +210,6 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                                 EnlargeEnabled = true
                             };
                             pdfPage.AddElement(backgroundElement);
-
                         };
                     }
                     catch (Exception exception)
@@ -264,6 +263,103 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
 
             // Make sure the file name has the correct extension. (This function will add the extension if it doesn't exist, or change it if it's wrong.)
             return Path.ChangeExtension(output.StripIllegalFilenameCharacters(), ".pdf");
+        }
+
+        /// <inheritdoc />
+        public async Task<HtmlToPdfRequestModel> GetHtmlToPdfSettingsAsync(ulong templateItemId, string languageCode = null, string contentPropertyName = null)
+        {
+            var pdfSettings = new HtmlToPdfRequestModel
+            {
+                ItemId = templateItemId
+            };
+            
+            var query = $"SELECT `key`, CONCAT_WS('', `value`, `long_value`) AS value, language_code FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?templateItemId";
+            databaseConnection.AddParameter("templateItemId", templateItemId);
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count <= 0)
+            {
+                return pdfSettings;
+            }
+
+            // Get values with correct language code.
+            if (!String.IsNullOrWhiteSpace(languageCode))
+            {
+                foreach (DataRow dataRow in dataTable.Rows)
+                {
+                    if (!String.Equals(languageCode, dataRow.Field<string>("language_code")))
+                    {
+                        continue;
+                    }
+
+                    var key = dataRow.Field<string>("key");
+                    var value = dataRow.Field<string>("value");
+                    if (String.Equals(key, HtmlTemplateConstants.PdfDocumentOptionsPropertyName))
+                    {
+                        pdfSettings.DocumentOptions = value;
+                    }
+                    else if (String.Equals(key, HtmlTemplateConstants.PdfHeaderPropertyName))
+                    {
+                        pdfSettings.Header = value;
+                    }
+                    else if (String.Equals(key, HtmlTemplateConstants.PdfFooterPropertyName))
+                    {
+                        pdfSettings.Footer = value;
+                    }
+                    else if (String.Equals(key, HtmlTemplateConstants.HtmlTemplatePropertyName) || (!String.IsNullOrWhiteSpace(contentPropertyName) && String.Equals(key, contentPropertyName)))
+                    {
+                        pdfSettings.Html = value;
+                    }
+                    else if (String.Equals(key, HtmlTemplateConstants.PdfOrientationPropertyName) && Int32.TryParse(value, out var orientation))
+                    {
+                        pdfSettings.Orientation = (PdfPageOrientation)orientation;
+                    }
+                    else if (String.Equals(key, HtmlTemplateConstants.PdfFileNamePropertyName))
+                    {
+                        pdfSettings.FileName = value;
+                    }
+                    else if (String.Equals(key, HtmlTemplateConstants.PdfBackgroundImagePropertyName))
+                    {
+                        pdfSettings.BackgroundPropertyName = value;
+                    }
+                }
+            }
+
+            // Fall back to default language or no language.
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                var key = dataRow.Field<string>("key");
+                var value = dataRow.Field<string>("value");
+                if (String.Equals(key, HtmlTemplateConstants.PdfDocumentOptionsPropertyName) && String.IsNullOrWhiteSpace(pdfSettings.DocumentOptions))
+                {
+                    pdfSettings.DocumentOptions = value;
+                }
+                else if (String.Equals(key, HtmlTemplateConstants.PdfHeaderPropertyName) && String.IsNullOrWhiteSpace(pdfSettings.Header))
+                {
+                    pdfSettings.Header = value;
+                }
+                else if (String.Equals(key, HtmlTemplateConstants.PdfFooterPropertyName) && String.IsNullOrWhiteSpace(pdfSettings.Footer))
+                {
+                    pdfSettings.Footer = value;
+                }
+                else if ((String.Equals(key, HtmlTemplateConstants.HtmlTemplatePropertyName) || (!String.IsNullOrWhiteSpace(contentPropertyName) && String.Equals(key, contentPropertyName))) && String.IsNullOrWhiteSpace(pdfSettings.Html))
+                {
+                    pdfSettings.Html = value;
+                }
+                else if (String.Equals(key, HtmlTemplateConstants.PdfOrientationPropertyName) && Int32.TryParse(value, out var orientation) && !pdfSettings.Orientation.HasValue)
+                {
+                    pdfSettings.Orientation = (PdfPageOrientation)orientation;
+                }
+                else if (String.Equals(key, HtmlTemplateConstants.PdfFileNamePropertyName) && String.IsNullOrWhiteSpace(pdfSettings.FileName))
+                {
+                    pdfSettings.FileName = value;
+                }
+                else if (String.Equals(key, HtmlTemplateConstants.PdfBackgroundImagePropertyName) && String.IsNullOrWhiteSpace(pdfSettings.BackgroundPropertyName))
+                {
+                    pdfSettings.BackgroundPropertyName = value;
+                }
+            }
+
+            return pdfSettings;
         }
 
         private async Task<string> RetrieveBackgroundImageAsync(ulong itemId, string backgroundPropertyName)

@@ -355,15 +355,15 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id")
+        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null)
         {
-            return await wiserItemsService.GetItemFileAsync(id, field);
+            return await wiserItemsService.GetItemFileAsync(id, field, propertyName);
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id")
+        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null)
         {
-            return await wiserItemsService.GetItemFilesAsync(ids, field);
+            return await wiserItemsService.GetItemFilesAsync(ids, field, propertyName);
         }
 
         /// <inheritdoc />

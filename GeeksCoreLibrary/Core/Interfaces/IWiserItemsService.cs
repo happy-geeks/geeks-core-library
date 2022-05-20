@@ -672,7 +672,7 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <summary>
         /// Gets a file from the database.
         /// </summary>
-        Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id");
+        Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null);
 
         /// <summary>
         /// Gets multiple files from the database.
@@ -680,7 +680,7 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="ids">The IDs of the files to get.</param>
         /// <param name="field"></param>
         /// <returns></returns>
-        Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id");
+        Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null);
 
         /// <summary>
         /// Gets the prefix for the wiser_item and wiser_itemdetail tables for a specific entity type.

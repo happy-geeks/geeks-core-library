@@ -2930,14 +2930,14 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id")
+        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null)
         {
-            var list = await GetItemFilesAsync(new[] { id }, field);
+            var list = await GetItemFilesAsync(new[] { id }, field, propertyName);
             return list.FirstOrDefault();
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id")
+        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null)
         {
             var result = new List<WiserItemFileModel>();
 
@@ -2955,11 +2955,19 @@ namespace GeeksCoreLibrary.Core.Services
                     throw new NotImplementedException($"Unknown field '{field}' given.");
             }
 
+            var propertyNameClause = "";
+            if (!String.IsNullOrWhiteSpace(propertyName))
+            {
+                databaseConnection.AddParameter("propertyName", propertyName);
+                propertyNameClause = "AND property_name = ?propertyName";
+            }
+
             databaseConnection.AddParameter("Ids", String.Join(",", ids));
             var queryResult = await databaseConnection.GetAsync($@"
-                SELECT `id`, `item_id`, `language_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `itemlink_id`
+                SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `itemlink_id`
                 FROM {WiserTableNames.WiserItemFile}
-                WHERE {columnName} IN ({String.Join(",", ids)})", true);
+                WHERE {columnName} IN ({String.Join(",", ids)})
+                {propertyNameClause}", true);
 
             if (queryResult.Rows.Count == 0)
             {

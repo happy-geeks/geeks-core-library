@@ -114,6 +114,18 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             return Content(html, "text/html");
         }
 
+        [Route(Constants.DownloadInvoicePage + "{orderId:int}")]
+        public async Task<IActionResult> DownloadInvoiceAsync(ulong orderId)
+        {
+            var invoicePdf = await orderProcessesService.GetInvoicePdfAsync(orderId);
+            if (invoicePdf == null)
+            {
+                return NotFound();
+            }
+
+            return File(invoicePdf.Content, invoicePdf.ContentType, invoicePdf.FileName);
+        }
+
         private async Task<IActionResult> HandleControllerAction(OrderProcess.ComponentModes componentMode)
         {
             var context = HttpContext;
