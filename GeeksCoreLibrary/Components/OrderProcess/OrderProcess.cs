@@ -15,6 +15,7 @@ using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
+using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
@@ -268,12 +269,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     throw new Exception("No payment methods have been configured, therefor we cannot proceed with the order process.");
                 }
 
-                var totalBasketPrice = await shoppingBasketsService.GetPriceAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings, lineType: Constants.OrderLineProductType);
-
                 // Start the measurement protocol if it is active.
-                if (orderProcessSettings.MeasurementProtocolActive)
+                if (orderProcessSettings.MeasurementProtocolActive && ActiveStep == 1 && !isPostBack)
                 {
-                    await measurementProtocolService.BeginCheckoutEventAsync(orderProcessSettings, shoppingBasketLines, totalBasketPrice);
+                    await measurementProtocolService.BeginCheckoutEventAsync(orderProcessSettings, shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
                 }
                 
                 // Generate the URL for the next step, we'll need this for a few things.
@@ -312,7 +311,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         userData = await wiserItemsService.CreateAsync(userData, createNewTransaction: false, skipPermissionsCheck: true);
                     }
 
-                    fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(orderProcessSettings, step, loggedInUser, request, shoppingBasket, shoppingBasketLines, totalBasketPrice, paymentMethods, currentItems);
+                    fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(orderProcessSettings, step, loggedInUser, request, shoppingBasket, shoppingBasketLines, shoppingBasketSettings, paymentMethods, currentItems);
 
                     // Save values to database if all validation succeeded.
                     if (!fieldErrorsOccurred)
@@ -394,7 +393,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                             if (orderProcessSettings.MeasurementProtocolActive)
                             {
-                                await measurementProtocolService.AddPaymentInfoEventAsync(orderProcessSettings, shoppingBasketLines, totalBasketPrice, paymentMethods.Single().Id.ToString());
+                                await measurementProtocolService.AddPaymentInfoEventAsync(orderProcessSettings, shoppingBasket, shoppingBasketLines, shoppingBasketSettings, paymentMethods.Single().Id.ToString());
                             }
 
                             response.Redirect(nextStepUri.ToString());
@@ -412,7 +411,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                                 if (orderProcessSettings.MeasurementProtocolActive)
                                 {
-                                    await measurementProtocolService.AddPaymentInfoEventAsync(orderProcessSettings, shoppingBasketLines, totalBasketPrice, paymentMethods.Single().Id.ToString());
+                                    await measurementProtocolService.AddPaymentInfoEventAsync(orderProcessSettings, shoppingBasket, shoppingBasketLines, shoppingBasketSettings, paymentMethods.Single().Id.ToString());
                                 }
 
                                 continue;
@@ -976,7 +975,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <param name="paymentMethods">All available payment methods.</param>
         /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
         /// <returns>A <see cref="Boolean"/> indicating whether any there were any errors in the validation.</returns>
-        private async Task<bool> ValidatePostBackAndSaveValuesAsync(OrderProcessSettingsModel orderProcessSettings, OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<WiserItemModel> shoppingBasketLines, decimal totalBasketPrice, List<PaymentMethodSettingsModel> paymentMethods, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems)
+        private async Task<bool> ValidatePostBackAndSaveValuesAsync(OrderProcessSettingsModel orderProcessSettings, OrderProcessStepModel step, UserCookieDataModel loggedInUser, HttpRequest request, WiserItemModel shoppingBasket, List<WiserItemModel> shoppingBasketLines, ShoppingBasketCmsSettingsModel shoppingBasketSettings, List<PaymentMethodSettingsModel> paymentMethods, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems)
         {
             if (currentItems == null)
             {
@@ -1111,7 +1110,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                         if (orderProcessSettings.MeasurementProtocolActive)
                         {
-                            await measurementProtocolService.AddPaymentInfoEventAsync(orderProcessSettings, shoppingBasketLines, totalBasketPrice, selectedPaymentMethod);
+                            await measurementProtocolService.AddPaymentInfoEventAsync(orderProcessSettings, shoppingBasket, shoppingBasketLines, shoppingBasketSettings, selectedPaymentMethod);
                         }
 
                         break;

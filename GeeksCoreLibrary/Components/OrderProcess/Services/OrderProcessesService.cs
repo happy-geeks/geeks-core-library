@@ -1074,9 +1074,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                 if (isSuccessfulStatus && orderProcessSettings.MeasurementProtocolActive)
                 {
-                    var totalBasketPrice = await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, lineType: Constants.OrderLineProductType);
-                    var tax = await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, lineType: Constants.OrderLineProductType, priceType: ShoppingBasket.ShoppingBasket.PriceTypes.VatOnly);
-                    await measurementProtocolService.PurchaseEventAsync(orderProcessSettings, lines, totalBasketPrice, tax, main.Details.First(detail => detail.Key == Constants.UniquePaymentNumberProperty).Value.ToString());
+                    await measurementProtocolService.PurchaseEventAsync(orderProcessSettings, main, lines, basketSettings, main.GetDetailValue(Constants.UniquePaymentNumberProperty));
                 }
             }
 
