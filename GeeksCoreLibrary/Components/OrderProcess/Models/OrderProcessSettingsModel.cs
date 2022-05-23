@@ -71,5 +71,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         public string MeasurementProtocolAddPaymentInfoJson { get; set; }
 
         public string MeasurementProtocolPurchaseJson { get; set; }
+
+        public string MeasurementProtocolMeasurementId { get; set; }
+
+        public string MeasurementProtocolApiSecret { get; set; }
     }
 }

@@ -9,15 +9,20 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Models
 
         [JsonProperty("item_name")]
         public string ItemName { get; set; }
-        
+
+        [JsonProperty("affiliation")]
         public string Affiliation { get; set; }
-        
+
+        [JsonProperty("coupon")]
         public string Coupon { get; set; }
-        
+
+        [JsonProperty("currency")]
         public string Currency { get; set; }
-        
+
+        [JsonProperty("discount")]
         public double Discount { get; set; }
-        
+
+        [JsonProperty("index")]
         public long Index { get; set; }
 
         [JsonProperty("item_brand")]
@@ -49,9 +54,11 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Models
 
         [JsonProperty("location_id")]
         public string LocationId { get; set; }
-        
+
+        [JsonProperty("price")]
         public double Price { get; set; }
-        
+
+        [JsonProperty("quantity")]
         public long Quantity { get; set; }
     }
 }

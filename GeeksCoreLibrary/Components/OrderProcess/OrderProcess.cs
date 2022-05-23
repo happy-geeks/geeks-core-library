@@ -272,6 +272,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Start the measurement protocol if it is active.
                 if (orderProcessSettings.MeasurementProtocolActive && ActiveStep == 1 && !isPostBack)
                 {
+                    shoppingBasket.SetDetail("google-cid", userData.GetDetailValue("google-cid"));
+                    await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
                     await measurementProtocolService.BeginCheckoutEventAsync(orderProcessSettings, shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
                 }
                 

@@ -113,7 +113,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 measurementProtocolItemJson.`value` AS measurementProtocolItemJson,
                                 measurementProtocolBeginCheckoutJson.`value` AS measurementProtocolBeginCheckoutJson,
                                 measurementProtocolAddPaymentInfoJson.`value` AS measurementProtocolAddPaymentInfoJson,
-                                measurementProtocolPurchaseJson.`value` AS measurementProtocolPurchaseJson
+                                measurementProtocolPurchaseJson.`value` AS measurementProtocolPurchaseJson,
+                                measurementProtocolMeasurementId.`value` AS measurementProtocolMeasurementId,
+                                measurementProtocolApiSecret.`value` AS measurementProtocolApiSecret
                             FROM {WiserTableNames.WiserItem} AS orderProcess
                             JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
                             JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
@@ -133,6 +135,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolBeginCheckoutJson ON measurementProtocolBeginCheckoutJson.item_id = orderProcess.id AND measurementProtocolBeginCheckoutJson.`key` = '{Constants.MeasurementProtocolBeginCheckoutJson}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolAddPaymentInfoJson ON measurementProtocolAddPaymentInfoJson.item_id = orderProcess.id AND measurementProtocolAddPaymentInfoJson.`key` = '{Constants.MeasurementProtocolAddPaymentInfoJson}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolPurchaseJson ON measurementProtocolPurchaseJson.item_id = orderProcess.id AND measurementProtocolPurchaseJson.`key` = '{Constants.MeasurementProtocolPurchaseJson}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolMeasurementId ON measurementProtocolMeasurementId.item_id = orderProcess.id AND measurementProtocolMeasurementId.`key` = '{Constants.MeasurementProtocolMeasurementId}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolApiSecret ON measurementProtocolApiSecret.item_id = orderProcess.id AND measurementProtocolApiSecret.`key` = '{Constants.MeasurementProtocolApiSecret}'
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
                             AND orderProcess.published_environment >= ?publishedEnvironment
@@ -168,7 +172,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 MeasurementProtocolItemJson = firstRow.Field<string>("measurementProtocolItemJson"),
                 MeasurementProtocolBeginCheckoutJson = firstRow.Field<string>("measurementProtocolBeginCheckoutJson"),
                 MeasurementProtocolAddPaymentInfoJson = firstRow.Field<string>("measurementProtocolAddPaymentInfoJson"),
-                MeasurementProtocolPurchaseJson = firstRow.Field<string>("measurementProtocolPurchaseJson")
+                MeasurementProtocolPurchaseJson = firstRow.Field<string>("measurementProtocolPurchaseJson"),
+                MeasurementProtocolMeasurementId = firstRow.Field<string>("measurementProtocolMeasurementId"),
+                MeasurementProtocolApiSecret = firstRow.Field<string>("measurementProtocolApiSecret")
             };
         }
 
@@ -919,7 +925,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
                         // TODO: Call "TransactionFinished" site function.
                     }
-
+                    
                     await HandlePaymentStatusUpdateAsync(orderProcessesService, orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
 
                     return new PaymentRequestResult

@@ -8,6 +8,7 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Models
         [JsonProperty("client_id")]
         public string ClientId { get; set; }
 
+        [JsonProperty("events")]
         public List<EventModel> Events { get; set; }
     }
 }

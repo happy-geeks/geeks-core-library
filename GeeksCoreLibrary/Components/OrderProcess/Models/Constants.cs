@@ -177,6 +177,10 @@
 
         public const string MeasurementProtocolPurchaseJson = "measurementprotocolpurchasejson";
 
+        public const string MeasurementProtocolMeasurementId = "measurementprotocolmeasurementid";
+        
+        public const string MeasurementProtocolApiSecret = "measurementprotocolapisecret";
+
         #endregion
 
         #region Fields for basket and orders
