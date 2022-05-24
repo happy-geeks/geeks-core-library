@@ -49,9 +49,8 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
         public async Task AddPaymentInfoEventAsync(OrderProcessSettingsModel orderProcessSettings, WiserItemModel shoppingBasket, List<WiserItemModel> shoppingBasketLines, ShoppingBasketCmsSettingsModel shoppingBasketSettings, string paymentMethodId)
         {
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
-            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("paymentMethodId", paymentMethodId);
-            var dataTable = await databaseConnection.GetAsync("SELECT title FROM wiser_item WHERE id = ?paymentMethodId LIMIT 1");
+            var dataTable = await databaseConnection.GetAsync($"SELECT title FROM {WiserTableNames.WiserItem} WHERE id = ?paymentMethodId LIMIT 1");
 
             if (dataTable.Rows.Count == 0)
             {
