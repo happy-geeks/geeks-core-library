@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -17,8 +18,11 @@ using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
+using GeeksCoreLibrary.Modules.DataSelector.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 
 namespace GeeksCoreLibrary.Core.Services
@@ -33,6 +37,8 @@ namespace GeeksCoreLibrary.Core.Services
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IDataSelectorsService dataSelectorsService;
         private readonly IDatabaseHelpersService databaseHelpersService;
+        private readonly ILogger<WiserItemsService> logger;
+        private readonly GclSettings gclSettings;
         private const int MaximumLevelsToDuplicate = 25;
 
         #endregion
@@ -42,13 +48,15 @@ namespace GeeksCoreLibrary.Core.Services
         /// <summary>
         /// Creates a new instance of <see cref="WiserItemsService"/>.
         /// </summary>
-        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService)
+        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService, IOptions<GclSettings> gclSettings, ILogger<WiserItemsService> logger)
         {
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
             this.stringReplacementsService = stringReplacementsService;
             this.dataSelectorsService = dataSelectorsService;
             this.databaseHelpersService = databaseHelpersService;
+            this.logger = logger;
+            this.gclSettings = gclSettings.Value;
         }
 
         #endregion
@@ -2922,14 +2930,14 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id")
+        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null)
         {
-            var list = await GetItemFilesAsync(new[] { id }, field);
+            var list = await GetItemFilesAsync(new[] { id }, field, propertyName);
             return list.FirstOrDefault();
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id")
+        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null)
         {
             var result = new List<WiserItemFileModel>();
 
@@ -2947,11 +2955,19 @@ namespace GeeksCoreLibrary.Core.Services
                     throw new NotImplementedException($"Unknown field '{field}' given.");
             }
 
+            var propertyNameClause = "";
+            if (!String.IsNullOrWhiteSpace(propertyName))
+            {
+                databaseConnection.AddParameter("propertyName", propertyName);
+                propertyNameClause = "AND property_name = ?propertyName";
+            }
+
             databaseConnection.AddParameter("Ids", String.Join(",", ids));
             var queryResult = await databaseConnection.GetAsync($@"
-                SELECT `id`, `item_id`, `language_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `itemlink_id`
+                SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `itemlink_id`
                 FROM {WiserTableNames.WiserItemFile}
-                WHERE {columnName} IN ({String.Join(",", ids)})", true);
+                WHERE {columnName} IN ({String.Join(",", ids)})
+                {propertyNameClause}", true);
 
             if (queryResult.Rows.Count == 0)
             {
@@ -3089,9 +3105,10 @@ namespace GeeksCoreLibrary.Core.Services
 
             // Determine main domain, using either the "maindomain" object or the "maindomain_wiser" object.
             var mainDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
-            if (String.IsNullOrWhiteSpace(mainDomain))
+            var mainDomainForWiser = await objectsService.FindSystemObjectByDomainNameAsync("maindomain_wiser");
+            if (!String.IsNullOrWhiteSpace(mainDomainForWiser))
             {
-                mainDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain_wiser");
+                mainDomain = mainDomainForWiser;
             }
 
             // Replace the use of the full domain name for the image if setup.
@@ -3103,27 +3120,46 @@ namespace GeeksCoreLibrary.Core.Services
                     !String.IsNullOrWhiteSpace(mainDomain)
                     ? $"src=\"{(requireSsl ? "https" : "http")}://{mainDomain}"
                     : "src=\"");
+                output = output.Replace($"srcset=\"http://{testDomain}",
+                    !String.IsNullOrWhiteSpace(mainDomain)
+                    ? $"srcset=\"{(requireSsl ? "https" : "http")}://{mainDomain}"
+                    : "srcset=\"");
             }
 
             // If images should be saved with a relative path.
-            if (!allowAbsoluteImageUrls && !String.IsNullOrWhiteSpace(mainDomain) && String.Equals(await objectsService.FindSystemObjectByDomainNameAsync("wiser_save_images_relative"), "true", StringComparison.OrdinalIgnoreCase))
+            var saveImagesRelative = String.Equals(await objectsService.FindSystemObjectByDomainNameAsync("wiser_save_images_relative"), "true", StringComparison.OrdinalIgnoreCase);
+            if (!allowAbsoluteImageUrls && !String.IsNullOrWhiteSpace(mainDomain) && saveImagesRelative)
             {
                 output = Regex.Replace(output, $@"src=""https?://{Regex.Escape(mainDomain)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 output = Regex.Replace(output, $@"src=""//{Regex.Escape(mainDomain)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"srcset=""https?://{Regex.Escape(mainDomain)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"srcset=""//{Regex.Escape(mainDomain)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            }
+            if (!allowAbsoluteImageUrls && !String.IsNullOrWhiteSpace(mainDomainForWiser) && saveImagesRelative)
+            {
+                output = Regex.Replace(output, $@"src=""https?://{Regex.Escape(mainDomainForWiser)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"src=""//{Regex.Escape(mainDomainForWiser)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"srcset=""https?://{Regex.Escape(mainDomainForWiser)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                output = Regex.Replace(output, $@"srcset=""//{Regex.Escape(mainDomainForWiser)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             }
 
             // Make extra sure there's no juicedev domain saved in the image URLs.
             output = Regex.Replace(output, @"src=""http://.+?\.juicedev\.nl", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            output = Regex.Replace(output, @"srcset=""http://.+?\.juicedev\.nl", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
 
-            var regex = new Regex(@"<table[^>]*?(?:data=['""](?<data>.*?)['""][^>]*?)?(contentid|pageid|item-id)=['""](?<contentId>\d+)['""][^>]*?>.+<\/table>", RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
-            var matchResults = regex.Match(output);
-            while (matchResults.Success)
+            Regex regex;
+            if (gclSettings.UseLegacyWiser1TemplateModule)
             {
-                var contentId = Int32.Parse(matchResults.Groups[3].Value);
-                var type = matchResults.Groups[1].Value;
-                output = output.Replace(GetFullTableHtml(matchResults.Value, matchResults), $"<img src=\"/preview_image.aspx?{type}={contentId}\" {type}=\"{contentId}\" />");
+                regex = new Regex(@"<table[^>]*?(?:data=['""](?<data>.*?)['""][^>]*?)?(contentid|pageid|item-id)=['""](?<contentId>\d+)['""][^>]*?>.+<\/table>", RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                var matchResults = regex.Match(output);
+                while (matchResults.Success)
+                {
+                    var contentId = Int32.Parse(matchResults.Groups[3].Value);
+                    var type = matchResults.Groups[1].Value;
+                    output = output.Replace(GetFullTableHtml(matchResults.Value, matchResults), $"<img src=\"/preview_image.aspx?{type}={contentId}\" {type}=\"{contentId}\" />");
 
-                matchResults = regex.Match(output);
+                    matchResults = regex.Match(output);
+                }
             }
 
             output = output.Replace("~~table", "<table");
@@ -3145,6 +3181,21 @@ namespace GeeksCoreLibrary.Core.Services
                 var templateId = match.Groups["templateId"].Value;
 
                 output = output.Replace(match.Value, $"<div class=\"dynamic-content\" data-selector-id=\"{dataSelectorId}\" template-id=\"{templateId}\"><h2>Data selector</h2></div>");
+            }
+            
+            // Replace entity blocks.
+            regex = new Regex(@"<!-- Start entity block with id (?<itemId>\d+) -->.+?<!-- End entity block with id \d+ -->", RegexOptions.IgnoreCase | RegexOptions.Singleline, TimeSpan.FromMilliseconds(200));
+            matches = regex.Matches(output);
+            foreach (Match match in matches)
+            {
+                if (!match.Success)
+                {
+                    continue;
+                }
+
+                var itemId = match.Groups["itemId"].Value;
+
+                output = output.Replace(match.Value, $"<div class=\"dynamic-content\" entity-block-item-id=\"{itemId}\"><h2>Entity block</h2></div>");
             }
 
             return output;
@@ -3169,19 +3220,19 @@ namespace GeeksCoreLibrary.Core.Services
             }
 
             // Get the domain that will be used to prefix the image URLs
-            var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
+            var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain_wiser");
             if (String.IsNullOrEmpty(imagesDomain))
             {
-                imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain_wiser");
+                imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
             }
 
             if (imagesDomain != "")
             {
-                output = output.Replace("src=\"//", "src=\"~//");
-                output = output.Replace("src=\"/preview_image", "src=\"~/preview_image");
-                output = output.Replace("src=\"/", $"src=\"//{imagesDomain}/");
-                output = output.Replace("src=\"~//", "src=\"//");
-                output = output.Replace("src=\"~/preview_image", "src=\"/preview_image");
+                output = output.Replace("src=\"//", "src=\"~//").Replace("srcset=\"//", "srcset=\"~//");
+                output = output.Replace("src=\"/preview_image", "src=\"~/preview_image").Replace("srcset=\"/preview_image", "srcset=\"~/preview_image");
+                output = output.Replace("src=\"/", $"src=\"//{imagesDomain}/").Replace("srcset=\"/", $"srcset=\"//{imagesDomain}/");
+                output = output.Replace("src=\"~//", "src=\"//").Replace("srcset=\"~//", "srcset=\"//");
+                output = output.Replace("src=\"~/preview_image", "src=\"/preview_image").Replace("srcset=\"~/preview_image", "srcset=\"/preview_image");
             }
 
             // Replace with HTTPS
@@ -3189,8 +3240,13 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
             }
+            foreach (Match imageMatch in Regex.Matches(output, @"<source.*?srcset=[""'](http:\/\/.*?)[""']", RegexOptions.Singleline | RegexOptions.IgnoreCase))
+            {
+                output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
+            }
 
             output = await dataSelectorsService.ReplaceAllDataSelectorsAsync(output);
+            output = await ReplaceAllEntityBlocksAsync(output);
 
             return output;
         }
@@ -3530,6 +3586,56 @@ namespace GeeksCoreLibrary.Core.Services
                     }
                 }
             }
+        }
+        
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllEntityBlocksAsync(string template)
+        {
+            if (String.IsNullOrWhiteSpace(template))
+            {
+                return template;
+            }
+
+            // Entity blocks with templates.
+            var regEx = new Regex(@"<div[^<>]*?(?:class=['""]dynamic-content['""][^<>]*?)?(entity-block-item-id)=['""](?<itemId>\d+)['""]([^<>]*?)?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
+
+            var matches = regEx.Matches(template);
+            foreach (Match match in matches)
+            {
+                if (!match.Success)
+                {
+                    continue;
+                }
+
+                if (!UInt64.TryParse(match.Groups["itemId"].Value, out var itemId) || itemId <= 0)
+                {
+                    logger.LogWarning($"Found dynamic content with invalid dataSelectorId of '{match.Groups["dataSelectorId"].Value}', so ignoring it.");
+                    continue;
+                }
+
+                try
+                {
+                    
+                    await databaseConnection.EnsureOpenConnectionForReadingAsync();
+                    var (entityTemplate, dataRow) = await GetTemplateAndDataForItemAsync(itemId);
+                    var html = await stringReplacementsService.DoAllReplacementsAsync(entityTemplate, dataRow, removeUnknownVariables: false);
+
+                    template = template.Replace(match.Value, $"<!-- Start entity block with id {itemId} -->{html}<!-- End entity block with id {itemId} -->");
+                }
+                catch (Exception exception)
+                {
+                    logger.LogError($"An error while generating entity block with id '{itemId}'': {exception}");
+                    var errorOnPage = $"An error occurred while generating entity block with id '{itemId}'";
+                    if (gclSettings.Environment is Environments.Development or Environments.Test)
+                    {
+                        errorOnPage += $": {exception.Message}";
+                    }
+
+                    template = template.Replace(match.Value, errorOnPage);
+                }
+            }
+
+            return template;
         }
 
         #endregion
@@ -3881,6 +3987,23 @@ namespace GeeksCoreLibrary.Core.Services
                                 databaseConnection.AddParameter($"longValue{SeoPropertySuffix}{counter}", useLongValueColumn ? wiserItemDetail.Value.ToString().ConvertToSeo() : "");
                                 alsoSaveSeoValue = true;
                             }
+                        }
+                        
+                        // Make sure decimal values are always saved with a dot separator.
+                        if (wiserItemDetail.Value is decimal valueAsDecimal)
+                        {
+                            wiserItemDetail.Value = valueAsDecimal.ToString(new CultureInfo("en-US"));
+                        }
+                        else if (wiserItemDetail.Value is double valueAsDouble)
+                        {
+                            wiserItemDetail.Value = valueAsDouble.ToString(new CultureInfo("en-US"));
+                        }
+                        else if (wiserItemDetail.Value is string valueAsString 
+                                 && !String.IsNullOrWhiteSpace(valueAsString) 
+                                 && valueAsString.Contains(",") 
+                                 && Decimal.TryParse(valueAsString, NumberStyles.Any, new CultureInfo("nl-NL"), out var parsedValueAsDecimal))
+                        {
+                            wiserItemDetail.Value = parsedValueAsDecimal.ToString(new CultureInfo("en-US"));
                         }
 
                         databaseConnection.AddParameter($"value{counter}", useLongValueColumn ? "" : wiserItemDetail.Value);

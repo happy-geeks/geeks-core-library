@@ -355,15 +355,15 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id")
+        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null)
         {
-            return await wiserItemsService.GetItemFileAsync(id, field);
+            return await wiserItemsService.GetItemFileAsync(id, field, propertyName);
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id")
+        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null)
         {
-            return await wiserItemsService.GetItemFilesAsync(ids, field);
+            return await wiserItemsService.GetItemFilesAsync(ids, field, propertyName);
         }
 
         /// <inheritdoc />
@@ -481,6 +481,12 @@ namespace GeeksCoreLibrary.Core.Services
         public async Task HandleItemAggregationAsync(IWiserItemsService service, WiserItemModel itemModel, string encryptionKey = "")
         {
             await wiserItemsService.HandleItemAggregationAsync(service, itemModel, encryptionKey);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceAllEntityBlocksAsync(string template)
+        {
+            return await wiserItemsService.ReplaceAllEntityBlocksAsync(template);
         }
     }
 }

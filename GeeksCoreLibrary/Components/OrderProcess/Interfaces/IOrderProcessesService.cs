@@ -131,5 +131,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="orderProcessId">The Wiser item ID that contains the settings for the order process.</param>
         /// <param name="paymentMethodId">The Wiser item ID that contains the settings for the payment method that the user selected during the checkout.</param>
         Task<PaymentReturnResult> HandlePaymentReturnAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, ulong paymentMethodId);
+
+        /// <summary>
+        /// Gets the invoice PDF file from an order. If there are multiple, the most recent one will be returned.
+        /// This will check which user is logged in and of the requested order belong to them. If it doesn't, it wll return <see langword="null" />.
+        /// </summary>
+        /// <param name="orderId">The ID of the order to get the invoice of.</param>
+        /// <returns>The <see cref="WiserItemFileModel"/> of the most recent invoice.</returns>
+        Task<WiserItemFileModel> GetInvoicePdfAsync(ulong orderId);
     }
 }

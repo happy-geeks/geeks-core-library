@@ -16,12 +16,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// </summary>
         /// <param name="id">Optional: The ID of the template to get.</param>
         /// <param name="name">Optional: The name of the template to get.</param>
-        /// <param name="type">Optional: The type of template that is being searched for. Only used in combination with name. Default value is html.</param>
+        /// <param name="type">Optional: The type of template that is being searched for. Only used in combination with name. Default value is null, which is all template types.</param>
         /// <param name="parentId">Optional: The ID of the parent of the template to get.</param>
         /// <param name="parentName">Optional: The name of the parent of template to get.</param>
         /// <param name="includeContent">Optional: Whether or not to include the contents of the template. Default value is <see langword="true"/>.</param>
         /// <returns></returns>
-        Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "", bool includeContent = true);
+        Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true);
 
         /// <summary>
         /// Gets the caching settings for a template.
@@ -113,8 +113,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="handleRequest">Optional: Whether or not to replace values from the request (such as query string, cookies and session). Default value is true.</param>
         /// <param name="removeUnknownVariables">Optional: Whether ot not to remove all left over variables after all replacements have been done. Default value is true.</param>
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+        /// <param name="templateType">Optional: Limit which template type can be used for template includes. Use null for all template types.</param>
         /// <returns></returns>
-        Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false);
+        Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null);
 
         /// <summary>
         /// Do all replaces on a template. If you don't need to replace includes, please use IStringReplacementsService.DoAllReplacements() instead.
@@ -132,8 +133,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="handleRequest">Optional: Whether or not to replace values from the request (such as query string, cookies and session). Default value is true.</param>
         /// <param name="removeUnknownVariables">Optional: Whether ot not to remove all left over variables after all replacements have been done. Default value is true.</param>
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+        /// <param name="templateType">Optional: Limit which template type can be used for template includes. Use null for all template types.</param>
         /// <returns></returns>
-        Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false);
+        Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null);
 
         /// <summary>
         /// Replaces [include[x]] with a template called 'x'.
@@ -143,8 +145,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="dataRow">Optional: All values from this <see cref="DataRow"/> will also be replaced in the output in the included template(s).</param>
         /// <param name="handleRequest">Optional: Whether or not to replace values from the request (such as query string, cookies and session) in the included template(s). Default value is true.</param>
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+        /// <param name="templateType">Optional: Limit which template type can be included. Use null for all template types.</param>
         /// <returns>The replaced string.</returns>
-        Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false);
+        Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null);
 
         /// <summary>
         /// Replaces [include[x]] with a template called 'x'.
@@ -155,8 +158,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="dataRow">Optional: All values from this <see cref="DataRow"/> will also be replaced in the output in the included template(s).</param>
         /// <param name="handleRequest">Optional: Whether or not to replace values from the request (such as query string, cookies and session) in the included template(s). Default value is true.</param>
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+        /// <param name="templateType">Optional: Limit which template type can be included. Use null for all template types.</param>
         /// <returns>The replaced string.</returns>
-        Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false);
+        Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null);
 
 
         /// <summary>

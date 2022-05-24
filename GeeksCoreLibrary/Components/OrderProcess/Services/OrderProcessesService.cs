@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Data;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -22,6 +22,7 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -31,6 +32,7 @@ using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -52,6 +54,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ILogger<OrderProcessesService> logger;
         private readonly IObjectsService objectsService;
+        private readonly IHtmlToPdfConverterService htmlToPdfConverterService;
         private readonly GclSettings gclSettings;
         private readonly IMeasurementProtocolService measurementProtocolService;
 
@@ -70,8 +73,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             IHttpContextAccessor httpContextAccessor,
             ILogger<OrderProcessesService> logger,
             IObjectsService objectsService,
-            IMeasurementProtocolService measurementProtocolService)
-        {
+            IMeasurementProtocolService measurementProtocolService,
+            IHtmlToPdfConverterService htmlToPdfConverterService)
+            {
             this.databaseConnection = databaseConnection;
             this.shoppingBasketsService = shoppingBasketsService;
             this.accountsService = accountsService;
@@ -83,6 +87,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             this.httpContextAccessor = httpContextAccessor;
             this.logger = logger;
             this.objectsService = objectsService;
+            this.htmlToPdfConverterService = htmlToPdfConverterService;
             this.gclSettings = gclSettings.Value;
             this.measurementProtocolService = measurementProtocolService;
         }
@@ -125,7 +130,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS merchantEmailAddressField ON merchantEmailAddressField.item_id = orderProcess.id AND merchantEmailAddressField.`key` = '{Constants.OrderProcessMerchantEmailAddressFieldProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateTemplate ON statusUpdateTemplate.item_id = orderProcess.id AND statusUpdateTemplate.`key` = '{Constants.OrderProcessStatusUpdateTemplateProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateWebShopTemplate ON statusUpdateWebShopTemplate.item_id = orderProcess.id AND statusUpdateWebShopTemplate.`key` = '{Constants.OrderProcessStatusUpdateWebShopTemplateProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateAttachmentTemplate ON statusUpdateAttachmentTemplate.item_id = orderProcess.id AND statusUpdateAttachmentTemplate.`key` = '{Constants.StatusUpdateMailAttachmentProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateAttachmentTemplate ON statusUpdateAttachmentTemplate.item_id = orderProcess.id AND statusUpdateAttachmentTemplate.`key` = '{Constants.OrderProcessStatusUpdateAttachmentTemplateProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS clearBasketOnConfirmationPage ON clearBasketOnConfirmationPage.item_id = orderProcess.id AND clearBasketOnConfirmationPage.`key` = '{Constants.OrderProcessClearBasketOnConfirmationPageProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS header ON header.item_id = orderProcess.id AND header.`key` = '{Constants.OrderProcessHeaderProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS footer ON footer.item_id = orderProcess.id AND footer.`key` = '{Constants.OrderProcessFooterProperty}'
@@ -163,7 +168,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 MerchantEmailAddressProperty = firstRow.Field<string>("merchantEmailAddressField"),
                 StatusUpdateMailTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateTemplate")),
                 StatusUpdateMailWebShopTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateWebShopTemplate")),
-                StatusUpdateMailAttachmentTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateAttachmentTemplate")),
+                StatusUpdateInvoiceTemplateId = Convert.ToUInt64(firstRow.Field<string>("statusUpdateAttachmentTemplate")),
                 ClearBasketOnConfirmationPage = firstRow.Field<string>("clearBasketOnConfirmationPage") == "1",
                 Header = firstRow.Field<string>("header"),
                 Footer = firstRow.Field<string>("footer"),
@@ -253,6 +258,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             fieldCssClass.value AS fieldCssClass,
                             fieldSaveTo.value AS fieldSaveTo,
                             fieldRequiresUniqueValue.value AS fieldRequiresUniqueValue,
+                            fieldTabIndex.value AS fieldTabIndex,
 
                             # Field values
 	                        IF(NULLIF(fieldValues.`key`, '') IS NULL AND NULLIF(fieldValues.value, '') IS NULL, NULL, JSON_OBJECTAGG(IFNULL(fieldValues.`key`, ''), IFNULL(fieldValues.value, ''))) AS fieldValues
@@ -293,6 +299,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldCssClass ON fieldCssClass.item_id = field.id AND fieldCssClass.`key` = '{Constants.FieldCssClassProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldSaveTo ON fieldSaveTo.item_id = field.id AND fieldSaveTo.`key` = '{Constants.FieldSaveToProperty}'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldRequiresUniqueValue ON fieldRequiresUniqueValue.item_id = field.id AND fieldRequiresUniqueValue.`key` = '{Constants.FieldRequiresUniqueValueProperty}'
+                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldTabIndex ON fieldTabIndex.item_id = field.id AND fieldTabIndex.`key` = '{Constants.FieldTabIndexProperty}'
                         
                         # Field values
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldValues ON fieldValues.item_id = field.id AND fieldValues.groupname = '{Constants.FieldValuesGroupName}'
@@ -408,6 +415,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 if (String.IsNullOrWhiteSpace(field.FieldId))
                 {
                     field.FieldId = field.Title;
+                }
+
+                var tabIndexStringValue = dataRow.Field<string>("fieldTabIndex");
+                if (Int32.TryParse(tabIndexStringValue, out var tabIndex))
+                {
+                    field.TabIndex = tabIndex;
                 }
 
                 var saveTo = dataRow.Field<string>("fieldSaveTo");
@@ -970,7 +983,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             var emailContent = "";
             var emailSubject = "";
-            var attachmentTemplate = "";
             var userEmailAddress = "";
             var merchantEmailAddress = "";
             var bcc = "";
@@ -978,8 +990,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var senderName = "";
             var replyToAddress = "";
             var replyToName = "";
-
-            var attachments = new List<string>();
 
             var orderIsFinished = false;
 
@@ -1033,11 +1043,36 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     merchantReplyToName = replyToName;
                 }
 
-                // Get email content specifically for the attachment.
-                mailValues = await GetMailValuesAsync(orderProcessSettings, main, lines, false, true);
-                if (mailValues != null)
+                // Generate an invoice for this order and save the HTML with the order.
+                var fileId = 0UL;
+                if (orderProcessSettings.StatusUpdateInvoiceTemplateId > 0)
                 {
-                    attachmentTemplate = mailValues.Content;
+                    // Get PDF settings.
+                    var pdfSettings = await htmlToPdfConverterService.GetHtmlToPdfSettingsAsync(orderProcessSettings.StatusUpdateInvoiceTemplateId, languagesService.CurrentLanguageCode);
+                    if (!String.IsNullOrWhiteSpace(pdfSettings.Html)) 
+                    {
+                        pdfSettings.Html = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Html, isForConfirmationEmail: true);
+                        pdfSettings.Header = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Header, isForConfirmationEmail: true);
+                        pdfSettings.Footer = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Footer, isForConfirmationEmail: true);
+                        pdfSettings.FileName = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.FileName, isForConfirmationEmail: true);
+
+                        // Save invoice HTML in order details.
+                        main.SetDetail(Constants.InvoiceHtmlProperty, pdfSettings.Html);
+
+                        // Convert HTML to PDF and save the PDF in wiser_itemfile, linked to the order.
+                        var file = await htmlToPdfConverterService.ConvertHtmlStringToPdfAsync(pdfSettings);
+                        var wiserItemFile = new WiserItemFileModel
+                        {
+                            Content = file.FileContents,
+                            FileName = file.FileDownloadName,
+                            Extension = Path.GetExtension(file.FileDownloadName),
+                            ContentType = "application/pdf",
+                            ItemId = main.Id,
+                            PropertyName = Constants.InvoicePdfProperty
+                        };
+
+                        fileId = await wiserItemsService.AddItemFileAsync(wiserItemFile, skipPermissionsCheck: true);
+                    }
                 }
 
                 main.SetDetail(Constants.PaymentHistoryProperty, $"{DateTime.Now:yyyyMMddHHmmss} - {newStatus}", true);
@@ -1059,7 +1094,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         ReplyTo = replyToAddress,
                         ReplyToName = replyToName,
                         Sender = senderAddress,
-                        SenderName = senderName
+                        SenderName = senderName,
+                        WiserItemFiles = fileId > 0 ? new List<ulong> { fileId } : null
                     });
                 }
 
@@ -1074,7 +1110,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         ReplyTo = merchantReplyToAddress,
                         ReplyToName = merchantReplyToName,
                         Sender = merchantSenderAddress,
-                        SenderName = merchantSenderName
+                        SenderName = merchantSenderName,
+                        WiserItemFiles = fileId > 0 ? new List<ulong> { fileId } : null
                     });
                 }
 
@@ -1083,8 +1120,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     await measurementProtocolService.PurchaseEventAsync(orderProcessSettings, main, lines, basketSettings, main.GetDetailValue(Constants.UniquePaymentNumberProperty));
                 }
             }
-
-            // TODO: Add customer mail attachments.
 
             if (!orderIsFinished)
             {
@@ -1196,6 +1231,32 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             return await paymentServiceProviderService.HandlePaymentReturnAsync(orderProcessSettings, paymentMethodSettings);
         }
 
+        /// <inheritdoc />
+        public async Task<WiserItemFileModel> GetInvoicePdfAsync(ulong orderId)
+        {
+            if (orderId == 0)
+            {
+                return null;
+            }
+
+            var userData = await accountsService.GetUserDataFromCookieAsync();
+            
+            var linkTypeOrderToUser = await wiserItemsService.GetLinkTypeAsync(Account.Models.Constants.DefaultEntityType, Constants.OrderEntityType);
+            if (linkTypeOrderToUser == 0)
+            {
+                linkTypeOrderToUser = ShoppingBasket.Models.Constants.BasketToUserLinkType;
+            }
+
+            var linkedOrders = await wiserItemsService.GetLinkedItemIdsAsync(userData.MainUserId, linkTypeOrderToUser, Constants.OrderEntityType, skipPermissionsCheck: true);
+            if (!linkedOrders.Contains(orderId))
+            {
+                return null;
+            }
+
+            var files = await wiserItemsService.GetItemFilesAsync(new[] { orderId }, "item_id", Constants.InvoicePdfProperty);
+            return files.OrderBy(file => file.Id).LastOrDefault();
+        }
+
         private PaymentMethodSettingsModel DataRowToPaymentMethodSettingsModel(DataRow dataRow)
         {
             // Build the payment settings model.
@@ -1275,7 +1336,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             if (forAttachment)
             {
                 templatePropertyName = Constants.StatusUpdateMailAttachmentProperty;
-                templateItemId = orderProcessSettings.StatusUpdateMailAttachmentTemplateId;
+                templateItemId = orderProcessSettings.StatusUpdateInvoiceTemplateId;
             }
             else if (forMerchantMail)
             {

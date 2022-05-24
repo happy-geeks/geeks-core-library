@@ -158,7 +158,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2022, 4, 29),
+                LastUpdate = new DateTime(2022, 5, 17),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -171,7 +171,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("template_id", MySqlDbType.Int32, notNull: true),
                     new("changed_on", MySqlDbType.DateTime, notNull: true),
                     new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
-                    new("published_environment", MySqlDbType.Int16, notNull: true),
+                    new("published_environment", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
                     new("use_cache", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("cache_minutes", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("cache_location", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
@@ -193,6 +193,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("ordering", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("insert_mode", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("load_always", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("disable_minifier", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("url_regex", MySqlDbType.VarChar, 255),
                     new("external_files", MySqlDbType.MediumText),
                     new("grouping_create_object_instead_of_array", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
@@ -204,7 +205,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("is_scss_include_template", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("use_in_wiser_html_editors", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("pre_load_query", MySqlDbType.MediumText),
-                    new("return_not_found_when_pre_load_query_has_no_data", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
+                    new("return_not_found_when_pre_load_query_has_no_data", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("routine_type", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: "For routine templates only"),
+                    new("routine_parameters", MySqlDbType.Text, comment: "For routine templates only"),
+                    new("routine_return_type", MySqlDbType.VarChar, 25, comment: "For routine templates only")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
@@ -220,7 +224,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserDynamicContent,
-                LastUpdate = new DateTime(2022, 3, 8),
+                LastUpdate = new DateTime(2022, 5, 17),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -232,7 +236,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("title", MySqlDbType.VarChar, 255, notNull: true),
                     new("changed_on", MySqlDbType.DateTime, notNull: true),
                     new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
-                    new("published_environment", MySqlDbType.Int16, notNull: true),
+                    new("published_environment", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
                     new("removed", MySqlDbType.Int16, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
@@ -360,7 +364,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 LastUpdate = new DateTime(2022, 5, 10),
                 Columns = new List<ColumnSettingsModel>
                 {
-                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey:true, autoIncrement: true),
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("message", MySqlDbType.MediumText, notNull: true),
                     new("level", MySqlDbType.VarChar, 64, notNull: true),
                     new("scope", MySqlDbType.VarChar, 64, notNull: true),
@@ -374,6 +378,24 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 {
                     new(WiserTableNames.AisLogs, "idx_configuration", IndexTypes.Normal, new List<string> { "configuration", "time_id", "order" }),
                     new(WiserTableNames.AisLogs, "idx_level", IndexTypes.Normal, new List<string> { "level", "configuration", "time_id", "order" })
+                }
+            },
+            
+            // wiser_id_mappings
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserIdMappings,
+                LastUpdate = new DateTime(2022, 5, 19),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("table_name", MySqlDbType.VarChar, 255, notNull: true),
+                    new("our_id", MySqlDbType.UInt64, notNull: true),
+                    new("production_id", MySqlDbType.UInt64, notNull: true)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserIdMappings, "idx_unique", IndexTypes.Unique, new List<string> { "table_name", "our_id" })
                 }
             }
         };

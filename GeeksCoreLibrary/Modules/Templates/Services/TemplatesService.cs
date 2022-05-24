@@ -1,19 +1,4 @@
-﻿using GeeksCoreLibrary.Core.Enums;
-using GeeksCoreLibrary.Core.Extensions;
-using GeeksCoreLibrary.Core.Models;
-using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
-using GeeksCoreLibrary.Modules.Templates.Enums;
-using GeeksCoreLibrary.Modules.Templates.Extensions;
-using GeeksCoreLibrary.Modules.Templates.Interfaces;
-using GeeksCoreLibrary.Modules.Templates.Models;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -23,14 +8,30 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
+using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Enums;
+using GeeksCoreLibrary.Modules.Templates.Extensions;
+using GeeksCoreLibrary.Modules.Templates.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using Template = GeeksCoreLibrary.Modules.Templates.Models.Template;
 
@@ -54,6 +55,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IObjectsService objectsService;
         private readonly ILanguagesService languagesService;
         private readonly IFiltersService filtersService;
+        private readonly IAccountsService accountsService;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
@@ -69,7 +71,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IWebHostEnvironment webHostEnvironment,
             IFiltersService filtersService,
             IObjectsService objectsService,
-            ILanguagesService languagesService)
+            ILanguagesService languagesService,
+            IAccountsService accountsService)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -83,10 +86,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.filtersService = filtersService;
             this.objectsService = objectsService;
             this.languagesService = languagesService;
+            this.accountsService = accountsService;
         }
 
         /// <inheritdoc />
-        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes type = TemplateTypes.Html, int parentId = 0, string parentName = "", bool includeContent = true)
+        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true)
         {
             if (id <= 0 && String.IsNullOrEmpty(name))
             {
@@ -104,6 +108,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
             }
 
+            var useTypeFilter = false;
+
             if (id > 0)
             {
                 databaseConnection.AddParameter("id", id);
@@ -113,6 +119,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 databaseConnection.AddParameter("name", name);
                 whereClause.Add("template.template_name = ?name");
+                useTypeFilter = type.HasValue;
             }
 
             if (parentId > 0)
@@ -126,18 +133,24 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 whereClause.Add("parent1.template_name = ?parentName");
             }
 
+            if (useTypeFilter)
+            {
+                databaseConnection.AddParameter("templateType", (int)type.Value);
+                whereClause.Add("template.template_type = ?templateType");
+            }
+
             whereClause.Add("template.removed = 0");
 
             var query = $@"SELECT
-                            IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
-                            parent1.template_name AS parent_name, 
+                            COALESCE(parent5.template_name, parent4.template_name, parent3.template_name, parent2.template_name, parent1.template_name) AS root_name,
+                            parent1.template_name AS parent_name,
                             template.parent_id,
                             template.template_name,
                             template.template_type,
                             template.ordering,
                             parent1.ordering AS parent_ordering,
                             template.template_id,
-                            GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates, 
+                            GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates,
                             GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
                             template.load_always,
                             template.changed_on,
@@ -156,7 +169,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             template.grouping_key,
                             template.grouping_prefix,
                             template.pre_load_query,
-                            template.return_not_found_when_pre_load_query_has_no_data
+                            template.return_not_found_when_pre_load_query_has_no_data,
+                            template.login_required,
+                            template.login_redirect_url
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -175,7 +190,29 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             await using var reader = await databaseConnection.GetReaderAsync(query);
             var result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
 
-            return result;
+            // Check login requirement.
+            if (!result.Type.InList(TemplateTypes.Html, TemplateTypes.Query) || !result.LoginRequired)
+            {
+                // No login required; return template.
+                return result;
+            }
+
+            var emptyTemplate = new Template
+            {
+                Type = result.Type,
+                LoginRequired = true,
+                LoginRedirectUrl = result.LoginRedirectUrl
+            };
+
+            if (httpContextAccessor.HttpContext == null)
+            {
+                // No context available; return empty template without doing a login check.
+                return emptyTemplate;
+            }
+
+            // Check current login.
+            var userData = await accountsService.GetUserDataFromCookieAsync();
+            return userData is { UserId: > 0 } ? result : emptyTemplate;
         }
 
         /// <inheritdoc />
@@ -613,13 +650,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false)
+        public async Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null)
         {
-            return await DoReplacesAsync(this, input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery);
+            return await DoReplacesAsync(this, input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery, templateType);
         }
 
         /// <inheritdoc />
-        public async Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false)
+        public async Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null)
         {
             // Input cannot be empty.
             if (String.IsNullOrEmpty(input))
@@ -642,7 +679,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             // HTML and mail templates.
             // Note: The string replacements service cannot handle the replacing of templates, because that would cause the StringReplacementsService to need
             // the TemplatesService, which in turn needs the StringReplacementsService, creating a circular dependency.
-            input = await templatesService.HandleIncludesAsync(input, forQuery: forQuery);
+            input = await templatesService.HandleIncludesAsync(input, forQuery: forQuery, templateType: templateType);
             input = await templatesService.HandleImageTemplating(input);
 
             // Replace dynamic content.
@@ -829,13 +866,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false)
+        public async Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null)
         {
-            return await HandleIncludesAsync(this, input, handleStringReplacements, dataRow, handleRequest, forQuery);
+            return await HandleIncludesAsync(this, input, handleStringReplacements, dataRow, handleRequest, forQuery, templateType);
         }
 
         /// <inheritdoc />
-        public async Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false)
+        public async Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null)
         {
             if (String.IsNullOrWhiteSpace(input))
             {
@@ -864,7 +901,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     {
                         // Contains a parent
                         var split = templateName.Split('\\');
-                        var template = await templatesService.GetTemplateAsync(name: split[1], parentName: split[0]);
+                        var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
                         var templateContent = template.Content;
                         if (handleStringReplacements)
                         {
@@ -875,7 +912,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                     else
                     {
-                        var template = await templatesService.GetTemplateAsync(name: templateName);
+                        var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
                         var templateContent = template.Content;
                         if (handleStringReplacements)
                         {
@@ -902,7 +939,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     {
                         // Contains a parent
                         var split = templateName.Split('\\');
-                        var template = await templatesService.GetTemplateAsync(name: split[1], parentName: split[0]);
+                        var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
                         var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
@@ -919,7 +956,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                     else
                     {
-                        var template = await templatesService.GetTemplateAsync(name: templateName);
+                        var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
                         var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
@@ -1095,7 +1132,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             queryTemplate.GroupingSettings ??= new QueryGroupingSettings();
-            query = await DoReplacesAsync(query, true, false, true, null, true, false, true);
+            query = await DoReplacesAsync(query, true, false, true, null, true, false, true, TemplateTypes.Query);
             if (query.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
             {
                 query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
@@ -1165,7 +1202,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return true;
             }
 
-            var query = await DoReplacesAsync(templatesService, template.PreLoadQuery, forQuery: true);
+            var query = await DoReplacesAsync(templatesService, template.PreLoadQuery, forQuery: true, templateType: TemplateTypes.Query);
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {

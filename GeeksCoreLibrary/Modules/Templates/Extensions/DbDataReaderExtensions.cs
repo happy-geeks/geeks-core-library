@@ -1,17 +1,17 @@
-﻿using GeeksCoreLibrary.Core.Extensions;
-using GeeksCoreLibrary.Modules.Templates.Enums;
-using GeeksCoreLibrary.Modules.Templates.Models;
-using System;
+﻿using System;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Modules.Templates.Enums;
+using GeeksCoreLibrary.Modules.Templates.Models;
 
 namespace GeeksCoreLibrary.Modules.Templates.Extensions
 {
     public static class DbDataReaderExtensions
     {
-        public static async Task<Template> ToTemplateModelAsync(this DbDataReader reader, TemplateTypes type = TemplateTypes.Html)
+        public static async Task<Template> ToTemplateModelAsync(this DbDataReader reader, TemplateTypes? type = null)
         {
             if (!Enum.TryParse(typeof(TemplateTypes), reader.GetStringHandleNull("template_type"), true, out var templateType))
             {
@@ -31,7 +31,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 cachingMode = TemplateCachingModes.NoCaching;
             }
 
-            var isQuery = type == TemplateTypes.Query || templateType is TemplateTypes.Query;
+            var isQuery = type is TemplateTypes.Query || templateType is TemplateTypes.Query;
             var template = isQuery ? new QueryTemplate() : new Template();
             template.Id = await reader.IsDBNullAsync("template_id") ? 0 : await reader.GetFieldValueAsync<int>("template_id");
             template.ParentId = await reader.IsDBNullAsync("parent_id") ? 0 : await reader.GetFieldValueAsync<int>("parent_id");
@@ -48,7 +48,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.CachingMinutes = await reader.IsDBNullAsync("cache_minutes") ? 0 : await reader.GetFieldValueAsync<int>("cache_minutes");
             template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations)await reader.GetFieldValueAsync<int>("caching_location");
             template.CachingRegex = reader.GetStringHandleNull("cache_regex");
-            
+
             if (!await reader.IsDBNullAsync("changed_on"))
             {
                 template.LastChanged = await reader.GetFieldValueAsync<DateTime>("changed_on");
@@ -82,35 +82,45 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             var cssTemplates = reader.GetStringHandleNull("css_templates");
             if (!String.IsNullOrWhiteSpace(cssTemplates))
             {
-                template.CssTemplates = cssTemplates.Split(new [] {';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(Int32.Parse).Where(id => id > 0).ToList();
+                template.CssTemplates = cssTemplates.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(Int32.Parse).Where(id => id > 0).ToList();
             }
 
             var javascriptTemplates = reader.GetStringHandleNull("javascript_templates");
             if (!String.IsNullOrWhiteSpace(javascriptTemplates))
             {
-                template.JavascriptTemplates = javascriptTemplates.Split(new [] {';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(Int32.Parse).Where(id => id > 0).ToList();
+                template.JavascriptTemplates = javascriptTemplates.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(Int32.Parse).Where(id => id > 0).ToList();
             }
 
             var externalFiles = reader.GetStringHandleNull("external_files");
             if (!String.IsNullOrWhiteSpace(externalFiles))
             {
-                template.ExternalFiles = externalFiles.Split(new [] {';', ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                template.ExternalFiles = externalFiles.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             }
 
             var cdnFiles = reader.HasColumn("wiser_cdn_files") ? reader.GetStringHandleNull("wiser_cdn_files") : null;
             if (!String.IsNullOrWhiteSpace(cdnFiles))
             {
-                template.WiserCdnFiles = cdnFiles.Split(new [] {';', ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                template.WiserCdnFiles = cdnFiles.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
             }
-            
+
             if (reader.HasColumn("pre_load_query"))
             {
                 template.PreLoadQuery = reader.GetStringHandleNull("pre_load_query");
             }
-            
+
             if (reader.HasColumn("return_not_found_when_pre_load_query_has_no_data"))
             {
                 template.ReturnNotFoundWhenPreLoadQueryHasNoData = Convert.ToInt16(await reader.GetFieldValueAsync<object>("return_not_found_when_pre_load_query_has_no_data")) > 0;
+            }
+
+            if (reader.HasColumn("login_required"))
+            {
+                template.LoginRequired = Convert.ToBoolean(await reader.GetFieldValueAsync<object>("login_required"));
+            }
+
+            if (reader.HasColumn("login_redirect_url"))
+            {
+                template.LoginRedirectUrl = reader.GetStringHandleNull("login_redirect_url");
             }
 
             if (!isQuery)

@@ -143,15 +143,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null)
+        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null, bool createNewTransaction = true)
         {
-            await shoppingBasketsService.AddLineAsync(shoppingBasket, basketLines, settings, uniqueId, itemId, quantity, type, lineDetails);
+            await shoppingBasketsService.AddLineAsync(shoppingBasket, basketLines, settings, uniqueId, itemId, quantity, type, lineDetails, createNewTransaction);
         }
 
         /// <inheritdoc />
-        public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items)
+        public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items, bool createNewTransaction = true)
         {
-            await shoppingBasketsService.AddLinesAsync(shoppingBasket, basketLines, settings, items);
+            await shoppingBasketsService.AddLinesAsync(shoppingBasket, basketLines, settings, items, createNewTransaction);
         }
         
         /// <inheritdoc />
@@ -167,9 +167,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<ShoppingBasket.HandleCouponResults> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "")
+        public async Task<ShoppingBasket.HandleCouponResults> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true)
         {
-            return await shoppingBasketsService.AddCouponToBasketAsync(shoppingBasket, basketLines, settings, couponCode);
+            return await shoppingBasketsService.AddCouponToBasketAsync(shoppingBasket, basketLines, settings, couponCode, createNewTransaction);
         }
 
         /// <inheritdoc />

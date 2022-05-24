@@ -12,6 +12,7 @@ using System.Data;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -26,14 +27,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         private readonly IDatabaseConnection databaseConnection;
         private readonly IPagesService pagesService;
         private readonly IDataSelectorsService dataSelectorsService;
+        private readonly IWiserItemsService wiserItemsService;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IDatabaseConnection databaseConnection, IPagesService pagesService, IDataSelectorsService dataSelectorsService)
+        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IDatabaseConnection databaseConnection, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
             this.databaseConnection = databaseConnection;
             this.pagesService = pagesService;
             this.dataSelectorsService = dataSelectorsService;
+            this.wiserItemsService = wiserItemsService;
         }
 
         [Route("template.gcl")]
@@ -61,7 +64,21 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
 
             if (contentTemplate.Id <= 0)
             {
-                return NotFound();
+                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+                if (!contentTemplate.LoginRequired)
+                {
+                    // Login not required; return 404 (Not Found).
+                    return NotFound();
+                }
+
+                if (contentTemplate.Type == TemplateTypes.Html && !String.IsNullOrWhiteSpace(contentTemplate.LoginRedirectUrl))
+                {
+                    // Login required and a redirect URL is set; return redirect.
+                    return Redirect(contentTemplate.LoginRedirectUrl);
+                }
+
+                // Return unauthorized.
+                return Unauthorized();
             }
 
             var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase);
@@ -129,8 +146,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates));
             }
 
-            var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString());
+            var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString(), templateType: contentTemplate.Type);
             newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
+            newBodyHtml = await wiserItemsService.ReplaceAllEntityBlocksAsync(newBodyHtml);
 
             if (!ombouw)
             {
@@ -172,6 +190,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             var result = (QueryTemplate)await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Query);
             if (result.Id <= 0)
             {
+                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+                if (result.LoginRequired)
+                {
+                    return Unauthorized();
+                }
+
                 return NotFound();
             }
 
@@ -222,14 +246,23 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
 
             // Get the template and replace the dynamic content.
-            var template = (await templatesService.GetTemplateAsync(templateId)).Content;
-            template = await templatesService.HandleIncludesAsync(template);
-            template = await templatesService.ReplaceAllDynamicContentAsync(template);
-            template = await dataSelectorsService.ReplaceAllDataSelectorsAsync(template);
+            var template = await templatesService.GetTemplateAsync(templateId);
+
+            // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+            if (template.Id <= 0 && template.LoginRequired)
+            {
+                return Unauthorized();
+            }
+
+            var templateContent = template.Content;
+            templateContent = await templatesService.HandleIncludesAsync(templateContent, templateType: TemplateTypes.Html);
+            templateContent = await templatesService.ReplaceAllDynamicContentAsync(templateContent);
+            templateContent = await dataSelectorsService.ReplaceAllDataSelectorsAsync(templateContent);
+            templateContent = await wiserItemsService.ReplaceAllEntityBlocksAsync(templateContent);
 
             // Parse the html to get the partial template part.
             var htmlDocument = new HtmlDocument();
-            htmlDocument.LoadHtml(template);
+            htmlDocument.LoadHtml(templateContent);
             var partialTemplateContent = htmlDocument.DocumentNode.SelectSingleNode($"//div[@data-type='partial-template'][@data-name='{partialTemplateName}']")?.InnerHtml;
 
             return String.IsNullOrWhiteSpace(partialTemplateContent)

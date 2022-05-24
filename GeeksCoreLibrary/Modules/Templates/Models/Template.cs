@@ -127,5 +127,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets whether we should return an HTTP 404 result when the pre load query returns 0 rows.
         /// </summary>
         public bool ReturnNotFoundWhenPreLoadQueryHasNoData { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether it's required for a user to be logged when trying to access the template.
+        /// </summary>
+        public bool LoginRequired { get; set; }
+
+        /// <summary>
+        /// Gets or sets the URL the user should be sent to if <see cref="LoginRequired"/> is <see langword="true"/>, but no user is logged in.
+        /// </summary>
+        public string LoginRedirectUrl { get; set; }
     }
 }

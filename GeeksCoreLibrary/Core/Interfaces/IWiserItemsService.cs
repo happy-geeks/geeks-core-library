@@ -672,7 +672,7 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <summary>
         /// Gets a file from the database.
         /// </summary>
-        Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id");
+        Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null);
 
         /// <summary>
         /// Gets multiple files from the database.
@@ -680,7 +680,7 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="ids">The IDs of the files to get.</param>
         /// <param name="field"></param>
         /// <returns></returns>
-        Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id");
+        Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null);
 
         /// <summary>
         /// Gets the prefix for the wiser_item and wiser_itemdetail tables for a specific entity type.
@@ -790,5 +790,12 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="itemModel">The item to handle the aggregation of.</param>
         /// <param name="encryptionKey">Optional: The key used for encrypting values of secure-input fields. This will only be used the there is no specific encryption key set for the secure-input field. Default value is the key from the web.config setting "QueryTemplatesDecryptionKey".</param>
         Task HandleItemAggregationAsync(IWiserItemsService wiserItemsService, WiserItemModel itemModel, string encryptionKey = "");
+
+        /// <summary>
+        /// Replaces all entity blocks in a HTML template with the rendered versions.
+        /// </summary>
+        /// <param name="template">The HTML template that might contain one or more entity blocks.</param>
+        /// <returns>The same template but with all entity blocks fully rendered.</returns>
+        Task<string> ReplaceAllEntityBlocksAsync(string template);
     }
 }

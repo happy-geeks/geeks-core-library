@@ -1,8 +1,8 @@
-﻿using GeeksCoreLibrary.Components.ShoppingBasket.Models;
-using GeeksCoreLibrary.Core.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.ShoppingBasket.Models;
+using GeeksCoreLibrary.Core.Models;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
 {
@@ -56,6 +56,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="coupon"></param>
         /// <param name="totalProductsPrice"></param>
         /// <param name="maxDiscountIsTotalAmountProducts"></param>
+        /// <param name="currentDiscountAmount"></param>
         /// <returns></returns>
         decimal CalculateCouponValue(WiserItemModel coupon, decimal totalProductsPrice, bool maxDiscountIsTotalAmountProducts = false, decimal currentDiscountAmount = 0M);
 
@@ -143,8 +144,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="quantity">The quantity that should be added.</param>
         /// <param name="type">The type of the item. Defaults to "product".</param>
         /// <param name="lineDetails">Additional properties for the basket line.</param>
+        /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
         /// <returns></returns>
-        Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null);
+        Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null, bool createNewTransaction = true);
 
         /// <summary>
         /// Adds multiple items to the basket.
@@ -153,8 +155,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketLines">The current basket lines.</param>
         /// <param name="settings">The settings of the ShoppingBasket component that called this function.</param>
         /// <param name="items">The data of the lines that will be added.</param>
+        /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
         /// <returns></returns>
-        Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items);
+        Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items, bool createNewTransaction = true);
 
         /// <summary>
         /// Updates an existing line in the basket.
@@ -184,8 +187,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketLines">The current basket lines in the form of a list of <see cref="WiserItemModel"/> objects.</param>
         /// <param name="settings">The settings of the basket, either the global ones or the ones passed from a <see cref="ShoppingBasket"/> component.</param>
         /// <param name="couponCode">The coupon code to check and process.</param>
+        /// <param name="createNewTransaction">Will be passed to the SaveAsync call.</param>
         /// <returns></returns>
-        Task<ShoppingBasket.HandleCouponResults> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "");
+        Task<ShoppingBasket.HandleCouponResults> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true);
 
         /// <summary>
         /// Get lines of a specific type.

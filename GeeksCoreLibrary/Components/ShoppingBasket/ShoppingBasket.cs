@@ -585,7 +585,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                 DatabaseConnection.AddParameter("id", templateId);
                 DatabaseConnection.AddParameter("contentPropertyName", contentPropertyName);
                 DatabaseConnection.AddParameter("pdfDocumentOptionsPropertyName", pdfDocumentOptionsPropertyName);
-                var getTemplateResult = await DatabaseConnection.GetAsync("SELECT `key`, CONCAT_WS('', `value`, long_value) AS `value` FROM wiser_itemdetail WHERE item_id = ?id AND `key` IN (?contentPropertyName, ?pdfDocumentOptionsPropertyName)");
+                var getTemplateResult = await DatabaseConnection.GetAsync($"SELECT `key`, CONCAT_WS('', `value`, long_value) AS `value` FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?id AND `key` IN (?contentPropertyName, ?pdfDocumentOptionsPropertyName)");
                 if (getTemplateResult.Rows.Count > 0)
                 {
                     foreach (DataRow dataRow in getTemplateResult.Rows)

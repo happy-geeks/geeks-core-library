@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -37,16 +38,18 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
         private readonly IViewComponentHelper viewComponentHelper;
         private readonly IDataSelectorsService dataSelectorsService;
         private readonly IOrderProcessesService orderProcessesService;
+        private readonly IWiserItemsService wiserItemsService;
 
         public OrderProcessesController(ILogger<OrderProcessesController> logger,
-            ITemplatesService templatesService,
-            IPagesService pagesService,
-            IActionContextAccessor actionContextAccessor,
-            IHttpContextAccessor httpContextAccessor,
-            ITempDataProvider tempDataProvider,
-            IViewComponentHelper viewComponentHelper,
-            IDataSelectorsService dataSelectorsService,
-            IOrderProcessesService orderProcessesService)
+                                        ITemplatesService templatesService,
+                                        IPagesService pagesService,
+                                        IActionContextAccessor actionContextAccessor,
+                                        IHttpContextAccessor httpContextAccessor,
+                                        ITempDataProvider tempDataProvider,
+                                        IViewComponentHelper viewComponentHelper,
+                                        IDataSelectorsService dataSelectorsService,
+                                        IOrderProcessesService orderProcessesService,
+                                        IWiserItemsService wiserItemsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -57,6 +60,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             this.viewComponentHelper = viewComponentHelper;
             this.dataSelectorsService = dataSelectorsService;
             this.orderProcessesService = orderProcessesService;
+            this.wiserItemsService = wiserItemsService;
         }
 
         [Route(Constants.CheckoutPage)]
@@ -108,6 +112,18 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             
             var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentReturn, orderProcessId);
             return Content(html, "text/html");
+        }
+
+        [Route(Constants.DownloadInvoicePage + "{orderId:int}")]
+        public async Task<IActionResult> DownloadInvoiceAsync(ulong orderId)
+        {
+            var invoicePdf = await orderProcessesService.GetInvoicePdfAsync(orderId);
+            if (invoicePdf == null)
+            {
+                return NotFound();
+            }
+
+            return File(invoicePdf.Content, invoicePdf.ContentType, invoicePdf.FileName);
         }
 
         private async Task<IActionResult> HandleControllerAction(OrderProcess.ComponentModes componentMode)
@@ -169,6 +185,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
 
             var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString());
             newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
+            newBodyHtml = await wiserItemsService.ReplaceAllEntityBlocksAsync(newBodyHtml);
 
             if (!ombouw)
             {

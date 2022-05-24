@@ -33,23 +33,37 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public async Task<bool> ColumnExistsAsync(string tableName, string columnName)
+        public async Task<bool> ColumnExistsAsync(string tableName, string columnName, string databaseName = null)
         {
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
             databaseConnection.AddParameter("columnName", columnName);
             
-            var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{tableName.ToMySqlSafeValue(false)}` LIKE ?columnName");
+            var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` LIKE ?columnName");
             return dataTable.Rows.Count > 0;
         }
         
         /// <inheritdoc />
-        public async Task<List<string>> GetColumnNamesAsync(string tableName)
+        public async Task<List<string>> GetColumnNamesAsync(string tableName, string databaseName = null)
         {
-            var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{tableName.ToMySqlSafeValue(false)}`");
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
             return dataTable.Rows.Cast<DataRow>().Select(dataRow => dataRow.Field<string>("Field")).ToList();
         }
 
         /// <inheritdoc />
-        public async Task AddColumnToTableAsync(string tableName, ColumnSettingsModel settings, bool throwExceptionIfColumnAlreadyExists = true)
+        public async Task AddColumnToTableAsync(string tableName, ColumnSettingsModel settings, bool throwExceptionIfColumnAlreadyExists = true, string databaseName = null)
+        {
+            await AddColumnToTableAsync(this, tableName, settings, throwExceptionIfColumnAlreadyExists, databaseName);
+        }
+
+        /// <inheritdoc />
+        public async Task AddColumnToTableAsync(IDatabaseHelpersService databaseHelpersService, string tableName, ColumnSettingsModel settings, bool throwExceptionIfColumnAlreadyExists = true, string databaseName = null)
         {
             if (String.IsNullOrWhiteSpace(settings?.Name))
             {
@@ -59,7 +73,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             databaseConnection.AddParameter("columnName", settings.Name);
             databaseConnection.AddParameter("defaultValue", settings.DefaultValue);
             
-            if (await ColumnExistsAsync(tableName, settings.Name))
+            if (await databaseHelpersService.ColumnExistsAsync(tableName, settings.Name, databaseName))
             {
                 if (throwExceptionIfColumnAlreadyExists)
                 {
@@ -69,7 +83,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 return;
             }
             
-            var queryBuilder = new StringBuilder($"ALTER TABLE `{tableName.ToMySqlSafeValue(false)}` ADD COLUMN ");
+            var queryBuilder = new StringBuilder($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` ADD COLUMN ");
             queryBuilder.Append(GenerateColumnQueryPart(tableName, settings));
             queryBuilder.Append("; ");
 
@@ -83,23 +97,31 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     name = name[..64];
                 }
 
-                queryBuilder.Append($"CREATE {indexTypeName} INDEX `idx_{name.ToMySqlSafeValue(false)}` ON `{tableName.ToMySqlSafeValue(false)}` (?columnName);");
+                queryBuilder.Append($"CREATE {indexTypeName} INDEX `idx_{name.ToMySqlSafeValue(false)}` ON `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` (?columnName);");
             }
 
             await databaseConnection.ExecuteAsync(queryBuilder.ToString());
         }
 
         /// <inheritdoc />
-        public async Task DropColumnAsync(string tableName, string columnName)
+        public async Task DropColumnAsync(string tableName, string columnName, string databaseName = null)
         {
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
             databaseConnection.AddParameter("columnName", columnName);
-            await databaseConnection.ExecuteAsync($"ALTER TABLE `{tableName.ToMySqlSafeValue(false)}` DROP COLUMN ?columnName");
+            await databaseConnection.ExecuteAsync($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` DROP COLUMN ?columnName");
         }
 
         /// <inheritdoc />
-        public async Task CreateTableAsync(string tableName, IList<ColumnSettingsModel> primaryKeys, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci")
+        public async Task CreateTableAsync(string tableName, IList<ColumnSettingsModel> primaryKeys, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", string databaseName = null)
         {
-            var queryBuilder = new StringBuilder($"CREATE TABLE IF NOT EXISTS `{tableName.ToMySqlSafeValue(false)}`");
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            var queryBuilder = new StringBuilder($"CREATE TABLE IF NOT EXISTS `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
             if (primaryKeys != null && primaryKeys.Any())
             {
                 queryBuilder.AppendLine(" (");
@@ -131,29 +153,35 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
         
         /// <inheritdoc />
-        public async Task CreateOrUpdateTableAsync(string tableName, IList<ColumnSettingsModel> columns, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci")
+        public async Task CreateOrUpdateTableAsync(string tableName, IList<ColumnSettingsModel> columns, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", string databaseName = null)
+        {
+            await CreateOrUpdateTableAsync(this, tableName, columns, characterSet, collation, databaseName);
+        }
+
+        /// <inheritdoc />
+        public async Task CreateOrUpdateTableAsync(IDatabaseHelpersService databaseHelpersService, string tableName, IList<ColumnSettingsModel> columns, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", string databaseName = null)
         {
             var primaryKeys = columns.Where(c => c.IsPrimaryKey).ToList();
             var isNewTable = false;
             List<ColumnSettingsModel> columnsToAdd;
 
-            if (!await TableExistsAsync(tableName))
+            if (!await databaseHelpersService.TableExistsAsync(tableName, databaseName))
             {
                 // Create the table if it doesn't exist yet.
-                await CreateTableAsync(tableName, primaryKeys, characterSet, collation);
+                await databaseHelpersService.CreateTableAsync(tableName, primaryKeys, characterSet, collation, databaseName);
                 isNewTable = true;
                 columnsToAdd = columns.Where(c => !c.IsPrimaryKey).ToList();
             }
             else
             {
-                var existingColumnNames = await GetColumnNamesAsync(tableName);
+                var existingColumnNames = await databaseHelpersService.GetColumnNamesAsync(tableName, databaseName);
                 columnsToAdd = columns.Where(c => !existingColumnNames.Any(x => x.Equals(c.Name, StringComparison.OrdinalIgnoreCase))).ToList();
             }
 
             // Add missing columns.
             foreach (var column in columnsToAdd)
             {
-                await AddColumnToTableAsync(tableName, column, false);
+                await databaseHelpersService.AddColumnToTableAsync(tableName, column, false, databaseName);
             }
 
             // Update primary key if needed.
@@ -163,14 +191,18 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 return;
             }
             
-            var dataTable = await databaseConnection.GetAsync($"SHOW KEYS FROM `{tableName.ToMySqlSafeValue(false)}` WHERE KEY_NAME = 'PRIMARY'");
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            var dataTable = await databaseConnection.GetAsync($"SHOW KEYS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` WHERE KEY_NAME = 'PRIMARY'");
             var primaryKeyIsChanged = dataTable.Rows.Count != primaryKeys.Count || dataTable.Rows.Cast<DataRow>().Any(d => !primaryKeys.Any(p => p.Name.Equals(d.Field<string>("column_name"))));
             if (!primaryKeyIsChanged)
             {
                 return;
             }
 
-            await databaseConnection.ExecuteAsync($"ALTER TABLE `{tableName.ToMySqlSafeValue(false)}` DROP PRIMARY KEY, ADD PRIMARY KEY (`{String.Join("`,`", primaryKeys.Select(x => x.Name.ToMySqlSafeValue(false)))}`)");
+            await databaseConnection.ExecuteAsync($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` DROP PRIMARY KEY, ADD PRIMARY KEY (`{String.Join("`,`", primaryKeys.Select(x => x.Name.ToMySqlSafeValue(false)))}`)");
         }
 
         /// <inheritdoc />
@@ -195,45 +227,59 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
         
         /// <inheritdoc />
-        public async Task DropTableAsync(string tableName, bool isTemporaryTable = false)
+        public async Task DropTableAsync(string tableName, bool isTemporaryTable = false, string databaseName = null)
         {
-            await databaseConnection.ExecuteAsync($"DROP {(isTemporaryTable ? "TEMPORARY" : "")} TABLE IF EXISTS `{tableName.ToMySqlSafeValue(false)}`");
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            await databaseConnection.ExecuteAsync($"DROP {(isTemporaryTable ? "TEMPORARY" : "")} TABLE IF EXISTS `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
         }
 
         /// <inheritdoc />
-        public async Task DuplicateTableAsync(string tableToDuplicate, string newTableName, bool includeData = true)
+        public async Task DuplicateTableAsync(string tableToDuplicate, string newTableName, bool includeData = true, string sourceDatabaseName = null, string destinationDatabaseName = null)
         {
-            databaseConnection.AddParameter("tableToDuplicate", tableToDuplicate);
-            databaseConnection.AddParameter("newTableName", newTableName);
-            await databaseConnection.ExecuteAsync("CREATE TABLE ?newTableName LIKE ?tableToDuplicate");
+            if (String.IsNullOrWhiteSpace(sourceDatabaseName))
+            {
+                sourceDatabaseName = databaseConnection.ConnectedDatabase;
+            }
+            if (String.IsNullOrWhiteSpace(destinationDatabaseName))
+            {
+                destinationDatabaseName = databaseConnection.ConnectedDatabase;
+            }
+            await databaseConnection.ExecuteAsync($"CREATE TABLE `{destinationDatabaseName.ToMySqlSafeValue(false)}`.`{newTableName.ToMySqlSafeValue(false)}` LIKE `{sourceDatabaseName.ToMySqlSafeValue(false)}`.`{tableToDuplicate.ToMySqlSafeValue(false)}`");
             if (!includeData)
             {
                 return;
             }
 
-            await databaseConnection.ExecuteAsync("INSERT INTO ?newTableName (SELECT * FROM ?tableToDuplicate)");
+            await databaseConnection.ExecuteAsync($"INSERT INTO `{destinationDatabaseName.ToMySqlSafeValue(false)}`.`{newTableName.ToMySqlSafeValue(false)}` (SELECT * FROM `{sourceDatabaseName.ToMySqlSafeValue(false)}`.`{tableToDuplicate.ToMySqlSafeValue(false)}`)");
         }
 
         /// <inheritdoc />
-        public async Task CreateOrUpdateIndexesAsync(List<IndexSettingsModel> indexes)
+        public async Task CreateOrUpdateIndexesAsync(List<IndexSettingsModel> indexes, string databaseName = null)
         {
             if (indexes == null || !indexes.Any())
             {
                 throw new ArgumentNullException(nameof(indexes));
             }
 
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
             var oldIndexes = new Dictionary<string, List<(string Name, List<string> Columns)>>();
             
             foreach (var index in indexes.Where(index => !String.IsNullOrWhiteSpace(index.Name) && index.Fields != null && index.Fields.Any()))
             {
-                var createIndexQuery = $"ALTER TABLE `{index.TableName.ToMySqlSafeValue(false)}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue(false)}` (`{String.Join("`,`", index.Fields.Select(f => f.ToMySqlSafeValue(false)))}`)";
+                var createIndexQuery = $"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue(false)}` (`{String.Join("`,`", index.Fields.Select(f => f.ToMySqlSafeValue(false)))}`)";
                 
                 databaseConnection.AddParameter("indexName", index.Name);
 
                 if (!oldIndexes.ContainsKey(index.TableName))
                 {
                     oldIndexes.Add(index.TableName, new List<(string Name, List<string> Columns)>());
-                    var dataTable = await databaseConnection.GetAsync($"SHOW INDEX FROM `{index.TableName.ToMySqlSafeValue(false)}`");
+                    var dataTable = await databaseConnection.GetAsync($"SHOW INDEX FROM `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}`");
                     foreach (var dataRow in dataTable.Rows.Cast<DataRow>().OrderBy(row => row.Field<string>("key_name")).ThenBy(row => Convert.ToInt32(row["seq_in_index"])))
                     {
                         var indexName = dataRow.Field<string>("key_name");
@@ -260,7 +306,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 if (existingIndex.Name != null)
                 {
                     // If an index with this name already exists, but the new one if different, drop the old index first.
-                    await databaseConnection.ExecuteAsync($"ALTER TABLE `{index.TableName.ToMySqlSafeValue(false)}` DROP INDEX `{existingIndex.Name.ToMySqlSafeValue(false)}`");
+                    await databaseConnection.ExecuteAsync($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}` DROP INDEX `{existingIndex.Name.ToMySqlSafeValue(false)}`");
                 }
 
                 // Create the new index.
@@ -276,42 +322,63 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 throw new ArgumentNullException(nameof(databaseName));
             }
             
-            databaseConnection.AddParameter("databaseName", databaseName);
             databaseConnection.AddParameter("characterSet", characterSet);
             databaseConnection.AddParameter("collation", collation);
-            await databaseConnection.ExecuteAsync("CREATE DATABASE IF NOT EXISTS ?databaseName DEFAULT CHARACTER SET = ?characterSet DEFAULT COLLATE = ?collation");
+            await databaseConnection.ExecuteAsync($"CREATE DATABASE IF NOT EXISTS `{databaseName.ToMySqlSafeValue(false)}` DEFAULT CHARACTER SET = ?characterSet DEFAULT COLLATE = ?collation");
         }
 
         /// <inheritdoc />
-        public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync()
+        public async Task DropDatabaseAsync(string databaseName)
+        {
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                throw new ArgumentNullException(nameof(databaseName));
+            }
+            
+            await databaseConnection.ExecuteAsync($"DROP DATABASE IF EXISTS `{databaseName.ToMySqlSafeValue(false)}`");
+        }
+
+        /// <inheritdoc />
+        public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(string databaseName = null)
+        {
+            return await GetLastTableUpdatesAsync(this, databaseName);
+        }
+
+        /// <inheritdoc />
+        public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(IDatabaseHelpersService databaseHelpersService, string databaseName = null)
         {
             var result = new Dictionary<string, DateTime>();
 
-            if (!await TableExistsAsync(WiserTableNames.WiserTableChanges))
+            if (!await databaseHelpersService.TableExistsAsync(WiserTableNames.WiserTableChanges, databaseName))
             {
-                await CreateOrUpdateTableAsync(WiserTableNames.WiserTableChanges,
-                    new List<ColumnSettingsModel>
-                    {
-                        new()
-                        {
-                            Name = "name",
-                            Type = MySqlDbType.VarChar,
-                            Length = 100,
-                            NotNull = true,
-                            IsPrimaryKey = true
-                        },
-                        new()
-                        {
-                            Name = "last_update",
-                            Type = MySqlDbType.DateTime,
-                            NotNull = true
-                        }
-                    });
+                await databaseHelpersService.CreateOrUpdateTableAsync(WiserTableNames.WiserTableChanges,
+                                                                     new List<ColumnSettingsModel>
+                                                                     {
+                                                                         new()
+                                                                         {
+                                                                             Name = "name",
+                                                                             Type = MySqlDbType.VarChar,
+                                                                             Length = 100,
+                                                                             NotNull = true,
+                                                                             IsPrimaryKey = true
+                                                                         },
+                                                                         new()
+                                                                         {
+                                                                             Name = "last_update",
+                                                                             Type = MySqlDbType.DateTime,
+                                                                             NotNull = true
+                                                                         }
+                                                                     }, 
+                                                                     databaseName: databaseName);
 
                 return result;
             }
 
-            var dataTable = await databaseConnection.GetAsync($"SELECT name, last_update FROM {WiserTableNames.WiserTableChanges}");
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            var dataTable = await databaseConnection.GetAsync($"SELECT name, last_update FROM `{databaseName.ToMySqlSafeValue(false)}`.`{WiserTableNames.WiserTableChanges}`");
             if (dataTable.Rows.Count == 0)
             {
                 return result;
@@ -332,9 +399,20 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public async Task CheckAndUpdateTablesAsync(List<string> tablesToUpdate, Dictionary<string, DateTime> tableChanges = null)
+        public async Task CheckAndUpdateTablesAsync(List<string> tablesToUpdate, string databaseName = null)
         {
-            tableChanges ??= await GetLastTableUpdatesAsync();
+            await CheckAndUpdateTablesAsync(this, tablesToUpdate, databaseName);
+        }
+
+        /// <inheritdoc />
+        public async Task CheckAndUpdateTablesAsync(IDatabaseHelpersService databaseHelpersService, List<string> tablesToUpdate, string databaseName = null)
+        {
+            var tableChanges = await databaseHelpersService.GetLastTableUpdatesAsync(databaseName);
+            
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
 
             foreach (var tableName in tablesToUpdate)
             {
@@ -353,13 +431,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
 
                 // Table is not up-to-date, so update it now.
-                await CreateOrUpdateTableAsync(tableName, tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation);
-                await CreateOrUpdateIndexesAsync(tableDefinition.Indexes);
+                await CreateOrUpdateTableAsync(tableName, tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
+                await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
 
                 // Update wiser_table_changes.
                 databaseConnection.AddParameter("tableName", tableName);
                 databaseConnection.AddParameter("lastUpdate", DateTime.Now);
-                await databaseConnection.ExecuteAsync($@"INSERT INTO {WiserTableNames.WiserTableChanges} (name, last_update) 
+                await databaseConnection.ExecuteAsync($@"INSERT INTO `{databaseName.ToMySqlSafeValue(false)}`.`{WiserTableNames.WiserTableChanges}` (name, last_update) 
                                                             VALUES (?tableName, ?lastUpdate) 
                                                             ON DUPLICATE KEY UPDATE last_update = VALUES(last_update)");
             }
@@ -420,13 +498,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 if (!String.IsNullOrWhiteSpace(settings.CharacterSet))
                 {
-                    databaseConnection.AddParameter($"characterSet{parameterSuffix}", settings.CharacterSet);
-                    queryBuilder.Append($" CHARACTER SET ?characterSet{parameterSuffix}");
+                    queryBuilder.Append($" CHARACTER SET {settings.CharacterSet.ToMySqlSafeValue(true)}");
 
                     if (!String.IsNullOrWhiteSpace(settings.Collation))
                     {
-                        databaseConnection.AddParameter($"collation{parameterSuffix}", settings.Collation);
-                        queryBuilder.Append($" COLLATE ?collation{parameterSuffix}");
+                        queryBuilder.Append($" COLLATE {settings.Collation.ToMySqlSafeValue(true)}");
                     }
                 }
             }
@@ -457,7 +533,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     if (!String.IsNullOrEmpty(settings.DefaultValue) && settings.EnumValues.Contains(settings.DefaultValue))
                     {
                         // Given default value exists in the list, so use it.
-                        queryBuilder.Append(" DEFAULT ?defaultValue");
+                        queryBuilder.Append($" DEFAULT {settings.DefaultValue.ToMySqlSafeValue(true)}");
                     }
                     else if (settings.NotNull)
                     {
@@ -467,7 +543,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
                 else
                 {
-                    queryBuilder.Append(" DEFAULT ?defaultValue");
+                    queryBuilder.Append($" DEFAULT {settings.DefaultValue.ToMySqlSafeValue(true)}");
                 }
             }
 

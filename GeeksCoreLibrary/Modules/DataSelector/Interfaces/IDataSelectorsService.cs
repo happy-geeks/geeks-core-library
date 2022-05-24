@@ -50,7 +50,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Interfaces
         /// Executes the data selector query and returns the results as JSON.
         /// </summary>
         /// <param name="data">The <see cref="DataSelectorRequestModel"/> with the settings of the data selector.</param>
-        Task<(JArray Result, HttpStatusCode StatusCode, string Error)> GetJsonResponseAsync(DataSelectorRequestModel data);
+        /// <param name="skipSecurity">Skip the security if the data selector is not set to insecure loading, when loading from a secure location.</param>
+        Task<(JArray Result, HttpStatusCode StatusCode, string Error)> GetJsonResponseAsync(DataSelectorRequestModel data, bool skipSecurity = false);
 
         /// <summary>
         /// Executes the data selector query and creates an Excel document from the result.
@@ -74,7 +75,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Interfaces
         /// Generates a new instance of <see cref="ItemsRequest"/> that you can use for certain data selector requests.
         /// </summary>
         /// <param name="data">The <see cref="DataSelectorRequestModel"/> with the settings of the data selector.</param>
-        Task<(ItemsRequest Result, HttpStatusCode StatusCode, string Error)> InitializeItemsRequestAsync(DataSelectorRequestModel data);
+        /// <param name="skipSecurity">Skip the security if the data selector is not set to insecure loading, when loading from a secure location.</param>
+        Task<(ItemsRequest Result, HttpStatusCode StatusCode, string Error)> InitializeItemsRequestAsync(DataSelectorRequestModel data, bool skipSecurity = false);
 
         /// <summary>
         /// Replaces all data selectors in a HTML template with the rendered versions.

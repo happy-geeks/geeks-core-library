@@ -137,12 +137,18 @@
         /// </summary>
         public const string WiserPreviewProfiles = "wiser_preview_profiles";
         /// <summary>
-        /// All deleted items will be moved to archive tables, this is the suffix for those archive tables.
-        /// </summary>
-        public const string ArchiveSuffix = "_archive";
-        /// <summary>
         /// This table is used by the AIS to write logs to.
         /// </summary>
         public const string AisLogs = "ais_logs";
+        /// <summary>
+        /// This table is used by Wiser for the functionality of creating extra environments for customers and synchronising changes from another environment to production,
+        /// When a new item has been added in another environment and it gets synchronised to production, it will most likely get a different ID in production.
+        /// We need this table to remember/map these IDs, so that we can also synchronise any other changes to the correct item. 
+        /// </summary>
+        public const string WiserIdMappings = "wiser_id_mappings";
+        /// <summary>
+        /// All deleted items will be moved to archive tables, this is the suffix for those archive tables.
+        /// </summary>
+        public const string ArchiveSuffix = "_archive";
     }
 }
