@@ -125,20 +125,23 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
                 }
             };
 
+            // Use NewtonSoft to serialize instead of RestSharp's serialization.
+            var body = JsonConvert.SerializeObject(requestData);
+
             try
             {
                 var client = new RestClient("https://www.google-analytics.com");
                 var request = new RestRequest("/mp/collect", Method.POST);
                 request.AddParameter("measurement_id", orderProcessSettings.MeasurementProtocolMeasurementId.DecryptWithAesWithSalt(), ParameterType.QueryString);
                 request.AddParameter("api_secret", orderProcessSettings.MeasurementProtocolApiSecret.DecryptWithAesWithSalt(), ParameterType.QueryString);
-                request.AddJsonBody(requestData);
+                request.AddParameter("application/json", body, ParameterType.RequestBody);
 
                 var response = await client.ExecuteAsync(request);
-                logger.LogInformation($"Measurement Protocol (GA4): Received response with status code '{response.StatusCode}' while sending a measurement protocol request to Google with data:\n{JsonConvert.SerializeObject(requestData, Formatting.Indented)}");
+                logger.LogInformation($"Measurement Protocol (GA4): Received response with status code '{response.StatusCode}' while sending a measurement protocol request to Google with data:\n{body}");
             }
             catch (Exception e)
             {
-                logger.LogError($"Measurement Protocol (GA4): An error has occurred while sending a measurement protocol request to Google with data:\n{JsonConvert.SerializeObject(requestData, Formatting.Indented)}\n\nGiving error: {e}");
+                logger.LogError($"Measurement Protocol (GA4): An error has occurred while sending a measurement protocol request to Google with data:\n{body}\n\nGiving error: {e}");
             }
         }
 
