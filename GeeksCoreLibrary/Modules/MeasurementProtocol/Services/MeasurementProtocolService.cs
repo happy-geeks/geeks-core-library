@@ -16,7 +16,6 @@ using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
 using GeeksCoreLibrary.Modules.MeasurementProtocol.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using RestSharp;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
@@ -46,6 +45,7 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
             await SendMeasurement(orderProcessSettings, orderProcessSettings.MeasurementProtocolBeginCheckoutJson, orderProcessSettings.MeasurementProtocolItemJson, replaceData, shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
         }
 
+        /// <inheritdoc />
         public async Task AddPaymentInfoEventAsync(OrderProcessSettingsModel orderProcessSettings, WiserItemModel shoppingBasket, List<WiserItemModel> shoppingBasketLines, ShoppingBasketCmsSettingsModel shoppingBasketSettings, string paymentMethodId)
         {
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
@@ -66,6 +66,7 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
             await SendMeasurement(orderProcessSettings, orderProcessSettings.MeasurementProtocolAddPaymentInfoJson, orderProcessSettings.MeasurementProtocolItemJson, replaceData, shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
         }
 
+        /// <inheritdoc />
         public async Task PurchaseEventAsync(OrderProcessSettingsModel orderProcessSettings, WiserItemModel shoppingBasket, List<WiserItemModel> shoppingBasketLines, ShoppingBasketCmsSettingsModel shoppingBasketSettings, string transactionId)
         {
             var tax = await shoppingBasketsService.GetPriceAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings, ShoppingBasket.PriceTypes.VatOnly);
@@ -79,6 +80,17 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
             await SendMeasurement(orderProcessSettings, orderProcessSettings.MeasurementProtocolPurchaseJson, orderProcessSettings.MeasurementProtocolItemJson, replaceData, shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
         }
 
+        /// <summary>
+        /// Build the request and send it to Google Analytics.
+        /// </summary>
+        /// <param name="orderProcessSettings">The settings of the orde process.</param>
+        /// <param name="eventJson">The Json to use for the event.</param>
+        /// <param name="itemJson">The Json to use for each item.</param>
+        /// <param name="replaceData">The event specific data that can be used for replacements.</param>
+        /// <param name="shoppingBasket">The shopping basket to use for the event.</param>
+        /// <param name="shoppingBasketLines">The shopping basket lines to use for the event.</param>
+        /// <param name="shoppingBasketSettings">The settings of the shopping basket.</param>
+        /// <returns></returns>
         private async Task SendMeasurement(OrderProcessSettingsModel orderProcessSettings, string eventJson, string itemJson, Dictionary<string, object> replaceData, WiserItemModel shoppingBasket, List<WiserItemModel> shoppingBasketLines, ShoppingBasketCmsSettingsModel shoppingBasketSettings)
         {
             if (String.IsNullOrWhiteSpace(orderProcessSettings.MeasurementProtocolMeasurementId) || String.IsNullOrWhiteSpace(orderProcessSettings.MeasurementProtocolApiSecret) || String.IsNullOrWhiteSpace(eventJson) || String.IsNullOrWhiteSpace(itemJson))
@@ -130,6 +142,12 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
             }
         }
 
+        /// <summary>
+        /// Get all items based on the item Json.
+        /// </summary>
+        /// <param name="measurementProtocolItemJson">The Json for each item.</param>
+        /// <param name="products">The products of the shopping basket to add to the items list.</param>
+        /// <returns>Returns a list of items for the request.</returns>
         private List<ItemModel> GetItemsFromBasketLines(string measurementProtocolItemJson, List<WiserItemModel> products)
         {
             var items = new List<ItemModel>();
@@ -138,11 +156,13 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
             {
                 var replaceData = new Dictionary<string, object>();
 
+                // Allow each item detail of the product line to be used for replacements.
                 foreach (var detail in products[i].Details)
                 {
                     replaceData.Add(detail.Key, detail.Value);
                 }
 
+                // Replace the values in Json before deserializing it.
                 var itemJson = stringReplacementsService.DoReplacements(measurementProtocolItemJson, replaceData, "[{", "}]");
                 var item = JsonConvert.DeserializeObject<ItemModel>(itemJson);
                 item.Index = i;
@@ -152,6 +172,11 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
             return items;
         }
 
+        /// <summary>
+        /// Get the names of the used coupons during this order, comma separated.
+        /// </summary>
+        /// <param name="shoppingBasketLines">The shopping basket lines.</param>
+        /// <returns>Returns the comma separated names of the sued coupons.</returns>
         private async Task<string> GetCoupons(List<WiserItemModel> shoppingBasketLines)
         {
             var result = new List<string>();

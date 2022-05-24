@@ -970,10 +970,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// Validates data posted by the user and saves that data in their basket or account.
         /// This will also set the Value and IsValid properties on each field in the current step.
         /// </summary>
+        /// <param name="orderProcessSettings">The settings of the orde process.</param>
         /// <param name="step">The currently active step.</param>
         /// <param name="loggedInUser">The <see cref="UserCookieDataModel"/> of the logged in user, or empty object if they're not logged in.</param>
         /// <param name="request">The current <see cref="HttpRequest"/>.</param>
         /// <param name="shoppingBasket">The basket of the user.</param>
+        /// <param name="shoppingBasketLines">The shopping basket lines to use for the event.</param>
+        /// <param name="shoppingBasketSettings">The settings of the shopping basket.</param>
         /// <param name="paymentMethods">All available payment methods.</param>
         /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
         /// <returns>A <see cref="Boolean"/> indicating whether any there were any errors in the validation.</returns>
