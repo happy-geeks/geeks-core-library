@@ -3481,6 +3481,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             // Insert and/or update data in the table.
             databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("id", wiserItem.Id);
             databaseConnection.AddParameter("title", wiserItem.Title);
             var columnsForQuery = new Dictionary<string, List<string>>();
             var parametersForQuery = new Dictionary<string, List<string>>();
@@ -3494,6 +3495,11 @@ namespace GeeksCoreLibrary.Core.Services
                 }
                 
                 var itemDetail = wiserItem.Details.FirstOrDefault(detail => String.Equals(detail.Key, setting.PropertyName, StringComparison.OrdinalIgnoreCase) && String.Equals(detail.LanguageCode ?? "", setting.LanguageCode ?? "", StringComparison.OrdinalIgnoreCase));
+                if (itemDetail == null)
+                {
+                    continue;
+                }
+
                 if (setting.LinkType <= 0)
                 {
                     databaseConnection.AddParameter("id", wiserItem.Id);
