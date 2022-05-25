@@ -15,7 +15,7 @@ namespace GeeksCoreLibrary.Core.Helpers
         {
             const string valid = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
             var result = new StringBuilder();
-            using (var rng = new RNGCryptoServiceProvider())
+            using (var rng = RandomNumberGenerator.Create())
             {
                 var uintBuffer = new byte[sizeof(uint)];
 

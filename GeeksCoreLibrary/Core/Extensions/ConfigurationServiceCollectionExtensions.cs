@@ -197,6 +197,11 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             // Enable caching.
             services.AddLazyCache();
+            
+            // Enable session.
+            services.AddSession(options => {
+                options.IdleTimeout = TimeSpan.FromMinutes(30);
+            });
 
             // Manual additions.
             services.AddHttpContextAccessor();

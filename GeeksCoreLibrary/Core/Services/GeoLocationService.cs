@@ -33,7 +33,7 @@ namespace GeeksCoreLibrary.Core.Services
             var restClient = new RestClient("http://api.pro6pp.nl");
             restClient.UseNewtonsoftJson();
 
-            var restRequest = new RestRequest("/v1/autocomplete", Method.GET);
+            var restRequest = new RestRequest("/v1/autocomplete", Method.Get);
             restRequest.AddQueryParameter("auth_key", authKey);
 
             // It's possible to send a zip-code in "6PP" or "4PP" format. A different query string is used for both variants.
@@ -76,7 +76,7 @@ namespace GeeksCoreLibrary.Core.Services
             // Although JSON format is the default, it is explicitly set anyway, in case the default ever changes.
             restRequest.AddQueryParameter("format", "json");
 
-            var restResult = restClient.Execute<Pro6PPAutoCompleteResultModel>(restRequest);
+            var restResult = await restClient.ExecuteAsync<Pro6PPAutoCompleteResultModel>(restRequest);
             if (!restResult.IsSuccessful || restResult.Data == null || !restResult.Data.Status.Equals("ok", StringComparison.OrdinalIgnoreCase) || !restResult.Data.Results.Any())
             {
                 return new AddressInfoModel { Success = false, Error = restResult.Data?.Error?.Message ?? "No matched found, or an unknown error occurred in 6PP API." };

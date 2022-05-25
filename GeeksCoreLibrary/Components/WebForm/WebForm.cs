@@ -344,7 +344,7 @@ namespace GeeksCoreLibrary.Components.WebForm
             var secret = await objectsService.FindSystemObjectByDomainNameAsync(isVersion3 ? "google_recaptcha_v3_secretkey" : "google_recaptcha_secretkey");
 
             var restClient = new RestClient("https://www.google.com");
-            var restRequest = new RestRequest("/recaptcha/api/siteverify", Method.POST);
+            var restRequest = new RestRequest("/recaptcha/api/siteverify", Method.Post);
             restRequest.AddParameter("secret", secret, ParameterType.GetOrPost);
             restRequest.AddParameter("response", response, ParameterType.GetOrPost);
 

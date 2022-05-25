@@ -244,14 +244,11 @@ namespace GeeksCoreLibrary.Core.Extensions
                 using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, salt, 2);
                 const int KeySize = 256;
                 const int BlockSize = 128;
-
-                using var aesManaged = new AesManaged
-                {
-                    KeySize = KeySize,
-                    BlockSize = BlockSize,
-                    Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8)),
-                    IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8))
-                };
+                using var aesManaged = Aes.Create();
+                aesManaged.KeySize = KeySize;
+                aesManaged.BlockSize = BlockSize;
+                aesManaged.Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8));
+                aesManaged.IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8));
                 using var encryptor = aesManaged.CreateEncryptor(aesManaged.Key, aesManaged.IV);
                 using var ms = new MemoryStream();
                 using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
@@ -332,13 +329,11 @@ namespace GeeksCoreLibrary.Core.Extensions
                 const int KeySize = 256;
                 const int BlockSize = 128;
 
-                using var aesManaged = new AesManaged
-                {
-                    KeySize = KeySize,
-                    BlockSize = BlockSize,
-                    Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8)),
-                    IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8))
-                };
+                using var aesManaged = Aes.Create();
+                aesManaged.KeySize = KeySize;
+                aesManaged.BlockSize = BlockSize;
+                aesManaged.Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8));
+                aesManaged.IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8));
                 using var decryptor = aesManaged.CreateDecryptor(aesManaged.Key, aesManaged.IV);
                 using var ms = new MemoryStream(inputBytes);
                 using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
@@ -425,7 +420,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             {
                 // Generate a 128-bit salt using a cryptographically strong random sequence of nonzero values.
                 var saltBytes = new byte[128 / 8];
-                using (var rngCsp = new RNGCryptoServiceProvider())
+                using (var rngCsp = RandomNumberGenerator.Create())
                 {
                     rngCsp.GetNonZeroBytes(saltBytes);
                 }
@@ -443,22 +438,20 @@ namespace GeeksCoreLibrary.Core.Extensions
                 var random = new Random();
                 var saltSize = random.Next(8, 12);
                 var saltBytes = new byte[saltSize];
-                using (var rng = new RNGCryptoServiceProvider())
+                using (var rng = RandomNumberGenerator.Create())
                 {
                     rng.GetBytes(saltBytes);
                 }
 
-                using var rijndael = new RijndaelManaged
-                {
-                    Mode = CipherMode.CBC
-                };
+                using var aes = Aes.Create();
+                aes.Mode = CipherMode.CBC;
 
                 // Derive the key and IV from the password and the salt.
                 var rfc2898DeriveBytes = new Rfc2898DeriveBytes(encryptionKey, saltBytes, 2);
-                var keyBytes = rfc2898DeriveBytes.GetBytes(rijndael.KeySize / 8);
-                var ivBytes = rfc2898DeriveBytes.GetBytes(rijndael.BlockSize / 8);
+                var keyBytes = rfc2898DeriveBytes.GetBytes(aes.KeySize / 8);
+                var ivBytes = rfc2898DeriveBytes.GetBytes(aes.BlockSize / 8);
 
-                using var encryptor = rijndael.CreateEncryptor(keyBytes, ivBytes);
+                using var encryptor = aes.CreateEncryptor(keyBytes, ivBytes);
                 using var memoryStream = new MemoryStream();
                 using var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write);
                 cryptoStream.Write(inputBytes, 0, inputBytes.Length);
@@ -542,15 +535,16 @@ namespace GeeksCoreLibrary.Core.Extensions
                 Buffer.BlockCopy(inputWithSaltBytes, 0, inputBytes, 0, inputBytes.Length);
                 Buffer.BlockCopy(inputWithSaltBytes, inputBytes.Length, saltBytes, 0, saltBytes.Length);
 
-                using var rijndael = new RijndaelManaged { Mode = CipherMode.CBC };
+                using var aes = Aes.Create();
+                aes.Mode = CipherMode.CBC;
 
                 // Derive the key and IV from the password and the salt.
                 var rfc2898DeriveBytes = new Rfc2898DeriveBytes(encryptionKey, saltBytes, 2);
-                var keyBytes = rfc2898DeriveBytes.GetBytes(rijndael.KeySize / 8);
-                var ivBytes = rfc2898DeriveBytes.GetBytes(rijndael.BlockSize / 8);
+                var keyBytes = rfc2898DeriveBytes.GetBytes(aes.KeySize / 8);
+                var ivBytes = rfc2898DeriveBytes.GetBytes(aes.BlockSize / 8);
 
                 // Declare various usings here. They will be disposed at the end of the function.
-                using var decryptor = rijndael.CreateDecryptor(keyBytes, ivBytes);
+                using var decryptor = aes.CreateDecryptor(keyBytes, ivBytes);
                 using var memoryStream = new MemoryStream(inputBytes);
                 using var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
                 var outputBytes = new byte[inputBytes.Length];
@@ -608,7 +602,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 key = GclSettings.Current.DefaultEncryptionKeyTripleDes;
             }
 
-            using var des = new TripleDESCryptoServiceProvider();
+            using var des = TripleDES.Create();
             des.IV = new byte[8];
             using var pdb = new PasswordDeriveBytes(key, Array.Empty<byte>());
             des.Key = pdb.CryptDeriveKey("RC2", "MD5", 128, new byte[8]);
@@ -621,7 +615,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 encStream.FlushFinalBlock();
                 encryptedBytes = new byte[ms.Length];
                 ms.Position = 0;
-                ms.Read(encryptedBytes, 0, (int)ms.Length);
+                var _ = ms.Read(encryptedBytes, 0, (int)ms.Length);
             }
 
             return Convert.ToBase64String(encryptedBytes);
@@ -635,7 +629,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns></returns>
         public static string ToSha512ForPasswords(this string input, byte[] saltBytes = null)
         {
-            using var sha512Hasher = new SHA512Managed();
+            using var sha512Hasher = SHA512.Create();
 
             var inputBytes = Encoding.UTF8.GetBytes(input);
 
@@ -644,7 +638,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 var random = new Random();
                 var saltSize = random.Next(8, 12);
                 saltBytes = new byte[saltSize];
-                using var rng = new RNGCryptoServiceProvider();
+                using var rng = RandomNumberGenerator.Create();
                 rng.GetBytes(saltBytes);
             }
 
@@ -669,7 +663,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns></returns>
         public static string ToSha512Simple(this string input)
         {
-            using var sha512Hasher = new SHA512Managed();
+            using var sha512Hasher = SHA512.Create();
             var inputBytes = Encoding.UTF8.GetBytes(input);
             var hashedBytes = sha512Hasher.ComputeHash(inputBytes);
             return Convert.ToBase64String(hashedBytes);
@@ -802,7 +796,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         public static string StripIllegalFilenameCharacters(this string input)
         {
             var regexSearch = Path.GetInvalidFileNameChars().ToString();
-            var regex = new Regex($"[{Regex.Escape(regexSearch)}]");
+            var regex = new Regex($"[{Regex.Escape(regexSearch!)}]");
             var output = regex.Replace(input, "");
             return output.Replace("&", "_").Replace("+", "_");
         }
