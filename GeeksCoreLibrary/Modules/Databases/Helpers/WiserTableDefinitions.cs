@@ -142,7 +142,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("label_style", MySqlDbType.Enum, enumValues: new List<string> { "normal", "inline", "float" }),
                     new("label_width", MySqlDbType.Enum, enumValues: new List<string> { "0", "10", "20", "30", "40", "50" }),
                     new("enable_aggregation", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
-                    new("aggregate_options", MySqlDbType.MediumText)
+                    new("aggregate_options", MySqlDbType.MediumText),
+                    new("access_key", MySqlDbType.VarChar, 1, notNull: true, defaultValue: "")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
