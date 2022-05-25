@@ -30,6 +30,7 @@ using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.Account.Models.Constants;
 
@@ -404,8 +405,7 @@ namespace GeeksCoreLibrary.Components.Account
                 var request = httpContext?.Request;
 
                 ulong userId = 0;
-                int stepNumber;
-                Int32.TryParse(HttpContextHelpers.GetRequestValue(httpContext, Constants.StepNumberFieldName), out stepNumber);
+                Int32.TryParse(HttpContextHelpers.GetRequestValue(httpContext, Constants.StepNumberFieldName), out var stepNumber);
 
                 var ociHookUrl = HttpContextHelpers.GetRequestValue(httpContext, Settings.OciHookUrlKey);
                 var ociUsername = HttpContextHelpers.GetRequestValue(httpContext, Settings.OciUsernameKey);
@@ -1516,7 +1516,7 @@ namespace GeeksCoreLibrary.Components.Account
             var wiserValidationToken = HttpContextHelpers.GetRequestValue(HttpContext, Settings.WiserLoginTokenKey);
 
             // Check if we have enough information to login.
-            if (String.IsNullOrWhiteSpace(loginValue))
+            if (String.IsNullOrWhiteSpace(loginValue) && request.HasFormContentType)
             {
                 loginValue = request.Form[Settings.LoginFieldName].ToString();
             }
@@ -1538,7 +1538,7 @@ namespace GeeksCoreLibrary.Components.Account
             {
                 try
                 {
-                    var decryptedId = encryptedUserId.DecryptWithAes(withDateTime: true);
+                    var decryptedId = encryptedUserId.DecryptWithAesWithSalt(withDateTime: true);
                     UInt64.TryParse(decryptedId, out decryptedUserId);
                 }
                 catch (Exception exception)
@@ -1558,9 +1558,15 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             // Check for Google 2FA.
-            var googleAuthenticatorPin = request.Form[Constants.GoogleAuthenticationPinFieldName].ToString();
-            var googleAuthenticationVerificationId = request.Form[Constants.GoogleAuthenticationVerificationIdFieldName];
-            var usingGoogleAuthentication = Settings.EnableGoogleAuthenticator && !String.IsNullOrWhiteSpace(googleAuthenticationVerificationId);
+            string googleAuthenticatorPin = null;
+            var usingGoogleAuthentication = false;
+
+            if (request.HasFormContentType)
+            {
+                googleAuthenticatorPin = request.Form[Constants.GoogleAuthenticationPinFieldName].ToString();
+                var googleAuthenticationVerificationId = request.Form[Constants.GoogleAuthenticationVerificationIdFieldName];
+                usingGoogleAuthentication = Settings.EnableGoogleAuthenticator && !String.IsNullOrWhiteSpace(googleAuthenticationVerificationId);
+            }
 
             if (usingGoogleAuthentication && String.IsNullOrWhiteSpace(googleAuthenticatorPin))
             {
@@ -1569,7 +1575,10 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             // Save the login value in the session, so that we can remember it during the rest of the steps if the mode is LoginMultipleSteps.
-            session.SetString($"{Constants.LoginValueSessionKey}_{ComponentId}", loginValue);
+            if (!String.IsNullOrWhiteSpace(loginValue))
+            {
+                session.SetString($"{Constants.LoginValueSessionKey}_{ComponentId}", loginValue);
+            }
 
             // Get user information.
             var query = decryptedUserId > 0 ? SetupAccountQuery(Settings.AutoLoginQuery, decryptedUserId) : SetupAccountQuery(Settings.LoginQuery, loginValue: loginValue);
@@ -2065,7 +2074,7 @@ namespace GeeksCoreLibrary.Components.Account
                 return Settings.AmountOfDaysToRememberCookie;
             }
 
-            var formValue = Request.Form[Settings.RememberMeCheckboxName];
+            var formValue = Request.HasFormContentType ? Request.Form[Settings.RememberMeCheckboxName] : StringValues.Empty;
             return String.IsNullOrWhiteSpace(formValue) || formValue == "0" ? null : Settings.AmountOfDaysToRememberCookie;
         }
     }
