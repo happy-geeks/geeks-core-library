@@ -1406,11 +1406,19 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 basketLines.Remove(line);
             }
 
-            // If no product lines remain in the shopping basket, then remove all remaining lines that are not product lines (such as coupons, shipping costs, etc.).
-            if (basketLines.Count == basketLines.Count(line => line.GetDetailValue("type").InList(StringComparer.OrdinalIgnoreCase, "shipping_costs", "paymentmethod_costs", Constants.BasketLineCouponType)))
+            // Check if coupons should be deleted. If the total price of all products is 0, coupons will be deleted.
+            // Product lines are all lines that are not coupons, shipping costs, or payment method costs.
+            var tempLines = basketLines.Where(line => !line.GetDetailValue("type").InList(StringComparer.OrdinalIgnoreCase, "shipping_costs", "paymentmethod_costs", Constants.BasketLineCouponType)).ToList();
+            var tempTotal = 0M;
+            foreach (var tempLine in tempLines)
+            {
+                tempTotal += await GetLinePriceAsync(shoppingBasket, tempLine, settings, ShoppingBasket.PriceTypes.InVatExDiscount);
+            }
+
+            if (tempTotal <= 0)
             {
                 linesToRemove.Clear();
-                linesToRemove.AddRange(basketLines);
+                linesToRemove.AddRange(GetLines(basketLines, Constants.BasketLineCouponType));
                 foreach (var line in linesToRemove)
                 {
                     basketLines.Remove(line);
