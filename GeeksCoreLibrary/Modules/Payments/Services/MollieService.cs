@@ -24,7 +24,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using RestSharp;
-using RestSharp.Authenticators;
+using RestSharp.Authenticators.OAuth2;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
@@ -83,7 +83,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
             };
-            var restRequest = new RestRequest("/payments", Method.POST);
+            var restRequest = new RestRequest("/payments", Method.Post);
             restRequest.AddParameter("amount[currency]", mollieSettings.Currency, ParameterType.GetOrPost);
             restRequest.AddParameter("amount[value]", totalPrice.ToString("F2", CultureInfo.InvariantCulture), ParameterType.GetOrPost);
             restRequest.AddParameter("description", description, ParameterType.GetOrPost);
@@ -207,7 +207,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
             };
-            var restRequest = new RestRequest($"/payments/{mollieOrderId}", Method.GET);
+            var restRequest = new RestRequest($"/payments/{mollieOrderId}", Method.Get);
 
             // Execute the request. The result will be a JSON object.
             // For more info: https://docs.mollie.com/reference/v2/payments-api/get-payment
@@ -273,7 +273,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
             };
-            var restRequest = new RestRequest($"/payments/{molliePaymentId}", Method.GET);
+            var restRequest = new RestRequest($"/payments/{molliePaymentId}", Method.Get);
 
             var restResponse = await restClient.ExecuteAsync(restRequest);
 
