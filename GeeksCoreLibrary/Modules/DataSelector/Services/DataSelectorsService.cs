@@ -454,6 +454,12 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                             queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.`{field.FieldName.ToMySqlSafeValue(false)}`")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                     }
+                    else if (field.FieldName.Equals("item_ordering"))
+                    {
+                        var tableAliasPrefix = field.TableAliasPrefix.Replace("idv_", "").TrimEnd('_');
+
+                        queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.ToMySqlSafeValue(false)}`.ordering")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
+                    }
                     else
                     {
                         queryBuilder.AppendLine($", {GetFormattedField(field, $"CONCAT_WS('', `{field.TableAlias.ToMySqlSafeValue(false)}`.`value`, `{field.TableAlias.ToMySqlSafeValue(false)}`.long_value)")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
@@ -854,6 +860,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                 // Proceed.
                 itemsRequest.Selector = dataSelector;
+                itemsRequest.Environment = data.Environment ?? 0;
             }
             else if (!String.IsNullOrWhiteSpace(data.QueryId))
             {
@@ -1270,6 +1277,39 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                 }
                                 break;
                             }
+                        case "item_ordering":
+                        {
+                            var finalJoinDetailOn = joinDetailOn.Replace(".id", $".ordering").Replace(".destination_item_id", $".ordering");
+                            var formattedField = GetFormattedField(row.Key, finalJoinDetailOn);
+
+                            switch (row.Operator.ToLowerInvariant())
+                            {
+                                case "contains":
+                                    queryPart.Append($"{formattedField} LIKE '%{finalValue.ToMySqlSafeValue(false)}%'");
+                                    break;
+                                case "does not contain":
+                                    queryPart.Append($"{formattedField} NOT LIKE '%{finalValue.ToMySqlSafeValue(false)}%'");
+                                    break;
+                                case "begin with":
+                                    queryPart.Append($"{formattedField} LIKE '{finalValue.ToMySqlSafeValue(false)}%'");
+                                    break;
+                                case "does not begin with":
+                                    queryPart.Append($"{formattedField} NOT LIKE '{finalValue.ToMySqlSafeValue(false)}%'");
+                                    break;
+                                case "end with":
+                                    queryPart.Append($"{formattedField} LIKE '%{finalValue.ToMySqlSafeValue(false)}'");
+                                    break;
+                                case "does not end with":
+                                    queryPart.Append($"{formattedField} NOT LIKE '%{finalValue.ToMySqlSafeValue(false)}'");
+                                    break;
+                                default:
+                                    var finalPart = String.IsNullOrWhiteSpace(op) ? finalValue : $"{op} {finalValue.ToMySqlSafeValue(true)}";
+                                    queryPart.Append($"{formattedField} {finalPart}");
+                                    break;
+                            }
+
+                            break;
+                        }
                         default:
                             row.Key.JoinOn = joinDetailOn;
                             row.Key.TableAliasPrefix = detailTableAliasPrefix;
@@ -1347,7 +1387,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     {
                         if (!String.IsNullOrWhiteSpace(connectionRow.EntityName))
                         {
-                            queryPartItem.Append($"`{tableName}`_item.entity_type = {connectionRow.EntityName.ToMySqlSafeValue(true)}");
+                            queryPartItem.Append($"`{tableName}_item`.entity_type = {connectionRow.EntityName.ToMySqlSafeValue(true)}");
                         }
 
                         if (connectionRow.TypeNumber > 0)
