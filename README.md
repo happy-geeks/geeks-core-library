@@ -1,7 +1,7 @@
 # GeeksCoreLibrary (GCL)
 [![Build and test](https://github.com/happy-geeks/geeks-core-library/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/happy-geeks/geeks-core-library/actions/workflows/build-and-test.yml)
 ## Requirements
-1. Install .NET Hosting bundle on the server that is running the GCL: https://dotnet.microsoft.com/download/dotnet/5.0
+1. Install .NET Hosting bundle on the server that is running the GCL: https://dotnet.microsoft.com/download/dotnet/6.0
 
 ## Using the GCL in a project 
 To use the GCL in your project, install the NuGet package `GeeksCoreLibrary` and then modify your Startup.cs to look like this:
