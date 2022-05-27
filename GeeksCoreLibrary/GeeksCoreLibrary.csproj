@@ -71,7 +71,7 @@
     </Reference>
     <Content Include="lib\OmniKassa.dll">
       <Pack>true</Pack>
-      <PackagePath>lib\net5.0\</PackagePath>
+      <PackagePath>lib\net6.0\</PackagePath>
     </Content>
   </ItemGroup>
 
