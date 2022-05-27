@@ -162,7 +162,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <returns>The replaced string.</returns>
         Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null);
 
-
         /// <summary>
         /// Generates the HTML for dynamic content, based on the content ID.
         /// </summary>

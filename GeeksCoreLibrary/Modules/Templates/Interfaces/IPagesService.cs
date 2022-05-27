@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.ViewModels;
 
 namespace GeeksCoreLibrary.Modules.Templates.Interfaces
