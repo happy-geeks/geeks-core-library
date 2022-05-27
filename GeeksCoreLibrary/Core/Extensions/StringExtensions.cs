@@ -451,12 +451,8 @@ namespace GeeksCoreLibrary.Core.Extensions
                 var keyBytes = rfc2898DeriveBytes.GetBytes(aes.KeySize / 8);
                 var ivBytes = rfc2898DeriveBytes.GetBytes(aes.BlockSize / 8);
 
-                using var encryptor = aes.CreateEncryptor(keyBytes, ivBytes);
-                using var memoryStream = new MemoryStream();
-                using var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write);
-                cryptoStream.Write(inputBytes, 0, inputBytes.Length);
-                cryptoStream.FlushFinalBlock();
-                var resultBytes = memoryStream.ToArray();
+                aes.Key = keyBytes;
+                var resultBytes = aes.EncryptCbc(inputBytes, ivBytes);
 
                 var outputBytes = new byte[resultBytes.Length + saltBytes.Length];
                 Buffer.BlockCopy(resultBytes, 0, outputBytes, 0, resultBytes.Length);
@@ -542,18 +538,12 @@ namespace GeeksCoreLibrary.Core.Extensions
                 var rfc2898DeriveBytes = new Rfc2898DeriveBytes(encryptionKey, saltBytes, 2);
                 var keyBytes = rfc2898DeriveBytes.GetBytes(aes.KeySize / 8);
                 var ivBytes = rfc2898DeriveBytes.GetBytes(aes.BlockSize / 8);
-
-                // Declare various usings here. They will be disposed at the end of the function.
-                using var decryptor = aes.CreateDecryptor(keyBytes, ivBytes);
-                using var memoryStream = new MemoryStream(inputBytes);
-                using var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
-                var outputBytes = new byte[inputBytes.Length];
-
+                aes.Key = keyBytes;
                 // Perform the decryption.
-                var bytesCount = cryptoStream.Read(outputBytes, 0, outputBytes.Length);
-
+                var decryptedBytes = aes.DecryptCbc(inputBytes, ivBytes);
+                
                 // Turn the decrypted bytes into a string. It is assumed here that the string was encrypted with UTF-8.
-                output = Encoding.UTF8.GetString(outputBytes, 0, bytesCount);
+                output = Encoding.UTF8.GetString(decryptedBytes);
             }
 
             if (!withDateTime)
