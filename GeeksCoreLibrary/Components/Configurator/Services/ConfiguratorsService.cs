@@ -13,6 +13,7 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Components.Configurator.Services
@@ -25,6 +26,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         private readonly IWiserItemsService wiserItemsService;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly ILanguagesService languagesService;
+        private readonly ITemplatesService templatesService;
         private const string ConfiguratorEntity = "configurator";
         private const string DuplicateLayoutKey = "duplicatelayoutfrom";
         private const int ConfiguratorModuleId = 800;
@@ -74,7 +76,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             IObjectsService objectsService,
             IWiserItemsService wiserItemsService,
             IStringReplacementsService stringReplacementsService,
-            ILanguagesService languagesService)
+            ILanguagesService languagesService,
+            ITemplatesService templatesService)
         {
             this.logger = logger;
             this.databaseConnection = databaseConnection;
@@ -82,6 +85,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             this.wiserItemsService = wiserItemsService;
             this.stringReplacementsService = stringReplacementsService;
             this.languagesService = languagesService;
+            this.templatesService = templatesService;
         }
 
         /// <inheritdoc />
@@ -215,7 +219,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         {
                             if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["mainstepname"].ToString()))
                             {
-                                item["mainstepname"] = titleField;
+                                item["mainstepname"] = await templatesService.DoReplacesAsync(titleField);
                             }
 
                             var foundField = mainStepFields.FirstOrDefault(x => x.fieldName == keyField);

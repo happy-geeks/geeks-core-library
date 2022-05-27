@@ -310,7 +310,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             try
             {
                 var restClient = new RestClient(gclSettings.PostNlApiBaseUrl);
-                var restRequest = new RestRequest("/shipment/v1_1/barcode", Method.GET);
+                var restRequest = new RestRequest("/shipment/v1_1/barcode", Method.Get);
                 var settings = await GetSettingsAsync(shippingLocation);
 
                 restRequest.AddQueryParameter("CustomerCode", settings.CustomerCode);
@@ -362,7 +362,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             try
             {
                 var restClient = new RestClient(gclSettings.PostNlApiBaseUrl);
-                var restRequest = new RestRequest("/v1/shipment?confirm=true", Method.POST);
+                var restRequest = new RestRequest("/v1/shipment?confirm=true", Method.Post);
                 requestString = JsonConvert.SerializeObject(request, Formatting.None, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
                 restRequest.AddParameter("application/json", requestString, ParameterType.RequestBody);
                 restRequest.AddJsonBody(request);
