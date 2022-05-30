@@ -137,5 +137,20 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets the URL the user should be sent to if <see cref="LoginRequired"/> is <see langword="true"/>, but no user is logged in.
         /// </summary>
         public string LoginRedirectUrl { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether thie template can be used as the default header.
+        /// </summary>
+        public bool IsDefaultHeader { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether this template can be used as the default footer.
+        /// </summary>
+        public bool IsDefaultFooter { get; set; }
+
+        /// <summary>
+        /// Gets or sets the regular expression that is matched against the URL of the page, to decide whether to use the default header or footer.
+        /// </summary>
+        public string DefaultHeaderFooterRegex { get; set; }
     }
 }

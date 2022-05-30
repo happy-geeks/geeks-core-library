@@ -123,6 +123,21 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 template.LoginRedirectUrl = reader.GetStringHandleNull("login_redirect_url");
             }
 
+            if (reader.HasColumn("is_default_header"))
+            {
+                template.IsDefaultHeader = Convert.ToBoolean(await reader.GetFieldValueAsync<object>("is_default_header"));
+            }
+
+            if (reader.HasColumn("is_default_footer"))
+            {
+                template.IsDefaultFooter = Convert.ToBoolean(await reader.GetFieldValueAsync<object>("is_default_footer"));
+            }
+
+            if (reader.HasColumn("default_header_footer_regex"))
+            {
+                template.DefaultHeaderFooterRegex = reader.GetStringHandleNull("default_header_footer_regex");
+            }
+
             if (!isQuery)
             {
                 return template;
