@@ -78,16 +78,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 WHERE {String.Join(" AND ", whereClause)}
                 GROUP BY template.template_id";
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            while (await reader.ReadAsync())
+            var globalHeaders = await databaseConnection.GetAsync(query);
+            foreach (DataRow globalHeaderDataRow in globalHeaders.Rows)
             {
-                headerRegexCheck = reader.GetStringHandleNull("default_header_footer_regex");
+                headerRegexCheck = globalHeaderDataRow.Field<string>("default_header_footer_regex");
                 if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck))
                 {
                     continue;
                 }
 
-                headerTemplateId = await reader.IsDBNullAsync("template_id") ? 0 : await reader.GetFieldValueAsync<int>("template_id");
+                headerTemplateId = globalHeaderDataRow.IsNull("template_id") ? 0 : globalHeaderDataRow.Field<int>("template_id");
                 template = await templatesService.GetTemplateAsync(headerTemplateId);
                 javascriptTemplates.AddRange(template.JavascriptTemplates);
                 cssTemplates.AddRange(template.CssTemplates);
@@ -142,16 +142,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 WHERE {String.Join(" AND ", whereClause)}
                 GROUP BY template.template_id";
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            while (await reader.ReadAsync())
+            var globalFooters = await databaseConnection.GetAsync(query);
+            foreach (DataRow globalFooterDataRow in globalFooters.Rows)
             {
-                headerRegexCheck = reader.GetStringHandleNull("default_header_footer_regex");
+                headerRegexCheck = globalFooterDataRow.Field<string>("default_header_footer_regex");
                 if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck))
                 {
                     continue;
                 }
 
-                footerTemplateId = await reader.IsDBNullAsync("template_id") ? 0 : await reader.GetFieldValueAsync<int>("template_id");
+                footerTemplateId = globalFooterDataRow.IsNull("template_id") ? 0 : globalFooterDataRow.Field<int>("template_id");
                 template = await templatesService.GetTemplateAsync(footerTemplateId);
                 javascriptTemplates.AddRange(template.JavascriptTemplates);
                 cssTemplates.AddRange(template.CssTemplates);
