@@ -62,18 +62,39 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// </summary>
         public string Template { get; set; }
 
+        /// <summary>
+        /// Gets or sets if the measurement protocol is active during checkout.
+        /// </summary>
         public bool MeasurementProtocolActive { get; set; }
 
+        /// <summary>
+        /// Gets or sets the Json template that needs to be used for each item of the order.
+        /// </summary>
         public string MeasurementProtocolItemJson { get; set; }
 
+        /// <summary>
+        /// Gets or sets the Json template for the 'begin_checkout' event.
+        /// </summary>
         public string MeasurementProtocolBeginCheckoutJson { get; set; }
 
+        /// <summary>
+        /// Gets or sets the Json template for the 'add_payment_info' event.
+        /// </summary>
         public string MeasurementProtocolAddPaymentInfoJson { get; set; }
 
+        /// <summary>
+        /// Gets or sets the Json template for the 'purchase' event.
+        /// </summary>
         public string MeasurementProtocolPurchaseJson { get; set; }
 
+        /// <summary>
+        /// Gets or sets the measurement ID used in the request.
+        /// </summary>
         public string MeasurementProtocolMeasurementId { get; set; }
 
+        /// <summary>
+        /// Gets or sets the API secret used in the request.
+        /// </summary>
         public string MeasurementProtocolApiSecret { get; set; }
     }
 }

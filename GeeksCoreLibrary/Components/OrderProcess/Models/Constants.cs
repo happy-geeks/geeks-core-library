@@ -173,19 +173,19 @@
 
         public const string PaymentMethodExternalNameProperty = "paymentmethodexternalname";
 
-        public const string MeasurementProtocolActive = "measurementprotocolactive";
+        public const string MeasurementProtocolActiveProperty = "measurementprotocolactive";
 
-        public const string MeasurementProtocolItemJson = "measurementprotocolitemjson";
+        public const string MeasurementProtocolItemJsonProperty = "measurementprotocolitemjson";
 
-        public const string MeasurementProtocolBeginCheckoutJson = "measurementprotocolbegincheckoutjson";
+        public const string MeasurementProtocolBeginCheckoutJsonProperty = "measurementprotocolbegincheckoutjson";
 
-        public const string MeasurementProtocolAddPaymentInfoJson = "measurementprotocoladdpaymentinfojson";
+        public const string MeasurementProtocolAddPaymentInfoJsonProperty = "measurementprotocoladdpaymentinfojson";
 
-        public const string MeasurementProtocolPurchaseJson = "measurementprotocolpurchasejson";
+        public const string MeasurementProtocolPurchaseJsonProperty = "measurementprotocolpurchasejson";
 
-        public const string MeasurementProtocolMeasurementId = "measurementprotocolmeasurementid";
+        public const string MeasurementProtocolMeasurementIdProperty = "measurementprotocolmeasurementid";
         
-        public const string MeasurementProtocolApiSecret = "measurementprotocolapisecret";
+        public const string MeasurementProtocolApiSecretProperty = "measurementprotocolapisecret";
 
         #endregion
 

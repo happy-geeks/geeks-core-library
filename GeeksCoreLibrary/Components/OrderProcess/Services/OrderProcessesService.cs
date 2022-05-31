@@ -75,7 +75,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             IObjectsService objectsService,
             IMeasurementProtocolService measurementProtocolService,
             IHtmlToPdfConverterService htmlToPdfConverterService)
-            {
+        {
             this.databaseConnection = databaseConnection;
             this.shoppingBasketsService = shoppingBasketsService;
             this.accountsService = accountsService;
@@ -115,10 +115,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                            CONCAT_WS('', footer.value, footer.long_value) AS footer,
                                 CONCAT_WS('', template.value, template.long_value) AS template,
                                 IF(measurementProtocolActive.`value` = 1, TRUE, FALSE) AS measurementProtocolActive,
-                                measurementProtocolItemJson.`value` AS measurementProtocolItemJson,
-                                measurementProtocolBeginCheckoutJson.`value` AS measurementProtocolBeginCheckoutJson,
-                                measurementProtocolAddPaymentInfoJson.`value` AS measurementProtocolAddPaymentInfoJson,
-                                measurementProtocolPurchaseJson.`value` AS measurementProtocolPurchaseJson,
+                                CONCAT_WS('', measurementProtocolItemJson.`value`, measurementProtocolItemJson.long_value) AS measurementProtocolItemJson,
+                                CONCAT_WS('', measurementProtocolBeginCheckoutJson.`value`, measurementProtocolBeginCheckoutJson.long_value) AS measurementProtocolBeginCheckoutJson,
+                                CONCAT_WS('', measurementProtocolAddPaymentInfoJson.`value`, measurementProtocolAddPaymentInfoJson.long_value) AS measurementProtocolAddPaymentInfoJson,
+                                CONCAT_WS('', measurementProtocolPurchaseJson.`value`, measurementProtocolPurchaseJson.long_value) AS measurementProtocolPurchaseJson,
                                 measurementProtocolMeasurementId.`value` AS measurementProtocolMeasurementId,
                                 measurementProtocolApiSecret.`value` AS measurementProtocolApiSecret
                             FROM {WiserTableNames.WiserItem} AS orderProcess
@@ -135,13 +135,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS header ON header.item_id = orderProcess.id AND header.`key` = '{Constants.OrderProcessHeaderProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS footer ON footer.item_id = orderProcess.id AND footer.`key` = '{Constants.OrderProcessFooterProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS template ON template.item_id = orderProcess.id AND template.`key` = '{Constants.OrderProcessTemplateProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolActive ON measurementProtocolActive.item_id = orderProcess.id AND measurementProtocolActive.`key` = '{Constants.MeasurementProtocolActive}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolItemJson ON measurementProtocolItemJson.item_id = orderProcess.id AND measurementProtocolItemJson.`key` = '{Constants.MeasurementProtocolItemJson}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolBeginCheckoutJson ON measurementProtocolBeginCheckoutJson.item_id = orderProcess.id AND measurementProtocolBeginCheckoutJson.`key` = '{Constants.MeasurementProtocolBeginCheckoutJson}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolAddPaymentInfoJson ON measurementProtocolAddPaymentInfoJson.item_id = orderProcess.id AND measurementProtocolAddPaymentInfoJson.`key` = '{Constants.MeasurementProtocolAddPaymentInfoJson}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolPurchaseJson ON measurementProtocolPurchaseJson.item_id = orderProcess.id AND measurementProtocolPurchaseJson.`key` = '{Constants.MeasurementProtocolPurchaseJson}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolMeasurementId ON measurementProtocolMeasurementId.item_id = orderProcess.id AND measurementProtocolMeasurementId.`key` = '{Constants.MeasurementProtocolMeasurementId}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolApiSecret ON measurementProtocolApiSecret.item_id = orderProcess.id AND measurementProtocolApiSecret.`key` = '{Constants.MeasurementProtocolApiSecret}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolActive ON measurementProtocolActive.item_id = orderProcess.id AND measurementProtocolActive.`key` = '{Constants.MeasurementProtocolActiveProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolItemJson ON measurementProtocolItemJson.item_id = orderProcess.id AND measurementProtocolItemJson.`key` = '{Constants.MeasurementProtocolItemJsonProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolBeginCheckoutJson ON measurementProtocolBeginCheckoutJson.item_id = orderProcess.id AND measurementProtocolBeginCheckoutJson.`key` = '{Constants.MeasurementProtocolBeginCheckoutJsonProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolAddPaymentInfoJson ON measurementProtocolAddPaymentInfoJson.item_id = orderProcess.id AND measurementProtocolAddPaymentInfoJson.`key` = '{Constants.MeasurementProtocolAddPaymentInfoJsonProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolPurchaseJson ON measurementProtocolPurchaseJson.item_id = orderProcess.id AND measurementProtocolPurchaseJson.`key` = '{Constants.MeasurementProtocolPurchaseJsonProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolMeasurementId ON measurementProtocolMeasurementId.item_id = orderProcess.id AND measurementProtocolMeasurementId.`key` = '{Constants.MeasurementProtocolMeasurementIdProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolApiSecret ON measurementProtocolApiSecret.item_id = orderProcess.id AND measurementProtocolApiSecret.`key` = '{Constants.MeasurementProtocolApiSecretProperty}'
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
                             AND orderProcess.published_environment >= ?publishedEnvironment

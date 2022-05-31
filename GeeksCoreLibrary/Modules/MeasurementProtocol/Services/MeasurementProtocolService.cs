@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
@@ -97,7 +98,7 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
                 return;
             }
 
-            var clientId = shoppingBasket.GetDetailValue("google-cid");
+            var clientId = shoppingBasket.GetDetailValue(Components.Account.Models.Constants.DefaultGoogleCidFieldName);
             if (String.IsNullOrWhiteSpace(clientId))
             {
                 return;
@@ -130,10 +131,10 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
             try
             {
                 var client = new RestClient("https://www.google-analytics.com");
-                var request = new RestRequest("/mp/collect", Method.POST);
+                var request = new RestRequest("/mp/collect", Method.Post);
                 request.AddParameter("measurement_id", orderProcessSettings.MeasurementProtocolMeasurementId.DecryptWithAesWithSalt(), ParameterType.QueryString);
                 request.AddParameter("api_secret", orderProcessSettings.MeasurementProtocolApiSecret.DecryptWithAesWithSalt(), ParameterType.QueryString);
-                request.AddParameter("application/json", body, ParameterType.RequestBody);
+                request.AddParameter(MediaTypeNames.Application.Json, body, ParameterType.RequestBody);
 
                 var response = await client.ExecuteAsync(request);
                 logger.LogInformation($"Measurement Protocol (GA4): Received response with status code '{response.StatusCode}' while sending a measurement protocol request to Google with data:\n{body}");
