@@ -97,7 +97,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserEntityProperty,
-                LastUpdate = new DateTime(2022, 4, 25),
+                LastUpdate = new DateTime(2022, 5, 25),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -142,7 +142,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("label_style", MySqlDbType.Enum, enumValues: new List<string> { "normal", "inline", "float" }),
                     new("label_width", MySqlDbType.Enum, enumValues: new List<string> { "0", "10", "20", "30", "40", "50" }),
                     new("enable_aggregation", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
-                    new("aggregate_options", MySqlDbType.MediumText)
+                    new("aggregate_options", MySqlDbType.MediumText),
+                    new("access_key", MySqlDbType.VarChar, 1, notNull: true, defaultValue: "")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
@@ -208,7 +209,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("return_not_found_when_pre_load_query_has_no_data", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("routine_type", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: "For routine templates only"),
                     new("routine_parameters", MySqlDbType.Text, comment: "For routine templates only"),
-                    new("routine_return_type", MySqlDbType.VarChar, 25, comment: "For routine templates only")
+                    new("routine_return_type", MySqlDbType.VarChar, 25, comment: "For routine templates only"),
+                    new("is_default_header", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("is_default_footer", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("default_header_footer_regex", MySqlDbType.VarChar, 255),
                 },
                 Indexes = new List<IndexSettingsModel>
                 {

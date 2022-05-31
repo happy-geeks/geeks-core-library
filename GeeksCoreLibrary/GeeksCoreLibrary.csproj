@@ -1,21 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.5.1</Version>
+    <Version>2.0.1</Version>
     <Company>Happy Geeks B.V.</Company>
     <Description>Our base/core library that we use for most of our other projects.</Description>
-    <AssemblyVersion>1.5.1.0</AssemblyVersion>
-    <FileVersion>1.5.1.0</FileVersion>
+    <AssemblyVersion>2.0.1.0</AssemblyVersion>
+    <FileVersion>2.0.1.0</FileVersion>
     <PackageDescription>Geeks Core Library</PackageDescription>
     <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
 	<Authors>Happy Geeks B.V.</Authors>
 	<PackageLicenseFile>LICENSE</PackageLicenseFile>
 	<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+	<LangVersion>default</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,28 +31,28 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="5.0.1" />
-    <PackageReference Include="AspNetCore.HealthChecks.System" Version="5.0.1" />
-    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="5.0.1" />
+    <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="6.0.2" />
+    <PackageReference Include="AspNetCore.HealthChecks.System" Version="6.0.5" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="6.0.4" />
     <PackageReference Include="BuckarooSDK" Version="1.4.1" />
-    <PackageReference Include="DocumentFormat.OpenXml" Version="2.15.0" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="2.16.0" />
     <PackageReference Include="EvoPdf.HtmlToPdf.NetCore.x64" Version="8.0.0" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.39" />
-    <PackageReference Include="JetBrains.Annotations" Version="2021.3.0" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.42" />
+    <PackageReference Include="JetBrains.Annotations" Version="2022.1.0" />
     <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
-    <PackageReference Include="Magick.NET-Q8-x64" Version="8.4.0" />
-    <PackageReference Include="MailKit" Version="2.15.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="5.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="5.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.2" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="5.0.0" />
-    <PackageReference Include="MultiSafepay" Version="0.8.4" />
-    <PackageReference Include="MySql.Data" Version="8.0.26" />
+    <PackageReference Include="Magick.NET-Q8-x64" Version="11.1.2" />
+    <PackageReference Include="MailKit" Version="3.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
+    <PackageReference Include="MultiSafepay" Version="0.8.5" />
+    <PackageReference Include="MySql.Data" Version="8.0.29" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="RestSharp" Version="106.15.0" />
-    <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="106.12.0" />
-    <PackageReference Include="Scrutor" Version="3.3.0" />
+    <PackageReference Include="RestSharp" Version="107.3.0" />
+    <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="107.3.0" />
+    <PackageReference Include="Scrutor" Version="4.1.0" />
     <PackageReference Include="SharpZipLib" Version="1.3.3" />
     <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0" />
     <PackageReference Include="System.Globalization" Version="4.3.0" />
@@ -61,7 +62,7 @@
     <PackageReference Include="System.Runtime" Version="4.3.1" />
     <PackageReference Include="System.Runtime.Extensions" Version="4.3.1" />
     <PackageReference Include="System.Threading" Version="4.3.0" />
-    <PackageReference Include="WebMarkupMin.AspNetCore3" Version="2.10.0" />
+    <PackageReference Include="WebMarkupMin.AspNetCore3" Version="2.11.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -70,7 +71,7 @@
     </Reference>
     <Content Include="lib\OmniKassa.dll">
       <Pack>true</Pack>
-      <PackagePath>lib\net5.0\</PackagePath>
+      <PackagePath>lib\net6.0\</PackagePath>
     </Content>
   </ItemGroup>
 

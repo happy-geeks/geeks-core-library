@@ -11,31 +11,5 @@
     <releaseNotes></releaseNotes>
     <copyright>$copyright$</copyright>
 	<repository type="git" url="https://github.com/happy-geeks/geeks-core-library.git" />
-    <dependencies>
-      <group targetFramework="net5.0">
-		<dependency Include="BuckarooSDK" Version="1.4.0" exclude="Build,Analyzers" />
-		<dependency Include="EvoPdf.HtmlToPdf.NetCore.x64" Version="8.0.0" exclude="Build,Analyzers" />
-		<dependency Include="LazyCache.AspNetCore" Version="2.1.3" exclude="Build,Analyzers" />
-		<dependency Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="5.0.6" exclude="Build,Analyzers" />
-		<dependency Include="Microsoft.Extensions.Configuration" Version="5.0.0" exclude="Build,Analyzers" />
-		<dependency Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0" exclude="Build,Analyzers" />
-		<dependency Include="Microsoft.Extensions.DependencyInjection" Version="5.0.1" exclude="Build,Analyzers" />
-		<dependency Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="5.0.0" exclude="Build,Analyzers" />
-		<dependency Include="MySql.Data" Version="8.0.25" exclude="Build,Analyzers" />
-		<dependency Include="Newtonsoft.Json" Version="13.0.1" exclude="Build,Analyzers" />
-		<dependency Include="Scrutor" Version="3.3.0" exclude="Build,Analyzers" />
-		<dependency Include="Serilog.AspNetCore" Version="4.1.0" exclude="Build,Analyzers" />
-		<dependency Include="SixLabors.ImageSharp" Version="1.0.3" exclude="Build,Analyzers" />
-		<dependency Include="System.Diagnostics.Debug" Version="4.3.0" exclude="Build,Analyzers" />
-		<dependency Include="System.Globalization" Version="4.3.0" exclude="Build,Analyzers" />
-		<dependency Include="System.IO.FileSystem" Version="4.3.0" exclude="Build,Analyzers" />
-		<dependency Include="System.IO.FileSystem.Primitives" Version="4.3.0" exclude="Build,Analyzers" />
-		<dependency Include="System.Net.Primitives" Version="4.3.1" exclude="Build,Analyzers" />
-		<dependency Include="System.Runtime" Version="4.3.1" exclude="Build,Analyzers" />
-		<dependency Include="System.Runtime.Extensions" Version="4.3.1" exclude="Build,Analyzers" />
-		<dependency Include="System.Threading" Version="4.3.0" exclude="Build,Analyzers" />
-		<dependency Include="WebMarkupMin.AspNetCore3" Version="2.9.3" exclude="Build,Analyzers" />
-      </group>
-	</dependencies>
   </metadata>
 </package>

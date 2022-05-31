@@ -359,7 +359,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         WHERE {String.Join(" AND ", whereClause)}";
 
             databaseConnection.AddParameter("templateType", templateType);
-            DateTime? result;
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {
