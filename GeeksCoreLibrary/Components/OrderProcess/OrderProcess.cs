@@ -314,8 +314,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             await wiserItemsService.SaveAsync(item.Item, userId: userData.Id, createNewTransaction: false, skipPermissionsCheck: true);
                         }
                         
-                        // Link basket to active user.
-                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userData.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType, skipPermissionsCheck: true);
+                        // Link basket to active user, if it's not linked to someone else yet.
+                        await shoppingBasketsService.LinkBasketToUserAsync(shoppingBasketSettings, userData.Id, shoppingBasket);
 
                         await DatabaseConnection.CommitTransactionAsync();
 
@@ -789,6 +789,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 if (!field.SaveTo.Any())
                 {
                     fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
+                    if (String.IsNullOrWhiteSpace(fieldValue))
+                    {
+                        var account = currentItems.FirstOrDefault(item => String.Equals(item.Item.EntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase));
+                        if (account.Item != null)
+                        {
+                            fieldValue = account.Item.GetDetailValue(field.FieldId);
+                        }
+                    }
                 }
                 else
                 {

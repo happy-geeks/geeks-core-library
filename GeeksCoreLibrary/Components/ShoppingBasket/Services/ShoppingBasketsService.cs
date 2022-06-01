@@ -396,19 +396,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                                 userId = accountsService.GetRecentlyCreateAccountId();
                             }
 
-                            if (userId > 0)
+                            if (userId > 0 && !settings.MultipleBasketsPossible && shoppingBasket.EntityType == Constants.BasketEntityType)
                             {
-                                if (!settings.MultipleBasketsPossible && shoppingBasket.EntityType == "basket")
+                                foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, Constants.BasketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true)).Where(basketItemId => basketItemId != shoppingBasket.Id))
                                 {
-                                    foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, Constants.BasketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true)).Where(basketItemId => basketItemId != shoppingBasket.Id))
-                                    {
-                                        await wiserItemsService.DeleteAsync(basketItemId, skipPermissionsCheck: true);
-                                    }
+                                    await wiserItemsService.DeleteAsync(basketItemId, skipPermissionsCheck: true);
                                 }
-
-                                // Connect this basket to the user.
-                                await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userId, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
                             }
+
+                            await LinkBasketToUserAsync(settings, userId, shoppingBasket);
                         }
                     }
                 }
@@ -2186,6 +2182,30 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             }
 
             return String.IsNullOrEmpty(result) ? defaultResult : result;
+        }
+
+        /// <inheritdoc />
+        public async Task LinkBasketToUserAsync(ShoppingBasketCmsSettingsModel basketSettings, ulong userId, WiserItemModel shoppingBasket, bool deleteCookieIfBasketIsLinkedToSomeoneElse = true)
+        {
+            if (userId <= 0)
+            {
+                return;
+            }
+
+            var linkedUsers = await wiserItemsService.GetLinkedItemIdsAsync(wiserItemsService, shoppingBasket.Id, Constants.BasketToUserLinkType, reverse: true, skipPermissionsCheck: true);
+            if (linkedUsers.Any())
+            {
+                if (deleteCookieIfBasketIsLinkedToSomeoneElse && linkedUsers.All(id => id != userId))
+                {
+                    // Delete the cookie if this basket is linked to a different user.
+                    httpContextAccessor.HttpContext?.Response.Cookies.Delete(basketSettings.CookieName);
+                }
+
+                return;
+            }
+
+            // Connect this basket to the user.
+            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userId, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
         }
 
         #region Private functions (helper functions)
