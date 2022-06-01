@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -7,8 +8,11 @@ using System.Threading.Tasks;
 using System.Web;
 using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Redirect.Interfaces;
 using GeeksCoreLibrary.Modules.Seo.Interfaces;
@@ -19,43 +23,91 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.ViewModels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services
 {
     public class PagesService : IPagesService, IScopedService
     {
+        private readonly GclSettings gclSettings;
         private readonly ILogger<LegacyTemplatesService> logger;
         private readonly ITemplatesService templatesService;
         private readonly ISeoService seoService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IRedirectService redirectService;
         private readonly IObjectsService objectsService;
+        private readonly IDatabaseConnection databaseConnection;
 
-        public PagesService(ILogger<LegacyTemplatesService> logger, IObjectsService objectsService, ITemplatesService templatesService, ISeoService seoService, IHttpContextAccessor httpContextAccessor, IRedirectService redirectService)
+        public PagesService(IOptions<GclSettings> gclSettings, ILogger<LegacyTemplatesService> logger, IObjectsService objectsService, ITemplatesService templatesService, ISeoService seoService, IHttpContextAccessor httpContextAccessor, IRedirectService redirectService, IDatabaseConnection databaseConnection)
         {
+            this.gclSettings = gclSettings.Value;
             this.logger = logger;
             this.templatesService = templatesService;
             this.seoService = seoService;
             this.httpContextAccessor = httpContextAccessor;
             this.redirectService = redirectService;
+            this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
         }
 
         /// <inheritdoc />
         public async Task<string> GetGlobalHeader(string url, List<int> javascriptTemplates, List<int> cssTemplates)
         {
-            if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("defaultheadertemplateid"), out var headerTemplateId) || headerTemplateId <= 0)
+            int headerTemplateId;
+            string headerRegexCheck;
+            Template template;
+
+            var joinPart = "";
+            var whereClause = new List<string>();
+            if (gclSettings.Environment == Environments.Development)
+            {
+                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+            }
+            else
+            {
+                whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
+            }
+            whereClause.Add("template.template_type = 1");
+            whereClause.Add("template.removed = 0");
+            whereClause.Add("template.is_default_header = 1");
+
+            var query = $@"
+                SELECT template.template_id, template.default_header_footer_regex
+                FROM `{WiserTableNames.WiserTemplate}` AS template
+                {joinPart}
+                WHERE {String.Join(" AND ", whereClause)}
+                GROUP BY template.template_id";
+
+            var globalHeaders = await databaseConnection.GetAsync(query);
+            foreach (DataRow globalHeaderDataRow in globalHeaders.Rows)
+            {
+                headerRegexCheck = globalHeaderDataRow.Field<string>("default_header_footer_regex");
+                if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck))
+                {
+                    continue;
+                }
+
+                headerTemplateId = globalHeaderDataRow.IsNull("template_id") ? 0 : globalHeaderDataRow.Field<int>("template_id");
+                template = await templatesService.GetTemplateAsync(headerTemplateId);
+                javascriptTemplates.AddRange(template.JavascriptTemplates);
+                cssTemplates.AddRange(template.CssTemplates);
+                logger.LogDebug($"Default header template loaded: '{headerTemplateId}'");
+                return template.Content;
+            }
+
+            // Try system objects method.
+            if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("defaultheadertemplateid"), out headerTemplateId) || headerTemplateId <= 0)
             {
                 return "";
             }
 
-            var headerRegexCheck = await objectsService.FindSystemObjectByDomainNameAsync("headerregexcheck");
+            headerRegexCheck = await objectsService.FindSystemObjectByDomainNameAsync("headerregexcheck");
             if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck))
             {
                 return "";
             }
 
-            var template = await templatesService.GetTemplateAsync(headerTemplateId);
+            template = await templatesService.GetTemplateAsync(headerTemplateId);
             javascriptTemplates.AddRange(template.JavascriptTemplates);
             cssTemplates.AddRange(template.CssTemplates);
             logger.LogDebug($"Default header template loaded: '{headerTemplateId}'");
@@ -65,18 +117,61 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> GetGlobalFooter(string url, List<int> javascriptTemplates, List<int> cssTemplates)
         {
-            if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("defaultfootertemplateid"), out var footerTemplateId) || footerTemplateId <= 0)
+            int footerTemplateId;
+            string headerRegexCheck;
+            Template template;
+
+            var joinPart = "";
+            var whereClause = new List<string>();
+            if (gclSettings.Environment == Environments.Development)
+            {
+                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+            }
+            else
+            {
+                whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
+            }
+            whereClause.Add("template.template_type = 1");
+            whereClause.Add("template.removed = 0");
+            whereClause.Add("template.is_default_footer = 1");
+
+            var query = $@"
+                SELECT template.template_id, template.default_header_footer_regex
+                FROM `{WiserTableNames.WiserTemplate}` AS template
+                {joinPart}
+                WHERE {String.Join(" AND ", whereClause)}
+                GROUP BY template.template_id";
+
+            var globalFooters = await databaseConnection.GetAsync(query);
+            foreach (DataRow globalFooterDataRow in globalFooters.Rows)
+            {
+                headerRegexCheck = globalFooterDataRow.Field<string>("default_header_footer_regex");
+                if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck))
+                {
+                    continue;
+                }
+
+                footerTemplateId = globalFooterDataRow.IsNull("template_id") ? 0 : globalFooterDataRow.Field<int>("template_id");
+                template = await templatesService.GetTemplateAsync(footerTemplateId);
+                javascriptTemplates.AddRange(template.JavascriptTemplates);
+                cssTemplates.AddRange(template.CssTemplates);
+                logger.LogDebug($"Default footer template loaded: '{footerTemplateId}'");
+                return template.Content;
+            }
+
+            // Try system objects method.
+            if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("defaultfootertemplateid"), out footerTemplateId) || footerTemplateId <= 0)
             {
                 return "";
             }
 
-            var headerRegexCheck = await objectsService.FindSystemObjectByDomainNameAsync("footerregexcheck");
+            headerRegexCheck = await objectsService.FindSystemObjectByDomainNameAsync("footerregexcheck");
             if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck))
             {
                 return "";
             }
 
-            var template = await templatesService.GetTemplateAsync(footerTemplateId);
+            template = await templatesService.GetTemplateAsync(footerTemplateId);
             javascriptTemplates.AddRange(template.JavascriptTemplates);
             cssTemplates.AddRange(template.CssTemplates);
             logger.LogDebug($"Default footer template loaded: '{footerTemplateId}'");
