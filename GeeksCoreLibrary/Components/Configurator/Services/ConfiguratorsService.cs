@@ -97,9 +97,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             var query = @$"
                SELECT 
                     configurator.id AS configuratorId, 
-                    mainstep.id AS mainStepId, 
+                    mainStep.id AS mainStepId, 
                     step.id AS stepId,
-                    IFNULL(substep.id, '0') AS subStepId,
+                    IFNULL(subStep.id, '0') AS subStepId,
                     IFNULL(duplicateConfigurator.`value`, '0') AS duplicateConfiguratorId,
                     IFNULL(duplicateMainStep.`value`, '0') AS duplicateMainStepId,
                     IFNULL(duplicateStep.`value`, '0') AS duplicateStepId,

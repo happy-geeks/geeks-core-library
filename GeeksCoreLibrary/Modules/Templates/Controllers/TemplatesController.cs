@@ -228,7 +228,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             {
                 null => Content("", "text/html"),
                 string resultString => Content(resultString, "text/html"),
-                _ => Content(JsonConvert.SerializeObject(resultObject.Value.Data), "application/json")
+                _ => Content(JsonConvert.SerializeObject(!resultObject.HasValue ? result : resultObject.Value.Data), "application/json")
             };
         }
 

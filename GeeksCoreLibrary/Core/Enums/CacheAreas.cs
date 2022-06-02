@@ -11,6 +11,7 @@
         Templates,
         WiserItems,
         ShoppingBaskets,
-        DataSelectors
+        DataSelectors,
+        Configurators
     }
 }
