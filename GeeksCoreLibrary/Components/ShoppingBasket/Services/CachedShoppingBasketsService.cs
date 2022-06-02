@@ -229,5 +229,11 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             return await shoppingBasketsService.GetCheckoutObjectValueAsync(propertyName, defaultResult);
         }
+
+        /// <inheritdoc />
+        public async Task LinkBasketToUserAsync(ShoppingBasketCmsSettingsModel basketSettings, ulong userId, WiserItemModel shoppingBasket, bool deleteCookieIfBasketIsLinkedToSomeoneElse = true)
+        {
+            await shoppingBasketsService.LinkBasketToUserAsync(basketSettings, userId, shoppingBasket, deleteCookieIfBasketIsLinkedToSomeoneElse);
+        }
     }
 }

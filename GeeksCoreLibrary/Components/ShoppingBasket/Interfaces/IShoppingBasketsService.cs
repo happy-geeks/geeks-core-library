@@ -236,5 +236,14 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="defaultResult"></param>
         /// <returns></returns>
         Task<string> GetCheckoutObjectValueAsync(string propertyName, string defaultResult = "");
+
+        /// <summary>
+        /// This will link a basket to a user, but only if that basket is not linked to any other user yet.
+        /// </summary>
+        /// <param name="basketSettings">The settings of the ShoppingBasket component.</param>
+        /// <param name="userId">The ID of the user.</param>
+        /// <param name="shoppingBasket">The basket.</param>
+        /// <param name="deleteCookieIfBasketIsLinkedToSomeoneElse">Optional: Whether to delete the cookie that contains the basket ID, if the basket if linked to a different user. Default value is <see langword="true"/>. You should set this to <see langword="false"/> if you're linking a different basket than the one from the cookie.</param>
+        Task LinkBasketToUserAsync(ShoppingBasketCmsSettingsModel basketSettings, ulong userId, WiserItemModel shoppingBasket, bool deleteCookieIfBasketIsLinkedToSomeoneElse = true);
     }
 }

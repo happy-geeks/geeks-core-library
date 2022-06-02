@@ -502,8 +502,6 @@ namespace GeeksCoreLibrary.Components.Filter.Services
             var result = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
             var filterGroupConnectionPart = await objectsService.FindSystemObjectByDomainNameAsync("filtergroupconnectionpart");
             var filtersToItemType = Int32.Parse(await objectsService.FindSystemObjectByDomainNameAsync("filtertoitemtype", "6001"));
-            var joinFiltersToItemPart = "";
-            var orderingPart = "";
 
             logger.LogTrace("1 - Filter connection: " + filterGroupConnectionPart);
             logger.LogTrace("1 - categoryId: " + categoryId.ToString());

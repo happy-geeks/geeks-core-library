@@ -1281,7 +1281,7 @@ namespace GeeksCoreLibrary.Core.Services
                 query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
                         SET @saveHistory = ?saveHistoryGcl;
-                        INSERT INTO {WiserTableNames.WiserItemLink}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
+                        INSERT IGNORE INTO {WiserTableNames.WiserItemLink}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
                         (
                             id,
                             item_id,

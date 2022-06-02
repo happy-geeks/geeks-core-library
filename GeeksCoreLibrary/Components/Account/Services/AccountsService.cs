@@ -290,10 +290,18 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             var cookiesToDelete = (settings.CookiesToDeleteAfterLogout ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            
+            // Get basket cookie name from settings and delete that cookie.
             var basketCookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName");
             if (!String.IsNullOrWhiteSpace(basketCookieName) && !cookiesToDelete.Contains(basketCookieName))
             {
                 cookiesToDelete.Add(basketCookieName);
+            }
+            
+            // Also delete any cookies with the default cookie name constant.
+            if (!cookiesToDelete.Contains(ShoppingBasket.Models.Constants.DefaultCookieName))
+            {
+                cookiesToDelete.Add(ShoppingBasket.Models.Constants.DefaultCookieName);
             }
 
             foreach (var cookieToDelete in cookiesToDelete)

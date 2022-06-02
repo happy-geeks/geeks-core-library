@@ -305,7 +305,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
+        public Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
         {
             throw new NotImplementedException();
         }
