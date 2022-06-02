@@ -6,7 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
+using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using LazyCache;
@@ -22,14 +24,16 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         private readonly IObjectsService objectsService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly GclSettings gclSettings;
+        private readonly ICacheService cacheService;
 
-        public CachedConfiguratorsService(IConfiguratorsService configuratorsService, IAppCache appCache, IOptions<GclSettings> gclSettings, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor)
+        public CachedConfiguratorsService(IConfiguratorsService configuratorsService, IAppCache appCache, IOptions<GclSettings> gclSettings, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor, ICacheService cacheService)
         {
             this.configuratorsService = configuratorsService;
             this.appCache = appCache;
             this.objectsService = objectsService;
             this.httpContextAccessor = httpContextAccessor;
             this.gclSettings = gclSettings.Value;
+            this.cacheService = cacheService;
         }
 
         /// <inheritdoc />
@@ -47,7 +51,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                                            {
                                                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultConfiguratorsCacheDuration;
                                                return await configuratorsService.GetConfiguratorDataAsync(name);
-                                           });
+                                           }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Configurators));
         }
 
         /// <inheritdoc />

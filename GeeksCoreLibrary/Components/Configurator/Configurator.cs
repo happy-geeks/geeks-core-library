@@ -68,7 +68,7 @@ namespace GeeksCoreLibrary.Components.Configurator
         {
             return dynamicContentName switch
             {
-                "GeeksCoreLibrary.Configurator" => LegacyComponentMode.NonLegacy,
+                "Configurator" => LegacyComponentMode.NonLegacy,
                 "JuiceControlLibrary.Configurator" => LegacyComponentMode.Default,
                 _ => throw new ArgumentOutOfRangeException(nameof(dynamicContentName)),
             };
