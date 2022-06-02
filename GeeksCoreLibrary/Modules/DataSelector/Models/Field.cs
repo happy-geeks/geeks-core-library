@@ -5,7 +5,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
 {
     public class Field
     {
-        private static readonly string[] ReservedFieldNames = { "id", "idencrypted", "itemtitle", "parentitemtitle", "moduleid", "changed_on", "changed_by", "unique_uuid", "item_ordering" };
+        private static readonly string[] ReservedFieldNames = { "id", "idencrypted", "itemtitle", "parentitemtitle", "moduleid", "changed_on", "changed_by", "unique_uuid", "item_ordering", "link_ordering" };
 
         /// <summary>
         /// Gets or sets the link type number for this field. This is needed to determine whether the item this field belongs to uses parent ID.
