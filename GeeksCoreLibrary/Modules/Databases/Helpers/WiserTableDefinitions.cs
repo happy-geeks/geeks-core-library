@@ -401,6 +401,37 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 {
                     new(WiserTableNames.WiserIdMappings, "idx_unique", IndexTypes.Unique, new List<string> { "table_name", "our_id" })
                 }
+            },
+            
+            // wiser_itemfile
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserItemFile,
+                LastUpdate = new DateTime(2022, 6, 2),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("item_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                    new("itemlink_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                    new("content_type", MySqlDbType.VarChar, 100, notNull: true),
+                    new("content", MySqlDbType.LongBlob),
+                    new("content_url", MySqlDbType.VarChar, 1024),
+                    new("width", MySqlDbType.Int24, notNull: true, defaultValue: "0"),
+                    new("height", MySqlDbType.Int24, notNull: true, defaultValue: "0"),
+                    new("file_name", MySqlDbType.VarChar, 255),
+                    new("extension", MySqlDbType.VarChar, 20),
+                    new("title", MySqlDbType.VarChar, 255),
+                    new("property_name", MySqlDbType.VarChar, 255),
+                    new("protected", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
+                    new("ordering", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("added_by", MySqlDbType.VarChar, 255),
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserItemFile, "idx_item_id", IndexTypes.Normal, new List<string> { "item_id", "property_name" }),
+                    new(WiserTableNames.WiserItemFile, "idx_item_link_id", IndexTypes.Normal, new List<string> { "itemlink_id", "property_name" })
+                }
             }
         };
     }
