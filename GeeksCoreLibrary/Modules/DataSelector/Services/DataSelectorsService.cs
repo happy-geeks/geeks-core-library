@@ -90,7 +90,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             var queryBuilder = new StringBuilder();
             StringBuilder queryPart;
             var containsParentItemFields = false;
-            int ftc;
+            int fileTypeCounter;
             var addFields = new List<Field>();
             var allEntityTypes = new List<string>();
             var mainEntityTablePrefix = "";
@@ -454,6 +454,32 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                             queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.`{field.FieldName.ToMySqlSafeValue(false)}`")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
                         }
                     }
+                    else if (field.FieldName.Equals("item_ordering"))
+                    {
+                        if (field.TableAliasPrefix == "idv_")
+                        {
+                            if (String.IsNullOrWhiteSpace(field.FieldAlias))
+                            {
+                                field.FieldAlias = "item_ordering";
+                            }
+
+                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.ordering")} AS `{field.FieldAlias}`");
+                        }
+                        else if (field.FieldFromField)
+                        {
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.ordering")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
+                        }
+                        else
+                        {
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.ordering")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
+                        }
+                    }
+                    else if (field.FieldName.Equals("link_ordering"))
+                    {
+                        var tableAliasPrefix = field.TableAliasPrefix.Replace("idv_", "").TrimEnd('_');
+
+                        queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.ToMySqlSafeValue(false)}`.ordering")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
+                    }
                     else
                     {
                         queryBuilder.AppendLine($", {GetFormattedField(field, $"CONCAT_WS('', `{field.TableAlias.ToMySqlSafeValue(false)}`.`value`, `{field.TableAlias.ToMySqlSafeValue(false)}`.long_value)")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
@@ -468,22 +494,22 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     }
                 }
 
-                ftc = 1;
+                fileTypeCounter = 1;
                 foreach (var fileType in itemsRequest.FileTypes)
                 {
-                    queryBuilder.AppendLine($", file{ftc}.content_url AS `{fileType}_url`, file{ftc}.content AS `{fileType}_content`, file{ftc}.content_type AS `{fileType}_mimetype`, file{ftc}.title AS `{fileType}_title`");
-                    ftc += 1;
+                    queryBuilder.AppendLine($", file{fileTypeCounter}.content_url AS `{fileType}_url`, file{fileTypeCounter}.content AS `{fileType}_content`, file{fileTypeCounter}.content_type AS `{fileType}_mimetype`, file{fileTypeCounter}.title AS `{fileType}_title`");
+                    fileTypeCounter += 1;
                 }
             }
 
             queryBuilder.AppendLine($"FROM {mainEntityTablePrefix}`{WiserTableNames.WiserItem}` AS ilc1");
 
             // File types.
-            ftc = 1;
+            fileTypeCounter = 1;
             foreach (var fileType in itemsRequest.FileTypes)
             {
-                queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemFile}` AS file{ftc} ON file{ftc}.property_name = '{fileType}' AND file{ftc}.item_id = ilc1.id");
-                ftc += 1;
+                queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemFile}` AS file{fileTypeCounter} ON file{fileTypeCounter}.property_name = '{fileType}' AND file{fileTypeCounter}.item_id = ilc1.id");
+                fileTypeCounter += 1;
             }
 
             // Other JOINs.
@@ -854,6 +880,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                 // Proceed.
                 itemsRequest.Selector = dataSelector;
+                itemsRequest.Environment = data.Environment ?? 0;
             }
             else if (!String.IsNullOrWhiteSpace(data.QueryId))
             {
@@ -1208,8 +1235,15 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         case "changed_on":
                         case "changed_by":
                         case "unique_uuid":
+                        case "item_ordering":
                             {
-                                var finalFieldName = row.Key.FieldName.Equals("itemtitle") ? "title" : row.Key.FieldName;
+                                var finalFieldName = row.Key.FieldName switch
+                                {
+                                    "itemtitle" => "title",
+                                    "item_ordering" => "ordering",
+                                    _ => row.Key.FieldName
+                                };
+
                                 var finalJoinDetailOn = joinDetailOn.Replace(".id", $"_item.{finalFieldName}").Replace(".destination_item_id", $"_item.{finalFieldName}");
                                 var formattedField = GetFormattedField(row.Key, finalJoinDetailOn);
 
@@ -1270,6 +1304,39 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                 }
                                 break;
                             }
+                        case "link_ordering":
+                        {
+                            var finalJoinDetailOn = joinDetailOn.Replace(".id", $".ordering").Replace(".destination_item_id", $".ordering");
+                            var formattedField = GetFormattedField(row.Key, finalJoinDetailOn);
+
+                            switch (row.Operator.ToLowerInvariant())
+                            {
+                                case "contains":
+                                    queryPart.Append($"{formattedField} LIKE '%{finalValue.ToMySqlSafeValue(false)}%'");
+                                    break;
+                                case "does not contain":
+                                    queryPart.Append($"{formattedField} NOT LIKE '%{finalValue.ToMySqlSafeValue(false)}%'");
+                                    break;
+                                case "begin with":
+                                    queryPart.Append($"{formattedField} LIKE '{finalValue.ToMySqlSafeValue(false)}%'");
+                                    break;
+                                case "does not begin with":
+                                    queryPart.Append($"{formattedField} NOT LIKE '{finalValue.ToMySqlSafeValue(false)}%'");
+                                    break;
+                                case "end with":
+                                    queryPart.Append($"{formattedField} LIKE '%{finalValue.ToMySqlSafeValue(false)}'");
+                                    break;
+                                case "does not end with":
+                                    queryPart.Append($"{formattedField} NOT LIKE '%{finalValue.ToMySqlSafeValue(false)}'");
+                                    break;
+                                default:
+                                    var finalPart = String.IsNullOrWhiteSpace(op) ? finalValue : $"{op} {finalValue.ToMySqlSafeValue(true)}";
+                                    queryPart.Append($"{formattedField} {finalPart}");
+                                    break;
+                            }
+
+                            break;
+                        }
                         default:
                             row.Key.JoinOn = joinDetailOn;
                             row.Key.TableAliasPrefix = detailTableAliasPrefix;
@@ -1347,7 +1414,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     {
                         if (!String.IsNullOrWhiteSpace(connectionRow.EntityName))
                         {
-                            queryPartItem.Append($"`{tableName}`_item.entity_type = {connectionRow.EntityName.ToMySqlSafeValue(true)}");
+                            queryPartItem.Append($"`{tableName}_item`.entity_type = {connectionRow.EntityName.ToMySqlSafeValue(true)}");
                         }
 
                         if (connectionRow.TypeNumber > 0)
