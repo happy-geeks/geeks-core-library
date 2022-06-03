@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
@@ -15,6 +16,8 @@ using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
+using RestSharp;
 
 namespace GeeksCoreLibrary.Components.Configurator.Services
 {
@@ -43,14 +46,16 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             "mainstep_free_content4", "mainstep_free_content5", "step_template", "stepname", "values_template", "datasource", "custom_query", "own_data_values", "fixed_valuelist", "datasource_connectedtype", "variable_name", "step_free_content1", "step_free_content2", "step_free_content3", "step_free_content4", "step_free_content5", "datasource_connectedid", "isrequired", "check_connectedid",
             "substepname", "substep_template", "substep_values_template", "substep_datasource",
             "substep_custom_query", "substep_own_data_values", "substep_fixed_valuelist", "substep_datasource_connectedtype", "substep_variable_name", "substep_datasource_connectedid", "substep_isrequired", "substep_check_connectedid", "substep_free_content1", "substep_free_content2", "substep_free_content3", "substep_free_content4", "substep_free_content5", "urlregex",
-            "configurator_step_template"
+            "configurator_step_template",
+            "price_calculation_endpoint", "price_calculation_request_json", "price_calculation_api_query", "price_calculation_api_purchase_price_key", "price_calculation_api_customer_price_key", "price_calculation_api_from_price_key"
         };
 
         private readonly List<(string prefix, string fieldName)> configuratorFields = new List<(string prefix, string fieldName)>
         {
             ("", "name"), ("", "summary_template"), ("", "summary_mainstep_template"), ("", "summary_step_template"), ("", "progress_pre_template"), ("", "progress_pre_step_template"), ("", "progress_pre_substep_template"), ("", "progress_post_template"), ("", "progress_post_step_template"), ("", "progress_post_substep_template"), ("", "progress_template"), ("", "progress_step_template"),
             ("", "progress_substep_template"), ("configurator_", "free_content1"), ("configurator_", "free_content2"), ("configurator_", "free_content3"), ("configurator_", "free_content4"), ("configurator_", "free_content5"), ("", "template"), ("", "deliverytime_query"), ("", "custom_param_name"), ("", "custom_param_dependencies"), ("", "custom_param_query"), ("", "pre_render_steps_query"),
-            ("configurator_", "step_template"), ("", "price_calculation_query")
+            ("configurator_", "step_template"), ("", "price_calculation_query"),
+            ("", "price_calculation_endpoint"), ("", "price_calculation_request_json"), ("", "price_calculation_api_query"), ("", "price_calculation_api_purchase_price_key"), ("", "price_calculation_api_customer_price_key"), ("", "price_calculation_api_from_price_key")
         };
 
         private readonly List<(string prefix, string fieldName)> mainStepFields = new List<(string prefix, string fieldName)>
@@ -505,18 +510,26 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         /// <inheritdoc />
         public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
         {
+            (decimal purchasePrice, decimal customerPrice, decimal fromPrice) result = (0, 0, 0);
+            
             var dataTable = await GetConfiguratorDataAsync(input.Configurator);
 
             if (dataTable == null || dataTable.Rows.Count == 0)
             {
-                return (0, 0, 0);
+                return result;
             }
+
+            // Get the price from an API if available. If not it will return 0, 0, 0.
+            var priceFromApi = await GetPriceFromApiAsync(input, dataTable);
+            result.purchasePrice += priceFromApi.purchasePrice;
+            result.customerPrice += priceFromApi.customerPrice;
+            result.fromPrice += priceFromApi.fromPrice;
 
             var query = dataTable.Rows[0].Field<string>("price_calculation_query");
 
             if (String.IsNullOrEmpty(query))
             {
-                return (0, 0, 0);
+                return result;
             }
 
             query = await stringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
@@ -525,7 +538,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             var priceResultDataTable = await databaseConnection.GetAsync(query);
             if (priceResultDataTable.Rows.Count == 0)
             {
-                return (0, 0, 0);
+                return result;
             }
 
             var price = priceResultDataTable.Rows[0].IsNull(0) ? 0 : Convert.ToDecimal(priceResultDataTable.Rows[0][0]);
@@ -542,7 +555,95 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 fromPrice = priceResultDataTable.Rows[0].IsNull(2) ? 0 : Convert.ToDecimal(priceResultDataTable.Rows[0][2]);
             }
 
-            return (purchasePrice, price, fromPrice);
+            result.purchasePrice += purchasePrice;
+            result.customerPrice += price;
+            result.fromPrice += fromPrice;
+
+            return result;
+        }
+
+        /// <summary>
+        /// Get the prices from an API if the API is setup for the configurator.
+        /// </summary>
+        /// <param name="configuration">The configuration to get the price for.</param>
+        /// <param name="dataTable">The data table with the configurator data.</param>
+        /// <returns>Returns a tuple with the three prices as decimal.</returns>
+        private async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> GetPriceFromApiAsync(ConfigurationsModel configuration, DataTable dataTable)
+        {
+            (decimal purchasePrice, decimal customerPrice, decimal fromPrice) result = (0, 0, 0);
+            
+            var endpoint = dataTable.Rows[0].Field<string>("price_calculation_endpoint");
+            var requestJson = dataTable.Rows[0].Field<string>("price_calculation_request_json");
+            var purchasePriceKey = dataTable.Rows[0].Field<string>("price_calculation_api_purchase_price_key");
+            var customerPriceKey = dataTable.Rows[0].Field<string>("price_calculation_api_customer_price_key");
+            var fromPriceKey = dataTable.Rows[0].Field<string>("price_calculation_api_from_price_key");
+            var query = dataTable.Rows[0].Field<string>("price_calculation_api_query");
+
+            if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
+            {
+                return result;
+            }
+
+            DataRow extraData = null;
+
+            // If a query is set handle it to add extra information for the replacements in the JSON.
+            if (!String.IsNullOrWhiteSpace(query))
+            {
+                query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
+                var extraDataTable = await databaseConnection.GetAsync(query);
+
+                if (extraDataTable.Rows.Count > 0)
+                {
+                    extraData = extraDataTable.Rows[0];
+                }
+            }
+            
+            endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
+            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+
+            requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+            requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+
+            var restClient = new RestClient();
+            var restRequest = new RestRequest(endpoint, Method.Post);
+            restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
+            restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+
+            var restResponse = await restClient.ExecuteAsync(restRequest);
+            if (!restResponse.IsSuccessful || restResponse.Content == null)
+            {
+                return result;
+            }
+
+            // Get the three different prices from the response.
+            var responseData = JObject.Parse(restResponse.Content);
+            result.purchasePrice += GetPriceValueFromResponse(responseData, purchasePriceKey);
+            result.customerPrice += GetPriceValueFromResponse(responseData, customerPriceKey);
+            result.fromPrice += GetPriceValueFromResponse(responseData, fromPriceKey);
+            
+            return result;
+        }
+
+        /// <summary>
+        /// Get the price value from the response based on the given key.
+        /// </summary>
+        /// <param name="responseData">The JObject from the response content.</param>
+        /// <param name="key">The key the final value, separated by a comma.</param>
+        /// <returns>Returns the decimal value from the response based on the given key.</returns>
+        private decimal GetPriceValueFromResponse(JObject responseData, string key)
+        {
+            var keyParts = new List<string>(key.Split('.'));
+            var currentObject = responseData;
+            
+            // Step into the object till only 1 key part is left.
+            while (keyParts.Count > 1)
+            {
+                currentObject = (JObject)currentObject[keyParts[0]];
+                keyParts.RemoveAt(0);
+            }
+
+            return Convert.ToDecimal(currentObject[keyParts[0]]);
         }
 
         /// <inheritdoc />
