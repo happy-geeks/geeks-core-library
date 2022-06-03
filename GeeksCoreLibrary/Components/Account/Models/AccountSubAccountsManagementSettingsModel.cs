@@ -234,7 +234,7 @@ namespace GeeksCoreLibrary.Components.Account.Models
         [DefaultValue("new-password-confirmation")]
         internal string NewPasswordConfirmationFieldName { get; }
 
-        [DefaultValue("google-cid")]
+        [DefaultValue(Constants.DefaultGoogleCidFieldName)]
         internal string GoogleClientIdFieldName{ get; }
 
         [DefaultValue("sub-account")]

@@ -1723,7 +1723,7 @@ namespace GeeksCoreLibrary.Components.Account
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Settings.EntityType);
 
             DatabaseConnection.AddParameter("userId", userIdForGoogleCid);
-            DatabaseConnection.AddParameter("name", String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? "google-cid" : Settings.GoogleClientIdFieldName);
+            DatabaseConnection.AddParameter("name", String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? Constants.DefaultGoogleCidFieldName : Settings.GoogleClientIdFieldName);
             DatabaseConnection.AddParameter("value", googleClientId);
 
             await RenderAndExecuteQueryAsync($"INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)", skipCache: true);
