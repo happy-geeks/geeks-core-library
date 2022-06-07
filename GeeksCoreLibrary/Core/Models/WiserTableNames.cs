@@ -1,4 +1,6 @@
-﻿namespace GeeksCoreLibrary.Core.Models
+﻿using System.Collections.Generic;
+
+namespace GeeksCoreLibrary.Core.Models
 {
     public class WiserTableNames
     {
@@ -150,5 +152,16 @@
         /// All deleted items will be moved to archive tables, this is the suffix for those archive tables.
         /// </summary>
         public const string ArchiveSuffix = "_archive";
+        /// <summary>
+        /// All tables that also have an archive.
+        /// </summary>
+        public static readonly List<string> TablesWithArchive = new()
+        {
+            WiserItem,
+            WiserItemDetail,
+            WiserItemFile,
+            WiserItemLink,
+            WiserItemLinkDetail
+        };
     }
 }

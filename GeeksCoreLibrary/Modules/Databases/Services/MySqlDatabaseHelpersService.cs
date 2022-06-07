@@ -23,15 +23,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private readonly IDatabaseConnection databaseConnection;
         private readonly ILogger<MySqlDatabaseHelpersService> logger;
 
-        private readonly List<string> tablesWithArchive = new()
-        {
-            WiserTableNames.WiserItem,
-            WiserTableNames.WiserItemDetail,
-            WiserTableNames.WiserItemFile,
-            WiserTableNames.WiserItemLink,
-            WiserTableNames.WiserItemLinkDetail
-        };
-
         /// <summary>
         /// Creates a new instance of <see cref="MySqlDatabaseHelpersService"/>.
         /// </summary>
@@ -444,7 +435,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
                 
                 // Update archive table.
-                if (tablesWithArchive.Contains(tableName))
+                if (WiserTableNames.TablesWithArchive.Contains(tableName))
                 {
                     await CreateOrUpdateTableAsync($"{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
                     tableDefinition.Indexes.ForEach(index => index.TableName += WiserTableNames.ArchiveSuffix);
