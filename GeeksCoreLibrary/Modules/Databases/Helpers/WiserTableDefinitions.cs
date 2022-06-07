@@ -7,6 +7,12 @@ using MySql.Data.MySqlClient;
 
 namespace GeeksCoreLibrary.Modules.Databases.Helpers
 {
+    /*************************************************************
+     ** Important note:                                         **
+     ** When adding/removing/renaming columns in a table here,  **
+     ** make sure to also do the same changes in the files      **
+     ** "CreateTriggers.sql" and "CreateTables.sql" in Wiser 3. **
+     *************************************************************/
     public class WiserTableDefinitions
     {
         public static readonly List<WiserTableDefinitionModel> TablesToUpdate = new()
