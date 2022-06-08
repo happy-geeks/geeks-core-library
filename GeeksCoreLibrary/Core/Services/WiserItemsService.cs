@@ -203,9 +203,11 @@ namespace GeeksCoreLibrary.Core.Services
                 }
                 else
                 {
+                    var linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkTypeSettings);
+                    
                     // Save parent ID in wiser_itemlink.
                     var newOrderNumber = 1;
-                    queryResult = await databaseConnection.GetAsync($"SELECT IFNULL(MAX(ordering), 0) + 1 AS newOrderNumber FROM {WiserTableNames.WiserItemLink} WHERE destination_item_id = ?parentId", true);
+                    queryResult = await databaseConnection.GetAsync($"SELECT IFNULL(MAX(ordering), 0) + 1 AS newOrderNumber FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE destination_item_id = ?parentId", true);
                     if (queryResult.Rows.Count > 0)
                     {
                         newOrderNumber = Convert.ToInt32(queryResult.Rows[0]["newOrderNumber"]);
@@ -213,7 +215,7 @@ namespace GeeksCoreLibrary.Core.Services
 
                     databaseConnection.AddParameter("newId", wiserItem.Id);
                     databaseConnection.AddParameter("newOrderNumber", newOrderNumber);
-                    await databaseConnection.ExecuteAsync($@"INSERT INTO {WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering, type)
+                    await databaseConnection.ExecuteAsync($@"INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering, type)
                                                             VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                 }
 
@@ -288,15 +290,17 @@ namespace GeeksCoreLibrary.Core.Services
 
                 var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityTypeToDuplicate);
                 var useItemParentId = false;
+                var linkTablePrefix = "";
                 if (!String.IsNullOrWhiteSpace(entityTypeToDuplicate) && !String.IsNullOrWhiteSpace(parentEntityTypeInner))
                 {
                     var linkTypeSettings = await wiserItemsService.GetLinkTypeSettingsAsync(0, entityTypeToDuplicate, parentEntityTypeInner);
                     useItemParentId = linkTypeSettings.UseItemParentId;
+                    linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkTypeSettings);
                 }
 
                 var addItemLinkQuery = useItemParentId ? "" : $@"#Duplicate item into current node
-                                                                    SET @new_order = (SELECT IFNULL(MAX(ordering), 0) + 1 FROM {WiserTableNames.WiserItemLink} WHERE destination_item_id = ?parentId);
-                                                                    INSERT INTO {WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering) VALUES (LAST_INSERT_ID(), ?parentId, @new_order);
+                                                                    SET @new_order = (SELECT IFNULL(MAX(ordering), 0) + 1 FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE destination_item_id = ?parentId);
+                                                                    INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering) VALUES (LAST_INSERT_ID(), ?parentId, @new_order);
                                                                     SET @newLinkId = (SELECT LAST_INSERT_ID());";
 
                 // TODO: Duplicate item link details.
@@ -317,8 +321,8 @@ namespace GeeksCoreLibrary.Core.Services
                                 (SELECT language_code, @newItemId, groupname, `key`, `value`, long_value FROM {tablePrefix}{WiserTableNames.WiserItemDetail} WHERE item_id = ?itemId);
 
                                 #Duplicate files
-                                INSERT INTO {WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, title, property_name, added_on, added_by)
-                                (SELECT @newItemId, content_type, content, content_url, width, height, file_name, extension, title, property_name, NOW(), ?username FROM {WiserTableNames.WiserItemFile} WHERE item_id = ?itemId);
+                                INSERT INTO {tablePrefix}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, title, property_name, added_on, added_by)
+                                (SELECT @newItemId, content_type, content, content_url, width, height, file_name, extension, title, property_name, NOW(), ?username FROM {tablePrefix}{WiserTableNames.WiserItemFile} WHERE item_id = ?itemId);
 
                                 SELECT @newItemId AS newItemId, we.icon, {(useItemParentId ? "0" : "@newLinkId")} AS newLinkId, i.title
                                 FROM {tablePrefix}{WiserTableNames.WiserItem} i
@@ -338,17 +342,22 @@ namespace GeeksCoreLibrary.Core.Services
                     Icon = firstRow.Field<string>("icon"),
                     NewLinkId = Convert.ToUInt64(firstRow["newLinkId"]),
                     Title = firstRow.Field<string>("title"),
-                    Haschilds = await DuplicateLinksAsync(itemIdToDuplicate, newItemId, duplicationLevel + 1, entityTypeToDuplicate)
+                    Haschilds = await DuplicateLinksAsync(itemIdToDuplicate, newItemId, duplicationLevel + 1, entityTypeToDuplicate, parentEntityTypeInner)
                 };
 
                 return result;
             }
 
             // Function for duplicating all links of an item.
-            async Task<bool> DuplicateLinksAsync(ulong oldItemId, ulong newItemId, int duplicationLevel, string entityTypeToDuplicate)
+            async Task<bool> DuplicateLinksAsync(ulong oldItemId, ulong newItemId, int duplicationLevel, string entityTypeToDuplicate, string parentEntityTypeInner)
             {
                 databaseConnection.AddParameter("oldItemId", oldItemId);
                 var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityTypeToDuplicate);
+                var linkTablePrefix = "";
+                if (!String.IsNullOrWhiteSpace(entityTypeToDuplicate) && !String.IsNullOrWhiteSpace(parentEntityTypeInner))
+                {
+                    linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(0, entityTypeToDuplicate, parentEntityTypeInner);
+                }
 
                 var query = $@"(
                                     SELECT 
@@ -360,7 +369,7 @@ namespace GeeksCoreLibrary.Core.Services
                                         linked_item.entity_type,
                                         link_settings.use_item_parent_id
                                     FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                    JOIN {WiserTableNames.WiserItemLink} AS link ON link.destination_item_id = item.id
+                                    JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.destination_item_id = item.id
                                     JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linked_item ON linked_item.id = link.item_id
                                     JOIN {WiserTableNames.WiserLink} AS link_settings ON link_settings.destination_entity_type = item.entity_type AND link_settings.connected_entity_type = linked_item.entity_type AND link_settings.duplication <> 'none'
                                     WHERE item.id = ?oldItemId
@@ -395,6 +404,8 @@ namespace GeeksCoreLibrary.Core.Services
                     var linkedItemId = Convert.ToUInt64(dataRow["item_id"]);
                     var linkType = Convert.ToInt32(dataRow["type"]);
                     var useItemParentId = Convert.ToBoolean(dataRow["use_item_parent_id"]);
+                    var useDedicatedTable = Convert.ToBoolean(dataRow["use_dedicated_table"]);
+                    linkTablePrefix = !useDedicatedTable ? "" : $"{linkType}_";
 
                     switch (duplicationType?.ToUpperInvariant())
                     {
@@ -407,8 +418,8 @@ namespace GeeksCoreLibrary.Core.Services
                             databaseConnection.AddParameter("linkedItemId", linkedItemId);
                             databaseConnection.AddParameter("linkType", linkType);
 
-                            query = $@"SET @new_order = (SELECT IFNULL(MAX(ordering), 0) + 1 FROM {WiserTableNames.WiserItemLink} WHERE destination_item_id = ?newItemId);
-                                    INSERT INTO {WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering, type) 
+                            query = $@"SET @new_order = (SELECT IFNULL(MAX(ordering), 0) + 1 FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE destination_item_id = ?newItemId);
+                                    INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering, type) 
                                     VALUES (?linkedItemId, ?newItemId, @new_order, ?linkType);";
                             await databaseConnection.ExecuteAsync(query);
                             break;
@@ -701,17 +712,37 @@ namespace GeeksCoreLibrary.Core.Services
                     }
 
                     previousValuesQuery = $@"SELECT 
-                                            d.id,
-	                                        d.key,
-	                                        d.language_code,
-	                                        d.value,
-	                                        d.long_value,
-                                            d.itemlink_id,
-                                            d.groupname
-                                        FROM {tablePrefix}{WiserTableNames.WiserItem} i
-                                        JOIN {WiserTableNames.WiserItemLink} l ON l.item_id = i.id
-                                        JOIN {WiserTableNames.WiserItemLinkDetail} d ON d.itemlink_id = l.id
-                                        WHERE i.id = ?itemId";
+                                            detail.id,
+	                                        detail.key,
+	                                        detail.language_code,
+	                                        detail.value,
+	                                        detail.long_value,
+                                            detail.itemlink_id,
+                                            detail.groupname
+                                        FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                        JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id
+                                        JOIN {WiserTableNames.WiserItemLinkDetail} AS detail ON detail.itemlink_id = link.id
+                                        WHERE item.id = ?itemId";
+
+                    var allLinkTypeSettings = await GetAllLinkTypeSettingsAsync();
+                    foreach (var linkTypeSettings in allLinkTypeSettings.Where(x => x.UseDedicatedTable))
+                    {
+                        var linkTablePrefix = GetTablePrefixForLink(linkTypeSettings);
+                        previousValuesQuery += $@"
+                                                UNION ALL
+                                                SELECT 
+                                                    detail.id,
+	                                                detail.key,
+	                                                detail.language_code,
+	                                                detail.value,
+	                                                detail.long_value,
+                                                    detail.itemlink_id,
+                                                    detail.groupname
+                                                FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                                JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id
+                                                JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS detail ON detail.itemlink_id = link.id
+                                                WHERE item.id = ?itemId";
+                    }
 
                     var previousValuesDataTable = await databaseConnection.GetAsync(previousValuesQuery, true);
                     if (previousValuesDataTable.Rows.Count > 0)
@@ -805,6 +836,8 @@ namespace GeeksCoreLibrary.Core.Services
                                     destinationIds.Add(integerValue);
                                 }
 
+                                var linkTablePrefix = await GetTablePrefixForLinkAsync(linkTypeNumber, wiserItem.EntityType);
+
                                 databaseConnection.AddParameter("linkTypeNumber", linkTypeNumber);
                                 var currentItemIsDestinationId = fieldOptions[key].ContainsKey(CurrentItemIsDestinationIdKey) && (bool)fieldOptions[key][CurrentItemIsDestinationIdKey];
 
@@ -817,14 +850,14 @@ namespace GeeksCoreLibrary.Core.Services
                                     wherePart = $"AND {(!currentItemIsDestinationId ? "destination_item_id" : "item_id")} NOT IN ({String.Join(",", destinationIds)})";
                                 }
 
-                                var query = $"DELETE FROM {WiserTableNames.WiserItemLink} WHERE {(currentItemIsDestinationId ? "destination_item_id" : "item_id")} = ?itemId AND type = ?linkTypeNumber {wherePart}";
+                                var query = $"DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE {(currentItemIsDestinationId ? "destination_item_id" : "item_id")} = ?itemId AND type = ?linkTypeNumber {wherePart}";
                                 await databaseConnection.ExecuteAsync(query);
 
                                 // Save the new values as item links.
                                 foreach (var destinationId in destinationIds)
                                 {
                                     databaseConnection.AddParameter("destinationId", destinationId);
-                                    await databaseConnection.ExecuteAsync($@"INSERT IGNORE INTO {WiserTableNames.WiserItemLink} ({(currentItemIsDestinationId ? "destination_item_id, item_id" : "item_id, destination_item_id")}, type)
+                                    await databaseConnection.ExecuteAsync($@"INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} ({(currentItemIsDestinationId ? "destination_item_id, item_id" : "item_id, destination_item_id")}, type)
                                                                         VALUES (?itemId, ?destinationId, ?linkTypeNumber);");
                                 }
 
@@ -920,104 +953,109 @@ namespace GeeksCoreLibrary.Core.Services
                 counter = 0;
 
                 // If the property ReadOnly of ItemDetail is set to true, always skip it. It means it has been set to true in back-end code.
-                foreach (var itemDetail in wiserItem.Details.Where(d => d.IsLinkProperty && !d.ReadOnly && d.Changed))
+                foreach (var linkTypeGroup in wiserItem.Details.Where(d => d.IsLinkProperty && !d.ReadOnly && d.Changed).GroupBy(x => x.LinkType))
                 {
-                    counter++;
-                    var key = $"{itemDetail.Key}_{itemDetail.LanguageCode}";
+                    var linkTablePrefix = await GetTablePrefixForLinkAsync(linkTypeGroup.Key, wiserItem.EntityType);
 
-                    // Skip fields that are readonly, if they already contain a value. Still allow an initial value to be saved.
-                    if (fieldOptions != null && fieldOptions.ContainsKey(key) && fieldOptions[key].ContainsKey(ReadOnlyKey) && (bool)fieldOptions[key][ReadOnlyKey])
+                    foreach (var itemDetail in linkTypeGroup)
                     {
-                        var previousField = previousItemDetails.FirstOrDefault(x =>
-                            x.IsLinkProperty == itemDetail.IsLinkProperty &&
-                            x.ItemLinkId == itemDetail.ItemLinkId &&
-                            x.Key.Equals(itemDetail.Key, StringComparison.OrdinalIgnoreCase) &&
-                            (x.LanguageCode ?? "").Equals(itemDetail.LanguageCode ?? "", StringComparison.OrdinalIgnoreCase));
+                        counter++;
+                        var key = $"{itemDetail.Key}_{itemDetail.LanguageCode}";
 
-                        if (!String.IsNullOrEmpty(previousField?.Value?.ToString()))
+                        // Skip fields that are readonly, if they already contain a value. Still allow an initial value to be saved.
+                        if (fieldOptions != null && fieldOptions.ContainsKey(key) && fieldOptions[key].ContainsKey(ReadOnlyKey) && (bool) fieldOptions[key][ReadOnlyKey])
+                        {
+                            var previousField = previousItemDetails.FirstOrDefault(x =>
+                                                                                       x.IsLinkProperty == itemDetail.IsLinkProperty &&
+                                                                                       x.ItemLinkId == itemDetail.ItemLinkId &&
+                                                                                       x.Key.Equals(itemDetail.Key, StringComparison.OrdinalIgnoreCase) &&
+                                                                                       (x.LanguageCode ?? "").Equals(itemDetail.LanguageCode ?? "", StringComparison.OrdinalIgnoreCase));
+
+                            if (!String.IsNullOrEmpty(previousField?.Value?.ToString()))
+                            {
+                                continue;
+                            }
+                        }
+
+                        // If this is the ordering field, update the ordering column of the table 'wiser_itemlink'.
+                        if (LinkOrderingFieldName.Equals(itemDetail.Key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (itemDetail.ItemLinkId > 0)
+                            {
+                                databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
+                                databaseConnection.AddParameter($"ordering{counter}", itemDetail.Value);
+
+                                var updateOrderingQuery = $@"UPDATE {linkTablePrefix}{WiserTableNames.WiserItemLink} SET ordering = ?ordering{counter} WHERE id = ?itemLinkId{counter}";
+                                await databaseConnection.ExecuteAsync(updateOrderingQuery);
+                            }
+                            else
+                            {
+                                databaseConnection.AddParameter($"ordering{counter}", itemDetail.Value);
+
+                                var updateOrderingQuery = $@"UPDATE {WiserTableNames.WiserItem} SET ordering = ?ordering{counter} WHERE id = ?itemId";
+                                await databaseConnection.ExecuteAsync(updateOrderingQuery);
+                            }
+
+                            continue;
+                        }
+
+                        databaseConnection.AddParameter($"languageCode{counter}", itemDetail.LanguageCode ?? "");
+                        databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
+                        databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
+                        databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
+
+                        var (_, valueChanged, deleteValue, alsoSaveSeoValue) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues);
+                        if (!valueChanged && !alwaysSaveValues)
                         {
                             continue;
                         }
-                    }
 
-                    // If this is the ordering field, update the ordering column of the table 'wiser_itemlink'.
-                    if (LinkOrderingFieldName.Equals(itemDetail.Key, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (itemDetail.ItemLinkId > 0)
-                        {
-                            databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
-                            databaseConnection.AddParameter($"ordering{counter}", itemDetail.Value);
-
-                            var updateOrderingQuery = $@"UPDATE {WiserTableNames.WiserItemLink} SET ordering = ?ordering{counter} WHERE id = ?itemLinkId{counter}";
-                            await databaseConnection.ExecuteAsync(updateOrderingQuery);
-                        }
-                        else
-                        {
-                            databaseConnection.AddParameter($"ordering{counter}", itemDetail.Value);
-
-                            var updateOrderingQuery = $@"UPDATE {WiserTableNames.WiserItem} SET ordering = ?ordering{counter} WHERE id = ?itemId";
-                            await databaseConnection.ExecuteAsync(updateOrderingQuery);
-                        }
-
-                        continue;
-                    }
-
-                    databaseConnection.AddParameter($"languageCode{counter}", itemDetail.LanguageCode ?? "");
-                    databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
-                    databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
-                    databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
-
-                    var (_, valueChanged, deleteValue, alsoSaveSeoValue) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues);
-                    if (!valueChanged && !alwaysSaveValues)
-                    {
-                        continue;
-                    }
-
-                    if (deleteValue)
-                    {
-                        deleteQueryBuilder.Add($"(itemlink_id = ?itemLinkId{counter} AND `key` = ?key{counter} AND language_code = ?languageCode{counter})");
-                    }
-                    else
-                    {
-                        insertAndUpdateQueryBuilder.Add($"(?languageCode{counter}, ?itemLinkId{counter}, ?groupName{counter}, ?key{counter}, ?value{counter}, ?longValue{counter})");
-                    }
-
-                    if (alsoSaveSeoValue)
-                    {
-                        databaseConnection.AddParameter($"key{SeoPropertySuffix}{counter}", itemDetail.Key + SeoPropertySuffix);
                         if (deleteValue)
                         {
-                            deleteQueryBuilder.Add($"(itemlink_id = ?itemLinkId{counter} AND `key` = ?key{SeoPropertySuffix}{counter} AND language_code = ?languageCode{counter})");
+                            deleteQueryBuilder.Add($"(itemlink_id = ?itemLinkId{counter} AND `key` = ?key{counter} AND language_code = ?languageCode{counter})");
                         }
                         else
                         {
-                            insertAndUpdateQueryBuilder.Add($"(?languageCode{counter}, ?itemLinkId{counter}, ?groupName{counter}, ?key{SeoPropertySuffix}{counter}, ?value{SeoPropertySuffix}{counter}, ?longValue{SeoPropertySuffix}{counter})");
+                            insertAndUpdateQueryBuilder.Add($"(?languageCode{counter}, ?itemLinkId{counter}, ?groupName{counter}, ?key{counter}, ?value{counter}, ?longValue{counter})");
                         }
+
+                        if (alsoSaveSeoValue)
+                        {
+                            databaseConnection.AddParameter($"key{SeoPropertySuffix}{counter}", itemDetail.Key + SeoPropertySuffix);
+                            if (deleteValue)
+                            {
+                                deleteQueryBuilder.Add($"(itemlink_id = ?itemLinkId{counter} AND `key` = ?key{SeoPropertySuffix}{counter} AND language_code = ?languageCode{counter})");
+                            }
+                            else
+                            {
+                                insertAndUpdateQueryBuilder.Add($"(?languageCode{counter}, ?itemLinkId{counter}, ?groupName{counter}, ?key{SeoPropertySuffix}{counter}, ?value{SeoPropertySuffix}{counter}, ?longValue{SeoPropertySuffix}{counter})");
+                            }
+                        }
+
+                        itemDetail.Changed = false;
                     }
 
-                    itemDetail.Changed = false;
-                }
+                    if (deleteQueryBuilder.Any())
+                    {
+                        var query = $@"SET @_username = ?username;
+                                    SET @_userId = ?userId;
+                                    SET @saveHistory = ?saveHistoryGcl;
+                                    DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} WHERE {String.Join(" OR ", deleteQueryBuilder)}";
+                        await databaseConnection.ExecuteAsync(query);
+                        deleteQueryBuilder.Clear();
+                    }
 
-                if (deleteQueryBuilder.Any())
-                {
-                    var query = $@"SET @_username = ?username;
-                            SET @_userId = ?userId;
-                            SET @saveHistory = ?saveHistoryGcl;
-                            DELETE FROM {WiserTableNames.WiserItemLinkDetail} WHERE {String.Join(" OR ", deleteQueryBuilder)}";
-                    await databaseConnection.ExecuteAsync(query);
-                    deleteQueryBuilder.Clear();
-                }
-
-                if (insertAndUpdateQueryBuilder.Any())
-                {
-                    var query = $@"SET @_username = ?username;
-                            SET @_userId = ?userId;
-                            SET @saveHistory = ?saveHistoryGcl;
-                            INSERT INTO {WiserTableNames.WiserItemLinkDetail} (`language_code`, `itemlink_id`, `groupname`, `key`, `value`, `long_value`)
-                            VALUES {String.Join(", ", insertAndUpdateQueryBuilder)}
-                            ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `long_value` = VALUES(`long_value`), `groupName` = VALUES(`groupName`)";
-                    await databaseConnection.ExecuteAsync(query);
-                    insertAndUpdateQueryBuilder.Clear();
+                    if (insertAndUpdateQueryBuilder.Any())
+                    {
+                        var query = $@"SET @_username = ?username;
+                                        SET @_userId = ?userId;
+                                        SET @saveHistory = ?saveHistoryGcl;
+                                        INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} (`language_code`, `itemlink_id`, `groupname`, `key`, `value`, `long_value`)
+                                        VALUES {String.Join(", ", insertAndUpdateQueryBuilder)}
+                                        ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `long_value` = VALUES(`long_value`), `groupName` = VALUES(`groupName`)";
+                        await databaseConnection.ExecuteAsync(query);
+                        insertAndUpdateQueryBuilder.Clear();
+                    }
                 }
 
                 // Add or update item in aggregation table(s) when needed.
@@ -1145,6 +1183,10 @@ namespace GeeksCoreLibrary.Core.Services
                 databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
                 databaseConnection.AddParameter("now", DateTime.Now); // Don't use MySQL time, because DigitalOcean uses a different timezone than us.
 
+                var allLinkTypeSettings = await GetAllLinkTypeSettingsAsync();
+                var linkTypeSettingsWithDedicatedTablesForSource = allLinkTypeSettings.Where(x => x.UseDedicatedTable && String.Equals(x.SourceEntityType, entityType, StringComparison.OrdinalIgnoreCase)).ToList();
+                var linkTypeSettingsWithDedicatedTablesForDestination = allLinkTypeSettings.Where(x => x.UseDedicatedTable && String.Equals(x.DestinationEntityType, entityType, StringComparison.OrdinalIgnoreCase)).ToList();
+
                 /*
                  * NOTE: In all queries below we have hard-coded all columns. This is on purpose and should stay this way.
                  * It's the only way we can be 100% sure that we're inserting the correct data into the correct columns.
@@ -1154,193 +1196,271 @@ namespace GeeksCoreLibrary.Core.Services
 
                 // Copy the item itself to the archive (or vice versa, when undeleting).
                 var query = $@"SET @_username = ?username;
-                            SET @_userId = ?userId;
-                            SET @saveHistory = ?saveHistoryGcl;
-                            INSERT INTO {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? "" : WiserTableNames.ArchiveSuffix)} 
-                            (
-                                id, 
-                                original_item_id, 
-                                parent_item_id, 
-                                unique_uuid, 
-                                entity_type, 
-                                moduleid, 
-                                published_environment, 
-                                readonly, 
-                                title, 
-                                added_on, 
-                                added_by, 
-                                changed_on, 
-                                changed_by
-                            )
-                            SELECT
-                                id, 
-                                original_item_id, 
-                                parent_item_id, 
-                                unique_uuid, 
-                                entity_type, 
-                                moduleid, 
-                                published_environment, 
-                                readonly, 
-                                title, 
-                                added_on, 
-                                added_by, 
-                                ?now AS changed_on, 
-                                ?username AS changed_by
-                            FROM {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
-                            WHERE id IN({formattedItemIds})";
+SET @_userId = ?userId;
+SET @saveHistory = ?saveHistoryGcl;
+INSERT INTO {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? "" : WiserTableNames.ArchiveSuffix)} 
+(
+    id, 
+    original_item_id, 
+    parent_item_id, 
+    unique_uuid, 
+    entity_type, 
+    moduleid, 
+    published_environment, 
+    readonly, 
+    title, 
+    added_on, 
+    added_by, 
+    changed_on, 
+    changed_by
+)
+SELECT
+    id, 
+    original_item_id, 
+    parent_item_id, 
+    unique_uuid, 
+    entity_type, 
+    moduleid, 
+    published_environment, 
+    readonly, 
+    title, 
+    added_on, 
+    added_by, 
+    ?now AS changed_on, 
+    ?username AS changed_by
+FROM {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
+WHERE id IN({formattedItemIds})";
 
                 var result = await databaseConnection.ExecuteAsync(query);
 
                 // Copy the item details to the archive (or vice versa, when undeleting).
                 query = $@"SET @_username = ?username;
-                        SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryGcl;
-                        INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
-                        (
-                            id,
-                            language_code,
-                            item_id,
-                            groupname,
-                            `key`,
-                            value,
-                            long_value
-                        )
-                        SELECT
-                            id,
-                            language_code,
-                            item_id,
-                            groupname,
-                            `key`,
-                            value,
-                            long_value
-                        FROM {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
-                        WHERE item_id IN({formattedItemIds})";
+SET @_userId = ?userId;
+SET @saveHistory = ?saveHistoryGcl;
+INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
+(
+    id,
+    language_code,
+    item_id,
+    groupname,
+    `key`,
+    value,
+    long_value
+)
+SELECT
+    id,
+    language_code,
+    item_id,
+    groupname,
+    `key`,
+    value,
+    long_value
+FROM {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
+WHERE item_id IN({formattedItemIds})";
                 await databaseConnection.ExecuteAsync(query);
 
                 // Copy the item files to the archive (or vice versa, when undeleting).
-                query = $@"SET @_username = ?username;
-                        SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryGcl;
-                        INSERT INTO {WiserTableNames.WiserItemFile}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
-                        (
-                            id,
-                            item_id,
-                            content_type,
-                            content,
-                            content_url,
-                            width,
-                            height,
-                            file_name,
-                            extension,
-                            added_on,
-                            added_by,
-                            title,
-                            property_name,
-                            itemlink_id
-                        )
-                        SELECT
-                            id,
-                            item_id,
-                            content_type,
-                            content,
-                            content_url,
-                            width,
-                            height,
-                            file_name,
-                            extension,
-                            added_on,
-                            added_by,
-                            title,
-                            property_name,
-                            itemlink_id
-                        FROM {WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
-                        WHERE item_id IN({formattedItemIds})
+                if (await databaseHelpersService.TableExistsAsync($"{tablePrefix}{WiserTableNames.WiserItemFile}"))
+                {
+                    query = $@"SET @_username = ?username;
+SET @_userId = ?userId;
+SET @saveHistory = ?saveHistoryGcl;
+INSERT INTO {tablePrefix}{WiserTableNames.WiserItemFile}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
+(
+    id,
+    item_id,
+    content_type,
+    content,
+    content_url,
+    width,
+    height,
+    file_name,
+    extension,
+    added_on,
+    added_by,
+    title,
+    property_name,
+    itemlink_id,
+    protected,
+    ordering
+)
+SELECT
+    id,
+    item_id,
+    content_type,
+    content,
+    content_url,
+    width,
+    height,
+    file_name,
+    extension,
+    added_on,
+    added_by,
+    title,
+    property_name,
+    itemlink_id,
+    protected,
+    ordering
+FROM {tablePrefix}{WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
+WHERE item_id IN({formattedItemIds});
+DELETE FROM {tablePrefix}{WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE item_id IN({formattedItemIds});";
+                    await databaseConnection.ExecuteAsync(query);
+                }
 
-                        UNION ALL
+                var copyItemLinkFilesQuery = $@"SET @_username = ?username;
+SET @_userId = ?userId;
+SET @saveHistory = ?saveHistoryGcl;
+INSERT INTO {tablePrefix}{WiserTableNames.WiserItemFile}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
+(
+    id,
+    item_id,
+    content_type,
+    content,
+    content_url,
+    width,
+    height,
+    file_name,
+    extension,
+    added_on,
+    added_by,
+    title,
+    property_name,
+    itemlink_id,
+    protected,
+    ordering
+)
+SELECT
+    file.id,
+    file.item_id,
+    file.content_type,
+    file.content,
+    file.content_url,
+    file.width,
+    file.height,
+    file.file_name,
+    file.extension,
+    file.added_on,
+    file.added_by,
+    file.title,
+    file.property_name,
+    file.itemlink_id,
+    file.protected,
+    file.ordering
+FROM {{0}}{WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS file
+JOIN {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link ON link.id = file.itemlink_id AND {{1}}";
 
-                        SELECT
-                            file.id,
-                            file.item_id,
-                            file.content_type,
-                            file.content,
-                            file.content_url,
-                            file.width,
-                            file.height,
-                            file.file_name,
-                            file.extension,
-                            file.added_on,
-                            file.added_by,
-                            file.title,
-                            file.property_name,
-                            file.itemlink_id
-                        FROM {WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS file
-                        JOIN {WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link ON link.id = file.itemlink_id AND (link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))";
-                await databaseConnection.ExecuteAsync(query);
+                var deleteItemLinkFilesQuery = $@"DELETE file.* FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link 
+JOIN {{0}}{WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS file ON file.itemlink_id = link.id 
+WHERE {{1}};";
+                
+                var copyItemLinksQuery = 
+                    query = $@"SET @_username = ?username;
+SET @_userId = ?userId;
+SET @saveHistory = ?saveHistoryGcl;
+INSERT IGNORE INTO {{0}}{WiserTableNames.WiserItemLink}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
+(
+    id,
+    item_id,
+    destination_item_id,
+    ordering,
+    type,
+    added_on
+)
+SELECT
+    id,
+    item_id,
+    destination_item_id,
+    ordering,
+    type,
+    added_on
+FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
+WHERE {{1}}";
+                
+                var copyItemLinkDetailsQuery = $@"SET @_username = ?username;
+SET @_userId = ?userId;
+SET @saveHistory = ?saveHistoryGcl;
+INSERT INTO {{0}}{WiserTableNames.WiserItemLinkDetail}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
+(
+    id,
+    language_code,
+    itemlink_id,
+    groupname,
+    `key`,
+    value,
+    long_value
+)
+SELECT
+    detail.id,
+    detail.language_code,
+    detail.itemlink_id,
+    detail.groupname,
+    detail.`key`,
+    detail.value,
+    detail.long_value
+FROM {{0}}{WiserTableNames.WiserItemLinkDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS detail
+JOIN {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link ON link.id = detail.itemlink_id AND {{1}}";
+
+                var deleteItemLinksQuery = $@"DELETE detail.* FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link 
+JOIN {{0}}{WiserTableNames.WiserItemLinkDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS detail ON detail.itemlink_id = link.id 
+WHERE {{1}};
+DELETE FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link WHERE {{1}};";
+
+                // If there are not dedicated link tables for this entity type, then copy from the base table.
+                if (!linkTypeSettingsWithDedicatedTablesForSource.Any() && !linkTypeSettingsWithDedicatedTablesForDestination.Any())
+                {
+                    await databaseConnection.ExecuteAsync(String.Format(copyItemLinkFilesQuery, "", $"(link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))"));
+                    await databaseConnection.ExecuteAsync(String.Format(deleteItemLinkFilesQuery, "", $"(link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))"));
+                    await databaseConnection.ExecuteAsync(String.Format(copyItemLinksQuery, "", $"(item_id IN({formattedItemIds}) OR destination_item_id IN({formattedItemIds}))"));
+                    await databaseConnection.ExecuteAsync(String.Format(copyItemLinkDetailsQuery, "", $"(link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))"));
+                    await databaseConnection.ExecuteAsync(String.Format(deleteItemLinksQuery, "", $"(link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))"));
+                }
+
+                // Copy from dedicated link table, where the current entity type is the source. 
+                foreach (var linkSettings in linkTypeSettingsWithDedicatedTablesForSource)
+                {
+                    var tablePrefixForLink = GetTablePrefixForLink(linkSettings);
+                    if (!await databaseHelpersService.TableExistsAsync($"{tablePrefixForLink}{WiserTableNames.WiserItemFile}"))
+                    {
+                        continue;
+                    }
+
+                    await databaseConnection.ExecuteAsync(String.Format(copyItemLinkFilesQuery, tablePrefixForLink, $"link.item_id IN({formattedItemIds})"));
+                    await databaseConnection.ExecuteAsync(String.Format(deleteItemLinkFilesQuery, tablePrefixForLink, $"link.item_id IN({formattedItemIds})"));
+                    await databaseConnection.ExecuteAsync(String.Format(copyItemLinksQuery, tablePrefixForLink, $"item_id IN({formattedItemIds})"));
+                    await databaseConnection.ExecuteAsync(String.Format(copyItemLinkDetailsQuery, tablePrefixForLink, $"link.item_id IN({formattedItemIds})"));
+                    await databaseConnection.ExecuteAsync(String.Format(deleteItemLinksQuery, tablePrefixForLink, $"link.item_id IN({formattedItemIds})"));
+                }
+
+                // Copy from dedicated link table, where the current entity type is the destination.
+                foreach (var linkSettings in linkTypeSettingsWithDedicatedTablesForDestination)
+                {
+                    var tablePrefixForLink = GetTablePrefixForLink(linkSettings);
+                    if (!await databaseHelpersService.TableExistsAsync($"{tablePrefixForLink}{WiserTableNames.WiserItemFile}"))
+                    {
+                        continue;
+                    }
+
+                    await databaseConnection.ExecuteAsync(String.Format(copyItemLinkFilesQuery, tablePrefixForLink, $"link.destination_item_id IN({formattedItemIds})"));
+                    await databaseConnection.ExecuteAsync(String.Format(deleteItemLinkFilesQuery, tablePrefixForLink, $"link.destination_item_id IN({formattedItemIds})"));
+                    await databaseConnection.ExecuteAsync(String.Format(copyItemLinksQuery, tablePrefixForLink, $"destination_item_id IN({formattedItemIds})"));
+                    await databaseConnection.ExecuteAsync(String.Format(copyItemLinkDetailsQuery, tablePrefixForLink, $"link.destination_item_id IN({formattedItemIds})"));
+                    await databaseConnection.ExecuteAsync(String.Format(deleteItemLinksQuery, tablePrefixForLink, $"link.destination_item_id IN({formattedItemIds})"));
+                }
 
                 // Copy the item links to the archive (or vice versa, when undeleting).
-                query = $@"SET @_username = ?username;
-                        SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryGcl;
-                        INSERT IGNORE INTO {WiserTableNames.WiserItemLink}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
-                        (
-                            id,
-                            item_id,
-                            destination_item_id,
-                            ordering,
-                            type,
-                            added_on
-                        )
-                        SELECT
-                            id,
-                            item_id,
-                            destination_item_id,
-                            ordering,
-                            type,
-                            added_on
-                        FROM {WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
-                        WHERE item_id IN({formattedItemIds})
-                        OR destination_item_id IN({formattedItemIds})";
-                await databaseConnection.ExecuteAsync(query);
-
-                // Copy the item link details to the archive (or vice versa, when undeleting).
-                query = $@"SET @_username = ?username;
-                        SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryGcl;
-                        INSERT INTO {WiserTableNames.WiserItemLinkDetail}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
-                        (
-                            id,
-                            language_code,
-                            itemlink_id,
-                            groupname,
-                            `key`,
-                            value,
-                            long_value
-                        )
-                        SELECT
-                            detail.id,
-                            detail.language_code,
-                            detail.itemlink_id,
-                            detail.groupname,
-                            detail.`key`,
-                            detail.value,
-                            detail.long_value
-                        FROM {WiserTableNames.WiserItemLinkDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS detail
-                        JOIN {WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link ON link.id = detail.itemlink_id AND (link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))";
                 await databaseConnection.ExecuteAsync(query);
 
                 // And then delete the item from the original table (or vice versa, when undeleting).
                 query = $@"SET @_username = ?username;
-                        SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryGcl;
-                        DELETE FROM {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE id IN({formattedItemIds});
-	                    DELETE d.* FROM {WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} l JOIN {WiserTableNames.WiserItemLinkDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS d ON d.itemlink_id = l.id WHERE l.item_id IN({formattedItemIds}) OR l.destination_item_id IN({formattedItemIds});
-	                    DELETE FROM {WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE (item_id IN({formattedItemIds}) OR destination_item_id IN({formattedItemIds}));
-	                    DELETE FROM {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE item_id IN({formattedItemIds});
-	                    DELETE FROM {WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE item_id IN({formattedItemIds});";
+SET @_userId = ?userId;
+SET @saveHistory = ?saveHistoryGcl;
+DELETE FROM {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE id IN({formattedItemIds});
+DELETE FROM {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE item_id IN({formattedItemIds});";
                 if (undelete)
                 {
+                    databaseConnection.AddParameter("entityType", entityType);
                     query += $@" INSERT INTO {WiserTableNames.WiserHistory} (action, tablename, item_id, changed_by, field, oldvalue, newvalue)
-                                VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), '', '', '');";
+VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?entityType, '', '');";
                 }
                 await databaseConnection.ExecuteAsync(query);
                 
@@ -3083,6 +3203,30 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
+        public async Task<string> GetTablePrefixForLinkAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null)
+        {
+            return await GetTablePrefixForLinkAsync(this, linkType, sourceEntityType, destinationEntityType);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetTablePrefixForLinkAsync(IWiserItemsService wiserItemsService, int linkType = 0, string sourceEntityType = null, string destinationEntityType = null)
+        {
+            if (linkType == 0 && String.IsNullOrEmpty(sourceEntityType) && String.IsNullOrEmpty(destinationEntityType))
+            {
+                return "";
+            }
+
+            var linkTypeSettings = await wiserItemsService.GetLinkTypeSettingsAsync(linkType, sourceEntityType, destinationEntityType);
+            return GetTablePrefixForLink(linkTypeSettings);
+        }
+
+        /// <inheritdoc />
+        public string GetTablePrefixForLink(LinkSettingsModel linkTypeSettings)
+        {
+            return linkTypeSettings == null || !linkTypeSettings.UseDedicatedTable || linkTypeSettings.UseItemParentId ? "" : $"{linkTypeSettings.Type}_";
+        }
+
+        /// <inheritdoc />
         public async Task<string> ReplaceHtmlForSavingAsync(string input, bool allowAbsoluteImageUrls = false)
         {
             if (String.IsNullOrEmpty(input))
@@ -4006,7 +4150,7 @@ namespace GeeksCoreLibrary.Core.Services
                         }
                         else if (wiserItemDetail.Value is string valueAsString 
                                  && !String.IsNullOrWhiteSpace(valueAsString) 
-                                 && valueAsString.Contains(",") 
+                                 && valueAsString.Contains(',') 
                                  && Decimal.TryParse(valueAsString, NumberStyles.Any, new CultureInfo("nl-NL"), out var parsedValueAsDecimal))
                         {
                             wiserItemDetail.Value = parsedValueAsDecimal.ToString(new CultureInfo("en-US"));
@@ -4067,6 +4211,11 @@ namespace GeeksCoreLibrary.Core.Services
                 "copy-item" => LinkDuplicationMethods.CopyItem,
                 _ => throw new ArgumentOutOfRangeException(nameof(duplication), duplication, null)
             };
+
+            if (dataRow.Table.Columns.Contains("use_dedicated_table"))
+            {
+                linkSettings.UseDedicatedTable = Convert.ToBoolean(dataRow["use_dedicated_table"]);
+            }
 
             return linkSettings;
         }

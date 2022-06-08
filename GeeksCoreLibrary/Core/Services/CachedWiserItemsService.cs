@@ -442,6 +442,24 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
+        public async Task<string> GetTablePrefixForLinkAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null)
+        {
+            return await GetTablePrefixForLinkAsync(this, linkType, sourceEntityType, destinationEntityType);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetTablePrefixForLinkAsync(IWiserItemsService service, int linkType = 0, string sourceEntityType = null, string destinationEntityType = null)
+        {
+            return await wiserItemsService.GetTablePrefixForLinkAsync(service, linkType, sourceEntityType, destinationEntityType);
+        }
+
+        /// <inheritdoc />
+        public string GetTablePrefixForLink(LinkSettingsModel linkTypeSettings)
+        {
+            return wiserItemsService.GetTablePrefixForLink(linkTypeSettings);
+        }
+
+        /// <inheritdoc />
         public async Task<string> ReplaceHtmlForSavingAsync(string input, bool allowAbsoluteImageUrls = false)
         {
             return await wiserItemsService.ReplaceHtmlForSavingAsync(input, allowAbsoluteImageUrls);

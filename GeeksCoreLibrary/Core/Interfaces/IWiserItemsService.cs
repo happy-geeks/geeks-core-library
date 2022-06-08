@@ -745,6 +745,43 @@ namespace GeeksCoreLibrary.Core.Interfaces
         Task<LinkSettingsModel> GetLinkTypeSettingsByIdAsync(IWiserItemsService wiserItemsService, int linkId);
 
         /// <summary>
+        /// Gets the prefix for the wiser_itemlink and wiser_itemlinkdetail tables for a specific link type.
+        /// Certain link types can have dedicated tables, they won't use wiser_itemlink and wiser_itemlinkdetail, but something like 123_wiser_itemlink and 123_wiser_itemlinkdetail instead.
+        /// This function checks wiser_link if the entity type has dedicated tables and returns the prefix for those tables.
+        /// If it doesn't have a dedicated table, an empty string will be returned.
+        /// </summary>
+        /// <param name="linkType">Optional: The type number of the link type.</param>
+        /// <param name="sourceEntityType">Optional: The entity type of the source item.</param>
+        /// <param name="destinationEntityType">Optional: The entity type of the destination item.</param>
+        /// <exception cref="ArgumentException">If linkType, sourceEntityType and destinationEntityType are all empty.</exception>
+        /// <returns>The table prefix for the given link type. Returns an empty string if the link type uses the default tables.</returns>
+        Task<string> GetTablePrefixForLinkAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null);
+
+        /// <summary>
+        /// Gets the prefix for the wiser_itemlink and wiser_itemlinkdetail tables for a specific link type.
+        /// Certain link types can have dedicated tables, they won't use wiser_itemlink and wiser_itemlinkdetail, but something like 123_wiser_itemlink and 123_wiser_itemlinkdetail instead.
+        /// This function checks wiser_link if the entity type has dedicated tables and returns the prefix for those tables.
+        /// If it doesn't have a dedicated table, an empty string will be returned.
+        /// </summary>
+        /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
+        /// <param name="linkType">Optional: The type number of the link type.</param>
+        /// <param name="sourceEntityType">Optional: The entity type of the source item.</param>
+        /// <param name="destinationEntityType">Optional: The entity type of the destination item.</param>
+        /// <exception cref="ArgumentException">If linkType, sourceEntityType and destinationEntityType are all empty.</exception>
+        /// <returns>The table prefix for the given link type. Returns an empty string if the link type uses the default tables.</returns>
+        Task<string> GetTablePrefixForLinkAsync(IWiserItemsService wiserItemsService, int linkType = 0, string sourceEntityType = null, string destinationEntityType = null);
+
+        /// <summary>
+        /// Gets the prefix for the wiser_itemlink and wiser_itemlinkdetail tables for a specific link type.
+        /// Certain link types can have dedicated tables, they won't use wiser_itemlink and wiser_itemlinkdetail, but something like 123_wiser_itemlink and 123_wiser_itemlinkdetail instead.
+        /// This function checks wiser_link if the entity type has dedicated tables and returns the prefix for those tables.
+        /// If it doesn't have a dedicated table, an empty string will be returned.
+        /// </summary>
+        /// <param name="linkTypeSettings">A <see cref="LinkSettingsModel"/> with the settings of the link type.</param>
+        /// <returns>The table prefix for the given link type. Returns an empty string if the link type uses the default tables.</returns>
+        string GetTablePrefixForLink(LinkSettingsModel linkTypeSettings);
+
+        /// <summary>
         /// Replace HTML for saving via Wiser. This will change things like &lt;table data-contentid="x" to &lt;img src="x".
         /// </summary>
         /// <param name="input">The HTML that you want to save.</param>
