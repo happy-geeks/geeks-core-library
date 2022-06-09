@@ -70,6 +70,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 throw new ArgumentException("No column name given.");
             }
             
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            
             databaseConnection.AddParameter("columnName", settings.Name);
             databaseConnection.AddParameter("defaultValue", settings.DefaultValue);
             
