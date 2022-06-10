@@ -78,10 +78,6 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserUsersAuthenticationTokens = "wiser_user_auth_token";
         /// <summary>
-        /// This table contains custom sort orders for users. Users can sort modules in wiser or fields on an entity type, that will all be saved here.
-        /// </summary>
-        public const string WiserOrdering = "wiser_ordering";
-        /// <summary>
         /// This table contains all login attempts that are done in Wiser for this customer.
         /// </summary>
         public const string WiserLoginAttempts = "wiser_login_attempts";
