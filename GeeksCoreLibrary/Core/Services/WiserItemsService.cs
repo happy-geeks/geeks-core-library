@@ -727,7 +727,7 @@ namespace GeeksCoreLibrary.Core.Services
                     var allLinkTypeSettings = await GetAllLinkTypeSettingsAsync();
                     foreach (var linkTypeSettings in allLinkTypeSettings.Where(x => x.UseDedicatedTable))
                     {
-                        var linkTablePrefix = GetTablePrefixForLink(linkTypeSettings);
+                        var linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkTypeSettings);
                         previousValuesQuery += $@"
                                                 UNION ALL
                                                 SELECT 
@@ -1418,7 +1418,7 @@ DELETE FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.Arc
                 // Copy from dedicated link table, where the current entity type is the source. 
                 foreach (var linkSettings in linkTypeSettingsWithDedicatedTablesForSource)
                 {
-                    var tablePrefixForLink = GetTablePrefixForLink(linkSettings);
+                    var tablePrefixForLink = wiserItemsService.GetTablePrefixForLink(linkSettings);
                     if (!await databaseHelpersService.TableExistsAsync($"{tablePrefixForLink}{WiserTableNames.WiserItemFile}"))
                     {
                         continue;
@@ -1434,7 +1434,7 @@ DELETE FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.Arc
                 // Copy from dedicated link table, where the current entity type is the destination.
                 foreach (var linkSettings in linkTypeSettingsWithDedicatedTablesForDestination)
                 {
-                    var tablePrefixForLink = GetTablePrefixForLink(linkSettings);
+                    var tablePrefixForLink = wiserItemsService.GetTablePrefixForLink(linkSettings);
                     if (!await databaseHelpersService.TableExistsAsync($"{tablePrefixForLink}{WiserTableNames.WiserItemFile}"))
                     {
                         continue;
@@ -2032,6 +2032,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 linkSettings = new LinkSettingsModel();
             }
 
+            var linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkSettings);
             var permissionsQueryPart = "";
             var linkTypePart = linkType > -1 ? " AND link.type = ?linkType" : "";
             var where = new List<string> { "TRUE" };
@@ -2076,8 +2077,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             else
             {
                 itemLinkJoin = reverse
-                    ? $"JOIN {WiserTableNames.WiserItemLink} AS link ON link.destination_item_id = item.id AND link.item_id = ?itemId{linkTypePart}"
-                    : $"JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId{linkTypePart}";
+                    ? $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.destination_item_id = item.id AND link.item_id = ?itemId{linkTypePart}"
+                    : $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId{linkTypePart}";
 
                 itemLinkDetailsPart = $@"
                     UNION ALL
@@ -2091,7 +2092,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                         link.id AS itemLinkId
                     FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
                     {itemLinkJoin}
-                    LEFT JOIN {WiserTableNames.WiserItemLinkDetail} AS details ON details.itemlink_id = link.id
+                    LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS details ON details.itemlink_id = link.id
                     {permissionsQueryPart}
                     WHERE {String.Join(" AND ", where)}";
             }
@@ -2126,8 +2127,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 else
                 {
                     itemLinkJoin = reverse
-                        ? $"JOIN {WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.destination_item_id = item.id AND link.item_id = ?itemId{linkTypePart}"
-                        : $"JOIN {WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId{linkTypePart}";
+                        ? $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.destination_item_id = item.id AND link.item_id = ?itemId{linkTypePart}"
+                        : $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId{linkTypePart}";
 
                     itemLinkDetailsPart = $@"
                         UNION ALL
@@ -2141,7 +2142,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                             link.id AS itemLinkId
                         FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
                         {itemLinkJoin}
-                        LEFT JOIN {WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.itemlink_id = link.id
+                        LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.itemlink_id = link.id
                         {permissionsQueryPart}
                         WHERE {String.Join(" AND ", where)}";
                 }
@@ -2195,7 +2196,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         public async Task<List<ulong>> GetLinkedItemIdsAsync(IWiserItemsService wiserItemsService, ulong itemId, int linkType, string entityType = null, bool includeDeletedItems = false, ulong userId = 0, bool reverse = false, string itemIdEntityType = null, bool skipPermissionsCheck = false)
         {
             var result = new List<ulong>();
-            var linkSettings = await GetLinkTypeSettingsAsync(linkType, reverse ? itemIdEntityType : entityType, reverse ? entityType : itemIdEntityType);
+            var linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(linkType, reverse ? itemIdEntityType : entityType, reverse ? entityType : itemIdEntityType);
             var permissionsQueryPart = "";
             var itemLinkJoin = "";
 
@@ -2209,6 +2210,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
             }
 
+            var linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkSettings);
             var tablePrefix = "";
             if (!String.IsNullOrWhiteSpace(entityType))
             {
@@ -2235,8 +2237,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             else
             {
                 itemLinkJoin = reverse
-                    ? $"JOIN {WiserTableNames.WiserItemLink} AS link ON link.destination_item_id = item.id AND link.item_id = ?itemId AND link.type = ?linkType"
-                    : $"JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId AND link.type = ?linkType";
+                    ? $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.destination_item_id = item.id AND link.item_id = ?itemId AND link.type = ?linkType"
+                    : $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId AND link.type = ?linkType";
             }
 
             // Create where part.
@@ -2263,8 +2265,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 else
                 {
                     itemLinkJoin = reverse
-                        ? $"JOIN {WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.destination_item_id = item.id AND link.item_id = ?itemId AND link.type = ?linkType"
-                        : $"JOIN {WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId AND link.type = ?linkType";
+                        ? $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.destination_item_id = item.id AND link.item_id = ?itemId AND link.type = ?linkType"
+                        : $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId AND link.type = ?linkType";
                 }
 
                 query += $@"UNION
@@ -2519,6 +2521,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
             }
 
+            var linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(type);
+
             databaseConnection.AddParameter("itemId", itemId);
             databaseConnection.AddParameter("destinationItemId", destinationItemId);
             databaseConnection.AddParameter("type", type);
@@ -2526,7 +2530,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
-            var dataTable = await databaseConnection.GetAsync($@"SELECT id FROM {WiserTableNames.WiserItemLink} WHERE item_id = ?itemId AND destination_item_id = ?destinationItemId AND type = ?type", true);
+            var dataTable = await databaseConnection.GetAsync($@"SELECT id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE item_id = ?itemId AND destination_item_id = ?destinationItemId AND type = ?type", true);
             if (dataTable.Rows.Count > 0)
             {
                 return Convert.ToUInt64(dataTable.Rows[0]["id"]);
@@ -2535,7 +2539,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             dataTable = await databaseConnection.GetAsync($@"SET @_username = ?username;
                                                         SET @_userId = ?userId;
                                                         SET @saveHistory = ?saveHistoryGcl; 
-                                                        INSERT IGNORE INTO {WiserTableNames.WiserItemLink} (item_id, destination_item_id, type, ordering) 
+                                                        INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, type, ordering) 
                                                         VALUES (?itemId, ?destinationItemId, ?type, ?ordering);
                                                         SELECT LAST_INSERT_ID();", true);
             return Convert.ToUInt64(dataTable.Rows[0][0]);
@@ -2563,6 +2567,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                     };
                 }
             }
+            
+            var linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(type);
 
             databaseConnection.AddParameter("destinationItemId", destinationItemId);
             databaseConnection.AddParameter("type", type);
@@ -2572,7 +2578,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
                                                         SET @_userId = ?userId;
                                                         SET @saveHistory = ?saveHistoryGcl; 
-                                                        DELETE FROM {WiserTableNames.WiserItemLink} 
+                                                        DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} 
                                                         WHERE destination_item_id = ?destinationItemId 
                                                         AND type = ?type");
         }
@@ -2601,6 +2607,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
             }
             
+            var linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(0, sourceEntityType, destinationEntityType);
+            
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryJcl", saveHistory); // This is used in triggers.
@@ -2609,7 +2617,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             var query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
                         SET @saveHistory = ?saveHistoryJcl;
-                        INSERT INTO {WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix}
+                        INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix}
                         (
                             id,
                             item_id,
@@ -2625,7 +2633,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                             ordering,
                             type,
                             added_on
-                        FROM {WiserTableNames.WiserItemLink} AS itemLink
+                        FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} AS itemLink
                         WHERE itemLink.id IN({String.Join(",", ids)})
                         ON DUPLICATE KEY UPDATE added_on = itemLink.added_on";
             await databaseConnection.ExecuteAsync(query);
@@ -2634,7 +2642,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
                         SET @saveHistory = ?saveHistoryJcl;
-                        INSERT INTO {WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix}
+                        INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix}
                         (
                             id,
                             language_code,
@@ -2652,15 +2660,15 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                             detail.`key`,
                             detail.value,
                             detail.long_value
-                        FROM {WiserTableNames.WiserItemLinkDetail} AS detail
+                        FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS detail
                         WHERE detail.itemlink_id IN({String.Join(",", ids)})";
             await databaseConnection.ExecuteAsync(query);
 
             query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
                         SET @saveHistory = ?saveHistoryJcl;
-                        DELETE FROM {WiserTableNames.WiserItemLinkDetail} AS d WHERE d.itemlink_id IN({String.Join(",", ids)});
-                        DELETE FROM {WiserTableNames.WiserItemLink} WHERE id IN({String.Join(",", ids)})";
+                        DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS d WHERE d.itemlink_id IN({String.Join(",", ids)});
+                        DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE id IN({String.Join(",", ids)})";
             await databaseConnection.ExecuteAsync(query);
         }
 
@@ -2761,6 +2769,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         public async Task RemoveLinkedItemsAsync(IWiserItemsService wiserItemsService, ulong destinationItemId, int type = 0, List<ulong> exceptItemIds = null, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+            var linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(type, null, entityType);
 
             databaseConnection.AddParameter("destinationItemId", destinationItemId);
             databaseConnection.AddParameter("username", username);
@@ -2773,7 +2782,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                                                                 SET @saveHistory = ?saveHistoryGcl;
                                                                 SELECT item.id, item.entity_type 
                                                                 FROM {tablePrefix}{WiserTableNames.WiserItem} AS item 
-                                                                JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id AND link.destination_item_id = ?destinationItemId");
+                                                                JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id AND link.destination_item_id = ?destinationItemId");
 
             // Query for removing links of the column parent_item_id from the table wiser_item.
             var parentItemIdQueryBuilder = new StringBuilder($@"SELECT item.id, item.entity_type
@@ -2784,7 +2793,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 databaseConnection.AddParameter("type", type);
                 wiserItemLinkQueryBuilder.Append(" AND link.type = ?type");
                 parentItemIdQueryBuilder.Append($@" JOIN {tablePrefix}{WiserTableNames.WiserItem} AS parent ON parent.id = ?destinationItemId 
-                                                    JOIN {WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1");
+                                                    JOIN {linkTablePrefix}{WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1");
             }
 
             if (!skipPermissionsCheck)
@@ -2863,7 +2872,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
             }
 
-            var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+            var linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(type, null, entityType);
             
             databaseConnection.AddParameter("oldDestinationItemId", oldDestinationItemId);
             databaseConnection.AddParameter("newDestinationItemId", newDestinationItemId);
@@ -2875,14 +2885,14 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                                                         SET @_userId = ?userId;
                                                         SET @saveHistory = ?saveHistoryGcl;
                                                         # Update links via {WiserTableNames.WiserItemLink}.
-                                                        UPDATE {WiserTableNames.WiserItemLink} SET destination_item_id = ?newDestinationItemId 
+                                                        UPDATE {linkTablePrefix}{WiserTableNames.WiserItemLink} SET destination_item_id = ?newDestinationItemId 
                                                         WHERE destination_item_id = ?oldDestinationItemId 
                                                         AND (?type = 0 OR type = ?type);
 
                                                         # Update links via parent_item_id from {WiserTableNames.WiserItem}.
                                                         UPDATE {tablePrefix}{WiserTableNames.WiserItem} AS item
                                                         JOIN {tablePrefix}{WiserTableNames.WiserItem} AS parent ON parent.id = ?oldDestinationItemId
-                                                        JOIN {tablePrefix}{WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1
+                                                        JOIN {linkTablePrefix}{WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1
                                                         SET item.parent_item_id = ?newDestinationItemId
                                                         WHERE item.parent_item_id = ?oldDestinationItemId");
         }
@@ -2910,6 +2920,13 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
             }
 
+            var oldLinkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(oldLinkType);
+            var newLinkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(newLinkType);
+            if (!String.Equals(oldLinkTablePrefix, newLinkTablePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception($"The old link type has the table prefix '{oldLinkTablePrefix}' and the new link type has the table prefix '{newLinkTablePrefix}'.");
+            }
+
             databaseConnection.AddParameter("destinationItemId", destinationItemId);
             databaseConnection.AddParameter("oldLinkType", oldLinkType);
             databaseConnection.AddParameter("newLinkType", newLinkType);
@@ -2919,7 +2936,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
                                                         SET @_userId = ?userId;
                                                         SET @saveHistory = ?saveHistoryGcl;
-                                                        UPDATE {WiserTableNames.WiserItemLink} SET type = ?newLinkType 
+                                                        UPDATE {newLinkTablePrefix}{WiserTableNames.WiserItemLink} SET type = ?newLinkType 
                                                         WHERE destination_item_id = ?destinationItemId AND type = ?oldLinkType");
         }
 
@@ -2956,6 +2973,13 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
             }
 
+            var oldLinkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(oldLinkType);
+            var newLinkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(newLinkType);
+            if (!String.Equals(oldLinkTablePrefix, newLinkTablePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception($"The old link type has the table prefix '{oldLinkTablePrefix}' and the new link type has the table prefix '{newLinkTablePrefix}'.");
+            }
+
             databaseConnection.AddParameter("destinationItemId", destinationItemId);
             databaseConnection.AddParameter("sourceItemId", sourceItemId);
             databaseConnection.AddParameter("oldLinkType", oldLinkType);
@@ -2966,19 +2990,22 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
                                                         SET @_userId = ?userId;
                                                         SET @saveHistory = ?saveHistoryGcl;
-                                                        UPDATE {WiserTableNames.WiserItemLink} SET type = ?newLinkType 
+                                                        UPDATE {newLinkTablePrefix}{WiserTableNames.WiserItemLink} SET type = ?newLinkType 
                                                         WHERE destination_item_id = ?destinationItemId AND type = ?oldLinkType AND item_id = ?sourceItemId");
         }
 
         /// <inheritdoc />
-        public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
         {
-            return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck);
+            return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType);
         }
 
         /// <inheritdoc />
-        public async Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
         {
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+            var linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType, entityType);
+            
             if (!skipPermissionsCheck)
             {
                 var itemId = wiserItemFile.ItemId;
@@ -2988,7 +3015,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 if (itemId == 0)
                 {
                     databaseConnection.AddParameter("itemLinkId", wiserItemFile.ItemLinkId);
-                    var queryResult = await databaseConnection.GetAsync($"SELECT item_id, destination_item_id FROM {WiserTableNames.WiserItemLink} WHERE id = ?itemLinkId", true);
+                    var queryResult = await databaseConnection.GetAsync($"SELECT item_id, destination_item_id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE id = ?itemLinkId", true);
                     if (queryResult.Rows.Count == 0)
                     {
                         throw new Exception($"Item link with id '{wiserItemFile.ItemLinkId}' not found.");
@@ -2998,7 +3025,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                     destinationItemId = Convert.ToUInt64(queryResult.Rows[0]["destination_item_id"]);
                 }
 
-                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId);
+                var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId, entityType: entityType);
                 if (!isPossible.ok)
                 {
                     throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{itemId}'.")
@@ -3042,7 +3069,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 SET @_username = ?username;
                 SET @_userId = ?userId;
                 SET @saveHistory = ?saveHistoryGcl;
-                INSERT IGNORE INTO {WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, added_by, title, property_name, itemlink_id) 
+                INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, added_by, title, property_name, itemlink_id) 
                 VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?width, ?height, ?fileName, ?extension, ?username, ?title, ?propertyName, ?itemLinkId);
                 SELECT LAST_INSERT_ID();", true);
 
@@ -3050,14 +3077,26 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null)
+        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null, string entityType = null, int linkType = 0)
         {
-            var list = await GetItemFilesAsync(new[] { id }, field, propertyName);
+            return await GetItemFileAsync(this, id, field, propertyName, entityType, linkType);
+        }
+
+        /// <inheritdoc />
+        public async Task<WiserItemFileModel> GetItemFileAsync(IWiserItemsService wiserItemsService, ulong id, string field = "Id", string propertyName = null, string entityType = null, int linkType = 0)
+        {
+            var list = await wiserItemsService.GetItemFilesAsync(new[] { id }, field, propertyName, entityType, linkType);
             return list.FirstOrDefault();
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null)
+        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null, string entityType = null, int linkType = 0)
+        {
+            return await GetItemFilesAsync(this, ids, field, propertyName, entityType, linkType);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(IWiserItemsService wiserItemsService, ulong[] ids, string field = "Id", string propertyName = null, string entityType = null, int linkType = 0)
         {
             var result = new List<WiserItemFileModel>();
 
@@ -3075,6 +3114,10 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                     throw new NotImplementedException($"Unknown field '{field}' given.");
             }
 
+            var tablePrefix = linkType > 0 
+                ? await wiserItemsService.GetTablePrefixForLinkAsync(linkType, entityType) 
+                : await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+
             var propertyNameClause = "";
             if (!String.IsNullOrWhiteSpace(propertyName))
             {
@@ -3085,7 +3128,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             databaseConnection.AddParameter("Ids", String.Join(",", ids));
             var queryResult = await databaseConnection.GetAsync($@"
                 SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `itemlink_id`
-                FROM {WiserTableNames.WiserItemFile}
+                FROM {tablePrefix}{WiserTableNames.WiserItemFile}
                 WHERE {columnName} IN ({String.Join(",", ids)})
                 {propertyNameClause}", true);
 
@@ -3217,7 +3260,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             }
 
             var linkTypeSettings = await wiserItemsService.GetLinkTypeSettingsAsync(linkType, sourceEntityType, destinationEntityType);
-            return GetTablePrefixForLink(linkTypeSettings);
+            return wiserItemsService.GetTablePrefixForLink(linkTypeSettings);
         }
 
         /// <inheritdoc />
@@ -3553,8 +3596,21 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
 
             // Get the settings for aggregation.
             var settings = await wiserItemsService.GetAggregationSettingsAsync(wiserItem.EntityType);
-            var detailsForLinks = wiserItem.Details.Where(detail => detail.ItemLinkId > 0);
-            foreach (var itemLinkId in detailsForLinks.Select(detail => detail.ItemLinkId).Distinct())
+            var detailsForLinks = wiserItem.Details.Where(detail => detail.ItemLinkId > 0).ToList();
+            
+            // Get aggregation settings for all link types.
+            foreach (var linkType in detailsForLinks.Where(detail => detail.LinkType > 0).Select(detail => detail.LinkType).Distinct())
+            {
+                if (settings.Any(setting => setting.LinkType == linkType))
+                {
+                    continue;
+                }
+
+                settings.AddRange(await wiserItemsService.GetAggregationSettingsAsync(linkType: linkType));
+            }
+            
+            // If we don't have a link type, try to get the link type from wiser_itemlink and then the aggregation settings for that.
+            foreach (var itemLinkId in detailsForLinks.Where(detail => detail.LinkType <= 0).Select(detail => detail.ItemLinkId).Distinct())
             {
                 databaseConnection.AddParameter("linkId", itemLinkId);
                 var dataTable = await databaseConnection.GetAsync($"SELECT type FROM {WiserTableNames.WiserItemLink} WHERE id = ?linkId");
@@ -3650,12 +3706,14 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
                 else
                 {
+                    var linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(setting.LinkType);
+                    
                     databaseConnection.AddParameter("id", itemDetail.ItemLinkId);
                     databaseConnection.AddParameter("linkType", setting.LinkType);
                     columnsForQuery[setting.TableName].Add("link_type");
                     parametersForQuery[setting.TableName].Add("?linkType");
 
-                    var dataTable = await databaseConnection.GetAsync($"SELECT item_id, destination_item_id FROM {WiserTableNames.WiserItemLink} WHERE id = ?id");
+                    var dataTable = await databaseConnection.GetAsync($"SELECT item_id, destination_item_id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE id = ?id");
                     if (dataTable.Rows.Count > 0)
                     {
                         databaseConnection.AddParameter("sourceItemId", dataTable.Rows[0]["item_id"]);

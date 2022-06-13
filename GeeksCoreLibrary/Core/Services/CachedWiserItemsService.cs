@@ -343,27 +343,39 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
         {
-            return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck);
+            return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType);
         }
 
         /// <inheritdoc />
-        public async Task<ulong> AddItemFileAsync(IWiserItemsService service, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task<ulong> AddItemFileAsync(IWiserItemsService service, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
         {
-            return await wiserItemsService.AddItemFileAsync(service, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck);
+            return await wiserItemsService.AddItemFileAsync(service, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null)
+        public async Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null, string entityType = null, int linkType = 0)
         {
-            return await wiserItemsService.GetItemFileAsync(id, field, propertyName);
+            return await GetItemFileAsync(this, id, field, propertyName, entityType, linkType);
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null)
+        public async Task<WiserItemFileModel> GetItemFileAsync(IWiserItemsService service, ulong id, string field = "id", string propertyName = null, string entityType = null, int linkType = 0)
         {
-            return await wiserItemsService.GetItemFilesAsync(ids, field, propertyName);
+            return await wiserItemsService.GetItemFileAsync(service, id, field, propertyName, entityType, linkType);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null, string entityType = null, int linkType = 0)
+        {
+            return await GetItemFilesAsync(this, ids, field, propertyName, entityType, linkType);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<WiserItemFileModel>> GetItemFilesAsync(IWiserItemsService service, ulong[] ids, string field = "id", string propertyName = null, string entityType = null, int linkType = 0)
+        {
+            return await wiserItemsService.GetItemFilesAsync(service, ids, field, propertyName, entityType, linkType);
         }
 
         /// <inheritdoc />

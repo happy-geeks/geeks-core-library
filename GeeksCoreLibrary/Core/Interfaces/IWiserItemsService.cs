@@ -656,7 +656,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
         /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
-        Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
+        /// <param name="entityType">Optional: If you're adding a file to an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
+        /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
+        Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0);
 
         /// <summary>
         /// Adds a file to an item.
@@ -667,20 +669,51 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
         /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
-        Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
+        /// <param name="entityType">Optional: If you're adding a file to an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
+        /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
+        Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0);
 
         /// <summary>
         /// Gets a file from the database.
         /// </summary>
-        Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "Id", string propertyName = null);
+        /// <param name="id">The ID of the file, or the ID of the item the file belongs to or the ID of the link the file belongs to.</param>
+        /// <param name="field">Optional: The field that contains the the ID from the <see cref="id"/> parameter. This can be either "id", "item_id" or "itemlink_id".</param>
+        /// <param name="propertyName">Optional: The property name from wiser_entityproperty of the field where this file was uploaded.</param>
+        /// <param name="entityType">Optional: If you're adding a file to an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
+        /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
+        Task<WiserItemFileModel> GetItemFileAsync(ulong id, string field = "id", string propertyName = null, string entityType = null, int linkType = 0);
+        
+        /// <summary>
+        /// Gets a file from the database.
+        /// </summary>
+        /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
+        /// <param name="id">The ID of the file, or the ID of the item the file belongs to or the ID of the link the file belongs to.</param>
+        /// <param name="field">Optional: The field that contains the the ID from the <see cref="id"/> parameter. This can be either "id", "item_id" or "itemlink_id".</param>
+        /// <param name="propertyName">Optional: The property name from wiser_entityproperty of the field where this file was uploaded.</param>
+        /// <param name="entityType">Optional: If you're adding a file to an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
+        /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
+        Task<WiserItemFileModel> GetItemFileAsync(IWiserItemsService wiserItemsService, ulong id, string field = "id", string propertyName = null, string entityType = null, int linkType = 0);
 
         /// <summary>
         /// Gets multiple files from the database.
         /// </summary>
-        /// <param name="ids">The IDs of the files to get.</param>
-        /// <param name="field"></param>
-        /// <returns></returns>
-        Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "Id", string propertyName = null);
+        /// <param name="ids">The IDs of the files, or the IDs of the items the files belong to or the IDs of the links the files belong to.</param>
+        /// <param name="field">Optional: The field that contains the the ID from the <see cref="id"/> parameter. This can be either "id", "item_id" or "itemlink_id".</param>
+        /// <param name="propertyName">Optional: The property name from wiser_entityproperty of the field where this file was uploaded.</param>
+        /// <param name="entityType">Optional: If you're adding a file to an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
+        /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
+        Task<List<WiserItemFileModel>> GetItemFilesAsync(ulong[] ids, string field = "id", string propertyName = null, string entityType = null, int linkType = 0);
+        
+        /// <summary>
+        /// Gets multiple files from the database.
+        /// </summary>
+        /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
+        /// <param name="ids">The IDs of the files, or the IDs of the items the files belong to or the IDs of the links the files belong to.</param>
+        /// <param name="field">Optional: The field that contains the the ID from the <see cref="id"/> parameter. This can be either "id", "item_id" or "itemlink_id".</param>
+        /// <param name="propertyName">Optional: The property name from wiser_entityproperty of the field where this file was uploaded.</param>
+        /// <param name="entityType">Optional: If you're adding a file to an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
+        /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
+        Task<List<WiserItemFileModel>> GetItemFilesAsync(IWiserItemsService wiserItemsService, ulong[] ids, string field = "id", string propertyName = null, string entityType = null, int linkType = 0);
 
         /// <summary>
         /// Gets the prefix for the wiser_item and wiser_itemdetail tables for a specific entity type.
