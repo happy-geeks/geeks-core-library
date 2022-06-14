@@ -711,40 +711,45 @@ namespace GeeksCoreLibrary.Core.Services
                         }
                     }
 
-                    previousValuesQuery = $@"SELECT 
-                                            detail.id,
-	                                        detail.key,
-	                                        detail.language_code,
-	                                        detail.value,
-	                                        detail.long_value,
-                                            detail.itemlink_id,
-                                            detail.groupname
-                                        FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                        JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id
-                                        JOIN {WiserTableNames.WiserItemLinkDetail} AS detail ON detail.itemlink_id = link.id
-                                        WHERE item.id = ?itemId";
-
+                    var previousValuesQueryBuilder = new List<string>();
                     var allLinkTypeSettings = await GetAllLinkTypeSettingsAsync();
-                    foreach (var linkTypeSettings in allLinkTypeSettings.Where(x => x.UseDedicatedTable))
+                    var linksWithDedicatedTables = allLinkTypeSettings.Where(x => x.UseDedicatedTable && String.Equals(x.SourceEntityType, wiserItem.EntityType, StringComparison.OrdinalIgnoreCase)).ToList();
+                    if (!linksWithDedicatedTables.Any())
                     {
-                        var linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkTypeSettings);
-                        previousValuesQuery += $@"
-                                                UNION ALL
-                                                SELECT 
-                                                    detail.id,
-	                                                detail.key,
-	                                                detail.language_code,
-	                                                detail.value,
-	                                                detail.long_value,
-                                                    detail.itemlink_id,
-                                                    detail.groupname
-                                                FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                                JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id
-                                                JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS detail ON detail.itemlink_id = link.id
-                                                WHERE item.id = ?itemId";
+                        previousValuesQueryBuilder.Add($@"SELECT 
+    detail.id,
+	detail.key,
+	detail.language_code,
+	detail.value,
+	detail.long_value,
+    detail.itemlink_id,
+    detail.groupname
+FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id
+JOIN {WiserTableNames.WiserItemLinkDetail} AS detail ON detail.itemlink_id = link.id
+WHERE item.id = ?itemId");
+                    }
+                    else
+                    {
+                        foreach (var linkTypeSettings in linksWithDedicatedTables)
+                        {
+                            var linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkTypeSettings);
+                            previousValuesQueryBuilder.Add($@"SELECT 
+    detail.id,
+	detail.key,
+	detail.language_code,
+	detail.value,
+	detail.long_value,
+    detail.itemlink_id,
+    detail.groupname
+FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id
+JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS detail ON detail.itemlink_id = link.id
+WHERE item.id = ?itemId");
+                        }
                     }
 
-                    var previousValuesDataTable = await databaseConnection.GetAsync(previousValuesQuery, true);
+                    var previousValuesDataTable = await databaseConnection.GetAsync(String.Join(" UNION ", previousValuesQueryBuilder), true);
                     if (previousValuesDataTable.Rows.Count > 0)
                     {
                         foreach (DataRow dataRow in previousValuesDataTable.Rows)
