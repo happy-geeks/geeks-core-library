@@ -1358,8 +1358,7 @@ JOIN {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuf
 JOIN {{0}}{WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS file ON file.itemlink_id = link.id 
 WHERE {{1}};";
                 
-                var copyItemLinksQuery = 
-                    query = $@"SET @_username = ?username;
+                var copyItemLinksQuery = $@"SET @_username = ?username;
 SET @_userId = ?userId;
 SET @saveHistory = ?saveHistoryGcl;
 INSERT IGNORE INTO {{0}}{WiserTableNames.WiserItemLink}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
@@ -1451,9 +1450,6 @@ DELETE FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.Arc
                     await databaseConnection.ExecuteAsync(String.Format(copyItemLinkDetailsQuery, tablePrefixForLink, $"link.destination_item_id IN({formattedItemIds})"));
                     await databaseConnection.ExecuteAsync(String.Format(deleteItemLinksQuery, tablePrefixForLink, $"link.destination_item_id IN({formattedItemIds})"));
                 }
-
-                // Copy the item links to the archive (or vice versa, when undeleting).
-                await databaseConnection.ExecuteAsync(query);
 
                 // And then delete the item from the original table (or vice versa, when undeleting).
                 query = $@"SET @_username = ?username;
