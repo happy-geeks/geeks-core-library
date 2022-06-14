@@ -187,7 +187,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         JOIN easy_templates t ON t.itemid = i.id
                         {joinPart}
                         LEFT JOIN easy_items ip ON ip.id = i.parent_id
-                        LEFT JOIN easy_items ipp ON ipp.id == ip.parent_id
+                        LEFT JOIN easy_items ipp ON ipp.id = ip.parent_id
                         LEFT JOIN easy_items ippp ON ippp.id = ipp.parent_id
                         LEFT JOIN easy_items ipppp ON ipppp.id = ippp.parent_id
                         LEFT JOIN easy_items ippppp ON ippppp.id = ipppp.parent_id
