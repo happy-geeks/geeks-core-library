@@ -767,7 +767,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
 
                 DatabaseConnection.ClearParameters();
                 DatabaseConnection.AddParameter("content_type", "application/pdf");
-                DatabaseConnection.AddParameter("mimetype", "application/pdf");
                 DatabaseConnection.AddParameter("content", pdfFileResult.FileContents);
                 DatabaseConnection.AddParameter("file_name", filename);
                 DatabaseConnection.AddParameter("extension", Path.GetExtension(filename));

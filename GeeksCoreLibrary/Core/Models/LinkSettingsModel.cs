@@ -62,5 +62,12 @@ namespace GeeksCoreLibrary.Core.Models
         /// Gets or sets whether or not to use the parent_item_id column from wiser_item instead of the wiser_itemlink table.
         /// </summary>
         public bool UseItemParentId { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether to use a dedicated table for links of this type.
+        /// The GCL and Wiser expect there to be a table "[linkType]_wiser_itemlink" to store the links in. So if your link type is "1", we will use the table "1_wiser_itemlink" instead of "wiser_itemlink".
+        /// This table will not be created automatically. To create this table, make a copy of wiser_itemlink (including triggers, but the the name of the table in the triggers too).
+        /// </summary>
+        public bool UseDedicatedTable { get; set; }
     }
 }

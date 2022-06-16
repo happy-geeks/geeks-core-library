@@ -141,7 +141,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 // Get the link type settings.
                 if (!String.IsNullOrWhiteSpace(itemsRequest.Selector?.Main?.EntityName))
                 {
-                    var getLinkTypesResult = await databaseConnection.GetAsync($"SELECT type, destination_entity_type, connected_entity_type, use_item_parent_id FROM `{WiserTableNames.WiserLink}`");
+                    var getLinkTypesResult = await databaseConnection.GetAsync($"SELECT type, destination_entity_type, connected_entity_type, use_item_parent_id, use_dedicated_table FROM `{WiserTableNames.WiserLink}`");
 
                     foreach (var connection in itemsRequest.Selector.Connections)
                     {
@@ -179,6 +179,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                                 settings.UseParentItemId = Convert.ToBoolean(dataRow["use_item_parent_id"]);
                                 settings.Type = typeNumber;
+                                settings.DedicatedTablePrefix = dataRow.Field<string>("use_dedicated_table") ?? "";
+                                if (!String.IsNullOrEmpty(settings.DedicatedTablePrefix) || !settings.DedicatedTablePrefix.EndsWith("_"))
+                                {
+                                    settings.DedicatedTablePrefix += "_";
+                                }
                             }
                         }
                     }
@@ -502,43 +507,46 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 }
             }
 
-            queryBuilder.AppendLine($"FROM {mainEntityTablePrefix}`{WiserTableNames.WiserItem}` AS ilc1");
+            queryBuilder.AppendLine($"FROM `{mainEntityTablePrefix}{WiserTableNames.WiserItem}` AS ilc1");
 
             // File types.
             fileTypeCounter = 1;
             foreach (var fileType in itemsRequest.FileTypes)
             {
-                queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemFile}` AS file{fileTypeCounter} ON file{fileTypeCounter}.property_name = '{fileType}' AND file{fileTypeCounter}.item_id = ilc1.id");
+                queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItemFile}` AS file{fileTypeCounter} ON file{fileTypeCounter}.property_name = '{fileType}' AND file{fileTypeCounter}.item_id = ilc1.id");
                 fileTypeCounter += 1;
             }
 
             // Other JOINs.
             foreach (var item in itemsRequest.JoinLink)
-            {
+            { 
                 queryBuilder.AppendLine(item);
             }
 
             if (!String.IsNullOrWhiteSpace(itemsRequest.ContainsUrl))
             {
-                queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItemDetail}` AS id1 ON id1.item_id = ilc1.id AND id1.`key` = 'url'{(String.IsNullOrWhiteSpace(itemsRequest.LanguageCode) ? "" : $" AND id1.language_code = {itemsRequest.LanguageCode.ToMySqlSafeValue(true)}")}");
+                queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItemDetail}` AS id1 ON id1.item_id = ilc1.id AND id1.`key` = 'url'{(String.IsNullOrWhiteSpace(itemsRequest.LanguageCode) ? "" : $" AND id1.language_code = {itemsRequest.LanguageCode.ToMySqlSafeValue(true)}")}");
             }
 
             if (!String.IsNullOrWhiteSpace(itemsRequest.ParentId))
             {
-                queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS ilp1 ON ilp1.item_id = ilc1.id AND ilp1.type = {itemsRequest.LinkType}");
+                var linkTypeSettings = itemsRequest.LinkTypeSettings.FirstOrDefault(x => x.Type == itemsRequest.LinkType);
+                queryBuilder.AppendLine($"LEFT JOIN `{linkTypeSettings?.DedicatedTablePrefix ?? ""}{WiserTableNames.WiserItemLink}` AS ilp1 ON ilp1.item_id = ilc1.id AND ilp1.type = {itemsRequest.LinkType}");
             }
             else if (itemsRequest.LinkTables.Count == 0 && !String.IsNullOrWhiteSpace(itemsRequest.AutoSortOrder))
             {
-                queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS ilp1 ON lip1.item_id = ilc1.id AND ilp1.type = 1");
+                var linkTypeSettings = itemsRequest.LinkTypeSettings.FirstOrDefault(x => x.Type == 1);
+                queryBuilder.AppendLine($"LEFT JOIN `{linkTypeSettings?.DedicatedTablePrefix ?? ""}{WiserTableNames.WiserItemLink}` AS ilp1 ON lip1.item_id = ilc1.id AND ilp1.type = 1");
             }
 
             if (!String.IsNullOrWhiteSpace(itemsRequest.ContainsPath) || !String.IsNullOrWhiteSpace(itemsRequest.ContainsUrl) || (!String.IsNullOrWhiteSpace(itemsRequest.ParentId) && itemsRequest.Descendants) || containsParentItemFields)
             {
+                var linkTypeSettings = itemsRequest.LinkTypeSettings.FirstOrDefault(x => x.Type == itemsRequest.LinkType);
                 for (var i = 2; i <= itemsRequest.NumberOfLevels; i++)
                 {
-                    queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS ilp{i} ON ilp{i}.item_id = ilp{i - 1}.destination_item_id AND ilp{i}.type = {itemsRequest.LinkType}");
-                    queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItem}` AS ilc{i} ON ilc{i}.id = ilp{i - 1}.destination_item_id AND ilc{i}.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment}");
-                    queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItemDetail}` AS id{i}.item_id = ilp{i - 1}.destination_item_id AND id{i}.`key` = 'url' {(String.IsNullOrWhiteSpace(itemsRequest.LanguageCode) ? "" : $" AND id{i}.language_code = {itemsRequest.LanguageCode.ToMySqlSafeValue(true)}")}");
+                    queryBuilder.AppendLine($"LEFT JOIN `{linkTypeSettings?.DedicatedTablePrefix ?? ""}{WiserTableNames.WiserItemLink}` AS ilp{i} ON ilp{i}.item_id = ilp{i - 1}.destination_item_id AND ilp{i}.type = {itemsRequest.LinkType}");
+                    queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItem}` AS ilc{i} ON ilc{i}.id = ilp{i - 1}.destination_item_id AND ilc{i}.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment}");
+                    queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItemDetail}` AS id{i}.item_id = ilp{i - 1}.destination_item_id AND id{i}.`key` = 'url' {(String.IsNullOrWhiteSpace(itemsRequest.LanguageCode) ? "" : $" AND id{i}.language_code = {itemsRequest.LanguageCode.ToMySqlSafeValue(true)}")}");
                 }
             }
 
@@ -563,11 +571,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     }
                     else if (item.FieldFromField && item.IsReservedFieldName)
                     {
-                        queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItem}` AS `{item.TableAlias}` ON `{item.TableAlias.ToMySqlSafeValue(false)}`.id = {item.JoinOn}");
+                        queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItem}` AS `{item.TableAlias}` ON `{item.TableAlias.ToMySqlSafeValue(false)}`.id = {item.JoinOn}");
                     }
                     else
                     {
-                        queryBuilder.AppendLine($"LEFT JOIN {mainEntityTablePrefix}`{WiserTableNames.WiserItemDetail}` AS `{item.TableAlias}` ON `{item.TableAlias.ToMySqlSafeValue(false)}`.item_id = {item.JoinOn} AND `{item.TableAlias.ToMySqlSafeValue(false)}`.`key` = '{item.FieldName.ToMySqlSafeValue(false)}' {languageCodePart}");
+                        queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItemDetail}` AS `{item.TableAlias}` ON `{item.TableAlias.ToMySqlSafeValue(false)}`.item_id = {item.JoinOn} AND `{item.TableAlias.ToMySqlSafeValue(false)}`.`key` = '{item.FieldName.ToMySqlSafeValue(false)}' {languageCodePart}");
                     }
                 }
             }
@@ -1483,12 +1491,12 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         var settings = itemsRequest.LinkTypeSettings.FirstOrDefault(l => l.Type == connectionRow.TypeNumber && l.DestinationEntityType.Equals(connectionRow.EntityName, StringComparison.OrdinalIgnoreCase) && l.SourceEntityType.Equals(itemsRequest.EntityTypes?.Split(',').First(), StringComparison.OrdinalIgnoreCase));
                         if (settings is { UseParentItemId: true })
                         {
-                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.id = {previousLevelTableAlias}.parent_item_id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
+                            itemsRequest.JoinLink.Add($"LEFT JOIN `{tablePrefix}{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.id = {previousLevelTableAlias}.parent_item_id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
                         }
                         else
                         {
-                            itemsRequest.JoinLink.Add($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS {tableName} ON {tableName}.item_id = {joinOn} {queryPartLink}");
-                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.id = {tableName}.destination_item_id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
+                            itemsRequest.JoinLink.Add($"LEFT JOIN `{settings?.DedicatedTablePrefix ?? ""}{WiserTableNames.WiserItemLink}` AS {tableName} ON {tableName}.item_id = {joinOn} {queryPartLink}");
+                            itemsRequest.JoinLink.Add($"LEFT JOIN `{tablePrefix}{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.id = {tableName}.destination_item_id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
                         }
                     }
                     else
@@ -1496,12 +1504,12 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         var settings = itemsRequest.LinkTypeSettings.FirstOrDefault(l => l.Type == connectionRow.TypeNumber && l.DestinationEntityType.Equals(itemsRequest.EntityTypes?.Split(',').First(), StringComparison.OrdinalIgnoreCase) && l.SourceEntityType.Equals(connectionRow.EntityName, StringComparison.OrdinalIgnoreCase));
                         if (settings is { UseParentItemId: true })
                         {
-                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.parent_item_id = {previousLevelTableAlias}.id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
+                            itemsRequest.JoinLink.Add($"LEFT JOIN `{tablePrefix}{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.parent_item_id = {previousLevelTableAlias}.id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
                         }
                         else
                         {
-                            itemsRequest.JoinLink.Add($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS {tableName} ON {tableName}.destination_item_id = {joinOn} {queryPartLink}");
-                            itemsRequest.JoinLink.Add($"LEFT JOIN {tablePrefix}`{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.id = {tableName}.item_id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
+                            itemsRequest.JoinLink.Add($"LEFT JOIN `{settings?.DedicatedTablePrefix ?? ""}{WiserTableNames.WiserItemLink}` AS {tableName} ON {tableName}.destination_item_id = {joinOn} {queryPartLink}");
+                            itemsRequest.JoinLink.Add($"LEFT JOIN `{tablePrefix}{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.id = {tableName}.item_id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
                         }
                     }
 
