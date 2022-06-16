@@ -150,6 +150,11 @@ namespace GeeksCoreLibrary.Core.Models
             }
         }
 
+        /// <summary>
+        /// Gets or sets the type of link, if this is a link property.
+        /// </summary>
+        public int LinkType { get; set; }
+
         private bool readOnly;
 
         /// <summary>
