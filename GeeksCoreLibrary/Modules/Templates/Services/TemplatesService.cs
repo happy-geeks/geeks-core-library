@@ -187,8 +187,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         GROUP BY template.template_id
                         ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            var result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            Template result;
+            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            {
+                result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            }
 
             // Check login requirement.
             if (!result.Type.InList(TemplateTypes.Html, TemplateTypes.Query) || !result.LoginRequired)
@@ -429,7 +432,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         GROUP BY template.template_id
                         ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
-            using (var reader = await databaseConnection.GetReaderAsync(query))
+            await using (var reader = await databaseConnection.GetReaderAsync(query))
             {
                 while (await reader.ReadAsync())
                 {
@@ -510,7 +513,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var idsLoaded = new List<int>();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
 
-            using (var reader = await databaseConnection.GetReaderAsync(query))
+            await using (var reader = await databaseConnection.GetReaderAsync(query))
             {
                 while (await reader.ReadAsync())
                 {
