@@ -198,8 +198,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND {String.Join(" AND ", whereClause)}
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            var result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            Template result;
+            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            {
+                result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            }
 
             // Check login requirement.
             if (!result.Type.InList(TemplateTypes.Html, TemplateTypes.Query) || !result.LoginRequired)
