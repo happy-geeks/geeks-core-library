@@ -98,6 +98,53 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(Components.Account.Models.Constants.AuthenticationTokensTableName, "idx_selector", IndexTypes.Unique, new List<string> { "selector", "entity_type" })
                 }
             },
+            
+            // wiser_entity
+            new WiserTableDefinitionModel()
+            {
+                Name = WiserTableNames.WiserEntity,
+                LastUpdate = new DateTime(2022, 6, 17),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("customer_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("name", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
+                    new("module_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("accepted_childtypes", MySqlDbType.VarChar, 1000, notNull: true, defaultValue: ""),
+                    new("icon", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
+                    new("icon_add", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
+                    new("show_in_tree_view", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("query_after_insert", MySqlDbType.MediumText),
+                    new("query_after_update", MySqlDbType.MediumText),
+                    new("query_before_update", MySqlDbType.MediumText),
+                    new("query_before_delete", MySqlDbType.MediumText),
+                    new("color", MySqlDbType.Enum, notNull: true, defaultValue: "blue", enumValues: new List<string> {"blue", "orange", "yellow", "green", "red"}),
+                    new("show_in_search", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("show_overview_tab", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("save_title_as_seo", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("api_after_insert", MySqlDbType.Int32),
+                    new("api_after_update", MySqlDbType.Int32),
+                    new("api_before_update", MySqlDbType.Int32),
+                    new("api_before_delete", MySqlDbType.Int32),
+                    new("show_title_field", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("friendly_name", MySqlDbType.VarChar, 255),
+                    new("save_history", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
+                    new("default_ordering", MySqlDbType.Enum, notNull: true, defaultValue: "link_ordering", enumValues: new List<string> {"link_ordering", "item_title"}),
+                    new("template_query", MySqlDbType.MediumText),
+                    new("template_html", MySqlDbType.MediumText),
+                    new("enable_multiple_environments", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("icon_expanded", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
+                    new("use_dedicated_table", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("dedicated_table_prefix", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
+                    new("delete_action", MySqlDbType.Enum, notNull: true, defaultValue: "archive", enumValues: new List<string> {"archive", "permanent", "hide", "disallow"})
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserEntity, "name_module_id", IndexTypes.Unique, new List<string> {"name", "module_id"}),
+                    new(WiserTableNames.WiserEntity, "name", IndexTypes.Normal, new List<string> {"name", "show_in_tree_view"}),
+                    new(WiserTableNames.WiserEntity, "module_id", IndexTypes.Normal, new List<string> {"module_id"})
+                }
+            },
 
             // wiser_entityproperty
             new WiserTableDefinitionModel
