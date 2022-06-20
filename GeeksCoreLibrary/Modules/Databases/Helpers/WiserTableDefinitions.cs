@@ -463,6 +463,52 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 {
                     new(WiserTableNames.WiserLink, "idx_link", IndexTypes.Unique, new List<string> { "type", "destination_entity_type", "connected_entity_type" })
                 }
+            },
+
+            // wiser_commit
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommit,
+                LastUpdate = new DateTime(2022, 6, 20),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("description", MySqlDbType.VarChar,500, notNull: true, defaultValue: null),
+                    new("asana_id", MySqlDbType.VarChar, 255, notNull: false, defaultValue: null),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+                    new("changed_by", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
+                    new("completed", MySqlDbType.Int16, 1, notNull:true, defaultValue: "0"),
+               }
+            },
+
+            //wiser_commit_template
+            new WiserTableDefinitionModel 
+            {
+                Name = WiserTableNames.WiserCommitTemplate,
+                LastUpdate = new DateTime(2022, 6, 20),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("template_id", MySqlDbType.Int32, notNull: true, defaultValue: null),
+                    new("version", MySqlDbType.Int32, notNull: true, defaultValue: null),
+                    new("commit_id", MySqlDbType.Int32, notNull: true, defaultValue: null),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+                }
+            },
+
+            //wiser_commit_template
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommitDynamicContent,
+                LastUpdate = new DateTime(2022, 6, 20),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("dynamic_content_id", MySqlDbType.Int32, notNull: true, defaultValue: null),
+                    new("version", MySqlDbType.Int32, notNull: true, defaultValue: null),
+                    new("commit_id", MySqlDbType.Int32, notNull: true, defaultValue: null),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+                }
             }
         };
     }

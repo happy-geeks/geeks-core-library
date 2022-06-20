@@ -111,6 +111,18 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserTableChanges = "wiser_table_changes";
         /// <summary>
+        /// This table is used to store commits from the commit module.
+        /// </summary>
+        public const string WiserCommit = "wiser_commit";
+        /// <summary>
+        /// This table is used to store the link between templates and commits.
+        /// </summary>
+        public const string WiserCommitTemplate = "wiser_commit_template";
+        /// <summary>
+        /// This table is used to store the link between dynamic content and commits.
+        /// </summary>
+        public const string WiserCommitDynamicContent = "wiser_commit_dynamic_content";
+        /// <summary>
         /// This table is used to store templates from the templates module.
         /// </summary>
         public const string WiserTemplate = "wiser_template";
