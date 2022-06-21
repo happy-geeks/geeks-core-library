@@ -28,13 +28,13 @@ namespace GeeksCoreLibrary.Modules.Branches.Models
         /// This means that only items that were created after this date will be copied.
         /// Only applicable for certain modes.
         /// </summary>
-        public DateTime Start { get; set; }
+        public DateTime? Start { get; set; }
 
         /// <summary>
         /// Gets or sets the end date for the items to copy.
         /// This means that only items that were created before this date will be copied.
         /// Only applicable for certain modes.
         /// </summary>
-        public DateTime End { get; set; }
+        public DateTime? End { get; set; }
     }
 }

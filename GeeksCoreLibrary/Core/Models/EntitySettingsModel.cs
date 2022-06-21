@@ -10,6 +10,11 @@ namespace GeeksCoreLibrary.Core.Models
         public string EntityType { get; set; }
 
         /// <summary>
+        /// Gets or sets the display name.
+        /// </summary>
+        public string DisplayName { get; set; }
+
+        /// <summary>
         /// Gets or sets the default module ID that items of this type will be used in.
         /// </summary>
         public int ModuleId { get; set; }

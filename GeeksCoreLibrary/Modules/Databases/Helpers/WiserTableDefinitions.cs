@@ -475,7 +475,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("name", MySqlDbType.VarChar, 255, notNull: true),
                     new("branch_id", MySqlDbType.Int32),
-                    new("action", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "create", "synchronise", "delete" }),
+                    new("action", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "create", "merge", "delete" }),
                     new("data", MySqlDbType.MediumText),
                     new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
                     new("added_by", MySqlDbType.VarChar, 255, notNull: true),
