@@ -164,6 +164,11 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
         /// <inheritdoc />
         public async Task<bool> SendEmailDirectlyAsync(SingleCommunicationModel communication, int timeout = 120_000)
         {
+            return await SendEmailDirectlyAsync(communication, gclSettings.SmtpSettings, timeout);
+        }
+        
+        public async Task<bool> SendEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, int timeout = 120_000)
+        {
             var sender = new MailboxAddress(communication.SenderName, communication.Sender);
             var receivers = new List<MailboxAddress>(communication.Receivers.Count());
             receivers.AddRange(communication.Receivers.Select(receiver => new MailboxAddress(receiver.DisplayName, receiver.Address)));
@@ -212,11 +217,11 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             // Send the message.
             try
             {
-                var secureSocketOptions = gclSettings.SmtpSettings.UseSsl ? MailKit.Security.SecureSocketOptions.StartTls : MailKit.Security.SecureSocketOptions.StartTlsWhenAvailable;
+                var secureSocketOptions = smtpSettings.UseSsl ? MailKit.Security.SecureSocketOptions.StartTls : MailKit.Security.SecureSocketOptions.StartTlsWhenAvailable;
 
                 using var client = new SmtpClient();
-                await client.ConnectAsync(gclSettings.SmtpSettings.Host, gclSettings.SmtpSettings.Port, secureSocketOptions);
-                await client.AuthenticateAsync(gclSettings.SmtpSettings.Username, gclSettings.SmtpSettings.Password);
+                await client.ConnectAsync(smtpSettings.Host, smtpSettings.Port, secureSocketOptions);
+                await client.AuthenticateAsync(smtpSettings.Username, smtpSettings.Password);
 
                 client.Timeout = timeout;
                 await client.SendAsync(message);
