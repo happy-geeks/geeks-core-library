@@ -14,6 +14,11 @@ namespace GeeksCoreLibrary.Modules.Branches.Models
         public int Id { get; set; }
 
         /// <summary>
+        /// Gets or sets the new database for the branch that is being merged to the main/original branch.
+        /// </summary>
+        public string DatabaseName { get; set; }
+
+        /// <summary>
         /// Gets or sets the date and time that the branch should be merged.
         /// </summary>
         public DateTime? StartOn { get; set; } = DateTime.Now;
