@@ -133,6 +133,12 @@ namespace GeeksCoreLibrary.Components.Filter.Models
 
         public bool UseAggregationTable { get; set; } = false;
 
+        public string GroupTemplate { get; set; } = "";
+
+        public string ItemTemplate { get; set; } = "";
+
+        public string SelectedItemTemplate { get; set; } = "";
+
         /// <summary>
         ///  Adds an item to the list of items, or parses the value to a decimal to see if it's a valid value for the min or max value for a slider.
         /// </summary>
