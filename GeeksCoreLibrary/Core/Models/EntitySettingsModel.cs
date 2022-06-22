@@ -1,13 +1,24 @@
 ﻿using System.Collections.Generic;
+using GeeksCoreLibrary.Core.Enums;
 
 namespace GeeksCoreLibrary.Core.Models
 {
     public class EntitySettingsModel
     {
         /// <summary>
+        /// Gets or sets the ID.
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
         /// Gets or sets the name of the entity type.
         /// </summary>
         public string EntityType { get; set; }
+
+        /// <summary>
+        /// Gets or sets the display name.
+        /// </summary>
+        public string DisplayName { get; set; }
 
         /// <summary>
         /// Gets or sets the default module ID that items of this type will be used in.
@@ -40,6 +51,16 @@ namespace GeeksCoreLibrary.Core.Models
         public string QueryAfterUpdate { get; set; }
 
         /// <summary>
+        /// Gets or sets the query to be executed before an item of this type is being updated.
+        /// </summary>
+        public string QueryBeforeUpdate { get; set; }
+
+        /// <summary>
+        /// Gets or sets the query to be executed before an item of this type is being deleted or archived.
+        /// </summary>
+        public string QueryBeforeDelete { get; set; }
+
+        /// <summary>
         /// Gets or sets the prefix for the dedicated tables for items of this type.
         /// If this contains a value, then items of this type will be saved in [prefix]_wiser_item and [prefix]_wiser_itemdetail.
         /// </summary>
@@ -70,5 +91,69 @@ namespace GeeksCoreLibrary.Core.Models
         /// Gets or sets whether to show the title field on items of this type in Wiser.
         /// </summary>
         public bool ShowTitleField { get; set; }
+
+        /// <summary>
+        /// Gets or sets the icon that should be used for items of this entity type in the tree view of Wiser, when the item is collapsed.
+        /// </summary>
+        public string Icon { get; set; }
+
+        /// <summary>
+        /// Gets or sets the icon that should be shown next to the option to create a new item of this type, in the tree view of Wiser.
+        /// </summary>
+        public string IconAdd { get; set; }
+
+        /// <summary>
+        /// Gets or sets the icon that should be used for items of this entity type in the tree view of Wiser, when the item is expanded.
+        /// </summary>
+        public string IconExpanded { get; set; }
+
+        /// <summary>
+        /// Gets or sets the color that items of this type should have in Wiser. At the moment, this is only used in the search module in Wiser. 
+        /// </summary>
+        public string Color { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether items of this type should be able to be searched for in the search module in Wiser.
+        /// </summary>
+        public bool ShowInSearch { get; set; }
+
+        /// <summary>
+        /// Gets or sets the API to be executed after a new item of this type has been created.
+        /// This should be an ID for the table wiser_api_connection.
+        /// </summary>
+        public int? ApiAfterInsert { get; set; }
+
+        /// <summary>
+        /// Gets or sets the API to be executed after an item of this type has been updated.
+        /// This should be an ID for the table wiser_api_connection.
+        /// </summary>
+        public int? ApiAfterUpdate { get; set; }
+
+        /// <summary>
+        /// Gets or sets the API to be executed before an item of this type is being updated.
+        /// This should be an ID for the table wiser_api_connection.
+        /// </summary>
+        public int? ApiBeforeUpdate { get; set; }
+
+        /// <summary>
+        /// Gets or sets the API to be executed before an item of this type is being deleted or archived.
+        /// This should be an ID for the table wiser_api_connection.
+        /// </summary>
+        public int? ApiBeforeDelete { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether to save any changes to items of this type to wiser_history.
+        /// </summary>
+        public bool SaveHistory { get; set; }
+
+        /// <summary>
+        /// Gets or sets the default ordering of items of this type in the tree view of Wiser.
+        /// </summary>
+        public EntityOrderingTypes DefaultOrdering { get; set; }
+
+        /// <summary>
+        /// Gets or sets what should be done when items of this type are being deleted.
+        /// </summary>
+        public EntityDeletionTypes DeleteAction { get; set; }
     }
 }
