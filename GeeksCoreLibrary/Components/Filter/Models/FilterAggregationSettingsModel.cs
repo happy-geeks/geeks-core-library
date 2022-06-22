@@ -4,42 +4,34 @@ namespace GeeksCoreLibrary.Components.Filter.Models
 {
     internal class FilterAggregationSettingsModel
     {
-        [DefaultValue(@"{summary}<br />
-                        {filters}")]
+        [DefaultValue(Constants.TemplateFull)]
         internal string TemplateFull { get; set; }
 
-        [DefaultValue(@"<ul>
-                            <b>{name}</b><br />
-                            {items:Raw}
-                        </ul>")]
+        [DefaultValue(Constants.TemplateFilterGroup)]
         internal string TemplateFilterGroup { get; set; }
 
-        [DefaultValue(@"<li><a href=""{url}"">{filtername} ({count})</a></li>")]
+        [DefaultValue(Constants.TemplateSingleSelectItem)]
         internal string TemplateSingleSelectItem { get; set; }
 
-        [DefaultValue(@"<li><a href=""{url}"">{filtername} ({count})</a></li>")]
+        [DefaultValue(Constants.TemplateSingleSelectItemSelected)]
         internal string TemplateSingleSelectItemSelected { get; set; }
 
-        [DefaultValue(@"<input type=""checkbox"" data-url=""{url}""> {filtername} ({count})<br />")]
+        [DefaultValue(Constants.TemplateMultiSelectItem)]
         internal string TemplateMultiSelectItem { get; set; }
         
-        [DefaultValue(@"<input checked=""checked"" type=""checkbox"" data-url=""{url}""> {filtername} ({count})<br />")]
+        [DefaultValue(Constants.TemplateMultiSelectItemSelected)]
         internal string TemplateMultiSelectItemSelected { get; set; }
         
-        [DefaultValue(@"<div id=""slider"" data-name=""{filtergroup}"" data-min=""{minValue}"" data-max=""{maxValue}"" data-currentmin=""{selectedMin}"" data-currentmax=""{selectedMax}""></div>
-                        <input type=""text"" id=""minvalue"" value=""{selectedMin}"" disabled=""disabled"" />
-                        <input type=""text"" id=""maxvalue"" value=""{selectedMax}"" disabled=""disabled"" />")]
+        [DefaultValue(Constants.TemplateSlider)]
         internal string TemplateSlider { get; set; }
 
-        [DefaultValue(@"<u>Geselecteerde filters:</u> <a href=""{url}"">Wis alle</a><br /><br />
-                        {items:Raw}")]
+        [DefaultValue(Constants.TemplateSummary)]
         internal string TemplateSummary { get; set; }
 
-        [DefaultValue(@"<>{groupname}</b> (<a href=""{url}"">Wis alle van deze groep</a>)<br />
-                        {selectedvalues:Raw}")]
+        [DefaultValue(Constants.TemplateSummaryFilterGroup)]
         internal string TemplateSummaryFilterGroup { get; set; }
 
-        [DefaultValue(@"{name} (<a href=""{url}"">Wis</a>)<br />")]
+        [DefaultValue(Constants.TemplateSummaryFilterGroupItem)]
         internal string TemplateSummaryFilterGroupItem { get; set; }
 
         [DefaultValue(@"SELECT f.*, COUNT(f.product_id) AS count
