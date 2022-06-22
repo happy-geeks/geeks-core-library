@@ -2296,6 +2296,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             databaseConnection.AddParameter("entityType", entityType);
             var query = $@"SELECT 
                                 entity.*,
+	                            IF(entity.friendly_name IS NULL OR entity.friendly_name = '', entity.name, entity.friendly_name) AS displayName,
 
                                 property.id AS property_id,
                                 IF(property.property_name IS NULL OR property.property_name = '', property.display_name, property.property_name) AS property_name, 
@@ -2336,7 +2337,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                         AcceptedChildTypes = (dataRow.Field<string>("accepted_childtypes") ?? "").Split(',').ToList(),
                         ShowInTreeView = !dataRow.IsNull("show_in_tree_view") && Convert.ToBoolean(dataRow["show_in_tree_view"]),
                         ShowOverviewTab = !dataRow.IsNull("show_overview_tab") && Convert.ToBoolean(dataRow["show_overview_tab"]),
-                        ShowTitleField = !dataRow.IsNull("show_title_field") && Convert.ToBoolean(dataRow["show_title_field"])
+                        ShowTitleField = !dataRow.IsNull("show_title_field") && Convert.ToBoolean(dataRow["show_title_field"]),
+                        DisplayName = dataRow.Field<string>("displayName")
                     });
                 }
 

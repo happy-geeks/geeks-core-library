@@ -510,6 +510,34 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 {
                     new(WiserTableNames.WiserLink, "idx_link", IndexTypes.Unique, new List<string> { "type", "destination_entity_type", "connected_entity_type" })
                 }
+            },
+            
+            // wiser_branches_queue
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserBranchesQueue,
+                LastUpdate = new DateTime(2022, 6, 17),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("name", MySqlDbType.VarChar, 255, notNull: true),
+                    new("branch_id", MySqlDbType.Int32),
+                    new("action", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "create", "merge", "delete" }),
+                    new("data", MySqlDbType.MediumText),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("added_by", MySqlDbType.VarChar, 255, notNull: true),
+                    new("user_id", MySqlDbType.UInt64, notNull: true),
+                    new("start_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("started_on", MySqlDbType.DateTime),
+                    new("finished_on", MySqlDbType.DateTime),
+                    new("success", MySqlDbType.Int16),
+                    new("errors", MySqlDbType.MediumText)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserBranchesQueue, "idx_branch_id", IndexTypes.Normal, new List<string> { "branch_id" }),
+                    new(WiserTableNames.WiserBranchesQueue, "idx_started_on", IndexTypes.Normal, new List<string> { "started_on" })
+                }
             }
         };
     }
