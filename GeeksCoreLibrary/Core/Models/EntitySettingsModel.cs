@@ -155,5 +155,18 @@ namespace GeeksCoreLibrary.Core.Models
         /// Gets or sets what should be done when items of this type are being deleted.
         /// </summary>
         public EntityDeletionTypes DeleteAction { get; set; }
+
+        /// <summary>
+        /// Gets or sets the query to use for items that are added as template blocks.
+        /// You can use '{itemId}' or '?itemId' to use the ID of the item in the query.
+        /// </summary>
+        public string TemplateQuery { get; set; }
+
+        /// <summary>
+        /// Gets or sets the HTML template to use for items that are added as template blocks.
+        /// You can use any values that the query from <see cref="TemplateQuery"/> returns in here as replacements.
+        /// So if the query returns a column "title", you can place that value in the HTML by adding "{title}" to the template.
+        /// </summary>
+        public string TemplateHtml { get; set; }
     }
 }
