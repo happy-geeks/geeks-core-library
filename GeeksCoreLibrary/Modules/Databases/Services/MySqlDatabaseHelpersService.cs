@@ -218,9 +218,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 databaseName = databaseConnection.ConnectedDatabase;
             }
 
-            databaseConnection.AddParameter("databaseName", databaseName);
+            var databaseClause = "";
+            if (!String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseClause = "AND TABLE_SCHEMA = ?databaseName";
+                databaseConnection.AddParameter("databaseName", databaseName);
+            }
+
             databaseConnection.AddParameter("tableName", tableName);
-            var dataTable = await databaseConnection.GetAsync($"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_SCHEMA = ?databaseName AND TABLE_NAME = ?tableName");
+            var dataTable = await databaseConnection.GetAsync($"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = ?tableName {databaseClause}");
             return dataTable.Rows.Count > 0;
         }
         
