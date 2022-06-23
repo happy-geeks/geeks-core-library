@@ -162,12 +162,12 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
         }
 
         /// <inheritdoc />
-        public async Task<bool> SendEmailDirectlyAsync(SingleCommunicationModel communication, int timeout = 120_000)
+        public async Task SendEmailDirectlyAsync(SingleCommunicationModel communication, int timeout = 120_000)
         {
-            return await SendEmailDirectlyAsync(communication, gclSettings.SmtpSettings, timeout);
+            await SendEmailDirectlyAsync(communication, gclSettings.SmtpSettings, timeout);
         }
         
-        public async Task<bool> SendEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, int timeout = 120_000)
+        public async Task SendEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, int timeout = 120_000)
         {
             var sender = new MailboxAddress(communication.SenderName, communication.Sender);
             var receivers = new List<MailboxAddress>(communication.Receivers.Count());
@@ -201,6 +201,11 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             // Build the body of the message.
             var builder = new BodyBuilder();
 
+            if (!String.IsNullOrWhiteSpace(communication.UploadedFileName) && communication.UploadedFile != null)
+            {
+                builder.Attachments.Add(communication.UploadedFileName, communication.UploadedFile);
+            }
+
             if (attachments != null && attachments.Any())
             {
                 foreach (var (fileName, fileBytes) in attachments)
@@ -215,30 +220,20 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             message.Body = builder.ToMessageBody();
 
             // Send the message.
-            try
-            {
-                var secureSocketOptions = smtpSettings.UseSsl ? MailKit.Security.SecureSocketOptions.StartTls : MailKit.Security.SecureSocketOptions.StartTlsWhenAvailable;
+            var secureSocketOptions = smtpSettings.UseSsl ? MailKit.Security.SecureSocketOptions.StartTls : MailKit.Security.SecureSocketOptions.StartTlsWhenAvailable;
 
-                using var client = new SmtpClient();
-                await client.ConnectAsync(smtpSettings.Host, smtpSettings.Port, secureSocketOptions);
-                await client.AuthenticateAsync(smtpSettings.Username, smtpSettings.Password);
+            using var client = new SmtpClient();
+            await client.ConnectAsync(smtpSettings.Host, smtpSettings.Port, secureSocketOptions);
+            await client.AuthenticateAsync(smtpSettings.Username, smtpSettings.Password);
 
-                client.Timeout = timeout;
-                await client.SendAsync(message);
-                await client.DisconnectAsync(true);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, $"Error sending email: {ex}");
-                return false;
-            }
+            client.Timeout = timeout;
+            var result = await client.SendAsync(message);
+            await client.DisconnectAsync(true);
         }
 
         private async Task<List<(string FileName, byte[] FileBytes)>> GetAttachmentsAsync(SingleCommunicationModel communication)
         {
-            var totalAttachments = communication.AttachmentUrls?.Count ?? 0 + communication.WiserItemFiles?.Count ?? 0;
+            var totalAttachments = (communication.AttachmentUrls?.Count ?? 0) + (communication.WiserItemFiles?.Count ?? 0);
 
             if (totalAttachments == 0)
             {

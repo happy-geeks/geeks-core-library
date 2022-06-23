@@ -59,8 +59,8 @@ namespace GeeksCoreLibrary.Modules.Communication.Interfaces
         /// </summary>
         /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
         /// <param name="timeout">The timeout in milliseconds before it's considered to take too long. The default timeout equals to 2 minutes. This is the same default timeout that MailKit uses.</param>
-        /// <returns><see langword="true"/> if the email was sent successfully; otherwise, <see langword="false"/>.</returns>
-        Task<bool> SendEmailDirectlyAsync(SingleCommunicationModel communication, int timeout = 120_000);
+        /// <returns></returns>
+        Task SendEmailDirectlyAsync(SingleCommunicationModel communication, int timeout = 120_000);
         
         /// <summary>
         /// Uses an SMTP server to send an email directly.
@@ -68,7 +68,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Interfaces
         /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
         /// <param name="smtpSettings">The SMTP settings to use.</param>
         /// <param name="timeout">The timeout in milliseconds before it's considered to take too long. The default timeout equals to 2 minutes. This is the same default timeout that MailKit uses.</param>
-        /// <returns><see langword="true"/> if the email was sent successfully; otherwise, <see langword="false"/>.</returns>
-        Task<bool> SendEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, int timeout = 120_000);
+        /// <returns></returns>
+        Task SendEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, int timeout = 120_000);
     }
 }
