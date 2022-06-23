@@ -537,7 +537,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                 urlregex.`value` AS urlregex,
                                 IFNULL(NULLIF(grouptemplate.`value`,''),grouptemplate.`long_value`) AS grouptemplate,
                                 IFNULL(NULLIF(itemtemplate.`value`,''),itemtemplate.`long_value`) AS itemtemplate,
-                                IFNULL(NULLIF(selecteditemtemplate.`value`,''),selecteditemtemplate.`long_value`) AS selecteditemtemplate
+                                IFNULL(NULLIF(selecteditemtemplate.`value`,''),selecteditemtemplate.`long_value`) AS selecteditemtemplate,
                                 {{selectPart}}
                             FROM {WiserTableNames.WiserItem} filters
                             {{joinPart}}
