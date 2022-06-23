@@ -41,9 +41,12 @@
         {
             @:<script src="@Html.Raw(Model.Javascript.PageStandardJavascriptFileName)"></script>
         }
-        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageInlineHeadJavascript))
+        if (Model?.Javascript?.PageInlineHeadJavascript != null)
         {
-            @:<script>@Html.Raw(Model.Javascript.PageInlineHeadJavascript)</script>
+            foreach (var javascript in Model.Javascript.PageInlineHeadJavascript)
+            {
+                @:<script>@Html.Raw(javascript)</script>
+            }
         }
     }
 }
