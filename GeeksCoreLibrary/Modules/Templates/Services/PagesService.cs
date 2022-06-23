@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -314,8 +315,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                 if (inlineHeadJavascriptTemplates.Any())
                 {
-                    viewModel.Javascript.PageInlineHeadJavascript ??= "";
-                    viewModel.Javascript.PageInlineHeadJavascript += String.Join(Environment.NewLine, inlineHeadJavascriptTemplates);
+                    viewModel.Javascript.PageInlineHeadJavascript ??= new List<string>();
+                    viewModel.Javascript.PageInlineHeadJavascript.AddRange(inlineHeadJavascriptTemplates);
                 }
 
                 if (asyncFooterJavascriptTemplates.Any())
@@ -610,8 +611,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Defer = true
             });
 
-            viewModel.Javascript.PageInlineHeadJavascript ??= "";
-            viewModel.Javascript.PageInlineHeadJavascript += $@"function gclExecuteReCaptcha(action) {{
+            viewModel.Javascript.PageInlineHeadJavascript ??= new List<string>();
+            viewModel.Javascript.PageInlineHeadJavascript.Add($@"function gclExecuteReCaptcha(action) {{
 	return new Promise((resolve, reject) => {{
 		if (!grecaptcha || !grecaptcha.ready) {{
 			reject(""grecaptcha not defined!"");
@@ -632,7 +633,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 	}});
 }}
 
-gclExecuteReCaptcha(""Page_load"")";
+gclExecuteReCaptcha(""Page_load"")");
         }
 
         /// <summary>
@@ -731,8 +732,31 @@ gclExecuteReCaptcha(""Page_load"")";
         /// <param name="viewModel">The <see cref="PageViewModel"/> that will be updated.</param>
         private async Task AddPluginScriptsAsync(PageViewModel viewModel)
         {
-            var wiserSearchScript = await objectsService.FindSystemObjectByDomainNameAsync("WiserSearchScript");
+            // TrackJS must be added to the head, otherwise it might start tracking errors too late.
+            var trackJsEnabled = (await objectsService.FindSystemObjectByDomainNameAsync("TrackJSEnable", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            if (trackJsEnabled)
+            {
+                var trackJsToken = await objectsService.FindSystemObjectByDomainNameAsync("TrackJSToken");
+                if (!String.IsNullOrWhiteSpace(trackJsToken))
+                {
+                    viewModel.Javascript.ExternalJavascript.Add(new JavaScriptResource
+                    {
+                        Uri = new Uri("https://cdn.trackjs.com/agent/v3/latest/t.js")
+                    });
 
+                    if (!Decimal.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("TrackJSRequestsPercentage"), out var requestsPercentage) || requestsPercentage <= 0)
+                    {
+                        requestsPercentage = 0;
+                    }
+
+                    var enabledPart = requestsPercentage <= 0 ? "true" : $"Math.random() <= {(requestsPercentage / 100).ToString("F2", CultureInfo.InvariantCulture)}";
+
+                    viewModel.Javascript.PageInlineHeadJavascript ??= new List<string>();
+                    viewModel.Javascript.PageInlineHeadJavascript.Add($"window.TrackJS && TrackJS.install({{ token: \"{trackJsToken}\", enabled: {enabledPart} }});");
+                }
+            }
+
+            var wiserSearchScript = await objectsService.FindSystemObjectByDomainNameAsync("WiserSearchScript");
             if (!String.IsNullOrWhiteSpace(wiserSearchScript))
             {
                 if (wiserSearchScript.StartsWith("<script", StringComparison.OrdinalIgnoreCase))
