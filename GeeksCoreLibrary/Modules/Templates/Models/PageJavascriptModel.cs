@@ -20,9 +20,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         public string PageStandardJavascriptFileName { get; set; }
 
         /// <summary>
-        /// Gets or sets the javascript for the current page that should be loaded in the header as inline script.
+        /// Gets or sets the JavaScript scripts for the current page that should be loaded in the header as inline scripts.
         /// </summary>
-        public string PageInlineHeadJavascript { get; set; }
+        public List<string> PageInlineHeadJavascript { get; set; }
 
         /// <summary>
         /// Gets or sets the file name of the general javascript from Wiser that needs to be loaded on the bottom of the page.
