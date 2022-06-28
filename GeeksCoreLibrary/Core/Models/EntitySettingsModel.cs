@@ -154,7 +154,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// Gets or sets what should be done when items of this type are being deleted.
         /// </summary>
-        public EntityDeletionTypes DeleteAction { get; set; }
+        public EntityDeletionTypes DeleteAction { get; set; } = EntityDeletionTypes.Archive;
 
         /// <summary>
         /// Gets or sets the query to use for items that are added as template blocks.
