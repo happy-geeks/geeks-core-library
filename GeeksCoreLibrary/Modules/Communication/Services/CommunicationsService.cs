@@ -6,7 +6,9 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using CM.Text;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -19,6 +21,8 @@ using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using Twilio;
+using Twilio.Rest.Api.V2010.Account;
 
 namespace GeeksCoreLibrary.Modules.Communication.Services
 {
@@ -262,8 +266,9 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
         /// <param name="timeout">The timeout in milliseconds before it's considered to take too long. The default timeout equals to 2 minutes. This is the same default timeout that MailKit uses.</param>
         private async Task SendSmtPeterEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, List<(string FileName, byte[] FileBytes)> attachments, int timeout)
         {
-            // Recipients contains the "To" emails and the "BCC" emails.
+            // Recipients contains the "To" emails, "CC" emails and the "BCC" emails.
             var recipients = new List<string>(communication.Receivers.Select(x => x.Address));
+            recipients.AddRange(communication.Cc.ToList());
             recipients.AddRange(communication.Bcc.ToList());
             
             var requestBody = new SmtPeterRequestModel()
@@ -350,6 +355,117 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             }
 
             return attachments;
+        }
+
+        /// <inheritdoc />
+        public async Task SendSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings)
+        {
+            foreach (var receiver in communication.Receivers)
+            {
+                switch (smsSettings.Provider)
+                {
+                    case SmsServiceProviders.Twilio:
+                        await SendTwilioSmsDirectlyAsync(communication, smsSettings, receiver.Address);
+                        break;
+                    case SmsServiceProviders.Cm:
+                        await SendCmSmsDirectlyAsync(communication, smsSettings, receiver.Address);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(smsSettings.Provider), smsSettings.Provider.ToString());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Send a text message using Twilio.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
+        /// <param name="smsSettings">The sms settings to use.</param>
+        /// <param name="receiverPhoneNumber">The phone number to send the text message to.</param>
+        private async Task SendTwilioSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
+        {
+            TwilioClient.Init(smsSettings.ProviderId, smsSettings.AuthenticationToken);
+
+            if (receiverPhoneNumber.StartsWith("00"))
+            {
+                // Phone number looks something like "0031612345678".
+                receiverPhoneNumber = receiverPhoneNumber.Substring(2);
+            }
+            else if (!receiverPhoneNumber.StartsWith("+"))
+            {
+                throw new ArgumentException("Phone number is missing the country code.");
+            }
+            
+            // Now "sanitize" the phone number by removing all whitespace characters and hyphens.
+            receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+            // The regex will remove the + symbol as well, so it needs to be put back.
+            receiverPhoneNumber = receiverPhoneNumber.Insert(0, "+");
+            
+            var response = await MessageResource.CreateAsync(
+                body: communication.Content,
+                from: communication.Sender,
+                to: receiverPhoneNumber);
+            
+            var successfulStatuses = new[]
+            {
+                MessageResource.StatusEnum.Accepted,
+                MessageResource.StatusEnum.Sent,
+                MessageResource.StatusEnum.Queued
+            };
+
+            if (successfulStatuses.Contains(response.Status))
+            {
+                return;
+            }
+
+            // If request was not success throw the error message as an exception.
+            throw new Exception(response.ErrorMessage);
+        }
+
+        /// <summary>
+        /// Send a text message using CM.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
+        /// <param name="smsSettings">The text message settings to use.</param>
+        /// <param name="receiverPhoneNumber">The phone number to send the text message to.</param>
+        private async Task SendCmSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
+        {
+            var apiKey = Guid.Parse(smsSettings.ProviderId);
+            
+            if (receiverPhoneNumber.StartsWith("+"))
+            {
+                // Phone number looks something like "+31612345678".
+                receiverPhoneNumber = receiverPhoneNumber.Substring(1).Insert(0, "00");
+            }
+            else if (!receiverPhoneNumber.StartsWith("00"))
+            {
+                throw new ArgumentException("Phone number is missing the country code.");
+            }
+
+            // Now "sanitize" the phone number by removing all non-digit characters.
+            receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+
+            var cmConnection = new TextClient(apiKey);
+            
+            var senderName = communication.SenderName;
+            if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+            {
+                senderName = senderName.Substring(0, 17);
+            }
+            else if (senderName.Length > 11)
+            {
+                senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+            }
+
+            var response = await cmConnection.SendMessageAsync(communication.Content, senderName, new[] {receiverPhoneNumber}, null);
+
+            if (response.statusCode == TextClientStatusCode.Ok)
+            {
+                return;
+            }
+
+            // If request was not success throw the status message as an exception.
+            throw new Exception(response.statusMessage);
         }
     }
 }

@@ -70,5 +70,13 @@ namespace GeeksCoreLibrary.Modules.Communication.Interfaces
         /// <param name="timeout">The timeout in milliseconds before it's considered to take too long. The default timeout equals to 2 minutes. This is the same default timeout that MailKit uses.</param>
         /// <returns></returns>
         Task SendEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, int timeout = 120_000);
+
+        /// <summary>
+        /// Uses an SMS provider to send an SMS directly.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
+        /// <param name="smsSettings">The sms settings to use.</param>
+        /// <returns></returns>
+        Task SendSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings);
     }
 }
