@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Interfaces;
@@ -10,6 +13,7 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Enums;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
+using GeeksCoreLibrary.Modules.Communication.Models.SmtPeter;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
@@ -167,15 +171,38 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             await SendEmailDirectlyAsync(communication, gclSettings.SmtpSettings, timeout);
         }
         
+        /// <inheritdoc />
         public async Task SendEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, int timeout = 120_000)
+        {
+            // Build attachments list.
+            var attachments = await GetAttachmentsAsync(communication);
+
+            switch (smtpSettings.Provider)
+            {
+                case EmailServiceProviders.Smtp:
+                    await SendSmtpEmailDirectlyAsync(communication, smtpSettings, attachments, timeout);
+                    break;
+                case EmailServiceProviders.SmtPeterRestApi:
+                    await SendSmtPeterEmailDirectlyAsync(communication, smtpSettings, attachments, timeout);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(smtpSettings.Provider), smtpSettings.Provider.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Send the email directly using an SMTP server.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
+        /// <param name="smtpSettings">The SMTP settings to use.</param>
+        /// <param name="attachments">The attachments to send with the email.</param>
+        /// <param name="timeout">The timeout in milliseconds before it's considered to take too long. The default timeout equals to 2 minutes. This is the same default timeout that MailKit uses.</param>
+        private async Task SendSmtpEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, List<(string FileName, byte[] FileBytes)> attachments, int timeout)
         {
             var sender = new MailboxAddress(communication.SenderName, communication.Sender);
             var receivers = new List<MailboxAddress>(communication.Receivers.Count());
             receivers.AddRange(communication.Receivers.Select(receiver => new MailboxAddress(receiver.DisplayName, receiver.Address)));
-
-            // Build attachments list.
-            var attachments = await GetAttachmentsAsync(communication);
-
+            
             var message = new MimeMessage();
 
             message.From.Add(sender);
@@ -200,11 +227,6 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
 
             // Build the body of the message.
             var builder = new BodyBuilder();
-
-            if (!String.IsNullOrWhiteSpace(communication.UploadedFileName) && communication.UploadedFile != null)
-            {
-                builder.Attachments.Add(communication.UploadedFileName, communication.UploadedFile);
-            }
 
             if (attachments != null && attachments.Any())
             {
@@ -231,9 +253,60 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             await client.DisconnectAsync(true);
         }
 
+        /// <summary>
+        /// Send the email directly using the SmtPeter Rest API.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
+        /// <param name="smtpSettings">The SMTP settings to use.</param>
+        /// <param name="attachments">The attachments to send with the email.</param>
+        /// <param name="timeout">The timeout in milliseconds before it's considered to take too long. The default timeout equals to 2 minutes. This is the same default timeout that MailKit uses.</param>
+        private async Task SendSmtPeterEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, List<(string FileName, byte[] FileBytes)> attachments, int timeout)
+        {
+            // Recipients contains the "To" emails and the "BCC" emails.
+            var recipients = new List<string>(communication.Receivers.Select(x => x.Address));
+            recipients.AddRange(communication.Bcc.ToList());
+            
+            var requestBody = new SmtPeterRequestModel()
+            {
+                From = communication.Sender,
+                To = new List<string>(communication.Receivers.Select(x => String.IsNullOrWhiteSpace(x.DisplayName) ? x.Address : $"{x.DisplayName} <{x.Address}>")),
+                Cc = communication.Cc.ToList(),
+                Recipients = recipients,
+                ReplyTo = String.IsNullOrWhiteSpace(communication.ReplyToName) ? communication.ReplyTo : $"{communication.ReplyToName} <{communication.ReplyTo}>", 
+                Subject = communication.Subject,
+                Html = communication.Content
+            };
+
+            if (attachments != null && attachments.Any())
+            {
+                requestBody.Attachments = new List<SmtPeterRquestAttachmentModel>();
+                
+                foreach (var attachment in attachments)
+                {
+                    requestBody.Attachments.Add(new SmtPeterRquestAttachmentModel()
+                    {
+                        Data = Convert.ToBase64String(attachment.FileBytes),
+                        Name = attachment.FileName
+                    });
+                }
+            }
+            
+            using var client = new HttpClient();
+            client.Timeout = TimeSpan.FromMilliseconds(timeout);
+            using var response = await client.PostAsJsonAsync($"https://www.smtpeter.com/v1/send?access_token={smtpSettings.SmtPeterSettings.ApiAccessToken}", requestBody, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+            if (response.IsSuccessStatusCode)
+            {
+                return;
+            }
+            
+            // If request was not success throw the body as an exception.
+            throw new Exception(await response.Content.ReadAsStringAsync());
+        }
+        
         private async Task<List<(string FileName, byte[] FileBytes)>> GetAttachmentsAsync(SingleCommunicationModel communication)
         {
-            var totalAttachments = (communication.AttachmentUrls?.Count ?? 0) + (communication.WiserItemFiles?.Count ?? 0);
+            var totalAttachments = (communication.AttachmentUrls?.Count ?? 0) + (communication.WiserItemFiles?.Count ?? 0 + (!String.IsNullOrWhiteSpace(communication.UploadedFileName) && communication.UploadedFile != null ? 1 : 0));
 
             if (totalAttachments == 0)
             {
@@ -241,6 +314,11 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             }
 
             var attachments = new List<(string FileName, byte[] FileBytes)>(totalAttachments);
+            
+            if (!String.IsNullOrWhiteSpace(communication.UploadedFileName) && communication.UploadedFile != null)
+            {
+                attachments.Add((communication.UploadedFileName, communication.UploadedFile));
+            }
 
             using var webClient = new WebClient();
             if (communication.AttachmentUrls?.Count > 0)

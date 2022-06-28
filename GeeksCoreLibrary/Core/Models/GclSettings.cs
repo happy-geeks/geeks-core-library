@@ -1,6 +1,7 @@
 ﻿using System;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
+using GeeksCoreLibrary.Modules.Communication.Models;
 
 namespace GeeksCoreLibrary.Core.Models
 {
