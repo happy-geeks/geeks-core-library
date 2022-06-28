@@ -10,6 +10,7 @@ using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -23,8 +24,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
     {
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ILogger<MySqlDatabaseConnection> logger;
-        private string connectionStringForReading;
-        private string connectionStringForWriting;
+        private readonly IBranchesService branchesService;
+        private MySqlConnectionStringBuilder connectionStringForReading;
+        private MySqlConnectionStringBuilder connectionStringForWriting;
 
         private MySqlConnection ConnectionForReading { get; set; }
         private MySqlConnection ConnectionForWriting { get; set; }
@@ -36,22 +38,32 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private DbDataReader dataReader;
 
         private IDbTransaction transaction;
-        private Guid instanceId;
+        private readonly Guid instanceId;
 
         private readonly ConcurrentDictionary<string, object> parameters = new();
 
         /// <summary>
         /// Creates a new instance of <see cref="MySqlDatabaseConnection"/>.
         /// </summary>
-        public MySqlDatabaseConnection(IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, ILogger<MySqlDatabaseConnection> logger)
+        public MySqlDatabaseConnection(IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, ILogger<MySqlDatabaseConnection> logger, IBranchesService branchesService)
         {
             this.httpContextAccessor = httpContextAccessor;
             this.logger = logger;
+            this.branchesService = branchesService;
             this.gclSettings = gclSettings.Value;
 
             instanceId = Guid.NewGuid();
-            connectionStringForReading = this.gclSettings.ConnectionString;
-            connectionStringForWriting = this.gclSettings.ConnectionStringForWriting;
+            connectionStringForReading = String.IsNullOrWhiteSpace(this.gclSettings.ConnectionString) ? null : new MySqlConnectionStringBuilder { ConnectionString = this.gclSettings.ConnectionString };
+            connectionStringForWriting = String.IsNullOrWhiteSpace(this.gclSettings.ConnectionStringForWriting) ? null : new MySqlConnectionStringBuilder { ConnectionString = this.gclSettings.ConnectionStringForWriting };
+
+            if (connectionStringForReading != null)
+            {
+                connectionStringForReading.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForReading.Database;
+            }
+            if (connectionStringForWriting != null)
+            {
+                connectionStringForWriting.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForWriting.Database;
+            }
 
             logger.LogTrace($"Created new instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)}");
         }
@@ -85,7 +97,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             try
             {
                 MySqlCommand commandToUse;
-                if (useWritingConnectionIfAvailable && !String.IsNullOrWhiteSpace(connectionStringForWriting))
+                if (useWritingConnectionIfAvailable && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
                 {
                     await EnsureOpenConnectionForWritingAsync();
                     commandToUse = CommandForWriting;
@@ -163,7 +175,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             try
             {
                 MySqlCommand commandToUse;
-                if (useWritingConnectionIfAvailable && !String.IsNullOrWhiteSpace(connectionStringForWriting))
+                if (useWritingConnectionIfAvailable && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
                 {
                     await EnsureOpenConnectionForWritingAsync();
                     commandToUse = CommandForWriting;
@@ -267,7 +279,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             try
             {
                 MySqlCommand commandToUse;
-                if (useWritingConnectionIfAvailable && !String.IsNullOrWhiteSpace(connectionStringForWriting))
+                if (useWritingConnectionIfAvailable && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
                 {
                     await EnsureOpenConnectionForWritingAsync();
                     commandToUse = CommandForWriting;
@@ -340,7 +352,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             // If we're using transactions, make sure to use it on the write connection, if we have one.
             MySqlConnection connectionToUse;
-            if (!String.IsNullOrWhiteSpace(connectionStringForWriting))
+            if (!String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
             {
                 await EnsureOpenConnectionForWritingAsync();
                 connectionToUse = ConnectionForWriting;
@@ -407,7 +419,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public string GetDatabaseNameForCaching(bool writeDatabase = false)
         {
-            var connectionStringBuilder = new DbConnectionStringBuilder { ConnectionString = writeDatabase && !String.IsNullOrWhiteSpace(connectionStringForWriting) ? connectionStringForWriting : connectionStringForReading };
+            var connectionStringBuilder = writeDatabase && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? connectionStringForWriting : connectionStringForReading;
             return $"{connectionStringBuilder["server"]}_{connectionStringBuilder["database"]}";
         }
 
@@ -450,7 +462,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (ConnectionForReading == null)
             {
-                ConnectionForReading = new MySqlConnection { ConnectionString = connectionStringForReading };
+                ConnectionForReading = new MySqlConnection { ConnectionString = connectionStringForReading.ConnectionString };
                 CommandForReading = ConnectionForReading.CreateCommand();
             }
             
@@ -496,7 +508,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <returns></returns>
         public async Task EnsureOpenConnectionForWritingAsync()
         {
-            if (String.IsNullOrWhiteSpace(connectionStringForWriting))
+            if (String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
             {
                 ConnectedDatabaseForWriting = null;
                 return;
@@ -504,7 +516,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             if (ConnectionForWriting == null)
             {
-                ConnectionForWriting = new MySqlConnection { ConnectionString = connectionStringForWriting };
+                ConnectionForWriting = new MySqlConnection { ConnectionString = connectionStringForWriting.ConnectionString };
                 CommandForWriting = ConnectionForWriting.CreateCommand();
             }
 
@@ -545,10 +557,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting)
+        public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting = null)
         {
-            connectionStringForReading = newConnectionStringForReading;
-            connectionStringForWriting = newConnectionStringForReading;
+            connectionStringForReading ??= new MySqlConnectionStringBuilder();
+            connectionStringForWriting ??= new MySqlConnectionStringBuilder();
+            
+            connectionStringForReading.ConnectionString = newConnectionStringForReading;
+            connectionStringForWriting.ConnectionString = String.IsNullOrWhiteSpace(newConnectionStringForWriting) ? newConnectionStringForReading : newConnectionStringForWriting;
             await CleanUpAsync();
         }
 
