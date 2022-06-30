@@ -39,6 +39,16 @@ namespace GeeksCoreLibrary.Modules.Communication.Models
         public int Port { get; set; }
 
         /// <summary>
+        /// Gets or sets the email address of the sender to use if none has been provided with the <see cref="SingleCommunicationModel"/>.
+        /// </summary>
+        public string SenderEmailAddress { get; set; }
+
+        /// <summary>
+        /// Gets or sets the name of the sender to use if none has been provided with the <see cref="SingleCommunicationModel"/>.
+        /// </summary>
+        public string SenderName { get; set; }
+
+        /// <summary>
         /// Gets or sets extra settings for the SmtPeter Rest API.
         /// </summary>
         public SmtPeterSettings SmtPeterSettings { get; set; }

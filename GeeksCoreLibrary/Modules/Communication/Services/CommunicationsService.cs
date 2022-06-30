@@ -203,7 +203,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
         /// <param name="timeout">The timeout in milliseconds before it's considered to take too long. The default timeout equals to 2 minutes. This is the same default timeout that MailKit uses.</param>
         private async Task SendSmtpEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, List<(string FileName, byte[] FileBytes)> attachments, int timeout)
         {
-            var sender = new MailboxAddress(communication.SenderName, communication.Sender);
+            var sender = new MailboxAddress(communication.SenderName ?? smtpSettings.SenderName, communication.Sender ?? smtpSettings.SenderEmailAddress);
             var receivers = new List<MailboxAddress>(communication.Receivers.Count());
             receivers.AddRange(communication.Receivers.Select(receiver => new MailboxAddress(receiver.DisplayName, receiver.Address)));
             
@@ -273,7 +273,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             
             var requestBody = new SmtPeterRequestModel()
             {
-                From = communication.Sender,
+                From = communication.Sender ?? smtpSettings.SenderEmailAddress,
                 To = new List<string>(communication.Receivers.Select(x => String.IsNullOrWhiteSpace(x.DisplayName) ? x.Address : $"{x.DisplayName} <{x.Address}>")),
                 Cc = communication.Cc.ToList(),
                 Recipients = recipients,
@@ -358,6 +358,42 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
         }
 
         /// <inheritdoc />
+        public async Task SendSmsAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null)
+        {
+            var receivers = new List<CommunicationReceiverModel>();
+            var receiverAddresses = receiver.Split(';');
+            foreach (var receiverAddress in receiverAddresses)
+            {
+                var receiverModel = new CommunicationReceiverModel { Address = receiverAddress };
+                receivers.Add(receiverModel);
+            }
+
+            await SendSmsAsync(receivers, body, sender, senderName, sendDate);
+        }
+
+        /// <inheritdoc />
+        public async Task SendSmsAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null)
+        {
+            await SendSmsAsync(new SingleCommunicationModel()
+            {
+                Receivers = receivers,
+                Content = body,
+                Sender = sender,
+                SenderName = senderName,
+                SendDate = sendDate
+            });
+        }
+
+        /// <inheritdoc />
+        public async Task SendSmsAsync(SingleCommunicationModel communication)
+        {
+            communication.Id = 0;
+            communication.Type = CommunicationTypes.Sms;
+            communication.Subject ??= "";
+            await AddOrUpdateSingleCommunicationAsync(communication);
+        }
+
+        /// <inheritdoc />
         public async Task SendSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings)
         {
             foreach (var receiver in communication.Receivers)
@@ -403,7 +439,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             
             var response = await MessageResource.CreateAsync(
                 body: communication.Content,
-                from: communication.Sender,
+                from: communication.Sender ?? smsSettings.SenderPhoneNumber,
                 to: receiverPhoneNumber);
             
             var successfulStatuses = new[]
@@ -447,7 +483,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
 
             var cmConnection = new TextClient(apiKey);
             
-            var senderName = communication.SenderName;
+            var senderName = communication.SenderName ?? smsSettings.SenderName;
             if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
             {
                 senderName = senderName.Substring(0, 17);

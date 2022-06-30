@@ -18,4 +18,14 @@ public class SmsSettings
     /// Gets or sets the authentication token if the provider expects one.
     /// </summary>
     public string AuthenticationToken { get; set; }
+
+    /// <summary>
+    /// Gets or sets the phone number of the sender to use if none has been provided with the <see cref="SingleCommunicationModel"/>.
+    /// </summary>
+    public string SenderPhoneNumber { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the sender to use if none has been provided with the <see cref="SingleCommunicationModel"/>.
+    /// </summary>
+    public string SenderName { get; set; }
 }
