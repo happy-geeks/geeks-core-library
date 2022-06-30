@@ -100,7 +100,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             },
             
             // wiser_entity
-            new WiserTableDefinitionModel()
+            new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserEntity,
                 LastUpdate = new DateTime(2022, 6, 17),
