@@ -2416,6 +2416,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 {
                     settings = new EntitySettingsModel
                     {
+                        Id = id,
                         ModuleId = dataRow.Field<int?>("module_id") ?? 0,
                         EntityType = entityType,
                         QueryAfterInsert = dataRow.Field<string>("query_after_insert"),
