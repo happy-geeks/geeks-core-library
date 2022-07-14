@@ -136,7 +136,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="newConnectionStringForReading">The new connection string to use for reading.</param>
         /// <param name="newConnectionStringForWriting">The new connection string to use for writing.</param>
         /// <returns></returns>
-        Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting);
+        Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting = null);
 
         /// <summary>
         /// Sets the command timeout in seconds for the connection.

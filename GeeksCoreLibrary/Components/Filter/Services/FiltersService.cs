@@ -534,7 +534,10 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                 IFNULL(singleconnecteditem.`value`, '0') AS singleconnecteditem,
                                 IFNULL(minimumitemsrequired.`value`, '0') AS minimumitemsrequired,
                                 IFNULL(useaggregationtable.`value`, '0') AS useaggregationtable,
-                                urlregex.`value` AS urlregex
+                                urlregex.`value` AS urlregex,
+                                IFNULL(NULLIF(grouptemplate.`value`,''),grouptemplate.`long_value`) AS grouptemplate,
+                                IFNULL(NULLIF(itemtemplate.`value`,''),itemtemplate.`long_value`) AS itemtemplate,
+                                IFNULL(NULLIF(selecteditemtemplate.`value`,''),selecteditemtemplate.`long_value`) AS selecteditemtemplate
                                 {{selectPart}}
                             FROM {WiserTableNames.WiserItem} filters
                             {{joinPart}}
@@ -567,6 +570,9 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} minimumitemsrequired ON minimumitemsrequired.item_id=filters.id AND minimumitemsrequired.`key`='minimumitemsrequired' {GetLanguageQueryPart("minimumitemsrequired", languageCode)}
                             LEFT JOIN {WiserTableNames.WiserItemDetail} useaggregationtable ON useaggregationtable.item_id=filters.id AND useaggregationtable.`key`='useaggregationtable' {GetLanguageQueryPart("useaggregationtable", languageCode)}
                             LEFT JOIN {WiserTableNames.WiserItemDetail} urlregex ON urlregex.item_id=filters.id AND urlregex.`key`='urlregex' {GetLanguageQueryPart("urlregex", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} grouptemplate ON grouptemplate.item_id=filters.id AND grouptemplate.`key`='grouptemplate' {GetLanguageQueryPart("grouptemplate", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} itemtemplate ON itemtemplate.item_id=filters.id AND itemtemplate.`key`='itemtemplate' {GetLanguageQueryPart("itemtemplate", languageCode)}
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} selecteditemtemplate ON selecteditemtemplate.item_id=filters.id AND selecteditemtemplate.`key`='selecteditemtemplate' {GetLanguageQueryPart("selecteditemtemplate", languageCode)}
                             WHERE filters.entity_type='filter'
                             ORDER BY filterstoitem.ordering,filterstoparent.ordering";
 
@@ -743,6 +749,21 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 if (dataTable.Columns.Contains("useaggregationtable") && !String.IsNullOrEmpty(row["useaggregationtable"].ToString()))
                 {
                     f.UseAggregationTable = row["useaggregationtable"].ToString() == "1";
+                }
+                
+                if (dataTable.Columns.Contains("grouptemplate") && !String.IsNullOrEmpty(row["grouptemplate"].ToString()))
+                {
+                    f.GroupTemplate = row["grouptemplate"].ToString().Trim();
+                }
+                
+                if (dataTable.Columns.Contains("itemtemplate") && !String.IsNullOrEmpty(row["itemtemplate"].ToString()))
+                {
+                    f.ItemTemplate = row["itemtemplate"].ToString().Trim();
+                }
+                
+                if (dataTable.Columns.Contains("selecteditemtemplate") && !String.IsNullOrEmpty(row["selecteditemtemplate"].ToString()))
+                {
+                    f.SelectedItemTemplate = row["selecteditemtemplate"].ToString().Trim();
                 }
 
                 // Extra properties on filter level for use in templates

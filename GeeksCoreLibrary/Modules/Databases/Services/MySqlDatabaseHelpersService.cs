@@ -218,9 +218,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 databaseName = databaseConnection.ConnectedDatabase;
             }
 
-            databaseConnection.AddParameter("databaseName", databaseName);
+            var databaseClause = "";
+            if (!String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseClause = "AND TABLE_SCHEMA = ?databaseName";
+                databaseConnection.AddParameter("databaseName", databaseName);
+            }
+
             databaseConnection.AddParameter("tableName", tableName);
-            var dataTable = await databaseConnection.GetAsync($"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_SCHEMA = ?databaseName AND TABLE_NAME = ?tableName");
+            var dataTable = await databaseConnection.GetAsync($"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = ?tableName {databaseClause}");
             return dataTable.Rows.Count > 0;
         }
         
@@ -445,6 +451,57 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     await CreateOrUpdateTableAsync($"{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
                     tableDefinition.Indexes.ForEach(index => index.TableName += WiserTableNames.ArchiveSuffix);
                     await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                    tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                }
+                
+                // Update dedicated entity tables.
+                if (WiserTableNames.TablesThatCanHaveEntityPrefix.Contains(tableName))
+                {
+                    var query = $@"SELECT DISTINCT dedicated_table_prefix FROM {WiserTableNames.WiserEntity} WHERE dedicated_table_prefix IS NOT NULL AND dedicated_table_prefix != ''";
+                    var dataTable = await databaseConnection.GetAsync(query);
+                    foreach (DataRow dataRow in dataTable.Rows)
+                    {
+                        var tablePrefix = dataRow.Field<string>("dedicated_table_prefix");
+                        if (!tablePrefix!.EndsWith("_"))
+                        {
+                            tablePrefix += "_";
+                        }
+                        
+                        // Normal tables.
+                        await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}");
+                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                        
+                        // Archive tables.
+                        await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}{WiserTableNames.ArchiveSuffix}");
+                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                    }
+                }
+                
+                // Update dedicated link tables.
+                if (WiserTableNames.TablesThatCanHaveLinkPrefix.Contains(tableName))
+                {
+                    var query = $@"SELECT DISTINCT type FROM {WiserTableNames.WiserLink} WHERE use_dedicated_table = 1";
+                    var dataTable = await databaseConnection.GetAsync(query);
+                    foreach (DataRow dataRow in dataTable.Rows)
+                    {
+                        var tablePrefix = $"{dataRow["type"]}_";
+                        
+                        // Normal tables.
+                        await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}");
+                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                        
+                        // Archive tables.
+                        await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}{WiserTableNames.ArchiveSuffix}");
+                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                    }
                 }
 
                 // Update wiser_table_changes.
