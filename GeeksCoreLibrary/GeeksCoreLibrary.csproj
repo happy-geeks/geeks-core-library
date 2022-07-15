@@ -35,6 +35,7 @@
     <PackageReference Include="AspNetCore.HealthChecks.System" Version="6.0.5" />
     <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="6.0.4" />
     <PackageReference Include="BuckarooSDK" Version="1.4.1" />
+    <PackageReference Include="CM.Text" Version="2.5.0" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="2.16.0" />
     <PackageReference Include="EvoPdf.HtmlToPdf.NetCore.x64" Version="8.0.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.43" />
@@ -62,6 +63,7 @@
     <PackageReference Include="System.Runtime" Version="4.3.1" />
     <PackageReference Include="System.Runtime.Extensions" Version="4.3.1" />
     <PackageReference Include="System.Threading" Version="4.3.0" />
+    <PackageReference Include="Twilio" Version="5.75.3" />
     <PackageReference Include="WebMarkupMin.AspNetCore3" Version="2.11.0" />
   </ItemGroup>
 
