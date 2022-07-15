@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 
 namespace GeeksCoreLibrary.Modules.Branches.Models
 {
@@ -8,12 +9,17 @@ namespace GeeksCoreLibrary.Modules.Branches.Models
     public class MergeConflictModel
     {
         /// <summary>
-        /// Gets or sets the ID of the item that has a conflict.
+        /// Gets or sets the ID of the line in wiser_history in the branch database.
         /// </summary>
         public ulong Id { get; set; }
 
         /// <summary>
-        /// Gets or sets the title of the item.
+        /// Gets or sets the ID of the object that has a conflict.
+        /// </summary>
+        public ulong ObjectId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the title of the item/object.
         /// </summary>
         public string Title { get; set; }
 
@@ -23,9 +29,9 @@ namespace GeeksCoreLibrary.Modules.Branches.Models
         public string Type { get; set; }
 
         /// <summary>
-        /// Gets or sets the display name of the entity type.
+        /// Gets or sets the display name of the type.
         /// </summary>
-        public string EntityTypeDisplayName { get; set; }
+        public string TypeDisplayName { get; set; }
 
         /// <summary>
         /// Gets or sets the name of the field that has a conflict.
@@ -50,12 +56,22 @@ namespace GeeksCoreLibrary.Modules.Branches.Models
         /// <summary>
         /// Gets or sets the date and time of the change in the main/original branch.
         /// </summary>
-        public DateTime ChangeDateInMain { get; set; }
+        public DateTime? ChangeDateInMain { get; set; }
+
+        /// <summary>
+        /// Gets the pretty value of <see cref="ChangeDateInMain"/> to show on front-end.
+        /// </summary>
+        public string PrettyChangeDateInMain => ChangeDateInMain?.ToString("d MMMM yyyy, HH:mm:ss", new CultureInfo("nl-NL"));
 
         /// <summary>
         /// Gets or sets the date and time of the change in the branch that is being merged.
         /// </summary>
         public DateTime ChangeDateInBranch { get; set; }
+
+        /// <summary>
+        /// Gets the pretty value of <see cref="ChangeDateInBranch"/> to show on front-end.
+        /// </summary>
+        public string PrettyChangeDateInBranch => ChangeDateInBranch.ToString("d MMMM yyyy, HH:mm:ss", new CultureInfo("nl-NL"));
 
         /// <summary>
         /// Gets or sets the name of the user that made the change in the main/original branch.
