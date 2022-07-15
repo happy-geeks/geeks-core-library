@@ -164,5 +164,23 @@ namespace GeeksCoreLibrary.Core.Models
             WiserItemLink,
             WiserItemLinkDetail
         };
+        /// <summary>
+        /// All tables that can have a dedicated version for certain entity types, such as "basket_wiser_item".
+        /// </summary>
+        public static readonly List<string> TablesThatCanHaveEntityPrefix = new()
+        {
+            WiserItem,
+            WiserItemDetail,
+            WiserItemFile
+        };
+        /// <summary>
+        /// All tables that can have a dedicated version for certain link types, such as "1234_wiser_itemlink".
+        /// </summary>
+        public static readonly List<string> TablesThatCanHaveLinkPrefix = new()
+        {
+            WiserItemLink,
+            WiserItemLinkDetail,
+            WiserItemFile
+        };
     }
 }

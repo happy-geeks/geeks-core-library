@@ -3,18 +3,26 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using CM.Text;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Enums;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
+using GeeksCoreLibrary.Modules.Communication.Models.SmtPeter;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using Twilio;
+using Twilio.Rest.Api.V2010.Account;
 
 namespace GeeksCoreLibrary.Modules.Communication.Services
 {
@@ -162,15 +170,43 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
         }
 
         /// <inheritdoc />
-        public async Task<bool> SendEmailDirectlyAsync(SingleCommunicationModel communication, int timeout = 120_000)
+        public async Task SendEmailDirectlyAsync(SingleCommunicationModel communication, int timeout = 120_000)
         {
-            var sender = new MailboxAddress(communication.SenderName, communication.Sender);
-            var receivers = new List<MailboxAddress>(communication.Receivers.Count());
-            receivers.AddRange(communication.Receivers.Select(receiver => new MailboxAddress(receiver.DisplayName, receiver.Address)));
-
+            await SendEmailDirectlyAsync(communication, gclSettings.SmtpSettings, timeout);
+        }
+        
+        /// <inheritdoc />
+        public async Task SendEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, int timeout = 120_000)
+        {
             // Build attachments list.
             var attachments = await GetAttachmentsAsync(communication);
 
+            switch (smtpSettings.Provider)
+            {
+                case EmailServiceProviders.Smtp:
+                    await SendSmtpEmailDirectlyAsync(communication, smtpSettings, attachments, timeout);
+                    break;
+                case EmailServiceProviders.SmtPeterRestApi:
+                    await SendSmtPeterEmailDirectlyAsync(communication, smtpSettings, attachments, timeout);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(smtpSettings.Provider), smtpSettings.Provider.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Send the email directly using an SMTP server.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
+        /// <param name="smtpSettings">The SMTP settings to use.</param>
+        /// <param name="attachments">The attachments to send with the email.</param>
+        /// <param name="timeout">The timeout in milliseconds before it's considered to take too long. The default timeout equals to 2 minutes. This is the same default timeout that MailKit uses.</param>
+        private async Task SendSmtpEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, List<(string FileName, byte[] FileBytes)> attachments, int timeout)
+        {
+            var sender = new MailboxAddress(communication.SenderName ?? smtpSettings.SenderName, communication.Sender ?? smtpSettings.SenderEmailAddress);
+            var receivers = new List<MailboxAddress>(communication.Receivers.Count());
+            receivers.AddRange(communication.Receivers.Select(receiver => new MailboxAddress(receiver.DisplayName, receiver.Address)));
+            
             var message = new MimeMessage();
 
             message.From.Add(sender);
@@ -210,30 +246,72 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             message.Body = builder.ToMessageBody();
 
             // Send the message.
-            try
-            {
-                var secureSocketOptions = gclSettings.SmtpSettings.UseSsl ? MailKit.Security.SecureSocketOptions.StartTls : MailKit.Security.SecureSocketOptions.StartTlsWhenAvailable;
+            var secureSocketOptions = smtpSettings.UseSsl ? MailKit.Security.SecureSocketOptions.StartTls : MailKit.Security.SecureSocketOptions.StartTlsWhenAvailable;
 
-                using var client = new SmtpClient();
-                await client.ConnectAsync(gclSettings.SmtpSettings.Host, gclSettings.SmtpSettings.Port, secureSocketOptions);
-                await client.AuthenticateAsync(gclSettings.SmtpSettings.Username, gclSettings.SmtpSettings.Password);
+            using var client = new SmtpClient();
+            await client.ConnectAsync(smtpSettings.Host, smtpSettings.Port, secureSocketOptions);
+            await client.AuthenticateAsync(smtpSettings.Username, smtpSettings.Password);
 
-                client.Timeout = timeout;
-                await client.SendAsync(message);
-                await client.DisconnectAsync(true);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, $"Error sending email: {ex}");
-                return false;
-            }
+            client.Timeout = timeout;
+            var result = await client.SendAsync(message);
+            await client.DisconnectAsync(true);
         }
 
+        /// <summary>
+        /// Send the email directly using the SmtPeter Rest API.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
+        /// <param name="smtpSettings">The SMTP settings to use.</param>
+        /// <param name="attachments">The attachments to send with the email.</param>
+        /// <param name="timeout">The timeout in milliseconds before it's considered to take too long. The default timeout equals to 2 minutes. This is the same default timeout that MailKit uses.</param>
+        private async Task SendSmtPeterEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, List<(string FileName, byte[] FileBytes)> attachments, int timeout)
+        {
+            // Recipients contains the "To" emails, "CC" emails and the "BCC" emails.
+            var recipients = new List<string>(communication.Receivers.Select(x => x.Address));
+            recipients.AddRange(communication.Cc.ToList());
+            recipients.AddRange(communication.Bcc.ToList());
+            
+            var requestBody = new SmtPeterRequestModel()
+            {
+                From = communication.Sender ?? smtpSettings.SenderEmailAddress,
+                To = new List<string>(communication.Receivers.Select(x => String.IsNullOrWhiteSpace(x.DisplayName) ? x.Address : $"{x.DisplayName} <{x.Address}>")),
+                Cc = communication.Cc.ToList(),
+                Recipients = recipients,
+                ReplyTo = String.IsNullOrWhiteSpace(communication.ReplyToName) ? communication.ReplyTo : $"{communication.ReplyToName} <{communication.ReplyTo}>", 
+                Subject = communication.Subject,
+                Html = communication.Content
+            };
+
+            if (attachments != null && attachments.Any())
+            {
+                requestBody.Attachments = new List<SmtPeterRquestAttachmentModel>();
+                
+                foreach (var attachment in attachments)
+                {
+                    requestBody.Attachments.Add(new SmtPeterRquestAttachmentModel()
+                    {
+                        Data = Convert.ToBase64String(attachment.FileBytes),
+                        Name = attachment.FileName
+                    });
+                }
+            }
+            
+            using var client = new HttpClient();
+            client.Timeout = TimeSpan.FromMilliseconds(timeout);
+            using var response = await client.PostAsJsonAsync($"https://www.smtpeter.com/v1/send?access_token={smtpSettings.SmtPeterSettings.ApiAccessToken}", requestBody, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+            if (response.IsSuccessStatusCode)
+            {
+                return;
+            }
+            
+            // If request was not success throw the body as an exception.
+            throw new Exception(await response.Content.ReadAsStringAsync());
+        }
+        
         private async Task<List<(string FileName, byte[] FileBytes)>> GetAttachmentsAsync(SingleCommunicationModel communication)
         {
-            var totalAttachments = communication.AttachmentUrls?.Count ?? 0 + communication.WiserItemFiles?.Count ?? 0;
+            var totalAttachments = (communication.AttachmentUrls?.Count ?? 0) + (communication.WiserItemFiles?.Count ?? 0 + (!String.IsNullOrWhiteSpace(communication.UploadedFileName) && communication.UploadedFile != null ? 1 : 0));
 
             if (totalAttachments == 0)
             {
@@ -241,6 +319,11 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             }
 
             var attachments = new List<(string FileName, byte[] FileBytes)>(totalAttachments);
+            
+            if (!String.IsNullOrWhiteSpace(communication.UploadedFileName) && communication.UploadedFile != null)
+            {
+                attachments.Add((communication.UploadedFileName, communication.UploadedFile));
+            }
 
             using var webClient = new WebClient();
             if (communication.AttachmentUrls?.Count > 0)
@@ -272,6 +355,153 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             }
 
             return attachments;
+        }
+
+        /// <inheritdoc />
+        public async Task SendSmsAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null)
+        {
+            var receivers = new List<CommunicationReceiverModel>();
+            var receiverAddresses = receiver.Split(';');
+            foreach (var receiverAddress in receiverAddresses)
+            {
+                var receiverModel = new CommunicationReceiverModel { Address = receiverAddress };
+                receivers.Add(receiverModel);
+            }
+
+            await SendSmsAsync(receivers, body, sender, senderName, sendDate);
+        }
+
+        /// <inheritdoc />
+        public async Task SendSmsAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null)
+        {
+            await SendSmsAsync(new SingleCommunicationModel()
+            {
+                Receivers = receivers,
+                Content = body,
+                Sender = sender,
+                SenderName = senderName,
+                SendDate = sendDate
+            });
+        }
+
+        /// <inheritdoc />
+        public async Task SendSmsAsync(SingleCommunicationModel communication)
+        {
+            communication.Id = 0;
+            communication.Type = CommunicationTypes.Sms;
+            communication.Subject ??= "";
+            await AddOrUpdateSingleCommunicationAsync(communication);
+        }
+
+        /// <inheritdoc />
+        public async Task SendSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings)
+        {
+            foreach (var receiver in communication.Receivers)
+            {
+                switch (smsSettings.Provider)
+                {
+                    case SmsServiceProviders.Twilio:
+                        await SendTwilioSmsDirectlyAsync(communication, smsSettings, receiver.Address);
+                        break;
+                    case SmsServiceProviders.Cm:
+                        await SendCmSmsDirectlyAsync(communication, smsSettings, receiver.Address);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(smsSettings.Provider), smsSettings.Provider.ToString());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Send a text message using Twilio.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
+        /// <param name="smsSettings">The sms settings to use.</param>
+        /// <param name="receiverPhoneNumber">The phone number to send the text message to.</param>
+        private async Task SendTwilioSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
+        {
+            TwilioClient.Init(smsSettings.ProviderId, smsSettings.AuthenticationToken);
+
+            if (receiverPhoneNumber.StartsWith("00"))
+            {
+                // Phone number looks something like "0031612345678".
+                receiverPhoneNumber = receiverPhoneNumber.Substring(2);
+            }
+            else if (!receiverPhoneNumber.StartsWith("+"))
+            {
+                throw new ArgumentException("Phone number is missing the country code.");
+            }
+            
+            // Now "sanitize" the phone number by removing all whitespace characters and hyphens.
+            receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+            // The regex will remove the + symbol as well, so it needs to be put back.
+            receiverPhoneNumber = receiverPhoneNumber.Insert(0, "+");
+            
+            var response = await MessageResource.CreateAsync(
+                body: communication.Content,
+                from: communication.Sender ?? smsSettings.SenderPhoneNumber,
+                to: receiverPhoneNumber);
+            
+            var successfulStatuses = new[]
+            {
+                MessageResource.StatusEnum.Accepted,
+                MessageResource.StatusEnum.Sent,
+                MessageResource.StatusEnum.Queued
+            };
+
+            if (successfulStatuses.Contains(response.Status))
+            {
+                return;
+            }
+
+            // If request was not success throw the error message as an exception.
+            throw new Exception(response.ErrorMessage);
+        }
+
+        /// <summary>
+        /// Send a text message using CM.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
+        /// <param name="smsSettings">The text message settings to use.</param>
+        /// <param name="receiverPhoneNumber">The phone number to send the text message to.</param>
+        private async Task SendCmSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
+        {
+            var apiKey = Guid.Parse(smsSettings.ProviderId);
+            
+            if (receiverPhoneNumber.StartsWith("+"))
+            {
+                // Phone number looks something like "+31612345678".
+                receiverPhoneNumber = receiverPhoneNumber.Substring(1).Insert(0, "00");
+            }
+            else if (!receiverPhoneNumber.StartsWith("00"))
+            {
+                throw new ArgumentException("Phone number is missing the country code.");
+            }
+
+            // Now "sanitize" the phone number by removing all non-digit characters.
+            receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+
+            var cmConnection = new TextClient(apiKey);
+            
+            var senderName = communication.SenderName ?? smsSettings.SenderName;
+            if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+            {
+                senderName = senderName.Substring(0, 17);
+            }
+            else if (senderName.Length > 11)
+            {
+                senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+            }
+
+            var response = await cmConnection.SendMessageAsync(communication.Content, senderName, new[] {receiverPhoneNumber}, null);
+
+            if (response.statusCode == TextClientStatusCode.Ok)
+            {
+                return;
+            }
+
+            // If request was not success throw the status message as an exception.
+            throw new Exception(response.statusMessage);
         }
     }
 }
