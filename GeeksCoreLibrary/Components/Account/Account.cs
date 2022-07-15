@@ -1396,50 +1396,89 @@ namespace GeeksCoreLibrary.Components.Account
                 if (dataTable.Rows.Count == 0)
                 {
                     WriteToTrace("A query was entered in 'QueryPasswordForgottenEmail', but that query returned no results!", true);
+
+                    await SendNotificationMailAsync(newUserId, subject, body, receiverEmail, receiverName, bcc, senderEmail, senderName);
                 }
                 else
                 {
-                    var firstRow = dataTable.Rows[0];
-                    // subject, body, senderName and senderEmail.
-                    if (dataTable.Columns.Contains("subject"))
+                    foreach (DataRow dataRow in dataTable.Rows)
                     {
-                        subject = firstRow.Field<string>("subject");
-                        // Replace others values in the subject and body. This is useful if, for example, the values come from a template in the email templates module
-                        // and/or the replacements require encryption or decryption, which MySQL cannot handle.
-                        subject = await StringReplacementsService.DoAllReplacementsAsync(subject, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables);
-                    }
+                        // subject, body, senderName and senderEmail.
+                        if (dataTable.Columns.Contains("subject"))
+                        {
+                            subject = dataRow.Field<string>("subject");
 
-                    if (dataTable.Columns.Contains("body"))
-                    {
-                        body = firstRow.Field<string>("body");
-                        // Replace others values in the subject and body. This is useful if, for example, the values come from a template in the email templates module
-                        // and/or the replacements require encryption or decryption, which MySQL cannot handle.
-                        body = await StringReplacementsService.DoAllReplacementsAsync(body, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables);
-                    }
+                            // Replace others values in the subject and body. This is useful if, for example, the values come from a template in the email templates module
+                            // and/or the replacements require encryption or decryption, which MySQL cannot handle.
+                            subject = await StringReplacementsService.DoAllReplacementsAsync(subject, dataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables);
+                        }
 
-                    if (dataTable.Columns.Contains("senderEmail"))
-                        senderEmail = firstRow.Field<string>("senderEmail");
-                    if (dataTable.Columns.Contains("senderName"))
-                        senderName = firstRow.Field<string>("senderName");
-                    if (dataTable.Columns.Contains("receiverEmail"))
-                        receiverEmail = firstRow.Field<string>("receiverEmail");
-                    if (dataTable.Columns.Contains("receiverName"))
-                        receiverName = firstRow.Field<string>("receiverName");
-                    if (dataTable.Columns.Contains("bcc"))
-                        bcc = firstRow.Field<string>("bcc");
+                        if (dataTable.Columns.Contains("body"))
+                        {
+                            body = dataRow.Field<string>("body");
+
+                            // Replace others values in the subject and body. This is useful if, for example, the values come from a template in the email templates module
+                            // and/or the replacements require encryption or decryption, which MySQL cannot handle.
+                            body = await StringReplacementsService.DoAllReplacementsAsync(body, dataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables);
+                        }
+
+                        if (dataTable.Columns.Contains("senderEmail"))
+                        {
+                            senderEmail = dataRow.Field<string>("senderEmail");
+                        }
+
+                        if (dataTable.Columns.Contains("senderName"))
+                        {
+                            senderName = dataRow.Field<string>("senderName");
+                        }
+
+                        if (dataTable.Columns.Contains("receiverEmail"))
+                        {
+                            receiverEmail = dataRow.Field<string>("receiverEmail");
+                        }
+
+                        if (dataTable.Columns.Contains("receiverName"))
+                        {
+                            receiverName = dataRow.Field<string>("receiverName");
+                        }
+
+                        if (dataTable.Columns.Contains("bcc"))
+                        {
+                            bcc = dataRow.Field<string>("bcc");
+                        }
+
+                        await SendNotificationMailAsync(newUserId, subject, body, receiverEmail, receiverName, bcc, senderEmail, senderName);
+                    }
                 }
             }
+        }
 
+        private async Task SendNotificationMailAsync(ulong newUserId, string subject, string body, string receiverEmail, string receiverName, string bcc, string senderEmail, string senderName)
+        {
             if (String.IsNullOrWhiteSpace(subject))
+            {
                 subject = Settings.SubjectNewAccountNotificationEmail;
+            }
+
             if (String.IsNullOrWhiteSpace(body))
+            {
                 body = Settings.BodyNewAccountNotificationEmail;
+            }
+
             if (String.IsNullOrWhiteSpace(receiverEmail))
+            {
                 receiverEmail = Settings.NotificationsReceiver;
+            }
+
             if (String.IsNullOrWhiteSpace(receiverName))
+            {
                 receiverName = receiverEmail;
+            }
+
             if (String.IsNullOrWhiteSpace(bcc))
+            {
                 bcc = Settings.NotificationsBcc;
+            }
 
             if (String.IsNullOrWhiteSpace(receiverEmail))
             {
@@ -1452,17 +1491,25 @@ namespace GeeksCoreLibrary.Components.Account
             WriteToTrace($"bodyHtml: {body}");
             WriteToTrace($"subject: {subject}");
 
-            body = body.ReplaceCaseInsensitive("<jform", "<form").ReplaceCaseInsensitive("</jform", "</form").ReplaceCaseInsensitive("<jhtml", "<html").ReplaceCaseInsensitive("</jhtml", "</html").ReplaceCaseInsensitive("<jhead", "<head")
-                .ReplaceCaseInsensitive("</jhead", "</head").ReplaceCaseInsensitive("<jtitle", "<title").ReplaceCaseInsensitive("</jtitle", "</title").ReplaceCaseInsensitive("<jbody", "<body").ReplaceCaseInsensitive("</jbody", "</body")
+            body = body.ReplaceCaseInsensitive("<jform", "<form")
+                .ReplaceCaseInsensitive("</jform", "</form")
+                .ReplaceCaseInsensitive("<jhtml", "<html")
+                .ReplaceCaseInsensitive("</jhtml", "</html")
+                .ReplaceCaseInsensitive("<jhead", "<head")
+                .ReplaceCaseInsensitive("</jhead", "</head")
+                .ReplaceCaseInsensitive("<jtitle", "<title")
+                .ReplaceCaseInsensitive("</jtitle", "</title")
+                .ReplaceCaseInsensitive("<jbody", "<body")
+                .ReplaceCaseInsensitive("</jbody", "</body")
                 .ReplaceCaseInsensitive("{userId}", newUserId.ToString());
 
             await communicationsService.SendEmailAsync(await StringReplacementsService.DoAllReplacementsAsync(receiverEmail, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                await StringReplacementsService.DoAllReplacementsAsync(subject, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                await StringReplacementsService.DoAllReplacementsAsync(body),
-                await StringReplacementsService.DoAllReplacementsAsync(receiverName, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                bcc: await StringReplacementsService.DoAllReplacementsAsync(bcc, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                sender: await StringReplacementsService.DoAllReplacementsAsync(senderEmail, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
-                senderName: await StringReplacementsService.DoAllReplacementsAsync(senderName, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                                                       await StringReplacementsService.DoAllReplacementsAsync(subject, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                                                       await StringReplacementsService.DoAllReplacementsAsync(body),
+                                                       await StringReplacementsService.DoAllReplacementsAsync(receiverName, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                                                       bcc: await StringReplacementsService.DoAllReplacementsAsync(bcc, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                                                       sender: await StringReplacementsService.DoAllReplacementsAsync(senderEmail, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
+                                                       senderName: await StringReplacementsService.DoAllReplacementsAsync(senderName, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
         }
 
         /// <summary>
