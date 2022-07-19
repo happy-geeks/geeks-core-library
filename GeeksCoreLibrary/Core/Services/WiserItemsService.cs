@@ -2431,6 +2431,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                         DisplayName = dataRow.Field<string>("displayName"),
                         DeleteAction = dataRow.Field<string>("delete_action")?.ToLowerInvariant() switch
                         {
+                            null => EntityDeletionTypes.Archive,
                             "archive" => EntityDeletionTypes.Archive,
                             "permanent" => EntityDeletionTypes.Permanent,
                             "hide" => EntityDeletionTypes.Hide,
