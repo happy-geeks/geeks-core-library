@@ -1197,6 +1197,7 @@ WHERE item.id = ?itemId");
             try
             {
                 if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
+                var allLinkTypeSettings = await GetAllLinkTypeSettingsAsync();
 
                 var formattedItemIds = String.Join(",", filteredItemIds);
 
@@ -1213,7 +1214,6 @@ WHERE item.id = ?itemId");
                 }
                 else
                 {
-                    var allLinkTypeSettings = await GetAllLinkTypeSettingsAsync();
                     var linkTypeSettingsWithDedicatedTablesForSource = allLinkTypeSettings.Where(x => x.UseDedicatedTable && String.Equals(x.SourceEntityType, entityType, StringComparison.OrdinalIgnoreCase)).ToList();
                     var linkTypeSettingsWithDedicatedTablesForDestination = allLinkTypeSettings.Where(x => x.UseDedicatedTable && String.Equals(x.DestinationEntityType, entityType, StringComparison.OrdinalIgnoreCase)).ToList();
 
@@ -1554,9 +1554,9 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                     }
                 }
 
-                // Now (un)delete the item from the aggregation table, if applicable.
                 if (!String.IsNullOrWhiteSpace(entityType))
                 {
+                    // Now (un)delete the item from the aggregation table, if applicable.
                     var aggregationSettings = await GetAggregationSettingsAsync(entityType);
                     if (aggregationSettings != null && aggregationSettings.Any())
                     {
@@ -1572,6 +1572,16 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                         {
                             await databaseConnection.ExecuteAsync($"DELETE FROM `{aggregationSettings.First().TableName}` WHERE id IN ({formattedItemIds})");
                         }
+                    }
+                
+                    // Also delete children of this item, if applicable.
+                    foreach (var linkSettings in allLinkTypeSettings.Where(l => l.CascadeDelete && String.Equals(l.DestinationEntityType, entityType)))
+                    {
+                        var linkTablePrefix = GetTablePrefixForLink(linkSettings);
+                        query = $@"SELECT item_id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE destination_item_id IN ({formattedItemIds})";
+                        var dataTable = await databaseConnection.GetAsync(query);
+                        var children = dataTable.Rows.Cast<DataRow>().Select(dataRow => Convert.ToUInt64(dataRow["item_id"])).ToList();
+                        await DeleteAsync(wiserItemsService, children, undelete, username, userId, saveHistory, linkSettings.SourceEntityType, false, skipPermissionsCheck);
                     }
                 }
 
@@ -4338,7 +4348,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         /// </summary>
         /// <param name="dataRow"></param>
         /// <returns></returns>
-        public static LinkSettingsModel DataRowToLinkSettingsModel(DataRow dataRow)
+        private static LinkSettingsModel DataRowToLinkSettingsModel(DataRow dataRow)
         {
             var linkSettings = new LinkSettingsModel
             {
@@ -4374,6 +4384,11 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             if (dataRow.Table.Columns.Contains("use_dedicated_table"))
             {
                 linkSettings.UseDedicatedTable = Convert.ToBoolean(dataRow["use_dedicated_table"]);
+            }
+
+            if (dataRow.Table.Columns.Contains("cascade_delete"))
+            {
+                linkSettings.CascadeDelete = Convert.ToBoolean(dataRow["cascade_delete"]);
             }
 
             return linkSettings;
