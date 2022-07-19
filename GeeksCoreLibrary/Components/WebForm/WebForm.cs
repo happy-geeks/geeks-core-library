@@ -288,9 +288,17 @@ namespace GeeksCoreLibrary.Components.WebForm
 
             try
             {
-                if (gclSettings.SmtpSettings != null && await communicationsService.SendEmailDirectlyAsync(communication, 2000))
+                if (gclSettings.SmtpSettings != null)
                 {
-                    communication.ProcessedDate = DateTime.Now;
+                    try
+                    {
+                        await communicationsService.SendEmailDirectlyAsync(communication, 2000);
+                        communication.ProcessedDate = DateTime.Now;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, $"Error sending email: {ex}");
+                    }
                 }
 
                 // Save the email in the Wiser communication table, regardless if it was successful.

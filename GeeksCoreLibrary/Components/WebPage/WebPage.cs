@@ -123,9 +123,9 @@ namespace GeeksCoreLibrary.Components.WebPage
         public async Task<string> HandleRenderModeAsync()
         {
             DatabaseConnection.ClearParameters();
-            DatabaseConnection.AddParameter("pageName", await StringReplacementsService.DoAllReplacementsAsync(Settings.PageName));
+            DatabaseConnection.AddParameter("pageName", await StringReplacementsService.DoAllReplacementsAsync(StringReplacementsService.DoReplacements(Settings.PageName, ExtraDataForReplacements)));
             DatabaseConnection.AddParameter("pageItemId", Settings.PageId);
-            DatabaseConnection.AddParameter("path", await StringReplacementsService.DoAllReplacementsAsync(Settings.PathMustContainName));
+            DatabaseConnection.AddParameter("path", await StringReplacementsService.DoAllReplacementsAsync(StringReplacementsService.DoReplacements(Settings.PathMustContainName, ExtraDataForReplacements)));
             DatabaseConnection.AddParameter("languageCode", await StringReplacementsService.DoAllReplacementsAsync(languagesService?.CurrentLanguageCode ?? ""));
             DatabaseConnection.AddParameter("environment", (int)gclSettings.Environment);
 
