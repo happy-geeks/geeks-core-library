@@ -538,6 +538,42 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserBranchesQueue, "idx_branch_id", IndexTypes.Normal, new List<string> { "branch_id" }),
                     new(WiserTableNames.WiserBranchesQueue, "idx_started_on", IndexTypes.Normal, new List<string> { "started_on" })
                 }
+            },
+
+            // wiser_dashboard
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserDashboard,
+                LastUpdate = new DateTime(2022, 7, 7),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("last_update", MySqlDbType.DateTime, notNull: true),
+                    new("items_data", MySqlDbType.MediumText),
+                    new("user_login_count_top10", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("user_login_count_other", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("user_login_time_top10", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00"),
+                    new("user_login_time_other", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00")
+                }
+            },
+
+            // wiser_login_log
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserLoginLog,
+                LastUpdate = new DateTime(2022, 7, 7),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("user_id", MySqlDbType.UInt64, notNull: true),
+                    new("time_active", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00"),
+                    new("added_on", MySqlDbType.DateTime, notNull: true)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserLoginLog, "idx_added_on", IndexTypes.Normal, new List<string> { "added_on" }),
+                    new(WiserTableNames.WiserLoginLog, "idx_user_Id", IndexTypes.Normal, new List<string> { "user_id" })
+                }
             }
         };
     }
