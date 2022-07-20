@@ -179,11 +179,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                                 settings.UseParentItemId = Convert.ToBoolean(dataRow["use_item_parent_id"]);
                                 settings.Type = typeNumber;
-                                settings.DedicatedTablePrefix = dataRow.Field<string>("use_dedicated_table") ?? "";
-                                if (!String.IsNullOrEmpty(settings.DedicatedTablePrefix) || !settings.DedicatedTablePrefix.EndsWith("_"))
-                                {
-                                    settings.DedicatedTablePrefix += "_";
-                                }
+                                settings.DedicatedTablePrefix = Convert.ToBoolean(dataRow["use_dedicated_table"]) ? $"{typeNumber}_" : "";
                             }
                         }
                     }
