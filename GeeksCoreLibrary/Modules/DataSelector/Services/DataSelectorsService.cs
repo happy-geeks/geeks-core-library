@@ -110,7 +110,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             // Main scopes.
             if (itemsRequest.Selector?.Main?.Scopes != null)
             {
-                ProcessScopes(itemsRequest, itemsRequest.Selector.Main.Scopes, "ilc1.id", "idv_");
+                await ProcessScopesAsync(itemsRequest, itemsRequest.Selector.Main.Scopes, "ilc1.id", "idv_");
             }
 
             // Main fields.
@@ -212,7 +212,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             if (itemsRequest.Selector?.Connections != null && itemsRequest.Selector.Connections.Length > 0)
             {
                 itemsRequest.WhereLink.Add(" AND ");
-                ProcessConnections(itemsRequest, itemsRequest.Selector.Connections, "ilc1.id");
+                await ProcessConnectionsAsync(itemsRequest, itemsRequest.Selector.Connections, "ilc1.id");
             }
 
             // Process fields from fields (getting details if field is item id).
@@ -1122,7 +1122,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
         #region Helper functions
 
-        private void ProcessScopes(ItemsRequest itemsRequest, IEnumerable<Scope> scopes, string joinDetailOn, string detailTableAliasPrefix, bool optionalConnection = false)
+        private async Task ProcessScopesAsync(ItemsRequest itemsRequest, IEnumerable<Scope> scopes, string joinDetailOn, string detailTableAliasPrefix, bool optionalConnection = false)
         {
             if (scopes == null)
             {
@@ -1350,7 +1350,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                 itemsRequest.JoinDetail.Add(row.Key);
                             }
 
-                            queryPart.Append(CreateScopeRowQueryPart(row));
+                            queryPart.Append(await CreateScopeRowQueryPartAsync(row));
                             break;
                     }
                 }
@@ -1361,7 +1361,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             itemsRequest.QueryAddition = queryAdditionBuilder.ToString();
         }
 
-        private void ProcessConnections(ItemsRequest itemsRequest, IReadOnlyList<Connection> connections, string joinOn, string prefix = "con", string selectAliasPrefix = "", string previousLevelTableAlias = "ilc1")
+        private async Task ProcessConnectionsAsync(ItemsRequest itemsRequest, IReadOnlyList<Connection> connections, string joinOn, string prefix = "con", string selectAliasPrefix = "", string previousLevelTableAlias = "ilc1")
         {
             if (connections == null || connections.Count == 0)
             {
@@ -1468,7 +1468,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     }
 
                     // Process the scope of the connection (constraint on connection).
-                    ProcessScopes(itemsRequest, connectionRow.Scopes, connectionRow.Modes.Contains("up") ? $"`{tableName}`.destination_item_id" : $"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Modes.Contains("optional"));
+                    await ProcessScopesAsync(itemsRequest, connectionRow.Scopes, connectionRow.Modes.Contains("up") ? $"`{tableName}`.destination_item_id" : $"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Modes.Contains("optional"));
 
                     // Add "AND" to query part if query part is not empty.
                     if (queryPartLink.Length > 0)
@@ -1530,7 +1530,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     // Recursive part.
                     if (connectionRow.Connections is { Length: > 0 })
                     {
-                        ProcessConnections(itemsRequest, connectionRow.Connections, connectionRow.Modes.Contains("up") ? $"{tableName}.destination_item_id" : $"{tableName}.item_id", tableName, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix), $"{tableName}_item");
+                        await ProcessConnectionsAsync(itemsRequest, connectionRow.Connections, connectionRow.Modes.Contains("up") ? $"{tableName}.destination_item_id" : $"{tableName}.item_id", tableName, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix), $"{tableName}_item");
                     }
 
                     count += 1;
@@ -1590,7 +1590,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             return result.Replace("{value}", value);
         }
 
-        private async Task<string> CreateScopeRowQueryPart(ScopeRow scopeRow)
+        private async Task<string> CreateScopeRowQueryPartAsync(ScopeRow scopeRow)
         {
             var formattedField = GetFormattedField(scopeRow.Key, $"`{scopeRow.Key.TableAlias.ToMySqlSafeValue(false)}`.`value`");
             if (scopeRow.Value is JArray array)
