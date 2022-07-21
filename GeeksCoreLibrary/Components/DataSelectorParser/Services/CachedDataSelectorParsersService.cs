@@ -39,7 +39,7 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser.Services
             cacheKey.Append("GCLDataSelectorParser_");
             cacheKey.Append(!String.IsNullOrWhiteSpace(dataSelectorId) ? dataSelectorId : dataSelectorJson.ToSha512Simple());
 
-            return await cache.GetOrAdd(
+            return await cache.GetOrAddAsync(
                 cacheKey.ToString(),
                 async cacheEntry =>
                 {

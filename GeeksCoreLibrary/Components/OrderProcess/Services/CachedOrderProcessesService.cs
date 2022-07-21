@@ -27,7 +27,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         public async Task<OrderProcessSettingsModel> GetOrderProcessSettingsAsync(ulong orderProcessId)
         {
             var key = $"OrderProcessSettings_{orderProcessId}";
-            return await cache.GetOrAdd(key,
+            return await cache.GetOrAddAsync(key,
                 delegate(ICacheEntry cacheEntry)
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
@@ -39,7 +39,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         public async Task<OrderProcessSettingsModel> GetOrderProcessViaFixedUrlAsync(string fixedUrl)
         {
             var key = $"OrderProcessWithFixedUrl_{fixedUrl}";
-            return await cache.GetOrAdd(key,
+            return await cache.GetOrAddAsync(key,
                 delegate(ICacheEntry cacheEntry)
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
@@ -57,7 +57,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         public async Task<List<OrderProcessStepModel>> GetAllStepsGroupsAndFieldsAsync(ulong orderProcessId)
         {
             var key = $"OrderProcessGetAllStepsGroupsAndFields_{orderProcessId}";
-            return await cache.GetOrAdd(key,
+            return await cache.GetOrAddAsync(key,
                 delegate(ICacheEntry cacheEntry)
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
@@ -69,7 +69,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         public async Task<List<PaymentMethodSettingsModel>> GetPaymentMethodsAsync(ulong orderProcessId, UserCookieDataModel loggedInUser = null)
         {
             var key = $"OrderProcessGetPaymentMethods_{orderProcessId}_{(loggedInUser == null ? "all" : loggedInUser.UserId.ToString())}";
-            return await cache.GetOrAdd(key,
+            return await cache.GetOrAddAsync(key,
                 delegate(ICacheEntry cacheEntry)
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
@@ -81,7 +81,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         public async Task<PaymentMethodSettingsModel> GetPaymentMethodAsync(ulong paymentMethodId)
         {
             var key = $"OrderProcessGetPaymentMethodAsync_{paymentMethodId}";
-            return await cache.GetOrAdd(key,
+            return await cache.GetOrAddAsync(key,
                 delegate(ICacheEntry cacheEntry)
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;

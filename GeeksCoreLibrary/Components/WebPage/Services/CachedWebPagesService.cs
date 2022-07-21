@@ -31,7 +31,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
             }
 
             var key = $"WebPagesWithFixedUrl_{fixedUrl}";
-            return await cache.GetOrAdd(key,
+            return await cache.GetOrAddAsync(key,
                 delegate(ICacheEntry cacheEntry)
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWebPageCacheDuration;

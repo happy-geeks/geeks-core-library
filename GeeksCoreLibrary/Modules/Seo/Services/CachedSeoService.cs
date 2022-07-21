@@ -29,7 +29,7 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
         /// <inheritdoc />
         public async Task<PageMetaDataModel> GetSeoDataForPageAsync(Uri pageUri)
         {
-            return await cache.GetOrAdd($"Seo_{pageUri.AbsolutePath}",
+            return await cache.GetOrAddAsync($"Seo_{pageUri.AbsolutePath}",
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultSeoModuleCacheDuration;
@@ -46,7 +46,7 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
         /// <inheritdoc />
         public async Task<XDocument> GenerateSiteMap()
         {
-            return await cache.GetOrAdd("Sitemap",
+            return await cache.GetOrAddAsync("Sitemap",
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultSeoModuleCacheDuration;
@@ -57,7 +57,7 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
         /// <inheritdoc />
         public async Task<XDocument> GenerateImageSiteMap()
         {
-            return await cache.GetOrAdd("ImageSitemap",
+            return await cache.GetOrAddAsync("ImageSitemap",
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultSeoModuleCacheDuration;
