@@ -136,13 +136,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("icon_expanded", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
                     new("use_dedicated_table", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("dedicated_table_prefix", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
-                    new("delete_action", MySqlDbType.Enum, notNull: true, defaultValue: "archive", enumValues: new List<string> {"archive", "permanent", "hide", "disallow"})
+                    new("delete_action", MySqlDbType.Enum, notNull: true, defaultValue: "archive", enumValues: new List<string> {"archive", "permanent", "hide", "disallow"}),
+                    new("show_in_dashboard", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
                     new(WiserTableNames.WiserEntity, "name_module_id", IndexTypes.Unique, new List<string> {"name", "module_id"}),
                     new(WiserTableNames.WiserEntity, "name", IndexTypes.Normal, new List<string> {"name", "show_in_tree_view"}),
-                    new(WiserTableNames.WiserEntity, "module_id", IndexTypes.Normal, new List<string> {"module_id"})
+                    new(WiserTableNames.WiserEntity, "module_id", IndexTypes.Normal, new List<string> {"module_id"}),
+                    new(WiserTableNames.WiserEntity, "show_in_dashboard", IndexTypes.Normal, new List<string> {"show_in_dashboard"})
                 }
             },
 
