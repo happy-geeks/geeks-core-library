@@ -187,7 +187,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// <inheritdoc />
         public async Task<IList<WiserItemModel>> GetFreeProductActionsAsync()
         {
-            return await cache.GetOrAdd("GCLShoppingBasketFreeProductActions",
+            return await cache.GetOrAddAsync("GCLShoppingBasketFreeProductActions",
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultShoppingBasketsCacheDuration;
@@ -198,7 +198,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// <inheritdoc />
         public async Task<IList<VatRule>> GetVatRulesAsync()
         {
-            return await cache.GetOrAdd("GCLShoppingBasketVatRules",
+            return await cache.GetOrAddAsync("GCLShoppingBasketVatRules",
                 async cacheEntry =>
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultShoppingBasketsCacheDuration;

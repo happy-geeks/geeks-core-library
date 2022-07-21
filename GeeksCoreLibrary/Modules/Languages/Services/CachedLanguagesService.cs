@@ -100,7 +100,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         /// <returns></returns>
         private async Task<Hashtable> CacheLanguageAsync(string languageCode)
         {
-            return await cache.GetOrAdd($"GCLTranslations{languageCode}", GetLanguagesAndTranslations, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Languages));
+            return await cache.GetOrAddAsync($"GCLTranslations{languageCode}", GetLanguagesAndTranslations, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Languages));
 
             async Task<Hashtable> GetLanguagesAndTranslations(ICacheEntry cacheEntry)
             {

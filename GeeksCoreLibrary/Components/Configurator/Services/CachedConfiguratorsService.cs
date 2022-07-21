@@ -46,12 +46,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 var httpContext = httpContextAccessor.HttpContext;
                 hostName = httpContext != null ? HttpContextHelpers.GetHostName(httpContext) : "";
             }
-            return await appCache.GetOrAdd($"GetConfiguratorDataAsync_{(!String.IsNullOrWhiteSpace(hostName) && addHostNameToCache ? $"{hostName}_" : "")}{name}",
-                                           async cacheEntry =>
-                                           {
-                                               cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultConfiguratorsCacheDuration;
-                                               return await configuratorsService.GetConfiguratorDataAsync(name);
-                                           }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Configurators));
+            return await appCache.GetOrAddAsync($"GetConfiguratorDataAsync_{(!String.IsNullOrWhiteSpace(hostName) && addHostNameToCache ? $"{hostName}_" : "")}{name}",
+                                                async cacheEntry =>
+                                                {
+                                                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultConfiguratorsCacheDuration;
+                                                    return await configuratorsService.GetConfiguratorDataAsync(name);
+                                                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Configurators));
         }
 
         /// <inheritdoc />

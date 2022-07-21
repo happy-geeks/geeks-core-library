@@ -135,6 +135,18 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserPreviewProfiles = "wiser_preview_profiles";
         /// <summary>
+        /// This table is used to store the commit history of the version control module.
+        /// </summary>
+        public const string WiserCommit = "wiser_commit";
+        /// <summary>
+        /// This table is used to store the commit history of templates of the version control module.
+        /// </summary>
+        public const string WiserCommitTemplate = "wiser_commit_template";
+        /// <summary>
+        /// This table is used to store the commit history of dynamic components of the version control module.
+        /// </summary>
+        public const string WiserCommitDynamicContent = "wiser_commit_dynamic_content";
+        /// <summary>
         /// This table is used by the AIS to write logs to.
         /// </summary>
         public const string AisLogs = "ais_logs";

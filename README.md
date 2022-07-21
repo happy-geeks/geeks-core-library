@@ -35,7 +35,7 @@ public class Startup
 
 
 ## Configuration
-For the GCL to work, you need to set some values in the `appSettings.json`:
+For the GCL to work, you need to set some values in the `appSettings.json` or `appSettings-secrets.json`:
 ```json
 {
   "GCL": {
