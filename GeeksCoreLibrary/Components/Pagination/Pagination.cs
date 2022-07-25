@@ -261,15 +261,21 @@ namespace GeeksCoreLibrary.Components.Pagination
             // Add the "dots" template when the option is enabled.
             if (to > 1 && Settings.AddDotsToFirstAndLast)
             {
-                // Only if the dots replace at least 2 pages should the dots template be shown.
-                if (currentPage >= maxBeforeCurrent + Settings.DotsOffset)
+                var additionalOffset = Settings.MinPagesAtStart > 0U ? Settings.MinPagesAtStart - 1U : 0U;
+
+                // Only if the dots replace at least a certain amount of pages should the dots template be shown.
+                if (currentPage >= maxBeforeCurrent + Settings.DotsOffset + additionalOffset)
                 {
-                    paginationHtml.Append(ParsePageTemplate(Settings.PageTemplate, 1));
+                    for (var i = 1U; i <= 1U + additionalOffset; i++)
+                    {
+                        paginationHtml.Append(ParsePageTemplate(Settings.PageTemplate, i));
+                    }
+
                     paginationHtml.Append(Settings.DotsTemplate);
                 }
 
                 // Show the normal pages if the dots would take up as much space, not taking "maxBeforeCurrent" into account.
-                if (currentPage - maxBeforeCurrent < Settings.DotsOffset)
+                if (currentPage - maxBeforeCurrent < Settings.DotsOffset + additionalOffset)
                 {
                     for (var i = 1U; i < currentPage - maxBeforeCurrent; i++)
                     {
@@ -291,13 +297,19 @@ namespace GeeksCoreLibrary.Components.Pagination
             // Add dots at the end if enabled.
             if (to > 1 && Settings.AddDotsToFirstAndLast)
             {
-                if (currentPage + maxAfterCurrent < lastPageNumber - 2)
+                var additionalOffset = Settings.MinPagesAtEnd > 0U ? Settings.MinPagesAtEnd - 1U : 0U;
+                var dotsOffsetEnd = lastPageNumber - Settings.DotsOffset - additionalOffset + 1;
+
+                if (currentPage <= dotsOffsetEnd - maxAfterCurrent)
                 {
                     paginationHtml.Append(Settings.DotsTemplate);
-                    paginationHtml.Append(ParsePageTemplate(Settings.PageTemplate, lastPageNumber));
+                    for (var i = lastPageNumber - additionalOffset; i <= lastPageNumber; i++)
+                    {
+                        paginationHtml.Append(ParsePageTemplate(Settings.PageTemplate, i));
+                    }
                 }
 
-                if (lastPageNumber - (currentPage + maxAfterCurrent) <= 2)
+                if (currentPage + maxAfterCurrent > dotsOffsetEnd)
                 {
                     for (var i = currentPage + maxAfterCurrent + 1; i <= lastPageNumber; i++)
                     {
