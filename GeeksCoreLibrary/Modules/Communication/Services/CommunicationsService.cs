@@ -270,10 +270,21 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             var recipients = new List<string>(communication.Receivers.Select(x => x.Address));
             recipients.AddRange(communication.Cc.ToList());
             recipients.AddRange(communication.Bcc.ToList());
-            
+
+            // Create the "from" string.
+            string from;
+            if (!String.IsNullOrWhiteSpace(communication.Sender))
+            {
+                from = !String.IsNullOrWhiteSpace(communication.SenderName) ? $"{communication.SenderName} <{communication.Sender}>" : communication.Sender;
+            }
+            else
+            {
+                from = !String.IsNullOrWhiteSpace(smtpSettings.SenderName) ? $"{smtpSettings.SenderName} <{smtpSettings.SenderEmailAddress}>" : smtpSettings.SenderEmailAddress;
+            }
+
             var requestBody = new SmtPeterRequestModel()
             {
-                From = communication.Sender ?? smtpSettings.SenderEmailAddress,
+                From = from,
                 To = new List<string>(communication.Receivers.Select(x => String.IsNullOrWhiteSpace(x.DisplayName) ? x.Address : $"{x.DisplayName} <{x.Address}>")),
                 Cc = communication.Cc.ToList(),
                 Recipients = recipients,
