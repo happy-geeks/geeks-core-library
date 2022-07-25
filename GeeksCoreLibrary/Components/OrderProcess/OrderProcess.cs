@@ -554,13 +554,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             // Replace data of all other items.
             foreach (var (linkSettings, item) in currentItems)
             {
-                var idKey = $"{item.EntityType}.id";
+                var idKey = $"{item.EntityType}.id_{linkSettings.Type}";
                 if (replaceData.ContainsKey(idKey))
                 {
                     continue;
                 }
 
-                replaceData.Add($"{item.EntityType}.id", item.Id);
+                replaceData.Add(idKey, item.Id);
+                replaceData[$"{item.EntityType}.id"] = item.Id;
 
                 foreach (var itemDetail in item.Details)
                 {
@@ -578,7 +579,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         value = field.Values[value];
                     }
                 
-                    replaceData.Add($"{item.EntityType}.{itemDetail.Key}", value);
+                    replaceData.Add($"{item.EntityType}.{itemDetail.Key}_{linkSettings.Type}", value);
+                    replaceData[$"{item.EntityType}.{itemDetail.Key}"] = value;
                 }
             }
 
