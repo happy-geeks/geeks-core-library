@@ -37,6 +37,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             databaseConnection.AddParameter("columnName", columnName);
@@ -50,6 +51,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
@@ -72,6 +74,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             
@@ -113,6 +116,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             databaseConnection.AddParameter("columnName", columnName);
@@ -124,6 +128,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var queryBuilder = new StringBuilder($"CREATE TABLE IF NOT EXISTS `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
@@ -198,6 +203,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var dataTable = await databaseConnection.GetAsync($"SHOW KEYS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` WHERE KEY_NAME = 'PRIMARY'");
@@ -215,6 +221,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
 
@@ -242,6 +249,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             await databaseConnection.ExecuteAsync($"DROP {(isTemporaryTable ? "TEMPORARY" : "")} TABLE IF EXISTS `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
@@ -250,6 +258,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async Task DuplicateTableAsync(string tableToDuplicate, string newTableName, bool includeData = true, string sourceDatabaseName = null, string destinationDatabaseName = null)
         {
+            await databaseConnection.EnsureOpenConnectionForReadingAsync();
+            
             if (String.IsNullOrWhiteSpace(sourceDatabaseName))
             {
                 sourceDatabaseName = databaseConnection.ConnectedDatabase;
@@ -277,6 +287,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var oldIndexes = new Dictionary<string, List<(string Name, List<string> Columns)>>();
@@ -387,6 +398,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var dataTable = await databaseConnection.GetAsync($"SELECT name, last_update FROM `{databaseName.ToMySqlSafeValue(false)}`.`{WiserTableNames.WiserTableChanges}`");
@@ -422,6 +434,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
 
