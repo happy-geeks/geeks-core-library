@@ -13,6 +13,12 @@ namespace GeeksCoreLibrary.Components.Pagination.Models
         [DefaultValue("...")]
         internal string DotsTemplate { get; set; }
 
+        [DefaultValue(1U)]
+        internal uint MinPagesAtStart { get; set; }
+
+        [DefaultValue(1U)]
+        internal uint MinPagesAtEnd { get; set; }
+
         [DefaultValue(4)]
         internal int DotsOffset { get; set; }
     }
