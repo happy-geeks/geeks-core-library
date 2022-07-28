@@ -408,7 +408,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("changed_on", MySqlDbType.DateTime),
                     new("show_in_export_module", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("available_for_rendering", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
-                    new("default_template", MySqlDbType.UInt64, notNull: true, defaultValue: "0")
+                    new("default_template", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                    new("show_in_dashboard", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
