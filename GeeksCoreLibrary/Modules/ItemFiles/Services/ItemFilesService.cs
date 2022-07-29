@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.ItemFiles.Enums;
@@ -27,30 +28,34 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         private readonly IObjectsService objectsService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IWebHostEnvironment webHostEnvironment;
+        private readonly IWiserItemsService wiserItemsService;
 
-        public ItemFilesService(ILogger<ItemFilesService> logger, IDatabaseConnection databaseConnection, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor, IWebHostEnvironment webHostEnvironment)
+        public ItemFilesService(ILogger<ItemFilesService> logger, IDatabaseConnection databaseConnection, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor, IWebHostEnvironment webHostEnvironment, IWiserItemsService wiserItemsService)
         {
             this.logger = logger;
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
             this.httpContextAccessor = httpContextAccessor;
             this.webHostEnvironment = webHostEnvironment;
+            this.wiserItemsService = wiserItemsService;
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, int preferredWidth, int preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null)
+        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, int preferredWidth, int preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
         {
             if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId))
             {
                 return (null, DateTime.MinValue);
             }
 
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("itemId", finalItemId);
             databaseConnection.AddParameter("propertyName", propertyName);
             var getImageResult = await databaseConnection.GetAsync($@"
                 SELECT content_type, content, content_url, protected
-                FROM `{WiserTableNames.WiserItemFile}`
+                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE item_id = ?itemId AND property_name = ?propertyName
                 ORDER BY id
                 LIMIT {fileNumber - 1},1");
@@ -72,19 +77,21 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, int preferredWidth, int preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null)
+        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, int preferredWidth, int preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
         {
             if (!TryGetFinalId(itemLinkId, encryptedItemLinkId, out var finalItemLinkId))
             {
                 return (null, DateTime.MinValue);
             }
+            
+            var tablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType);
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("itemLinkId", finalItemLinkId);
             databaseConnection.AddParameter("propertyName", propertyName);
             var getImageResult = await databaseConnection.GetAsync($@"
                 SELECT content_type, content, content_url, protected
-                FROM `{WiserTableNames.WiserItemFile}`
+                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
                 ORDER BY id
                 LIMIT {fileNumber - 1},1");
@@ -106,18 +113,20 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null)
+        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
         {
             if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId))
             {
                 return (null, DateTime.MinValue);
             }
 
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("fileId", finalItemId);
             var getImageResult = await databaseConnection.GetAsync($@"
                 SELECT content_type, content, content_url, protected
-                FROM `{WiserTableNames.WiserItemFile}`
+                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE id = ?fileId");
 
             if (!ValidateQueryResult(getImageResult, encryptedItemId))
@@ -137,19 +146,21 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemFileAsync(ulong itemId, string propertyName, string filename, int fileNumber, string encryptedItemId = null)
+        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemFileAsync(ulong itemId, string propertyName, string filename, int fileNumber, string encryptedItemId = null, string entityType = null)
         {
             if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId))
             {
                 return (null, DateTime.MinValue);
             }
 
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("itemId", finalItemId);
             databaseConnection.AddParameter("propertyName", propertyName);
             var getFileResult = await databaseConnection.GetAsync($@"
                 SELECT content, content_url, protected
-                FROM `{WiserTableNames.WiserItemFile}`
+                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE item_id = ?itemId AND property_name = ?propertyName
                 ORDER BY id
                 LIMIT {fileNumber - 1},1");
@@ -170,19 +181,21 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string filename, int fileNumber, string encryptedItemLinkId = null)
+        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string filename, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
         {
             if (!TryGetFinalId(itemLinkId, encryptedItemLinkId, out var finalItemLinkId))
             {
                 return (null, DateTime.MinValue);
             }
 
+            var tablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType);
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("itemLinkId", finalItemLinkId);
             databaseConnection.AddParameter("propertyName", propertyName);
             var getFileResult = await databaseConnection.GetAsync($@"
                 SELECT content, content_url, protected
-                FROM `{WiserTableNames.WiserItemFile}`
+                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
                 ORDER BY id
                 LIMIT {fileNumber - 1},1");
@@ -203,18 +216,20 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectFileAsync(ulong itemId, string filename, string encryptedItemId = null)
+        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectFileAsync(ulong itemId, string filename, string encryptedItemId = null, string entityType = null)
         {
             if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId))
             {
                 return (null, DateTime.MinValue);
             }
 
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("fileId", finalItemId);
             var getFileResult = await databaseConnection.GetAsync($@"
                 SELECT content, content_url, protected
-                FROM `{WiserTableNames.WiserItemFile}`
+                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE id = ?fileId");
 
             if (!ValidateQueryResult(getFileResult, encryptedItemId))

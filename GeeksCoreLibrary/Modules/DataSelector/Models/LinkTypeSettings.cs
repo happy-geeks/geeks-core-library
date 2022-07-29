@@ -9,5 +9,7 @@
         public string SourceEntityType { get; set; }
 
         public bool UseParentItemId { get; set; }
+
+        public string DedicatedTablePrefix { get; set; }
     }
 }

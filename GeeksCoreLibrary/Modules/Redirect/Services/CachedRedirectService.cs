@@ -28,12 +28,12 @@ namespace GeeksCoreLibrary.Modules.Redirect.Services
         /// <inheritdoc />
         public async Task<RedirectModel> GetRedirectAsync(Uri uri)
         {
-            return await cache.GetOrAdd($"Redirect_{uri}",
-                                        async cacheEntry =>
-                                        {
-                                            cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultRedirectModuleCacheDuration;
-                                            return await redirectService.GetRedirectAsync(uri);
-                                        }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Redirects));
+            return await cache.GetOrAddAsync($"Redirect_{uri}",
+                                             async cacheEntry =>
+                                             {
+                                                 cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultRedirectModuleCacheDuration;
+                                                 return await redirectService.GetRedirectAsync(uri);
+                                             }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Redirects));
         }
 
         /// <inheritdoc />

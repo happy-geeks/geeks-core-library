@@ -24,6 +24,7 @@ using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
+using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
@@ -55,6 +56,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         private readonly IObjectsService objectsService;
         private readonly IHtmlToPdfConverterService htmlToPdfConverterService;
         private readonly GclSettings gclSettings;
+        private readonly IMeasurementProtocolService measurementProtocolService;
 
         /// <summary>
         /// Creates a new instance of <see cref="OrderProcessesService"/>.
@@ -71,6 +73,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             IHttpContextAccessor httpContextAccessor,
             ILogger<OrderProcessesService> logger,
             IObjectsService objectsService,
+            IMeasurementProtocolService measurementProtocolService,
             IHtmlToPdfConverterService htmlToPdfConverterService)
         {
             this.databaseConnection = databaseConnection;
@@ -86,6 +89,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             this.objectsService = objectsService;
             this.htmlToPdfConverterService = htmlToPdfConverterService;
             this.gclSettings = gclSettings.Value;
+            this.measurementProtocolService = measurementProtocolService;
         }
 
         /// <inheritdoc />
@@ -109,7 +113,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 IF(clearBasketOnConfirmationPage.value IS NULL OR clearBasketOnConfirmationPage.value = '', '1', clearBasketOnConfirmationPage.value) AS clearBasketOnConfirmationPage,
 	                            CONCAT_WS('', header.value, header.long_value) AS header,
 	                            CONCAT_WS('', footer.value, footer.long_value) AS footer,
-                                CONCAT_WS('', template.value, template.long_value) AS template
+                                CONCAT_WS('', template.value, template.long_value) AS template,
+                                IF(measurementProtocolActive.`value` = 1, TRUE, FALSE) AS measurementProtocolActive,
+                                CONCAT_WS('', measurementProtocolItemJson.`value`, measurementProtocolItemJson.long_value) AS measurementProtocolItemJson,
+                                CONCAT_WS('', measurementProtocolBeginCheckoutJson.`value`, measurementProtocolBeginCheckoutJson.long_value) AS measurementProtocolBeginCheckoutJson,
+                                CONCAT_WS('', measurementProtocolAddPaymentInfoJson.`value`, measurementProtocolAddPaymentInfoJson.long_value) AS measurementProtocolAddPaymentInfoJson,
+                                CONCAT_WS('', measurementProtocolPurchaseJson.`value`, measurementProtocolPurchaseJson.long_value) AS measurementProtocolPurchaseJson,
+                                measurementProtocolMeasurementId.`value` AS measurementProtocolMeasurementId,
+                                measurementProtocolApiSecret.`value` AS measurementProtocolApiSecret
                             FROM {WiserTableNames.WiserItem} AS orderProcess
                             JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
                             JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
@@ -124,6 +135,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS header ON header.item_id = orderProcess.id AND header.`key` = '{Constants.OrderProcessHeaderProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS footer ON footer.item_id = orderProcess.id AND footer.`key` = '{Constants.OrderProcessFooterProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS template ON template.item_id = orderProcess.id AND template.`key` = '{Constants.OrderProcessTemplateProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolActive ON measurementProtocolActive.item_id = orderProcess.id AND measurementProtocolActive.`key` = '{Constants.MeasurementProtocolActiveProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolItemJson ON measurementProtocolItemJson.item_id = orderProcess.id AND measurementProtocolItemJson.`key` = '{Constants.MeasurementProtocolItemJsonProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolBeginCheckoutJson ON measurementProtocolBeginCheckoutJson.item_id = orderProcess.id AND measurementProtocolBeginCheckoutJson.`key` = '{Constants.MeasurementProtocolBeginCheckoutJsonProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolAddPaymentInfoJson ON measurementProtocolAddPaymentInfoJson.item_id = orderProcess.id AND measurementProtocolAddPaymentInfoJson.`key` = '{Constants.MeasurementProtocolAddPaymentInfoJsonProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolPurchaseJson ON measurementProtocolPurchaseJson.item_id = orderProcess.id AND measurementProtocolPurchaseJson.`key` = '{Constants.MeasurementProtocolPurchaseJsonProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolMeasurementId ON measurementProtocolMeasurementId.item_id = orderProcess.id AND measurementProtocolMeasurementId.`key` = '{Constants.MeasurementProtocolMeasurementIdProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolApiSecret ON measurementProtocolApiSecret.item_id = orderProcess.id AND measurementProtocolApiSecret.`key` = '{Constants.MeasurementProtocolApiSecretProperty}'
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
                             AND orderProcess.published_environment >= ?publishedEnvironment
@@ -154,7 +172,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 ClearBasketOnConfirmationPage = firstRow.Field<string>("clearBasketOnConfirmationPage") == "1",
                 Header = firstRow.Field<string>("header"),
                 Footer = firstRow.Field<string>("footer"),
-                Template = firstRow.Field<string>("template")
+                Template = firstRow.Field<string>("template"),
+                MeasurementProtocolActive = Convert.ToBoolean(firstRow["measurementProtocolActive"]),
+                MeasurementProtocolItemJson = firstRow.Field<string>("measurementProtocolItemJson"),
+                MeasurementProtocolBeginCheckoutJson = firstRow.Field<string>("measurementProtocolBeginCheckoutJson"),
+                MeasurementProtocolAddPaymentInfoJson = firstRow.Field<string>("measurementProtocolAddPaymentInfoJson"),
+                MeasurementProtocolPurchaseJson = firstRow.Field<string>("measurementProtocolPurchaseJson"),
+                MeasurementProtocolMeasurementId = firstRow.Field<string>("measurementProtocolMeasurementId"),
+                MeasurementProtocolApiSecret = firstRow.Field<string>("measurementProtocolApiSecret")
             };
         }
 
@@ -913,7 +938,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
                         // TODO: Call "TransactionFinished" site function.
                     }
-
+                    
                     await HandlePaymentStatusUpdateAsync(orderProcessesService, orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
 
                     return new PaymentRequestResult
@@ -1065,7 +1090,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         Content = emailContent,
                         Subject = emailSubject,
                         Receivers = new List<CommunicationReceiverModel> { new() { Address = userEmailAddress } },
-                        Bcc = new List<string> { bcc },
+                        Bcc = !String.IsNullOrWhiteSpace(bcc) ? new List<string> { bcc } : null,
                         ReplyTo = replyToAddress,
                         ReplyToName = replyToName,
                         Sender = senderAddress,
@@ -1081,13 +1106,18 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         Content = merchantEmailContent,
                         Subject = merchantEmailSubject,
                         Receivers = new List<CommunicationReceiverModel> { new() { Address = merchantEmailAddress } },
-                        Bcc = new List<string> { merchantBcc },
+                        Bcc = !String.IsNullOrWhiteSpace(merchantBcc) ? new List<string> { merchantBcc } : null,
                         ReplyTo = merchantReplyToAddress,
                         ReplyToName = merchantReplyToName,
                         Sender = merchantSenderAddress,
                         SenderName = merchantSenderName,
                         WiserItemFiles = fileId > 0 ? new List<ulong> { fileId } : null
                     });
+                }
+
+                if (isSuccessfulStatus && orderProcessSettings.MeasurementProtocolActive)
+                {
+                    await measurementProtocolService.PurchaseEventAsync(orderProcessSettings, main, lines, basketSettings, main.GetDetailValue(Constants.UniquePaymentNumberProperty));
                 }
             }
 

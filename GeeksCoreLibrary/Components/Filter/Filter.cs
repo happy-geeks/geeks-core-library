@@ -473,7 +473,8 @@ namespace GeeksCoreLibrary.Components.Filter
                         }; 
                         filterGroup.AddExtraPropertiesToList(replaceData);
 
-                        var template = StringReplacementsService.DoReplacements(Settings.TemplateFilterGroup, replaceData);
+                        var template = !String.IsNullOrEmpty(filterGroup.GroupTemplate) ? filterGroup.GroupTemplate : Settings.TemplateFilterGroup;
+                        template = StringReplacementsService.DoReplacements(template, replaceData);
 
                         filtersHtml.Append(template);
                         groupHtml.Clear();
@@ -498,7 +499,8 @@ namespace GeeksCoreLibrary.Components.Filter
                         };
                         filterGroup.AddExtraPropertiesToList(replaceData);
 
-                        var template = StringReplacementsService.DoReplacements(Settings.TemplateFilterGroup, replaceData);
+                        var template = !String.IsNullOrEmpty(filterGroup.GroupTemplate) ? filterGroup.GroupTemplate : Settings.TemplateFilterGroup;
+                        template = StringReplacementsService.DoReplacements(template, replaceData);
 
                         filtersHtml.Append(template);
                         groupHtml.Clear();
@@ -522,7 +524,8 @@ namespace GeeksCoreLibrary.Components.Filter
                 };
                 previousFilterGroup?.AddExtraPropertiesToList(replaceData);
 
-                var template = StringReplacementsService.DoReplacements(Settings.TemplateFilterGroup, replaceData);
+                var template = !String.IsNullOrEmpty(previousFilterGroup.GroupTemplate) ? previousFilterGroup.GroupTemplate : Settings.TemplateFilterGroup;
+                template = StringReplacementsService.DoReplacements(template, replaceData);
 
                 filtersHtml.Append(template);
                 groupHtml.Clear();
@@ -810,7 +813,8 @@ namespace GeeksCoreLibrary.Components.Filter
                                     }
                                 }
 
-                                var tempTemplate = StringReplacementsService.DoReplacements(Settings.TemplateSingleSelectItemSelected, replaceData);
+                                var tempTemplate = !String.IsNullOrEmpty(filterGroup.SelectedItemTemplate) ? filterGroup.SelectedItemTemplate : Settings.TemplateSingleSelectItemSelected;
+                                tempTemplate = StringReplacementsService.DoReplacements(tempTemplate, replaceData);
 
                                 filterHtml.Append(tempTemplate);
                             }
@@ -835,7 +839,8 @@ namespace GeeksCoreLibrary.Components.Filter
                                     }
                                 }
 
-                                var tempTemplate = StringReplacementsService.DoReplacements(Settings.TemplateSingleSelectItem, replaceData);
+                                var tempTemplate = !String.IsNullOrEmpty(filterGroup.ItemTemplate) ? filterGroup.ItemTemplate : Settings.TemplateSingleSelectItem;
+                                tempTemplate = StringReplacementsService.DoReplacements(tempTemplate, replaceData);
 
                                 filterHtml.Append(tempTemplate);
                             }
@@ -883,7 +888,8 @@ namespace GeeksCoreLibrary.Components.Filter
                                     }
                                 }
 
-                                var tempTemplate = StringReplacementsService.DoReplacements(Settings.TemplateMultiSelectItemSelected, replaceData);
+                                var tempTemplate = !String.IsNullOrEmpty(filterGroup.SelectedItemTemplate) ? filterGroup.SelectedItemTemplate : Settings.TemplateMultiSelectItemSelected;
+                                tempTemplate = StringReplacementsService.DoReplacements(tempTemplate, replaceData);
 
                                 filterHtml.Append(tempTemplate);
                             }
@@ -909,7 +915,8 @@ namespace GeeksCoreLibrary.Components.Filter
                                     }
                                 }
 
-                                var tempTemplate = StringReplacementsService.DoReplacements(Settings.TemplateMultiSelectItem, replaceData);
+                                var tempTemplate = !String.IsNullOrEmpty(filterGroup.ItemTemplate) ? filterGroup.ItemTemplate : Settings.TemplateMultiSelectItem;
+                                tempTemplate = StringReplacementsService.DoReplacements(tempTemplate, replaceData);
 
                                 filterHtml.Append(tempTemplate);
                             }
@@ -960,12 +967,13 @@ namespace GeeksCoreLibrary.Components.Filter
                             WriteToTrace("Set selected slider values: " + filterGroup.SelectedValueString);
                         }
                             
-                        filterHtml.Append(Settings.TemplateSlider.Replace("{minValue}", filterGroup.MinValue.ToString(CultureInfo.InvariantCulture))
-                                            .Replace("{maxValue}", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture))
-                                            .Replace("{selectedMin}", selectedMinValue.ToString(CultureInfo.InvariantCulture))
-                                            .Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture))
-                                            .Replace("{filterName}", filterGroup.Name)
-                                            .Replace("{filterNameSeo}", filterGroup.NameSeo));
+                        var tempTemplate = !String.IsNullOrEmpty(filterGroup.ItemTemplate) ? filterGroup.ItemTemplate : Settings.TemplateSlider;
+                        filterHtml.Append(tempTemplate.Replace("{minValue}", filterGroup.MinValue.ToString(CultureInfo.InvariantCulture))
+                                              .Replace("{maxValue}", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture))
+                                              .Replace("{selectedMin}", selectedMinValue.ToString(CultureInfo.InvariantCulture))
+                                              .Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture))
+                                              .Replace("{filterName}", filterGroup.Name)
+                                              .Replace("{filterNameSeo}", filterGroup.NameSeo));
                 }
 
                     break;
@@ -979,7 +987,7 @@ namespace GeeksCoreLibrary.Components.Filter
             if (filterHtml.Length > 0)
             {
                 // Don't add filter if it has no items
-                if (filterGroup.FilterType == FilterGroup.FilterGroupType.Slider && Settings.TemplateFilterGroupSlider != "")
+                if (filterGroup.FilterType == FilterGroup.FilterGroupType.Slider && ((Settings.TemplateFilterGroupSlider != "") || (filterGroup.GroupTemplate != "")))
                 {
                     replaceData = new Dictionary<string, string>
                     {
@@ -995,7 +1003,8 @@ namespace GeeksCoreLibrary.Components.Filter
                     filterGroup.AddExtraPropertiesToList(replaceData);
 
                     // Use the special slider filter group template if it's filled
-                    var template = StringReplacementsService.DoReplacements(Settings.TemplateFilterGroupSlider, replaceData);
+                    var template = !String.IsNullOrEmpty(filterGroup.GroupTemplate) ? filterGroup.GroupTemplate : Settings.TemplateFilterGroupSlider;
+                    template = StringReplacementsService.DoReplacements(template, replaceData);
 
                     htmlBuilder.Append(template);
                 }
@@ -1018,7 +1027,8 @@ namespace GeeksCoreLibrary.Components.Filter
 
                     filterGroup.AddExtraPropertiesToList(replaceData);
 
-                    var template = StringReplacementsService.DoReplacements(Settings.TemplateFilterGroup, replaceData);
+                    var template = !String.IsNullOrEmpty(filterGroup.GroupTemplate) ? filterGroup.GroupTemplate : Settings.TemplateFilterGroup;
+                    template = StringReplacementsService.DoReplacements(template, replaceData);
 
                     htmlBuilder.Append(template);
                 }

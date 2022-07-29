@@ -37,6 +37,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             databaseConnection.AddParameter("columnName", columnName);
@@ -50,6 +51,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
@@ -68,6 +70,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             if (String.IsNullOrWhiteSpace(settings?.Name))
             {
                 throw new ArgumentException("No column name given.");
+            }
+            
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
+                databaseName = databaseConnection.ConnectedDatabase;
             }
             
             databaseConnection.AddParameter("columnName", settings.Name);
@@ -108,6 +116,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             databaseConnection.AddParameter("columnName", columnName);
@@ -119,6 +128,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var queryBuilder = new StringBuilder($"CREATE TABLE IF NOT EXISTS `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
@@ -193,6 +203,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var dataTable = await databaseConnection.GetAsync($"SHOW KEYS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` WHERE KEY_NAME = 'PRIMARY'");
@@ -210,12 +221,19 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
 
-            databaseConnection.AddParameter("databaseName", databaseName);
+            var databaseClause = "";
+            if (!String.IsNullOrWhiteSpace(databaseName))
+            {
+                databaseClause = "AND TABLE_SCHEMA = ?databaseName";
+                databaseConnection.AddParameter("databaseName", databaseName);
+            }
+
             databaseConnection.AddParameter("tableName", tableName);
-            var dataTable = await databaseConnection.GetAsync($"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_SCHEMA = ?databaseName AND TABLE_NAME = ?tableName");
+            var dataTable = await databaseConnection.GetAsync($"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = ?tableName {databaseClause}");
             return dataTable.Rows.Count > 0;
         }
         
@@ -231,6 +249,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             await databaseConnection.ExecuteAsync($"DROP {(isTemporaryTable ? "TEMPORARY" : "")} TABLE IF EXISTS `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
@@ -239,6 +258,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async Task DuplicateTableAsync(string tableToDuplicate, string newTableName, bool includeData = true, string sourceDatabaseName = null, string destinationDatabaseName = null)
         {
+            await databaseConnection.EnsureOpenConnectionForReadingAsync();
+            
             if (String.IsNullOrWhiteSpace(sourceDatabaseName))
             {
                 sourceDatabaseName = databaseConnection.ConnectedDatabase;
@@ -266,6 +287,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var oldIndexes = new Dictionary<string, List<(string Name, List<string> Columns)>>();
@@ -376,6 +398,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var dataTable = await databaseConnection.GetAsync($"SELECT name, last_update FROM `{databaseName.ToMySqlSafeValue(false)}`.`{WiserTableNames.WiserTableChanges}`");
@@ -411,6 +434,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
 
@@ -433,6 +457,65 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // Table is not up-to-date, so update it now.
                 await CreateOrUpdateTableAsync(tableName, tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
                 await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                
+                // Update archive table.
+                if (WiserTableNames.TablesWithArchive.Contains(tableName))
+                {
+                    await CreateOrUpdateTableAsync($"{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
+                    tableDefinition.Indexes.ForEach(index => index.TableName += WiserTableNames.ArchiveSuffix);
+                    await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                    tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                }
+                
+                // Update dedicated entity tables.
+                if (WiserTableNames.TablesThatCanHaveEntityPrefix.Contains(tableName))
+                {
+                    var query = $@"SELECT DISTINCT dedicated_table_prefix FROM {WiserTableNames.WiserEntity} WHERE dedicated_table_prefix IS NOT NULL AND dedicated_table_prefix != ''";
+                    var dataTable = await databaseConnection.GetAsync(query);
+                    foreach (DataRow dataRow in dataTable.Rows)
+                    {
+                        var tablePrefix = dataRow.Field<string>("dedicated_table_prefix");
+                        if (!tablePrefix!.EndsWith("_"))
+                        {
+                            tablePrefix += "_";
+                        }
+                        
+                        // Normal tables.
+                        await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}");
+                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                        
+                        // Archive tables.
+                        await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}{WiserTableNames.ArchiveSuffix}");
+                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                    }
+                }
+                
+                // Update dedicated link tables.
+                if (WiserTableNames.TablesThatCanHaveLinkPrefix.Contains(tableName))
+                {
+                    var query = $@"SELECT DISTINCT type FROM {WiserTableNames.WiserLink} WHERE use_dedicated_table = 1";
+                    var dataTable = await databaseConnection.GetAsync(query);
+                    foreach (DataRow dataRow in dataTable.Rows)
+                    {
+                        var tablePrefix = $"{dataRow["type"]}_";
+                        
+                        // Normal tables.
+                        await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}");
+                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                        
+                        // Archive tables.
+                        await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}{WiserTableNames.ArchiveSuffix}");
+                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                    }
+                }
 
                 // Update wiser_table_changes.
                 databaseConnection.AddParameter("tableName", tableName);

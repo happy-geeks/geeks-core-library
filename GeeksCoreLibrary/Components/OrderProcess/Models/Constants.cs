@@ -173,10 +173,24 @@
 
         public const string PaymentMethodExternalNameProperty = "paymentmethodexternalname";
 
+        public const string MeasurementProtocolActiveProperty = "measurementprotocolactive";
+
+        public const string MeasurementProtocolItemJsonProperty = "measurementprotocolitemjson";
+
+        public const string MeasurementProtocolBeginCheckoutJsonProperty = "measurementprotocolbegincheckoutjson";
+
+        public const string MeasurementProtocolAddPaymentInfoJsonProperty = "measurementprotocoladdpaymentinfojson";
+
+        public const string MeasurementProtocolPurchaseJsonProperty = "measurementprotocolpurchasejson";
+
+        public const string MeasurementProtocolMeasurementIdProperty = "measurementprotocolmeasurementid";
+        
+        public const string MeasurementProtocolApiSecretProperty = "measurementprotocolapisecret";
+
         #endregion
 
         #region Fields for basket and orders
-        
+
         public const string PaymentMethodNameProperty = "PaymentMethodName";
 
         public const string PaymentProviderProperty = "PaymentProvider";

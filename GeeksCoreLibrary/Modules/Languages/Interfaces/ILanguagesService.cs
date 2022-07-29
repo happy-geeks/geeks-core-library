@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using GeeksCoreLibrary.Modules.Languages.Models;
 
 namespace GeeksCoreLibrary.Modules.Languages.Interfaces
 {
@@ -23,5 +25,11 @@ namespace GeeksCoreLibrary.Modules.Languages.Interfaces
         /// </summary>
         /// <returns>The language code.</returns>
         Task<string> GetLanguageCodeAsync();
+
+        /// <summary>
+        /// Gets all languages that are configured in Wiser.
+        /// </summary>
+        /// <returns>A list of <see cref="LanguageModel"/> with all configured languages.</returns>
+        Task<List<LanguageModel>> GetAllLanguagesAsync();
     }
 }

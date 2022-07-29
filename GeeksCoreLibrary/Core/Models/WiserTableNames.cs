@@ -1,4 +1,6 @@
-﻿namespace GeeksCoreLibrary.Core.Models
+﻿using System.Collections.Generic;
+
+namespace GeeksCoreLibrary.Core.Models
 {
     public class WiserTableNames
     {
@@ -76,10 +78,6 @@
         /// </summary>
         public const string WiserUsersAuthenticationTokens = "wiser_user_auth_token";
         /// <summary>
-        /// This table contains custom sort orders for users. Users can sort modules in wiser or fields on an entity type, that will all be saved here.
-        /// </summary>
-        public const string WiserOrdering = "wiser_ordering";
-        /// <summary>
         /// This table contains all login attempts that are done in Wiser for this customer.
         /// </summary>
         public const string WiserLoginAttempts = "wiser_login_attempts";
@@ -137,18 +135,64 @@
         /// </summary>
         public const string WiserPreviewProfiles = "wiser_preview_profiles";
         /// <summary>
+        /// This table is used to store the commit history of the version control module.
+        /// </summary>
+        public const string WiserCommit = "wiser_commit";
+        /// <summary>
+        /// This table is used to store the commit history of templates of the version control module.
+        /// </summary>
+        public const string WiserCommitTemplate = "wiser_commit_template";
+        /// <summary>
+        /// This table is used to store the commit history of dynamic components of the version control module.
+        /// </summary>
+        public const string WiserCommitDynamicContent = "wiser_commit_dynamic_content";
+        /// <summary>
         /// This table is used by the AIS to write logs to.
         /// </summary>
         public const string AisLogs = "ais_logs";
         /// <summary>
-        /// This table is used by Wiser for the functionality of creating extra environments for customers and synchronising changes from another environment to production,
-        /// When a new item has been added in another environment and it gets synchronised to production, it will most likely get a different ID in production.
+        /// This table is used by Wiser for the functionality of creating branches for customers and synchronising changes from another branch to the main/original branch,
+        /// When a new item has been added in another branch and it gets synchronised to production, it will most likely get a different ID in the main branch.
         /// We need this table to remember/map these IDs, so that we can also synchronise any other changes to the correct item. 
         /// </summary>
         public const string WiserIdMappings = "wiser_id_mappings";
         /// <summary>
+        /// This table is used by Wiser to queue things for branches, such as creating a new branch or synchronising changes from one branch to the main branch.
+        /// The AIS will then handle this queue and do the actual work.
+        /// </summary>
+        public const string WiserBranchesQueue = "wiser_branches_queue";
+        /// <summary>
         /// All deleted items will be moved to archive tables, this is the suffix for those archive tables.
         /// </summary>
         public const string ArchiveSuffix = "_archive";
+        /// <summary>
+        /// All tables that also have an archive.
+        /// </summary>
+        public static readonly List<string> TablesWithArchive = new()
+        {
+            WiserItem,
+            WiserItemDetail,
+            WiserItemFile,
+            WiserItemLink,
+            WiserItemLinkDetail
+        };
+        /// <summary>
+        /// All tables that can have a dedicated version for certain entity types, such as "basket_wiser_item".
+        /// </summary>
+        public static readonly List<string> TablesThatCanHaveEntityPrefix = new()
+        {
+            WiserItem,
+            WiserItemDetail,
+            WiserItemFile
+        };
+        /// <summary>
+        /// All tables that can have a dedicated version for certain link types, such as "1234_wiser_itemlink".
+        /// </summary>
+        public static readonly List<string> TablesThatCanHaveLinkPrefix = new()
+        {
+            WiserItemLink,
+            WiserItemLinkDetail,
+            WiserItemFile
+        };
     }
 }

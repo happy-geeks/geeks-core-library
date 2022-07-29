@@ -50,7 +50,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
         /// </summary>
         private async Task<Dictionary<string, SettingObject>> CacheObjectsAsync()
         {
-            return await cache.GetOrAdd("SettingObjects", GetAllObjects, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Objects));
+            return await cache.GetOrAddAsync("SettingObjects", GetAllObjects, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Objects));
 
             async Task<Dictionary<string, SettingObject>> GetAllObjects(ICacheEntry cacheEntry)
             {

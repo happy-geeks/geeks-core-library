@@ -9,7 +9,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models
         public string City { get; set; }
         public string Countrycode { get; set; }
         public string FirstName { get; set; }
-        [JsonProperty("houseNr")]
+        [JsonProperty("HouseNr")]
         public string HouseNumber { get; set; }
         [JsonProperty("HouseNrExt")]
         public string HouseNumberAddition { get; set; }

@@ -4,7 +4,10 @@
 1. Install .NET Hosting bundle on the server that is running the GCL: https://dotnet.microsoft.com/download/dotnet/6.0
 
 ## Using the GCL in a project 
-To use the GCL in your project, install the NuGet package `GeeksCoreLibrary` and then modify your Startup.cs to look like this:
+If you're creating a new project, we recommend using the [template](https://github.com/happy-geeks/Gcl-Template) for that. Simply click the green button "Use this template" to create a new repository that will be a copy of the template.
+
+If you don't want to or can't use the template project, you have the do the following in order to use the GCL:
+Install the NuGet package `GeeksCoreLibrary` and then modify your Startup.cs to look like this:
 ```C#
 public class Startup
 {
@@ -29,10 +32,10 @@ public class Startup
     }
 }
 ```
-If you're creating a new project, we recommend using the [template](https://github.com/happy-geeks/Gcl-Template) for that.
+
 
 ## Configuration
-For the GCL to work, you need to set some values in the `appSettings.json`:
+For the GCL to work, you need to set some values in the `appSettings.json` or `appSettings-secrets.json`:
 ```json
 {
   "GCL": {

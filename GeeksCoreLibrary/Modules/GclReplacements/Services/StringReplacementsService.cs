@@ -73,6 +73,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             var curDateTime = DateTime.Now;
 
             dataDictionary.Clear();
+            dataDictionary.Add("NowDateTime", curDateTime.ToString("yyyy-MM-dd HH:mm:ss"));
             dataDictionary.Add("NowYear", curDateTime.Year.ToString());
             dataDictionary.Add("NowMonth", curDateTime.Month.ToString());
             dataDictionary.Add("NowDay", curDateTime.Day.ToString());
@@ -737,6 +738,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 var originalFieldName = fieldName;
                 var formatters = "";
 
+                // Colons that are escaped with a backslash are temporarily replaced with "~~COLON~~".
+                fieldName = fieldName.Replace("\\:", "~~COLON~~");
+
                 // Check if formatters are used. If the field ends with a colon, it's assumed to be part of the field name and not the formatter separator.
                 // No check is performed to see if the formatters are valid, as that would slow things down too much.
                 if (fieldName.Contains(":") && !fieldName.Trim().EndsWith(":"))
@@ -752,6 +756,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     VariableName = fieldName,
                     OriginalVariableName = originalFieldName
                 };
+
+                // Now replace "~~COLON~~" with an actual colon again.
+                formatters = formatters.Replace("~~COLON~~", ":");
 
                 // Add the formatters to the list.
                 variable.Formatters.AddRange(formatters.Split('|', StringSplitOptions.RemoveEmptyEntries));

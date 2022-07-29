@@ -187,7 +187,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         JOIN easy_templates t ON t.itemid = i.id
                         {joinPart}
                         LEFT JOIN easy_items ip ON ip.id = i.parent_id
-                        LEFT JOIN easy_items ipp ON ipp.id == ip.parent_id
+                        LEFT JOIN easy_items ipp ON ipp.id = ip.parent_id
                         LEFT JOIN easy_items ippp ON ippp.id = ipp.parent_id
                         LEFT JOIN easy_items ipppp ON ipppp.id = ippp.parent_id
                         LEFT JOIN easy_items ippppp ON ippppp.id = ipppp.parent_id
@@ -198,8 +198,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND {String.Join(" AND ", whereClause)}
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            var result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            Template result;
+            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            {
+                result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            }
 
             // Check login requirement.
             if (!result.Type.InList(TemplateTypes.Html, TemplateTypes.Query) || !result.LoginRequired)
