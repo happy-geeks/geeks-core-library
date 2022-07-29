@@ -7,10 +7,12 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -46,16 +48,14 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             "mainstep_free_content4", "mainstep_free_content5", "step_template", "stepname", "values_template", "datasource", "custom_query", "own_data_values", "fixed_valuelist", "datasource_connectedtype", "variable_name", "step_free_content1", "step_free_content2", "step_free_content3", "step_free_content4", "step_free_content5", "datasource_connectedid", "isrequired", "check_connectedid",
             "substepname", "substep_template", "substep_values_template", "substep_datasource",
             "substep_custom_query", "substep_own_data_values", "substep_fixed_valuelist", "substep_datasource_connectedtype", "substep_variable_name", "substep_datasource_connectedid", "substep_isrequired", "substep_check_connectedid", "substep_free_content1", "substep_free_content2", "substep_free_content3", "substep_free_content4", "substep_free_content5", "urlregex",
-            "configurator_step_template",
-            "price_calculation_endpoint", "price_calculation_request_json", "price_calculation_api_query", "price_calculation_api_purchase_price_key", "price_calculation_api_customer_price_key", "price_calculation_api_from_price_key"
+            "configurator_step_template"
         };
 
         private readonly List<(string prefix, string fieldName)> configuratorFields = new List<(string prefix, string fieldName)>
         {
             ("", "name"), ("", "summary_template"), ("", "summary_mainstep_template"), ("", "summary_step_template"), ("", "progress_pre_template"), ("", "progress_pre_step_template"), ("", "progress_pre_substep_template"), ("", "progress_post_template"), ("", "progress_post_step_template"), ("", "progress_post_substep_template"), ("", "progress_template"), ("", "progress_step_template"),
             ("", "progress_substep_template"), ("configurator_", "free_content1"), ("configurator_", "free_content2"), ("configurator_", "free_content3"), ("configurator_", "free_content4"), ("configurator_", "free_content5"), ("", "template"), ("", "deliverytime_query"), ("", "custom_param_name"), ("", "custom_param_dependencies"), ("", "custom_param_query"), ("", "pre_render_steps_query"),
-            ("configurator_", "step_template"), ("", "price_calculation_query"),
-            ("", "price_calculation_endpoint"), ("", "price_calculation_request_json"), ("", "price_calculation_api_query"), ("", "price_calculation_api_purchase_price_key"), ("", "price_calculation_api_customer_price_key"), ("", "price_calculation_api_from_price_key")
+            ("configurator_", "step_template"), ("", "price_calculation_query")
         };
 
         private readonly List<(string prefix, string fieldName)> mainStepFields = new List<(string prefix, string fieldName)>
@@ -571,57 +571,86 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         private async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> GetPriceFromApiAsync(ConfigurationsModel configuration, DataTable dataTable)
         {
             (decimal purchasePrice, decimal customerPrice, decimal fromPrice) result = (0, 0, 0);
-            
-            var endpoint = dataTable.Rows[0].Field<string>("price_calculation_endpoint");
-            var requestJson = dataTable.Rows[0].Field<string>("price_calculation_request_json");
-            var purchasePriceKey = dataTable.Rows[0].Field<string>("price_calculation_api_purchase_price_key");
-            var customerPriceKey = dataTable.Rows[0].Field<string>("price_calculation_api_customer_price_key");
-            var fromPriceKey = dataTable.Rows[0].Field<string>("price_calculation_api_from_price_key");
-            var query = dataTable.Rows[0].Field<string>("price_calculation_api_query");
 
-            if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
+            var configuratorId = Convert.ToUInt64(dataTable.Rows[0].Field<object>("configuratorId"));
+            var priceApis = await wiserItemsService.GetLinkedItemDetailsAsync(configuratorId, 41, "ConfiguratorApi");
+
+            foreach (var priceApi in priceApis)
             {
-                return result;
-            }
+                var endpoint = priceApi.GetDetailValue("endpoint");
+                var requestJson = priceApi.GetDetailValue("request_json");
+                var purchasePriceKey = priceApi.GetDetailValue("price_calculation_purchase_price_key");
+                var customerPriceKey = priceApi.GetDetailValue("price_calculation_customer_price_key");
+                var fromPriceKey = priceApi.GetDetailValue("price_calculation_from_price_key");
+                var query = priceApi.GetDetailValue("api_query");
 
-            DataRow extraData = null;
-
-            // If a query is set handle it to add extra information for the replacements in the JSON.
-            if (!String.IsNullOrWhiteSpace(query))
-            {
-                query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
-                query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
-                var extraDataTable = await databaseConnection.GetAsync(query);
-
-                if (extraDataTable.Rows.Count > 0)
+                if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
                 {
-                    extraData = extraDataTable.Rows[0];
+                    return result;
                 }
+
+                DataRow extraData = null;
+
+                // If a query is set handle it to add extra information for the replacements in the JSON.
+                if (!String.IsNullOrWhiteSpace(query))
+                {
+                    query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                    query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
+                    var extraDataTable = await databaseConnection.GetAsync(query);
+
+                    if (extraDataTable.Rows.Count > 0)
+                    {
+                        extraData = extraDataTable.Rows[0];
+                    }
+                }
+
+                endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
+                endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+
+                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+
+                var requestMethod = (Method)priceApi.GetDetailValue<int>("request_type");
+
+                var restClient = new RestClient();
+                var restRequest = new RestRequest(endpoint, requestMethod);
+
+                var authenticationType = priceApi.GetDetailValue<int>("authentication_type");
+
+                switch (authenticationType)
+                {
+                    case 1: // Oauth 2.0
+                        // TODO handle OAuth 2
+                        restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
+                        break;
+                    case 2: // Token
+                        // TODO decrypt token
+                        var token = priceApi.GetDetailValue("token");
+                        token = await stringReplacementsService.DoAllReplacementsAsync(token);
+                        restRequest.AddHeader("Authorization", $"Token {token}");
+                        break;
+                    default:
+                        // TODO handle no selected.
+                        continue;
+                }
+                
+                
+                restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+
+                var restResponse = await restClient.ExecuteAsync(restRequest);
+                if (!restResponse.IsSuccessful || restResponse.Content == null)
+                {
+                    //TODO handle wrong
+                    continue;
+                }
+
+                // Get the three different prices from the response.
+                var responseData = JObject.Parse(restResponse.Content);
+                result.purchasePrice += GetPriceValueFromResponse(responseData, purchasePriceKey);
+                result.customerPrice += GetPriceValueFromResponse(responseData, customerPriceKey);
+                result.fromPrice += GetPriceValueFromResponse(responseData, fromPriceKey);
             }
-            
-            endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
-            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
 
-            requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
-            requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
-
-            var restClient = new RestClient();
-            var restRequest = new RestRequest(endpoint, Method.Post);
-            restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
-            restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
-
-            var restResponse = await restClient.ExecuteAsync(restRequest);
-            if (!restResponse.IsSuccessful || restResponse.Content == null)
-            {
-                return result;
-            }
-
-            // Get the three different prices from the response.
-            var responseData = JObject.Parse(restResponse.Content);
-            result.purchasePrice += GetPriceValueFromResponse(responseData, purchasePriceKey);
-            result.customerPrice += GetPriceValueFromResponse(responseData, customerPriceKey);
-            result.fromPrice += GetPriceValueFromResponse(responseData, fromPriceKey);
-            
             return result;
         }
 
