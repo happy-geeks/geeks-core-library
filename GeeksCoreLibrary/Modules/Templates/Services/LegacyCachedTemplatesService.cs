@@ -111,7 +111,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             // Cache the template settings in memory.
             var cacheKey = $"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}";
-            var template = await cache.GetOrAdd(cacheKey,
+            var template = await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -156,7 +156,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             var cacheKey = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}";
-            return await cache.GetOrAdd(cacheKey,
+            return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -174,7 +174,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
         {
             var cacheKey = $"GeneralTemplateLastChangedDate_{templateType}";
-            return await cache.GetOrAdd(cacheKey,
+            return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -186,7 +186,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
         {
             var cacheKey = $"GeneralTemplateValue_{templateType}";
-            return await cache.GetOrAdd(cacheKey,
+            return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -354,7 +354,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// </summary>
         private async Task<Dictionary<int, DynamicContent>> CacheDynamicContentAsync()
         {
-            return await cache.GetOrAdd("DynamicContent", GetDynamicContentForCachingAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+            return await cache.GetOrAddAsync("DynamicContent", GetDynamicContentForCachingAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />

@@ -69,5 +69,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// This table will not be created automatically. To create this table, make a copy of wiser_itemlink (including triggers, but the the name of the table in the triggers too).
         /// </summary>
         public bool UseDedicatedTable { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether to also delete children when the parent is being deleted.
+        /// </summary>
+        public bool CascadeDelete { get; set; }
     }
 }

@@ -389,7 +389,8 @@ namespace GeeksCoreLibrary.Components.Repeater
                 {
                     { "volgnr", (index + 1).ToString() },
                     { "rowindex", index.ToString() },
-                    { "resultcount", data.Rows.Count.ToString() }
+                    { "resultcount", data.Rows.Count.ToString() },
+                    { "uniqueResultCount", data.Rows.Count.ToString() }
                 };
                 string templateHtml;
 
@@ -560,7 +561,8 @@ namespace GeeksCoreLibrary.Components.Repeater
                 {
                     { "volgnr", (index + 1).ToString() },
                     { "rowindex", index.ToString() },
-                    { "resultcount", data.Rows.Count.ToString() }
+                    { "resultcount", data.Rows.Count.ToString() },
+                    { "uniqueResultCount", columnIds.Count.ToString() }
                 };
                 string templateHtml;
 

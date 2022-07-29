@@ -56,6 +56,24 @@ namespace GeeksCoreLibrary.Components.Pagination.Models
         public uint MaxPages { get; set; }
 
         [CmsProperty(
+            PrettyName = "Min pages at start",
+            Description = "The minimum amount of pages that should be shown at the start.",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Basic,
+            DisplayOrder = 21
+        )]
+        public uint MinPagesAtStart { get; set; }
+
+        [CmsProperty(
+            PrettyName = "Min pages at end",
+            Description = "The minimum amount of pages that should be shown at the end.",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Basic,
+            DisplayOrder = 22
+        )]
+        public uint MinPagesAtEnd { get; set; }
+
+        [CmsProperty(
             PrettyName = "Max pages before current",
             Description = "How many pages can be shown in front of the current page.",
             TabName = CmsAttributes.CmsTabName.Behavior,

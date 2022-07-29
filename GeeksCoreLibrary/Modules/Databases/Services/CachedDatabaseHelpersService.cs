@@ -30,14 +30,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public Task<bool> ColumnExistsAsync(string tableName, string columnName, string databaseName = null)
+        public async Task<bool> ColumnExistsAsync(string tableName, string columnName, string databaseName = null)
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var cacheName = $"CachedDatabaseHelpersService_ColumnExistsAsync_{databaseName}_{tableName}_{columnName}";
-            return cache.GetOrAddAsync(cacheName,
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
@@ -46,14 +47,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public Task<List<string>> GetColumnNamesAsync(string tableName, string databaseName = null)
+        public async Task<List<string>> GetColumnNamesAsync(string tableName, string databaseName = null)
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var cacheName = $"CachedDatabaseHelpersService_GetColumnNamesAsync_{databaseName}_{tableName}";
-            return cache.GetOrAddAsync(cacheName,
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
@@ -98,14 +100,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public Task<bool> TableExistsAsync(string tableName, string databaseName = null)
+        public async Task<bool> TableExistsAsync(string tableName, string databaseName = null)
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var cacheName = $"CachedDatabaseHelpersService_TableExistsAsync_{databaseName}_{tableName}";
-            return cache.GetOrAddAsync(cacheName,
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;                    
@@ -166,6 +169,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (String.IsNullOrWhiteSpace(databaseName))
             {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var cacheName = $"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}";
