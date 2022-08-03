@@ -199,7 +199,8 @@ namespace GeeksCoreLibrary.Core.Services
                     wiserItem.ParentItemId = parentId.Value;
                     databaseConnection.AddParameter("newItemId", wiserItem.Id);
                     databaseConnection.AddParameter("parentId", parentId);
-                    await databaseConnection.ExecuteAsync($"UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET parent_item_id = ?parentId WHERE id = ?newItemId");
+                    await databaseConnection.ExecuteAsync($@"SET @newOrderNumber = (SELECT IFNULL(MAX(ordering), 0) + 1 FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE parent_item_id = ?parentId);
+UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET parent_item_id = ?parentId, ordering = @newOrderNumber WHERE id = ?newItemId");
                 }
                 else
                 {

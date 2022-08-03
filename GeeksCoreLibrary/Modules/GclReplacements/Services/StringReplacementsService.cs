@@ -961,6 +961,10 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             {
                 return Convert.ToDouble(input, new CultureInfo("en-US"));
             }
+            if (type == typeof(DateTime))
+            {
+                return Convert.ToDateTime(input, new CultureInfo("en-US"));
+            }
 
             return Convert.ChangeType(input, type);
         }
