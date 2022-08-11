@@ -152,7 +152,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserEntityProperty,
-                LastUpdate = new DateTime(2022, 5, 25),
+                LastUpdate = new DateTime(2022, 8, 5),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -160,7 +160,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("entity_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                     new("link_type", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("visible_in_overview", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
-                    new("overview_fieldtype", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
                     new("overview_width", MySqlDbType.Int24, notNull: true, defaultValue: "100"),
                     new("tab_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                     new("group_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
@@ -198,7 +197,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("label_width", MySqlDbType.Enum, enumValues: new List<string> { "0", "10", "20", "30", "40", "50" }),
                     new("enable_aggregation", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("aggregate_options", MySqlDbType.MediumText),
-                    new("access_key", MySqlDbType.VarChar, 1, notNull: true, defaultValue: "")
+                    new("access_key", MySqlDbType.VarChar, 1, notNull: true, defaultValue: ""),
+                    new("visibility_path_regex", MySqlDbType.VarChar, 255, notNull: true, defaultValue: "")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {

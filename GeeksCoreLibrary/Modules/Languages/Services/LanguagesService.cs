@@ -51,14 +51,14 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                 databaseConnection.AddParameter("gcl_groupName", Constants.TranslationsGroupName);
                 databaseConnection.AddParameter("gcl_translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));
                 var dataTable = await databaseConnection.GetAsync(
-                    @$"SELECT
-	                    `key`,
-	                    CONCAT_WS('', `value`, long_value) AS `value`
-                    FROM {WiserTableNames.WiserItemDetail}
-                    WHERE item_id = ?gcl_translationsItemId
-                        AND groupname = ?gcl_groupName
-                        AND language_code = ?gcl_languageCode
-                        AND (`value` = ?gcl_original OR long_value = ?gcl_original)");
+@$"SELECT
+	`key`,
+	CONCAT_WS('', `value`, long_value) AS `value`
+FROM {WiserTableNames.WiserItemDetail}
+WHERE item_id = ?gcl_translationsItemId
+AND groupname = ?gcl_groupName
+AND language_code = ?gcl_languageCode
+AND (`value` = ?gcl_original OR long_value = ?gcl_original)");
 
                 var result = dataTable.Rows.Count > 0 ? dataTable.Rows[0].Field<string>("value") ?? "" : original;
 
@@ -110,6 +110,41 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             return languageCode;
         }
 
+        /// <inheritdoc />
+        public async Task<List<LanguageModel>> GetAllLanguagesAsync()
+        {
+            var query = $@"SELECT 
+    language.id,
+    language.title,
+    code.`value` AS languageCode, 
+    IFNULL(isDefault.`value`, '0') AS isDefaultLanguage,
+    hrefLang.`value` AS hrefLang
+FROM {WiserTableNames.WiserItem} AS language
+JOIN {WiserTableNames.WiserItemDetail} AS code ON code.item_id = language.id AND code.`key` = '{Constants.LanguageCodeFieldName}' AND code.`value` IS NOT NULL AND code.`value` <> ''
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS isDefault ON isDefault.item_id = language.id AND isDefault.`key` = '{Constants.DefaultLanguageFieldName}'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS hrefLang ON hrefLang.item_id = language.id AND hrefLang.`key` = '{Constants.HrefLangFieldName}'
+LEFT JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = language.id AND link.type = 1
+WHERE language.entity_type = '{Constants.LanguageEntityType}'
+AND language.published_environment > 0
+ORDER BY IFNULL(link.ordering, language.title)";
+            var dataTable = await databaseConnection.GetAsync(query);
+
+            var results = new List<LanguageModel>();
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                results.Add(new LanguageModel
+                {
+                    Id = dataRow.Field<ulong>("id"),
+                    Name = dataRow.Field<string>("title"),
+                    Code = dataRow.Field<string>("languageCode"),
+                    HrefLangCode = dataRow.Field<string>("hrefLang"),
+                    IsDefaultLanguage = dataRow.Field<string>("isDefaultLanguage") == "1"
+                });
+            }
+
+            return results;
+        }
+
         /// <summary>
         /// Gets the first language code based on the ordering in the module 'Stamgegevens'.
         /// </summary>
@@ -122,14 +157,16 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             var userLanguages = httpContextAccessor.HttpContext?.Request.GetTypedHeaders().AcceptLanguage.OrderByDescending(v => v.Quality ?? 1).Select(v => v.Value.Value).ToList();
 
             var getDefaultLanguageResult = await databaseConnection.GetAsync(
-                $@"SELECT c.`value`, IFNULL(d.`value`, '0') AS is_default_language
-                FROM {WiserTableNames.WiserItem} AS lang
-                JOIN {WiserTableNames.WiserItemDetail} AS c ON c.item_id = lang.id AND c.`key` = 'language_code' AND c.`value` IS NOT NULL AND c.`value` <> ''
-                LEFT JOIN {WiserTableNames.WiserItemDetail} AS d ON d.item_id = lang.id AND d.`key` = 'is_default_language'
-                LEFT JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = lang.id AND link.type = 1
-                WHERE lang.entity_type = 'language'
-                AND lang.published_environment > 0
-                ORDER BY IFNULL(link.ordering, lang.title)");
+$@"SELECT 
+    code.`value`, 
+    IFNULL(isDefault.`value`, '0') AS is_default_language
+FROM {WiserTableNames.WiserItem} AS language
+JOIN {WiserTableNames.WiserItemDetail} AS code ON code.item_id = language.id AND code.`key` = '{Constants.LanguageCodeFieldName}' AND code.`value` IS NOT NULL AND code.`value` <> ''
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS isDefault ON isDefault.item_id = language.id AND isDefault.`key` = '{Constants.DefaultLanguageFieldName}'
+LEFT JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = language.id AND link.type = 1
+WHERE language.entity_type = '{Constants.LanguageEntityType}'
+AND language.published_environment > 0
+ORDER BY IFNULL(link.ordering, language.title)");
 
             if (getDefaultLanguageResult.Rows.Count == 0)
             {

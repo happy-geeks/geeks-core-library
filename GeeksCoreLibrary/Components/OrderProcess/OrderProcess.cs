@@ -1065,11 +1065,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                             var userData = currentItems.Single(item => item.Item.EntityType == Account.Models.Constants.DefaultEntityType).Item;
                                             var userId = userData.Id;
                                             var parentId = userId;
-                                            var linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(0, saveLocation.EntityType, Account.Models.Constants.DefaultEntityType);
+                                            var linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(saveLocation.LinkType, saveLocation.EntityType, Account.Models.Constants.DefaultEntityType);
                                             if (linkSettings == null || linkSettings.Id == 0)
                                             {
                                                 parentId = shoppingBasket.Id;
-                                                linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(0, saveLocation.EntityType, ShoppingBasket.Models.Constants.BasketEntityType);
+                                                linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(saveLocation.LinkType, saveLocation.EntityType, ShoppingBasket.Models.Constants.BasketEntityType);
                                             }
 
                                             if (linkSettings == null || linkSettings.Id == 0)

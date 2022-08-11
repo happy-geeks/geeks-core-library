@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
@@ -92,7 +93,21 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
 
             return currentLanguageCode;
         }
-        
+
+        /// <inheritdoc />
+        public async Task<List<LanguageModel>> GetAllLanguagesAsync()
+        {
+            return await cache.GetOrAddAsync("all_languages",
+                 async cacheEntry =>
+                 {
+                     // Use the normal languages service to get the language code, which always looks in the database if necessary.
+                     var allLanguages = await languagesService.GetAllLanguagesAsync();
+                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultLanguagesCacheDuration;
+                     return allLanguages;
+                 },
+                 cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Languages));
+        }
+
         /// <summary>
         /// Gets and caches all translations of a language.
         /// </summary>

@@ -844,7 +844,6 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 Content = dataSelectorQuery
             };
 
-            databaseConnection.ClearParameters();
             return (await templatesService.GetJsonResponseFromQueryAsync(queryTemplate, recursive: true), HttpStatusCode.OK, String.Empty);
         }
         
@@ -1026,7 +1025,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 return (data.OutputTemplate, HttpStatusCode.OK, String.Empty);
             }
 
-            var outputTemplate = data.OutputTemplate;
+            var outputTemplate = data.OutputTemplate.Replace("{html}", "{html:Raw}");
             var output = stringReplacementsService.FillStringByClassList(jsonResult, outputTemplate);
 
             output = stringReplacementsService.EvaluateTemplate(output);
