@@ -441,6 +441,29 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 }
             },
             
+            // ais_services
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.AisServices,
+                LastUpdate = new DateTime(2022, 8, 11),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("configuration", MySqlDbType.VarChar, 256, notNull: true),
+                    new("time_id", MySqlDbType.Int32, notNull: true),
+                    new("action", MySqlDbType.VarChar, 256),
+                    new("scheme", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "continuous", "daily", "weekly", "monthly" }),
+                    new("last_run", MySqlDbType.DateTime),
+                    new("next_run", MySqlDbType.DateTime),
+                    new("state", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "success", "warning", "failed", "paused", "stopped" }, defaultValue: "success")
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.AisServices, "idx_time", IndexTypes.Normal, new List<string> { "configuration", "time_id" }),
+                    new(WiserTableNames.AisServices, "idx_action", IndexTypes.Normal, new List<string> { "configuration", "action" })
+                }
+            },
+            
             // wiser_id_mappings
             new WiserTableDefinitionModel
             {

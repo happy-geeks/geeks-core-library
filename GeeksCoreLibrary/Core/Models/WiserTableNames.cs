@@ -151,6 +151,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string AisLogs = "ais_logs";
         /// <summary>
+        /// This table is used by the AIS to store information about the services it is handling.
+        /// </summary>
+        public const string AisServices = "ais_services";
+        /// <summary>
         /// This table is used by Wiser for the functionality of creating branches for customers and synchronising changes from another branch to the main/original branch,
         /// When a new item has been added in another branch and it gets synchronised to production, it will most likely get a different ID in the main branch.
         /// We need this table to remember/map these IDs, so that we can also synchronise any other changes to the correct item. 
