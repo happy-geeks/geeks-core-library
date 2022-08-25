@@ -445,7 +445,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.AisServices,
-                LastUpdate = new DateTime(2022, 8, 11),
+                LastUpdate = new DateTime(2022, 8, 25),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -455,7 +455,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("scheme", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "continuous", "daily", "weekly", "monthly" }),
                     new("last_run", MySqlDbType.DateTime),
                     new("next_run", MySqlDbType.DateTime),
-                    new("state", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "success", "warning", "failed", "paused", "stopped" }, defaultValue: "success")
+                    new("run_time", MySqlDbType.DateTime),
+                    new("state", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "active", "success", "warning", "failed", "paused", "stopped" }, defaultValue: "active")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
