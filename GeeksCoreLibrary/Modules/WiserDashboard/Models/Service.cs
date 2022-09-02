@@ -35,12 +35,17 @@ public class Service
     /// <summary>
     /// Gets or sets the last time the service has run.
     /// </summary>
-    public DateTime LastRun { get; set; }
+    public DateTime? LastRun { get; set; }
 
     /// <summary>
     /// Gets or sets the next time the service will run.
     /// </summary>
-    public DateTime NextRun { get; set; }
+    public DateTime? NextRun { get; set; }
+
+    /// <summary>
+    /// Gets or sets the time the last run needed to finish.
+    /// </summary>
+    public TimeSpan RunTime { get; set; }
 
     /// <summary>
     /// Gets or sets the state of the service.
