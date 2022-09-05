@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Net.Mime;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
@@ -609,7 +610,10 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 
                 requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
                 requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
-
+                
+                var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                requestJson = regex.Replace(requestJson, "null");
+                
                 var requestMethod = (Method)priceApi.GetDetailValue<int>("request_type");
 
                 var restClient = new RestClient();
