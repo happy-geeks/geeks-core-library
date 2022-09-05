@@ -460,7 +460,7 @@ namespace GeeksCoreLibrary.Components.Filter
 
                 if (!String.IsNullOrEmpty(filterGroup.Group))
                 {
-                    if (filterGroup.Group != previousFilterGroup.Group)
+                    if (filterGroup.Group != previousFilterGroup.Group && previousFilterGroup.Group != null)
                     {
                         replaceData = new Dictionary<string, string>
                         {

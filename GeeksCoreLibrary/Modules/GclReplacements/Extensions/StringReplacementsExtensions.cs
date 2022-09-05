@@ -286,10 +286,15 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// </summary>
         /// <param name="input"></param>
         /// <param name="format">The format of the <see cref="DateTime"/>. Can be a default format or a custom format.</param>
+        /// <param name="culture">The culture to format the <see cref="DateTime"/> with.</param>
         /// <returns></returns>
-        public static string DateTime(this DateTime input, string format)
+        public static string DateTime(this DateTime input, string format, string culture = null)
         {
-            return input.ToString(format);
+            if (String.IsNullOrWhiteSpace(culture))
+            {
+                return input.ToString(format);
+            }
+            return input.ToString(format, new CultureInfo(culture));
         }
 
         /// <summary>
