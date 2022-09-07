@@ -455,7 +455,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("scheme", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "continuous", "daily", "weekly", "monthly" }),
                     new("last_run", MySqlDbType.DateTime),
                     new("next_run", MySqlDbType.DateTime),
-                    new("run_time", MySqlDbType.VarChar, 256),
+                    new("run_time", MySqlDbType.Double),
                     new("state", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "active", "success", "warning", "failed", "paused", "stopped" }, defaultValue: "active")
                 },
                 Indexes = new List<IndexSettingsModel>

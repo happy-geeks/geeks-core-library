@@ -43,9 +43,9 @@ public class Service
     public DateTime? NextRun { get; set; }
 
     /// <summary>
-    /// Gets or sets the time the last run needed to finish.
+    /// Gets or sets the time in minutes the last run needed to finish.
     /// </summary>
-    public TimeSpan RunTime { get; set; }
+    public double RunTime { get; set; }
 
     /// <summary>
     /// Gets or sets the state of the service.
