@@ -21,5 +21,8 @@ namespace GeeksCoreLibrary.Components.Pagination.Models
 
         [DefaultValue(4)]
         internal int DotsOffset { get; set; }
+
+        [DefaultValue("{summary} {pagination}")]
+        internal string FullTemplate { get; set; }
     }
 }
