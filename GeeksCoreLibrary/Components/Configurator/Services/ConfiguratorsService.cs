@@ -520,11 +520,25 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 return result;
             }
 
-            // Get the price from an API if available. If not it will return 0, 0, 0.
-            var priceFromApi = await GetPriceFromApiAsync(input, dataTable);
-            result.purchasePrice += priceFromApi.purchasePrice;
-            result.customerPrice += priceFromApi.customerPrice;
-            result.fromPrice += priceFromApi.fromPrice;
+            try
+            {
+                // Get the price from an API if available. If not it will return 0, 0, 0.
+                var priceFromApi = await GetPriceFromApiAsync(input, dataTable);
+                result.purchasePrice += priceFromApi.purchasePrice;
+                result.customerPrice += priceFromApi.customerPrice;
+                result.fromPrice += priceFromApi.fromPrice;
+            }
+            // If an exception is thrown during the retrieval of the price from an API consider the full price to be invalid.
+            catch (ArgumentException e)
+            {
+                // ArgumentException is thrown when the response of the API was not successful.
+                return result;
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e.ToString());
+                return result;
+            }
 
             var query = dataTable.Rows[0].Field<string>("price_calculation_query");
 
@@ -632,15 +646,14 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     case 1: // Oauth 2.0
                         // TODO handle OAuth 2
                         restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
-                        break;
+                        throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
                     case 2: // Token
                         var token = priceApi.GetDetailValue("token");
                         token = await stringReplacementsService.DoAllReplacementsAsync(token);
                         restRequest.AddHeader("Authorization", $"Token {token}");
                         break;
                     default:
-                        // TODO handle no selected.
-                        continue;
+                        throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
                 }
                 
                 
@@ -649,8 +662,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 var restResponse = await restClient.ExecuteAsync(restRequest);
                 if (!restResponse.IsSuccessful || restResponse.Content == null)
                 {
-                    //TODO handle wrong
-                    continue;
+                    throw new ArgumentException();
                 }
 
                 // Get the three different prices from the response.
