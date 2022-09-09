@@ -613,6 +613,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 
                 var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
                 requestJson = regex.Replace(requestJson, "null");
+
+                // If there is no request JSON it is useless to do an API call.
+                if (String.IsNullOrWhiteSpace(requestJson))
+                {
+                    return result;
+                }
                 
                 var requestMethod = (Method)priceApi.GetDetailValue<int>("request_type");
 
@@ -628,7 +634,6 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
                         break;
                     case 2: // Token
-                        // TODO decrypt token
                         var token = priceApi.GetDetailValue("token");
                         token = await stringReplacementsService.DoAllReplacementsAsync(token);
                         restRequest.AddHeader("Authorization", $"Token {token}");
