@@ -498,7 +498,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
                 catch (MySqlException mySqlException)
                 {
-                    logger.LogInformation($"The time zone is not set to '{gclSettings.DatabaseTimeZone}'");
+                    //Checks if the exception is about the timezone or something else related to MySQL. Not setting timezones on databases based at TransIP is okay.
+                    if (mySqlException.Code == 1298)
+                    {
+                        logger.LogInformation($"The time zone is not set to '{gclSettings.DatabaseTimeZone}'"); 
+                    }
+                    else
+                    {
+                        logger.LogWarning(mySqlException, $"An error occurred while trying to set the time zone to '{gclSettings.DatabaseTimeZone}'");
+                    }
                 }
                 catch (Exception exception)
                 {
