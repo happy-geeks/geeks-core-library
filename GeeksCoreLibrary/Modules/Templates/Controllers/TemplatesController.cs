@@ -15,6 +15,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
@@ -24,19 +25,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
     {
         private readonly ILogger<TemplatesController> logger;
         private readonly ITemplatesService templatesService;
-        private readonly IDatabaseConnection databaseConnection;
         private readonly IPagesService pagesService;
         private readonly IDataSelectorsService dataSelectorsService;
         private readonly IWiserItemsService wiserItemsService;
+        private readonly IStringReplacementsService stringReplacementsService;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IDatabaseConnection databaseConnection, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService)
+        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
-            this.databaseConnection = databaseConnection;
             this.pagesService = pagesService;
             this.dataSelectorsService = dataSelectorsService;
             this.wiserItemsService = wiserItemsService;
+            this.stringReplacementsService = stringReplacementsService;
         }
 
         [Route("template.gcl")]
@@ -74,7 +75,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 if (contentTemplate.Type == TemplateTypes.Html && !String.IsNullOrWhiteSpace(contentTemplate.LoginRedirectUrl))
                 {
                     // Login required and a redirect URL is set; return redirect.
-                    return Redirect(contentTemplate.LoginRedirectUrl);
+                    var redirectUrl = await stringReplacementsService.DoAllReplacementsAsync(contentTemplate.LoginRedirectUrl);
+                    return Redirect(redirectUrl);
                 }
 
                 // Return unauthorized.
