@@ -421,7 +421,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.AisLogs,
-                LastUpdate = new DateTime(2022, 5, 10),
+                LastUpdate = new DateTime(2022, 9, 14),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -432,12 +432,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("configuration", MySqlDbType.VarChar, 256),
                     new("time_id", MySqlDbType.Int32),
                     new("order", MySqlDbType.Int32),
-                    new("added_on", MySqlDbType.DateTime, notNull:true)
+                    new("added_on", MySqlDbType.DateTime, notNull:true),
+                    new("is_test", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
-                    new(WiserTableNames.AisLogs, "idx_configuration", IndexTypes.Normal, new List<string> { "configuration", "time_id", "order" }),
-                    new(WiserTableNames.AisLogs, "idx_level", IndexTypes.Normal, new List<string> { "level", "configuration", "time_id", "order" })
+                    new(WiserTableNames.AisLogs, "idx_configuration", IndexTypes.Normal, new List<string> { "configuration", "time_id", "order", "is_test" }),
+                    new(WiserTableNames.AisLogs, "idx_level", IndexTypes.Normal, new List<string> { "level", "configuration", "time_id", "order", "is_test" }),
+                    new(WiserTableNames.AisLogs, "idx_dated_configuration", IndexTypes.Normal, new List<string> { "added_on", "configuration", "time_id", "is_test" })
                 }
             },
             
@@ -456,7 +458,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("last_run", MySqlDbType.DateTime),
                     new("next_run", MySqlDbType.DateTime),
                     new("run_time", MySqlDbType.Double),
-                    new("state", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "active", "success", "warning", "failed", "paused", "stopped" }, defaultValue: "active")
+                    new("state", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "active", "success", "warning", "failed", "paused", "stopped", "crashed" }, defaultValue: "active")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
