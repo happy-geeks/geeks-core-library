@@ -491,8 +491,21 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     // Make sure we always use the correct timezone.
                     if (!String.IsNullOrWhiteSpace(gclSettings.DatabaseTimeZone))
                     {
-                        CommandForReading.CommandText = $"SET @@time_zone = {gclSettings.DatabaseTimeZone.ToMySqlSafeValue(true)};";
+                        CommandForReading.CommandText =
+                            $"SET @@time_zone = {gclSettings.DatabaseTimeZone.ToMySqlSafeValue(true)};";
                         await CommandForReading.ExecuteNonQueryAsync();
+                    }
+                }
+                catch (MySqlException mySqlException)
+                {
+                    //Checks if the exception is about the timezone or something else related to MySQL. Not setting timezones on databases based at TransIP is okay.
+                    if (mySqlException.Code == 1298)
+                    {
+                        logger.LogInformation($"The time zone is not set to '{gclSettings.DatabaseTimeZone}'"); 
+                    }
+                    else
+                    {
+                        logger.LogWarning(mySqlException, $"An error occurred while trying to set the time zone to '{gclSettings.DatabaseTimeZone}'");
                     }
                 }
                 catch (Exception exception)

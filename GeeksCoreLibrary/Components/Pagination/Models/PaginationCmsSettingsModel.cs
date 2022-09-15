@@ -155,7 +155,15 @@ namespace GeeksCoreLibrary.Components.Pagination.Models
 
         [CmsProperty(
             PrettyName = "Full template",
-            Description = "The full template.",
+            Description = "The full template that will determine the containing HTML of the entire Pagination component.",
+            DeveloperRemarks = @"<p>The following replacements can be used in this template:</p>
+                                <ul>
+                                    <li><strong{pagination}:</strong> This will be replaced with the generated pagination links.</li>
+                                    <li><strong>{summary}:</strong> This will be replaced with the summary of the pagination, which is a collection of all selected filters.</li>
+                                    <li><strong>{pagenr}:</strong> The current page number.</li>
+                                    <li><strong>{lastpagenr}:</strong> The number of the last page. Can be used to determine how many pages there are total.</li>
+                                    <li><strong>{totalitems}:</strong> The total number of items across all pages.</li>
+                                </ul>",
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             DisplayOrder = 10,
@@ -165,13 +173,18 @@ namespace GeeksCoreLibrary.Components.Pagination.Models
 
         [CmsProperty(
             PrettyName = "Summary template",
-            Description = "The summary template.",
+            Description = "The summary template that will show the range of items being shown, like 'Showing items 101 to 110 out of 789'.",
             DeveloperRemarks = @"<p>The following variables can be used:</p>
                                 <ul>
                                     <li><strong>{firstitemnr}:</strong> The number of the first item of the current page.</li>
                                     <li><strong>{lastitemnr}:</strong> The number of the last item of the current page.</li>
-                                    <li><strong>{totalitemnrs}:</strong> The total number of items across all pages.</li>
-                                </ul>",
+                                    <li><strong>{totalitems}:</strong> The total number of items across all pages.</li>
+                                    <li><strong>{totalitemnrs}:</strong> Synonym for {totalitems} (made available for backward compatibility reasons).</li>
+                                </ul>
+                                <p>
+                                    Example:<br />
+                                    Showing items {firstitemnr} to {lastitemnr} out of {totalitems}.
+                                </p>",
             TabName = CmsAttributes.CmsTabName.Layout,
             GroupName = CmsAttributes.CmsGroupName.Templates,
             DisplayOrder = 20,

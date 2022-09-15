@@ -2,19 +2,25 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Net.Mime;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
+using RestSharp;
 
 namespace GeeksCoreLibrary.Components.Configurator.Services
 {
@@ -505,18 +511,40 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         /// <inheritdoc />
         public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
         {
+            (decimal purchasePrice, decimal customerPrice, decimal fromPrice) result = (0, 0, 0);
+            
             var dataTable = await GetConfiguratorDataAsync(input.Configurator);
 
             if (dataTable == null || dataTable.Rows.Count == 0)
             {
-                return (0, 0, 0);
+                return result;
+            }
+
+            try
+            {
+                // Get the price from an API if available. If not it will return 0, 0, 0.
+                var priceFromApi = await GetPriceFromApiAsync(input, dataTable);
+                result.purchasePrice += priceFromApi.purchasePrice;
+                result.customerPrice += priceFromApi.customerPrice;
+                result.fromPrice += priceFromApi.fromPrice;
+            }
+            // If an exception is thrown during the retrieval of the price from an API consider the full price to be invalid.
+            catch (ArgumentException e)
+            {
+                // ArgumentException is thrown when the response of the API was not successful.
+                return result;
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e.ToString());
+                return result;
             }
 
             var query = dataTable.Rows[0].Field<string>("price_calculation_query");
 
             if (String.IsNullOrEmpty(query))
             {
-                return (0, 0, 0);
+                return result;
             }
 
             query = await stringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
@@ -525,7 +553,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             var priceResultDataTable = await databaseConnection.GetAsync(query);
             if (priceResultDataTable.Rows.Count == 0)
             {
-                return (0, 0, 0);
+                return result;
             }
 
             var price = priceResultDataTable.Rows[0].IsNull(0) ? 0 : Convert.ToDecimal(priceResultDataTable.Rows[0][0]);
@@ -542,7 +570,130 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 fromPrice = priceResultDataTable.Rows[0].IsNull(2) ? 0 : Convert.ToDecimal(priceResultDataTable.Rows[0][2]);
             }
 
-            return (purchasePrice, price, fromPrice);
+            result.purchasePrice += purchasePrice;
+            result.customerPrice += price;
+            result.fromPrice += fromPrice;
+
+            return result;
+        }
+
+        /// <summary>
+        /// Get the prices from an API if the API is setup for the configurator.
+        /// </summary>
+        /// <param name="configuration">The configuration to get the price for.</param>
+        /// <param name="dataTable">The data table with the configurator data.</param>
+        /// <returns>Returns a tuple with the three prices as decimal.</returns>
+        private async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> GetPriceFromApiAsync(ConfigurationsModel configuration, DataTable dataTable)
+        {
+            (decimal purchasePrice, decimal customerPrice, decimal fromPrice) result = (0, 0, 0);
+
+            var configuratorId = Convert.ToUInt64(dataTable.Rows[0].Field<object>("configuratorId"));
+            var priceApis = await wiserItemsService.GetLinkedItemDetailsAsync(configuratorId, 41, "ConfiguratorApi");
+
+            foreach (var priceApi in priceApis)
+            {
+                var endpoint = priceApi.GetDetailValue("endpoint");
+                var requestJson = priceApi.GetDetailValue("request_json");
+                var purchasePriceKey = priceApi.GetDetailValue("price_calculation_purchase_price_key");
+                var customerPriceKey = priceApi.GetDetailValue("price_calculation_customer_price_key");
+                var fromPriceKey = priceApi.GetDetailValue("price_calculation_from_price_key");
+                var query = priceApi.GetDetailValue("api_query");
+
+                if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
+                {
+                    return result;
+                }
+
+                DataRow extraData = null;
+
+                // If a query is set handle it to add extra information for the replacements in the JSON.
+                if (!String.IsNullOrWhiteSpace(query))
+                {
+                    query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                    query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
+                    var extraDataTable = await databaseConnection.GetAsync(query);
+
+                    if (extraDataTable.Rows.Count > 0)
+                    {
+                        extraData = extraDataTable.Rows[0];
+                    }
+                }
+
+                endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
+                endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+
+                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+                
+                var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                requestJson = regex.Replace(requestJson, "null");
+
+                // If there is no request JSON it is useless to do an API call.
+                if (String.IsNullOrWhiteSpace(requestJson))
+                {
+                    return result;
+                }
+                
+                var requestMethod = (Method)priceApi.GetDetailValue<int>("request_type");
+
+                var restClient = new RestClient();
+                var restRequest = new RestRequest(endpoint, requestMethod);
+
+                var authenticationType = priceApi.GetDetailValue<int>("authentication_type");
+
+                switch (authenticationType)
+                {
+                    case 1: // Oauth 2.0
+                        // TODO handle OAuth 2
+                        restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
+                        throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
+                    case 2: // Token
+                        var token = priceApi.GetDetailValue("token");
+                        token = await stringReplacementsService.DoAllReplacementsAsync(token);
+                        restRequest.AddHeader("Authorization", $"Token {token}");
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
+                }
+                
+                
+                restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+
+                var restResponse = await restClient.ExecuteAsync(restRequest);
+                if (!restResponse.IsSuccessful || restResponse.Content == null)
+                {
+                    throw new ArgumentException();
+                }
+
+                // Get the three different prices from the response.
+                var responseData = JObject.Parse(restResponse.Content);
+                result.purchasePrice += GetPriceValueFromResponse(responseData, purchasePriceKey);
+                result.customerPrice += GetPriceValueFromResponse(responseData, customerPriceKey);
+                result.fromPrice += GetPriceValueFromResponse(responseData, fromPriceKey);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Get the price value from the response based on the given key.
+        /// </summary>
+        /// <param name="responseData">The JObject from the response content.</param>
+        /// <param name="key">The key the final value, separated by a comma.</param>
+        /// <returns>Returns the decimal value from the response based on the given key.</returns>
+        private decimal GetPriceValueFromResponse(JObject responseData, string key)
+        {
+            var keyParts = new List<string>(key.Split('.'));
+            var currentObject = responseData;
+            
+            // Step into the object till only 1 key part is left.
+            while (keyParts.Count > 1)
+            {
+                currentObject = (JObject)currentObject[keyParts[0]];
+                keyParts.RemoveAt(0);
+            }
+
+            return Convert.ToDecimal(currentObject[keyParts[0]]);
         }
 
         /// <inheritdoc />

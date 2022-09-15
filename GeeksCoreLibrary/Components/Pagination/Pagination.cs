@@ -329,7 +329,8 @@ namespace GeeksCoreLibrary.Components.Pagination
             {
                 ["firstitemnr"] = (totalItemCount < (currentPage - 1) * Settings.ItemsPerPage + 1 ? totalItemCount : (currentPage - 1) * Settings.ItemsPerPage + 1).ToString(),
                 ["lastitemnr"] = (totalItemCount > currentPage * Settings.ItemsPerPage ? currentPage * Settings.ItemsPerPage : totalItemCount).ToString(),
-                ["totalitemnrs"] = totalItemCount.ToString()
+                ["totalitems"] = totalItemCount.ToString(),
+                ["totalitemnrs"] = totalItemCount.ToString() // Legacy support.
             };
             var summaryHtml = StringReplacementsService.DoReplacements(Settings.SummaryTemplate, replaceData);
 
