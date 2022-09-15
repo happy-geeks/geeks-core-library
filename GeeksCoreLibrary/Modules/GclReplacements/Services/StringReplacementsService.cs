@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Services
@@ -344,6 +345,10 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 // A variable is skipped if it exists in the input string, but not in the provided data.
                 if (!replaceData.ContainsKey(variable.VariableName) && !replaceData.ContainsKey(variable.OriginalVariableName))
                 {
+                    if (!variable.DefaultValue.IsNullOrEmpty())
+                    {
+                        variable.VariableName = variable.DefaultValue;
+                    }
                     continue;
                 }
 
@@ -737,7 +742,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 var fieldName = match.Groups["field"].Value;
                 var originalFieldName = fieldName;
                 var formatters = "";
+                var defaultValue = "";
 
+                //Checks for default values
+                if (fieldName.Contains("?"))
+                {
+                    var questionMarkIndexOf = fieldName.LastIndexOf("?");
+                    var colonIndexOf = fieldName.LastIndexOf(":");
+                    defaultValue = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
+                }
+                
                 // Colons that are escaped with a backslash are temporarily replaced with "~~COLON~~".
                 fieldName = fieldName.Replace("\\:", "~~COLON~~");
 
@@ -754,7 +768,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 {
                     MatchString = match.Value,
                     VariableName = fieldName,
-                    OriginalVariableName = originalFieldName
+                    OriginalVariableName = originalFieldName,
+                    DefaultValue = defaultValue
                 };
 
                 // Now replace "~~COLON~~" with an actual colon again.
