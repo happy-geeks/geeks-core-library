@@ -232,6 +232,13 @@ namespace GeeksCoreLibrary.Components.Repeater
                     pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
                 }
 
+                // Add Open Graph data.
+                if (Settings.SetOpenGraphInformationFromFirstItem)
+                {
+                    var openGraphValues = parsedData.Columns.Cast<DataColumn>().Where(c => c.ColumnName.StartsWith("opengraph_", StringComparison.OrdinalIgnoreCase)).ToDictionary(c => c.ColumnName, c => Convert.ToString(parsedData.Rows[0][c]));
+                    pagesService.SetOpenGraphData(openGraphValues);
+                }
+
                 if (Settings.GroupingTemplates.Keys.Count == 1)
                 {
                     // If we have only one layer, generate the HTML for that. It works differently for single layer repeater than for multiple layers, that's why it's a different function.
