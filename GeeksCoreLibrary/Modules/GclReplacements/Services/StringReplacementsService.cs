@@ -388,9 +388,14 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     continue;
                 }
 
+                var hasRawFormatter = false;
                 foreach (var formatterString in variable.Formatters)
                 {
                     var formatter = GetFormatterMethod(formatterString);
+                    if (String.Equals(formatterString, RawFormatterName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasRawFormatter = true;
+                    }
 
                     if (formatter == null)
                     {
@@ -412,12 +417,22 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
                 if (forQuery)
                 {
-                    var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.MatchString)}";
-                    databaseConnection.AddParameter(parameterName, value);
-                    value = $"?{parameterName}";
+                    if (hasRawFormatter)
+                    {
+                        // By default, we use SQL parameters for all replacements in a query. Developers can use the "Raw" formatter to prevent that.
+                        // This is required in certain situations, such as getting information from a dynamic column (for example: "SELECT `name_{LanguageCode}` FROM x WHERE y").
+                        // IMPORTANT NOTE: This is less secure than SQL parameters. To prevent SQL injection attacks, developers need to make sure that they add quotes/backticks around the entire value/replacement/column name, just like in the example above.
+                        value = value.ToMySqlSafeValue(false);
+                    }
+                    else
+                    {
+                        var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.MatchString)}";
+                        databaseConnection.AddParameter(parameterName, value);
+                        value = $"?{parameterName}";
 
-                    // Make sure there won't be quotes around the variable in the query, otherwise it will be seen as a literal string by MySql.
-                    output.Replace($"'{variable.MatchString}'", value).Replace($"\"{variable.MatchString}\"", value);
+                        // Make sure there won't be quotes around the variable in the query, otherwise it will be seen as a literal string by MySql.
+                        output.Replace($"'{variable.MatchString}'", value).Replace($"\"{variable.MatchString}\"", value);
+                    }
                 }
 
                 output.Replace(variable.MatchString, value);
