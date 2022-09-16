@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.Models;
+using JetBrains.Annotations;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
 {
@@ -245,5 +246,28 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="shoppingBasket">The basket.</param>
         /// <param name="deleteCookieIfBasketIsLinkedToSomeoneElse">Optional: Whether to delete the cookie that contains the basket ID, if the basket if linked to a different user. Default value is <see langword="true"/>. You should set this to <see langword="false"/> if you're linking a different basket than the one from the cookie.</param>
         Task LinkBasketToUserAsync(ShoppingBasketCmsSettingsModel basketSettings, ulong userId, WiserItemModel shoppingBasket, bool deleteCookieIfBasketIsLinkedToSomeoneElse = true);
+
+        /// <summary>
+        /// Gets a coupon via it's unique code.
+        /// </summary>
+        /// <param name="couponCode">The coupon code.</param>
+        /// <returns>A <see cref="WiserItemModel"/> with the data of the coupon.</returns>
+        Task<WiserItemModel> GetCouponAsync(string couponCode);
+        
+        /// <summary>
+        /// Checks whether or not the given coupon is valid and can still be used.
+        /// </summary>
+        /// <param name="couponCode">The code of the coupon.</param>
+        /// <param name="basketTotal">The total price of the basket.</param>
+        /// <returns>A <see langword="bool"/> indicating whether the coupon is valid or not.</returns>
+        Task<bool> IsCouponValidAsync(string couponCode, decimal basketTotal);
+        
+        /// <summary>
+        /// Checks whether or not the given coupon is valid and can still be used.
+        /// </summary>
+        /// <param name="coupon">The <see cref="WiserItemModel"/> with the coupon.</param>
+        /// <param name="basketTotal">The total price of the basket.</param>
+        /// <returns>A <see langword="bool"/> indicating whether the coupon is valid or not.</returns>
+        bool IsCouponValid(WiserItemModel coupon, decimal basketTotal);
     }
 }
