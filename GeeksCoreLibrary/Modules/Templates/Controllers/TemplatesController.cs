@@ -13,7 +13,6 @@ using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Interfaces;
-using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
