@@ -20,6 +20,12 @@ namespace GeeksCoreLibrary.Modules.Seo.Models
         public Dictionary<string, string> MetaTags { get; set; } = new();
 
         /// <summary>
+        /// Gets or sets the Open Graph meta tags for a page. Note: Keys in this dictionary should not start with "og:" otherwise the property
+        /// attribute in the meta tag will start with "og:og:".
+        /// </summary>
+        public Dictionary<string, string> OpenGraphMetaTags { get; set; } = new();
+
+        /// <summary>
         /// Gets or sets the canonical URL.
         /// </summary>
         public string Canonical { get; set; }

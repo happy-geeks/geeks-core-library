@@ -438,6 +438,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                 }
 
+                if (componentSeoData.OpenGraphMetaTags != null && componentSeoData.OpenGraphMetaTags.Any())
+                {
+                    foreach (var (key, value) in componentSeoData.OpenGraphMetaTags.Where(metaTag => !viewModel.MetaData.OpenGraphMetaTags.ContainsKey(metaTag.Key) || String.IsNullOrWhiteSpace(viewModel.MetaData.MetaTags[metaTag.Key])))
+                    {
+                        viewModel.MetaData.OpenGraphMetaTags[key] = value;
+                    }
+                }
+
                 if (!String.IsNullOrWhiteSpace(componentSeoData.PageTitle) && String.IsNullOrWhiteSpace(viewModel.MetaData.PageTitle))
                 {
                     viewModel.MetaData.PageTitle = componentSeoData.PageTitle;
@@ -594,6 +602,40 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     componentSeoData.MetaTags.Add("robots", String.Join(",", allRobots));
                 }
+            }
+
+            httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] = componentSeoData;
+        }
+
+        /// <inheritdoc />
+        public void SetOpenGraphData(IDictionary<string, string> openGraphValues)
+        {
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return;
+            }
+
+            if (openGraphValues == null || openGraphValues.Count == 0)
+            {
+                return;
+            }
+
+            // Some keys are preserved (in other words, the underscores in these keys shouldn't be replaced with colons).
+            var preservedKeys = new[] { "site_name", "secure_url", "release_date", "published_time", "modified_time", "expiration_time", "first_name", "last_name" };
+            var componentSeoData = httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] as PageMetaDataModel ?? new PageMetaDataModel();
+            foreach (var openGraphItem in openGraphValues)
+            {
+                if (!openGraphItem.Key.StartsWith("opengraph_", StringComparison.OrdinalIgnoreCase)) continue;
+
+                // Strip the "opengraph_" part.
+                var key = openGraphItem.Key[10..];
+
+                // Make sure the values from the preservedNames
+                key = preservedKeys.Aggregate(key, (current, preservedName) => current.Replace(preservedName, preservedName.Replace("_", "~~SEP~~")));
+                // Replace underscores with colons, and then replace the "~~SEP~~" instances back to underscores.
+                key = key.Replace("_", ":").Replace("~~SEP~~", "_");
+
+                componentSeoData.OpenGraphMetaTags.Add(key, openGraphItem.Value);
             }
 
             httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] = componentSeoData;

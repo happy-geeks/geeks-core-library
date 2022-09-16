@@ -9,12 +9,13 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Interfaces;
-using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
@@ -24,19 +25,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
     {
         private readonly ILogger<TemplatesController> logger;
         private readonly ITemplatesService templatesService;
-        private readonly IDatabaseConnection databaseConnection;
         private readonly IPagesService pagesService;
         private readonly IDataSelectorsService dataSelectorsService;
         private readonly IWiserItemsService wiserItemsService;
+        private readonly IStringReplacementsService stringReplacementsService;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IDatabaseConnection databaseConnection, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService)
+        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
-            this.databaseConnection = databaseConnection;
             this.pagesService = pagesService;
             this.dataSelectorsService = dataSelectorsService;
             this.wiserItemsService = wiserItemsService;
+            this.stringReplacementsService = stringReplacementsService;
         }
 
         [Route("template.gcl")]
@@ -74,7 +75,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 if (contentTemplate.Type == TemplateTypes.Html && !String.IsNullOrWhiteSpace(contentTemplate.LoginRedirectUrl))
                 {
                     // Login required and a redirect URL is set; return redirect.
-                    return Redirect(contentTemplate.LoginRedirectUrl);
+                    var redirectUrl = await stringReplacementsService.DoAllReplacementsAsync(contentTemplate.LoginRedirectUrl);
+                    return Redirect(redirectUrl);
                 }
 
                 // Return unauthorized.
@@ -101,18 +103,25 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                         return NotFound();
                     }
 
-                    // Set SEO information.
+                    // Set SEO and Open Graph information.
                     if (HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
                     {
                         var dataRow = (DataRow)HttpContext.Items[Constants.TemplatePreLoadQueryResultKey];
-                        var seoTitle = dataRow.GetValueIfColumnExists<string>("SEOtitle");
-                        var seoDescription = dataRow.GetValueIfColumnExists<string>("SEOdescription");
-                        var seoKeyWords = dataRow.GetValueIfColumnExists<string>("SEOkeywords");
-                        var seoCanonical = dataRow.GetValueIfColumnExists<string>("SEOcanonical");
-                        var noIndex = Convert.ToBoolean(dataRow.GetValueIfColumnExists("noindex"));
-                        var noFollow = Convert.ToBoolean(dataRow.GetValueIfColumnExists("nofollow"));
-                        var robots = dataRow.GetValueIfColumnExists<string>("SEOrobots");
-                        pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
+                        if (dataRow != null)
+                        {
+                            var seoTitle = dataRow.GetValueIfColumnExists<string>("SEOtitle");
+                            var seoDescription = dataRow.GetValueIfColumnExists<string>("SEOdescription");
+                            var seoKeyWords = dataRow.GetValueIfColumnExists<string>("SEOkeywords");
+                            var seoCanonical = dataRow.GetValueIfColumnExists<string>("SEOcanonical");
+                            var noIndex = Convert.ToBoolean(dataRow.GetValueIfColumnExists("noindex"));
+                            var noFollow = Convert.ToBoolean(dataRow.GetValueIfColumnExists("nofollow"));
+                            var robots = dataRow.GetValueIfColumnExists<string>("SEOrobots");
+                            pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
+
+                            // Add Open Graph data.
+                            var openGraphValues = dataRow.Table.Columns.Cast<DataColumn>().Where(c => c.ColumnName.StartsWith("opengraph_", StringComparison.OrdinalIgnoreCase)).ToDictionary(c => c.ColumnName, c => Convert.ToString(dataRow[c]));
+                            pagesService.SetOpenGraphData(openGraphValues);
+                        }
                     }
 
                     break;

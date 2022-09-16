@@ -40,5 +40,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// Sets the SEO meta data for the current page.
         /// </summary>
         void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null);
+
+        /// <summary>
+        /// Sets the Open Graph meta data for the current page.
+        /// </summary>
+        /// <param name="openGraphValues">Dictionary with all Open Graph values. Keys must start with "opengraph_" or they will be ignored.</param>
+        void SetOpenGraphData(IDictionary<string, string> openGraphValues);
     }
 }
