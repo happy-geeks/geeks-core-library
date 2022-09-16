@@ -242,11 +242,28 @@ namespace GeeksCoreLibrary.Components.Repeater.Models
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Behavior,
             GroupName = CmsAttributes.CmsGroupName.Seo,
-            DisplayOrder = 10,
+            DisplayOrder = 20,
             HideInCms = false,
             ReadOnlyInCms = false
         )]
         public bool SetSeoInformationFromFirstItem { get; set; }
+
+        /// <summary>
+        /// Use the Open Graph Fields of the first item to add Open Graph meta tags to the head section.
+        /// These fields must start with "opengraph_". The part after the underscore will determine the
+        /// name of the Open Graph item, e.g.: "opengraph_title" will create a meta tag called "og:title".
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Set Open Graph info from first item",
+            Description = "Use the Open Graph Fields of the first item to add Open Graph meta tags to the head section.",
+            DeveloperRemarks = "These fields must start with \"opengraph_\" and the part that follows will be used as the name of the meta tag.",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Seo,
+            DisplayOrder = 30,
+            HideInCms = false,
+            ReadOnlyInCms = false
+        )]
+        public bool SetOpenGraphInformationFromFirstItem { get; set; }
 
         /// <summary>
         /// The amount of items each page will show.
