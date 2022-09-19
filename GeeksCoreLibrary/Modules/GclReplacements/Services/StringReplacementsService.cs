@@ -345,10 +345,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 // A variable is skipped if it exists in the input string, but not in the provided data.
                 if (!replaceData.ContainsKey(variable.VariableName) && !replaceData.ContainsKey(variable.OriginalVariableName))
                 {
-                    if (!variable.DefaultValue.IsNullOrEmpty())
-                    {
-                        variable.VariableName = variable.DefaultValue;
-                    }
                     continue;
                 }
 
@@ -371,6 +367,10 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 var value = Convert.ToString(replaceData[variableName], new CultureInfo("en-US"));
                 if (String.IsNullOrWhiteSpace(value))
                 {
+                    if (!variable.DefaultValue.IsNullOrEmpty())
+                    {
+                        value = variable.DefaultValue;
+                    }
                     // Replace the variable if it's an empty string or if it only contains whitespace and continue with the next variable.
                     output.Replace(variable.MatchString, value);
                     continue;
@@ -749,7 +749,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 {
                     var questionMarkIndexOf = fieldName.LastIndexOf("?");
                     var colonIndexOf = fieldName.LastIndexOf(":");
-                    defaultValue = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
+                    var defaultValueWithQM = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
+                    defaultValue = defaultValueWithQM.Remove(0, 1);
                 }
                 
                 // Colons that are escaped with a backslash are temporarily replaced with "~~COLON~~".
