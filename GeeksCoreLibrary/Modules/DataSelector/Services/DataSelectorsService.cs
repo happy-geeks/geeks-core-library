@@ -1247,7 +1247,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                                     _ => row.Key.FieldName
                                 };
 
-                                var finalJoinDetailOn = joinDetailOn.Replace(".id", $"_item.{finalFieldName}").Replace(".destination_item_id", $"_item.{finalFieldName}");
+                                var finalJoinDetailOn = joinDetailOn.Replace(".id", $".{finalFieldName}").Replace(".destination_item_id", $"_item.{finalFieldName}");
                                 var formattedField = GetFormattedField(row.Key, finalJoinDetailOn);
 
                                 switch (row.Operator.ToLowerInvariant())
