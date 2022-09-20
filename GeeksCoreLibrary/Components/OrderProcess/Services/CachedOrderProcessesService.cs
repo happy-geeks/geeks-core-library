@@ -56,13 +56,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         /// <inheritdoc />
         public async Task<List<OrderProcessStepModel>> GetAllStepsGroupsAndFieldsAsync(ulong orderProcessId)
         {
-            var key = $"OrderProcessGetAllStepsGroupsAndFields_{orderProcessId}";
-            return await cache.GetOrAddAsync(key,
-                delegate(ICacheEntry cacheEntry)
-                {                    
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
-                    return orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
-                });
+            // Always return a new instance. The values of the fields will be set by the user, if a cached element is used each user will have a reference to the same object and thus sharing information.
+            return await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
         }
 
         /// <inheritdoc />

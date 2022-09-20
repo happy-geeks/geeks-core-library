@@ -2208,6 +2208,77 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userId, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
         }
 
+        /// <inheritdoc />
+        public async Task<WiserItemModel> GetCouponAsync(string couponCode)
+        {
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("couponCode", couponCode);
+            var getCouponIdResult = await databaseConnection.GetAsync($@"
+SELECT coupon.id
+FROM `{WiserTableNames.WiserItem}` AS coupon
+JOIN `{WiserTableNames.WiserItemDetail}` AS `code` ON `code`.item_id = coupon.id AND `code`.`key` = 'code' AND `code`.`value` = ?couponCode
+WHERE coupon.entity_type = 'coupon'", true);
+
+            if (getCouponIdResult.Rows.Count == 0)
+            {
+                return null;
+            }
+
+            var couponId = getCouponIdResult.Rows[0].Field<ulong>("id");
+            return await wiserItemsService.GetItemDetailsAsync(couponId, entityType: Constants.CouponEntityType, skipPermissionsCheck: true);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> IsCouponValidAsync(string couponCode, decimal basketTotal)
+        {
+            var coupon = await GetCouponAsync(couponCode);
+            return IsCouponValid(coupon, basketTotal);
+        }
+
+        /// <inheritdoc />
+        public bool IsCouponValid(WiserItemModel coupon, decimal basketTotal)
+        {
+            if (coupon.Id == 0)
+            {
+                return false;
+            }
+
+            var httpContext = httpContextAccessor.HttpContext;
+
+            // Validate date range.
+            var validFrom = coupon.ContainsDetail(CouponConstants.ValidFromKey) ? DateTime.ParseExact(coupon.GetDetailValue(CouponConstants.ValidFromKey), "yyyy-MM-dd", CultureInfo.InvariantCulture) : DateTime.MinValue;
+            var validUntil = coupon.ContainsDetail(CouponConstants.ValidUntilKey) ? DateTime.ParseExact(coupon.GetDetailValue(CouponConstants.ValidUntilKey), "yyyy-MM-dd", CultureInfo.InvariantCulture) : DateTime.MaxValue;
+            if (validFrom > DateTime.Now || validUntil < DateTime.Now)
+            {
+                return false;
+            }
+
+            // Validate usage count.
+            var usedCount = coupon.ContainsDetail(CouponConstants.UsedCountKey) ? coupon.GetDetailValue<int>(CouponConstants.UsedCountKey) : 0;
+            var maxUseCount = coupon.ContainsDetail(CouponConstants.MaxUseCountKey) ? coupon.GetDetailValue<int>(CouponConstants.MaxUseCountKey) : 0;
+            if (maxUseCount > 0 && usedCount >= maxUseCount)
+            {
+                return false;
+            }
+
+            // Validate minimum purchase price.
+            var minPurchasePrice = coupon.ContainsDetail(CouponConstants.MinPurchasePriceKey) ? coupon.GetDetailValue<decimal>(CouponConstants.MinPurchasePriceKey) : 0M;
+            if (minPurchasePrice > 0 && basketTotal < minPurchasePrice)
+            {
+                return false;
+            }
+
+            // Validate domain.
+            var domain = coupon.ContainsDetail(CouponConstants.DomainKey) ? coupon.GetDetailValue(CouponConstants.DomainKey) : "";
+            if (domain == "" || httpContext?.Request == null)
+            {
+                return true;
+            }
+
+            var domainList = domain.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList().FindAll(it => it != "0" && it != "");
+            return domainList.Count == 0 || domainList.Contains(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext));
+        }
+
         #region Private functions (helper functions)
 
         private void WriteEncryptedIdToCookie(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings)
@@ -2363,21 +2434,11 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 return (false, 0M, ShoppingBasket.HandleCouponResults.InvalidCouponCode, null, false, false);
             }
 
-            databaseConnection.ClearParameters();
-            databaseConnection.AddParameter("couponCode", couponCode);
-            var getCouponIdResult = await databaseConnection.GetAsync($@"
-                SELECT coupon.id
-                FROM `{WiserTableNames.WiserItem}` AS coupon
-                JOIN `{WiserTableNames.WiserItemDetail}` AS `code` ON `code`.item_id = coupon.id AND `code`.`key` = 'code' AND `code`.`value` = ?couponCode
-                WHERE coupon.entity_type = 'coupon'", true);
-
-            if (getCouponIdResult.Rows.Count == 0)
+            var coupon = await GetCouponAsync(couponCode);
+            if (coupon == null || coupon.Id == 0)
             {
                 return (false, 0M, ShoppingBasket.HandleCouponResults.InvalidCouponCode, null, false, false);
             }
-
-            var couponId = getCouponIdResult.Rows[0].Field<ulong>("id");
-            var coupon = await wiserItemsService.GetItemDetailsAsync(couponId, entityType: Constants.CouponEntityType, skipPermissionsCheck: true);
 
             return await HandleCouponAsync(shoppingBasket, basketLines, settings, coupon, createNewTransaction);
         }
@@ -2418,7 +2479,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 discountOnSpecificItems = true;
             }
 
-            if (!CheckCouponValid(coupon, totalPrice))
+            if (!IsCouponValid(coupon, totalPrice))
             {
                 logger.LogTrace("Coupon is invalid");
                 return (false, 0M, ShoppingBasket.HandleCouponResults.InvalidCouponCode, null, false, false);
@@ -2484,49 +2545,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             return discount != 0 || freePaymentMethodCostsCoupon || freeShippingCostsCoupon
                 ? (true, discount, ShoppingBasket.HandleCouponResults.CouponAccepted, coupon, false, false)
                 : (false, 0M, ShoppingBasket.HandleCouponResults.InvalidCouponCode, null, false, true);
-        }
-
-        private bool CheckCouponValid(WiserItemModel coupon, decimal basketTotal)
-        {
-            if (coupon.Id == 0)
-            {
-                return false;
-            }
-
-            var httpContext = httpContextAccessor.HttpContext;
-
-            // Validate date range.
-            var validFrom = coupon.ContainsDetail(CouponConstants.ValidFromKey) ? DateTime.ParseExact(coupon.GetDetailValue(CouponConstants.ValidFromKey), "yyyy-MM-dd", CultureInfo.InvariantCulture) : DateTime.MinValue;
-            var validUntil = coupon.ContainsDetail(CouponConstants.ValidUntilKey) ? DateTime.ParseExact(coupon.GetDetailValue(CouponConstants.ValidUntilKey), "yyyy-MM-dd", CultureInfo.InvariantCulture) : DateTime.MaxValue;
-            if (validFrom > DateTime.Now || validUntil < DateTime.Now)
-            {
-                return false;
-            }
-
-            // Validate usage count.
-            var usedCount = coupon.ContainsDetail(CouponConstants.UsedCountKey) ? coupon.GetDetailValue<int>(CouponConstants.UsedCountKey) : 0;
-            var maxUseCount = coupon.ContainsDetail(CouponConstants.MaxUseCountKey) ? coupon.GetDetailValue<int>(CouponConstants.MaxUseCountKey) : 0;
-            if (maxUseCount > 0 && usedCount >= maxUseCount)
-            {
-                return false;
-            }
-
-            // Validate minimum purchase price.
-            var minPurchasePrice = coupon.ContainsDetail(CouponConstants.MinPurchasePriceKey) ? coupon.GetDetailValue<decimal>(CouponConstants.MinPurchasePriceKey) : 0M;
-            if (minPurchasePrice > 0 && basketTotal < minPurchasePrice)
-            {
-                return false;
-            }
-
-            // Validate domain.
-            var domain = coupon.ContainsDetail(CouponConstants.DomainKey) ? coupon.GetDetailValue(CouponConstants.DomainKey) : "";
-            if (domain == "" || httpContext?.Request == null)
-            {
-                return true;
-            }
-
-            var domainList = domain.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList().FindAll(it => it != "0" && it != "");
-            return domainList.Count == 0 || domainList.Contains(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext));
         }
 
 

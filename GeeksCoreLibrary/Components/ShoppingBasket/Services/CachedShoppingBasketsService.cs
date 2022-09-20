@@ -235,5 +235,24 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             await shoppingBasketsService.LinkBasketToUserAsync(basketSettings, userId, shoppingBasket, deleteCookieIfBasketIsLinkedToSomeoneElse);
         }
+
+        /// <inheritdoc />
+        public async Task<WiserItemModel> GetCouponAsync(string couponCode)
+        {
+            // Don't cache coupons, because they can change often, due to them keeping track of how often they're used.
+            return await shoppingBasketsService.GetCouponAsync(couponCode);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> IsCouponValidAsync(string couponCode, decimal basketTotal)
+        {
+            return await shoppingBasketsService.IsCouponValidAsync(couponCode, basketTotal);
+        }
+
+        /// <inheritdoc />
+        public bool IsCouponValid(WiserItemModel coupon, decimal basketTotal)
+        {
+            return shoppingBasketsService.IsCouponValid(coupon, basketTotal);
+        }
     }
 }

@@ -24,17 +24,17 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
             this.itemFilesService = itemFilesService;
         }
 
-        [Route("/image/wiser2/{itemId}/{propertyName}/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
-        [Route("/image/wiser2/{itemId}/{propertyName}/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemId}/{propertyName}/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemId}/{propertyName}/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
 
-        [Route("/image/wiser2/{itemId}/{propertyName}/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
-        [Route("/image/wiser2/{itemId}/{propertyName}/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemId}/{propertyName}/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemId}/{propertyName}/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
 
-        [Route("/image/wiser2/{itemId}/{propertyName}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
-        [Route("/image/wiser2/{itemId}/{propertyName}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemId}/{propertyName}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemId}/{propertyName}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
 
         [HttpGet]
-        public async Task<IActionResult> WiserItemImage(ulong itemId, string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, int fileNumber = 1, [FromQuery] string encryptedId = null)
+        public async Task<IActionResult> WiserItemImage(int wiserVersion, ulong itemId, string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, int fileNumber = 1, [FromQuery] string encryptedId = null)
         {
             logger.LogDebug($"Get image from Wiser, itemId: '{itemId}', propertyName: '{propertyName}', preferredWidth: '{preferredWidth}', preferredHeight: '{preferredHeight}', filename: '{filename}', resizeMode: '{resizeMode:G}', anchorPosition: '{anchorPosition}', fileNumber: '{fileNumber}'");
             var (fileBytes, lastModified) = await itemFilesService.GetWiserItemImageAsync(itemId, propertyName, preferredWidth, preferredHeight, filename, fileNumber, resizeMode, anchorPosition, encryptedId);
@@ -49,17 +49,17 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
             return File(fileBytes, FileSystemHelpers.GetMediaTypeByMagicNumber(fileBytes));
         }
 
-        [Route("/image/wiser2/{itemLinkId}/itemlink/{propertyName}/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
-        [Route("/image/wiser2/{itemLinkId}/itemlink/{propertyName}/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemLinkId}/itemlink/{propertyName}/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemLinkId}/itemlink/{propertyName}/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
 
-        [Route("/image/wiser2/{itemLinkId}/itemlink/{propertyName}/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
-        [Route("/image/wiser2/{itemLinkId}/itemlink/{propertyName}/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemLinkId}/itemlink/{propertyName}/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemLinkId}/itemlink/{propertyName}/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
 
-        [Route("/image/wiser2/{itemLinkId}/itemlink/{propertyName}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
-        [Route("/image/wiser2/{itemLinkId}/itemlink/{propertyName}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemLinkId}/itemlink/{propertyName}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemLinkId}/itemlink/{propertyName}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
 
         [HttpGet]
-        public async Task<IActionResult> WiserItemLinkImage(ulong itemLinkId, string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, int fileNumber = 1, [FromQuery] string encryptedId = null)
+        public async Task<IActionResult> WiserItemLinkImage(int wiserVersion, ulong itemLinkId, string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, int fileNumber = 1, [FromQuery] string encryptedId = null)
         {
             logger.LogDebug($"Get image from Wiser, itemId: '{itemLinkId}', propertyName: '{propertyName}', preferredWidth: '{preferredWidth}', preferredHeight: '{preferredHeight}', filename: '{filename}', resizeMode: '{resizeMode:G}', anchorPosition: '{anchorPosition}', fileNumber: '{fileNumber}'");
             var (fileBytes, lastModified) = await itemFilesService.GetWiserItemLinkImageAsync(itemLinkId, propertyName, preferredWidth, preferredHeight, filename, fileNumber, resizeMode, anchorPosition, encryptedId);
@@ -74,13 +74,13 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
             return File(fileBytes, FileSystemHelpers.GetMediaTypeByMagicNumber(fileBytes));
         }
 
-        [Route("/image/wiser2/{itemFileId}/direct/global_file/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
-        [Route("/image/wiser2/{itemFileId}/direct/global_file/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
-        [Route("/image/wiser2/{itemFileId}/direct/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
-        [Route("/image/wiser2/{itemFileId}/direct/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
-        [Route("/image/wiser2/{itemFileId}/direct/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemFileId}/direct/global_file/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemFileId}/direct/global_file/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemFileId}/direct/{resizeMode}-{anchorPosition}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemFileId}/direct/{resizeMode}/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
+        [Route("/image/wiser{wiserVersion:range(1,3)}/{itemFileId}/direct/{preferredWidth:int:range(0, 5000)}/{preferredHeight:int:range(0, 5000)}/{filename:regex(.+?\\..+?)}")]
         [HttpGet]
-        public async Task<IActionResult> WiserDirectImage(ulong itemFileId, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, [FromQuery] string encryptedId = null)
+        public async Task<IActionResult> WiserDirectImage(int wiserVersion, ulong itemFileId, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, [FromQuery] string encryptedId = null)
         {
             logger.LogDebug($"Get image from Wiser, fileId: '{itemFileId}', preferredWidth: '{preferredWidth}', preferredHeight: '{preferredHeight}', filename: '{filename}', resizeMode: '{resizeMode:G}', anchorPosition: '{anchorPosition}'");
             var (fileBytes, lastModified) = await itemFilesService.GetWiserDirectImageAsync(itemFileId, preferredWidth, preferredHeight, filename, resizeMode, anchorPosition, encryptedId);
@@ -95,10 +95,10 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
             return File(fileBytes, FileSystemHelpers.GetMediaTypeByMagicNumber(fileBytes));
         }
 
-        [Route("/file/wiser2/{itemId}/{propertyName}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
-        [Route("/file/wiser2/{itemId}/{propertyName}/{filename:regex(.+?\\..+?)}")]
+        [Route("/file/wiser{wiserVersion:range(1,3)}/{itemId}/{propertyName}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
+        [Route("/file/wiser{wiserVersion:range(1,3)}/{itemId}/{propertyName}/{filename:regex(.+?\\..+?)}")]
         [HttpGet]
-        public async Task<IActionResult> WiserItemFile(ulong itemId, string propertyName, string filename, int fileNumber = 1, [FromQuery] string encryptedId = null)
+        public async Task<IActionResult> WiserItemFile(int wiserVersion, ulong itemId, string propertyName, string filename, int fileNumber = 1, [FromQuery] string encryptedId = null)
         {
             logger.LogDebug($"Get image from Wiser, itemId: '{itemId}', propertyName: '{propertyName}', filename: '{filename}', fileNumber: '{fileNumber}'");
             var (fileBytes, lastModified) = await itemFilesService.GetWiserItemFileAsync(itemId, propertyName, filename, fileNumber, encryptedId);
@@ -113,10 +113,10 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
             return File(fileBytes, MediaTypeNames.Application.Octet);
         }
 
-        [Route("/file/wiser2/{itemLinkId}/itemlink/{propertyName}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
-        [Route("/file/wiser2/{itemLinkId}/itemlink/{propertyName}/{filename:regex(.+?\\..+?)}")]
+        [Route("/file/wiser{wiserVersion:range(1,3)}/{itemLinkId}/itemlink/{propertyName}/{fileNumber:int}/{filename:regex(.+?\\..+?)}")]
+        [Route("/file/wiser{wiserVersion:range(1,3)}/{itemLinkId}/itemlink/{propertyName}/{filename:regex(.+?\\..+?)}")]
         [HttpGet]
-        public async Task<IActionResult> WiserItemLinkFile(ulong itemLinkId, string propertyName, string filename, int fileNumber = 1, [FromQuery] string encryptedId = null)
+        public async Task<IActionResult> WiserItemLinkFile(int wiserVersion, ulong itemLinkId, string propertyName, string filename, int fileNumber = 1, [FromQuery] string encryptedId = null)
         {
             logger.LogDebug($"Get image from Wiser, itemId: '{itemLinkId}', propertyName: '{propertyName}', filename: '{filename}', fileNumber: '{fileNumber}'");
             var (fileBytes, lastModified) = await itemFilesService.GetWiserItemLinkFileAsync(itemLinkId, propertyName, filename, fileNumber, encryptedId);
@@ -131,10 +131,10 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
             return File(fileBytes, MediaTypeNames.Application.Octet);
         }
 
-        [Route("/file/wiser2/{itemFileId}/direct/global_file/{filename:regex(.+?\\..+?)}")]
-        [Route("/file/wiser2/{itemFileId}/direct/{filename:regex(.+?\\..+?)}")]
+        [Route("/file/wiser{wiserVersion:range(1,3)}/{itemFileId}/direct/global_file/{filename:regex(.+?\\..+?)}")]
+        [Route("/file/wiser{wiserVersion:range(1,3)}/{itemFileId}/direct/{filename:regex(.+?\\..+?)}")]
         [HttpGet]
-        public async Task<IActionResult> WiserDirectFile(ulong itemFileId, string filename, [FromQuery] string encryptedId = null)
+        public async Task<IActionResult> WiserDirectFile(int wiserVersion, ulong itemFileId, string filename, [FromQuery] string encryptedId = null)
         {
             logger.LogDebug($"Get image from Wiser, itemId: '{itemFileId}', filename: '{filename}'");
             var (fileBytes, lastModified) = await itemFilesService.GetWiserDirectFileAsync(itemFileId, filename, encryptedId);
