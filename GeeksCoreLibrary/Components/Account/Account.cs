@@ -499,7 +499,7 @@ namespace GeeksCoreLibrary.Components.Account
                         // User is logging out.
                         await AccountsService.LogoutUserAsync(Settings);
                     }
-                    else if (request == null)
+                    else
                     {
                         // Check if the user is already logged in and show the success template if they are.
                         userId = (await AccountsService.GetUserDataFromCookieAsync()).UserId;
