@@ -171,6 +171,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     input = DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
                 }
             }
+            
+            // Handle variables with default values that haven't been replaced yet.
+            input = HandledVariablesDefaultValues(input);
 
             // Whether template variables that were not replaced should be removed.
             if (removeUnknownVariables)
@@ -511,6 +514,23 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         }
 
         /// <inheritdoc />
+        public string HandledVariablesDefaultValues(string input, string prefix = "{", string suffix = "}")
+        {
+            if (String.IsNullOrWhiteSpace(input))
+            {
+                return input;
+            }
+
+            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\?([^\]{suffix}\s]*){suffix}");
+            foreach (Match match in regex.Matches(input))
+            {
+                input = input.Replace(match.Value, match.Groups[2].Value);
+            }
+
+            return input;
+        }
+
+        /// <inheritdoc />
         public string RemoveTemplateVariables(string input, string prefix = "{", string suffix = "}")
         {
             if (String.IsNullOrWhiteSpace(input))
@@ -749,8 +769,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 {
                     var questionMarkIndexOf = fieldName.LastIndexOf("?");
                     var colonIndexOf = fieldName.LastIndexOf(":");
-                    var defaultValueWithQM = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
-                    defaultValue = defaultValueWithQM.Remove(0, 1);
+                    var defaultValueWithQuestionMark = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
+                    defaultValue = defaultValueWithQuestionMark.Remove(0, 1);
+                    fieldName = fieldName.Remove(questionMarkIndexOf, defaultValueWithQuestionMark.Length);
                 }
                 
                 // Colons that are escaped with a backslash are temporarily replaced with "~~COLON~~".
