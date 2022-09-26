@@ -22,7 +22,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
-using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Services
@@ -173,7 +172,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             }
             
             // Handle variables with default values that haven't been replaced yet.
-            input = HandledVariablesDefaultValues(input);
+            input = HandleVariablesDefaultValues(input);
 
             // Whether template variables that were not replaced should be removed.
             if (removeUnknownVariables)
@@ -370,7 +369,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 var value = Convert.ToString(replaceData[variableName], new CultureInfo("en-US"));
                 if (String.IsNullOrWhiteSpace(value))
                 {
-                    if (!variable.DefaultValue.IsNullOrEmpty())
+                    if (!String.IsNullOrEmpty(variable.DefaultValue))
                     {
                         value = variable.DefaultValue;
                     }
@@ -514,7 +513,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         }
 
         /// <inheritdoc />
-        public string HandledVariablesDefaultValues(string input, string prefix = "{", string suffix = "}")
+        public string HandleVariablesDefaultValues(string input, string prefix = "{", string suffix = "}")
         {
             if (String.IsNullOrWhiteSpace(input))
             {
