@@ -55,9 +55,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
-        public async Task<ulong> SaveConfigurationAsync(ConfigurationsModel input)
+        public async Task<ulong> SaveConfigurationAsync(ConfigurationsModel input, ulong? parentId = null)
         {
-            return await configuratorsService.SaveConfigurationAsync(input);
+            return await configuratorsService.SaveConfigurationAsync(input, parentId);
         }
 
         /// <inheritdoc />
