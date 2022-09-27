@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace GeeksCoreLibrary.Modules.DataSelector.Models
@@ -22,6 +23,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
             get => (languageCode ?? "").Replace("{languagecode}", "");
             set => languageCode = value;
         }
+
+        /// <summary>
+        /// Gets or sets multiple language codes, in case the field needs to be selected for multiple languages.
+        /// </summary>
+        public IEnumerable<string> LanguageCodes { get; set; }
 
         /// <summary>
         /// Gets or sets the data type for a scope row, which is either "string", "decimal" or "datetime". If the value is null or empty, the value "string" is assumed.
