@@ -539,6 +539,23 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserBranchesQueue, "idx_branch_id", IndexTypes.Normal, new List<string> { "branch_id" }),
                     new(WiserTableNames.WiserBranchesQueue, "idx_started_on", IndexTypes.Normal, new List<string> { "started_on" })
                 }
+            },
+            
+            // wiser_query
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserQuery,
+                LastUpdate = new DateTime(2022, 9, 29),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("description", MySqlDbType.VarChar, 512, notNull: true, defaultValue: ""),
+                    new("query", MySqlDbType.MediumText),
+                    new("show_in_export_module", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
+                    new("allowed_roles", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
+                    new("changed_on", MySqlDbType.DateTime)
+                },
+                Indexes = new List<IndexSettingsModel>()
             }
         };
     }
