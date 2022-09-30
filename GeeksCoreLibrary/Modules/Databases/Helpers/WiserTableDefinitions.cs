@@ -539,6 +539,29 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserBranchesQueue, "idx_branch_id", IndexTypes.Normal, new List<string> { "branch_id" }),
                     new(WiserTableNames.WiserBranchesQueue, "idx_started_on", IndexTypes.Normal, new List<string> { "started_on" })
                 }
+            },
+            
+            // log_psp
+            new WiserTableDefinitionModel
+            {
+                Name = Payments.Models.Constants.PaymentServiceProviderLogTableName,
+                LastUpdate = new DateTime(2022, 9, 30),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("payment_service_provider", MySqlDbType.VarChar, 50, notNull: true, defaultValue: ""),
+                    new("unique_payment_number", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
+                    new("status", MySqlDbType.Int32, 11, notNull: true, defaultValue: "0"),
+                    new("request_headers", MySqlDbType.Text, 0),
+                    new("request_query_string", MySqlDbType.Text, 0),
+                    new("request_form_values", MySqlDbType.MediumText, 0),
+                    new("request_body", MySqlDbType.MediumText, 0),
+                    new("response_body", MySqlDbType.MediumText, 0),
+                    new("error", MySqlDbType.Text, 0),
+                    new("url", MySqlDbType.Text, 0),
+                    new("type", MySqlDbType.Enum, enumValues: new List<string> { "incoming", "outgoing" })
+                }
             }
         };
     }
