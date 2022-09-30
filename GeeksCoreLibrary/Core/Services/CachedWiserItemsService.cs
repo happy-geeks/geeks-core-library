@@ -163,6 +163,18 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
+        public async Task<AccessRights> GetUserQueryPermissionsAsync(int queryId, ulong userId)
+        {
+            var cacheKey = $"user_query_permission_{queryId}_{userId}_{databaseConnection.GetDatabaseNameForCaching()}";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
+                    return await wiserItemsService.GetUserQueryPermissionsAsync(queryId, userId);
+                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
+        }
+
+        /// <inheritdoc />
         public async Task<WiserItemModel> GetItemDetailsAsync(ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null, bool skipPermissionsCheck = false)
         {
             return await GetItemDetailsAsync(this, itemId, uniqueId, languageCode, userId, detailKey, detailValue, returnNullIfDeleted, skipDetailsWithoutLanguageCode, entityType, skipPermissionsCheck);

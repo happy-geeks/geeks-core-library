@@ -545,17 +545,46 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserQuery,
-                LastUpdate = new DateTime(2022, 9, 29),
+                LastUpdate = new DateTime(2022, 9, 30),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("description", MySqlDbType.VarChar, 512, notNull: true, defaultValue: ""),
                     new("query", MySqlDbType.MediumText),
                     new("show_in_export_module", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
-                    new("allowed_roles", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
                     new("changed_on", MySqlDbType.DateTime)
                 },
-                Indexes = new List<IndexSettingsModel>()
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserQuery, "idx_show_in_export_module", IndexTypes.Normal, new List<string> { "show_in_export_module" })
+                }
+            },
+            
+            // wiser_permission
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserPermission,
+                LastUpdate = new DateTime(2022, 9, 30),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("role_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("entity_name", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
+                    new("item_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("entity_property_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("permissions", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: @"0 = Nothing
+1 = Read
+2 = Create
+4 = Update
+8 = Delete"),
+                    new("module_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("query_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("data_selector_id", MySqlDbType.Int32, notNull: true, defaultValue: "0")
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserPermission, "role_id", IndexTypes.Unique, new List<string> { "role_id", "entity_name", "item_id", "entity_property_id", "module_id", "query_id", "data_selector_id" })
+                }
             }
         };
     }

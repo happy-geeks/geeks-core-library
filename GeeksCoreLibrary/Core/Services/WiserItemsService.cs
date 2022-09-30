@@ -2007,6 +2007,68 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
 
             return userItemPermissions;
         }
+        
+        /// <inheritdoc />
+        public async Task<AccessRights> GetUserQueryPermissionsAsync(int queryId, ulong userId)
+        {
+            // Check if there are permissions on the query, in that case the default permissions for all other roles are revoked.
+            var permissionsQuery = $@"SELECT permission.permissions
+                                        FROM {WiserTableNames.WiserPermission} permission
+                                        WHERE permission.query_id = ?queryId
+                                        LIMIT 1";
+            
+            databaseConnection.AddParameter("queryId", queryId);
+            var permissionSet = (await databaseConnection.GetAsync(permissionsQuery)).Rows.Count > 0;
+            
+            // First check permissions based on module ID.
+            permissionsQuery = $@"SELECT permission.permissions
+                                    FROM {WiserTableNames.WiserUserRoles} user_role
+                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.query_id = ?queryId
+                                    WHERE user_role.user_id = ?userId";
+            
+            databaseConnection.AddParameter("userId", userId);
+            var dataTable = await databaseConnection.GetAsync(permissionsQuery);
+
+            var userItemPermissions = AccessRights.Nothing;
+
+            if (dataTable.Rows.Count == 0)
+            {
+                userItemPermissions = permissionSet ? AccessRights.Nothing : AccessRights.Read | AccessRights.Create | AccessRights.Update | AccessRights.Delete;
+                return userItemPermissions;
+            }
+
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                if (dataRow.IsNull("permissions"))
+                {
+                    userItemPermissions = permissionSet ? AccessRights.Nothing : AccessRights.Read | AccessRights.Create | AccessRights.Update | AccessRights.Delete;
+                    break;
+                }
+
+                var currentPermissions = (AccessRights)dataRow.Field<int>("permissions");
+                if ((currentPermissions & AccessRights.Read) == AccessRights.Read)
+                {
+                    userItemPermissions |= AccessRights.Read;
+                }
+
+                if ((currentPermissions & AccessRights.Create) == AccessRights.Create)
+                {
+                    userItemPermissions |= AccessRights.Create;
+                }
+
+                if ((currentPermissions & AccessRights.Update) == AccessRights.Update)
+                {
+                    userItemPermissions |= AccessRights.Update;
+                }
+
+                if ((currentPermissions & AccessRights.Delete) == AccessRights.Delete)
+                {
+                    userItemPermissions |= AccessRights.Delete;
+                }
+            }
+
+            return userItemPermissions;
+        }
 
         /// <inheritdoc />
         public async Task<WiserItemModel> GetItemDetailsAsync(ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null, bool skipPermissionsCheck = false)
