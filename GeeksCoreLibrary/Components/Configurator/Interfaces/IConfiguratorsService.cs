@@ -14,7 +14,6 @@ namespace GeeksCoreLibrary.Components.Configurator.Interfaces
         /// Get configurator data from cache or database.
         /// </summary>
         /// <param name="name"></param>
-        /// <param name="componentId"></param>
         /// <returns></returns>
         Task<DataTable> GetConfiguratorDataAsync(string name);
 
@@ -22,8 +21,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Interfaces
         /// save configuration to database
         /// </summary>
         /// <param name="input"></param>
+        /// <param name="parentId">Optional: If the configuration should be added as a child to something else, enter the ID of the parent here.</param>
         /// <returns></returns>
-        Task<ulong> SaveConfigurationAsync(ConfigurationsModel input);
+        Task<ulong> SaveConfigurationAsync(ConfigurationsModel input, ulong? parentId = null);
 
         /// <summary>
         /// Calculates the deliveryTime

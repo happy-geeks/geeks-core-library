@@ -11,7 +11,6 @@ using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
-using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Helpers;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
@@ -33,17 +32,16 @@ using Microsoft.AspNetCore.Http;
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
     /// <inheritdoc cref="IPaymentServiceProviderService" />
-    public class BuckarooService : IPaymentServiceProviderService, IScopedService
+    public class BuckarooService : PaymentServiceProviderBaseService, IPaymentServiceProviderService, IScopedService
     {
-        public bool LogPaymentActions { get; set; }
-
         private readonly ILogger<BuckarooService> logger;
         private readonly GclSettings gclSettings;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IDatabaseConnection databaseConnection;
 
-        public BuckarooService(ILogger<BuckarooService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection)
+        public BuckarooService(ILogger<BuckarooService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService) 
+            : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
         {
             this.logger = logger;
             this.gclSettings = gclSettings.Value;
@@ -228,7 +226,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
             catch (System.Security.Authentication.AuthenticationException)
             {
-                await LogPaymentAction(invoiceNumber, 0, bodyJson);
+                await LogIncomingPaymentActionAsync(PaymentServiceProviders.Buckaroo, invoiceNumber, 0, bodyJson);
 
                 return new StatusUpdateResult
                 {
@@ -240,45 +238,13 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var successful = push.Status.Code.Code == BuckarooSdk.Constants.Status.Success;
             var statusMessage = push.Status.Code.Description;
 
-            await LogPaymentAction(invoiceNumber, push.Status.Code.Code, bodyJson);
+            await LogIncomingPaymentActionAsync(PaymentServiceProviders.Buckaroo, invoiceNumber, push.Status.Code.Code, bodyJson);
 
             return new StatusUpdateResult
             {
                 Status = statusMessage,
                 Successful = successful
             };
-        }
-
-        private async Task<bool> LogPaymentAction(string invoiceNumber, int status, string bodyJson)
-        {
-            if (!LogPaymentActions || httpContextAccessor?.HttpContext == null)
-            {
-                return false;
-            }
-
-            var headers = new StringBuilder();
-            var queryString = new StringBuilder();
-            var formValues = new StringBuilder();
-
-            foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Headers)
-            {
-                headers.AppendLine($"{key}: {value}");
-            }
-
-            foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Query)
-            {
-                queryString.AppendLine($"{key}: {value}");
-            }
-
-            if (httpContextAccessor.HttpContext.Request.HasFormContentType)
-            {
-                foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Form)
-                {
-                    formValues.AppendLine($"{key}: {value}");
-                }
-            }
-
-            return await LoggingHelpers.AddLogEntryAsync(databaseConnection, PaymentServiceProviders.Buckaroo, invoiceNumber, status, headers.ToString(), queryString.ToString(), formValues.ToString(), bodyJson);
         }
 
         #region Helper functions
