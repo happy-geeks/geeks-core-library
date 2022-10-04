@@ -121,6 +121,15 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Interfaces
         string EvaluateTemplate(string input);
 
         /// <summary>
+        /// Searches input string for variables with default values and replaces them with those default values.
+        /// </summary>
+        /// <param name="input">The input string.</param>
+        /// <param name="prefix">The prefix that variables start with.</param>
+        /// <param name="suffix">The suffix that variables end with.</param>
+        /// <returns></returns>
+        string HandleVariablesDefaultValues(string input, string prefix = "{", string suffix = "}");
+
+        /// <summary>
         /// Removes any template variables that are present in the input string.
         /// </summary>
         /// <param name="input"></param>

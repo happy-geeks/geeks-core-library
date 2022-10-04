@@ -87,14 +87,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             switch (contentTemplate.Type)
             {
                 case TemplateTypes.Js:
-                    context.Response.ContentType = "application/javascript";
-                    ombouw = false;
-                    break;
+                    return Content(contentTemplate.Content, "application/javascript");
                 case TemplateTypes.Scss:
                 case TemplateTypes.Css:
-                    context.Response.ContentType = "text/css";
-                    ombouw = false;
-                    break;
+                    return Content(contentTemplate.Content, "text/css");
+                case TemplateTypes.Query:
+                    var jsonResult = await templatesService.GetJsonResponseFromQueryAsync((QueryTemplate)contentTemplate);
+                    return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
+                case TemplateTypes.Normal:
+                case TemplateTypes.Unknown:
+                    return Content(contentTemplate.Content, "text/plain");
                 case TemplateTypes.Html:
                     // Execute the pre load query before any replacements are being done and before any dynamic components are handled.
                     var hasResults = await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(contentTemplate);
@@ -125,16 +127,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     }
 
                     break;
-                case TemplateTypes.Query:
-                    context.Response.ContentType = "application/json";
-                    ombouw = false;
-                    break;
-                case TemplateTypes.Normal:
-                    break;
-                case TemplateTypes.Unknown:
-                    break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.Type), contentTemplate.Type.ToString());
             }
 
             var contentToWrite = new StringBuilder();

@@ -23,5 +23,10 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Models
         /// A list of formatters that were found on the variable.
         /// </summary>
         public List<string> Formatters { get; } = new();
+        
+        /// <summary>
+        /// The default value of the variable when given.
+        /// </summary>
+        public string DefaultValue { get; set; }
     }
 }

@@ -8,12 +8,10 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -547,8 +545,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 return result;
             }
 
-            query = await stringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
             query = await ReplaceConfiguratorItemsAsync(query, input, true);
+            query = await stringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
 
             var priceResultDataTable = await databaseConnection.GetAsync(query);
             if (priceResultDataTable.Rows.Count == 0)
@@ -609,8 +607,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 // If a query is set handle it to add extra information for the replacements in the JSON.
                 if (!String.IsNullOrWhiteSpace(query))
                 {
-                    query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
                     query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
+                    query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
                     var extraDataTable = await databaseConnection.GetAsync(query);
 
                     if (extraDataTable.Rows.Count > 0)
@@ -619,11 +617,11 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     }
                 }
 
-                endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
                 endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+                endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
 
-                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
                 requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
                 
                 var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
                 requestJson = regex.Replace(requestJson, "null");
@@ -697,7 +695,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
-        public async Task<ulong> SaveConfigurationAsync(ConfigurationsModel input)
+        public async Task<ulong> SaveConfigurationAsync(ConfigurationsModel input, ulong? parentId = null)
         {
             var configuration = new WiserItemModel
             {
@@ -729,7 +727,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             configuration.Details.AddRange(input.QueryStringItems.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
 
             // save main item
-            await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
+            await wiserItemsService.SaveAsync(configuration, parentId, skipPermissionsCheck: true);
 
             // save configuration line query, we run this query to get all the other variables that need to be added to the configuration line like ean, purchaseprice etc.
             var saveConfigLineQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationLineQuery");
@@ -789,31 +787,36 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         private async Task AddItemDetailsFromQueryToWiserItemModelAsync(string query, WiserItemModel item, Dictionary<string, string> parameters = null)
         {
             // if save query is not empty, run query and save result
-            if (!String.IsNullOrWhiteSpace(query))
+            if (String.IsNullOrWhiteSpace(query))
             {
-                databaseConnection.ClearParameters();
-                if (parameters is {Count: > 0})
-                {
-                    foreach (var parameter in parameters)
-                    {
-                        databaseConnection.AddParameter(parameter.Key, parameter.Value);
-                    }
-                }
+                return;
+            }
 
-                var saveConfigLineDataTable = await databaseConnection.GetAsync(query);
-                if (saveConfigLineDataTable.Rows.Count > 0)
+            databaseConnection.ClearParameters();
+            if (parameters is {Count: > 0})
+            {
+                foreach (var parameter in parameters)
                 {
-                    foreach (DataRow row in saveConfigLineDataTable.Rows)
-                    {
-                        var itemDetail = new WiserItemDetailModel
-                        {
-                            Key = row.Field<string>("itemdetail_name"),
-                            // we dont know the type that is returned from the query, so we save as is without .field<>
-                            Value = row["itemdetail_value"]
-                        };
-                        item.Details.Add(itemDetail);
-                    }
+                    databaseConnection.AddParameter(parameter.Key, parameter.Value);
                 }
+            }
+
+            var saveConfigLineDataTable = await databaseConnection.GetAsync(query);
+            if (saveConfigLineDataTable.Rows.Count <= 0)
+            {
+                return;
+            }
+
+            foreach (DataRow row in saveConfigLineDataTable.Rows)
+            {
+                var itemDetail = new WiserItemDetailModel
+                {
+                    Key = row.Field<string>("itemdetail_name"),
+
+                    // we dont know the type that is returned from the query, so we save as is without .field<>
+                    Value = row["itemdetail_value"]
+                };
+                item.Details.Add(itemDetail);
             }
         }
     }

@@ -16,7 +16,6 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
-using GeeksCoreLibrary.Modules.Payments.Helpers;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Payments.Models.Mollie;
@@ -29,12 +28,9 @@ using RestSharp.Authenticators.OAuth2;
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
     /// <inheritdoc cref="IPaymentServiceProviderService" />
-    public class MollieService : IPaymentServiceProviderService, IScopedService
+    public class MollieService : PaymentServiceProviderBaseService, IPaymentServiceProviderService, IScopedService
     {
         private const string ApiBaseUrl = "https://api.mollie.com/v2";
-
-        /// <inheritdoc />
-        public bool LogPaymentActions { get; set; }
 
         private readonly ILogger<MollieService> logger;
         private readonly IHttpContextAccessor httpContextAccessor;
@@ -42,7 +38,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IDatabaseConnection databaseConnection;
 
-        public MollieService(ILogger<MollieService> logger, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection)
+        public MollieService(ILogger<MollieService> logger, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService) 
+            : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
         {
             this.logger = logger;
             this.httpContextAccessor = httpContextAccessor;
@@ -226,7 +223,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             if (String.IsNullOrWhiteSpace(status))
             {
-                await LogPaymentActionAsync(String.Empty, (int)restResponse.StatusCode, responseBody: restResponse.Content);
+                await LogIncomingPaymentActionAsync(PaymentServiceProviders.Mollie, String.Empty, (int)restResponse.StatusCode, responseBody: restResponse.Content);
 
                 return new StatusUpdateResult
                 {
@@ -238,7 +235,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // The invoice number is sent as the metadata, which can be retrieved here.
             var invoiceNumber = responseJson["metadata"]?.ToString();
 
-            await LogPaymentActionAsync(invoiceNumber, (int)restResponse.StatusCode, responseBody: restResponse.Content);
+            await LogIncomingPaymentActionAsync(PaymentServiceProviders.Mollie, invoiceNumber, (int)restResponse.StatusCode, responseBody: restResponse.Content);
 
             return new StatusUpdateResult
             {
@@ -256,7 +253,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var baskets = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(invoiceNumber);
             if (baskets == null || baskets.Count == 0)
             {
-                await LogPaymentActionAsync(invoiceNumber, 0, error: $"Unknown invoice number: {invoiceNumber}");
+                await LogIncomingPaymentActionAsync(PaymentServiceProviders.Mollie, invoiceNumber, 0, error: $"Unknown invoice number: {invoiceNumber}");
 
                 // Unknown invoice number.
                 return new PaymentReturnResult
@@ -277,7 +274,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             var restResponse = await restClient.ExecuteAsync(restRequest);
 
-            await LogPaymentActionAsync(invoiceNumber, (int)restResponse.StatusCode, responseBody: restResponse.Content);
+            await LogIncomingPaymentActionAsync(PaymentServiceProviders.Mollie, invoiceNumber, (int)restResponse.StatusCode, responseBody: restResponse.Content);
 
             if (restResponse.StatusCode != HttpStatusCode.OK)
             {
@@ -327,38 +324,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             return "Unknown error";
-        }
-
-        private async Task<bool> LogPaymentActionAsync(string invoiceNumber, int status, string requestBody = "", string responseBody = "", string error = "")
-        {
-            if (!LogPaymentActions || httpContextAccessor?.HttpContext == null)
-            {
-                return false;
-            }
-
-            var headers = new StringBuilder();
-            var queryString = new StringBuilder();
-            var formValues = new StringBuilder();
-
-            foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Headers)
-            {
-                headers.AppendLine($"{key}: {value}");
-            }
-
-            foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Query)
-            {
-                queryString.AppendLine($"{key}: {value}");
-            }
-
-            if (httpContextAccessor.HttpContext.Request.HasFormContentType)
-            {
-                foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Form)
-                {
-                    formValues.AppendLine($"{key}: {value}");
-                }
-            }
-
-            return await LoggingHelpers.AddLogEntryAsync(databaseConnection, PaymentServiceProviders.Mollie, invoiceNumber, status, headers.ToString(), queryString.ToString(), formValues.ToString(), requestBody, responseBody, error);
         }
     }
 }

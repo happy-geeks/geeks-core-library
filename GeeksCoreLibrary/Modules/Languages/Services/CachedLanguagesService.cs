@@ -73,6 +73,9 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             }
             
             var cacheName = new StringBuilder(Constants.LanguageCodeCacheKey);
+            
+            // Add hostname to cache key, because websites often have a different hostname per language.
+            cacheName.Append('_').Append(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext));
 
             if (gclSettings.MultiLanguageBasedOnUrlSegments)
             {

@@ -456,15 +456,21 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
                 // Table is not up-to-date, so update it now.
                 await CreateOrUpdateTableAsync(tableName, tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
-                
+                if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                {
+                    await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                }
+
                 // Update archive table.
                 if (WiserTableNames.TablesWithArchive.Contains(tableName))
                 {
                     await CreateOrUpdateTableAsync($"{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                    tableDefinition.Indexes.ForEach(index => index.TableName += WiserTableNames.ArchiveSuffix);
-                    await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
-                    tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                    if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                    {
+                        tableDefinition.Indexes.ForEach(index => index.TableName += WiserTableNames.ArchiveSuffix);
+                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                    }
                 }
                 
                 // Update dedicated entity tables.
@@ -482,15 +488,21 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         
                         // Normal tables.
                         await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}");
-                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
-                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
-                        
+                        if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                        {
+                            tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}");
+                            await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                            tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                        }
+
                         // Archive tables.
                         await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}{WiserTableNames.ArchiveSuffix}");
-                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
-                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                        if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                        {
+                            tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}{WiserTableNames.ArchiveSuffix}");
+                            await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                            tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                        }
                     }
                 }
                 
@@ -505,15 +517,21 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         
                         // Normal tables.
                         await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}");
-                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
-                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
-                        
+                        if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                        {
+                            tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}");
+                            await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                            tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                        }
+
                         // Archive tables.
                         await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                        tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}{WiserTableNames.ArchiveSuffix}");
-                        await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
-                        tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                        if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                        {
+                            tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}{WiserTableNames.ArchiveSuffix}");
+                            await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
+                            tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
+                        }
                     }
                 }
 
