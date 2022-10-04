@@ -51,4 +51,9 @@ public class Service
     /// Gets or sets the state of the service.
     /// </summary>
     public string State { get; set; }
+
+    /// <summary>
+    /// Gets or sets if the service is paused.
+    /// </summary>
+    public bool Paused { get; set; }
 }
