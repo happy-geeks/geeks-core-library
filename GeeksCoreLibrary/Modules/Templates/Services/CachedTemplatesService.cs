@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Cms;
@@ -432,6 +433,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(settings.CachingMode), settings.CachingMode.ToString());
+            }
+
+            if (extraData != null && extraData.Any())
+            {
+                foreach (var key in extraData.Keys)
+                {
+                    cacheKey.Append($"_{key}={extraData[key]}");
+                }
             }
 
             string html;
