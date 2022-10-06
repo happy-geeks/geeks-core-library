@@ -2011,17 +2011,9 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         /// <inheritdoc />
         public async Task<AccessRights> GetUserQueryPermissionsAsync(int queryId, ulong userId)
         {
-            // Check if there are permissions on the query, in that case the default permissions for all other roles are revoked.
-            var permissionsQuery = $@"SELECT permission.permissions
-                                        FROM {WiserTableNames.WiserPermission} permission
-                                        WHERE permission.query_id = ?queryId
-                                        LIMIT 1";
-            
             databaseConnection.AddParameter("queryId", queryId);
-            var permissionSet = (await databaseConnection.GetAsync(permissionsQuery)).Rows.Count > 0;
-            
             // First check permissions based on module ID.
-            permissionsQuery = $@"SELECT permission.permissions
+            var permissionsQuery = $@"SELECT permission.permissions
                                     FROM {WiserTableNames.WiserUserRoles} user_role
                                     LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.query_id = ?queryId
                                     WHERE user_role.user_id = ?userId";
@@ -2033,7 +2025,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
 
             if (dataTable.Rows.Count == 0)
             {
-                userItemPermissions = permissionSet ? AccessRights.Nothing : AccessRights.Read | AccessRights.Create | AccessRights.Update | AccessRights.Delete;
+                userItemPermissions = AccessRights.Nothing;
                 return userItemPermissions;
             }
 
@@ -2041,7 +2033,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             {
                 if (dataRow.IsNull("permissions"))
                 {
-                    userItemPermissions = permissionSet ? AccessRights.Nothing : AccessRights.Read | AccessRights.Create | AccessRights.Update | AccessRights.Delete;
+                    userItemPermissions = AccessRights.Nothing;
                     break;
                 }
 
