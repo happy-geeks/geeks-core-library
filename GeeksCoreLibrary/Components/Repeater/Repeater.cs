@@ -202,7 +202,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                 templateHtml = baseTemplate.HeaderTemplate;
                 templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                generatedHtml.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, parsedData.Rows.Count > 0 ? parsedData.Rows[0] : null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                generatedHtml.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, parsedData.Rows.Count > 0 ? parsedData.Rows[0] : null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false));
             }
 
             if (parsedData.Rows.Count == 0)
@@ -258,7 +258,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                 templateHtml = baseTemplate.FooterTemplate;
                 templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                generatedHtml.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, parsedData.Rows.Count > 0 ? parsedData.Rows[0] : null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                generatedHtml.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, parsedData.Rows.Count > 0 ? parsedData.Rows[0] : null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false));
             }
 
             var output = generatedHtml.ToString();
@@ -442,7 +442,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     }
 
                     // Do replacements on the banner HTML and then add that HTML.
-                    var productBannerHtml = await StringReplacementsService.DoAllReplacementsAsync(Settings.ProductBannerTemplate, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables);
+                    var productBannerHtml = await StringReplacementsService.DoAllReplacementsAsync(Settings.ProductBannerTemplate, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false);
                     productBannerHtml = productBannerProperties.Aggregate(productBannerHtml, (current, property) => current.ReplaceCaseInsensitive($"{{{property.Name}}}", property.GetValue(banner)?.ToString() ?? ""));
                     html.Append(productBannerHtml);
                     blocksPlaced++;
@@ -474,13 +474,13 @@ namespace GeeksCoreLibrary.Components.Repeater
                     templateHtml = template.BetweenItemsTemplate;
                     templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false));
                 }
 
                 templateHtml = template.ItemTemplate;
                 templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false));
                 blocksPlaced++;
 
                 // Check if we need to place a group footer. A group fouter needs to be placed after every N items, unless this is the very last item and ShowGroupFooterForLastGroup is disabled.
@@ -579,7 +579,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     templateHtml = templateCollection[currentIdentifier].HeaderTemplate;
                     templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false));
                 }
 
                 // Add the items to the HTML.
@@ -594,13 +594,13 @@ namespace GeeksCoreLibrary.Components.Repeater
                         templateHtml = templateCollection[currentIdentifier].BetweenItemsTemplate;
                         templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                        html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                        html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false));
                     }
 
                     templateHtml = templateCollection[currentIdentifier].ItemTemplate;
                     templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false));
 
                     // Recursive call to parse the next layer of data.
                     html.Append(await ParseMultiLayerDataAsync(relevantData, templateCollection, depth + 1));
@@ -612,7 +612,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     templateHtml = templateCollection[currentIdentifier].FooterTemplate;
                     templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
 
-                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables));
+                    html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false));
                 }
             }
 
