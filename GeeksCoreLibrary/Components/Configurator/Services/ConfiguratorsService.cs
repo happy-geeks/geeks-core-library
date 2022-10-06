@@ -861,7 +861,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     
                     configuration.Details.Add(new WiserItemDetailModel()
                     {
-                        Key = "gcl_request",
+                        Key = "gcl_response",
                         Value = restResponse.Content,
                         GroupName = saveApi.Title
                     });
