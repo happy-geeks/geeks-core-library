@@ -239,8 +239,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("handle_logic_blocks", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
                     new("handle_mutators", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("login_required", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
-                    new("login_user_type", MySqlDbType.VarChar, 50),
-                    new("login_session_prefix", MySqlDbType.VarChar, 255),
                     new("login_role", MySqlDbType.VarChar, 50),
                     new("login_redirect_url", MySqlDbType.VarChar, 255),
                     new("linked_templates", MySqlDbType.MediumText),
