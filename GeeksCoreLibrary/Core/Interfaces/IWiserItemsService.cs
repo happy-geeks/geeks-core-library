@@ -299,6 +299,14 @@ namespace GeeksCoreLibrary.Core.Interfaces
         Task<AccessRights> GetUserModulePermissions(int moduleId, ulong userId);
 
         /// <summary>
+        /// Get the query permissions for a user.
+        /// </summary>
+        /// <param name="queryId">The ID of the query that you want to have the permissions of.</param>
+        /// <param name="userId">The ID of the logged in Wiser user.</param>
+        /// <returns></returns>
+        Task<AccessRights> GetUserQueryPermissionsAsync(int queryId, ulong userId);
+
+        /// <summary>
         /// Function gets an item from the database and returns all details in list.
         /// </summary>
         /// <param name="itemId">Optional: The ID of the item to get the details of.</param>

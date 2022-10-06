@@ -590,68 +590,92 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 
             foreach (var priceApi in priceApis)
             {
-                var endpoint = priceApi.GetDetailValue("endpoint");
-                var requestJson = priceApi.GetDetailValue("request_json");
-                var purchasePriceKey = priceApi.GetDetailValue("price_calculation_purchase_price_key");
-                var customerPriceKey = priceApi.GetDetailValue("price_calculation_customer_price_key");
-                var fromPriceKey = priceApi.GetDetailValue("price_calculation_from_price_key");
-                var query = priceApi.GetDetailValue("api_query");
-
-                if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
+                try
                 {
-                    return result;
-                }
+                    var endpoint = priceApi.GetDetailValue("endpoint");
+                    var requestJson = priceApi.GetDetailValue("request_json");
+                    var purchasePriceKey = priceApi.GetDetailValue("price_calculation_purchase_price_key");
+                    var customerPriceKey = priceApi.GetDetailValue("price_calculation_customer_price_key");
+                    var fromPriceKey = priceApi.GetDetailValue("price_calculation_from_price_key");
+                    var query = priceApi.GetDetailValue("api_query");
 
-                DataRow extraData = null;
-
-                // If a query is set handle it to add extra information for the replacements in the JSON.
-                if (!String.IsNullOrWhiteSpace(query))
-                {
-                    query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
-                    query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
-                    var extraDataTable = await databaseConnection.GetAsync(query);
-
-                    if (extraDataTable.Rows.Count > 0)
+                    if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
                     {
-                        extraData = extraDataTable.Rows[0];
+                        continue;
                     }
+
+                    DataRow extraData = null;
+
+                    // If a query is set handle it to add extra information for the replacements in the JSON.
+                    if (!String.IsNullOrWhiteSpace(query))
+                    {
+                        query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
+                        query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                        var extraDataTable = await databaseConnection.GetAsync(query);
+
+                        if (extraDataTable.Rows.Count > 0)
+                        {
+                            extraData = extraDataTable.Rows[0];
+                        }
+                    }
+
+                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+                    endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
+
+                    requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+                    requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                    requestJson = regex.Replace(requestJson, "null");
+
+                    // If there is no request JSON it is useless to do an API call.
+                    if (String.IsNullOrWhiteSpace(requestJson))
+                    {
+                        continue;
+                    }
+
+                    var requestMethod = (Method) priceApi.GetDetailValue<int>("request_type");
+
+                    var restClient = new RestClient();
+                    var restRequest = new RestRequest(endpoint, requestMethod);
+
+                    var authenticationType = priceApi.GetDetailValue<int>("authentication_type");
+
+                    switch (authenticationType)
+                    {
+                        case 1: // Oauth 2.0
+                            // TODO handle OAuth 2
+                            restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
+                            throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
+                        case 2: // Token
+                            var token = priceApi.GetDetailValue("token");
+                            token = await stringReplacementsService.DoAllReplacementsAsync(token);
+                            restRequest.AddHeader("Authorization", $"Token {token}");
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
+                    }
+
+
+                    restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+
+                    var restResponse = await restClient.ExecuteAsync(restRequest);
+                    if (!restResponse.IsSuccessful || restResponse.Content == null)
+                    {
+                        logger.LogWarning($"Error while trying to get price from an API. The API response HTTP code was '{restResponse.StatusCode}' and the result was: {restResponse.Content}");
+                        continue;
+                    }
+
+                    // Get the three different prices from the response.
+                    var responseData = JObject.Parse(restResponse.Content);
+                    result.purchasePrice += GetPriceValueFromResponse(responseData, purchasePriceKey);
+                    result.customerPrice += GetPriceValueFromResponse(responseData, customerPriceKey);
+                    result.fromPrice += GetPriceValueFromResponse(responseData, fromPriceKey);
                 }
-
-                endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
-                endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
-
-                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
-                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
-                
-                var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
-                requestJson = regex.Replace(requestJson, "null");
-
-                // If there is no request JSON it is useless to do an API call.
-                if (String.IsNullOrWhiteSpace(requestJson))
+                catch (Exception exception)
                 {
-                    return result;
+                    logger.LogError(exception, "Error while trying to get price from an API.");
                 }
-                
-                var requestMethod = (Method)priceApi.GetDetailValue<int>("request_type");
-
-                var restClient = new RestClient();
-                var restRequest = new RestRequest(endpoint, requestMethod);
-
-                await AddAuthenticationToApiCall(restRequest, priceApi);
-                
-                restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
-
-                var restResponse = await restClient.ExecuteAsync(restRequest);
-                if (!restResponse.IsSuccessful || restResponse.Content == null)
-                {
-                    throw new ArgumentException();
-                }
-
-                // Get the three different prices from the response.
-                var responseData = JObject.Parse(restResponse.Content);
-                result.purchasePrice += GetPriceValueFromResponse(responseData, purchasePriceKey);
-                result.customerPrice += GetPriceValueFromResponse(responseData, customerPriceKey);
-                result.fromPrice += GetPriceValueFromResponse(responseData, fromPriceKey);
             }
 
             return result;
