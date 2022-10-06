@@ -136,13 +136,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("icon_expanded", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
                     new("use_dedicated_table", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("dedicated_table_prefix", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
-                    new("delete_action", MySqlDbType.Enum, notNull: true, defaultValue: "archive", enumValues: new List<string> {"archive", "permanent", "hide", "disallow"})
+                    new("delete_action", MySqlDbType.Enum, notNull: true, defaultValue: "archive", enumValues: new List<string> {"archive", "permanent", "hide", "disallow"}),
+                    new("show_in_dashboard", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
                     new(WiserTableNames.WiserEntity, "name_module_id", IndexTypes.Unique, new List<string> {"name", "module_id"}),
                     new(WiserTableNames.WiserEntity, "name", IndexTypes.Normal, new List<string> {"name", "show_in_tree_view"}),
-                    new(WiserTableNames.WiserEntity, "module_id", IndexTypes.Normal, new List<string> {"module_id"})
+                    new(WiserTableNames.WiserEntity, "module_id", IndexTypes.Normal, new List<string> {"module_id"}),
+                    new(WiserTableNames.WiserEntity, "show_in_dashboard", IndexTypes.Normal, new List<string> {"show_in_dashboard"})
                 }
             },
 
@@ -404,7 +406,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("changed_on", MySqlDbType.DateTime),
                     new("show_in_export_module", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("available_for_rendering", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
-                    new("default_template", MySqlDbType.UInt64, notNull: true, defaultValue: "0")
+                    new("default_template", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                    new("show_in_dashboard", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
@@ -416,7 +419,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.AisLogs,
-                LastUpdate = new DateTime(2022, 5, 10),
+                LastUpdate = new DateTime(2022, 9, 14),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -427,12 +430,40 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("configuration", MySqlDbType.VarChar, 256),
                     new("time_id", MySqlDbType.Int32),
                     new("order", MySqlDbType.Int32),
-                    new("added_on", MySqlDbType.DateTime, notNull:true)
+                    new("added_on", MySqlDbType.DateTime, notNull:true),
+                    new("is_test", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
-                    new(WiserTableNames.AisLogs, "idx_configuration", IndexTypes.Normal, new List<string> { "configuration", "time_id", "order" }),
-                    new(WiserTableNames.AisLogs, "idx_level", IndexTypes.Normal, new List<string> { "level", "configuration", "time_id", "order" })
+                    new(WiserTableNames.AisLogs, "idx_configuration", IndexTypes.Normal, new List<string> { "configuration", "time_id", "order", "is_test" }),
+                    new(WiserTableNames.AisLogs, "idx_level", IndexTypes.Normal, new List<string> { "level", "configuration", "time_id", "order", "is_test" }),
+                    new(WiserTableNames.AisLogs, "idx_dated_configuration", IndexTypes.Normal, new List<string> { "added_on", "configuration", "time_id", "is_test" })
+                }
+            },
+            
+            // ais_services
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.AisServices,
+                LastUpdate = new DateTime(2022, 10, 4),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("configuration", MySqlDbType.VarChar, 256, notNull: true),
+                    new("time_id", MySqlDbType.Int32, notNull: true),
+                    new("action", MySqlDbType.VarChar, 256),
+                    new("scheme", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "continuous", "daily", "weekly", "monthly" }),
+                    new("last_run", MySqlDbType.DateTime),
+                    new("next_run", MySqlDbType.DateTime),
+                    new("run_time", MySqlDbType.Double),
+                    new("state", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "active", "success", "warning", "failed", "paused", "stopped", "crashed", "running" }, defaultValue: "active"),
+                    new("paused", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("extra_run", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.AisServices, "idx_time", IndexTypes.Normal, new List<string> { "configuration", "time_id" }),
+                    new(WiserTableNames.AisServices, "idx_action", IndexTypes.Normal, new List<string> { "configuration", "action" })
                 }
             },
             
@@ -538,6 +569,43 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserBranchesQueue, "idx_started_on", IndexTypes.Normal, new List<string> { "started_on" })
                 }
             },
+
+            // wiser_dashboard
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserDashboard,
+                LastUpdate = new DateTime(2022, 7, 7),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("last_update", MySqlDbType.DateTime, notNull: true),
+                    new("items_data", MySqlDbType.MediumText),
+                    new("user_login_count_top10", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("user_login_count_other", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("user_login_time_top10", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00"),
+                    new("user_login_time_other", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00")
+                }
+            },
+
+            // wiser_login_log
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserLoginLog,
+                LastUpdate = new DateTime(2022, 7, 7),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("user_id", MySqlDbType.UInt64, notNull: true),
+                    new("time_active", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00"),
+                    new("added_on", MySqlDbType.DateTime, notNull: true)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserLoginLog, "idx_added_on", IndexTypes.Normal, new List<string> { "added_on" }),
+                    new(WiserTableNames.WiserLoginLog, "idx_user_Id", IndexTypes.Normal, new List<string> { "user_id" })
+                }
+            },
+
             
             // wiser_query
             new WiserTableDefinitionModel
