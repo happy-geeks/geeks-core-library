@@ -16,7 +16,6 @@ using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Models;
 using GeeksCoreLibrary.Modules.Exports.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
-using GeeksCoreLibrary.Modules.GclConverters.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -1389,6 +1388,9 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                 foreach (var connectionRow in connection.ConnectionRows)
                 {
+                    var linkSettingsForUp = itemsRequest.LinkTypeSettings.FirstOrDefault(l => l.Type == connectionRow.TypeNumber && l.DestinationEntityType.Equals(connectionRow.EntityName, StringComparison.OrdinalIgnoreCase) && l.SourceEntityType.Equals(itemsRequest.EntityTypes?.Split(',').First(), StringComparison.OrdinalIgnoreCase));
+                    var linkSettingsForDown = itemsRequest.LinkTypeSettings.FirstOrDefault(l => l.Type == connectionRow.TypeNumber && l.DestinationEntityType.Equals(itemsRequest.EntityTypes?.Split(',').First(), StringComparison.OrdinalIgnoreCase) && l.SourceEntityType.Equals(connectionRow.EntityName, StringComparison.OrdinalIgnoreCase));
+                    
                     var tablePrefix = "";
                     if (!String.IsNullOrWhiteSpace(connectionRow.EntityName) && itemsRequest.DedicatedTables.ContainsKey(connectionRow.EntityName))
                     {
@@ -1406,11 +1408,25 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     {
                         if (connectionRow.Modes.Contains("up"))
                         {
-                            queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}`.destination_item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}`.destination_item_id = {String.Join(", ", connectionRow.ItemIds.Single())}");
+                            if (linkSettingsForUp is {UseParentItemId: true})
+                            {
+                                queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}_item`.id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}_item`.id = {connectionRow.ItemIds.Single()}");
+                            }
+                            else
+                            {
+                                queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}`.destination_item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}`.destination_item_id = {connectionRow.ItemIds.Single()}");
+                            }
                         }
                         else
                         {
-                            queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}`.item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}`.item_id = {String.Join(", ", connectionRow.ItemIds.Single())}");
+                            if (linkSettingsForDown is {UseParentItemId: true})
+                            {
+                                queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{previousLevelTableAlias}`.id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{previousLevelTableAlias}`.id = {connectionRow.ItemIds.Single()}");
+                            }
+                            else
+                            {
+                                queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}`.item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}`.item_id = {connectionRow.ItemIds.Single()}");
+                            }
                         }
                     }
                     else
@@ -1467,7 +1483,21 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     }
 
                     // Process the scope of the connection (constraint on connection).
-                    await ProcessScopesAsync(itemsRequest, connectionRow.Scopes, connectionRow.Modes.Contains("up") ? $"`{tableName}`.destination_item_id" : $"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Modes.Contains("optional"));
+                    string joinDetailOn;
+                    if (connectionRow.Modes.Contains("up"))
+                    {
+                        joinDetailOn = linkSettingsForUp is {UseParentItemId: true} 
+                            ? $"`{tableName}_item`.id" 
+                            : $"`{tableName}`.destination_item_id";
+                    }
+                    else
+                    {
+                        joinDetailOn = linkSettingsForUp is {UseParentItemId: true} 
+                            ? $"`{previousLevelTableAlias}`.id" 
+                            : $"`{tableName}`.item_id";
+                    }
+
+                    await ProcessScopesAsync(itemsRequest, connectionRow.Scopes, joinDetailOn, $"idv_{tableName}_", connectionRow.Modes.Contains("optional"));
 
                     // Add "AND" to query part if query part is not empty.
                     if (queryPartLink.Length > 0)
@@ -1645,7 +1675,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
         private async Task<string> CreateHavingRowQueryPart(HavingRow havingRow, string selectAlias)
         {
-            var formattedField = GetFormattedField(havingRow.Key, $"`{selectAlias}");
+            var formattedField = GetFormattedField(havingRow.Key, $"`{selectAlias}`");
 
             if (havingRow.Value is JArray array)
             {

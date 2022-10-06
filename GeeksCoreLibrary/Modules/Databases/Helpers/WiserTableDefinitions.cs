@@ -239,8 +239,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("handle_logic_blocks", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
                     new("handle_mutators", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("login_required", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
-                    new("login_user_type", MySqlDbType.VarChar, 50),
-                    new("login_session_prefix", MySqlDbType.VarChar, 255),
                     new("login_role", MySqlDbType.VarChar, 50),
                     new("login_redirect_url", MySqlDbType.VarChar, 255),
                     new("linked_templates", MySqlDbType.MediumText),
@@ -538,6 +536,52 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 {
                     new(WiserTableNames.WiserBranchesQueue, "idx_branch_id", IndexTypes.Normal, new List<string> { "branch_id" }),
                     new(WiserTableNames.WiserBranchesQueue, "idx_started_on", IndexTypes.Normal, new List<string> { "started_on" })
+                }
+            },
+            
+            // wiser_query
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserQuery,
+                LastUpdate = new DateTime(2022, 9, 30),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("description", MySqlDbType.VarChar, 512, notNull: true, defaultValue: ""),
+                    new("query", MySqlDbType.MediumText),
+                    new("show_in_export_module", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
+                    new("changed_on", MySqlDbType.DateTime)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserQuery, "idx_show_in_export_module", IndexTypes.Normal, new List<string> { "show_in_export_module" })
+                }
+            },
+            
+            // wiser_permission
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserPermission,
+                LastUpdate = new DateTime(2022, 9, 30),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("role_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("entity_name", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
+                    new("item_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("entity_property_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("permissions", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: @"0 = Nothing
+1 = Read
+2 = Create
+4 = Update
+8 = Delete"),
+                    new("module_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("query_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("data_selector_id", MySqlDbType.Int32, notNull: true, defaultValue: "0")
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserPermission, "role_id", IndexTypes.Unique, new List<string> { "role_id", "entity_name", "item_id", "entity_property_id", "module_id", "query_id", "data_selector_id" })
                 }
             },
             
