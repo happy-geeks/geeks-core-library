@@ -118,6 +118,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 template.LoginRequired = Convert.ToBoolean(await reader.GetFieldValueAsync<object>("login_required"));
             }
 
+            if (reader.HasColumn("login_role"))
+            {
+                template.LoginRoles = (await reader.GetFieldValueAsync<string>("login_required"))?.Split(",").ToList();
+            }
+
             if (reader.HasColumn("login_redirect_url"))
             {
                 template.LoginRedirectUrl = reader.GetStringHandleNull("login_redirect_url");
