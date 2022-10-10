@@ -90,7 +90,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
                 return;
             }
 
-            var webPage = await webPagesService.GetWebPageViaFixedUrl(path);
+            var webPage = await webPagesService.GetWebPageViaFixedUrlAsync(path);
             if (!webPage.HasValue || webPage.Value.Id == 0)
             {
                 return;

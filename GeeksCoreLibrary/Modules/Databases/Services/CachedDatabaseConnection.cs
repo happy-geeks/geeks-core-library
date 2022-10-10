@@ -64,11 +64,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 return databaseConnection.GetAsync(query, cleanUp: cleanUp, useWritingConnectionIfAvailable: useWritingConnectionIfAvailable);
             }
 
-            var cacheName = new StringBuilder("GCL_QUERY_");
+            var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var cacheName = new StringBuilder($"GCL_QUERY_{currentUri.Host}");
 
             if (gclSettings.MultiLanguageBasedOnUrlSegments)
             {
-                cacheName.Append(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).Segments.First().Trim('/'));
+                cacheName.Append(currentUri.Segments.First().Trim('/'));
             }
 
             cacheName.Append(query.ToSha512Simple());
