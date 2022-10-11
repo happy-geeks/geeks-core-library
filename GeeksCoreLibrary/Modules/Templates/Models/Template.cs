@@ -137,7 +137,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets the roles that are allowed to open this template.
         /// If empty, all roles can see it.
         /// </summary>
-        public List<string> LoginRoles { get; set; }
+        public List<int> LoginRoles { get; set; }
 
         /// <summary>
         /// Gets or sets the URL the user should be sent to if <see cref="LoginRequired"/> is <see langword="true"/>, but no user is logged in.

@@ -215,10 +215,10 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 return emptyTemplate;
             }
 
-            // Check current login.
+            // Check current login, and match user's roles against required roles of the template.
             var userData = await accountsService.GetUserDataFromCookieAsync();
 
-            if (userData is not {UserId: > 0})
+            if (userData is not {UserId: > 0} || (userData.Roles != null && !userData.Roles.Any(role => result.LoginRoles.Contains(role.Id))))
             {
                 return emptyTemplate;
             }

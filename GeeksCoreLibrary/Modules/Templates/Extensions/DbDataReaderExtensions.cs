@@ -120,7 +120,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
 
             if (reader.HasColumn("login_role"))
             {
-                template.LoginRoles = (await reader.GetFieldValueAsync<string>("login_required"))?.Split(",").ToList();
+                if (await reader.IsDBNullAsync(reader.GetOrdinal("login_role")))
+                {
+                    template.LoginRoles = null;
+                }
+                else
+                {
+                    template.LoginRoles = (await reader.GetFieldValueAsync<string>("login_role"))?.Split(",", StringSplitOptions.RemoveEmptyEntries).Select(i => Convert.ToInt32(i)).ToList();
+                }
             }
 
             if (reader.HasColumn("login_redirect_url"))
