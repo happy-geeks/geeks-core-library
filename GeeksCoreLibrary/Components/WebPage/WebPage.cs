@@ -1,19 +1,16 @@
 ﻿using GeeksCoreLibrary.Components.WebPage.Models;
 using GeeksCoreLibrary.Core.Cms;
-using GeeksCoreLibrary.Core.Enums;
-using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
-using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
+using GeeksCoreLibrary.Components.WebPage.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -26,10 +23,9 @@ namespace GeeksCoreLibrary.Components.WebPage
     [ViewComponent(Name = "WebPage")]
     public class WebPage : CmsComponent<WebPageCmsSettingsModel, WebPage.ComponentModes>
     {
-        private readonly GclSettings gclSettings;
-        private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IPagesService pagesService;
+        private readonly IWebPagesService webPagesService;
 
         #region Enums
 
@@ -42,12 +38,11 @@ namespace GeeksCoreLibrary.Components.WebPage
 
         #region Constructor
 
-        public WebPage(IOptions<GclSettings> gclSettings, ILogger<WebPage> logger, IStringReplacementsService stringReplacementsService, ILanguagesService languagesService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor, IPagesService pagesService)
+        public WebPage(ILogger<WebPage> logger, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor, IPagesService pagesService, IWebPagesService webPagesService)
         {
-            this.gclSettings = gclSettings.Value;
-            this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
             this.pagesService = pagesService;
+            this.webPagesService = webPagesService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -122,14 +117,7 @@ namespace GeeksCoreLibrary.Components.WebPage
 
         public async Task<string> HandleRenderModeAsync()
         {
-            DatabaseConnection.ClearParameters();
-            DatabaseConnection.AddParameter("pageName", await StringReplacementsService.DoAllReplacementsAsync(StringReplacementsService.DoReplacements(Settings.PageName, ExtraDataForReplacements)));
-            DatabaseConnection.AddParameter("pageItemId", Settings.PageId);
-            DatabaseConnection.AddParameter("path", await StringReplacementsService.DoAllReplacementsAsync(StringReplacementsService.DoReplacements(Settings.PathMustContainName, ExtraDataForReplacements)));
-            DatabaseConnection.AddParameter("languageCode", await StringReplacementsService.DoAllReplacementsAsync(languagesService?.CurrentLanguageCode ?? ""));
-            DatabaseConnection.AddParameter("environment", (int)gclSettings.Environment);
-
-            var getWebPageResult = await DatabaseConnection.GetAsync(GetWebPageQuery());
+            var getWebPageResult = await webPagesService.GetWebPageResultAsync(Settings, ExtraDataForReplacements);
             if (getWebPageResult.Rows.Count == 0)
             {
                 if (Settings.ReturnNotFoundStatusCodeOnNoData)
@@ -186,89 +174,5 @@ namespace GeeksCoreLibrary.Components.WebPage
         }
 
         #endregion
-
-        private string GetWebPageQuery()
-        {
-            var query = new StringBuilder();
-
-            var languageCode = languagesService?.CurrentLanguageCode ?? "";
-
-            // SELECT part.
-            query.AppendLine("SELECT webPage.id, webPage.title AS `name`, CONCAT_WS('', webPageHtml.`value`, webPageHtml.long_value) AS `html`, webPageTitle.`value` AS `title`, CONCAT_WS('', webPageDescription.`value`, webPageDescription.long_value) AS `metadescription`");
-
-            // FROM part.
-            query.AppendLine($"FROM `{WiserTableNames.WiserItem}` AS webPage");
-
-            // Web page SEO name.
-            query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageSeoName ON webPageSeoName.item_id = webPage.id AND webPageSeoName.`key` = '{Core.Models.CoreConstants.SeoTitlePropertyName}'");
-
-            // Web page HTML.
-            query.Append($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageHtml ON webPageHtml.item_id = webPage.id AND webPageHtml.`key` = 'html'");
-            if (languageCode != "") query.Append(" AND webPageHtml.language_code = ?languageCode");
-            query.AppendLine();
-
-            // Web page title.
-            query.Append($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageTitle ON webPageTitle.item_id = webPage.id AND webPageTitle.`key` = 'title'");
-            if (languageCode != "") query.Append(" AND webPageTitle.language_code = ?languageCode");
-            query.AppendLine();
-
-            // Web page description.
-            query.Append($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageDescription ON webPageDescription.item_id = webPage.id AND webPageDescription.`key` = 'description'");
-            if (languageCode != "") query.Append(" AND webPageDescription.language_code = ?languageCode");
-            query.AppendLine();
-
-            var pathMustContain = Settings.PathMustContainName;
-            if (!String.IsNullOrWhiteSpace(pathMustContain) && Settings.SearchNumberOfLevels > 0)
-            {
-                if (Settings.HandleRequest)
-                {
-                    pathMustContain = StringReplacementsService.DoHttpRequestReplacements(pathMustContain);
-                }
-
-                for (var i = 1; i <= Settings.SearchNumberOfLevels; i++)
-                {
-                    var itemLinkAlias = $"searchUpLink{i}";
-                    var itemAlias = $"searchUpItem{i}";
-                    var titleAlias = $"item{i}Title";
-                    var seoTitleAlias = $"item{i}SeoName";
-                    var previousLink = i == 1 ? "webPage.id" : $"searchUpLink{i - 1}.destination_item_id";
-
-                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS `{itemLinkAlias}` ON `{itemLinkAlias}`.item_id = {previousLink}");
-                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItem}` AS `{itemAlias}` ON `{itemAlias}`.id = `{itemLinkAlias}`.destination_item_id");
-                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{titleAlias}` ON `{titleAlias}`.item_id = `{itemAlias}`.id AND `{titleAlias}`.`key` = 'title'");
-                    query.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{seoTitleAlias}` ON `{seoTitleAlias}`.item_id = `{itemAlias}`.id AND `{seoTitleAlias}`.`key` = '{Core.Models.CoreConstants.SeoTitlePropertyName}'");
-                }
-            }
-
-            // WHERE part.
-            query.Append("WHERE webPage.entity_type = 'webpagina' AND webPage.published_environment >= ?environment");
-
-            if (Settings.PageId > 0)
-            {
-                query.Append(" AND webPage.id = ?pageItemId");
-            }
-            else if (!String.IsNullOrWhiteSpace(Settings.PageName))
-            {
-                query.Append(" AND IFNULL(webPageSeoName.`value`, webPageTitle.`value`) = ?pageName");
-
-                if (!String.IsNullOrWhiteSpace(pathMustContain) && Settings.SearchNumberOfLevels > 0)
-                {
-                    query.Append(" AND CONCAT_WS('/'");
-                    for (var i = Settings.SearchNumberOfLevels; i > 0; i--)
-                    {
-                        query.Append($", IFNULL(`item{i}SeoName`.`value`, `item{i}SeoName`.`value`)");
-                    }
-                    query.Append(") LIKE CONCAT('%', ?path, '%')");
-                }
-            }
-            query.AppendLine();
-
-            // TODO: ORDER BY part.
-
-            // LIMIT part.
-            query.Append("LIMIT 1");
-
-            return query.ToString();
-        }
     }
 }
