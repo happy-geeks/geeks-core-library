@@ -203,6 +203,10 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     if (!String.IsNullOrWhiteSpace(itemsRequest.Selector?.Main?.EntityName) && itemsRequest.Selector.Main.EntityName.Equals(entityType, StringComparison.OrdinalIgnoreCase))
                     {
                         mainEntityTablePrefix = tablePrefix;
+                        if (!String.IsNullOrWhiteSpace(mainEntityTablePrefix) && !mainEntityTablePrefix.EndsWith("_"))
+                        {
+                            mainEntityTablePrefix = $"{mainEntityTablePrefix}_";
+                        }
                     }
                 }
             }
@@ -1395,6 +1399,10 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     if (!String.IsNullOrWhiteSpace(connectionRow.EntityName) && itemsRequest.DedicatedTables.ContainsKey(connectionRow.EntityName))
                     {
                         tablePrefix = itemsRequest.DedicatedTables[connectionRow.EntityName];
+                        if (!String.IsNullOrWhiteSpace(tablePrefix) && !tablePrefix.EndsWith("_"))
+                        {
+                            tablePrefix = $"{tablePrefix}_";
+                        }
                     }
 
                     if (!connectionRow.Equals(connection.ConnectionRows[0]))
