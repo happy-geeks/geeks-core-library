@@ -3,7 +3,7 @@
 namespace GeeksCoreLibrary.Core.Enums
 {
     /// <summary>
-    /// Enum for Wiser 2.0 access rights flags.
+    /// Enum for Wiser permission flags.
     /// </summary>
     [Flags]
     public enum AccessRights

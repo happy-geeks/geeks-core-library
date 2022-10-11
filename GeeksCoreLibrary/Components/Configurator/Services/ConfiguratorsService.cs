@@ -8,12 +8,10 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -547,8 +545,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 return result;
             }
 
-            query = await stringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
             query = await ReplaceConfiguratorItemsAsync(query, input, true);
+            query = await stringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
 
             var priceResultDataTable = await databaseConnection.GetAsync(query);
             if (priceResultDataTable.Rows.Count == 0)
@@ -592,84 +590,92 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 
             foreach (var priceApi in priceApis)
             {
-                var endpoint = priceApi.GetDetailValue("endpoint");
-                var requestJson = priceApi.GetDetailValue("request_json");
-                var purchasePriceKey = priceApi.GetDetailValue("price_calculation_purchase_price_key");
-                var customerPriceKey = priceApi.GetDetailValue("price_calculation_customer_price_key");
-                var fromPriceKey = priceApi.GetDetailValue("price_calculation_from_price_key");
-                var query = priceApi.GetDetailValue("api_query");
-
-                if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
+                try
                 {
-                    return result;
-                }
+                    var endpoint = priceApi.GetDetailValue("endpoint");
+                    var requestJson = priceApi.GetDetailValue("request_json");
+                    var purchasePriceKey = priceApi.GetDetailValue("price_calculation_purchase_price_key");
+                    var customerPriceKey = priceApi.GetDetailValue("price_calculation_customer_price_key");
+                    var fromPriceKey = priceApi.GetDetailValue("price_calculation_from_price_key");
+                    var query = priceApi.GetDetailValue("api_query");
 
-                DataRow extraData = null;
-
-                // If a query is set handle it to add extra information for the replacements in the JSON.
-                if (!String.IsNullOrWhiteSpace(query))
-                {
-                    query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
-                    query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
-                    var extraDataTable = await databaseConnection.GetAsync(query);
-
-                    if (extraDataTable.Rows.Count > 0)
+                    if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
                     {
-                        extraData = extraDataTable.Rows[0];
+                        continue;
                     }
+
+                    DataRow extraData = null;
+
+                    // If a query is set handle it to add extra information for the replacements in the JSON.
+                    if (!String.IsNullOrWhiteSpace(query))
+                    {
+                        query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
+                        query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                        var extraDataTable = await databaseConnection.GetAsync(query);
+
+                        if (extraDataTable.Rows.Count > 0)
+                        {
+                            extraData = extraDataTable.Rows[0];
+                        }
+                    }
+
+                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+                    endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
+
+                    requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+                    requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                    requestJson = regex.Replace(requestJson, "null");
+
+                    // If there is no request JSON it is useless to do an API call.
+                    if (String.IsNullOrWhiteSpace(requestJson))
+                    {
+                        continue;
+                    }
+
+                    var requestMethod = (Method) priceApi.GetDetailValue<int>("request_type");
+
+                    var restClient = new RestClient();
+                    var restRequest = new RestRequest(endpoint, requestMethod);
+
+                    var authenticationType = priceApi.GetDetailValue<int>("authentication_type");
+
+                    switch (authenticationType)
+                    {
+                        case 1: // Oauth 2.0
+                            // TODO handle OAuth 2
+                            restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
+                            throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
+                        case 2: // Token
+                            var token = priceApi.GetDetailValue("token");
+                            token = await stringReplacementsService.DoAllReplacementsAsync(token);
+                            restRequest.AddHeader("Authorization", $"Token {token}");
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
+                    }
+
+
+                    restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+
+                    var restResponse = await restClient.ExecuteAsync(restRequest);
+                    if (!restResponse.IsSuccessful || restResponse.Content == null)
+                    {
+                        logger.LogWarning($"Error while trying to get price from an API. The API response HTTP code was '{restResponse.StatusCode}' and the result was: {restResponse.Content}");
+                        continue;
+                    }
+
+                    // Get the three different prices from the response.
+                    var responseData = JObject.Parse(restResponse.Content);
+                    result.purchasePrice += GetPriceValueFromResponse(responseData, purchasePriceKey);
+                    result.customerPrice += GetPriceValueFromResponse(responseData, customerPriceKey);
+                    result.fromPrice += GetPriceValueFromResponse(responseData, fromPriceKey);
                 }
-
-                endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
-                endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
-
-                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
-                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
-                
-                var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
-                requestJson = regex.Replace(requestJson, "null");
-
-                // If there is no request JSON it is useless to do an API call.
-                if (String.IsNullOrWhiteSpace(requestJson))
+                catch (Exception exception)
                 {
-                    return result;
+                    logger.LogError(exception, "Error while trying to get price from an API.");
                 }
-                
-                var requestMethod = (Method)priceApi.GetDetailValue<int>("request_type");
-
-                var restClient = new RestClient();
-                var restRequest = new RestRequest(endpoint, requestMethod);
-
-                var authenticationType = priceApi.GetDetailValue<int>("authentication_type");
-
-                switch (authenticationType)
-                {
-                    case 1: // Oauth 2.0
-                        // TODO handle OAuth 2
-                        restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
-                        throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
-                    case 2: // Token
-                        var token = priceApi.GetDetailValue("token");
-                        token = await stringReplacementsService.DoAllReplacementsAsync(token);
-                        restRequest.AddHeader("Authorization", $"Token {token}");
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
-                }
-                
-                
-                restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
-
-                var restResponse = await restClient.ExecuteAsync(restRequest);
-                if (!restResponse.IsSuccessful || restResponse.Content == null)
-                {
-                    throw new ArgumentException();
-                }
-
-                // Get the three different prices from the response.
-                var responseData = JObject.Parse(restResponse.Content);
-                result.purchasePrice += GetPriceValueFromResponse(responseData, purchasePriceKey);
-                result.customerPrice += GetPriceValueFromResponse(responseData, customerPriceKey);
-                result.fromPrice += GetPriceValueFromResponse(responseData, fromPriceKey);
             }
 
             return result;
@@ -697,7 +703,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
-        public async Task<ulong> SaveConfigurationAsync(ConfigurationsModel input)
+        public async Task<ulong> SaveConfigurationAsync(ConfigurationsModel input, ulong? parentId = null)
         {
             var configuration = new WiserItemModel
             {
@@ -729,7 +735,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             configuration.Details.AddRange(input.QueryStringItems.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
 
             // save main item
-            await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
+            await wiserItemsService.SaveAsync(configuration, parentId, skipPermissionsCheck: true);
 
             // save configuration line query, we run this query to get all the other variables that need to be added to the configuration line like ean, purchaseprice etc.
             var saveConfigLineQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationLineQuery");
@@ -776,6 +782,137 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 await wiserItemsService.SaveAsync(configurationItem, skipPermissionsCheck: true);
             }
 
+            var dataTable = await GetConfiguratorDataAsync(input.Configurator);
+            var configuratorId = Convert.ToUInt64(dataTable.Rows[0].Field<object>("configuratorId"));
+            var saveApis = await wiserItemsService.GetLinkedItemDetailsAsync(configuratorId, 42, "ConfiguratorApi");
+
+            foreach (var saveApi in saveApis)
+            {
+                try
+                {
+                    var endpoint = saveApi.GetDetailValue("endpoint");
+                    var requestJson = saveApi.GetDetailValue("request_json");
+                    var supplierIdKey = saveApi.GetDetailValue("supplier_id_key");
+                    var query = saveApi.GetDetailValue("api_query");
+
+                    if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson))
+                    {
+                        continue;
+                    }
+
+                    DataRow extraData = null;
+
+                    // If a query is set handle it to add extra information for the replacements in the JSON.
+                    if (!String.IsNullOrWhiteSpace(query))
+                    {
+                        if (parentId != null)
+                        {
+                            var data = new Dictionary<string, object>()
+                            {
+                                {"gcl_configuration_parent_id", parentId}
+                            };
+
+                            query = stringReplacementsService.DoReplacements(query, data, forQuery: true);
+                        }
+
+                        query = await ReplaceConfiguratorItemsAsync(query, input, true);
+                        query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                        var extraDataTable = await databaseConnection.GetAsync(query);
+
+                        if (extraDataTable.Rows.Count > 0)
+                        {
+                            extraData = extraDataTable.Rows[0];
+                        }
+                    }
+
+                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, input, false);
+                    endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
+
+                    requestJson = await ReplaceConfiguratorItemsAsync(requestJson, input, false);
+                    requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                    requestJson = regex.Replace(requestJson, "null");
+
+                    // If there is no request JSON it is useless to do an API call.
+                    if (String.IsNullOrWhiteSpace(requestJson))
+                    {
+                        continue;
+                    }
+
+                    var requestMethod = (Method) saveApi.GetDetailValue<int>("request_type");
+
+                    var restClient = new RestClient();
+                    var restRequest = new RestRequest(endpoint, requestMethod);
+
+                    await AddAuthenticationToApiCall(restRequest, saveApi);
+
+                    restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+
+                    configuration.Details.Add(new WiserItemDetailModel()
+                    {
+                        Key = "gcl_request",
+                        Value = requestJson,
+                        GroupName = saveApi.Title
+                    });
+                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
+                    
+                    var restResponse = await restClient.ExecuteAsync(restRequest);
+                    
+                    configuration.Details.Add(new WiserItemDetailModel()
+                    {
+                        Key = "gcl_response",
+                        Value = restResponse.Content,
+                        GroupName = saveApi.Title
+                    });
+                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
+                    
+                    if (!restResponse.IsSuccessful || restResponse.Content == null)
+                    {
+                        throw new ArgumentException();
+                    }
+
+                    // If the call only needed to be made and no supplier ID needs to be retrieved the last part can be skipped.
+                    if (String.IsNullOrWhiteSpace(supplierIdKey))
+                    {
+                        continue;
+                    }
+
+                    // Get the three different prices from the response.
+                    var responseData = JObject.Parse(restResponse.Content);
+                    var keyParts = new List<string>(supplierIdKey.Split('.'));
+                    var currentObject = responseData;
+
+                    // Step into the object till only 1 key part is left.
+                    while (keyParts.Count > 1)
+                    {
+                        currentObject = (JObject) currentObject[keyParts[0]];
+                        keyParts.RemoveAt(0);
+                    }
+
+                    var supplierId = currentObject[keyParts[0]].ToString();
+                    configuration.Details.Add(new WiserItemDetailModel()
+                    {
+                        Key = "gcl_supplier_id",
+                        Value = supplierId,
+                        GroupName = saveApi.Title
+                    });
+                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError($"Error thrown during the saving of a configuration at an external API.{Environment.NewLine}{e}");
+                    
+                    configuration.Details.Add(new WiserItemDetailModel()
+                    {
+                        Key = "gcl_save_configuration_exception",
+                        Value = e.ToString(),
+                        GroupName = saveApi.Title
+                    });
+                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
+                }
+            }
+
             return configuration.Id;
         }
 
@@ -789,31 +926,61 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         private async Task AddItemDetailsFromQueryToWiserItemModelAsync(string query, WiserItemModel item, Dictionary<string, string> parameters = null)
         {
             // if save query is not empty, run query and save result
-            if (!String.IsNullOrWhiteSpace(query))
+            if (String.IsNullOrWhiteSpace(query))
             {
-                databaseConnection.ClearParameters();
-                if (parameters is {Count: > 0})
-                {
-                    foreach (var parameter in parameters)
-                    {
-                        databaseConnection.AddParameter(parameter.Key, parameter.Value);
-                    }
-                }
+                return;
+            }
 
-                var saveConfigLineDataTable = await databaseConnection.GetAsync(query);
-                if (saveConfigLineDataTable.Rows.Count > 0)
+            databaseConnection.ClearParameters();
+            if (parameters is {Count: > 0})
+            {
+                foreach (var parameter in parameters)
                 {
-                    foreach (DataRow row in saveConfigLineDataTable.Rows)
-                    {
-                        var itemDetail = new WiserItemDetailModel
-                        {
-                            Key = row.Field<string>("itemdetail_name"),
-                            // we dont know the type that is returned from the query, so we save as is without .field<>
-                            Value = row["itemdetail_value"]
-                        };
-                        item.Details.Add(itemDetail);
-                    }
+                    databaseConnection.AddParameter(parameter.Key, parameter.Value);
                 }
+            }
+
+            var saveConfigLineDataTable = await databaseConnection.GetAsync(query);
+            if (saveConfigLineDataTable.Rows.Count <= 0)
+            {
+                return;
+            }
+
+            foreach (DataRow row in saveConfigLineDataTable.Rows)
+            {
+                var itemDetail = new WiserItemDetailModel
+                {
+                    Key = row.Field<string>("itemdetail_name"),
+
+                    // we dont know the type that is returned from the query, so we save as is without .field<>
+                    Value = row["itemdetail_value"]
+                };
+                item.Details.Add(itemDetail);
+            }
+        }
+
+        /// <summary>
+        /// Add the correct authentication to the API request.
+        /// </summary>
+        /// <param name="request">The request to add the authentication to.</param>
+        /// <param name="configuratorApi">A ConfiguratorApi entity item to determine the authentication from.</param>
+        private async Task AddAuthenticationToApiCall(RestRequest request, WiserItemModel configuratorApi)
+        {
+            var authenticationType = configuratorApi.GetDetailValue<int>("authentication_type");
+
+            switch (authenticationType)
+            {
+                case 1: // OAuth 2.0
+                    // TODO handle OAuth 2
+                    request.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
+                    throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
+                case 2: // Token
+                    var token = configuratorApi.GetDetailValue("token");
+                    token = await stringReplacementsService.DoAllReplacementsAsync(token);
+                    request.AddHeader("Authorization", $"Token {token}");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
             }
         }
     }

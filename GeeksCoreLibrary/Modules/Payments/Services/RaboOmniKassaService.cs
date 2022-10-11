@@ -19,6 +19,7 @@ using GeeksCoreLibrary.Modules.Payments.Helpers;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using OmniKassa.Exceptions;
@@ -31,11 +32,8 @@ using OmniKassa.Model.Response.Notification;
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
     /// <inheritdoc cref="IPaymentServiceProviderService" />
-    public class RaboOmniKassaService : IPaymentServiceProviderService, ITransientService
+    public class RaboOmniKassaService : PaymentServiceProviderBaseService, IPaymentServiceProviderService, ITransientService
     {
-        /// <inheritdoc />
-        public bool LogPaymentActions { get; set; }
-
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IObjectsService objectsService;
         private readonly IHttpContextAccessor httpContextAccessor;
@@ -46,7 +44,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private string refreshToken = "";
         private string signingKey = "";
 
-        public RaboOmniKassaService(IShoppingBasketsService shoppingBasketsService, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings)
+        public RaboOmniKassaService(IShoppingBasketsService shoppingBasketsService, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, IDatabaseHelpersService databaseHelpersService, ILogger<RaboOmniKassaService> logger) 
+            : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
         {
             this.shoppingBasketsService = shoppingBasketsService;
             this.objectsService = objectsService;
@@ -282,7 +281,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 };
             }
 
-            await LogPaymentAction(response.OrderId, Convert.ToInt32(response.Status));
+            await LogIncomingPaymentActionAsync(PaymentServiceProviders.RaboOmniKassa, response.OrderId, Convert.ToInt32(response.Status));
 
             switch (response.Status)
             {
@@ -324,41 +323,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var signature = httpContextAccessor.HttpContext.Request.Query["signature"].ToString();
 
             return PaymentCompletedResponse.Create(orderId, status, signature, signingKey);
-        }
-
-        private async Task<bool> LogPaymentAction(string invoiceNumber, int status)
-        {
-            if (!LogPaymentActions || httpContextAccessor?.HttpContext == null)
-            {
-                return false;
-            }
-
-            var headers = new StringBuilder();
-            var queryString = new StringBuilder();
-            var formValues = new StringBuilder();
-
-            foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Headers)
-            {
-                headers.AppendLine($"{key}: {value}");
-            }
-
-            foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Query)
-            {
-                queryString.AppendLine($"{key}: {value}");
-            }
-
-            if (httpContextAccessor.HttpContext.Request.HasFormContentType)
-            {
-                foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Form)
-                {
-                    formValues.AppendLine($"{key}: {value}");
-                }
-            }
-
-            using var reader = new StreamReader(httpContextAccessor.HttpContext.Request.Body);
-            var bodyJson = await reader.ReadToEndAsync();
-
-            return await LoggingHelpers.AddLogEntryAsync(databaseConnection, PaymentServiceProviders.RaboOmniKassa, invoiceNumber, status, headers.ToString(), queryString.ToString(), formValues.ToString(), bodyJson);
         }
 
         /// <summary>
@@ -460,17 +424,17 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 }
                 
                 //Handle each MerchantOrderResult separately to comply with the operation of the PaymentService.
-                foreach (MerchantOrderResult result in response.OrderResults)
+                foreach (var result in response.OrderResults)
                 {
                     //Ignore updates with the status of "IN_PROGRESS" in case those are given, only handle definitive states.
                     if (result.OrderStatus == PaymentStatus.IN_PROGRESS)
                     {
-                        await LogPaymentAction(result.MerchantOrderId, Convert.ToInt32(result.OrderStatus));
+                        await LogIncomingPaymentActionAsync(PaymentServiceProviders.RaboOmniKassa, result.MerchantOrderId, Convert.ToInt32(result.OrderStatus));
                         continue;
                     }
 
                     //Prepare the signature data. The information and order needs to be the same as in PaymentCompletedResponse.
-                    var signatureData = new List<string>()
+                    var signatureData = new List<string>
                     {
                         result.MerchantOrderId,
                         result.OrderStatus.ToString()

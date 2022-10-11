@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Cms;
@@ -11,6 +12,7 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Seo.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
@@ -38,8 +40,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly ICacheService cacheService;
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly IObjectsService objectsService;
+        private readonly ILanguagesService languagesService;
 
-        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, ICacheService cacheService, IWebHostEnvironment webHostEnvironment, IObjectsService objectsService)
+        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, ICacheService cacheService, IWebHostEnvironment webHostEnvironment, IObjectsService objectsService, ILanguagesService languagesService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -50,6 +53,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.cacheService = cacheService;
             this.webHostEnvironment = webHostEnvironment;
             this.objectsService = objectsService;
+            this.languagesService = languagesService;
         }
 
         /// <inheritdoc />
@@ -130,7 +134,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Cache the template settings in memory.
-            var cacheKey = $"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}";
+            var cacheKey = $"Template_{languagesService.CurrentLanguageCode ?? ""}_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}";
             var template = await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {
@@ -202,7 +206,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
         {
-            var cacheKey = $"GeneralTemplateLastChangedDate_{templateType}";
+            var cacheKey = $"GeneralTemplateLastChangedDate_{languagesService.CurrentLanguageCode ?? ""}_{templateType}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {                    
@@ -215,7 +219,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
         {
-            var cacheKey = $"GeneralTemplateValue_{templateType}";
+            var cacheKey = $"GeneralTemplateValue_{languagesService.CurrentLanguageCode ?? ""}_{templateType}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {                    
@@ -294,7 +298,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> HandleImageTemplating(string input)
         {
-            var cacheKey = $"image_template_{input.ToSha512Simple()}";
+            var cacheKey = $"image_template_{languagesService.CurrentLanguageCode ?? ""}_{input.ToSha512Simple()}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {                    
@@ -414,7 +418,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
-            var cacheKey = new StringBuilder($"dynamicContent_{dynamicContent.Id}_");
+            var cacheKey = new StringBuilder($"dynamicContent_{languagesService.CurrentLanguageCode ?? ""}_{dynamicContent.Id}_");
             switch (settings.CachingMode)
             {
                 case TemplateCachingModes.ServerSideCaching:
@@ -432,6 +436,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(settings.CachingMode), settings.CachingMode.ToString());
+            }
+
+            if (extraData != null && extraData.Any())
+            {
+                foreach (var key in extraData.Keys)
+                {
+                    cacheKey.Append($"_{key}={extraData[key]}");
+                }
             }
 
             string html;

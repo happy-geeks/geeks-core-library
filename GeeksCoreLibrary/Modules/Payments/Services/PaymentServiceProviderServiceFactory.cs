@@ -21,7 +21,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         {
             var paymentServiceProviderName = paymentServiceProvider.ToString("G");
             var serviceProviderTypes = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
-            var serviceProviderType = serviceProviderTypes.FirstOrDefault(type => type.Name.Equals($"{paymentServiceProviderName}Service"));
+            var serviceProviderType = serviceProviderTypes.FirstOrDefault(type => type.Name.Equals($"{paymentServiceProviderName}Service", StringComparison.OrdinalIgnoreCase));
 
             if (serviceProviderType == null)
             {
@@ -34,7 +34,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         public IPaymentServiceProviderService GetPaymentServiceProviderService(string paymentServiceProviderName)
         {
             var serviceProviderTypes = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
-            var serviceProviderType = serviceProviderTypes.FirstOrDefault(type => type.Name.Equals($"{paymentServiceProviderName}Service"));
+            var serviceProviderType = serviceProviderTypes.FirstOrDefault(type => type.Name.Equals($"{paymentServiceProviderName}Service", StringComparison.OrdinalIgnoreCase));
 
             if (serviceProviderType == null)
             {

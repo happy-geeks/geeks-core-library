@@ -10,28 +10,27 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
+using System.Linq;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.Payments.Helpers;
 using MultiSafepay;
 using MultiSafepay.Model;
-using ArgumentException = System.ArgumentException;
+using Newtonsoft.Json;
+using Constants = GeeksCoreLibrary.Modules.Payments.Models.MultiSafePay.Constants;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
     /// <inheritdoc cref="IPaymentServiceProviderService" />
-    public class MultiSafepayService : IPaymentServiceProviderService, IScopedService
+    public class MultiSafePayService : PaymentServiceProviderBaseService, IPaymentServiceProviderService, IScopedService
     {
         /// <inheritdoc />
         public bool LogPaymentActions { get; set; }
 
-        private readonly ILogger<MultiSafepayService> logger;
+        private readonly ILogger<MultiSafePayService> logger;
         private readonly GclSettings gclSettings;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IObjectsService objectsService;
@@ -40,7 +39,8 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
         private MultiSafepayClient client;
 
-        public MultiSafepayService(ILogger<MultiSafepayService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection)
+        public MultiSafePayService(ILogger<MultiSafePayService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService) 
+            : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
         {
             this.logger = logger;
             this.gclSettings = gclSettings.Value;
@@ -64,6 +64,13 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();
             var multiSafepaySettings = (MultiSafepaySettingsModel)paymentMethodSettings.PaymentServiceProvider;
 
+            var firstBasket = shoppingBaskets.First();
+            var apiKeyFromBasket = firstBasket.Main.GetDetailValue(Constants.ApiKeyProperty);
+            if (!String.IsNullOrWhiteSpace(apiKeyFromBasket))
+            {
+                multiSafepaySettings.ApiKey = apiKeyFromBasket;
+            }
+
             var totalPrice = 0M;
             foreach (var (main, lines) in shoppingBaskets)
             {
@@ -85,10 +92,26 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             };
 
             SetupEnvironment(multiSafepaySettings.ApiKey);
+            
+            var description = firstBasket.Main.GetDetailValue(Constants.TransactionReferenceProperty);
+            if (String.IsNullOrWhiteSpace(description))
+            {
+                description = $"Wiser order #{firstBasket.Main.Id}";
+            }
+            
+            var basketCurrency = firstBasket.Main.GetDetailValue(Constants.CurrencyProperty);
+            if (!String.IsNullOrWhiteSpace(basketCurrency))
+            {
+                order.CurrencyCode = basketCurrency;
+            }
 
+            order.Description = description;
+
+            string error = null;
+            OrderResponse response = null;
             try
             {
-                var response = client.CustomOrder(order);
+                response = client.CustomOrder(order);
 
                 return new PaymentRequestResult
                 {
@@ -97,8 +120,9 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     ActionData = response.PaymentUrl
                 };
             }
-            catch (MultiSafepayException exception)
+            catch (Exception exception)
             {
+                error = exception.ToString();
                 return new PaymentRequestResult
                 {
                     Action = PaymentRequestActions.Redirect,
@@ -106,6 +130,11 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     Successful = false,
                     ErrorMessage = exception.Message
                 };
+            }
+            finally
+            {
+                var responseJson = response == null ? null : JsonConvert.SerializeObject(response);
+                await AddLogEntryAsync(PaymentServiceProviders.MultiSafepay, invoiceNumber, requestBody: JsonConvert.SerializeObject(order), responseBody: responseJson, error: error, isIncomingRequest: false);
             }
         }
 
@@ -124,17 +153,21 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // Retrieve the order with the given transaction id/order id to check the status.
             var orderId = httpContextAccessor.HttpContext.Request.Query["transactionid"].ToString();
             var multiSafepaySettings = (MultiSafepaySettingsModel)paymentMethodSettings.PaymentServiceProvider;
-            OrderResponse response;
+            OrderResponse response = null;
 
             SetupEnvironment(multiSafepaySettings.ApiKey);
 
+            var success = false;
+            string error = null;
             try
             {
                 response = client.GetOrder(orderId);
+                success = response.Status.ToLower() == "completed";
             }
-            catch (MultiSafepayException)
+            catch (Exception exception)
             {
-                await LogPaymentAction(orderId, 0);
+                success = false;
+                error = exception.ToString();
 
                 return new StatusUpdateResult
                 {
@@ -142,51 +175,20 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     Successful = false
                 };
             }
-
-            var success = response.Status.ToLower() == "completed";
-
-            await LogPaymentAction(orderId, success ? 1 : 0);
+            finally
+            {
+                // Log the incoming request from the PSP to us.
+                await LogIncomingPaymentActionAsync(PaymentServiceProviders.MultiSafepay, orderId, success ? 1 : 0);
+                // Log the outgoing request from us to the PSP.
+                var responseJson = response == null ? null : JsonConvert.SerializeObject(response);
+                await AddLogEntryAsync(PaymentServiceProviders.MultiSafepay, orderId, success ? 1 : 0, responseBody: responseJson, error: error, isIncomingRequest: false);
+            }
 
             return new StatusUpdateResult
             {
                 Status = response.Status,
                 Successful = success
             };
-        }
-
-        private async Task<bool> LogPaymentAction(string invoiceNumber, int status)
-        {
-            if (!LogPaymentActions || httpContextAccessor?.HttpContext == null)
-            {
-                return false;
-            }
-
-            var headers = new StringBuilder();
-            var queryString = new StringBuilder();
-            var formValues = new StringBuilder();
-
-            foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Headers)
-            {
-                headers.AppendLine($"{key}: {value}");
-            }
-
-            foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Query)
-            {
-                queryString.AppendLine($"{key}: {value}");
-            }
-
-            if (httpContextAccessor.HttpContext.Request.HasFormContentType)
-            {
-                foreach (var (key, value) in httpContextAccessor.HttpContext.Request.Form)
-                {
-                    formValues.AppendLine($"{key}: {value}");
-                }
-            }
-
-            using var reader = new StreamReader(httpContextAccessor.HttpContext.Request.Body);
-            var bodyJson = await reader.ReadToEndAsync();
-
-            return await LoggingHelpers.AddLogEntryAsync(databaseConnection, PaymentServiceProviders.MultiSafepay, invoiceNumber, status, headers.ToString(), queryString.ToString(), formValues.ToString(), bodyJson);
         }
     }
 }

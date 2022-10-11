@@ -739,7 +739,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
 
             // Build the fail, success and pending URLs.
-            var (failUrl, successUrl, pendingUrl) = BuildUrls(orderProcessSettings, steps);
+            var (failUrl, successUrl, pendingUrl) = BuildUrls(orderProcessSettings, steps, shoppingBaskets.First().Main);
 
             // Check if we have a valid payment method.
             if (selectedPaymentMethodId == 0)
@@ -1453,7 +1453,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             };
         }
 
-        private (string FailUrl, string SuccessUrl, string PendingUrl) BuildUrls(OrderProcessSettingsModel orderProcessSettings, List<OrderProcessStepModel> steps)
+        private (string FailUrl, string SuccessUrl, string PendingUrl) BuildUrls(OrderProcessSettingsModel orderProcessSettings, List<OrderProcessStepModel> steps, WiserItemModel shoppingBasket = null)
         {
             var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) { Path = orderProcessSettings.FixedUrl };
             var successUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) { Path = orderProcessSettings.FixedUrl };

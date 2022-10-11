@@ -170,6 +170,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     input = DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
                 }
             }
+            
+            // Handle variables with default values that haven't been replaced yet.
+            input = HandleVariablesDefaultValues(input);
 
             // Whether template variables that were not replaced should be removed.
             if (removeUnknownVariables)
@@ -366,6 +369,10 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 var value = Convert.ToString(replaceData[variableName], new CultureInfo("en-US"));
                 if (String.IsNullOrWhiteSpace(value))
                 {
+                    if (!String.IsNullOrEmpty(variable.DefaultValue))
+                    {
+                        value = variable.DefaultValue;
+                    }
                     // Replace the variable if it's an empty string or if it only contains whitespace and continue with the next variable.
                     output.Replace(variable.MatchString, value);
                     continue;
@@ -518,6 +525,23 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             }
 
             return result;
+        }
+
+        /// <inheritdoc />
+        public string HandleVariablesDefaultValues(string input, string prefix = "{", string suffix = "}")
+        {
+            if (String.IsNullOrWhiteSpace(input))
+            {
+                return input;
+            }
+
+            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\?([^\]{suffix}\s]*){suffix}");
+            foreach (Match match in regex.Matches(input))
+            {
+                input = input.Replace(match.Value, match.Groups[2].Value);
+            }
+
+            return input;
         }
 
         /// <inheritdoc />
@@ -752,7 +776,18 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 var fieldName = match.Groups["field"].Value;
                 var originalFieldName = fieldName;
                 var formatters = "";
+                var defaultValue = "";
 
+                //Checks for default values
+                if (fieldName.Contains("?"))
+                {
+                    var questionMarkIndexOf = fieldName.LastIndexOf("?");
+                    var colonIndexOf = fieldName.LastIndexOf(":");
+                    var defaultValueWithQuestionMark = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
+                    defaultValue = defaultValueWithQuestionMark.Remove(0, 1);
+                    fieldName = fieldName.Remove(questionMarkIndexOf, defaultValueWithQuestionMark.Length);
+                }
+                
                 // Colons that are escaped with a backslash are temporarily replaced with "~~COLON~~".
                 fieldName = fieldName.Replace("\\:", "~~COLON~~");
 
@@ -769,7 +804,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 {
                     MatchString = match.Value,
                     VariableName = fieldName,
-                    OriginalVariableName = originalFieldName
+                    OriginalVariableName = originalFieldName,
+                    DefaultValue = defaultValue
                 };
 
                 // Now replace "~~COLON~~" with an actual colon again.
