@@ -1182,7 +1182,6 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var query = @"SELECT PARAMETER_NAME
 FROM information_schema.parameters 
 WHERE SPECIFIC_NAME = ?name
-AND PARAMETER_MODE = 'IN'
 ORDER BY ORDINAL_POSITION ASC";
             databaseConnection.AddParameter("name", routineName);
             var dataTable = await databaseConnection.GetAsync(query);
