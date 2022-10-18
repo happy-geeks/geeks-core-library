@@ -38,11 +38,6 @@ public class CommunicationSettingsModel
     public List<string> ReceiversList { get; set; }
     
     /// <summary>
-    /// Gets or sets the type of communication (ie E-mail, SMS etc).
-    /// </summary>
-    public CommunicationTypes Type { get; set; }
-    
-    /// <summary>
     /// Gets or sets the trigger type for when to send the communication.
     /// </summary>
     public SendTriggerTypes SendTriggerType { get; set; }
@@ -76,23 +71,16 @@ public class CommunicationSettingsModel
     /// Gets or sets the week day(s) that this trigger should be activated, when <see cref="TriggerPeriodType"/> is set to <see cref="TriggerPeriodTypes.Week"/> or <see cref="TriggerPeriodTypes.Month"/>.
     /// </summary>
     public TriggerWeekDays TriggerWeekDays { get; set; }
-    
+
     /// <summary>
-    /// Gets or sets the e-mail specific settings.
-    /// Only applicable if <see cref="Type"/> is set to <see cref="CommunicationTypes.Email"/>.
+    /// Gets or sets the settings for email, sms etc.
     /// </summary>
-    public EmailCommunicationSettingsModel EmailSettings { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the SMS specific settings.
-    /// Only applicable if <see cref="Type"/> is set to <see cref="CommunicationTypes.Sms"/>.
-    /// </summary>
-    public SmsCommunicationSettingsModel SmsSettings { get; set; }
-    
+    public List<CommunicationContentSettingsModel> Settings { get; set; } = new();
+
     /// <summary>
     /// Gets or sets when this communication has been processed last.
     /// </summary>
-    public DateTime LastProcessed { get; set; }
+    public List<LastProcessedModel> LastProcessed { get; set; } = new();
     
     /// <summary>
     /// Gets or sets the name of the user that added this communication.

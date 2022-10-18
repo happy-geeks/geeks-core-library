@@ -2,10 +2,6 @@
 
 public enum TriggerPeriodTypes
 {
-    Minute,
-    Hour,
-    Day,
     Week,
-    Month,
-    Year
+    Month
 }
