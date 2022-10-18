@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -21,24 +22,79 @@ using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using Newtonsoft.Json;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 
 namespace GeeksCoreLibrary.Modules.Communication.Services
 {
+    /// <inheritdoc cref="ICommunicationsService" />
     public class CommunicationsService : ICommunicationsService, IScopedService
     {
         private readonly GclSettings gclSettings;
         private readonly ILogger<CommunicationsService> logger;
         private readonly IWiserItemsService wiserItemsService;
         private readonly IDatabaseConnection databaseConnection;
+        private readonly IDatabaseHelpersService databaseHelpersService;
 
-        public CommunicationsService(IOptions<GclSettings> gclSettings, ILogger<CommunicationsService> logger, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection)
+        /// <summary>
+        /// Creates a new instance of <see cref="CommunicationsService"/>.
+        /// </summary>
+        public CommunicationsService(IOptions<GclSettings> gclSettings, ILogger<CommunicationsService> logger, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
             this.wiserItemsService = wiserItemsService;
             this.databaseConnection = databaseConnection;
+            this.databaseHelpersService = databaseHelpersService;
+        }
+
+        /// <inheritdoc />
+        public async Task<CommunicationSettingsModel> GetSettingsAsync(int id)
+        {
+            await UpdateCommunicationTableAsync();
+
+            var query = $@"SELECT
+    id,
+    name,
+    receivers_data_selector_id,
+    receivers_query_id,
+    receiver_list,
+    settings,
+    send_trigger_type,
+    trigger_start,
+    trigger_end,
+    trigger_time,
+    trigger_period_value,
+    trigger_period_type,
+    trigger_week_days,
+    last_processed,
+    added_by,
+    added_on
+FROM {WiserTableNames.WiserCommunication}
+WHERE id = ?id";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            return dataTable.Rows.Count == 0 ? null : DataRowToCommunicationSettingsModel(dataTable.Rows[0]);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<CommunicationSettingsModel>> GetSettingsAsync(CommunicationTypes type)
+        {
+            await UpdateCommunicationTableAsync();
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc />
+        public async Task<CommunicationSettingsModel> SaveSettingsAsync(CommunicationSettingsModel settings)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc />
+        public async Task DeleteSettingsAsync(int id)
+        {
+            throw new NotImplementedException();
         }
 
         /// <inheritdoc />
@@ -513,6 +569,86 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
 
             // If request was not success throw the status message as an exception.
             throw new Exception(response.statusMessage);
+        }
+
+        /// <summary>
+        /// Update the wiser_communication table with any new columns or indexes that might have been added at some point.
+        /// In october 2022 we overhauled the entire structure of the table, which the <see cref="IDatabaseHelpersService"/> cannot handle, so we rename the old table as backup and then recreate it.
+        /// </summary>
+        private async Task UpdateCommunicationTableAsync()
+        {
+            var tableChanges = await databaseHelpersService.GetLastTableUpdatesAsync(databaseConnection.ConnectedDatabase);
+            if ((!tableChanges.ContainsKey(WiserTableNames.WiserCommunication) || tableChanges[WiserTableNames.WiserCommunication] < new DateTime(2022, 10, 18)) && await databaseHelpersService.TableExistsAsync(WiserTableNames.WiserCommunication))
+            {
+                // We changed the table wiser_communication a lot and the databaseHelpersService does not support renaming columns.
+                // However, the old table was not used anywhere on production, so we rename the old table and then re-create it with the new structure.
+                await databaseHelpersService.RenameTableAsync(WiserTableNames.WiserCommunication, $"_{WiserTableNames.WiserCommunication}_backup_{DateTime.Now:yyyy-MM-dd}");
+            }
+
+            await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {WiserTableNames.WiserCommunication});
+        }
+
+        /// <summary>
+        /// Converts a <see cref="DataRow"/>, with data from the table wiser_communication, to a <see cref="CommunicationSettingsModel"/>.
+        /// </summary>
+        /// <param name="dataRow">The <see cref="DataRow"/>.</param>
+        /// <returns>The <see cref="CommunicationSettingsModel"/>.</returns>
+        private CommunicationSettingsModel DataRowToCommunicationSettingsModel(DataRow dataRow)
+        {
+            // All simple properties.
+            var result = new CommunicationSettingsModel
+            {
+                Id = dataRow.Field<int>("id"),
+                Name = dataRow.Field<string>("name"),
+                ReceiversDataSelectorId = dataRow.Field<int>("receivers_data_selector_id"),
+                ReceiversQueryId = dataRow.Field<int>("receivers_query_id"),
+                TriggerStart = dataRow.Field<DateTime?>("trigger_start"),
+                TriggerEnd = dataRow.Field<DateTime?>("trigger_end"),
+                TriggerTime = dataRow.Field<DateTime?>("trigger_time"),
+                SendTriggerType = dataRow.Field<SendTriggerTypes>("send_trigger_type"),
+                TriggerPeriodType = dataRow.Field<TriggerPeriodTypes>("trigger_period_type"),
+                TriggerPeriodValue = dataRow.Field<int>("trigger_period_value"),
+                TriggerWeekDays = dataRow.Field<TriggerWeekDays>("trigger_week_days"),
+                AddedBy = dataRow.Field<string>("added_by"),
+                AddedOn = dataRow.Field<DateTime>("added_by")
+            };
+
+            // Settings are saved as JSON in database, so deserialize them here.
+            var settings = dataRow.Field<string>("settings");
+            try
+            {
+                if (!String.IsNullOrWhiteSpace(settings))
+                {
+                    result.Settings = JsonConvert.DeserializeObject<List<CommunicationContentSettingsModel>>(settings);
+                }
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, $"An error occurred while trying to deserialize the settings of communication with ID '{result.Id}'");
+            }
+
+            // Last processed is saved as JSON in database, so deserialize them here.
+            var lastProcessed = dataRow.Field<string>("last_processed");
+            try
+            {
+                if (!String.IsNullOrWhiteSpace(lastProcessed))
+                {
+                    result.LastProcessed = JsonConvert.DeserializeObject<List<LastProcessedModel>>(lastProcessed);
+                }
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, $"An error occurred while trying to deserialize the last processed data of communication with ID '{result.Id}'");
+            }
+
+            // Receivers are saved semicolon seperated in database, convert that to a list of strings.
+            var receivers = dataRow.Field<string>("receiver_list");
+            if (!String.IsNullOrWhiteSpace(receivers))
+            {
+                result.ReceiversList = receivers.Split(";", StringSplitOptions.TrimEntries & StringSplitOptions.RemoveEmptyEntries).ToList();
+            }
+
+            return result;
         }
     }
 }

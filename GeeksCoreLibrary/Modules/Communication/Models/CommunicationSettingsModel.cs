@@ -30,12 +30,12 @@ public class CommunicationSettingsModel
     /// If the receivers are coming from a different source, this value can be 0.
     /// </summary>
     public int ReceiversQueryId { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the list of static receivers.
     /// If the receivers come from a different source, this can be empty.
     /// </summary>
-    public List<string> ReceiversList { get; set; }
+    public List<string> ReceiversList { get; set; } = new();
     
     /// <summary>
     /// Gets or sets the trigger type for when to send the communication.
@@ -45,17 +45,17 @@ public class CommunicationSettingsModel
     /// <summary>
     /// Gets or sets the start date of periodic communications.
     /// </summary>
-    public DateTime TriggerStart { get; set; }
+    public DateTime? TriggerStart { get; set; }
     
     /// <summary>
     /// Gets or sets the end date of periodic communications.
     /// </summary>
-    public DateTime TriggerEnd { get; set; }
+    public DateTime? TriggerEnd { get; set; }
     
     /// <summary>
     /// Gets or sets the time of day that the communication should be sent.
     /// </summary>
-    public DateTime TriggerTime { get; set; }
+    public DateTime? TriggerTime { get; set; }
     
     /// <summary>
     /// Gets or sets the period value of the trigger. If the trigger is set to weekly, then this is after how many weeks the communication should be sent.

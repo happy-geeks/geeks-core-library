@@ -166,5 +166,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="tablesToUpdate">A list of one or more tables to check and update when needed.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         Task CheckAndUpdateTablesAsync(IDatabaseHelpersService databaseHelpersService, List<string> tablesToUpdate, string databaseName = null);
+
+        /// <summary>
+        /// Change the name of an existing database table.
+        /// </summary>
+        /// <param name="currentTableName">The current / old name of the table.</param>
+        /// <param name="newTableName">The new name of the table.</param>
+        Task RenameTableAsync(string currentTableName, string newTableName);
     }
 }
