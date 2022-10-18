@@ -193,7 +193,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             var result = (QueryTemplate)await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Query);
             if (result.Id <= 0)
             {
-                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login, or that the templates requires a role the user doesn't have.
                 if (result.LoginRequired)
                 {
                     return Unauthorized();

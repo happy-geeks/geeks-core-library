@@ -171,6 +171,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.pre_load_query,
     template.return_not_found_when_pre_load_query_has_no_data,
     template.login_required,
+    template.login_role,
     template.login_redirect_url,
     template.routine_type,
     template.routine_parameters,
@@ -207,7 +208,8 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             {
                 Type = result.Type,
                 LoginRequired = true,
-                LoginRedirectUrl = result.LoginRedirectUrl
+                LoginRedirectUrl = result.LoginRedirectUrl,
+                LoginRoles = result.LoginRoles
             };
 
             if (httpContextAccessor.HttpContext == null)
@@ -216,9 +218,15 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 return emptyTemplate;
             }
 
-            // Check current login.
+            // Check current login, and match user's roles against required roles of the template.
             var userData = await accountsService.GetUserDataFromCookieAsync();
-            return userData is { UserId: > 0 } ? result : emptyTemplate;
+
+            if (userData is not {UserId: > 0} || (userData.Roles != null && !userData.Roles.Any(role => result.LoginRoles.Contains(role.Id))))
+            {
+                return emptyTemplate;
+            }
+
+            return result;
         }
 
         /// <inheritdoc />
