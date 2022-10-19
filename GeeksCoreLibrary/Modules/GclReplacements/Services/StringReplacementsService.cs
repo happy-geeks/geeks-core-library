@@ -781,11 +781,14 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 //Checks for default values
                 if (fieldName.Contains("?"))
                 {
-                    var questionMarkIndexOf = fieldName.LastIndexOf("?");
-                    var colonIndexOf = fieldName.LastIndexOf(":");
-                    var defaultValueWithQuestionMark = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
-                    defaultValue = defaultValueWithQuestionMark.Remove(0, 1);
-                    fieldName = fieldName.Remove(questionMarkIndexOf, defaultValueWithQuestionMark.Length);
+                    var questionMarkIndexOf = fieldName.LastIndexOf("?", StringComparison.Ordinal);
+                    var colonIndexOf = fieldName.LastIndexOf(":", StringComparison.Ordinal);
+                    if (questionMarkIndexOf + 1 > colonIndexOf)
+                    {
+                        var defaultValueWithQuestionMark = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
+                        defaultValue = defaultValueWithQuestionMark.Remove(0, 1);
+                        fieldName = fieldName.Remove(questionMarkIndexOf, defaultValueWithQuestionMark.Length);
+                    }
                 }
                 
                 // Colons that are escaped with a backslash are temporarily replaced with "~~COLON~~".
