@@ -146,7 +146,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             // Check if a login is required (only for HTML and query templates.
             if (template.Type.InList(TemplateTypes.Html, TemplateTypes.Query) && template.LoginRequired && template.Id == 0)
             {
-                // If the template ID is 0, but "LoginRequired" is true, it means no user is logged in.
+                // If the template ID is 0, but "LoginRequired" is true, it means no user is logged in, or that the user doesn't have any of the required roles.
                 return template;
             }
 

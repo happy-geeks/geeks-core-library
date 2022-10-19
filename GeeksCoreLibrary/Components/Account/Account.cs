@@ -880,7 +880,7 @@ namespace GeeksCoreLibrary.Components.Account
                     }
                     else if (userData.UserId == 0 && createOrUpdateAccountResult.Result == CreateOrUpdateAccountResults.Success && changePasswordResult == ResetOrChangePasswordResults.Success && Settings.AutoLoginUserAfterAction)
                     {
-                        await AutoLoginUserAsync(createOrUpdateAccountResult.SubAccountId > 0 ? createOrUpdateAccountResult.SubAccountId : createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.Role);
+                        await AutoLoginUserAsync(createOrUpdateAccountResult.SubAccountId > 0 ? createOrUpdateAccountResult.SubAccountId : createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.UserId);
                         isLoggedIn = true;
                     }
 
@@ -1178,8 +1178,7 @@ namespace GeeksCoreLibrary.Components.Account
         /// </summary>
         /// <param name="userId">The ID of the user to login.</param>
         /// <param name="mainUserId">The ID of the main user, if the user is logging in with a sub account.</param>
-        /// <param name="role">The role of user.</param>
-        private async Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role)
+        private async Task AutoLoginUserAsync(ulong userId, ulong mainUserId)
         {
             // Make sure we have a valid user ID.
             if (userId <= 0)
@@ -1190,7 +1189,7 @@ namespace GeeksCoreLibrary.Components.Account
 
             // Everything succeeded, so generate a cookie for the user and reset any failed login attempts.
             var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
-            var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
+            var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType);
             await SaveGoogleClientIdAsync(userId);
             
             var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
@@ -1346,6 +1345,60 @@ namespace GeeksCoreLibrary.Components.Account
                         DatabaseConnection.AddParameter("name", field);
                         DatabaseConnection.AddParameter("value", formValue);
                         await RenderAndExecuteQueryAsync(query, skipCache: true);
+                    }
+                }
+
+                // Update roles for the user.
+                if (!String.IsNullOrWhiteSpace(Settings.AccountRolesQuery))
+                {
+                    DatabaseConnection.AddParameter("userId", userId);
+                    DatabaseConnection.AddParameter("subAccountId", subAccountId);
+                    query = Settings.AccountRolesQuery;
+
+                    var rolesDataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
+                    if (rolesDataTable.Columns.Contains(Constants.RoleIdColumn))
+                    {
+                        if (rolesDataTable.Rows.Count == 0)
+                        {
+                            // No roles for this user; remove all roles.
+                            await DatabaseConnection.ExecuteAsync($"DELETE FROM `{WiserTableNames.WiserUserRoles}` WHERE user_id = ?userId");
+                        }
+                        else
+                        {
+                            var newRoleIds = rolesDataTable.Rows.Cast<DataRow>().Select(dr => Convert.ToInt32(dr[Constants.RoleIdColumn])).ToArray();
+
+                            // First determine which roles the user currently has.
+                            var currentRoleIds = (await AccountsService.GetUserRolesAsync(userId)).Select(role => role.Id).ToArray();
+
+                            // Roles to remove should be the roles that the user currently has, but are not present in the roles the user is supposed to have.
+                            var rolesToRemove = currentRoleIds.Except(newRoleIds).ToArray();
+                            // Roles to add should only be roles that the user doesn't already have.
+                            var rolesToAdd = newRoleIds.Except(currentRoleIds).ToArray();
+
+                            // Execute query to remove roles the user isn't supposed to have anymore.
+                            if (rolesToRemove.Length > 0)
+                            {
+                                var inStatement = new List<string>();
+                                for (var i = 0; i < rolesToRemove.Length; i++)
+                                {
+                                    DatabaseConnection.AddParameter($"removeRoleId{i}", rolesToRemove[i]);
+                                    inStatement.Add($"?removeRoleId{i}");
+                                }
+                                await DatabaseConnection.ExecuteAsync($"DELETE FROM `{WiserTableNames.WiserUserRoles}` WHERE user_id = ?userId AND role_id IN ({String.Join(",", inStatement)})");
+                            }
+
+                            // Execute query to add new roles to the user.
+                            if (rolesToAdd.Length > 0)
+                            {
+                                var values = new List<string>();
+                                for (var i = 0; i < rolesToAdd.Length; i++)
+                                {
+                                    DatabaseConnection.AddParameter($"addRoleId{i}", rolesToAdd[i]);
+                                    values.Add($"(?userId, ?addRoleId{i})");
+                                }
+                                await DatabaseConnection.ExecuteAsync($@"INSERT IGNORE INTO `{WiserTableNames.WiserUserRoles}` (user_id, role_id) VALUES {String.Join(",", values)}");
+                            }
+                        }
                     }
                 }
 
@@ -1641,7 +1694,6 @@ namespace GeeksCoreLibrary.Components.Account
             // Check if the user is allowed to login.
             var loggedInUserId = Convert.ToUInt64(accountResult.Rows[0][Constants.UserIdColumn]);
             var mainUserId = !accountResult.Columns.Contains(Constants.MainAccountIdColumn) || accountResult.Rows[0].IsNull(Constants.MainAccountIdColumn) ? 0 : Convert.ToUInt64(accountResult.Rows[0][Constants.MainAccountIdColumn]);
-            var userRole = !accountResult.Columns.Contains(Constants.RoleColumn) || accountResult.Rows[0].IsNull(Constants.RoleColumn) ? "" : accountResult.Rows[0].Field<string>(Constants.RoleColumn);
             var userEmail = !accountResult.Columns.Contains(Constants.EmailAddressColumn) || accountResult.Rows[0].IsNull(Constants.EmailAddressColumn) ? "" : accountResult.Rows[0].Field<string>(Constants.EmailAddressColumn);
             var failedLoginAttempts = !accountResult.Columns.Contains(Constants.FailedLoginAttemptsColumn) || accountResult.Rows[0].IsNull(Constants.FailedLoginAttemptsColumn) ? 0 : Convert.ToInt32(accountResult.Rows[0][Constants.FailedLoginAttemptsColumn]);
 
@@ -1666,6 +1718,9 @@ namespace GeeksCoreLibrary.Components.Account
                 WriteToTrace("The login was successful, but the query returned an invalid user ID!");
                 return (Result: (actualComponentMode == ComponentModes.LoginMultipleSteps ? LoginResults.UserDoesNotExist : LoginResults.InvalidUsernameOrPassword), UserId: 0, EmailAddress: null);
             }
+
+            // Get all role IDs a user has.
+            var userRoles = AccountsService.GetUserRolesAsync(loggedInUserId);
 
             // Login with password.
             if (decryptedUserId == 0)
@@ -1721,7 +1776,7 @@ namespace GeeksCoreLibrary.Components.Account
 
             // Everything succeeded, so generate a cookie for the user and reset any failed login attempts.
             var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
-            var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(loggedInUserId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, userRole);
+            var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(loggedInUserId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType);
             if (decryptedUserId == 0)
             {
                 await SaveGoogleClientIdAsync(loggedInUserId);
