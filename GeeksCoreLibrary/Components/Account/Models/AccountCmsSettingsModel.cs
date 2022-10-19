@@ -240,11 +240,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
         #region Tab datasource properties
 
         /// <summary>
-        /// The Wiser 2.0 entity type that is used for users that need to be able to login on the website.
+        /// The Wiser entity type that is used for users that need to be able to login on the website.
         /// </summary>
         [CmsProperty(
             PrettyName = "Entity type",
-            Description = "The Wiser 2.0 entity type that is used for users that need to be able to login on the website.",
+            Description = "The Wiser entity type that is used for users that need to be able to login on the website.",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Basic,
@@ -266,11 +266,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string LoginFieldName { get; set; }
 
         /// <summary>
-        /// The Wiser 2.0 field/property name that contains the SHA512 hashed password of the user. This should be the same in the HTML as in wiser_entityproperty.
+        /// The Wiser field/property name that contains the SHA512 hashed password of the user. This should be the same in the HTML as in wiser_entityproperty.
         /// </summary>
         [CmsProperty(
             PrettyName = "Password field name",
-            Description = "The Wiser 2.0 field/property name that contains the SHA512 hashed password of the user. This should be the same in the HTML as in wiser_entityproperty.",
+            Description = "The Wiser field/property name that contains the SHA512 hashed password of the user. This should be the same in the HTML as in wiser_entityproperty.",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Basic,
@@ -279,11 +279,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string PasswordFieldName { get; set; }
 
         /// <summary>
-        /// The Wiser 2.0 field/property name that should be used to remember the amount of failed login attempts of a user.
+        /// The Wiser field/property name that should be used to remember the amount of failed login attempts of a user.
         /// </summary>
         [CmsProperty(
             PrettyName = "Failed login attempts field name",
-            Description = "The Wiser 2.0 field/property name that should be used to remember the amount of failed login attempts of a user.",
+            Description = "The Wiser field/property name that should be used to remember the amount of failed login attempts of a user.",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Basic,
@@ -293,11 +293,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string FailedLoginAttemptsFieldName { get; set; }
 
         /// <summary>
-        /// The Wiser 2.0 field/property name that should be used to remember the date and time of the user's last login attempt.
+        /// The Wiser field/property name that should be used to remember the date and time of the user's last login attempt.
         /// </summary>
         [CmsProperty(
             PrettyName = "Last login attempt field name",
-            Description = "The Wiser 2.0 field/property name that should be used to remember the date and time of the user's last login attempt.",
+            Description = "The Wiser field/property name that should be used to remember the date and time of the user's last login attempt.",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Basic,
@@ -307,11 +307,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string LastLoginAttemptFieldName { get; set; }
 
         /// <summary>
-        /// The Wiser 2.0 field/property name where the user's e-mail address is saved. This can be the same as 'LoginFieldName', if you use e-mail address for logging in.
+        /// The Wiser field/property name where the user's e-mail address is saved. This can be the same as 'LoginFieldName', if you use e-mail address for logging in.
         /// </summary>
         [CmsProperty(
             PrettyName = "Email address field name",
-            Description = "The Wiser 2.0 field/property name where the user's e-mail address is saved. This can be the same as 'LoginFieldName', if you use e-mail address for logging in.",
+            Description = "The Wiser field/property name where the user's e-mail address is saved. This can be the same as 'LoginFieldName', if you use e-mail address for logging in.",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Basic,
@@ -320,11 +320,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string EmailAddressFieldName { get; set; }
 
         /// <summary>
-        /// The Wiser 2.0 field/property name that should be used to save the date and time that the reset token will expire.
+        /// The Wiser field/property name that should be used to save the date and time that the reset token will expire.
         /// </summary>
         [CmsProperty(
             PrettyName = "Reset password expire date field name",
-            Description = "The Wiser 2.0 field/property name that should be used to save the date and time that the reset token will expire.",
+            Description = "The Wiser field/property name that should be used to save the date and time that the reset token will expire.",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Basic,
@@ -334,11 +334,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string ResetPasswordTokenFieldName { get; set; }
 
         /// <summary>
-        /// The Wiser 2.0 field/property name that should be used to save the date and time that the reset token will expire.
+        /// The Wiser field/property name that should be used to save the date and time that the reset token will expire.
         /// </summary>
         [CmsProperty(
             PrettyName = "Reset password expire date field name",
-            Description = "The Wiser 2.0 field/property name that should be used to save the date and time that the reset token will expire.",
+            Description = "The Wiser field/property name that should be used to save the date and time that the reset token will expire.",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Basic,
@@ -348,11 +348,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string ResetPasswordExpireDateFieldName { get; set; }
 
         /// <summary>
-        /// The Wiser 2.0 field/property name that contains the role of the user.
+        /// The Wiser field/property name that contains the role of the user.
         /// </summary>
         [CmsProperty(
             PrettyName = "Role field name",
-            Description = "The Wiser 2.0 field/property name that contains the role of the user.",
+            Description = "The Wiser field/property name that contains the role of the user.",
             DeveloperRemarks = "Leave empty if you don't use roles.",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Basic,
@@ -387,11 +387,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string NewPasswordConfirmationFieldName { get; set; }
 
         /// <summary>
-        /// The name of the Wiser 2.0 property/field where the Client ID for Google Analytics should be saved.
+        /// The name of the Wiser property/field where the Client ID for Google Analytics should be saved.
         /// </summary>
         [CmsProperty(
             PrettyName = "Google client ID field name",
-            Description = "The name of the Wiser 2.0 property/field where the Client ID for Google Analytics should be saved.",
+            Description = "The name of the Wiser property/field where the Client ID for Google Analytics should be saved.",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.Basic,
@@ -466,16 +466,16 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                 <p>For reset password mode, this needs to return the columns 'id', so we can verify that the e-mail address exists. You can use the following variables in this query, for mode ResetPassword:</p>
                                 <ul>
                                     <li><strong>?email or {email}:</strong> Required: The e-mail address that the user entered in the reset password form.</li>
-                                    <li><strong>?emailAddressFieldName or {emailAddressFieldName}:</strong> Optional: The Wiser 2.0 field name where the e-mail address is stored.</li>
+                                    <li><strong>?emailAddressFieldName or {emailAddressFieldName}:</strong> Optional: The Wiser field name where the e-mail address is stored.</li>
                                     <li><strong>?emailAddress or {emailAddress}:</strong> Required: The e-mail address that the user entered.</li>
-                                    <li><strong>?entityType or {entityType}:</strong> Optional: The Wiser 2.0 entity type that is used for users that login on the website.</li>
+                                    <li><strong>?entityType or {entityType}:</strong> Optional: The Wiser entity type that is used for users that login on the website.</li>
                                 </ul>
                                 <p>For CreateOrUpdateAccount, if the query returns one row for each field/property and at least a column with the name 'property_name', it will be secured so that nobody can save custom values. If your query doesn't contain a column with that name, there will be no security, unless you also write a custom create and update query.</p>
                                 <p>You can use all data from this query in the main template and you can use the following variables in this query:</p>
                                 <ul>
                                     <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
                                     <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser 2.0 field name where the e-mail address is stored.</li>
+                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser field name where the e-mail address is stored.</li>
                                     <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
                                 </ul>
                                 <p>For SubAccountsManagement this query should get the list of sub accounts for the logged in user. Please make sure you only get items that are of the correct entity type.</p>
@@ -515,8 +515,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                 <ul>
                                     <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
                                     <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser 2.0 field name where the e-mail address is stored.</li>
-                                    <li><strong>{roleFieldName} or ?roleFieldName:</strong> The Wiser 2.0 field name where the role of the user is stored.</li>
+                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser field name where the e-mail address is stored.</li>
+                                    <li><strong>{roleFieldName} or ?roleFieldName:</strong> The Wiser field name where the role of the user is stored.</li>
                                     <li><strong>{login} or ?login:</strong> The value that the user entered in the HTML field with the same name as the value in the property 'loginFieldName'.</li>
                                     <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
                                     <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
@@ -560,9 +560,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                 <ul>
                                     <li><strong>{userId} or ?userId:</strong> Required: The ID of the user.</li>
                                     <li><strong>{resetPasswordToken} or ?resetPasswordToken:</strong> Required: The newly generated token that will be sent in the e-mail to the user.</li>
-                                    <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> Optional: The Wiser 2.0 field/property name for the above value.</li>
+                                    <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> Optional: The Wiser field/property name for the above value.</li>
                                     <li><strong>{resetPasswordExpireDate} or ?resetPasswordExpireDate:</strong> Required: The date and time that the reset token will expire.</li>
-                                    <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> Optional: The Wiser 2.0 field/property name for the above value.</li>
+                                    <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> Optional: The Wiser field/property name for the above value.</li>
                                 </ul>",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
@@ -583,9 +583,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                 <ul>
                                     <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
                                     <li><strong>{token} or ?token:</strong> The value of the token in the query string.</li>
-                                    <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> The Wiser 2.0 property name that is used to save the reset password token.</li>
-                                    <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> The Wiser 2.0 property name that is used to save the expire date of the reset password token.</li>
-                                    <li><strong>{loginFieldName} or ?loginFieldName:</strong> Optional: The Wiser 2.0 field name where the value is stored that the user logins with (ie username or e-mail).</li>
+                                    <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> The Wiser property name that is used to save the reset password token.</li>
+                                    <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> The Wiser property name that is used to save the expire date of the reset password token.</li>
+                                    <li><strong>{loginFieldName} or ?loginFieldName:</strong> Optional: The Wiser field name where the value is stored that the user logins with (ie username or e-mail).</li>
                                     <li><strong>{entityType} or ?entityType:</strong> The entity type that is set in this component, in the property 'EntityType'.</li>
                                 </ul>",
             TabName = CmsAttributes.CmsTabName.DataSource,
@@ -607,9 +607,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                 <ul>
                                     <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
                                     <li><strong>{newPasswordHash} or ?newPasswordHash:</strong> The SHA512 hash of the new password.</li>
-                                    <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The Wiser 2.0 property name that is used to save the password of the user.</li>
-                                    <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> The Wiser 2.0 property name that is used to save the reset password token.</li>
-                                    <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> The Wiser 2.0 property name that is used to save the expire date of the reset password token.</li>
+                                    <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The Wiser property name that is used to save the password of the user.</li>
+                                    <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> The Wiser property name that is used to save the reset password token.</li>
+                                    <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> The Wiser property name that is used to save the expire date of the reset password token.</li>
                                 </ul>",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
@@ -628,11 +628,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
             DeveloperRemarks = @"<p>Make sure that this query returns a column named 'id', which contains the ID of the user, or no results if the user doesn't exist.</p>
                                 <p>You can also use the following default variables:<p>
                                 <ul>
-                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser 2.0 property name that is used to save the e-mail address of the user.</li>
+                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser property name that is used to save the e-mail address of the user.</li>
                                     <li><strong>{emailAddress} or ?emailAddress:</strong> The e-mail address that the user entered.</li>
                                     <li><strong>{emailAddressGclAesEncrypted} or ?emailAddressGclAesEncrypted:</strong> The e-mail address that the user entered, encrypted using the AESEncode function.</li>
                                     <li><strong>{emailAddressAesEncrypted} or ?emailAddressAesEncrypted:</strong> The e-mail address that the user entered, encrypted using the EncryptWithAes function.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The Wiser 2.0 entity type that is used for users that can login on the website.</li>
+                                    <li><strong>{entityType} or ?entityType:</strong> The Wiser entity type that is used for users that can login on the website.</li>
                                 </ul>",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
@@ -653,11 +653,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                 <p>Also make sure that you exclude the logged in user in your check, like the default query does, so that they don't get an error when they change something in their account.</p>
                                 <p>You can also use the following default variables:<p>
                                 <ul>
-                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser 2.0 property name that is used to save the e-mail address of the user.</li>
+                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser property name that is used to save the e-mail address of the user.</li>
                                     <li><strong>{emailAddress} or ?emailAddress:</strong> The e-mail address that the user entered.</li>
                                     <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
                                     <li><strong>{login} or ?login:</strong> The value that the user entered in the HTML field with the same name as the value in the property 'loginFieldName'.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The Wiser 2.0 entity type that is used for users that can login on the website.</li>
+                                    <li><strong>{entityType} or ?entityType:</strong> The Wiser entity type that is used for users that can login on the website.</li>
                                 </ul>",
             TabName = CmsAttributes.CmsTabName.DataSource,
             GroupName = CmsAttributes.CmsGroupName.CustomSql,
@@ -756,12 +756,12 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string DeleteAccountQuery { get; set; }
 
         /// <summary>
-        /// The query for inserting/updating a value for a Wiser 2.0 property/field. This query will be executed for every submitted field in the form, which was originally on the page.
+        /// The query for inserting/updating a value for a Wiser property/field. This query will be executed for every submitted field in the form, which was originally on the page.
         /// </summary>
         [CmsProperty(
             PrettyName = "Set value in Wiser entity property query",
-            Description = "The query for inserting/updating a value for a Wiser 2.0 property/field. <strong>This query will be executed for every submitted field in the form that was originally on the page.</strong>",
-            DeveloperRemarks = @"<p>Leave this property empty if you're not using the Wiser 2.0 data model, or if you're using a custom create/update query that already sets all values correctly.<p>
+            Description = "The query for inserting/updating a value for a Wiser property/field. <strong>This query will be executed for every submitted field in the form that was originally on the page.</strong>",
+            DeveloperRemarks = @"<p>Leave this property empty if you're not using the Wiser data model, or if you're using a custom create/update query that already sets all values correctly.<p>
                                 <p>You can use the following variables:</p>
                                 <ul>
                                     <li><strong>{value} or ?value:</strong> The submitted value</li>
@@ -778,12 +778,11 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string SetValueInWiserEntityPropertyQuery { get; set; }
 
         /// <summary>
-        /// The query for inserting/updating a value for a Wiser 2.0 property/field. This query will be executed for every submitted field in the form, which was originally on the page.
+        /// The query for inserting/updating a value for a Wiser property/field. This query will be executed for every submitted field in the form, which was originally on the page.
         /// </summary>
         [CmsProperty(
             PrettyName = "Get sub account query",
-            Description =
-                "The query for getting all values and fields for a sub account. If you use the default HTML template, this query should return a row for each field that needs to be shown on the page. If you use custom HTML, this query can return whatever you need in that HTML.",
+            Description = "The query for getting all values and fields for a sub account. If you use the default HTML template, this query should return a row for each field that needs to be shown on the page. If you use custom HTML, this query can return whatever you need in that HTML.",
             DeveloperRemarks = @"<p>You can use the following variables:</p>
                                 <ul>
                                     <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The entity type that is used for sub accounts.</li>
@@ -798,6 +797,30 @@ namespace GeeksCoreLibrary.Components.Account.Models
             TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
         )]
         public string GetSubAccountQuery { get; set; }
+
+        /// <summary>
+        /// The query that will determine the roles for a new or existing account.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Account roles Query",
+            Description = "The query that will determine the roles for a new or existing account.",
+            DeveloperRemarks = @"<p>Please note that any roles returned by this query are absolute, meaning that the account will only receive the roles returned by this query, and any roles it was previously assigned that are not in the result will be removed.</p>
+                                <p>Make sure the query returns at least the following columns:</p>
+                                <ul>
+                                    <li><strong>roleId:</strong> The ID of a role in wiser_roles.</li>
+                                </ul>
+                                <p>In case of updating the roles of an existing user, you can use the following variables:</p>
+                                <ul>
+                                    <li><strong>{userId} or ?userId:</strong> The ID of the account/user being updated.</li>
+                                </ul>
+                                <p>You can use any value in the submitted form as a variable.</p>",
+            TabName = CmsAttributes.CmsTabName.DataSource,
+            GroupName = CmsAttributes.CmsGroupName.CustomSql,
+            DisplayOrder = 130,
+            ComponentMode = "CreateOrUpdateAccount",
+            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+        )]
+        public string AccountRolesQuery { get; set; }
 
         /// <summary>
         /// The query that validates an ID for auto login via Wiser.
@@ -816,8 +839,8 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                 <ul>
                                     <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
                                     <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser 2.0 field name where the e-mail address is stored.</li>
-                                    <li><strong>{roleFieldName} or ?roleFieldName:</strong> The Wiser 2.0 field name where the role of the user is stored.</li>
+                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser field name where the e-mail address is stored.</li>
+                                    <li><strong>{roleFieldName} or ?roleFieldName:</strong> The Wiser field name where the role of the user is stored.</li>
                                     <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
                                     <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
                                 </ul>",

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using GeeksCoreLibrary.Core.Models;
 
 namespace GeeksCoreLibrary.Components.Account.Models
 {
@@ -34,9 +35,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string MainUserEntityType { get; set; }
 
         /// <summary>
-        /// The role of the logged in user.
+        /// The roles of the logged in user.
         /// </summary>
-        public string Role { get; set; }
+        public List<RoleModel> Roles { get; set; }
 
         /// <summary>
         /// The date and time that the user logged in.

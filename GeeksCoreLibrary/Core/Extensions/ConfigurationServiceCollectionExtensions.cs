@@ -267,6 +267,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             services.Decorate<IShoppingBasketsService, CachedShoppingBasketsService>();
             services.Decorate<IDataSelectorParsersService, CachedDataSelectorParsersService>();
             services.Decorate<IOrderProcessesService, CachedOrderProcessesService>();
+            services.Decorate<IRolesService, CachedRolesService>();
             
             if (gclSettings.UseLegacyWiser1TemplateModule)
             {
