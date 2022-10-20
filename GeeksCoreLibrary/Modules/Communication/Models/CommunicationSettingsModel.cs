@@ -68,9 +68,14 @@ public class CommunicationSettingsModel
     public TriggerPeriodTypes TriggerPeriodType { get; set; }
     
     /// <summary>
-    /// Gets or sets the week day(s) that this trigger should be activated, when <see cref="TriggerPeriodType"/> is set to <see cref="TriggerPeriodTypes.Week"/> or <see cref="TriggerPeriodTypes.Month"/>.
+    /// Gets or sets the week day(s) that this trigger should be activated, when <see cref="TriggerPeriodType"/> is set to <see cref="TriggerPeriodTypes.Week"/>.
     /// </summary>
     public TriggerWeekDays TriggerWeekDays { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the day of the month that this trigger should be activated, when <see cref="TriggerPeriodType"/> is set to <see cref="TriggerPeriodTypes.Month"/>.
+    /// </summary>
+    public int TriggerDayOfMonth { get; set; }
 
     /// <summary>
     /// Gets or sets the settings for email, sms etc.

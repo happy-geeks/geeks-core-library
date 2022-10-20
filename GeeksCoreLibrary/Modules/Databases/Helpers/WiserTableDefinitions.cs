@@ -705,6 +705,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("trigger_period_value", MySqlDbType.Int16, 4, notNull: true, defaultValue: "1"),
                     new("trigger_period_type", MySqlDbType.Enum, enumValues: new List<string> { "minute", "hour", "day", "week", "month", "year" }), // TODO: trigger_period
                     new("trigger_week_days", MySqlDbType.Int32, notNull: true, defaultValue: "0"), // TODO: trigger_days
+                    new("trigger_day_of_month", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("last_processed", MySqlDbType.MediumText),
                     new("added_by", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                     new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP")
