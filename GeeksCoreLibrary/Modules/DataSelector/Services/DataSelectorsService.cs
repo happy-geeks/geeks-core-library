@@ -321,11 +321,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 foreach (var field in itemsRequest.FieldsInternal)
                 {
                     var languageCodes = new List<string>();
-                    if (!String.IsNullOrWhiteSpace(field.LanguageCode))
-                    {
-                        languageCodes.Add(field.LanguageCode);
-                    }
-                    else if (field.LanguageCodes != null && field.LanguageCodes.Any())
+                    if (field.LanguageCodes != null && field.LanguageCodes.Any())
                     {
                         languageCodes.AddRange(field.LanguageCodes);
                     }
@@ -586,11 +582,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 foreach (var item in itemsRequest.JoinDetail)
                 {
                     var languageCodes = new List<string>();
-                    if (!String.IsNullOrWhiteSpace(item.LanguageCode))
-                    {
-                        languageCodes.Add(item.LanguageCode);
-                    }
-                    else if (item.LanguageCodes != null && item.LanguageCodes.Any())
+                    if (item.LanguageCodes != null && item.LanguageCodes.Any())
                     {
                         languageCodes.AddRange(item.LanguageCodes);
                     }
