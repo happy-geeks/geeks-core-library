@@ -12,8 +12,8 @@
         internal const string LoginColumn = "login";
         internal const string EmailAddressColumn = "email";
         internal const string MainAccountIdColumn = "mainAccountId";
-        internal const string RoleColumn = "role";
         internal const string PropertyNameColumn = "property_name";
+        internal const string RoleIdColumn = "roleId";
         
         // Table names.
         internal const string AuthenticationTokensTableName = "gcl_user_auth_token";
