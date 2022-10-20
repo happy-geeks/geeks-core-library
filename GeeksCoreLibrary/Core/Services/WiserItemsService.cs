@@ -3579,11 +3579,21 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
             }
 
-            if (imagesDomain != "")
+            if (!String.IsNullOrWhiteSpace(imagesDomain))
             {
+                if (!imagesDomain.StartsWith("//") && !imagesDomain.StartsWith("http"))
+                {
+                    imagesDomain = $"//{imagesDomain}";
+                }
+
+                if (!imagesDomain.EndsWith("/"))
+                {
+                    imagesDomain += "/";
+                }
+
                 output = output.Replace("src=\"//", "src=\"~//").Replace("srcset=\"//", "srcset=\"~//");
                 output = output.Replace("src=\"/preview_image", "src=\"~/preview_image").Replace("srcset=\"/preview_image", "srcset=\"~/preview_image");
-                output = output.Replace("src=\"/", $"src=\"//{imagesDomain}/").Replace("srcset=\"/", $"srcset=\"//{imagesDomain}/");
+                output = output.Replace("src=\"/", $"src=\"{imagesDomain}").Replace("srcset=\"/", $"srcset=\"{imagesDomain}");
                 output = output.Replace("src=\"~//", "src=\"//").Replace("srcset=\"~//", "srcset=\"//");
                 output = output.Replace("src=\"~/preview_image", "src=\"/preview_image").Replace("srcset=\"~/preview_image", "srcset=\"/preview_image");
             }
