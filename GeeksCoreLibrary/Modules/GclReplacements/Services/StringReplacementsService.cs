@@ -785,8 +785,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     var colonIndexOf = fieldName.LastIndexOf(":", StringComparison.Ordinal);
                     if (questionMarkIndexOf + 1 > colonIndexOf)
                     {
-                        if (questionMarkIndexOf + 1 > colonIndexOf)
-                    {
                         var defaultValueWithQuestionMark = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
                         defaultValue = defaultValueWithQuestionMark.Remove(0, 1);
                         fieldName = fieldName.Remove(questionMarkIndexOf, defaultValueWithQuestionMark.Length);
