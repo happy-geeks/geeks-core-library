@@ -407,6 +407,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public async Task<JArray> GetJsonResponseFromRoutineAsync(RoutineTemplate routineTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false)
+        {
+            return await templatesService.GetJsonResponseFromRoutineAsync(routineTemplate, encryptionKey, skipNullValues, allowValueDecryption);
+        }
+
+        /// <inheritdoc />
         public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             return await GetTemplateDataAsync(this, id, name, parentId, parentName);
@@ -434,6 +440,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
             return await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate, extension);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<Template>> GetTemplateUrlsAsync()
+        {
+            return await templatesService.GetTemplateUrlsAsync();
         }
     }
 }

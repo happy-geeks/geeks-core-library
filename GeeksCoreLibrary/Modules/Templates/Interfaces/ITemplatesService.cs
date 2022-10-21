@@ -218,8 +218,18 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="skipNullValues">Optional: Whether to skip values that are <see langword="null"/> and not add them to the JSON. Default value is <see langword="false"/>.</param>
         /// <param name="allowValueDecryption">Optional: Set to <see langword="true"/> to allow values to be decrypted (for columns that contain the _decrypt suffix for example), otherwise values will be added in the <see cref="JObject"/> as is. Default value is <see langword="false"/>.</param>
         /// <param name="recursive">TODO</param>
-        /// <returns></returns>
+        /// <returns>A <see cref="JArray"/> with the results of the query.</returns>
         Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false);
+
+        /// <summary>
+        /// Executes a query and converts the results into an JSON object.
+        /// </summary>
+        /// <param name="routineTemplate">The routine to execute.</param>
+        /// <param name="encryptionKey">Optional: The key to encrypt/decrypt values in the results. Default is the key from the app settings.</param>
+        /// <param name="skipNullValues">Optional: Whether to skip values that are <see langword="null"/> and not add them to the JSON. Default value is <see langword="false"/>.</param>
+        /// <param name="allowValueDecryption">Optional: Set to <see langword="true"/> to allow values to be decrypted (for columns that contain the _decrypt suffix for example), otherwise values will be added in the <see cref="JObject"/> as is. Default value is <see langword="false"/>.</param>
+        /// <returns>A <see cref="JArray"/> with the results of the query.</returns>
+        Task<JArray> GetJsonResponseFromRoutineAsync(RoutineTemplate routineTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false);
 
         /// <summary>
         /// Get an HTML template together with the linked css and javascript.
@@ -266,5 +276,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="extension">Optional: The extension to use for the file name. Default is ".html".</param>
         /// <returns>The name for the file to cache the contents of the template to.</returns>
         Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html");
+        
+        /// <summary>
+        /// Gets all templates that have an URL regex setup.
+        /// </summary>
+        /// <returns>A list with all templates that have an URL regex set, but only the regex, ID and type of each template.</returns>
+        Task<List<Template>> GetTemplateUrlsAsync();
     }
 }

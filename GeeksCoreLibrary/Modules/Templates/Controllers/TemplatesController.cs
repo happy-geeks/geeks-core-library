@@ -207,6 +207,36 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
         }
 
+        [Route("routine.gcl")]
+        public async Task<IActionResult> RoutineAsync()
+        {
+            var context = HttpContext;
+            var templateName = HttpContextHelpers.GetRequestValue(context, "templateName");
+            Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out var templateId);
+            logger.LogDebug($"JsonAsync content from query template, templateName: '{templateName}', templateId: '{templateId}'.");
+
+            if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
+            {
+                throw new ArgumentException("No template specified.");
+            }
+
+            var result = (RoutineTemplate)await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Routine);
+            if (result.Id <= 0)
+            {
+                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+                if (result.LoginRequired)
+                {
+                    return Unauthorized();
+                }
+
+                return NotFound();
+            }
+
+            var jsonResult = await templatesService.GetJsonResponseFromRoutineAsync(result);
+
+            return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
+        }
+
         [Route("GclComponent.gcl")]
         [Route("component.gcl")]
         [Route("jclcomponent.jcl")]

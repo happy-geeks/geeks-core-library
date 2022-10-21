@@ -172,7 +172,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.return_not_found_when_pre_load_query_has_no_data,
     template.login_required,
     template.login_role,
-    template.login_redirect_url
+    template.login_redirect_url,
+    template.routine_type,
+    template.routine_parameters,
+    template.routine_return_type
 FROM {WiserTableNames.WiserTemplate} AS template
 {joinPart}
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -1172,6 +1175,28 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
         }
 
         /// <inheritdoc />
+        public async Task<JArray> GetJsonResponseFromRoutineAsync(RoutineTemplate routineTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false)
+        {
+            var routineName = $"WISER_{routineTemplate.Name}";
+            // First get all parameters of the routine.
+            var query = @"SELECT PARAMETER_NAME
+FROM information_schema.parameters 
+WHERE SPECIFIC_NAME = ?name
+ORDER BY ORDINAL_POSITION ASC";
+            databaseConnection.AddParameter("name", routineName);
+            var dataTable = await databaseConnection.GetAsync(query);
+            var parameters = dataTable.Rows.Cast<DataRow>().Select(dataRow => $"'{{{dataRow.Field<string>("PARAMETER_NAME")}}}'").ToList();
+
+            // Build the query to execute the routine and get the results.
+            var queryPrefix = routineTemplate.RoutineType == RoutineTypes.Function ? "SELECT " : "CALL ";
+            var querySuffix = routineTemplate.RoutineType == RoutineTypes.Function ? "AS result" : "";
+            query = $"{queryPrefix} {routineName}({String.Join(", ", parameters)}) {querySuffix};";
+            query = await stringReplacementsService.DoAllReplacementsAsync(query, forQuery: true);
+            dataTable = await databaseConnection.GetAsync(query);
+            return dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(null, encryptionKey, skipNullValues, allowValueDecryption);
+        }
+
+        /// <inheritdoc />
         public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             return await GetTemplateDataAsync(this, id, name, parentId, parentName);
@@ -1283,6 +1308,53 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             cacheFileName.Append(extension);
 
             return cacheFileName.ToString();
+        }
+
+        /// <inheritdoc />
+        public async Task<List<Template>> GetTemplateUrlsAsync()
+        {
+            string query;
+            if (gclSettings.Environment == Environments.Development)
+            {
+                query = $@"SELECT
+	template.template_id,
+	template.template_type,
+	template.url_regex
+FROM {WiserTableNames.WiserTemplate} AS template
+LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = template.template_id AND otherVersion.version > template.version
+WHERE otherVersion.id IS NULL
+AND template.template_type IN ({(int)TemplateTypes.Html}, {(int)TemplateTypes.Query}, {(int)TemplateTypes.Routine})
+AND template.url_regex IS NOT NULL
+AND template.url_regex <> ''";
+            }
+            else
+            {
+                query = $@"
+SELECT 
+	template.template_id,
+	template.template_type,
+	template.url_regex
+FROM {WiserTableNames.WiserTemplate} AS template
+WHERE (template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}
+AND template.template_type IN ({(int)TemplateTypes.Html}, {(int)TemplateTypes.Query}, {(int)TemplateTypes.Routine})
+AND template.url_regex IS NOT NULL
+AND template.url_regex <> ''";
+            }
+
+            var dataTable = await databaseConnection.GetAsync(query);
+
+            var results = new List<Template>();
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                results.Add(new Template
+                {
+                    Id = dataRow.Field<int>("template_id"),
+                    Type = dataRow.Field<TemplateTypes>("template_type"),
+                    UrlRegex = dataRow.Field<string>("url_regex")
+                });
+            }
+
+            return results;
         }
 
         /// <summary>
