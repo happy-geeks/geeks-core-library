@@ -838,6 +838,14 @@ namespace GeeksCoreLibrary.Core.Interfaces
         Task<string> ReplaceHtmlForViewingAsync(string input);
 
         /// <summary>
+        /// Replace HTML to make relative images absolute with the given images domain.
+        /// </summary>
+        /// <param name="input">The HTML to make make the images absolute.</param>
+        /// <param name="imagesDomain">The domain to use when making the images absolute.</param>
+        /// <returns></returns>
+        Task<string> ReplaceRelativeImagesToAbsoluteAsync(string input, string imagesDomain);
+
+        /// <summary>
         /// Gets the aggregation settings of all fields/properties of an entity type and/or link type.
         /// </summary>
         /// <param name="entityType">The name of the entity type, if this is a property for an entity.</param>
