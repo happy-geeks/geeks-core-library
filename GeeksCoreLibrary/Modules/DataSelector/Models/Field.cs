@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace GeeksCoreLibrary.Modules.DataSelector.Models
@@ -16,12 +17,25 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
 
         public string FieldAlias { get; set; }
 
-        private string languageCode;
+        [Obsolete("This property exists for backward compatibility only. Use LanguagesCodes instead.")]
         public string LanguageCode
         {
-            get => (languageCode ?? "").Replace("{languagecode}", "");
-            set => languageCode = value;
+            get
+            {
+                var languageCode = LanguageCodes?.FirstOrDefault() ?? String.Empty;
+                return languageCode.Replace("{languagecode}", "");
+            }
+            set
+            {
+                LanguageCodes ??= new List<string>(1);
+                LanguageCodes.Add(value);
+            }
         }
+
+        /// <summary>
+        /// Gets or sets multiple language codes, in case the field needs to be selected for multiple languages.
+        /// </summary>
+        public IList<string> LanguageCodes { get; set; }
 
         /// <summary>
         /// Gets or sets the data type for a scope row, which is either "string", "decimal" or "datetime". If the value is null or empty, the value "string" is assumed.
