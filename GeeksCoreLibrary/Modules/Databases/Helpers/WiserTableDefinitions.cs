@@ -365,7 +365,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 }
             },
 
-            // wiser_template_publish_log
+            // wiser_dynamic_content_publish_log
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserDynamicContentPublishLog,

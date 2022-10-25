@@ -1719,9 +1719,6 @@ namespace GeeksCoreLibrary.Components.Account
                 return (Result: (actualComponentMode == ComponentModes.LoginMultipleSteps ? LoginResults.UserDoesNotExist : LoginResults.InvalidUsernameOrPassword), UserId: 0, EmailAddress: null);
             }
 
-            // Get all role IDs a user has.
-            var userRoles = AccountsService.GetUserRolesAsync(loggedInUserId);
-
             // Login with password.
             if (decryptedUserId == 0)
             {

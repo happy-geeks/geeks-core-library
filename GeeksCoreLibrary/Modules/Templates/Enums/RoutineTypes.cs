@@ -1,4 +1,4 @@
-﻿namespace GeeksCoreLibrary.Modules.Templates.Enums;
+namespace GeeksCoreLibrary.Modules.Templates.Enums;
 
 /// <summary>
 /// The possible SQL routine types.
