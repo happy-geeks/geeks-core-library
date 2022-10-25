@@ -3579,6 +3579,19 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
             }
 
+            output = await dataSelectorsService.ReplaceAllDataSelectorsAsync(output);
+            output = await ReplaceAllEntityBlocksAsync(output);
+            
+            output = await ReplaceRelativeImagesToAbsoluteAsync(output, imagesDomain);
+
+            return output;
+        }
+
+        /// <inheritcDoc />
+        public async Task<string> ReplaceRelativeImagesToAbsoluteAsync(string input, string imagesDomain)
+        {
+            var output = input;
+            
             if (!String.IsNullOrWhiteSpace(imagesDomain))
             {
                 if (!imagesDomain.StartsWith("//") && !imagesDomain.StartsWith("http"))
@@ -3592,10 +3605,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
 
                 output = output.Replace("src=\"//", "src=\"~//").Replace("srcset=\"//", "srcset=\"~//");
-                output = output.Replace("src=\"/preview_image", "src=\"~/preview_image").Replace("srcset=\"/preview_image", "srcset=\"~/preview_image");
                 output = output.Replace("src=\"/", $"src=\"{imagesDomain}").Replace("srcset=\"/", $"srcset=\"{imagesDomain}");
                 output = output.Replace("src=\"~//", "src=\"//").Replace("srcset=\"~//", "srcset=\"//");
-                output = output.Replace("src=\"~/preview_image", "src=\"/preview_image").Replace("srcset=\"~/preview_image", "srcset=\"/preview_image");
             }
 
             // Replace with HTTPS
@@ -3607,9 +3618,6 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             {
                 output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
             }
-
-            output = await dataSelectorsService.ReplaceAllDataSelectorsAsync(output);
-            output = await ReplaceAllEntityBlocksAsync(output);
 
             return output;
         }
