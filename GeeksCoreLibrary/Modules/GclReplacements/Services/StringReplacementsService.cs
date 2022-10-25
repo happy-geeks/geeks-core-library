@@ -327,6 +327,49 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         }
 
         /// <inheritdoc />
+        public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true)
+        {
+            if (replaceData == null)
+            {
+                return input;
+            }
+            
+            var output = input;
+            var dataDictionary = new Dictionary<string, object>(caseSensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
+            // Get property values from the current level to use for replacements.
+            foreach (var item in replaceData)
+            {
+                if (item.Type == JTokenType.Property)
+                {
+                    var property = (JProperty) item;
+                    dataDictionary.Add(property.Name, property.Value);
+                }
+            }
+
+            // Do the replacements for the current level.
+            output = DoReplacements(output, dataDictionary, forQuery: forQuery);
+
+            // Repeat the process for each object in the current level until the bottom is reached.
+            foreach (var item in replaceData)
+            {
+                if (item.Type == JTokenType.Object)
+                {
+                    output = DoReplacements(output, item, forQuery, caseSensitive);
+                }
+                else if (item.Type == JTokenType.Array)
+                {
+                    foreach (var jObject in item)
+                    {
+                        output = DoReplacements(output, jObject, forQuery, caseSensitive);
+                    }
+                }
+            }
+
+            return output;
+        }
+
+        /// <inheritdoc />
         public string DoReplacements(string input, IDictionary<string, object> replaceData, string prefix = "{", string suffix = "}", bool forQuery = false)
         {
             if (replaceData == null || replaceData.Count == 0)

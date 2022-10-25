@@ -678,7 +678,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             }
 
             // Start with special template replacements for the pre load query that you can set in HTML templates in the templates module in Wiser.
-            if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
+            if (httpContextAccessor != null && httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
             {
                 input = stringReplacementsService.DoReplacements(input, (DataRow)httpContextAccessor.HttpContext.Items[Constants.TemplatePreLoadQueryResultKey], forQuery, prefix: "{template.");
             }
