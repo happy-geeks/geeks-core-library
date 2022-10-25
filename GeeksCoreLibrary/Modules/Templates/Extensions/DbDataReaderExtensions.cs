@@ -33,6 +33,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
 
             var isQuery = type is TemplateTypes.Query || templateType is TemplateTypes.Query;
             var isRoutine = type is TemplateTypes.Routine || templateType is TemplateTypes.Routine;
+            var isTrigger = type is TemplateTypes.Trigger || templateType is TemplateTypes.Trigger;
             var template = isQuery ? new QueryTemplate() : isRoutine ? new RoutineTemplate() : new Template();
             template.Id = await reader.IsDBNullAsync("template_id") ? 0 : await reader.GetFieldValueAsync<int>("template_id");
             template.ParentId = await reader.IsDBNullAsync("parent_id") ? 0 : await reader.GetFieldValueAsync<int>("parent_id");
@@ -176,6 +177,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 return routineTemplate;
             }
 
+            if (isTrigger)
+            {
+                var triggerTemplate = (TriggerTemplate)template;
+                triggerTemplate.TriggerTiming = (TriggerTimings) await reader.GetFieldValueAsync<int>("trigger_timing");
+                triggerTemplate.TriggerEvent = (TriggerEvents) await reader.GetFieldValueAsync<int>("trigger_event");
+                triggerTemplate.TriggerTableName = reader.GetStringHandleNull("trigger_table_name");
+
+                return triggerTemplate;
+            }
 
             return template;
         }

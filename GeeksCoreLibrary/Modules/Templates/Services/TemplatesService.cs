@@ -175,7 +175,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.login_redirect_url,
     template.routine_type,
     template.routine_parameters,
-    template.routine_return_type
+    template.routine_return_type,
+    template.trigger_timing,
+    template.trigger_event,
+    template.trigger_table_name
 FROM {WiserTableNames.WiserTemplate} AS template
 {joinPart}
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)

@@ -544,6 +544,32 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
         }
 
+        /// <inheritdoc />
+        public async Task<IList<string>> GetAllTableNamesAsync(bool includeViews = false, string databaseName = null)
+        {
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+
+            var viewsPart = String.Empty;
+            if (!includeViews)
+            {
+                viewsPart = "AND TABLE_TYPE <> 'VIEW'";
+            }
+
+            databaseConnection.AddParameter("schema", databaseName);
+            var tablesData = await databaseConnection.GetAsync($@"
+                SELECT TABLE_NAME
+                FROM information_schema.`TABLES`
+                WHERE TABLE_SCHEMA = ?schema
+                {viewsPart}
+                ORDER BY TABLE_NAME");
+
+            return new List<string>(tablesData.Rows.Cast<DataRow>().Select(dataRow => dataRow.Field<string>("TABLE_NAME")));
+        }
+
         /// <summary>
         /// Generates part of a query for adding a column to a database table.
         /// </summary>

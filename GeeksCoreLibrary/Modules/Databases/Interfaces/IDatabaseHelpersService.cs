@@ -166,5 +166,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="tablesToUpdate">A list of one or more tables to check and update when needed.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         Task CheckAndUpdateTablesAsync(IDatabaseHelpersService databaseHelpersService, List<string> tablesToUpdate, string databaseName = null);
+
+        /// <summary>
+        /// Retrieves the names of all tables within the current database, or in the database specified by <paramref name="databaseName"/>.
+        /// </summary>
+        /// <param name="includeViews">Optional: Whether views should also be returned. Default value is <see langword="false"/>.</param>
+        /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
+        /// <returns>A list of strings.</returns>
+        Task<IList<string>> GetAllTableNamesAsync(bool includeViews = false, string databaseName = null);
     }
 }
