@@ -15,7 +15,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
 
         public string FieldName { get; set; }
 
-        public string FieldAlias { get; set; }
+        public string FieldAlias
+        {
+            get => String.IsNullOrWhiteSpace(fieldAlias) ? FieldName : fieldAlias;
+            set => fieldAlias = value;
+        }
 
         [Obsolete("This property exists for backward compatibility only. Use LanguagesCodes instead.")]
         public string LanguageCode
@@ -65,6 +69,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
         public bool FieldFromField { get; set; }
 
         private string joinOn;
+        private string fieldAlias;
+
         public string JoinOn
         {
             get => joinOn;
@@ -86,11 +92,6 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
         {
             get
             {
-                if (String.IsNullOrWhiteSpace(FieldAlias))
-                {
-                    FieldAlias = FieldName;
-                }
-
                 if (IsLinkField)
                 {
                     return $"{SelectAliasPrefix}linkfields|{FieldAlias}";

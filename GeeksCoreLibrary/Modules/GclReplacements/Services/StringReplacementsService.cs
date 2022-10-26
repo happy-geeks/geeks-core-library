@@ -338,12 +338,11 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             var dataDictionary = new Dictionary<string, object>(caseSensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 
             // Get property values from the current level to use for replacements.
-            foreach (var item in replaceData)
+            foreach (JProperty item in replaceData)
             {
-                if (item.Type == JTokenType.Property)
+                if (item.Value.Type != JTokenType.Array && item.Value.Type != JTokenType.Object)
                 {
-                    var property = (JProperty) item;
-                    dataDictionary.Add(property.Name, property.Value);
+                    dataDictionary.Add(item.Name, item.Value);
                 }
             }
 
@@ -351,17 +350,17 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             output = DoReplacements(output, dataDictionary, forQuery: forQuery);
 
             // Repeat the process for each object in the current level until the bottom is reached.
-            foreach (var item in replaceData)
+            foreach (JProperty item in replaceData)
             {
-                if (item.Type == JTokenType.Object)
+                if (item.Value.Type == JTokenType.Object)
                 {
-                    output = DoReplacements(output, item, forQuery, caseSensitive);
+                    output = DoReplacements(output, item.Value, forQuery, caseSensitive);
                 }
-                else if (item.Type == JTokenType.Array)
+                else if (item.Value.Type == JTokenType.Array)
                 {
-                    foreach (var jObject in item)
+                    foreach (JObject subItem in item.Value)
                     {
-                        output = DoReplacements(output, jObject, forQuery, caseSensitive);
+                        output = DoReplacements(output, subItem, forQuery, caseSensitive);
                     }
                 }
             }
