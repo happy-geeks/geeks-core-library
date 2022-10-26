@@ -23,6 +23,11 @@ public class CommunicationContentSettingsModel
     public ulong TemplateId { get; set; }
     
     /// <summary>
+    /// Gets or sets the language code for the e-mail template.
+    /// </summary>
+    public string LanguageCode { get; set; }
+    
+    /// <summary>
     /// Gets or sets the subject of the e-mail.
     /// </summary>
     public string Subject { get; set; }

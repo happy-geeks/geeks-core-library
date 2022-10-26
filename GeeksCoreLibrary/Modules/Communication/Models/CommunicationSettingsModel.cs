@@ -65,12 +65,12 @@ public class CommunicationSettingsModel
     /// <summary>
     /// Gets or sets the type of periodic trigger (daily, weekly etc).
     /// </summary>
-    public TriggerPeriodTypes TriggerPeriodType { get; set; }
+    public TriggerPeriodTypes? TriggerPeriodType { get; set; }
     
     /// <summary>
     /// Gets or sets the week day(s) that this trigger should be activated, when <see cref="TriggerPeriodType"/> is set to <see cref="TriggerPeriodTypes.Week"/>.
     /// </summary>
-    public TriggerWeekDays TriggerWeekDays { get; set; }
+    public TriggerWeekDays? TriggerWeekDays { get; set; }
     
     /// <summary>
     /// Gets or sets the day of the month that this trigger should be activated, when <see cref="TriggerPeriodType"/> is set to <see cref="TriggerPeriodTypes.Month"/>.
@@ -96,4 +96,14 @@ public class CommunicationSettingsModel
     /// Gets or sets the date and time of when this communication was created.
     /// </summary>
     public DateTime AddedOn { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the name of the user that did the most recent change this communication.
+    /// </summary>
+    public string ChangedBy { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the date and time of when this communication was last updated.
+    /// </summary>
+    public DateTime? ChangedOn { get; set; }
 }
