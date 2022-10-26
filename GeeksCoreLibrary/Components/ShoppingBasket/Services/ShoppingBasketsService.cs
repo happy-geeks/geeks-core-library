@@ -218,8 +218,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             if (!skipType.InList("shipping_costs", "paymentmethod_costs", Constants.BasketLineCouponType))
             {
-                await CalculateShippingCostsAsync(shoppingBasket, basketLines, settings);
-                await CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings);
+                await CalculateShippingCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
+                await CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
 
                 foreach (var couponLine in GetLines(basketLines, Constants.BasketLineCouponType))
                 {
@@ -1113,7 +1113,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
             var shippingCosts = 0M;
 
@@ -1264,7 +1264,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         ["vatrate"] = vatRate,
                         ["description"] = friendlyName
                     };
-                    await AddLineAsync(shoppingBasket, basketLines, settings, id, type: "shipping_costs", lineDetails: details);
+                    await AddLineAsync(shoppingBasket, basketLines, settings, id, type: "shipping_costs", lineDetails: details, createNewTransaction: createNewTransaction);
                 }
             }
             else
@@ -1276,7 +1276,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
             var paymentMethodCosts = 0M;
 
@@ -1364,7 +1364,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                         ["vatrate"] = vatRate,
                         ["description"] = friendlyName
                     };
-                    await AddLineAsync(shoppingBasket, basketLines, settings, id, type: "paymentmethod_costs", lineDetails: details);
+                    await AddLineAsync(shoppingBasket, basketLines, settings, id, type: "paymentmethod_costs", lineDetails: details, createNewTransaction: createNewTransaction);
                 }
             }
             else
