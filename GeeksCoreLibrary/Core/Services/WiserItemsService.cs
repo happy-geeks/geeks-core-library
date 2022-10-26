@@ -1565,7 +1565,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                         {
                             foreach (var itemId in itemIds)
                             {
-                                var item = await wiserItemsService.GetItemDetailsAsync(itemId, entityType: entityType, skipPermissionsCheck: skipPermissionsCheck);
+                                var item = await wiserItemsService.GetItemDetailsAsync(itemId, userId: userId, entityType: entityType, skipPermissionsCheck: skipPermissionsCheck, returnNullIfDeleted: false);
                                 await wiserItemsService.HandleItemAggregationAsync(item);
                             }
                         }
@@ -2122,28 +2122,28 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             databaseConnection.AddParameter("uniqueId", uniqueId);
             databaseConnection.AddParameter("languageCode", languageCode);
             var query = $@"SELECT 
-	                        item.*,
-	                        details.`key`,	
-	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                            details.language_code
-                        FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                        {join}
-                        LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id                                        
-                        {(where.Count > 0 ? $"WHERE {String.Join(" AND ", where)}" : "")};";
-
+	item.*,
+	details.`key`,	
+	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+    details.language_code
+FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+{join}
+LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id                                        
+{(where.Count > 0 ? $"WHERE {String.Join(" AND ", where)}" : "")}";
 
             if (!returnNullIfDeleted)
             {
-                query += $@"UNION
-                            SELECT 
-	                            item.*,
-	                            details.`key`,	
-	                            CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                                details.language_code
-                            FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
-                            {joinDeleted}
-                            LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id                                        
-                            {(where.Count > 0 ? $"WHERE {String.Join(" AND ", where)}" : "")};";
+                query += $@"
+UNION
+SELECT 
+	item.*,
+	details.`key`,	
+	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+    details.language_code
+FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+{joinDeleted}
+LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id                                        
+{(where.Count > 0 ? $"WHERE {String.Join(" AND ", where)}" : "")}";
             }
 
             var dataTable = await databaseConnection.GetAsync(query, true);
