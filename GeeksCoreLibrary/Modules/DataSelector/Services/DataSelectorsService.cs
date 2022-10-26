@@ -342,8 +342,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     {
                         // Create unique table alias. Remove any backticks, as they could potentially allow SQL injections.
                         var fieldName = field.FieldName.Replace("`", "");
-                        var fieldAlias = hasMultipleLanguages ? $"{field.FieldAlias.Replace("`", "")}_{languageCode.Replace("`", "")}" : field.FieldAlias.Replace("`", "");
                         var selectAlias = hasMultipleLanguages ? $"{field.SelectAlias.Replace("`", "")}_{languageCode.Replace("`", "")}" : field.SelectAlias.Replace("`", "");
+                        var fieldAlias = hasMultipleLanguages ? $"{field.FieldAlias.Replace("`", "")}_{languageCode.Replace("`", "")}" : field.FieldAlias.Replace("`", "");
                         var tableAlias = hasMultipleLanguages ? $"{field.TableAlias.Replace("`", "")}_{languageCode.Replace("`", "")}" : field.TableAlias.Replace("`", "");
                         var tableAliasPrefix = field.TableAliasPrefix.Replace("`", "");
 
