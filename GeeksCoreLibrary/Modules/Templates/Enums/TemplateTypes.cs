@@ -11,6 +11,8 @@
         Normal,
         Directory,
         Xml,
-        Routine
+        Routine,
+        View,
+        Trigger
     }
 }

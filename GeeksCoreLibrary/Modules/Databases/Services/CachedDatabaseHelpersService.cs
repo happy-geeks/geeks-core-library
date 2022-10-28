@@ -57,7 +57,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var cacheName = $"CachedDatabaseHelpersService_GetColumnNamesAsync_{databaseName}_{tableName}";
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                     return await databaseHelpersService.GetColumnNamesAsync(tableName, databaseName);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
@@ -199,6 +199,23 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             cache.Remove($"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}");
+        }
+
+        /// <inheritdoc />
+        public async Task<IList<string>> GetAllTableNamesAsync(bool includeViews = false, string databaseName = null)
+        {
+            if (String.IsNullOrWhiteSpace(databaseName))
+            {
+                await databaseConnection.EnsureOpenConnectionForReadingAsync();
+                databaseName = databaseConnection.ConnectedDatabase;
+            }
+            var cacheName = $"CachedDatabaseHelpersService_GetAllTableNames_{databaseName}";
+
+            return await cache.GetOrAddAsync(cacheName, async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
+                return await databaseHelpersService.GetAllTableNamesAsync(includeViews, databaseName);
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
 
         /// <inheritdoc />
