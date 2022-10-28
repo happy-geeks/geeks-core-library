@@ -1565,7 +1565,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                         {
                             foreach (var itemId in itemIds)
                             {
-                                var item = await wiserItemsService.GetItemDetailsAsync(itemId, entityType: entityType, skipPermissionsCheck: skipPermissionsCheck);
+                                var item = await wiserItemsService.GetItemDetailsAsync(itemId, userId: userId, entityType: entityType, skipPermissionsCheck: skipPermissionsCheck, returnNullIfDeleted: false);
                                 await wiserItemsService.HandleItemAggregationAsync(item);
                             }
                         }
@@ -2122,28 +2122,28 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             databaseConnection.AddParameter("uniqueId", uniqueId);
             databaseConnection.AddParameter("languageCode", languageCode);
             var query = $@"SELECT 
-	                        item.*,
-	                        details.`key`,	
-	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                            details.language_code
-                        FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                        {join}
-                        LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id                                        
-                        {(where.Count > 0 ? $"WHERE {String.Join(" AND ", where)}" : "")};";
-
+	item.*,
+	details.`key`,	
+	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+    details.language_code
+FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+{join}
+LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id                                        
+{(where.Count > 0 ? $"WHERE {String.Join(" AND ", where)}" : "")}";
 
             if (!returnNullIfDeleted)
             {
-                query += $@"UNION
-                            SELECT 
-	                            item.*,
-	                            details.`key`,	
-	                            CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                                details.language_code
-                            FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
-                            {joinDeleted}
-                            LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id                                        
-                            {(where.Count > 0 ? $"WHERE {String.Join(" AND ", where)}" : "")};";
+                query += $@"
+UNION
+SELECT 
+	item.*,
+	details.`key`,	
+	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+    details.language_code
+FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+{joinDeleted}
+LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id                                        
+{(where.Count > 0 ? $"WHERE {String.Join(" AND ", where)}" : "")}";
             }
 
             var dataTable = await databaseConnection.GetAsync(query, true);
@@ -3579,6 +3579,19 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
             }
 
+            output = await dataSelectorsService.ReplaceAllDataSelectorsAsync(output);
+            output = await ReplaceAllEntityBlocksAsync(output);
+            
+            output = await ReplaceRelativeImagesToAbsoluteAsync(output, imagesDomain);
+
+            return output;
+        }
+
+        /// <inheritcDoc />
+        public async Task<string> ReplaceRelativeImagesToAbsoluteAsync(string input, string imagesDomain)
+        {
+            var output = input;
+            
             if (!String.IsNullOrWhiteSpace(imagesDomain))
             {
                 if (!imagesDomain.StartsWith("//") && !imagesDomain.StartsWith("http"))
@@ -3592,10 +3605,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
 
                 output = output.Replace("src=\"//", "src=\"~//").Replace("srcset=\"//", "srcset=\"~//");
-                output = output.Replace("src=\"/preview_image", "src=\"~/preview_image").Replace("srcset=\"/preview_image", "srcset=\"~/preview_image");
                 output = output.Replace("src=\"/", $"src=\"{imagesDomain}").Replace("srcset=\"/", $"srcset=\"{imagesDomain}");
                 output = output.Replace("src=\"~//", "src=\"//").Replace("srcset=\"~//", "srcset=\"//");
-                output = output.Replace("src=\"~/preview_image", "src=\"/preview_image").Replace("srcset=\"~/preview_image", "srcset=\"/preview_image");
             }
 
             // Replace with HTTPS
@@ -3607,9 +3618,6 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             {
                 output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
             }
-
-            output = await dataSelectorsService.ReplaceAllDataSelectorsAsync(output);
-            output = await ReplaceAllEntityBlocksAsync(output);
 
             return output;
         }

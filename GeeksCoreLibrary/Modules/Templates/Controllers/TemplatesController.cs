@@ -11,11 +11,13 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
+using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
@@ -29,8 +31,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         private readonly IDataSelectorsService dataSelectorsService;
         private readonly IWiserItemsService wiserItemsService;
         private readonly IStringReplacementsService stringReplacementsService;
+        private readonly IObjectsService objectsService;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService)
+        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -38,6 +41,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             this.dataSelectorsService = dataSelectorsService;
             this.wiserItemsService = wiserItemsService;
             this.stringReplacementsService = stringReplacementsService;
+            this.objectsService = objectsService;
         }
 
         [Route("template.gcl")]
@@ -153,6 +157,26 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
             newBodyHtml = await wiserItemsService.ReplaceAllEntityBlocksAsync(newBodyHtml);
 
+            // Make relative image URls absolute to allow the template to show images when the HTML is placed inside another website.
+            var useAbsoluteImageUrls = String.Equals(HttpContextHelpers.GetRequestValue(context, "absoluteImageUrls"), "true", StringComparison.OrdinalIgnoreCase);
+            if (useAbsoluteImageUrls)
+            {
+                var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
+                newBodyHtml = await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(newBodyHtml, imagesDomain);
+            }
+
+            // Remove the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website.
+            // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
+            var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(context, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
+            if (removeSvgUrlsFromIcons)
+            {
+                var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""(.*)#(?:.*)""(?:[^>]*)>");
+                foreach (Match match in regex.Matches(newBodyHtml))
+                {
+                    newBodyHtml = newBodyHtml.Replace(match.Groups[1].Value, "");
+                }
+            }
+
             if (!ombouw)
             {
                 return Content(newBodyHtml, "text/html");
@@ -203,6 +227,36 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
 
             var jsonResult = await templatesService.GetJsonResponseFromQueryAsync(result);
+
+            return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
+        }
+
+        [Route("routine.gcl")]
+        public async Task<IActionResult> RoutineAsync()
+        {
+            var context = HttpContext;
+            var templateName = HttpContextHelpers.GetRequestValue(context, "templateName");
+            Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out var templateId);
+            logger.LogDebug($"JsonAsync content from query template, templateName: '{templateName}', templateId: '{templateId}'.");
+
+            if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
+            {
+                throw new ArgumentException("No template specified.");
+            }
+
+            var result = (RoutineTemplate)await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Routine);
+            if (result.Id <= 0)
+            {
+                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+                if (result.LoginRequired)
+                {
+                    return Unauthorized();
+                }
+
+                return NotFound();
+            }
+
+            var jsonResult = await templatesService.GetJsonResponseFromRoutineAsync(result);
 
             return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
         }

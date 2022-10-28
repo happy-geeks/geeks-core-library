@@ -125,15 +125,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
-            return await shoppingBasketsService.CalculateShippingCostsAsync(shoppingBasket, basketLines, settings);
+            return await shoppingBasketsService.CalculateShippingCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
         }
 
         /// <inheritdoc />
-        public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
-            return await shoppingBasketsService.CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings);
+            return await shoppingBasketsService.CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
         }
 
         /// <inheritdoc />
