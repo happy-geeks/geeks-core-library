@@ -200,5 +200,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             cache.Remove($"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}");
         }
+
+        /// <inheritdoc />
+        public async Task RenameTableAsync(string currentTableName, string newTableName)
+        {
+            await databaseHelpersService.RenameTableAsync(currentTableName, newTableName);
+        }
     }
 }
