@@ -217,5 +217,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 return await databaseHelpersService.GetAllTableNamesAsync(includeViews, databaseName);
             }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
+
+        /// <inheritdoc />
+        public async Task RenameTableAsync(string currentTableName, string newTableName)
+        {
+            await databaseHelpersService.RenameTableAsync(currentTableName, newTableName);
+        }
     }
 }

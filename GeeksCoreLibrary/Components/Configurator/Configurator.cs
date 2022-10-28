@@ -59,7 +59,7 @@ namespace GeeksCoreLibrary.Components.Configurator
         private readonly IDataSelectorsService dataSelectorsService;
         private readonly GclSettings gclSettings;
 
-        private readonly Dictionary<string, Dictionary<string, string>> stepNumbers = new();
+        private readonly Dictionary<string, Dictionary<string, Tuple<string, Dictionary<string, string>>>> stepNumbers = new();
 
         #endregion
 
@@ -347,7 +347,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             if (!stepNumbers.ContainsKey(configuratorName))
             {
-                stepNumbers.Add(configuratorName, new Dictionary<string, string>());
+                stepNumbers.Add(configuratorName, new Dictionary<string, Tuple<string, Dictionary<string, string>>>());
             }
 
             var configuratorData = await configuratorsService.GetConfiguratorDataAsync(configuratorName);
@@ -369,15 +369,21 @@ namespace GeeksCoreLibrary.Components.Configurator
                     stepCount = 1;
                 }
 
+                var variableName = row.Field<string>("variable_name");
+                var subStepVariableName = row.Field<string>("substep_variable_name");
                 if (row.Field<string>("stepname") != currentStepName)
                 {
                     subStepCount = 1;
                     currentStepName = row.Field<string>("stepname");
-                    var variableName = row.Field<string>("variable_name");
 
                     if (!String.IsNullOrWhiteSpace(variableName) && !stepNumbers[configuratorName].ContainsKey(variableName))
                     {
-                        stepNumbers[configuratorName].Add(variableName, $"{mainStepCount}-{stepCount}");
+                        stepNumbers[configuratorName].Add(variableName, new Tuple<string, Dictionary<string, string>>($"{mainStepCount}-{stepCount}", new Dictionary<string, string>()));
+                    }
+
+                    if (!String.IsNullOrWhiteSpace(variableName) && !String.IsNullOrWhiteSpace(subStepVariableName) && !stepNumbers[configuratorName][variableName].Item2.ContainsKey(subStepVariableName))
+                    {
+                        stepNumbers[configuratorName][variableName].Item2.Add(subStepVariableName, $"{mainStepCount}-{stepCount}-{subStepCount}");
                     }
 
                     // Always add one sub step
@@ -386,10 +392,17 @@ namespace GeeksCoreLibrary.Components.Configurator
                 }
                 else if (!String.IsNullOrWhiteSpace(row.Field<string>("substepname")))
                 {
+                    if (!String.IsNullOrWhiteSpace(variableName) && !String.IsNullOrWhiteSpace(subStepVariableName) && !stepNumbers[configuratorName][variableName].Item2.ContainsKey(subStepVariableName))
+                    {
+                        // We subtract one from step count, because the stepCount gets increased after adding the step, but that's too early for sub steps.
+                        stepNumbers[configuratorName][variableName].Item2.Add(subStepVariableName, $"{mainStepCount}-{stepCount - 1}-{subStepCount}");
+                    }
+                    
                     subStepCount += 1;
                 }
             }
         }
+
         /// <summary>
         /// render step
         /// </summary>
@@ -481,7 +494,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         continue;
                     }
 
-                    dependsOnValues.Add($"jjl_configurator_step-{stepNumbersDictionary[dependency]}");
+                    dependsOnValues.Add($"jjl_configurator_step-{stepNumbersDictionary[dependency].Item1}");
                 }
 
                 dependsOnString = String.Join(";", dependsOnValues);
@@ -625,12 +638,33 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                 foreach (var dependency in connectedItems)
                 {
-                    if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0 || !stepNumbersDictionary.ContainsKey(dependency))
+                    if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0)
                     {
                         continue;
                     }
 
-                    dependsOnValues.Add($"jjl_configurator_step-{stepNumbersDictionary[dependency]}");
+                    var dependencyValue = "";
+                    if (stepNumbersDictionary.ContainsKey(dependency))
+                    {
+                        dependencyValue = $"jjl_configurator_step-{stepNumbersDictionary[dependency].Item1}";
+                    }
+                    else
+                    {
+                        var step = stepNumbersDictionary.FirstOrDefault(step => step.Value.Item2.ContainsKey(dependency)).Value;
+                        if (step == null)
+                        {
+                            continue;
+                        }
+
+                        dependencyValue = $"jjl_configurator_substep-{step.Item2[dependency]}";
+                    }
+
+                    if (String.IsNullOrWhiteSpace(dependencyValue))
+                    {
+                        continue;
+                    }
+
+                    dependsOnValues.Add(dependencyValue);
                 }
 
                 dependsOnString = String.Join(";", dependsOnValues);
@@ -650,22 +684,10 @@ namespace GeeksCoreLibrary.Components.Configurator
                     ReplaceCaseInsensitive("{subStepNumber}", subStepNumber.ToString());
             }
 
-            WriteToTrace("End building subStepContent");
-
             template = template.ReplaceCaseInsensitive("{subStepContent}", subStepContent);
-
-
-            template = await this.configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator, false);
-
-            WriteToTrace("End ReplaceConfiguratorItems (substep)");
-
+            template = await configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator, false);
             template = await StringReplacementsService.DoAllReplacementsAsync(template, row, removeUnknownVariables: false);
-
-            WriteToTrace("End DoAllReplacementsAsync (substep)");
-
             template = await TemplatesService.HandleIncludesAsync(template, false, null, false);
-
-            WriteToTrace("End HandleIncludesAsync (substep)");
 
             return template;
 

@@ -1,13 +1,53 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Communication.Enums;
 using GeeksCoreLibrary.Modules.Communication.Models;
 
 namespace GeeksCoreLibrary.Modules.Communication.Interfaces
 {
+    /// <summary>
+    /// A service for doing everything with communications, such as saving settings for periodic communications and sending e-mail and SMS messages.
+    /// </summary>
     public interface ICommunicationsService
     {
+        /// <summary>
+        /// Get the settings of a specific row from wiser_communication. 
+        /// </summary>
+        /// <param name="id">The ID of the communication settings to get.</param>
+        /// <param name="nameOnly">Optional: Whether to only get the name or everything.</param>
+        /// <returns>A <see cref="CommunicationSettingsModel"/> with the settings, or <see langword="null"/> if it doesn't exist.</returns>
+        Task<CommunicationSettingsModel> GetSettingsAsync(int id, bool nameOnly = false);
+
+        /// <summary>
+        /// Get the settings of all communications of a specific type (such as SMS or e-mail).
+        /// </summary>
+        /// <param name="type">Optional: The <see cref="CommunicationTypes"/> to get the settings for. Leave null to get everything.</param>
+        /// <param name="namesOnly">Optional: Whether to only get the names (and IDs) or everything.</param>
+        /// <returns>A list of <see cref="CommunicationSettingsModel"/>.</returns>
+        Task<List<CommunicationSettingsModel>> GetSettingsAsync(CommunicationTypes? type = null, bool namesOnly = false);
+
+        /// <summary>
+        /// Create new settings or updates existing settings (based on <see cref="CommunicationSettingsModel.Id"/>).
+        /// </summary>
+        /// <param name="settings">The <see cref="CommunicationSettingsModel"/> to create or update.</param>
+        /// <param name="username">Optional: The user that did the save. This can be a user from Wiser, if this was updated via Wiser.</param>
+        Task<CommunicationSettingsModel> SaveSettingsAsync(CommunicationSettingsModel settings, string username = "GCL");
+
+        /// <summary>
+        /// Delete a row of communication settings.
+        /// </summary>
+        /// <param name="id">The ID of the settings to delete.</param>
+        /// <param name="username">Optional: The user that did the save. This can be a user from Wiser, if this was updated via Wiser.</param>
+        Task DeleteSettingsAsync(int id, string username = "GCL");
+
+        /// <summary>
+        /// Check whether a communication with specified ID (still) exists. 
+        /// </summary>
+        /// <param name="id">The ID to check.</param>
+        /// <returns>A boolean, indicating whether it exists or not.</returns>
+        Task<bool> CommunicationExistsAsync(int id);
+        
         /// <summary>
         /// Send an e-mail to someone.
         /// </summary>

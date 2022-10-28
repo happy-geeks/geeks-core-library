@@ -679,6 +679,41 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("url", MySqlDbType.Text, 0),
                     new("type", MySqlDbType.Enum, enumValues: new List<string> { "incoming", "outgoing" })
                 }
+            },
+            
+            // wiser_communication
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommunication,
+                LastUpdate = new DateTime(2022, 10, 28),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("name", MySqlDbType.VarChar, 50, notNull: true, defaultValue: ""),
+                    new("receiver_list", MySqlDbType.MediumText),
+                    new("receivers_data_selector_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("receivers_query_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("content_data_selector_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("content_query_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("settings", MySqlDbType.MediumText),
+                    new("send_trigger_type", MySqlDbType.Enum, enumValues: new List<string> { "direct", "fixed", "recurring" }),
+                    new("trigger_start", MySqlDbType.Date),
+                    new("trigger_end", MySqlDbType.Date),
+                    new("trigger_time", MySqlDbType.Time),
+                    new("trigger_period_value", MySqlDbType.Int16, 4, notNull: true, defaultValue: "1"),
+                    new("trigger_period_type", MySqlDbType.Enum, enumValues: new List<string> { "minute", "hour", "day", "week", "month", "year" }),
+                    new("trigger_week_days", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("trigger_day_of_month", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("last_processed", MySqlDbType.MediumText),
+                    new("added_by", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("changed_by", MySqlDbType.VarChar, 100),
+                    new("changed_on", MySqlDbType.DateTime)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new (WiserTableNames.WiserCommunication, "idx_name", IndexTypes.Unique, new List<string> { "name" })
+                }
             }
         };
     }

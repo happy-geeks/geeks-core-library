@@ -174,5 +174,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         /// <returns>A list of strings.</returns>
         Task<IList<string>> GetAllTableNamesAsync(bool includeViews = false, string databaseName = null);
+
+        /// <summary>
+        /// Change the name of an existing database table.
+        /// </summary>
+        /// <param name="currentTableName">The current / old name of the table.</param>
+        /// <param name="newTableName">The new name of the table.</param>
+        Task RenameTableAsync(string currentTableName, string newTableName);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace GeeksCoreLibrary.Modules.DataSelector.Models
@@ -14,14 +15,31 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
 
         public string FieldName { get; set; }
 
-        public string FieldAlias { get; set; }
+        public string FieldAlias
+        {
+            get => String.IsNullOrWhiteSpace(fieldAlias) ? FieldName : fieldAlias;
+            set => fieldAlias = value;
+        }
 
-        private string languageCode;
+        [Obsolete("This property exists for backward compatibility only. Use LanguagesCodes instead.")]
         public string LanguageCode
         {
-            get => (languageCode ?? "").Replace("{languagecode}", "");
-            set => languageCode = value;
+            get
+            {
+                var languageCode = LanguageCodes?.FirstOrDefault() ?? String.Empty;
+                return languageCode.Replace("{languagecode}", "");
+            }
+            set
+            {
+                LanguageCodes ??= new List<string>(1);
+                LanguageCodes.Add(value);
+            }
         }
+
+        /// <summary>
+        /// Gets or sets multiple language codes, in case the field needs to be selected for multiple languages.
+        /// </summary>
+        public IList<string> LanguageCodes { get; set; }
 
         /// <summary>
         /// Gets or sets the data type for a scope row, which is either "string", "decimal" or "datetime". If the value is null or empty, the value "string" is assumed.
@@ -51,6 +69,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
         public bool FieldFromField { get; set; }
 
         private string joinOn;
+        private string fieldAlias;
+
         public string JoinOn
         {
             get => joinOn;
@@ -72,11 +92,6 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
         {
             get
             {
-                if (String.IsNullOrWhiteSpace(FieldAlias))
-                {
-                    FieldAlias = FieldName;
-                }
-
                 if (IsLinkField)
                 {
                     return $"{SelectAliasPrefix}linkfields|{FieldAlias}";

@@ -570,6 +570,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             return new List<string>(tablesData.Rows.Cast<DataRow>().Select(dataRow => dataRow.Field<string>("TABLE_NAME")));
         }
 
+        /// <inheritdoc />
+        public async Task RenameTableAsync(string currentTableName, string newTableName)
+        {
+            await databaseConnection.ExecuteAsync($"RENAME TABLE `{currentTableName.ToMySqlSafeValue(false)}` TO `{newTableName.ToMySqlSafeValue(false)}`");
+        }
+
         /// <summary>
         /// Generates part of a query for adding a column to a database table.
         /// </summary>
