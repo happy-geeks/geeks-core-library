@@ -18,6 +18,12 @@ public class CommunicationSettingsModel
     /// Gets or sets the name of the settings.
     /// </summary>
     public string Name { get; set; }
+
+    /// <summary>
+    /// Gets or sets the list of static receivers.
+    /// If the receivers come from a different source, this can be empty.
+    /// </summary>
+    public List<string> ReceiversList { get; set; } = new();
     
     /// <summary>
     /// Gets or sets the ID of the data selector that returns the receivers.
@@ -30,12 +36,18 @@ public class CommunicationSettingsModel
     /// If the receivers are coming from a different source, this value can be 0.
     /// </summary>
     public int ReceiversQueryId { get; set; }
-
+    
     /// <summary>
-    /// Gets or sets the list of static receivers.
-    /// If the receivers come from a different source, this can be empty.
+    /// Gets or sets the ID of the data selector that returns extra data for each receiver.
+    /// If this data is coming from a different source, of if you don't need extra data, this value can be 0.
     /// </summary>
-    public List<string> ReceiversList { get; set; } = new();
+    public int ContentDataSelectorId { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the ID of the query (from the table wiser_query) that returns data for each receiver.
+    /// If this data is coming from a different source, of if you don't need extra data, this value can be 0.
+    /// </summary>
+    public int ContentQueryId { get; set; }
     
     /// <summary>
     /// Gets or sets the trigger type for when to send the communication.
@@ -55,7 +67,7 @@ public class CommunicationSettingsModel
     /// <summary>
     /// Gets or sets the time of day that the communication should be sent.
     /// </summary>
-    public DateTime? TriggerTime { get; set; }
+    public TimeSpan? TriggerTime { get; set; }
     
     /// <summary>
     /// Gets or sets the period value of the trigger. If the trigger is set to weekly, then this is after how many weeks the communication should be sent.

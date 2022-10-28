@@ -55,9 +55,11 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             await UpdateCommunicationTableAsync();
 
             var otherColumns = @", 
+receiver_list,
 receivers_data_selector_id,
 receivers_query_id,
-receiver_list,
+content_data_selector_id,
+content_query_id,
 settings,
 send_trigger_type,
 trigger_start,
@@ -90,10 +92,18 @@ WHERE id = ?id";
         {
             await UpdateCommunicationTableAsync();
 
+            var whereClause = "";
+            if (type.HasValue)
+            {
+                whereClause = $"WHERE JSON_CONTAINS(JSON_EXTRACT(settings, '$[*].Type'), '{(int)type}')";
+            }
+
             var otherColumns = @", 
+receiver_list,
 receivers_data_selector_id,
 receivers_query_id,
-receiver_list,
+content_data_selector_id,
+content_query_id,
 settings,
 send_trigger_type,
 trigger_start,
@@ -114,11 +124,9 @@ changed_on";
     name
     {(namesOnly ? "" : otherColumns)}
 FROM {WiserTableNames.WiserCommunication}
+{whereClause}
 ORDER BY name ASC";
-            
-            // TODO: Select based on type parameter.
 
-            databaseConnection.AddParameter("type", type);
             var dataTable = await databaseConnection.GetAsync(query);
             var results = dataTable.Rows.Cast<DataRow>().Select(dataRow => DataRowToCommunicationSettingsModel(dataRow, namesOnly));
             return results.ToList();
@@ -129,10 +137,13 @@ ORDER BY name ASC";
         {
             await UpdateCommunicationTableAsync();
             
+            databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("id", settings.Id);
             databaseConnection.AddParameter("name", settings.Name);
             databaseConnection.AddParameter("receivers_data_selector_id", settings.ReceiversDataSelectorId);
             databaseConnection.AddParameter("receivers_query_id", settings.ReceiversQueryId);
+            databaseConnection.AddParameter("content_data_selector_id", settings.ContentDataSelectorId);
+            databaseConnection.AddParameter("content_query_id", settings.ContentQueryId);
             databaseConnection.AddParameter("receiver_list", String.Join(";", settings.ReceiversList));
             databaseConnection.AddParameter("settings", JsonConvert.SerializeObject(settings.Settings));
             databaseConnection.AddParameter("send_trigger_type", settings.SendTriggerType.ToString().ToLowerInvariant());
@@ -141,20 +152,31 @@ ORDER BY name ASC";
             databaseConnection.AddParameter("trigger_time", settings.TriggerTime);
             databaseConnection.AddParameter("trigger_period_value", settings.TriggerPeriodValue);
             databaseConnection.AddParameter("trigger_period_type", settings.TriggerPeriodType?.ToString().ToLowerInvariant());
-            databaseConnection.AddParameter("trigger_week_days", (int?)settings.TriggerWeekDays);
+            databaseConnection.AddParameter("trigger_week_days", (int?)settings.TriggerWeekDays ?? 0);
             databaseConnection.AddParameter(settings.Id <= 0 ? "added_on" : "changed_on", DateTime.Now);
             databaseConnection.AddParameter(settings.Id <= 0 ? "added_by" : "changed_by", username);
             
             var queryPrefix = "SET @_username = ?username; ";
             if (settings.Id <= 0)
             {
+                // Generate empty last processed list, because the AIS needs that.
+                settings.LastProcessed = new List<LastProcessedModel>();
+                foreach (var setting in settings.Settings)
+                {
+                    settings.LastProcessed.Add(new LastProcessedModel { Type = setting.Type });
+                }
+                
+                databaseConnection.AddParameter("last_processed", JsonConvert.SerializeObject(settings.LastProcessed));
+
                 var query = $@"{queryPrefix}
 INSERT INTO {WiserTableNames.WiserCommunication}
 (
     name,
+    receiver_list,
     receivers_data_selector_id,
     receivers_query_id,
-    receiver_list,
+    content_data_selector_id,
+    content_query_id,
     settings,
     send_trigger_type,
     trigger_start,
@@ -163,15 +185,18 @@ INSERT INTO {WiserTableNames.WiserCommunication}
     trigger_period_value,
     trigger_period_type,
     trigger_week_days,
+    last_processed,
     added_on,
     added_by
 )
 VALUES
 (
     ?name,
+    ?receiver_list,
     ?receivers_data_selector_id,
     ?receivers_query_id,
-    ?receiver_list,
+    ?content_data_selector_id,
+    ?content_query_id,
     ?settings,
     ?send_trigger_type,
     ?trigger_start,
@@ -180,6 +205,7 @@ VALUES
     ?trigger_period_value,
     ?trigger_period_type,
     ?trigger_week_days,
+    ?last_processed,
     ?added_on,
     ?added_by
 )";
@@ -191,9 +217,11 @@ VALUES
                 var query = $@"{queryPrefix}
 UPDATE {WiserTableNames.WiserCommunication}
 SET name = ?name,
+    receiver_list = ?receiver_list,
     receivers_data_selector_id = ?receivers_data_selector_id,
     receivers_query_id = ?receivers_query_id,
-    receiver_list = ?receiver_list,
+    content_data_selector_id = ?content_data_selector_id,
+    content_query_id = ?content_query_id,
     settings = ?settings,
     send_trigger_type = ?send_trigger_type,
     trigger_start = ?trigger_start,
@@ -747,9 +775,11 @@ WHERE id = ?id";
 
             result.ReceiversDataSelectorId = dataRow.Field<int>("receivers_data_selector_id");
             result.ReceiversQueryId = dataRow.Field<int>("receivers_query_id");
+            result.ContentDataSelectorId = dataRow.Field<int>("content_data_selector_id");
+            result.ContentQueryId = dataRow.Field<int>("content_query_id");
             result.TriggerStart = dataRow.Field<DateTime?>("trigger_start");
             result.TriggerEnd = dataRow.Field<DateTime?>("trigger_end");
-            result.TriggerTime = dataRow.Field<DateTime?>("trigger_time");
+            result.TriggerTime = dataRow.Field<TimeSpan?>("trigger_time");
             result.TriggerPeriodValue = Convert.ToInt32(dataRow["trigger_period_value"]);
             result.TriggerWeekDays = dataRow.Field<TriggerWeekDays>("trigger_week_days");
             result.TriggerDayOfMonth = Convert.ToInt32(dataRow["trigger_day_of_month"]);

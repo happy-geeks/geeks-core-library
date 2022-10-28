@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace GeeksCoreLibrary.Modules.Communication.Enums
+﻿namespace GeeksCoreLibrary.Modules.Communication.Enums
 {
     public enum CommunicationTypes
     {
