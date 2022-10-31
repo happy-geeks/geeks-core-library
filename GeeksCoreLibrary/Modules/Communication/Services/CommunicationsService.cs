@@ -136,6 +136,11 @@ ORDER BY name ASC";
         public async Task<CommunicationSettingsModel> SaveSettingsAsync(CommunicationSettingsModel settings, string username = "GCL")
         {
             await UpdateCommunicationTableAsync();
+
+            if (settings.SendTriggerType == SendTriggerTypes.Direct)
+            {
+                settings.TriggerStart = DateTime.Now;
+            }
             
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("id", settings.Id);
@@ -155,7 +160,7 @@ ORDER BY name ASC";
             databaseConnection.AddParameter("trigger_week_days", (int?)settings.TriggerWeekDays ?? 0);
             databaseConnection.AddParameter(settings.Id <= 0 ? "added_on" : "changed_on", DateTime.Now);
             databaseConnection.AddParameter(settings.Id <= 0 ? "added_by" : "changed_by", username);
-            
+
             var queryPrefix = "SET @_username = ?username; ";
             if (settings.Id <= 0)
             {
