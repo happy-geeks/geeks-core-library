@@ -56,4 +56,9 @@ public class Service
     /// Gets or sets if the service is paused.
     /// </summary>
     public bool Paused { get; set; }
+
+    /// <summary>
+    /// Gets or sets if the service need to be run an extra time.
+    /// </summary>
+    public bool ExtraRun { get; set; }
 }
