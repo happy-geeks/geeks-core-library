@@ -666,27 +666,31 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     var templates = new StringBuilder();
                     var index = 0;
 
-                    if (GetPropertyValue(input, repeaterName).Type != JTokenType.String)
+                    var propertyValue = GetPropertyValue(input, repeaterName);
+                    if (propertyValue == null)
                     {
-                        var propertyValue = GetPropertyValue(input, repeaterName);
-                        if (propertyValue != null)
+                        continue;
+                    }
+
+                    if (propertyValue.Type != JTokenType.String)
+                    {
+                        foreach (var subObject in propertyValue)
                         {
-                            foreach (var unused in propertyValue)
-                            {
-                                // Prevention of replacing {repeaterName.count} by {repeaterName(0).count}: First replace by {~repeaterName.count~}, on the end replace back
-                                var subTemplateItem = subTemplate;
-                                subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.count}}", "{~" + repeaterName + ".count~}");
-                                subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.index}}", index.ToString());
-                                subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.volgnr}}", (index + 1).ToString());
-                                subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}", $"{{{repeaterName}({index})");
-                                subTemplateItem = subTemplateItem.Replace($"{{repeat:{repeaterName}", $"{{repeat:{repeaterName}({index})");
-                                subTemplateItem = subTemplateItem.Replace($"{{/repeat:{repeaterName}", $"{{/repeat:{repeaterName}({index})");
-                                subTemplateItem = subTemplateItem.Replace($"{{~{repeaterName}.count~}}", $"{{{repeaterName}.count}}");
+                            // Prevention of replacing {repeaterName.count} by {repeaterName(0).count}: First replace by {~repeaterName.count~}, on the end replace back
+                            var subTemplateItem = subTemplate;
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.count}}", "{~" + repeaterName + ".count~}");
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.index}}", index.ToString());
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.volgnr}}", (index + 1).ToString());
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}", $"{{{repeaterName}({index})");
+                            subTemplateItem = subTemplateItem.Replace($"{{repeat:{repeaterName}", $"{{repeat:{repeaterName}({index})");
+                            subTemplateItem = subTemplateItem.Replace($"{{/repeat:{repeaterName}", $"{{/repeat:{repeaterName}({index})");
+                            subTemplateItem = subTemplateItem.Replace($"{{~{repeaterName}.count~}}", $"{{{repeaterName}.count}}");
 
-                                templates.Append(subTemplateItem);
+                            subTemplateItem = FillStringByClassList(subObject, subTemplateItem);
 
-                                index += 1;
-                            }
+                            templates.Append(subTemplateItem);
+
+                            index += 1;
                         }
                     }
 
