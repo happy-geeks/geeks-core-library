@@ -142,50 +142,57 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             whereClause.Add("template.removed = 0");
 
             var query = $@"SELECT
-                            COALESCE(parent5.template_name, parent4.template_name, parent3.template_name, parent2.template_name, parent1.template_name) AS root_name,
-                            parent1.template_name AS parent_name,
-                            template.parent_id,
-                            template.template_name,
-                            template.template_type,
-                            template.ordering,
-                            parent1.ordering AS parent_ordering,
-                            template.template_id,
-                            GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates,
-                            GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
-                            template.load_always,
-                            template.changed_on,
-                            template.external_files,
-                            {(includeContent ? "template.template_data_minified, template.template_data," : "")}
-                            template.url_regex,
-                            template.use_cache,
-                            template.cache_minutes,
-                            template.cache_location,
-                            template.cache_regex,
-                            0 AS use_obfuscate,
-                            template.insert_mode,
-                            template.grouping_create_object_instead_of_array,
-                            template.grouping_key_column_name,
-                            template.grouping_value_column_name,
-                            template.grouping_key,
-                            template.grouping_prefix,
-                            template.pre_load_query,
-                            template.return_not_found_when_pre_load_query_has_no_data,
-                            template.login_required,
-                            template.login_redirect_url
-                        FROM {WiserTableNames.WiserTemplate} AS template
-                        {joinPart}
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
+    COALESCE(parent5.template_name, parent4.template_name, parent3.template_name, parent2.template_name, parent1.template_name) AS root_name,
+    parent1.template_name AS parent_name,
+    template.parent_id,
+    template.template_name,
+    template.template_type,
+    template.ordering,
+    parent1.ordering AS parent_ordering,
+    template.template_id,
+    GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates,
+    GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
+    template.load_always,
+    template.changed_on,
+    template.external_files,
+    {(includeContent ? "template.template_data_minified, template.template_data," : "")}
+    template.url_regex,
+    template.use_cache,
+    template.cache_minutes,
+    template.cache_location,
+    template.cache_regex,
+    0 AS use_obfuscate,
+    template.insert_mode,
+    template.grouping_create_object_instead_of_array,
+    template.grouping_key_column_name,
+    template.grouping_value_column_name,
+    template.grouping_key,
+    template.grouping_prefix,
+    template.pre_load_query,
+    template.return_not_found_when_pre_load_query_has_no_data,
+    template.login_required,
+    template.login_role,
+    template.login_redirect_url,
+    template.routine_type,
+    template.routine_parameters,
+    template.routine_return_type,
+    template.trigger_timing,
+    template.trigger_event,
+    template.trigger_table_name
+FROM {WiserTableNames.WiserTemplate} AS template
+{joinPart}
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN (2, 3) AND linkedCssTemplate.removed = 0
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = 4 AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN (2, 3) AND linkedCssTemplate.removed = 0
+LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = 4 AND linkedJavascriptTemplate.removed = 0
 
-                        WHERE {String.Join(" AND ", whereClause)}
-                        GROUP BY template.template_id
-                        ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
+WHERE {String.Join(" AND ", whereClause)}
+GROUP BY template.template_id
+ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
             Template result;
             await using (var reader = await databaseConnection.GetReaderAsync(query))
@@ -204,7 +211,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 Type = result.Type,
                 LoginRequired = true,
-                LoginRedirectUrl = result.LoginRedirectUrl
+                LoginRedirectUrl = result.LoginRedirectUrl,
+                LoginRoles = result.LoginRoles
             };
 
             if (httpContextAccessor.HttpContext == null)
@@ -213,9 +221,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return emptyTemplate;
             }
 
-            // Check current login.
+            // Check current login, and match user's roles against required roles of the template.
             var userData = await accountsService.GetUserDataFromCookieAsync();
-            return userData is { UserId: > 0 } ? result : emptyTemplate;
+
+            if (userData is not {UserId: > 0} || (userData.Roles != null && !userData.Roles.Any(role => result.LoginRoles.Contains(role.Id))))
+            {
+                return emptyTemplate;
+            }
+
+            return result;
         }
 
         /// <inheritdoc />
@@ -667,7 +681,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Start with special template replacements for the pre load query that you can set in HTML templates in the templates module in Wiser.
-            if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
+            if (httpContextAccessor != null && httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
             {
                 input = stringReplacementsService.DoReplacements(input, (DataRow)httpContextAccessor.HttpContext.Items[Constants.TemplatePreLoadQueryResultKey], forQuery, prefix: "{template.");
             }
@@ -1164,6 +1178,28 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public async Task<JArray> GetJsonResponseFromRoutineAsync(RoutineTemplate routineTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false)
+        {
+            var routineName = $"WISER_{routineTemplate.Name}";
+            // First get all parameters of the routine.
+            var query = @"SELECT PARAMETER_NAME
+FROM information_schema.parameters 
+WHERE SPECIFIC_NAME = ?name
+ORDER BY ORDINAL_POSITION ASC";
+            databaseConnection.AddParameter("name", routineName);
+            var dataTable = await databaseConnection.GetAsync(query);
+            var parameters = dataTable.Rows.Cast<DataRow>().Select(dataRow => $"'{{{dataRow.Field<string>("PARAMETER_NAME")}}}'").ToList();
+
+            // Build the query to execute the routine and get the results.
+            var queryPrefix = routineTemplate.RoutineType == RoutineTypes.Function ? "SELECT " : "CALL ";
+            var querySuffix = routineTemplate.RoutineType == RoutineTypes.Function ? "AS result" : "";
+            query = $"{queryPrefix} {routineName}({String.Join(", ", parameters)}) {querySuffix};";
+            query = await stringReplacementsService.DoAllReplacementsAsync(query, forQuery: true);
+            dataTable = await databaseConnection.GetAsync(query);
+            return dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(null, encryptionKey, skipNullValues, allowValueDecryption);
+        }
+
+        /// <inheritdoc />
         public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             return await GetTemplateDataAsync(this, id, name, parentId, parentName);
@@ -1275,6 +1311,53 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             cacheFileName.Append(extension);
 
             return cacheFileName.ToString();
+        }
+
+        /// <inheritdoc />
+        public async Task<List<Template>> GetTemplateUrlsAsync()
+        {
+            string query;
+            if (gclSettings.Environment == Environments.Development)
+            {
+                query = $@"SELECT
+	template.template_id,
+	template.template_type,
+	template.url_regex
+FROM {WiserTableNames.WiserTemplate} AS template
+LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = template.template_id AND otherVersion.version > template.version
+WHERE otherVersion.id IS NULL
+AND template.template_type IN ({(int)TemplateTypes.Html}, {(int)TemplateTypes.Query}, {(int)TemplateTypes.Routine})
+AND template.url_regex IS NOT NULL
+AND template.url_regex <> ''";
+            }
+            else
+            {
+                query = $@"
+SELECT 
+	template.template_id,
+	template.template_type,
+	template.url_regex
+FROM {WiserTableNames.WiserTemplate} AS template
+WHERE (template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}
+AND template.template_type IN ({(int)TemplateTypes.Html}, {(int)TemplateTypes.Query}, {(int)TemplateTypes.Routine})
+AND template.url_regex IS NOT NULL
+AND template.url_regex <> ''";
+            }
+
+            var dataTable = await databaseConnection.GetAsync(query);
+
+            var results = new List<Template>();
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                results.Add(new Template
+                {
+                    Id = dataRow.Field<int>("template_id"),
+                    Type = dataRow.Field<TemplateTypes>("template_type"),
+                    UrlRegex = dataRow.Field<string>("url_regex")
+                });
+            }
+
+            return results;
         }
 
         /// <summary>

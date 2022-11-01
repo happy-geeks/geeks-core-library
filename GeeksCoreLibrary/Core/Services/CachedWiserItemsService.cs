@@ -496,6 +496,12 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
+        public async Task<string> ReplaceRelativeImagesToAbsoluteAsync(string input, string imagesDomain)
+        {
+            return await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(input, imagesDomain);
+        }
+
+        /// <inheritdoc />
         public async Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(string entityType = null, int linkType = 0)
         {
             return await GetAggregationSettingsAsync(this, entityType, linkType);

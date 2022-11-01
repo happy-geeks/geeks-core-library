@@ -327,6 +327,48 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         }
 
         /// <inheritdoc />
+        public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true)
+        {
+            if (replaceData == null)
+            {
+                return input;
+            }
+            
+            var output = input;
+            var dataDictionary = new Dictionary<string, object>(caseSensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
+            // Get property values from the current level to use for replacements.
+            foreach (JProperty item in replaceData)
+            {
+                if (item.Value.Type != JTokenType.Array && item.Value.Type != JTokenType.Object)
+                {
+                    dataDictionary.Add(item.Name, item.Value);
+                }
+            }
+
+            // Do the replacements for the current level.
+            output = DoReplacements(output, dataDictionary, forQuery: forQuery);
+
+            // Repeat the process for each object in the current level until the bottom is reached.
+            foreach (JProperty item in replaceData)
+            {
+                if (item.Value.Type == JTokenType.Object)
+                {
+                    output = DoReplacements(output, item.Value, forQuery, caseSensitive);
+                }
+                else if (item.Value.Type == JTokenType.Array)
+                {
+                    foreach (JObject subItem in item.Value)
+                    {
+                        output = DoReplacements(output, subItem, forQuery, caseSensitive);
+                    }
+                }
+            }
+
+            return output;
+        }
+
+        /// <inheritdoc />
         public string DoReplacements(string input, IDictionary<string, object> replaceData, string prefix = "{", string suffix = "}", bool forQuery = false)
         {
             if (replaceData == null || replaceData.Count == 0)
@@ -781,11 +823,14 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 //Checks for default values
                 if (fieldName.Contains("?"))
                 {
-                    var questionMarkIndexOf = fieldName.LastIndexOf("?");
-                    var colonIndexOf = fieldName.LastIndexOf(":");
-                    var defaultValueWithQuestionMark = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
-                    defaultValue = defaultValueWithQuestionMark.Remove(0, 1);
-                    fieldName = fieldName.Remove(questionMarkIndexOf, defaultValueWithQuestionMark.Length);
+                    var questionMarkIndexOf = fieldName.LastIndexOf("?", StringComparison.Ordinal);
+                    var colonIndexOf = fieldName.LastIndexOf(":", StringComparison.Ordinal);
+                    if (questionMarkIndexOf + 1 > colonIndexOf)
+                    {
+                        var defaultValueWithQuestionMark = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
+                        defaultValue = defaultValueWithQuestionMark.Remove(0, 1);
+                        fieldName = fieldName.Remove(questionMarkIndexOf, defaultValueWithQuestionMark.Length);
+                    }
                 }
                 
                 // Colons that are escaped with a backslash are temporarily replaced with "~~COLON~~".

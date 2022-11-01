@@ -1,5 +1,7 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Models;
+using GeeksCoreLibrary.Core.Models;
 
 namespace GeeksCoreLibrary.Components.Account.Interfaces
 {
@@ -27,9 +29,8 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <param name="amountOfDaysToRememberCookie">The amount of days to remember the cookie for the user.</param>
         /// <param name="mainUserEntityType">The entity type for main accounts.</param>
         /// <param name="userEntityType">The entity type for sub accounts.</param>
-        /// <param name="role">Optional: The role of the user.</param>
         /// <returns>The value that should be saved in the cookie.</returns>
-        Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account", string role = null);
+        Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account");
         
         /// <summary>
         /// Deletes a cookie token from the database, so that the user cannot login with it anymore, even if it still has a cookie with that token.
@@ -50,5 +51,13 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
         /// <returns>The result string.</returns>
         Task<string> DoAccountReplacementsAsync(string input, bool forQuery = false);
+
+        /// <summary>
+        /// Gets all roles a user has.
+        /// </summary>
+        /// <param name="userId">The item ID of the user whose roles to retrieve.</param>
+        /// <param name="includePermissions">Optional: Whether to include all permissions that each role has. Default is <see langword="false"/>.</param>
+        /// <returns></returns>
+        Task<List<RoleModel>> GetUserRolesAsync(ulong userId, bool includePermissions = false);
     }
 }

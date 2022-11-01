@@ -101,6 +101,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Interfaces
         /// <param name="caseSensitive">Whether the variable names in the replacement data dictionary should be case sensitive.</param>
         /// <returns></returns>
         string DoReplacements(string input, ISession replaceData, bool forQuery = false, bool caseSensitive = true);
+        
+        /// <summary>
+        /// Performs replacements on a string using a JToken. This function is the most generic function, and all other replacement functions also use this function.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="replaceData"></param>
+        /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+        /// <param name="caseSensitive">Whether the variable names in the replacement data dictionary should be case sensitive.</param>
+        /// <returns></returns>
+        string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true);
 
         /// <summary>
         /// Performs replacements on a string using a dictionary of some type. This function is the most generic function, and all other replacement functions also use this function.
