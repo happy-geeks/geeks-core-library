@@ -577,7 +577,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 return input;
             }
 
-            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\?([^\]{suffix}\s]*){suffix}");
+            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\|([^\]{suffix}\s]*){suffix}");
             foreach (Match match in regex.Matches(input))
             {
                 input = input.Replace(match.Value, match.Groups[2].Value);
@@ -803,7 +803,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <param name="prefix">The prefix of replacement variables. The default is '{'.</param>
         /// <param name="suffix">The suffix of replacement variables. The default is '}'.</param>
         /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
-        /// <returns></returns>
+        /// <returns>An array of <see cref="StringReplacementVariable"/>.</returns>
         private static StringReplacementVariable[] GetReplacementVariables(string input, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
             if (String.IsNullOrWhiteSpace(input))
@@ -824,16 +824,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 var formatters = "";
                 var defaultValue = "";
 
-                //Checks for default values
-                if (fieldName.Contains("?"))
+                // Checks for default values.
+                var defaultValueSeparatorLocation = fieldName.LastIndexOf("|", StringComparison.Ordinal);
+                if (defaultValueSeparatorLocation > 0) // This 0 is on purpose, it wouldn't make sense if the default value separator is the first character of the variable.
                 {
-                    var questionMarkIndexOf = fieldName.LastIndexOf("?", StringComparison.Ordinal);
                     var colonIndexOf = fieldName.LastIndexOf(":", StringComparison.Ordinal);
-                    if (questionMarkIndexOf + 1 > colonIndexOf)
+                    if (defaultValueSeparatorLocation + 1 > colonIndexOf)
                     {
-                        var defaultValueWithQuestionMark = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
-                        defaultValue = defaultValueWithQuestionMark.Remove(0, 1);
-                        fieldName = fieldName.Remove(questionMarkIndexOf, defaultValueWithQuestionMark.Length);
+                        var defaultValueWithSeparator = colonIndexOf == -1 ? fieldName.Substring(defaultValueSeparatorLocation) : fieldName.Substring(defaultValueSeparatorLocation, colonIndexOf);
+                        defaultValue = defaultValueWithSeparator.Remove(0, 1);
+                        fieldName = fieldName.Remove(defaultValueSeparatorLocation, defaultValueWithSeparator.Length);
                     }
                 }
                 
@@ -842,7 +842,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
                 // Check if formatters are used. If the field ends with a colon, it's assumed to be part of the field name and not the formatter separator.
                 // No check is performed to see if the formatters are valid, as that would slow things down too much.
-                if (fieldName.Contains(":") && !fieldName.Trim().EndsWith(":"))
+                if (fieldName.Contains(':') && !fieldName.Trim().EndsWith(':'))
                 {
                     var lastColonIndex = fieldName.LastIndexOf(":", StringComparison.Ordinal);
                     formatters = fieldName[lastColonIndex..].TrimStart(':');
