@@ -279,6 +279,54 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserTemplate, "idx_environment", IndexTypes.Normal, new List<string> { "published_environment", "removed" })
                 }
             },
+            
+            // wiser_commit
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommit,
+                LastUpdate = new DateTime(2022, 11, 4),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("description", MySqlDbType.MediumText),
+                    new("external_id", MySqlDbType.VarChar, 255),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("added_by", MySqlDbType.VarChar, 255),
+                    new("completed", MySqlDbType.Int16, notNull: true, defaultValue: "0")
+                }
+            },
+            
+            // wiser_commit_dynamic_content
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommitDynamicContent,
+                LastUpdate = new DateTime(2022, 11, 4),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("dynamic_content_id", MySqlDbType.Int32, notNull: true),
+                    new("version", MySqlDbType.Int32, notNull: true),
+                    new("commit_id", MySqlDbType.Int32, notNull: true),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("added_by", MySqlDbType.VarChar, 255)
+                }
+            },
+            
+            // wiser_commit_template
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommitTemplate,
+                LastUpdate = new DateTime(2022, 11, 4),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("template_id", MySqlDbType.Int32, notNull: true),
+                    new("version", MySqlDbType.Int32, notNull: true),
+                    new("commit_id", MySqlDbType.Int32, notNull: true),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("added_by", MySqlDbType.VarChar, 255)
+                }
+            },
 
             // wiser_dynamic_content
             new WiserTableDefinitionModel
