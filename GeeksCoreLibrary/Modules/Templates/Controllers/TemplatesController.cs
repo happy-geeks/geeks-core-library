@@ -170,7 +170,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(context, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
             if (removeSvgUrlsFromIcons)
             {
-                var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""(.*)#(?:.*)""(?:[^>]*)>");
+                var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>");
                 foreach (Match match in regex.Matches(newBodyHtml))
                 {
                     newBodyHtml = newBodyHtml.Replace(match.Groups[1].Value, "");
