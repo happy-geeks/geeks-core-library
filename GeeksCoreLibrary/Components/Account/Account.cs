@@ -22,6 +22,7 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
+using Google.Authenticator;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Html;
@@ -46,6 +47,9 @@ namespace GeeksCoreLibrary.Components.Account
         private readonly IObjectsService objectsService;
         private readonly ICommunicationsService communicationsService;
         private readonly IWiserItemsService wiserItemsService;
+        
+        //Remove when a better way is found
+        private string googleAuthKey = "";
 
         #region Enums
 
@@ -379,7 +383,29 @@ namespace GeeksCoreLibrary.Components.Account
                 return template;
             }
 
-            return $"<!-- Google Authenticator not implemented yet. --> {template}";
+            if (String.IsNullOrEmpty(googleAuthKey))
+            {
+                googleAuthKey = Guid.NewGuid().ToString().Replace("-", "");
+                TwoFactorAuthenticator tfa = new TwoFactorAuthenticator();
+                SetupCode setupInfo = tfa.GenerateSetupCode("Wiser", username, googleAuthKey, false, 3);
+                return template.ReplaceCaseInsensitive("{googleAuthenticationQrImageUrl}", setupInfo.QrCodeSetupImageUrl);
+            }
+            else
+            {
+                TwoFactorAuthenticator tfa = new TwoFactorAuthenticator();
+                bool result = tfa.ValidateTwoFactorPIN(googleAuthKey, "");
+                if (!result)
+                {
+                    return template.ReplaceCaseInsensitive("{error}", "Iets is er fout gegaan");
+                }
+
+                return template;
+            }
+            
+            
+
+            
+            // return $"<!-- Google Authenticator not implemented yet. --> {template}";
             /*var googleAuthenticator = new GoogleAuthenticator(GoogleAuthenticatorSiteId, sessionUserId, username, "");
             stepNumber = googleAuthenticator.HasAuthEnabled() ? LoginSteps.LoginWithTwoFactorAuthentication : LoginSteps.SetupTwoFactorAuthentication;
             return template.ReplaceCaseInsensitive("{googleAuthenticationQrImageUrl}", googleAuthenticator.GetQrCodeUrl()).ReplaceCaseInsensitive("{googleAuthenticationVerificationId}", googleAuthenticator.GetVerificationId());*/

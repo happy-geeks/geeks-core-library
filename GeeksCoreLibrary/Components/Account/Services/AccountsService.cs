@@ -257,6 +257,20 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
+        public async Task Save2FaKeyAsync(int user_id, string user2FAKey)
+        {
+            var query = "INSERT INTO wiser_itemdetail (item_id,key, value) VALUES (user_id,User2FAKey, user2FAKey) ";
+            await databaseConnection.ExecuteAsync(query);
+        }
+        
+        /// <inheritdoc />
+        public async Task Get2FaKeyAsync(int user_id)
+        {
+            var query = "SELECT value FROM wiser_itemdetail WHERE item_id = user_id AND key = User2FAKey";
+            await databaseConnection.ExecuteAsync(query);
+        }
+
+        /// <inheritdoc />
         public async Task LogoutUserAsync(AccountCmsSettingsModel settings)
         {
             // Do some initial checks, to make sure we have everything we need and the user is actually still logged in.

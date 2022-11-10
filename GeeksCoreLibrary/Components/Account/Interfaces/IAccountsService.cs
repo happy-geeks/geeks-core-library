@@ -36,6 +36,21 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// </summary>
         /// <param name="selector">The selector of the token.</param>
         Task RemoveCookieTokenAsync(string selector);
+
+        /// <summary>
+        /// Saves the 2FA key from the user in the database
+        /// </summary>
+        /// <param name="user_id"></param>
+        /// <param name="user2FAKey"></param>
+        /// <returns></returns>
+        Task Save2FaKeyAsync(int user_id, string user2FAKey);
+
+        /// <summary>
+        /// Gets the 2FA key from the user in the database
+        /// </summary>
+        /// <param name="user_id"></param>
+        /// <returns></returns>
+        Task Get2FaKeyAsync(int user_id);
         
         /// <summary>
         /// Attempts to log off the user. This will delete the user's cookie from their browser and our database.
