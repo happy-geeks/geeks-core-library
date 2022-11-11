@@ -12,6 +12,7 @@
         WiserItems,
         ShoppingBaskets,
         DataSelectors,
-        Configurators
+        Configurators,
+        WebPages
     }
 }
