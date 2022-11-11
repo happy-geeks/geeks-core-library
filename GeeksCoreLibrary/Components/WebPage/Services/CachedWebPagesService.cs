@@ -8,6 +8,7 @@ using GeeksCoreLibrary.Components.WebPage.Models;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using LazyCache;
 using Microsoft.Extensions.Options;
@@ -21,14 +22,16 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
         private readonly IWebPagesService webPagesService;
         private readonly ILanguagesService languagesService;
         private readonly ICacheService cacheService;
+        private readonly IStringReplacementsService stringReplacementsService;
 
-        public CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSettings, IWebPagesService webPagesService, ILanguagesService languagesService, ICacheService cacheService)
+        public CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSettings, IWebPagesService webPagesService, ILanguagesService languagesService, ICacheService cacheService, IStringReplacementsService stringReplacementsService)
         {
             this.cache = cache;
             this.gclSettings = gclSettings.Value;
             this.webPagesService = webPagesService;
             this.languagesService = languagesService;
             this.cacheService = cacheService;
+            this.stringReplacementsService = stringReplacementsService;
         }
 
         /// <inheritdoc />
@@ -51,7 +54,26 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
         /// <inheritdoc />
         public async Task<DataTable> GetWebPageResultAsync(WebPageCmsSettingsModel settings, Dictionary<string, string> extraData = null)
         {
-            var key = $"WebPage_{languagesService.CurrentLanguageCode ?? ""}_{settings.PageId}_{settings.PageName ?? ""}_{settings.PathMustContainName ?? ""}_{settings.SearchNumberOfLevels}";
+            var pageName = String.Empty;
+            var pathMustContainName = String.Empty;
+            var languageCode = String.Empty;
+
+            if (!String.IsNullOrWhiteSpace(settings.PageName))
+            {
+                pageName = await stringReplacementsService.DoAllReplacementsAsync(stringReplacementsService.DoReplacements(settings.PageName, extraData));
+            }
+
+            if (!String.IsNullOrWhiteSpace(settings.PathMustContainName))
+            {
+                pathMustContainName = await stringReplacementsService.DoAllReplacementsAsync(stringReplacementsService.DoReplacements(settings.PathMustContainName, extraData));
+            }
+
+            if (!String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                languageCode = await stringReplacementsService.DoAllReplacementsAsync(languagesService.CurrentLanguageCode);
+            }
+
+            var key = $"WebPage_{languageCode}_{settings.PageId}_{pageName}_{pathMustContainName}_{settings.SearchNumberOfLevels}";
             if (extraData != null && extraData.Any())
             {
                 key += $"_{String.Join("_", extraData.Select(x => $"{x.Key}={x.Value}"))}";
