@@ -5,10 +5,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.WebPage.Interfaces;
 using GeeksCoreLibrary.Components.WebPage.Models;
+using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using LazyCache;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Components.WebPage.Services
@@ -19,13 +20,15 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
         private readonly GclSettings gclSettings;
         private readonly IWebPagesService webPagesService;
         private readonly ILanguagesService languagesService;
+        private readonly ICacheService cacheService;
 
-        public CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSettings, IWebPagesService webPagesService, ILanguagesService languagesService)
+        public CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSettings, IWebPagesService webPagesService, ILanguagesService languagesService, ICacheService cacheService)
         {
             this.cache = cache;
             this.gclSettings = gclSettings.Value;
             this.webPagesService = webPagesService;
             this.languagesService = languagesService;
+            this.cacheService = cacheService;
         }
 
         /// <inheritdoc />
@@ -38,11 +41,11 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
 
             var key = $"WebPagesWithFixedUrl_{fixedUrl}";
             return await cache.GetOrAddAsync(key,
-                delegate(ICacheEntry cacheEntry)
+                async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWebPageCacheDuration;
-                    return webPagesService.GetWebPageViaFixedUrlAsync(fixedUrl);
-                });
+                    return await webPagesService.GetWebPageViaFixedUrlAsync(fixedUrl);
+                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WebPages));
         }
 
         /// <inheritdoc />
@@ -55,11 +58,11 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
             }
 
             return await cache.GetOrAddAsync(key,
-                 delegate(ICacheEntry cacheEntry)
-                 {
-                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWebPageCacheDuration;
-                     return webPagesService.GetWebPageResultAsync(settings, extraData);
-                 });
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWebPageCacheDuration;
+                    return await webPagesService.GetWebPageResultAsync(settings, extraData);
+                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WebPages));
         }
     }
 }
