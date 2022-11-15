@@ -305,6 +305,14 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="userId">The ID of the logged in Wiser user.</param>
         /// <returns></returns>
         Task<AccessRights> GetUserQueryPermissionsAsync(int queryId, ulong userId);
+        
+        /// <summary>
+        /// Get the data selector permissions for a user.
+        /// </summary>
+        /// <param name="dataSelectorId">The ID of the data selector that you want to have the permissions of.</param>
+        /// <param name="userId">The ID of the logged in Wiser user.</param>
+        /// <returns></returns>
+        Task<AccessRights> GetUserDataSelectorPermissionsAsync(int dataSelectorId, ulong userId);
 
         /// <summary>
         /// Function gets an item from the database and returns all details in list.
