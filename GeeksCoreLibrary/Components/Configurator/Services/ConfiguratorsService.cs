@@ -705,16 +705,24 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         /// <inheritdoc />
         public async Task<ulong> SaveConfigurationAsync(ConfigurationsModel input, ulong? parentId = null)
         {
+            var prices = await CalculatePriceAsync(input);
+            var saveZeroPriceConfigurations = (await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveZeroPriceConfigurations")).Equals("true", StringComparison.OrdinalIgnoreCase);
+
+            // Return if price of configuration is 0 and configurations with zero price must not be saved
+            if (!saveZeroPriceConfigurations && prices.customerPrice <= 0)
+            {
+                logger.LogInformation($"Saving configuration skipped because of zero price.");
+                return 0;
+            }
+
             var configuration = new WiserItemModel
             {
                 Title = "Configuration",
                 EntityType = "configuration",
                 ModuleId = 854
             };
-
             var deliveryTime = await GetDeliveryTimeAsync(input);
-            var prices = await CalculatePriceAsync(input);
-
+            
             // add optional 
             var saveConfigQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationQuery");
             await AddItemDetailsFromQueryToWiserItemModelAsync(saveConfigQuery, configuration, input.QueryStringItems);
