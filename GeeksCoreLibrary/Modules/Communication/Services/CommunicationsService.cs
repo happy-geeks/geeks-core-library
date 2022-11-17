@@ -557,6 +557,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             communication.Subject ??= "";
             await AddOrUpdateSingleCommunicationAsync(communication);
         }
+
         public async Task SendWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings)
         {
             foreach (var receiver in communication.Receivers)
@@ -574,6 +575,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
                 }
             }
         }
+
         private async Task SendCmWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
         {
             var apiKey = Guid.Parse(smsSettings.ProviderId);
@@ -615,13 +617,12 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             // If request was not success throw the status message as an exception.
             throw new Exception(response.statusMessage);
         }
-         
     
     private async Task SendMetaWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
     {    
-        var apiToken = smsSettings.ProviderId;
-        var phoneNumberId = smsSettings.PhoneNumberId;
-        var resource = "https://graph.facebook.com/v14.0/" + phoneNumberId + "/messages";
+            var apiToken = smsSettings.ProviderId;
+            var phoneNumberId = smsSettings.PhoneNumberId;
+            var resource = "https://graph.facebook.com/v14.0/" + phoneNumberId + "/messages";
 
             if (receiverPhoneNumber.StartsWith("+") || receiverPhoneNumber.StartsWith("00"))
             {
@@ -641,20 +642,20 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
               throw new ArgumentException("Phone number is missing the country code.");
              }
             
-        // Now "sanitize" the phone number by removing all non-digit characters.
-        receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
-        var senderName = communication.SenderName ?? smsSettings.SenderName;
-        if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
-        {
-            senderName = senderName.Substring(0, 17);
-        }
-        else if (senderName.Length > 11)
-        {
-            senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
-        }
+            // Now "sanitize" the phone number by removing all non-digit characters.
+            receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+            var senderName = communication.SenderName ?? smsSettings.SenderName;
+            if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+            {
+                senderName = senderName.Substring(0, 17);
+            }
+            else if (senderName.Length > 11)
+            {
+                senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+            }
 
-        if (!String.IsNullOrEmpty(communication.Content))
-        {
+            if (!String.IsNullOrEmpty(communication.Content))
+            {
                 var metaConnection = new RestClient();
                 var request = new RestRequest(resource, Method.Post);
                 request.AddHeader("Authorization", "Bearer " + apiToken);
@@ -738,15 +739,15 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
                     throw new Exception(response.ErrorMessage);
                 }
 
-          if (response.StatusCode == HttpStatusCode.OK)
-          {
-             return;
-          }
-           //If request was not success throw the status message as an exception.
-           throw new Exception(response.ErrorMessage);
-         }
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                       return;
+                    }
+                     //If request was not success throw the status message as an exception.
+                     throw new Exception(response.ErrorMessage);
+             }
            
-        }
+}
 
 
 
