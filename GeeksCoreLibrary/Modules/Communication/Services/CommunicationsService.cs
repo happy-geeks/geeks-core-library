@@ -5,10 +5,15 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Security.Policy;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using BuckarooSdk.DataTypes.Response.Status;
 using CM.Text;
+using CM.Text.BusinessMessaging;
+using CM.Text.BusinessMessaging.Model;
+using CM.Text.BusinessMessaging.Model.MultiChannel;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -17,12 +22,16 @@ using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Communication.Models.SmtPeter;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using HtmlAgilityPack;
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using MimeKit;
+using RestSharp;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
+using Twilio.TwiML.Messaging;
 
 namespace GeeksCoreLibrary.Modules.Communication.Services
 {
@@ -478,7 +487,96 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
         private async Task SendCmSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
         {
             var apiKey = Guid.Parse(smsSettings.ProviderId);
-            
+            if (receiverPhoneNumber.StartsWith("+"))
+            {
+                // Phone number looks something like "+31612345678".
+                receiverPhoneNumber = receiverPhoneNumber.Substring(1).Insert(0, "00");
+            }
+            else if (!receiverPhoneNumber.StartsWith("00"))
+            {
+                throw new ArgumentException("Phone number is missing the country code.");
+            }
+
+            // Now "sanitize" the phone number by removing all non-digit characters.
+            receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+            var cmConnection = new TextClient(apiKey);
+            var senderName = communication.SenderName ?? smsSettings.SenderName;
+            if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+            {
+                senderName = senderName.Substring(0, 17);
+            }
+            else if (senderName.Length > 11)
+            {
+                senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+            }
+
+            var response = await cmConnection.SendMessageAsync(communication.Content, senderName, new[] {receiverPhoneNumber}, null);
+            if (response.statusCode == TextClientStatusCode.Ok)
+            {
+                return;
+            }
+
+            // If request was not success throw the status message as an exception.
+            throw new Exception(response.statusMessage);
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
+        {
+            var receivers = new List<CommunicationReceiverModel>();
+            var receiverAddresses = receiver.Split(';');
+            foreach (var receiverAddress in receiverAddresses)
+            {
+                var receiverModel = new CommunicationReceiverModel { Address = receiverAddress };
+                receivers.Add(receiverModel);
+            }
+
+            await SendWhatsAppAsync(receivers, body, sender, senderName, sendDate, attachments);
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
+        {
+            await SendWhatsAppAsync(new SingleCommunicationModel()
+            {
+                Receivers = receivers,
+                Content = body,
+                Sender = sender,
+                SenderName = senderName,
+                SendDate = sendDate,
+                AttachmentUrls = attachments
+
+            });
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppAsync(SingleCommunicationModel communication)
+        {
+            communication.Id = 0;
+            communication.Type = CommunicationTypes.WhatsApp;
+            communication.Subject ??= "";
+            await AddOrUpdateSingleCommunicationAsync(communication);
+        }
+        public async Task SendWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings)
+        {
+            foreach (var receiver in communication.Receivers)
+            {
+                switch (smsSettings.Provider)
+                {
+                    case SmsServiceProviders.Cm:
+                        await SendCmWhatsAppDirectlyAsync(communication, smsSettings, receiver.Address);
+                        break;
+                    case SmsServiceProviders.Meta:
+                        await SendMetaWhatsAppDirectlyAsync(communication, smsSettings, receiver.Address);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(smsSettings.Provider), smsSettings.Provider.ToString());
+                }
+            }
+        }
+        private async Task SendCmWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
+        {
+            var apiKey = Guid.Parse(smsSettings.ProviderId);
             if (receiverPhoneNumber.StartsWith("+"))
             {
                 // Phone number looks something like "+31612345678".
@@ -493,7 +591,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
 
             var cmConnection = new TextClient(apiKey);
-            
+
             var senderName = communication.SenderName ?? smsSettings.SenderName;
             if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
             {
@@ -503,8 +601,11 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             {
                 senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
             }
+            var builder = new MessageBuilder(communication.Content, senderName, new[] { receiverPhoneNumber });
+            builder.WithAllowedChannels(Channel.WhatsApp);
+            var message = builder.Build();
 
-            var response = await cmConnection.SendMessageAsync(communication.Content, senderName, new[] {receiverPhoneNumber}, null);
+            var response = await cmConnection.SendMessageAsync(message);
 
             if (response.statusCode == TextClientStatusCode.Ok)
             {
@@ -514,5 +615,141 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             // If request was not success throw the status message as an exception.
             throw new Exception(response.statusMessage);
         }
+         
+    
+    private async Task SendMetaWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
+    {    
+        var apiToken = smsSettings.ProviderId;
+        var phoneNumberId = smsSettings.PhoneNumberId;
+        var resource = "https://graph.facebook.com/v14.0/" + phoneNumberId + "/messages";
+
+            if (receiverPhoneNumber.StartsWith("+") || receiverPhoneNumber.StartsWith("00"))
+            {
+                if (receiverPhoneNumber.StartsWith("00"))
+                {
+                    // Phone number looks something like "0031612345678".
+                    receiverPhoneNumber = receiverPhoneNumber.Remove(0, 1).Remove(0, 1);
+                }
+                else
+                {
+                    // Phone number looks something like "+31612345678".
+                    receiverPhoneNumber = receiverPhoneNumber.Remove(0, 1);
+                }
+             }
+            else if (!receiverPhoneNumber.StartsWith("00"))
+             {
+              throw new ArgumentException("Phone number is missing the country code.");
+             }
+            
+        // Now "sanitize" the phone number by removing all non-digit characters.
+        receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+        var senderName = communication.SenderName ?? smsSettings.SenderName;
+        if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+        {
+            senderName = senderName.Substring(0, 17);
+        }
+        else if (senderName.Length > 11)
+        {
+            senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+        }
+
+        if (!String.IsNullOrEmpty(communication.Content))
+        {
+                var metaConnection = new RestClient();
+                var request = new RestRequest(resource, Method.Post);
+                request.AddHeader("Authorization", "Bearer " + apiToken);
+                request.AddJsonBody(new
+                {
+                    messaging_product = "whatsapp",
+                    recipient_type = "individual",
+                    to = receiverPhoneNumber,
+                    type = "text",
+                    text = new
+                    {
+                     preview_url = false,
+                     body = communication.Content
+                    }
+                });
+
+                var response = await metaConnection.ExecuteAsync(request);
+
+                foreach (var url in communication.AttachmentUrls)
+                {
+                    var typeUrl = "";
+                    if (url.Contains(".jpeg") || url.Contains(".png") || url.Contains(".jpg"))
+                    {
+                        typeUrl = "image";
+                    }
+                    if (url.Contains(".pdf") || url.Contains(".csv") || url.Contains(".txt") || url.Contains(".xls") || 
+                        url.Contains(".xlsx") || url.Contains(".doc") || url.Contains(".docx") || url.Contains(".pptx") || 
+                        url.Contains(".ppt") || url.Contains(".xml"))
+                    {
+                        typeUrl = "document";
+
+                    }
+                    if (url.Contains(".mp3"))
+                    {
+                        typeUrl = "audio";
+
+                    }
+                    if (url.Contains(".mp4"))
+                    {
+                        typeUrl = "video";
+
+                    }
+
+                    if (!String.IsNullOrEmpty(typeUrl))
+                    {
+                        request = new RestRequest(resource, Method.Post);
+                        request.AddHeader("Authorization", "Bearer " + apiToken);
+                        request.AddJsonBody(new
+                        {
+                            messaging_product = "whatsapp",
+                            recipient_type = "individual",
+                            to = receiverPhoneNumber,
+                            type = typeUrl,
+
+                            image = typeUrl != "image" ? null : new
+                            {
+                                link = url
+                            },
+                            document = typeUrl != "document" ? null : new
+                            {
+                                link = url
+                            },
+                            audio = typeUrl != "audio" ? null : new
+                            {
+                                link = url
+                            },
+                            video = typeUrl != "video" ? null : new
+                            {
+                                link = url
+                            },
+                        });
+                        response = await metaConnection.ExecuteAsync(request);
+                    }
+
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                       return;
+                    }
+
+                    // If request was not success throw the status message as an exception.
+                    throw new Exception(response.ErrorMessage);
+                }
+
+          if (response.StatusCode == HttpStatusCode.OK)
+          {
+             return;
+          }
+           //If request was not success throw the status message as an exception.
+           throw new Exception(response.ErrorMessage);
+         }
+           
+        }
+
+
+
     }
 }
+

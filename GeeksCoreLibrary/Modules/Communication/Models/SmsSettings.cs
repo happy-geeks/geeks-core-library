@@ -15,6 +15,11 @@ public class SmsSettings
     public string ProviderId { get; set; }
 
     /// <summary>
+    /// Gets or sets the Phone number ID if the provider expects one.
+    /// </summary>
+    public string PhoneNumberId { get; set; }
+
+    /// <summary>
     /// Gets or sets the authentication token if the provider expects one.
     /// </summary>
     public string AuthenticationToken { get; set; }
