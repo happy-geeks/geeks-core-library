@@ -541,7 +541,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserItemFile,
-                LastUpdate = new DateTime(2022, 6, 2),
+                LastUpdate = new DateTime(2022, 11, 15),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -556,10 +556,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("extension", MySqlDbType.VarChar, 20),
                     new("title", MySqlDbType.VarChar, 255),
                     new("property_name", MySqlDbType.VarChar, 255),
+                    new("extra_data", MySqlDbType.MediumText),
                     new("protected", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
                     new("ordering", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
-                    new("added_by", MySqlDbType.VarChar, 255),
+                    new("added_by", MySqlDbType.VarChar, 255)
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
