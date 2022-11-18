@@ -359,7 +359,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                         }
                         else
                         {
-                            var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl);
+                            var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
                             if (File.Exists(localFilePath))
                             {
                                 fileBytes = await File.ReadAllBytesAsync(localFilePath);
@@ -436,7 +436,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                     }
                     else
                     {
-                        var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl);
+                        var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
                         if (File.Exists(localFilePath))
                         {
                             fileBytes = await File.ReadAllBytesAsync(localFilePath);
