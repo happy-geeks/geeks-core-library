@@ -1206,6 +1206,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public Task<JArray> GetJsonResponseFromRoutineAsync(RoutineTemplate routineTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false)
+        {
+            throw new NotImplementedException("Legacy templates don't support executing routines.");
+        }
+
+        /// <inheritdoc />
         public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             return await GetTemplateDataAsync(this, id, name, parentId, parentName);
@@ -1306,6 +1312,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             cacheFileName.Append(extension);
 
             return cacheFileName.ToString();
+        }
+
+        /// <inheritdoc />
+        public Task<List<Template>> GetTemplateUrlsAsync()
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<Template>());
         }
 
         /// <summary>

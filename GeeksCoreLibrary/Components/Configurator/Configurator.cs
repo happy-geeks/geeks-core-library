@@ -12,10 +12,12 @@ using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
+using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
@@ -57,9 +59,11 @@ namespace GeeksCoreLibrary.Components.Configurator
 
         private readonly IConfiguratorsService configuratorsService;
         private readonly IDataSelectorsService dataSelectorsService;
+        private readonly IObjectsService objectsService;
+        private readonly IWiserItemsService wiserItemsService;
         private readonly GclSettings gclSettings;
 
-        private readonly Dictionary<string, Dictionary<string, string>> stepNumbers = new();
+        private readonly Dictionary<string, Dictionary<string, Tuple<string, Dictionary<string, string>>>> stepNumbers = new();
 
         #endregion
 
@@ -74,10 +78,12 @@ namespace GeeksCoreLibrary.Components.Configurator
             };
         }
 
-        public Configurator(ILogger<Configurator> logger, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, IConfiguratorsService configuratorsService, IDataSelectorsService dataSelectorsService, ITemplatesService templatesService, IOptions<GclSettings> gclSettings)
+        public Configurator(ILogger<Configurator> logger, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, IConfiguratorsService configuratorsService, IDataSelectorsService dataSelectorsService, ITemplatesService templatesService, IObjectsService objectsService, IWiserItemsService wiserItemsService, IOptions<GclSettings> gclSettings)
         {
             this.configuratorsService = configuratorsService;
             this.dataSelectorsService = dataSelectorsService;
+            this.objectsService = objectsService;
+            this.wiserItemsService = wiserItemsService;
             this.gclSettings = gclSettings.Value;
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -347,7 +353,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             if (!stepNumbers.ContainsKey(configuratorName))
             {
-                stepNumbers.Add(configuratorName, new Dictionary<string, string>());
+                stepNumbers.Add(configuratorName, new Dictionary<string, Tuple<string, Dictionary<string, string>>>());
             }
 
             var configuratorData = await configuratorsService.GetConfiguratorDataAsync(configuratorName);
@@ -369,15 +375,21 @@ namespace GeeksCoreLibrary.Components.Configurator
                     stepCount = 1;
                 }
 
+                var variableName = row.Field<string>("variable_name");
+                var subStepVariableName = row.Field<string>("substep_variable_name");
                 if (row.Field<string>("stepname") != currentStepName)
                 {
                     subStepCount = 1;
                     currentStepName = row.Field<string>("stepname");
-                    var variableName = row.Field<string>("variable_name");
 
                     if (!String.IsNullOrWhiteSpace(variableName) && !stepNumbers[configuratorName].ContainsKey(variableName))
                     {
-                        stepNumbers[configuratorName].Add(variableName, $"{mainStepCount}-{stepCount}");
+                        stepNumbers[configuratorName].Add(variableName, new Tuple<string, Dictionary<string, string>>($"{mainStepCount}-{stepCount}", new Dictionary<string, string>()));
+                    }
+
+                    if (!String.IsNullOrWhiteSpace(variableName) && !String.IsNullOrWhiteSpace(subStepVariableName) && !stepNumbers[configuratorName][variableName].Item2.ContainsKey(subStepVariableName))
+                    {
+                        stepNumbers[configuratorName][variableName].Item2.Add(subStepVariableName, $"{mainStepCount}-{stepCount}-{subStepCount}");
                     }
 
                     // Always add one sub step
@@ -386,10 +398,17 @@ namespace GeeksCoreLibrary.Components.Configurator
                 }
                 else if (!String.IsNullOrWhiteSpace(row.Field<string>("substepname")))
                 {
+                    if (!String.IsNullOrWhiteSpace(variableName) && !String.IsNullOrWhiteSpace(subStepVariableName) && !stepNumbers[configuratorName][variableName].Item2.ContainsKey(subStepVariableName))
+                    {
+                        // We subtract one from step count, because the stepCount gets increased after adding the step, but that's too early for sub steps.
+                        stepNumbers[configuratorName][variableName].Item2.Add(subStepVariableName, $"{mainStepCount}-{stepCount - 1}-{subStepCount}");
+                    }
+                    
                     subStepCount += 1;
                 }
             }
         }
+
         /// <summary>
         /// render step
         /// </summary>
@@ -481,7 +500,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         continue;
                     }
 
-                    dependsOnValues.Add($"jjl_configurator_step-{stepNumbersDictionary[dependency]}");
+                    dependsOnValues.Add($"jjl_configurator_step-{stepNumbersDictionary[dependency].Item1}");
                 }
 
                 dependsOnString = String.Join(";", dependsOnValues);
@@ -625,12 +644,33 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                 foreach (var dependency in connectedItems)
                 {
-                    if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0 || !stepNumbersDictionary.ContainsKey(dependency))
+                    if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0)
                     {
                         continue;
                     }
 
-                    dependsOnValues.Add($"jjl_configurator_step-{stepNumbersDictionary[dependency]}");
+                    var dependencyValue = "";
+                    if (stepNumbersDictionary.ContainsKey(dependency))
+                    {
+                        dependencyValue = $"jjl_configurator_step-{stepNumbersDictionary[dependency].Item1}";
+                    }
+                    else
+                    {
+                        var step = stepNumbersDictionary.FirstOrDefault(step => step.Value.Item2.ContainsKey(dependency)).Value;
+                        if (step == null)
+                        {
+                            continue;
+                        }
+
+                        dependencyValue = $"jjl_configurator_substep-{step.Item2[dependency]}";
+                    }
+
+                    if (String.IsNullOrWhiteSpace(dependencyValue))
+                    {
+                        continue;
+                    }
+
+                    dependsOnValues.Add(dependencyValue);
                 }
 
                 dependsOnString = String.Join(";", dependsOnValues);
@@ -650,22 +690,10 @@ namespace GeeksCoreLibrary.Components.Configurator
                     ReplaceCaseInsensitive("{subStepNumber}", subStepNumber.ToString());
             }
 
-            WriteToTrace("End building subStepContent");
-
             template = template.ReplaceCaseInsensitive("{subStepContent}", subStepContent);
-
-
-            template = await this.configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator, false);
-
-            WriteToTrace("End ReplaceConfiguratorItems (substep)");
-
+            template = await configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator, false);
             template = await StringReplacementsService.DoAllReplacementsAsync(template, row, removeUnknownVariables: false);
-
-            WriteToTrace("End DoAllReplacementsAsync (substep)");
-
             template = await TemplatesService.HandleIncludesAsync(template, false, null, false);
-
-            WriteToTrace("End HandleIncludesAsync (substep)");
 
             return template;
 
@@ -963,6 +991,35 @@ namespace GeeksCoreLibrary.Components.Configurator
                     result.Add($"jjl_configurator_step-{step.MainStep}-{step.Step}", await TemplatesService.DoReplacesAsync(await RenderStep(configuration.Configurator, step.MainStep, step.Step, step.DependentValue, configuration, dataTable), removeUnknownVariables: false));
                 }
             }
+            
+            var useAbsoluteImageUrls = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "absoluteImageUrls"), "true", StringComparison.OrdinalIgnoreCase);
+            var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
+
+            if (useAbsoluteImageUrls || removeSvgUrlsFromIcons)
+            {
+                // Variable html is a struct copy so changes do not apply to it. The key can be used to manipulate the correct index.
+                foreach (var html in result)
+                {
+                    // Make relative image URls absolute to allow the template to show images when the HTML is placed inside another website.
+                    if (useAbsoluteImageUrls)
+                    {
+                        var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
+                        result[html.Key] = await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(result[html.Key], imagesDomain);
+                    }
+                    
+                    // Remove the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website.
+                    // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
+                    if (removeSvgUrlsFromIcons)
+                    {
+                        var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>");
+                        foreach (Match match in regex.Matches(html.Value))
+                        {
+                            result[html.Key] = result[html.Key].Replace(match.Groups[1].Value, "");
+                        }
+                    }
+                }
+            }
+            
             return result;
         }
 

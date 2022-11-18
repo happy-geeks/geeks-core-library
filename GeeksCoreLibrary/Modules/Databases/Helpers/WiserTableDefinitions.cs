@@ -103,7 +103,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserEntity,
-                LastUpdate = new DateTime(2022, 6, 17),
+                LastUpdate = new DateTime(2022, 11, 10),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -214,7 +214,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2022, 5, 31),
+                LastUpdate = new DateTime(2022, 10, 28),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -263,6 +263,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("routine_type", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: "For routine templates only"),
                     new("routine_parameters", MySqlDbType.Text, comment: "For routine templates only"),
                     new("routine_return_type", MySqlDbType.VarChar, 25, comment: "For routine templates only"),
+                    new("trigger_timing", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: "For trigger templates only"),
+                    new("trigger_event", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: "For trigger templates only"),
+                    new("trigger_table_name", MySqlDbType.VarChar, 100, comment: "For trigger templates only"),
                     new("is_default_header", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("is_default_footer", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("default_header_footer_regex", MySqlDbType.VarChar, 255),
@@ -274,6 +277,54 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserTemplate, "idx_parent_id", IndexTypes.Normal, new List<string> { "parent_id", "removed" }),
                     new(WiserTableNames.WiserTemplate, "idx_type", IndexTypes.Normal, new List<string> { "template_type", "removed" }),
                     new(WiserTableNames.WiserTemplate, "idx_environment", IndexTypes.Normal, new List<string> { "published_environment", "removed" })
+                }
+            },
+            
+            // wiser_commit
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommit,
+                LastUpdate = new DateTime(2022, 11, 4),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("description", MySqlDbType.MediumText),
+                    new("external_id", MySqlDbType.VarChar, 255),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("added_by", MySqlDbType.VarChar, 255),
+                    new("completed", MySqlDbType.Int16, notNull: true, defaultValue: "0")
+                }
+            },
+            
+            // wiser_commit_dynamic_content
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommitDynamicContent,
+                LastUpdate = new DateTime(2022, 11, 4),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("dynamic_content_id", MySqlDbType.Int32, notNull: true),
+                    new("version", MySqlDbType.Int32, notNull: true),
+                    new("commit_id", MySqlDbType.Int32, notNull: true),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("added_by", MySqlDbType.VarChar, 255)
+                }
+            },
+            
+            // wiser_commit_template
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommitTemplate,
+                LastUpdate = new DateTime(2022, 11, 4),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("template_id", MySqlDbType.Int32, notNull: true),
+                    new("version", MySqlDbType.Int32, notNull: true),
+                    new("commit_id", MySqlDbType.Int32, notNull: true),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("added_by", MySqlDbType.VarChar, 255)
                 }
             },
 
@@ -365,7 +416,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 }
             },
 
-            // wiser_template_publish_log
+            // wiser_dynamic_content_publish_log
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserDynamicContentPublishLog,
@@ -393,7 +444,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserDataSelector,
-                LastUpdate = new DateTime(2022, 3, 18),
+                LastUpdate = new DateTime(2022, 10, 10),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -405,6 +456,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
                     new("changed_on", MySqlDbType.DateTime),
                     new("show_in_export_module", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("show_in_communication_module", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("available_for_rendering", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("default_template", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
                     new("show_in_dashboard", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
@@ -611,13 +663,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserQuery,
-                LastUpdate = new DateTime(2022, 9, 30),
+                LastUpdate = new DateTime(2022, 10, 10),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("description", MySqlDbType.VarChar, 512, notNull: true, defaultValue: ""),
                     new("query", MySqlDbType.MediumText),
                     new("show_in_export_module", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
+                    new("show_in_communication_module", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
                     new("changed_on", MySqlDbType.DateTime)
                 },
                 Indexes = new List<IndexSettingsModel>
@@ -673,6 +726,41 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("error", MySqlDbType.Text, 0),
                     new("url", MySqlDbType.Text, 0),
                     new("type", MySqlDbType.Enum, enumValues: new List<string> { "incoming", "outgoing" })
+                }
+            },
+            
+            // wiser_communication
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommunication,
+                LastUpdate = new DateTime(2022, 10, 28),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("name", MySqlDbType.VarChar, 50, notNull: true, defaultValue: ""),
+                    new("receiver_list", MySqlDbType.MediumText),
+                    new("receivers_data_selector_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("receivers_query_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("content_data_selector_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("content_query_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("settings", MySqlDbType.MediumText),
+                    new("send_trigger_type", MySqlDbType.Enum, enumValues: new List<string> { "direct", "fixed", "recurring" }),
+                    new("trigger_start", MySqlDbType.Date),
+                    new("trigger_end", MySqlDbType.Date),
+                    new("trigger_time", MySqlDbType.Time),
+                    new("trigger_period_value", MySqlDbType.Int16, 4, notNull: true, defaultValue: "1"),
+                    new("trigger_period_type", MySqlDbType.Enum, enumValues: new List<string> { "minute", "hour", "day", "week", "month", "year" }),
+                    new("trigger_week_days", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("trigger_day_of_month", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("last_processed", MySqlDbType.MediumText),
+                    new("added_by", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("changed_by", MySqlDbType.VarChar, 100),
+                    new("changed_on", MySqlDbType.DateTime)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new (WiserTableNames.WiserCommunication, "idx_name", IndexTypes.Unique, new List<string> { "name" })
                 }
             }
         };

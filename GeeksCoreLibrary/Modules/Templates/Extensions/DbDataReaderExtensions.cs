@@ -32,7 +32,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             }
 
             var isQuery = type is TemplateTypes.Query || templateType is TemplateTypes.Query;
-            var template = isQuery ? new QueryTemplate() : new Template();
+            var isRoutine = type is TemplateTypes.Routine || templateType is TemplateTypes.Routine;
+            var isTrigger = type is TemplateTypes.Trigger || templateType is TemplateTypes.Trigger;
+            var template = isQuery ? new QueryTemplate() : isRoutine ? new RoutineTemplate() : new Template();
             template.Id = await reader.IsDBNullAsync("template_id") ? 0 : await reader.GetFieldValueAsync<int>("template_id");
             template.ParentId = await reader.IsDBNullAsync("parent_id") ? 0 : await reader.GetFieldValueAsync<int>("parent_id");
             template.RootName = reader.GetStringHandleNull("root_name");
@@ -118,6 +120,18 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 template.LoginRequired = Convert.ToBoolean(await reader.GetFieldValueAsync<object>("login_required"));
             }
 
+            if (reader.HasColumn("login_role"))
+            {
+                if (await reader.IsDBNullAsync(reader.GetOrdinal("login_role")))
+                {
+                    template.LoginRoles = null;
+                }
+                else
+                {
+                    template.LoginRoles = (await reader.GetFieldValueAsync<string>("login_role"))?.Split(",", StringSplitOptions.RemoveEmptyEntries).Select(i => Convert.ToInt32(i)).ToList();
+                }
+            }
+
             if (reader.HasColumn("login_redirect_url"))
             {
                 template.LoginRedirectUrl = reader.GetStringHandleNull("login_redirect_url");
@@ -138,22 +152,42 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 template.DefaultHeaderFooterRegex = reader.GetStringHandleNull("default_header_footer_regex");
             }
 
-            if (!isQuery)
+            if (isQuery)
             {
-                return template;
+                var queryTemplate = (QueryTemplate)template;
+                queryTemplate.GroupingSettings = new QueryGroupingSettings
+                {
+                    GroupingFieldsPrefix = reader.GetStringHandleNull("grouping_prefix"),
+                    ObjectInsteadOfArray = reader.GetBoolean("grouping_create_object_instead_of_array"),
+                    GroupingColumn = reader.GetStringHandleNull("grouping_key"),
+                    GroupingValueColumnName = reader.GetStringHandleNull("grouping_value_column_name"),
+                    GroupingKeyColumnName = reader.GetStringHandleNull("grouping_key_column_name")
+                };
+                
+                return queryTemplate;
             }
 
-            var queryTemplate = (QueryTemplate)template;
-            queryTemplate.GroupingSettings = new QueryGroupingSettings
+            if (isRoutine)
             {
-                GroupingFieldsPrefix = reader.GetStringHandleNull("grouping_prefix"),
-                ObjectInsteadOfArray = reader.GetBoolean("grouping_create_object_instead_of_array"),
-                GroupingColumn = reader.GetStringHandleNull("grouping_key"),
-                GroupingValueColumnName = reader.GetStringHandleNull("grouping_value_column_name"),
-                GroupingKeyColumnName = reader.GetStringHandleNull("grouping_key_column_name")
-            };
+                var routineTemplate = (RoutineTemplate)template;
+                routineTemplate.RoutineType = (RoutineTypes) await reader.GetFieldValueAsync<int>("routine_type");
+                routineTemplate.RoutineParameters = reader.GetStringHandleNull("routine_parameters");
+                routineTemplate.RoutineReturnType = reader.GetStringHandleNull("routine_return_type");
+                
+                return routineTemplate;
+            }
 
-            return queryTemplate;
+            if (isTrigger)
+            {
+                var triggerTemplate = (TriggerTemplate)template;
+                triggerTemplate.TriggerTiming = (TriggerTimings) await reader.GetFieldValueAsync<int>("trigger_timing");
+                triggerTemplate.TriggerEvent = (TriggerEvents) await reader.GetFieldValueAsync<int>("trigger_event");
+                triggerTemplate.TriggerTableName = reader.GetStringHandleNull("trigger_table_name");
+
+                return triggerTemplate;
+            }
+
+            return template;
         }
     }
 }

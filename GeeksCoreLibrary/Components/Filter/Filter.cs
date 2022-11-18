@@ -469,8 +469,9 @@ namespace GeeksCoreLibrary.Components.Filter
                             { "name", previousFilterGroup.Group },
                             { "items", groupHtml.ToString() },
                             { "type", previousFilterType },
-                            { "typename", previousFilterType }
-                        }; 
+                            { "typename", previousFilterType },
+                            { "count", previousFilterGroup.Items.Count.ToString() }
+                        };
                         filterGroup.AddExtraPropertiesToList(replaceData);
 
                         var template = !String.IsNullOrEmpty(filterGroup.GroupTemplate) ? filterGroup.GroupTemplate : Settings.TemplateFilterGroup;
@@ -495,7 +496,8 @@ namespace GeeksCoreLibrary.Components.Filter
                             { "name", previousFilterGroup.Group },
                             { "items", groupHtml.ToString() },
                             { "type", previousFilterType },
-                            { "typename", previousFilterType }
+                            { "typename", previousFilterType },
+                            { "count", previousFilterGroup.Items.Count.ToString() }
                         };
                         filterGroup.AddExtraPropertiesToList(replaceData);
 
@@ -520,7 +522,8 @@ namespace GeeksCoreLibrary.Components.Filter
                     { "name", previousFilterGroup.Group },
                     { "items", groupHtml.ToString() },
                     { "type", previousFilterType },
-                    { "typename", previousFilterType }
+                    { "typename", previousFilterType },
+                    { "count", previousFilterGroup.Items.Count.ToString() }
                 };
                 previousFilterGroup?.AddExtraPropertiesToList(replaceData);
 
@@ -974,16 +977,13 @@ namespace GeeksCoreLibrary.Components.Filter
                                               .Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture))
                                               .Replace("{filterName}", filterGroup.Name)
                                               .Replace("{filterNameSeo}", filterGroup.NameSeo));
-                }
+                    }
 
                     break;
                 }
             }
 
             // Add filter HTML
-            // Dim filterGroupName As String = filterGroup.Name
-            // Dim filterGroupNameSEO As String = filterGroup.NameSEO
-
             if (filterHtml.Length > 0)
             {
                 // Don't add filter if it has no items
@@ -1022,7 +1022,8 @@ namespace GeeksCoreLibrary.Components.Filter
                         { "querystring", !String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo },
                         { "items", filterHtml.ToString() },
                         { "type", filterGroup.FilterType.ToString("D") },
-                        { "typename", filterGroup.FilterType.ToString("G") }
+                        { "typename", filterGroup.FilterType.ToString("G") },
+                        { "count", filterGroup.Items.Count.ToString() }
                     };
 
                     filterGroup.AddExtraPropertiesToList(replaceData);

@@ -46,6 +46,8 @@ using GeeksCoreLibrary.Components.OrderProcess.Middlewares;
 using GeeksCoreLibrary.Components.OrderProcess.Services;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Services;
+using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
+using GeeksCoreLibrary.Modules.Barcodes.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Services;
 using JetBrains.Annotations;
@@ -267,6 +269,8 @@ namespace GeeksCoreLibrary.Core.Extensions
             services.Decorate<IShoppingBasketsService, CachedShoppingBasketsService>();
             services.Decorate<IDataSelectorParsersService, CachedDataSelectorParsersService>();
             services.Decorate<IOrderProcessesService, CachedOrderProcessesService>();
+            services.Decorate<IRolesService, CachedRolesService>();
+            services.Decorate<IBarcodesService, CachedBarcodesService>();
             
             if (gclSettings.UseLegacyWiser1TemplateModule)
             {

@@ -107,7 +107,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketLines"></param>
         /// <param name="settings"></param>
         /// <param name="skipType">An optional parameter to skip lines of a certain type.</param>
-        /// <param name="createNewTransaction">Will be passed to the SaveAsync call.</param>
+        /// <param name="createNewTransaction">Will be passed to the CalculateShippingCostsAsync, CalculatePaymentMethodCostsAsync, and SaveAsync calls.</param>
         Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true);
 
         /// <summary>
@@ -123,14 +123,22 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <summary>
         /// Calculates the shipping costs based on the shipping costs query defined in the settings module.
         /// </summary>
-        /// <returns></returns>
-        Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings);
+        /// <param name="shoppingBasket">The main shopping basket item.</param>
+        /// <param name="basketLines">The basket lines items.</param>
+        /// <param name="settings">The settings of the shopping basket.</param>
+        /// <param name="createNewTransaction">Will be passed to the AddLineAsync call.</param>
+        /// <returns>The calculated shipping costs.</returns>
+        Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true);
 
         /// <summary>
         /// Calculates the payment method costs based on the payment method costs query defined in the settings module.
         /// </summary>
-        /// <returns></returns>
-        Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings);
+        /// <param name="shoppingBasket">The main shopping basket item.</param>
+        /// <param name="basketLines">The basket lines items.</param>
+        /// <param name="settings">The settings of the shopping basket.</param>
+        /// <param name="createNewTransaction">Will be passed to the AddLineAsync call.</param>
+        /// <returns>The calculated payment method costs.</returns>
+        Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true);
 
         Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds);
 
