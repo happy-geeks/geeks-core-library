@@ -314,7 +314,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
+        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var joinPart = gclSettings.Environment switch
             {
@@ -350,11 +350,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
+        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss
                 ? $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')"
                 : $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'";
+
+            var pageModeQueryPart = $"t.pagemode = {(int)byInsertMode}";
 
             var joinPart = gclSettings.Environment switch
             {
@@ -410,6 +412,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND t.deleted <= 0
                         AND t.loadalways > 0
                         AND {templateTypeQueryPart}
+                        AND {pageModeQueryPart}
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
             var result = new TemplateResponse();

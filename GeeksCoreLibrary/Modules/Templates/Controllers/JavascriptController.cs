@@ -22,15 +22,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
 
         [Route("/scripts/gcl_general.js")]
         [HttpGet]
-        public async Task<IActionResult> GeneralJavascript()
+        public async Task<IActionResult> GeneralJavascript(ResourceInsertModes mode = ResourceInsertModes.Standard)
         {
-            var lastChangedDate = await templatesService.GetGeneralTemplateLastChangedDateAsync(TemplateTypes.Js) ?? DateTime.Now;
+            var lastChangedDate = await templatesService.GetGeneralTemplateLastChangedDateAsync(TemplateTypes.Js, mode) ?? DateTime.Now;
             if (!this.IsModified(lastChangedDate))
             {
                 return StatusCode((int) HttpStatusCode.NotModified);
             }
 
-            var javascriptContent = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js);
+            var javascriptContent = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js, mode);
             Response.Headers.Add("Last-Modified", javascriptContent.LastChangeDate.ToUniversalTime().ToString("R"));
             Response.Headers.Add("Expires", DateTime.Now.AddDays(7).ToUniversalTime().ToString("R"));
             return Content(javascriptContent.Content, "application/javascript", Encoding.UTF8);

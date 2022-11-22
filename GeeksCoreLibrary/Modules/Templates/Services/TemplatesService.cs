@@ -353,7 +353,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
         }
 
         /// <inheritdoc />
-        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
+        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var joinPart = "";
             var whereClause = new List<string>();
@@ -368,14 +368,18 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
 
             whereClause.Add("template.removed = 0");
             whereClause.Add("template.load_always = 1");
-            whereClause.Add("template.template_type = ?templateType");
+
+            whereClause.Add(templateType is TemplateTypes.Css or TemplateTypes.Scss
+                ? $"template.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})"
+                : $"template.template_type = {(int)templateType}");
+
+            whereClause.Add($"template.insert_mode = {(int)byInsertMode}");
 
             var query = $@"SELECT MAX(template.changed_on) AS lastChanged
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         WHERE {String.Join(" AND ", whereClause)}";
 
-            databaseConnection.AddParameter("templateType", templateType);
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {
@@ -459,7 +463,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
         }
 
         /// <inheritdoc />
-        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
+        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var joinPart = "";
             var whereClause = new List<string>();
@@ -478,6 +482,8 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             whereClause.Add(templateType is TemplateTypes.Css or TemplateTypes.Scss
                 ? $"template.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})"
                 : $"template.template_type = {(int)templateType}");
+
+            whereClause.Add($"template.insert_mode = {(int)byInsertMode}");
 
             var query = $@"SELECT
                             IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 

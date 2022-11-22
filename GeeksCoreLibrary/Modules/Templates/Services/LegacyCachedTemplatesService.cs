@@ -171,7 +171,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
+        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var cacheKey = $"GeneralTemplateLastChangedDate_{templateType}";
             return await cache.GetOrAddAsync(cacheKey,
@@ -183,14 +183,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
+        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
-            var cacheKey = $"GeneralTemplateValue_{templateType}";
+            var cacheKey = $"GeneralTemplateValue_{templateType}_{byInsertMode:G}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-                    return await templatesService.GetGeneralTemplateValueAsync(templateType);
+                    return await templatesService.GetGeneralTemplateValueAsync(templateType, byInsertMode);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
