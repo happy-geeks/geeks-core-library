@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Net;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.DataSelector.Models;
 using Microsoft.AspNetCore.Mvc;
