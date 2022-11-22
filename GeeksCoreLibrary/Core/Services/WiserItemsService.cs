@@ -2063,6 +2063,60 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         }
 
         /// <inheritdoc />
+        public async Task<AccessRights> GetUserDataSelectorPermissionsAsync(int dataSelectorId, ulong userId)
+        {
+            databaseConnection.AddParameter("dataSelectorId", dataSelectorId);
+            // First check permissions based on module ID.
+            var permissionsQuery = $@"SELECT permission.permissions
+                                    FROM {WiserTableNames.WiserUserRoles} user_role
+                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.data_selector_id = ?dataSelectorId
+                                    WHERE user_role.user_id = ?userId";
+            
+            databaseConnection.AddParameter("userId", userId);
+            var dataTable = await databaseConnection.GetAsync(permissionsQuery);
+
+            var userItemPermissions = AccessRights.Nothing;
+
+            if (dataTable.Rows.Count == 0)
+            {
+                userItemPermissions = AccessRights.Nothing;
+                return userItemPermissions;
+            }
+
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                if (dataRow.IsNull("permissions"))
+                {
+                    userItemPermissions = AccessRights.Nothing;
+                    break;
+                }
+
+                var currentPermissions = (AccessRights)dataRow.Field<int>("permissions");
+                if ((currentPermissions & AccessRights.Read) == AccessRights.Read)
+                {
+                    userItemPermissions |= AccessRights.Read;
+                }
+
+                if ((currentPermissions & AccessRights.Create) == AccessRights.Create)
+                {
+                    userItemPermissions |= AccessRights.Create;
+                }
+
+                if ((currentPermissions & AccessRights.Update) == AccessRights.Update)
+                {
+                    userItemPermissions |= AccessRights.Update;
+                }
+
+                if ((currentPermissions & AccessRights.Delete) == AccessRights.Delete)
+                {
+                    userItemPermissions |= AccessRights.Delete;
+                }
+            }
+
+            return userItemPermissions;
+        }
+        
+        /// <inheritdoc />
         public async Task<WiserItemModel> GetItemDetailsAsync(ulong itemId = 0, string uniqueId = "", string languageCode = "", ulong userId = 0, string detailKey = "", string detailValue = "", bool returnNullIfDeleted = true, bool skipDetailsWithoutLanguageCode = false, string entityType = null, bool skipPermissionsCheck = false)
         {
             return await GetItemDetailsAsync(this, itemId, uniqueId, languageCode, userId, detailKey, detailValue, returnNullIfDeleted, skipDetailsWithoutLanguageCode, entityType, skipPermissionsCheck);
@@ -3228,6 +3282,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
             databaseConnection.AddParameter("extension", wiserItemFile.Extension);
             databaseConnection.AddParameter("title", wiserItemFile.Title);
             databaseConnection.AddParameter("propertyName", wiserItemFile.PropertyName);
+            databaseConnection.AddParameter("extraData", wiserItemFile.ExtraData == null ? null : JsonConvert.SerializeObject(wiserItemFile.ExtraData));
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
@@ -3235,8 +3290,8 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                 SET @_username = ?username;
                 SET @_userId = ?userId;
                 SET @saveHistory = ?saveHistoryGcl;
-                INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, added_by, title, property_name, itemlink_id) 
-                VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?width, ?height, ?fileName, ?extension, ?username, ?title, ?propertyName, ?itemLinkId);
+                INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, added_by, title, property_name, itemlink_id, extra_data) 
+                VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?width, ?height, ?fileName, ?extension, ?username, ?title, ?propertyName, ?itemLinkId, ?extraData);
                 SELECT LAST_INSERT_ID();", true);
 
             return Convert.ToUInt64(addItemFileResult.Rows[0][0]);
@@ -3293,7 +3348,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
 
             databaseConnection.AddParameter("Ids", String.Join(",", ids));
             var queryResult = await databaseConnection.GetAsync($@"
-                SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `itemlink_id`
+                SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `itemlink_id`, extra_data
                 FROM {tablePrefix}{WiserTableNames.WiserItemFile}
                 WHERE {columnName} IN ({String.Join(",", ids)})
                 {propertyNameClause}", true);
@@ -4145,7 +4200,6 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
         /// <summary>
         /// Fills an existing <see cref="WiserItemFileModel"/> with data from a <see cref="DataRow"/>.
         /// </summary>
-        /// <param name="wiserItemFile"></param>
         /// <param name="dataRow"></param>
         public static WiserItemFileModel DataRowToItemFile(DataRow dataRow)
         {
@@ -4164,7 +4218,8 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                 FileName = dataRow.Field<string>("file_name"),
                 Extension = dataRow.Field<string>("extension"),
                 Title = dataRow.Field<string>("title"),
-                PropertyName = dataRow.Field<string>("property_name")
+                PropertyName = dataRow.Field<string>("property_name"),
+                ExtraData = dataRow.IsNull("extra_data") ? null : JsonConvert.DeserializeObject<WiserItemFileExtraDataModel>(dataRow.Field<string>("extra_data")!)
             };
         }
 

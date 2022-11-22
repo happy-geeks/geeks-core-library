@@ -1224,17 +1224,22 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             var cssStringBuilder = new StringBuilder();
             var jsStringBuilder = new StringBuilder();
+            var externalCssFilesList = new List<string>();
+            var externalJavaScriptFilesList = new List<string>();
             foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
             {
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
                 (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+                (linkedTemplate.Type == TemplateTypes.Css ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
             }
 
             return new TemplateDataModel
             {
                 Content = template.Content,
                 LinkedCss = cssStringBuilder.ToString(),
-                LinkedJavascript = jsStringBuilder.ToString()
+                LinkedJavascript = jsStringBuilder.ToString(),
+                ExternalCssFiles = externalCssFilesList,
+                ExternalJavaScriptFiles = externalJavaScriptFilesList
             };
         }
 
