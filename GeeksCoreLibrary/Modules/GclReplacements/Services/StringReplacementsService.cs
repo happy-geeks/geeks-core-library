@@ -577,7 +577,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 return input;
             }
 
-            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\|([^\]{suffix}\s]*){suffix}");
+            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\~([^\]{suffix}\s]*){suffix}");
             foreach (Match match in regex.Matches(input))
             {
                 input = input.Replace(match.Value, match.Groups[2].Value);
@@ -825,7 +825,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 var defaultValue = "";
 
                 // Checks for default values.
-                var defaultValueSeparatorLocation = fieldName.LastIndexOf("|", StringComparison.Ordinal);
+                var defaultValueSeparatorLocation = fieldName.LastIndexOf("~", StringComparison.Ordinal);
                 if (defaultValueSeparatorLocation > 0) // This 0 is on purpose, it wouldn't make sense if the default value separator is the first character of the variable.
                 {
                     var colonIndexOf = fieldName.LastIndexOf(":", StringComparison.Ordinal);
