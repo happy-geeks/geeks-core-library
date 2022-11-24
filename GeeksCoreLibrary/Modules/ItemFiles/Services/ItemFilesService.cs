@@ -66,8 +66,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"image_wiser2_{finalItemId}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
+            var localFilename = $"image_wiser2{entityTypePart}_{finalItemId}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
@@ -102,8 +103,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"image_wiser2_{finalItemLinkId}_itemlink_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{filename}";
+            var localFilename = $"image_wiser2_{finalItemLinkId}_itemlink{linkTypePart}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{filename}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
@@ -135,8 +137,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"image_wiser2_{finalItemId}_direct_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
+            var localFilename = $"image_wiser2{entityTypePart}_{finalItemId}_direct_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
@@ -171,8 +174,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"file_wiser2_{finalItemId}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
+            var localFilename = $"file_wiser2{entityTypePart}_{finalItemId}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             return getFileResult.Rows.Count == 0
@@ -206,8 +210,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"file_wiser2_{finalItemLinkId}_itemlink_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
+            var localFilename = $"file_wiser2_{finalItemLinkId}_itemlink{linkTypePart}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             return getFileResult.Rows.Count == 0
@@ -238,8 +243,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"file_wiser2_{finalItemId}_direct_{Path.GetFileName(filename)}";
+            var localFilename = $"file_wiser2{entityTypePart}_{finalItemId}_direct_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             return getFileResult.Rows.Count == 0
