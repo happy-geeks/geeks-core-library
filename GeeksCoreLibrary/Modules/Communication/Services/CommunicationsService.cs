@@ -34,6 +34,8 @@ using Newtonsoft.Json;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 using Twilio.TwiML.Messaging;
+using System.ComponentModel;
+using RestSharp.Serializers.NewtonsoftJson;
 
 namespace GeeksCoreLibrary.Modules.Communication.Services
 {
@@ -784,6 +786,7 @@ WHERE id = ?id";
             await AddOrUpdateSingleCommunicationAsync(communication);
         }
 
+        /// <inheritdoc />
         public async Task SendWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings)
         {
             foreach (var receiver in communication.Receivers)
@@ -885,16 +888,17 @@ WHERE id = ?id";
                 var metaConnection = new RestClient();
                 var request = new RestRequest(resource, Method.Post);
                 request.AddHeader("Authorization", "Bearer " + apiToken);
-                request.AddJsonBody(new
+               
+                request.AddJsonBody(new WhatsAppSendMessageRequestModel
                 {
-                    messaging_product = "whatsapp",
-                    recipient_type = "individual",
-                    to = receiverPhoneNumber,
-                    type = "text",
-                    text = new
+                    MessagingProduct = "whatsapp",
+                    RecipientType = "individual",
+                    Receiver = receiverPhoneNumber,
+                    TypeMessage = "text",
+                    Body = new WhatsappBodyContentModel
                     {
-                     preview_url = false,
-                     body = communication.Content
+                        PreviewUrl = false,
+                        BodyContent = communication.Content
                     }
                 });
 
@@ -903,76 +907,72 @@ WHERE id = ?id";
                 foreach (var url in communication.AttachmentUrls)
                 {
                     var typeUrl = "";
-                    if (url.Contains(".jpeg") || url.Contains(".png") || url.Contains(".jpg"))
+                    switch (url)
                     {
-                        typeUrl = "image";
-                    }
-                    if (url.Contains(".pdf") || url.Contains(".csv") || url.Contains(".txt") || url.Contains(".xls") || 
-                        url.Contains(".xlsx") || url.Contains(".doc") || url.Contains(".docx") || url.Contains(".pptx") || 
-                        url.Contains(".ppt") || url.Contains(".xml"))
-                    {
-                        typeUrl = "document";
-
-                    }
-                    if (url.Contains(".mp3"))
-                    {
-                        typeUrl = "audio";
-
-                    }
-                    if (url.Contains(".mp4"))
-                    {
-                        typeUrl = "video";
-
+                        case string a when a.Contains(".jpeg"):
+                        case string b when b.Contains(".png"):
+                        case string c when c.Contains(".jpg"):
+                            typeUrl = "image";
+                            break;
+                        case string d when d.Contains(".pdf"):
+                        case string e when e.Contains(".csv"):
+                        case string f when f.Contains(".txt"):
+                        case string g when g.Contains(".xls"):
+                        case string h when h.Contains(".xlsx"):
+                        case string i when i.Contains(".doc"):
+                        case string j when j.Contains(".docx"):
+                        case string k when k.Contains(".pptx"):
+                        case string l when l.Contains(".ppt"):
+                        case string m when m.Contains(".xml"):
+                            typeUrl = "document";
+                            break;
+                        case string n when n.Contains(".mp3"):
+                            typeUrl = "audio";
+                            break;
+                        case string o when o.Contains(".mp4"):
+                            typeUrl = "video";
+                            break;
                     }
 
                     if (!String.IsNullOrEmpty(typeUrl))
                     {
                         request = new RestRequest(resource, Method.Post);
                         request.AddHeader("Authorization", "Bearer " + apiToken);
-                        request.AddJsonBody(new
+                        request.AddJsonBody(new WhatsAppSendMessageRequestModel
                         {
-                            messaging_product = "whatsapp",
-                            recipient_type = "individual",
-                            to = receiverPhoneNumber,
-                            type = typeUrl,
-
-                            image = typeUrl != "image" ? null : new
-                            {
-                                link = url
-                            },
-                            document = typeUrl != "document" ? null : new
-                            {
-                                link = url
-                            },
-                            audio = typeUrl != "audio" ? null : new
-                            {
-                                link = url
-                            },
-                            video = typeUrl != "video" ? null : new
-                            {
-                                link = url
-                            },
+                            MessagingProduct = "whatsapp",
+                            RecipientType = "individual",
+                            Receiver = receiverPhoneNumber,
+                            TypeMessage = typeUrl,
+                            TypeUrlImage = typeUrl != "image" ? null : new AttachmentUrlsModel
+                            { Url = url },
+                            TypeUrlDocument = typeUrl != "document" ? null : new AttachmentUrlsModel
+                            { Url = url },
+                            TypeUrlAudio = typeUrl != "audio" ? null : new AttachmentUrlsModel
+                            { Url = url},
+                            TypeUrlVideo = typeUrl != "video" ? null : new AttachmentUrlsModel
+                            { Url = url }
                         });
+                        
                         response = await metaConnection.ExecuteAsync(request);
                     }
 
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
-                       return;
+                        return;
                     }
 
-                    // If request was not success throw the status message as an exception.
-                    throw new Exception(response.ErrorMessage);
+                    // If request (image/document/audio/video) was not success throw the status message as an exception.
+                    throw new Exception("image/document/audio/video has not been sent..." + response.ErrorMessage);
                 }
 
-                    if (response.StatusCode == HttpStatusCode.OK)
-                    {
-                       return;
-                    }
-                     //If request was not success throw the status message as an exception.
-                     throw new Exception(response.ErrorMessage);
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    return;
+                }
+                //If request (communication.Content) was not success throw the status message as an exception.
+                throw new Exception("message content has not been sent..." + response.ErrorMessage);
              }
-
         }
 
         /// <summary>
