@@ -65,7 +65,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 // Get folder and file name.
                 var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
                 var cacheFileName = await GetTemplateOutputCacheFileNameAsync(cacheSettings, cacheSettings.Type.ToString());
-                fullCachePath = Path.Combine(cacheFolder, cacheFileName);
 
                 switch (cacheSettings.CachingLocation)
                 {
@@ -80,25 +79,33 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                     case TemplateCachingLocations.OnDisk:
                     {
-                        logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
-
-                        // Check if a cache file already exists and if it hasn't expired yet.
-                        var fileInfo = new FileInfo(fullCachePath);
-                        if (fileInfo.Exists)
+                        if (String.IsNullOrWhiteSpace(cacheFolder))
                         {
-                            if (fileInfo.LastWriteTimeUtc.AddMinutes(cacheSettings.CachingMinutes) > DateTime.UtcNow)
+                            logger.LogWarning($"Content cache enabled for template '{cacheSettings.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website.");
+                        }
+                        else
+                        {
+                            logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
+
+                            // Check if a cache file already exists and if it hasn't expired yet.
+                            fullCachePath = Path.Combine(cacheFolder, cacheFileName);
+                            var fileInfo = new FileInfo(fullCachePath);
+                            if (fileInfo.Exists)
                             {
-                                using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
-                                var fileContents = await fileReader.ReadToEndAsync();
-                                templateContent = cacheSettings.Type != TemplateTypes.Html
-                                    ? fileContents
-                                    : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContents}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
-                                foundInOutputCache = true;
-                            }
-                            else
-                            {
-                                // Cleanup the old cache file if it has expired.
-                                fileInfo.Delete();
+                                if (fileInfo.LastWriteTimeUtc.AddMinutes(cacheSettings.CachingMinutes) > DateTime.UtcNow)
+                                {
+                                    using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
+                                    var fileContents = await fileReader.ReadToEndAsync();
+                                    templateContent = cacheSettings.Type != TemplateTypes.Html
+                                        ? fileContents
+                                        : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContents}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
+                                    foundInOutputCache = true;
+                                }
+                                else
+                                {
+                                    // Cleanup the old cache file if it has expired.
+                                    fileInfo.Delete();
+                                }
                             }
                         }
 
@@ -134,7 +141,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 template.Content = templateContent;
             }
-            else if (!String.IsNullOrEmpty(fullCachePath))
+            else
             {
                 switch (cacheSettings.CachingLocation)
                 {
@@ -142,8 +149,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         cache.Add(contentCacheKey, template.Content, DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes));
                         break;
                     case TemplateCachingLocations.OnDisk:
-                        await File.WriteAllTextAsync(fullCachePath, template.Content);
+                    {
+                        if (!String.IsNullOrEmpty(fullCachePath))
+                        {
+                            await File.WriteAllTextAsync(fullCachePath, template.Content);
+                        }
+
                         break;
+                    }
                     default:
                         throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
                 }
