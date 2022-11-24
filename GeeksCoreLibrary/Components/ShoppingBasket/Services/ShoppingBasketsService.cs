@@ -303,7 +303,18 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 // Get details on basket level.
                 shoppingBasket = await wiserItemsService.GetItemDetailsAsync(itemId, entityType: Constants.BasketEntityType, skipPermissionsCheck: true);
 
-                if (shoppingBasket == null || shoppingBasket.EntityType != Constants.BasketEntityType)
+                if (settings.BasketLineStockAction)
+                {
+                    var basketLineStockActionQuery = (await templatesService.GetTemplateAsync(0, "BasketLineStockAction", TemplateTypes.Query)).Content;
+                    if (!String.IsNullOrWhiteSpace(basketLineStockActionQuery))
+                    {
+                        logger.LogTrace("UpdateLineDetailsViaLineStockActionQuery");
+                    }
+
+                    basketLineStockActionMessage = await UpdateLineDetailsViaLineStockActionQuery(shoppingBasket, basketLines, settings, basketLineStockActionQuery);
+                }
+
+                if (shoppingBasket is not {EntityType: Constants.BasketEntityType})
                 {
                     shoppingBasket = new WiserItemModel();
                     if (loadedBasketFromCookie)
@@ -370,17 +381,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                             var (updatedBasketLines, message) = await UpdateLineDetailsViaLineValidityCheckQueryAsync(shoppingBasket, basketLines, settings, basketLineValidityCheckQuery);
                             basketLines = updatedBasketLines;
                             basketLineValidityMessage = message;
-                        }
-
-                        if (settings.BasketLineStockAction)
-                        {
-                            var basketLineStockActionQuery = (await templatesService.GetTemplateAsync(0, "BasketLineStockAction", TemplateTypes.Query)).Content;
-                            if (!String.IsNullOrWhiteSpace(basketLineStockActionQuery))
-                            {
-                                logger.LogTrace("UpdateLineDetailsViaLineStockActionQuery");
-                            }
-
-                            basketLineStockActionMessage = await UpdateLineDetailsViaLineStockActionQuery(shoppingBasket, basketLines, settings, basketLineStockActionQuery);
                         }
 
                         if (allowGeneralQueries)
