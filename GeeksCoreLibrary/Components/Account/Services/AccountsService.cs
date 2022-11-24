@@ -9,6 +9,7 @@ using GeeksCoreLibrary.Components.Account.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -27,8 +28,10 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly IObjectsService objectsService;
         private readonly ILogger<AccountsService> logger;
         private readonly IDatabaseHelpersService databaseHelpersService;
+        private readonly IWiserItemsService wiserItemsService;
+        private readonly AccountCmsSettingsModel accountCmsSettingsModel;
 
-        public AccountsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<AccountsService> logger, IDatabaseHelpersService databaseHelpersService)
+        public AccountsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<AccountsService> logger, IDatabaseHelpersService databaseHelpersService, IWiserItemsService wiserItemsService, AccountCmsSettingsModel accountCmsSettingsModel)
         {
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
@@ -36,6 +39,8 @@ namespace GeeksCoreLibrary.Components.Account.Services
             this.objectsService = objectsService;
             this.logger = logger;
             this.databaseHelpersService = databaseHelpersService;
+            this.wiserItemsService = wiserItemsService;
+            this.accountCmsSettingsModel = accountCmsSettingsModel;
         }
         
         /// <inheritdoc />
@@ -257,17 +262,22 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
-        public async Task Save2FaKeyAsync(int user_id, string user2FAKey)
+        public async Task Save2FaKeyAsync(ulong user_id, string user2FAKey)
         {
-            var query = "INSERT INTO wiser_itemdetail (item_id,key, value) VALUES (user_id,User2FAKey, user2FAKey) ";
-            await databaseConnection.ExecuteAsync(query);
+            var userItem = await wiserItemsService.GetItemDetailsAsync(user_id, entityType: accountCmsSettingsModel.EntityType);
+            userItem.SetDetail(Constants.GoogleAuthenticationVerificationIdFieldName, user2FAKey);
+            await wiserItemsService.SaveAsync(userItem);
+            // var query = "INSERT INTO wiser_itemdetail (item_id,key, value) VALUES (user_id,User2FAKey, user2FAKey) ";
+            // await databaseConnection.ExecuteAsync(query);
         }
         
         /// <inheritdoc />
-        public async Task Get2FaKeyAsync(int user_id)
+        public async Task<String> Get2FaKeyAsync(ulong user_id)
         {
-            var query = "SELECT value FROM wiser_itemdetail WHERE item_id = user_id AND key = User2FAKey";
-            await databaseConnection.ExecuteAsync(query);
+            var userItem = await wiserItemsService.GetItemDetailsAsync(user_id, entityType: accountCmsSettingsModel.EntityType);
+            return userItem.GetDetailValue(Constants.GoogleAuthenticationVerificationIdFieldName);
+            // var query = "SELECT value FROM wiser_itemdetail WHERE item_id = user_id AND key = User2FAKey";
+            // await databaseConnection.ExecuteAsync(query);
         }
 
         /// <inheritdoc />

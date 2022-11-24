@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Models;
 
 namespace GeeksCoreLibrary.Components.Account.Interfaces
@@ -43,14 +44,14 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <param name="user_id"></param>
         /// <param name="user2FAKey"></param>
         /// <returns></returns>
-        Task Save2FaKeyAsync(int user_id, string user2FAKey);
+        Task Save2FaKeyAsync(ulong user_id, string user2FaKey);
 
         /// <summary>
         /// Gets the 2FA key from the user in the database
         /// </summary>
         /// <param name="user_id"></param>
         /// <returns></returns>
-        Task Get2FaKeyAsync(int user_id);
+        Task<String> Get2FaKeyAsync(ulong user_id);
         
         /// <summary>
         /// Attempts to log off the user. This will delete the user's cookie from their browser and our database.
