@@ -146,7 +146,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 switch (cacheSettings.CachingLocation)
                 {
                     case TemplateCachingLocations.InMemory:
-                        cache.Add(contentCacheKey, template.Content, DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes));
+                        if (!String.IsNullOrWhiteSpace(contentCacheKey))
+                        {
+                            cache.Add(contentCacheKey, template.Content, DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes));
+                        }
+
                         break;
                     case TemplateCachingLocations.OnDisk:
                     {
