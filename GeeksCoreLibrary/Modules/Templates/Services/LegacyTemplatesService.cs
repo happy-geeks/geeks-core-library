@@ -199,9 +199,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
             Template result;
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
                 result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             // Check login requirement.
@@ -338,15 +344,23 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             databaseConnection.AddParameter("templateType", templateType.ToString());
             DateTime? result;
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            if (!await reader.ReadAsync())
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
-                return null;
-            }
+                if (!await reader.ReadAsync())
+                {
+                    return null;
+                }
 
-            var ordinal = reader.GetOrdinal("lastChanged");
-            result = await reader.IsDBNullAsync(ordinal) ? null : reader.GetDateTime(ordinal);
-            return result;
+                var ordinal = reader.GetOrdinal("lastChanged");
+                result = await reader.IsDBNullAsync(ordinal) ? null : reader.GetDateTime(ordinal);
+                return result;
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
+            }
         }
 
         /// <inheritdoc />
@@ -417,11 +431,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var idsLoaded = new List<int>();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            while (await reader.ReadAsync())
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
-                var template = await reader.ToTemplateModelAsync();
-                await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
+                while (await reader.ReadAsync())
+                {
+                    var template = await reader.ToTemplateModelAsync();
+                    await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
+                }
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             result.Content = resultBuilder.ToString();
@@ -501,11 +523,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND t.loadalways > 0
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            while (await reader.ReadAsync())
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
-                var template = await reader.ToTemplateModelAsync();
-                results.Add(template);
+                while (await reader.ReadAsync())
+                {
+                    var template = await reader.ToTemplateModelAsync();
+                    results.Add(template);
+                }
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             return results;
