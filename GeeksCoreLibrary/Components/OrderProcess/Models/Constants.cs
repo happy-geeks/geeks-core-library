@@ -173,6 +173,8 @@
 
         public const string PaymentMethodExternalNameProperty = "paymentmethodexternalname";
 
+        public const string OrderProcessBasketToConceptOrderMethodProperty = "baskettoconceptordermethod";
+
         public const string MeasurementProtocolActiveProperty = "measurementprotocolactive";
 
         public const string MeasurementProtocolItemJsonProperty = "measurementprotocolitemjson";

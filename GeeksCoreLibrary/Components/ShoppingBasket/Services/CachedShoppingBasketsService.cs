@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.Enums;
@@ -77,9 +78,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<(ulong ConceptOrderId, WiserItemModel ConceptOrder, List<WiserItemModel> ConceptOrderLines)> MakeConceptOrderFromBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<(ulong ConceptOrderId, WiserItemModel ConceptOrder, List<WiserItemModel> ConceptOrderLines)> MakeConceptOrderFromBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, OrderProcessBasketToConceptOrderMethods basketToConceptOrderMethod)
         {
-            return await shoppingBasketsService.MakeConceptOrderFromBasketAsync(shoppingBasket, basketLines, settings);
+            return await shoppingBasketsService.MakeConceptOrderFromBasketAsync(shoppingBasket, basketLines, settings, basketToConceptOrderMethod);
         }
 
         /// <inheritdoc />
