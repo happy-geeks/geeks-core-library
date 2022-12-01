@@ -938,7 +938,10 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             {
                 return;
             }
-
+            
+            // replace system objects in query
+            query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables:false);
+            
             databaseConnection.ClearParameters();
             if (parameters is {Count: > 0})
             {
