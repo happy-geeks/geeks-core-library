@@ -1,4 +1,5 @@
 ﻿using EvoPdf;
+using GeeksCoreLibrary.Components.OrderProcess.Enums;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Models
 {
@@ -61,6 +62,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the main template HTML.
         /// </summary>
         public string Template { get; set; }
+
+        /// <summary>
+        /// Gets or sets the method for creating a concept order from a basket.
+        /// </summary>
+        public OrderProcessBasketToConceptOrderMethods BasketToConceptOrderMethod { get; set; } = OrderProcessBasketToConceptOrderMethods.CreateCopy;
 
         /// <summary>
         /// Gets or sets if the measurement protocol is active during checkout.

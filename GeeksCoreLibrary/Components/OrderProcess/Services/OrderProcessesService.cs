@@ -114,6 +114,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 	                            CONCAT_WS('', header.value, header.long_value) AS header,
 	                            CONCAT_WS('', footer.value, footer.long_value) AS footer,
                                 CONCAT_WS('', template.value, template.long_value) AS template,
+                                IFNULL(basketToConceptOrderMethod.`value`, 0) AS basketToConceptOrderMethod,
                                 IF(measurementProtocolActive.`value` = 1, TRUE, FALSE) AS measurementProtocolActive,
                                 CONCAT_WS('', measurementProtocolItemJson.`value`, measurementProtocolItemJson.long_value) AS measurementProtocolItemJson,
                                 CONCAT_WS('', measurementProtocolBeginCheckoutJson.`value`, measurementProtocolBeginCheckoutJson.long_value) AS measurementProtocolBeginCheckoutJson,
@@ -135,6 +136,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS header ON header.item_id = orderProcess.id AND header.`key` = '{Constants.OrderProcessHeaderProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS footer ON footer.item_id = orderProcess.id AND footer.`key` = '{Constants.OrderProcessFooterProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS template ON template.item_id = orderProcess.id AND template.`key` = '{Constants.OrderProcessTemplateProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS basketToConceptOrderMethod ON basketToConceptOrderMethod.item_id = orderProcess.id AND basketToConceptOrderMethod.`key` = '{Constants.OrderProcessBasketToConceptOrderMethodProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolActive ON measurementProtocolActive.item_id = orderProcess.id AND measurementProtocolActive.`key` = '{Constants.MeasurementProtocolActiveProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolItemJson ON measurementProtocolItemJson.item_id = orderProcess.id AND measurementProtocolItemJson.`key` = '{Constants.MeasurementProtocolItemJsonProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolBeginCheckoutJson ON measurementProtocolBeginCheckoutJson.item_id = orderProcess.id AND measurementProtocolBeginCheckoutJson.`key` = '{Constants.MeasurementProtocolBeginCheckoutJsonProperty}'
@@ -173,6 +175,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 Header = firstRow.Field<string>("header"),
                 Footer = firstRow.Field<string>("footer"),
                 Template = firstRow.Field<string>("template"),
+                BasketToConceptOrderMethod = (OrderProcessBasketToConceptOrderMethods) Convert.ToInt32(firstRow["basketToConceptOrderMethod"]),
                 MeasurementProtocolActive = Convert.ToBoolean(firstRow["measurementProtocolActive"]),
                 MeasurementProtocolItemJson = firstRow.Field<string>("measurementProtocolItemJson"),
                 MeasurementProtocolBeginCheckoutJson = firstRow.Field<string>("measurementProtocolBeginCheckoutJson"),
@@ -847,7 +850,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 var conceptOrders = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
                 foreach (var (main, lines) in shoppingBaskets)
                 {
-                    var (conceptOrderId, conceptOrder, conceptOrderLines) = await shoppingBasketsService.MakeConceptOrderFromBasketAsync(main, lines, basketSettings);
+                    var (conceptOrderId, conceptOrder, conceptOrderLines) = await shoppingBasketsService.MakeConceptOrderFromBasketAsync(main, lines, basketSettings, orderProcessSettings.BasketToConceptOrderMethod);
 
                     conceptOrders.Add((conceptOrder, conceptOrderLines));
 
