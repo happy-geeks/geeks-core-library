@@ -940,11 +940,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             }
             
             // replace system objects in query
-            query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables:false);
+            query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables:false, forQuery:true);
             
-            databaseConnection.ClearParameters();
             if (parameters is {Count: > 0})
             {
+                query = stringReplacementsService.DoReplacements(query, parameters, forQuery: true);
+                
                 foreach (var parameter in parameters)
                 {
                     databaseConnection.AddParameter(parameter.Key, parameter.Value);
