@@ -1,21 +1,20 @@
 ﻿using System;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
+using GeeksCoreLibrary.Components.OrderProcess.Middlewares;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
+namespace GeeksCoreLibrary.Modules.ItemFiles;
+
+public class WiserItemFilesMiddleware
 {
-    public class RewriteUrlToOrderProcessMiddleware
-    {
         private readonly RequestDelegate next;
         private readonly ILogger<RewriteUrlToOrderProcessMiddleware> logger;
-        private IOrderProcessesService orderProcessesService;
 
-        public RewriteUrlToOrderProcessMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrderProcessMiddleware> logger)
+        public WiserItemFilesMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrderProcessMiddleware> logger)
         {
             this.next = next;
             this.logger = logger;
@@ -25,10 +24,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
         /// Invoke the middleware.
         /// IObjectsService and IDatabaseConnection are here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
         /// </summary>
-        public async Task Invoke(HttpContext context, IOrderProcessesService orderProcessesService)
+        public async Task Invoke(HttpContext context)
         {
-            this.orderProcessesService = orderProcessesService;
-
             if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
                 // If this happens, it means that another middleware has already found something and we don't need to do this again.
@@ -67,25 +64,36 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
         /// <param name="queryStringFromUrl">The query string from the URI.</param>
         private async Task HandleRewrites(HttpContext context, string path, QueryString queryStringFromUrl)
         {
-            // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
-            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
-            if (regEx.IsMatch(currentUrl.ToString()))
+            // Check if the current URL is that of an image or a file.
+            var urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+)\/)?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            var matchResult = urlRegex.Match(path);
+            if (!matchResult.Success)
             {
-                return;
+                urlRegex = new Regex(@"(?:file\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>.+?)(?:\/(?<fileNumber>\d+))?(?:\/)(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                matchResult = urlRegex.Match(path);
+                if (!matchResult.Success)
+                {
+                    return;
+                }
+                
+                context.Request.Path = "/wiser-file.gcl";
             }
-            
-            var orderProcess = await orderProcessesService.GetOrderProcessViaFixedUrlAsync(path);
-            if (orderProcess == null || orderProcess.Id == 0)
+            else
             {
-                return;
+                context.Request.Path = "/wiser-image.gcl";
             }
-            
-            logger.LogInformation($"Found order process with id '{orderProcess.Id}' and name '{orderProcess.Title}' for current URL '{currentUrl}'.");
-            queryStringFromUrl = queryStringFromUrl.Add(Models.Constants.OrderProcessIdRequestKey, orderProcess.Id.ToString());
 
-            context.Request.Path = $"/{Models.Constants.CheckoutPage}";
+            // Add all values from the regex to the query string for the controller.
+            foreach (Group group in matchResult.Groups)
+            {
+                if (!group.Success || String.IsNullOrWhiteSpace(group.Name) || group.Name == "0")
+                {
+                    continue;
+                }
+
+                queryStringFromUrl = queryStringFromUrl.Add(group.Name, group.Value);
+            }
+
             context.Request.QueryString = queryStringFromUrl;
         }
-    }
 }

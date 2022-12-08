@@ -16,6 +16,8 @@ namespace GeeksCoreLibrary.Core.Helpers
         {
             "/webpage.gcl",
             "/template.gcl",
+            "/wiser-image.gcl",
+            "/wiser-file.gcl",
             "/webpage.jcl",
             "/template.jcl",
             $"/{Components.OrderProcess.Models.Constants.CheckoutPage}",

@@ -49,6 +49,10 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             }
 
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+            if (fileNumber <= 1)
+            {
+                fileNumber = 1;
+            }
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("itemId", finalItemId);
