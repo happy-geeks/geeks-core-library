@@ -50,6 +50,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.CachingMinutes = await reader.IsDBNullAsync("cache_minutes") ? 0 : await reader.GetFieldValueAsync<int>("cache_minutes");
             template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations)await reader.GetFieldValueAsync<int>("caching_location");
             template.CachingRegex = reader.GetStringHandleNull("cache_regex");
+            template.IsPartial = !reader.HasColumn("is_partial") ? false : Convert.ToBoolean(reader.GetValue("is_partial"));
 
             if (!await reader.IsDBNullAsync("changed_on"))
             {
