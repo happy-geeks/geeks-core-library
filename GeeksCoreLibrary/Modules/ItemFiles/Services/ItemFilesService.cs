@@ -98,7 +98,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 SELECT content_type, content, content_url, protected
                 FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
-                ORDER BY id
+                ORDER BY ordering ASC, id ASC
                 LIMIT {fileNumber - 1},1");
 
             if (!ValidateQueryResult(getImageResult, encryptedItemLinkId))
@@ -169,7 +169,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 SELECT content, content_url, protected
                 FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE item_id = ?itemId AND property_name = ?propertyName
-                ORDER BY id
+                ORDER BY ordering ASC, id ASC
                 LIMIT {fileNumber - 1},1");
 
             if (!ValidateQueryResult(getFileResult, encryptedItemId))
@@ -205,7 +205,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 SELECT content, content_url, protected
                 FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
-                ORDER BY id
+                ORDER BY ordering ASC, id ASC
                 LIMIT {fileNumber - 1},1");
 
             if (!ValidateQueryResult(getFileResult, encryptedItemLinkId))
