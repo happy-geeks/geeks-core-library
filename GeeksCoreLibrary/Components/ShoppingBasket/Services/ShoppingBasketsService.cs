@@ -587,8 +587,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 }
             }
 
-            await wiserItemsService.SaveAsync(conceptOrder, userId, linkTypeOrderToUser, alwaysSaveValues: true, skipPermissionsCheck: true);
-            
+            if (userId > 0)
+            {
+                await wiserItemsService.SaveAsync(conceptOrder, userId, linkTypeOrderToUser, alwaysSaveValues: true, skipPermissionsCheck: true);
+            }
+            else
+            {
+                await wiserItemsService.SaveAsync(conceptOrder, alwaysSaveValues: true, skipPermissionsCheck: true);
+            }
+
             foreach (var line in basketLines)
             {
                 var conceptLine = new WiserItemModel
