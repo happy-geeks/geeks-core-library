@@ -401,7 +401,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                             {
                                 foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, Constants.BasketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true)).Where(basketItemId => basketItemId != shoppingBasket.Id))
                                 {
-                                    await wiserItemsService.DeleteAsync(basketItemId, skipPermissionsCheck: true);
+                                    await DeleteAsync(basketItemId);
                                 }
                             }
 
@@ -2316,6 +2316,23 @@ WHERE coupon.entity_type = 'coupon'", true);
 
             var domainList = domain.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList().FindAll(it => it != "0" && it != "");
             return domainList.Count == 0 || domainList.Contains(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext));
+        }
+
+        /// <inheritdoc />
+        public async Task DeleteAsync(ulong basketItemId)
+        {
+            await DeleteLinesAsync(basketItemId);
+            await wiserItemsService.DeleteAsync(basketItemId, entityType: Constants.BasketEntityType, skipPermissionsCheck: true);
+        }
+
+        /// <inheritdoc />
+        public async Task DeleteLinesAsync(ulong basketItemId)
+        {
+            var lines = await wiserItemsService.GetLinkedItemIdsAsync(basketItemId, Constants.BasketLineToBasketLinkType, Constants.BasketLineEntityType);
+            foreach (var basketLineItemId in lines)
+            {
+                await wiserItemsService.DeleteAsync(basketLineItemId, entityType: Constants.BasketLineEntityType, skipPermissionsCheck: true);
+            }
         }
 
         #region Private functions (helper functions)
