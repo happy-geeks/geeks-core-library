@@ -129,6 +129,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 {
                     case (int)MySqlErrorCode.LockDeadlock:
                     case (int)MySqlErrorCode.LockWaitTimeout:
+                        Thread.Sleep(100);
                         return await GetAsync(query, retryCount + 1);
                     case (int)MySqlErrorCode.UnableToConnectToHost:
                     case (int)MySqlErrorCode.TooManyUserConnections:
@@ -491,8 +492,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     // Make sure we always use the correct timezone.
                     if (!String.IsNullOrWhiteSpace(gclSettings.DatabaseTimeZone))
                     {
-                        CommandForReading.CommandText =
-                            $"SET @@time_zone = {gclSettings.DatabaseTimeZone.ToMySqlSafeValue(true)};";
+                        CommandForReading.CommandText = $"SET @@time_zone = {gclSettings.DatabaseTimeZone.ToMySqlSafeValue(true)};";
                         await CommandForReading.ExecuteNonQueryAsync();
                     }
                 }
