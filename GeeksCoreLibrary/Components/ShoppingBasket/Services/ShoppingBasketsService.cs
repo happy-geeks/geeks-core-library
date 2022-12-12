@@ -2574,8 +2574,9 @@ WHERE coupon.entity_type = 'coupon'", true);
 
             var freePaymentMethodCostsCoupon = coupon.GetDetailValue<bool>(CouponConstants.FreePaymentServiceProviderCostsKey);
             var freeShippingCostsCoupon = coupon.GetDetailValue<bool>(CouponConstants.FreeShippingCostsKey);
+            var isBusinessToBusinessCoupon = coupon.GetDetailValue<bool>(CouponConstants.BusinessToBusinessKey);
 
-            return discount != 0 || freePaymentMethodCostsCoupon || freeShippingCostsCoupon
+            return isBusinessToBusinessCoupon == isBusinessToBusiness && (discount != 0 || freePaymentMethodCostsCoupon || freeShippingCostsCoupon)
                 ? (true, discount, ShoppingBasket.HandleCouponResults.CouponAccepted, coupon, false, false)
                 : (false, 0M, ShoppingBasket.HandleCouponResults.InvalidCouponCode, null, false, true);
         }
