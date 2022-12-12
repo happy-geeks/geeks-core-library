@@ -2517,8 +2517,9 @@ WHERE coupon.entity_type = 'coupon'", true);
                 return (false, 0M, ShoppingBasket.HandleCouponResults.InvalidCouponCode, null, false, false);
             }
 
+            var isBusinessToBusiness = shoppingBasket.GetDetailValue<bool>("IsB2B");
             var maxDiscountIsTotalAmountProducts = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_maxdiscountistotalamountproducts", "true")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            var calculateOverPriceWithoutVat = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_calculateoverpricewithoutvat")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            var calculateOverPriceWithoutVat = isBusinessToBusiness || (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_calculateoverpricewithoutvat")).Equals("true", StringComparison.OrdinalIgnoreCase);
 
             logger.LogTrace($"Valid coupon added to shopping basket - maxDiscountIsTotalAmountProducts: {maxDiscountIsTotalAmountProducts} - calculateOverPriceWithoutVat: {calculateOverPriceWithoutVat}");
 
