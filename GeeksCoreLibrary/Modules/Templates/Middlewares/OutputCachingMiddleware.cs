@@ -108,6 +108,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
 
             // Get folder and file name.
             var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+            if (String.IsNullOrWhiteSpace(cacheFolder))
+            {
+                logger.LogWarning("Content cache is enabled but the directory 'contentcache' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                await next.Invoke(context);
+                return;
+            }
+
             var cacheFileName = await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate);
             var fullCachePath = Path.Combine(cacheFolder, cacheFileName);
             var cacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
@@ -165,7 +172,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
 
                 return;
             }
-            
+
             logger.LogDebug($"Content cache file NOT found for page '{HttpContextHelpers.GetOriginalRequestUri(context)}', creating new one...");
 
             // Remember the original body.
@@ -193,7 +200,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
 
                 // Copy the new body to the original body.
                 await newStream.CopyToAsync(originalBody);
-
 
                 switch (contentTemplate.CachingLocation)
                 {
