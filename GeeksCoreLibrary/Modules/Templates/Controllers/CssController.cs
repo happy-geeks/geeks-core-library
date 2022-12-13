@@ -20,22 +20,24 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             this.templatesService = templatesService;
         }
         
-        [Route("/css/gcl_general.css"), HttpGet]
-        public async Task<IActionResult> GeneralCss()
+        [Route("/css/gcl_general.css")]
+        [HttpGet]
+        public async Task<IActionResult> GeneralCss(ResourceInsertModes mode = ResourceInsertModes.Standard)
         {
-            var lastChangedDate = await templatesService.GetGeneralTemplateLastChangedDateAsync(TemplateTypes.Css) ?? DateTime.Now;
+            var lastChangedDate = await templatesService.GetGeneralTemplateLastChangedDateAsync(TemplateTypes.Css, mode) ?? DateTime.Now;
             if (!this.IsModified(lastChangedDate))
             {
                 return StatusCode((int) HttpStatusCode.NotModified);
             }
-            
-            var cssContent = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css);
+
+            var cssContent = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css, mode);
             Response.Headers.Add("Last-Modified", cssContent.LastChangeDate.ToUniversalTime().ToString("R"));
             Response.Headers.Add("Expires", DateTime.Now.AddDays(7).ToUniversalTime().ToString("R"));
             return Content(cssContent.Content, "text/css", Encoding.UTF8);
         }
         
-        [Route("/css/gclcss_{templateIds:regex(.*)}.css"), HttpGet]
+        [Route("/css/gclcss_{templateIds:regex(.*)}.css")]
+        [HttpGet]
         public async Task<IActionResult> PageCss(string templateIds)
         {
             var templateIdsList = templateIds.Split('_', StringSplitOptions.RemoveEmptyEntries).Select(Int32.Parse).ToList();

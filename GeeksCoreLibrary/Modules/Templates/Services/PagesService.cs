@@ -196,11 +196,29 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             await AddGoogleReCaptchaToViewModelAsync(viewModel);
 
             // Add CSS for all pages.
-            var generalCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css);
-            externalCss.AddRange(generalCss.ExternalFiles);
-            if (!String.IsNullOrWhiteSpace(generalCss.Content))
+            var generalStandardCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css);
+            externalCss.AddRange(generalStandardCss.ExternalFiles);
+            if (!String.IsNullOrWhiteSpace(generalStandardCss.Content))
             {
-                viewModel.Css.GeneralCssFileName = $"/css/gcl_general.css?c={generalCss.LastChangeDate:yyyyMMddHHmmss}";
+                viewModel.Css.GeneralStandardCssFileName = $"/css/gcl_general.css?mode=Standard&c={generalStandardCss.LastChangeDate:yyyyMMddHHmmss}";
+            }
+
+            var generalInlineHeadCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css, ResourceInsertModes.InlineHead);
+            if (!String.IsNullOrWhiteSpace(generalInlineHeadCss.Content))
+            {
+                viewModel.Css.GeneralInlineHeadCss = generalInlineHeadCss.Content;
+            }
+
+            var generalSyncFooterCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css, ResourceInsertModes.SyncFooter);
+            if (!String.IsNullOrWhiteSpace(generalSyncFooterCss.Content))
+            {
+                viewModel.Css.GeneralSyncFooterCssFileName = $"/css/gcl_general.css?mode=SyncFooter&c={generalSyncFooterCss.LastChangeDate:yyyyMMddHHmmss}";
+            }
+
+            var generalAsyncFooterCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css, ResourceInsertModes.AsyncFooter);
+            if (!String.IsNullOrWhiteSpace(generalAsyncFooterCss.Content))
+            {
+                viewModel.Css.GeneralAsyncFooterCssFileName = $"/css/gcl_general.css?mode=AsyncFooter&c={generalAsyncFooterCss.LastChangeDate:yyyyMMddHHmmss}";
             }
 
             // Add css for this specific page.
@@ -215,6 +233,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 foreach (var template in templates)
                 {
                     externalCss.AddRange(template.ExternalFiles);
+
+                    if (String.IsNullOrWhiteSpace(template.Content))
+                    {
+                        continue;
+                    }
+
                     switch (template.InsertMode)
                     {
                         case ResourceInsertModes.Standard:
@@ -258,20 +282,40 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 }
             }
 
-            // Add Javascript for all pages.
-            var moveAllJavascriptToBottom = (await objectsService.FindSystemObjectByDomainNameAsync("javascriptmovetobottom", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            var generalJavascript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js);
-            externalJavascript.AddRange(generalJavascript.ExternalFiles);
-            if (!String.IsNullOrWhiteSpace(generalJavascript.Content))
+            // Add JavaScript for all pages.
+            var moveAllJavaScriptToBottom = (await objectsService.FindSystemObjectByDomainNameAsync("javascriptmovetobottom", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            var generalStandardJavaScript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js);
+            externalJavascript.AddRange(generalStandardJavaScript.ExternalFiles);
+            if (!String.IsNullOrWhiteSpace(generalStandardJavaScript.Content))
             {
-                if (moveAllJavascriptToBottom)
+                if (moveAllJavaScriptToBottom)
                 {
-                    viewModel.Javascript.GeneralFooterJavascriptFileName = $"/scripts/gcl_general.js?c={generalJavascript.LastChangeDate:yyyyMMddHHmmss}";
+                    viewModel.Javascript.GeneralSyncFooterJavaScriptFileName ??= new List<string>();
+                    viewModel.Javascript.GeneralSyncFooterJavaScriptFileName.Add($"/scripts/gcl_general.js?mode=Standard&c={generalStandardJavaScript.LastChangeDate:yyyyMMddHHmmss}");
                 }
                 else
                 {
-                    viewModel.Javascript.GeneralJavascriptFileName = $"/scripts/gcl_general.js?c={generalJavascript.LastChangeDate:yyyyMMddHHmmss}";
+                    viewModel.Javascript.GeneralStandardJavaScriptFileName = $"/scripts/gcl_general.js?mode=Standard&c={generalStandardJavaScript.LastChangeDate:yyyyMMddHHmmss}";
                 }
+            }
+
+            var generalInlineHeadJavaScript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js, ResourceInsertModes.InlineHead);
+            if (!String.IsNullOrWhiteSpace(generalInlineHeadJavaScript.Content))
+            {
+                viewModel.Javascript.GeneralInlineHeadJavaScript = generalInlineHeadJavaScript.Content;
+            }
+
+            var generalSyncFooterJavaScript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js, ResourceInsertModes.SyncFooter);
+            if (!String.IsNullOrWhiteSpace(generalSyncFooterJavaScript.Content))
+            {
+                viewModel.Javascript.GeneralSyncFooterJavaScriptFileName ??= new List<string>();
+                viewModel.Javascript.GeneralSyncFooterJavaScriptFileName.Add($"/scripts/gcl_general.js?mode=SyncFooter&c={generalSyncFooterJavaScript.LastChangeDate:yyyyMMddHHmmss}");
+            }
+
+            var generalAsyncFooterJavaScript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js, ResourceInsertModes.AsyncFooter);
+            if (!String.IsNullOrWhiteSpace(generalAsyncFooterJavaScript.Content))
+            {
+                viewModel.Javascript.GeneralAsyncFooterJavaScriptFileName = $"/scripts/gcl_general.js?mode=AsyncFooter&c={generalAsyncFooterJavaScript.LastChangeDate:yyyyMMddHHmmss}";
             }
 
             // Add Javascript for this specific page.
@@ -286,10 +330,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 foreach (var template in templates)
                 {
                     externalJavascript.AddRange(template.ExternalFiles);
+
+                    if (String.IsNullOrWhiteSpace(template.Content))
+                    {
+                        continue;
+                    }
+
                     switch (template.InsertMode)
                     {
                         case ResourceInsertModes.Standard:
-                            if (moveAllJavascriptToBottom)
+                            if (moveAllJavaScriptToBottom)
                             {
                                 syncFooterJavascriptTemplates.Add(template.Id);
                             }
