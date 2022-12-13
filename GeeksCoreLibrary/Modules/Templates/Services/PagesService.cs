@@ -234,25 +234,27 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     externalCss.AddRange(template.ExternalFiles);
 
-                    if (!String.IsNullOrWhiteSpace(template.Content))
+                    if (String.IsNullOrWhiteSpace(template.Content))
                     {
-                        switch (template.InsertMode)
-                        {
-                            case ResourceInsertModes.Standard:
-                                standardCssTemplates.Add(template.Id);
-                                break;
-                            case ResourceInsertModes.InlineHead:
-                                inlineHeadCssTemplates.Add(template.Content);
-                                break;
-                            case ResourceInsertModes.AsyncFooter:
-                                asyncFooterCssTemplates.Add(template.Id);
-                                break;
-                            case ResourceInsertModes.SyncFooter:
-                                syncFooterCssTemplates.Add(template.Id);
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException();
-                        }
+                        continue;
+                    }
+
+                    switch (template.InsertMode)
+                    {
+                        case ResourceInsertModes.Standard:
+                            standardCssTemplates.Add(template.Id);
+                            break;
+                        case ResourceInsertModes.InlineHead:
+                            inlineHeadCssTemplates.Add(template.Content);
+                            break;
+                        case ResourceInsertModes.AsyncFooter:
+                            asyncFooterCssTemplates.Add(template.Id);
+                            break;
+                        case ResourceInsertModes.SyncFooter:
+                            syncFooterCssTemplates.Add(template.Id);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
                     }
                 }
 
@@ -329,33 +331,35 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     externalJavascript.AddRange(template.ExternalFiles);
 
-                    if (!String.IsNullOrWhiteSpace(template.Content))
+                    if (String.IsNullOrWhiteSpace(template.Content))
                     {
-                        switch (template.InsertMode)
-                        {
-                            case ResourceInsertModes.Standard:
-                                if (moveAllJavaScriptToBottom)
-                                {
-                                    syncFooterJavascriptTemplates.Add(template.Id);
-                                }
-                                else
-                                {
-                                    standardJavascriptTemplates.Add(template.Id);
-                                }
+                        continue;
+                    }
 
-                                break;
-                            case ResourceInsertModes.InlineHead:
-                                inlineHeadJavascriptTemplates.Add(template.Content);
-                                break;
-                            case ResourceInsertModes.AsyncFooter:
-                                asyncFooterJavascriptTemplates.Add(template.Id);
-                                break;
-                            case ResourceInsertModes.SyncFooter:
+                    switch (template.InsertMode)
+                    {
+                        case ResourceInsertModes.Standard:
+                            if (moveAllJavaScriptToBottom)
+                            {
                                 syncFooterJavascriptTemplates.Add(template.Id);
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException();
-                        }
+                            }
+                            else
+                            {
+                                standardJavascriptTemplates.Add(template.Id);
+                            }
+
+                            break;
+                        case ResourceInsertModes.InlineHead:
+                            inlineHeadJavascriptTemplates.Add(template.Content);
+                            break;
+                        case ResourceInsertModes.AsyncFooter:
+                            asyncFooterJavascriptTemplates.Add(template.Id);
+                            break;
+                        case ResourceInsertModes.SyncFooter:
+                            syncFooterJavascriptTemplates.Add(template.Id);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
                     }
                 }
 
