@@ -195,9 +195,15 @@ GROUP BY template.template_id
 ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
             Template result;
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
                 result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             // Check login requirement.
@@ -450,13 +456,19 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                         GROUP BY template.template_id
                         ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
                 while (await reader.ReadAsync())
                 {
                     var template = await reader.ToTemplateModelAsync();
                     results.Add(template);
                 }
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             return results;
@@ -533,13 +545,19 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var idsLoaded = new List<int>();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
 
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
                 while (await reader.ReadAsync())
                 {
                     var template = await reader.ToTemplateModelAsync();
                     await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
                 }
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             result.Content = resultBuilder.ToString();
@@ -803,7 +821,15 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 databaseConnection.AddParameter("propertyName", propertyName);
 
                 var queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
-                var dataTable = await databaseConnection.GetAsync(@$"SELECT * FROM `{WiserTableNames.WiserItemFile}` WHERE {queryWherePart} AND IF(?propertyName = '', 1=1, property_name = ?propertyName) AND content_type LIKE 'image%' ORDER BY id ASC");
+                var dataTable = await databaseConnection.GetAsync(@$"SELECT
+    item_id,
+    file_name,
+    property_name
+FROM `{WiserTableNames.WiserItemFile}`
+WHERE {queryWherePart}
+AND IF(?propertyName = '', 1=1, property_name = ?propertyName)
+AND content_type LIKE 'image%'
+ORDER BY id ASC");
 
                 if (dataTable.Rows.Count == 0)
                 {

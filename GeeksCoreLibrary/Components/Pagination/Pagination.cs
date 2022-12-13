@@ -191,6 +191,15 @@ namespace GeeksCoreLibrary.Components.Pagination
                 return String.Empty;
             }
 
+            // If the currently requested page is higher than the max possible page, return a 404 with a description of the issue.
+            // Only do this if there's at least one page. Otherwise this component will always return a 404 response on empty results, which is not always desired.
+            if (lastPageNumber > 0 && currentPage > lastPageNumber)
+            {
+                WriteToTrace("GCL 404 Because trying to fetch a page that's higher than allowed", true);
+                HttpContextHelpers.Return404(httpContextAccessor.HttpContext);
+                return String.Empty;
+            }
+
             // Add links to the first and previous page when not on the first page.
             if (currentPage > 1)
             {

@@ -3,16 +3,13 @@
     public static class Constants
     {
         public const string ConnectedItemIdProperty = "connecteditemid";
-
         public const string CouponEntityType = "coupon";
-
         public const string BasketLineCouponType = "coupon";
-
         public const string BasketEntityType = "basket";
-
         public const string BasketLineEntityType = "basketline";
-
         public const int BasketToUserLinkType = 5010;
+        public const int BasketLineToBasketLinkType = 5002;
+        public const int ProductToOrderLineLinkType = 5030;
 
         #region Default settings
 
