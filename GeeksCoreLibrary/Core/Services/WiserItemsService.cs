@@ -1614,12 +1614,27 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             {
                 return false;
             }
-            
-            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{id}", itemId.ToString()).ReplaceCaseInsensitive("{itemId}", itemId.ToString());
-            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{title}", "?workFlowItemTitle");
-            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{moduleId}", wiserItem?.ModuleId.ToString());
-            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{userId}", userId.ToString());
-            workFlowQuery = workFlowQuery.ReplaceCaseInsensitive("{username}", "?username");
+
+            // Create list of replacements to make it a bit easier to add new replacements.
+            // When adding an item, make sure the argument of the constructor of the dictionary reflects the amount of entries!
+            var replacements = new Dictionary<string, string>(6)
+            {
+                { "id", itemId.ToString() },
+                { "itemId", itemId.ToString() },
+                { "title", "?workFlowItemTitle" },
+                { "moduleId", wiserItem?.ModuleId.ToString() },
+                { "userId", userId.ToString() },
+                { "username", "?username" }
+            };
+
+            foreach (var replacement in replacements)
+            {
+                // Replace the version with quotes around it and the version without quotes around it.
+                workFlowQuery = workFlowQuery
+                    .ReplaceCaseInsensitive($"'{{{replacement.Key}}}'", replacement.Value)
+                    .ReplaceCaseInsensitive($"\"{{{replacement.Key}}}\"", replacement.Value)
+                    .ReplaceCaseInsensitive($"{{{replacement.Key}}}", replacement.Value);
+            }
 
             if (wiserItem?.Details != null)
             {
