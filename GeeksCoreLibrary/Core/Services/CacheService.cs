@@ -85,6 +85,11 @@ namespace GeeksCoreLibrary.Core.Services
         public void ClearOutputCache()
         {
             var outputCacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+            if (String.IsNullOrWhiteSpace(outputCacheFolder))
+            {
+                return;
+            }
+
             var directoryInfo = new DirectoryInfo(outputCacheFolder);
             if (!directoryInfo.Exists)
             {
@@ -112,6 +117,11 @@ namespace GeeksCoreLibrary.Core.Services
         public void ClearFilesCache()
         {
             var contentFilesFolder = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+            if (String.IsNullOrWhiteSpace(contentFilesFolder))
+            {
+                return;
+            }
+
             var directoryInfo = new DirectoryInfo(contentFilesFolder);
             if (!directoryInfo.Exists)
             {

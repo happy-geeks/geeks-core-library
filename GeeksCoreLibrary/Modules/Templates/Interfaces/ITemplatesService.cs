@@ -45,15 +45,17 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// Gets the last changed date of general templates of a specific type. This can be used for generating the URL for gcl_general.css for example.
         /// </summary>
         /// <param name="templateType">Optional: The template type to get the last change date of. Default is Css.</param>
+        /// <param name="byInsertMode">Optional: Which insert mode the templates should have. Defaults to <see cref="ResourceInsertModes.Standard"/>.</param>
         /// <returns>Null if there are no general templates of the specified type, or the date of the most recent change in all the general templates of the specified type.</returns>
-        Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType);
+        Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard);
 
         /// <summary>
         /// Get the content for the general CSS or javascript file that needs to be loaded on every page.
         /// </summary>
         /// <param name="templateType">The type of content to get.</param>
+        /// <param name="byInsertMode">Optional: Which insert mode the templates should have. Defaults to <see cref="ResourceInsertModes.Standard"/>.</param>
         /// <returns></returns>
-        Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType);
+        Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard);
 
         /// <summary>
         /// Get one or more templates.

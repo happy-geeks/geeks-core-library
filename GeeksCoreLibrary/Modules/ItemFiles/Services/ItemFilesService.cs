@@ -68,6 +68,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
             var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
             var localFilename = $"image_wiser2{entityTypePart}_{finalItemId}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
@@ -105,6 +111,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
             var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
             var localFilename = $"image_wiser2_{finalItemLinkId}_itemlink{linkTypePart}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{filename}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
@@ -139,6 +151,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
             var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
             var localFilename = $"image_wiser2{entityTypePart}_{finalItemId}_direct_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
@@ -176,6 +194,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
             var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve file because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
             var localFilename = $"file_wiser2{entityTypePart}_{finalItemId}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
@@ -212,6 +236,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
             var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve file because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
             var localFilename = $"file_wiser2_{finalItemLinkId}_itemlink{linkTypePart}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
@@ -245,6 +275,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
             var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve file because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
             var localFilename = $"file_wiser2{entityTypePart}_{finalItemId}_direct_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 

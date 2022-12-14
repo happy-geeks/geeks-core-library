@@ -87,7 +87,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 return Unauthorized();
             }
 
-            var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase);
+            var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase) && !contentTemplate.IsPartial;
             switch (contentTemplate.Type)
             {
                 case TemplateTypes.Js:

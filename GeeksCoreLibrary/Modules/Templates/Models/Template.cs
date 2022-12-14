@@ -158,5 +158,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets the regular expression that is matched against the URL of the page, to decide whether to use the default header or footer.
         /// </summary>
         public string DefaultHeaderFooterRegex { get; set; }
+
+        /// <summary>
+        /// Gets or sets if this template is only a partial.
+        /// </summary>
+        public bool IsPartial { get; set; }
     }
 }
