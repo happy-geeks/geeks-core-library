@@ -468,10 +468,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 }
             },
 
-            // ais_logs
+            // wts_logs
             new WiserTableDefinitionModel
             {
-                Name = WiserTableNames.AisLogs,
+                Name = WiserTableNames.WtsLogs,
                 LastUpdate = new DateTime(2022, 9, 14),
                 Columns = new List<ColumnSettingsModel>
                 {
@@ -488,16 +488,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
-                    new(WiserTableNames.AisLogs, "idx_configuration", IndexTypes.Normal, new List<string> { "configuration", "time_id", "order", "is_test" }),
-                    new(WiserTableNames.AisLogs, "idx_level", IndexTypes.Normal, new List<string> { "level", "configuration", "time_id", "order", "is_test" }),
-                    new(WiserTableNames.AisLogs, "idx_dated_configuration", IndexTypes.Normal, new List<string> { "added_on", "configuration", "time_id", "is_test" })
+                    new(WiserTableNames.WtsLogs, "idx_configuration", IndexTypes.Normal, new List<string> { "configuration", "time_id", "order", "is_test" }),
+                    new(WiserTableNames.WtsLogs, "idx_level", IndexTypes.Normal, new List<string> { "level", "configuration", "time_id", "order", "is_test" }),
+                    new(WiserTableNames.WtsLogs, "idx_dated_configuration", IndexTypes.Normal, new List<string> { "added_on", "configuration", "time_id", "is_test" })
                 }
             },
             
-            // ais_services
+            // wts_services
             new WiserTableDefinitionModel
             {
-                Name = WiserTableNames.AisServices,
+                Name = WiserTableNames.WtsServices,
                 LastUpdate = new DateTime(2022, 10, 4),
                 Columns = new List<ColumnSettingsModel>
                 {
@@ -515,8 +515,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
-                    new(WiserTableNames.AisServices, "idx_time", IndexTypes.Normal, new List<string> { "configuration", "time_id" }),
-                    new(WiserTableNames.AisServices, "idx_action", IndexTypes.Normal, new List<string> { "configuration", "action" })
+                    new(WiserTableNames.WtsServices, "idx_time", IndexTypes.Normal, new List<string> { "configuration", "time_id" }),
+                    new(WiserTableNames.WtsServices, "idx_action", IndexTypes.Normal, new List<string> { "configuration", "action" })
                 }
             },
             
