@@ -3,7 +3,7 @@
 namespace GeeksCoreLibrary.Modules.WiserDashboard.Models;
 
 /// <summary>
-/// A model for an AIS service.
+/// A model for a WTS service.
 /// </summary>
 public class Service
 {

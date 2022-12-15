@@ -106,7 +106,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Models
         public DateTime? SendDate { get; set; }
 
         /// <summary>
-        /// Gets or sets the date and time this communication has been processed by the AIS.
+        /// Gets or sets the date and time this communication has been processed by the WTS.
         /// This is the time that the message was actually sent.
         /// </summary>
         public DateTime? ProcessedDate { get; set; }
