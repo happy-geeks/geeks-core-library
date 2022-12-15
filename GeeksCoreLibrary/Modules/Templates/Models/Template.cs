@@ -19,7 +19,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
 
         /// <summary>
         /// Gets or sets the name of the root directory in the templates module.
-        /// This should be one of the following values: CSS, HTML, Scripts, QUERY or AIS.
+        /// This should be one of the following values: CSS, HTML, Scripts, QUERY or SERVICES.
         /// </summary>
         public string RootName { get; set; }
 

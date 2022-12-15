@@ -82,7 +82,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserLoginAttempts = "wiser_login_attempts";
         /// <summary>
-        /// This table contains periodic communications. The AIS will handle these and create new rows in <see cref="WiserCommunicationGenerated"/> when needed.
+        /// This table contains periodic communications. The WTS will handle these and create new rows in <see cref="WiserCommunicationGenerated"/> when needed.
         /// </summary>
         public const string WiserCommunication = "wiser_communication";
         /// <summary>
@@ -91,7 +91,7 @@ namespace GeeksCoreLibrary.Core.Models
         public const string WiserCommunicationGenerated = "wiser_communication_generated";
         /// <summary>
         /// This table contains all imports that are done via the import module.
-        /// The AIS executes these imports.
+        /// The WTS executes these imports.
         /// </summary>
         public const string WiserImport = "wiser_import";
         /// <summary>
@@ -147,13 +147,13 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserCommitDynamicContent = "wiser_commit_dynamic_content";
         /// <summary>
-        /// This table is used by the AIS to write logs to.
+        /// This table is used by the WTS to write logs to.
         /// </summary>
-        public const string AisLogs = "ais_logs";
+        public const string WtsLogs = "wts_logs";
         /// <summary>
-        /// This table is used by the AIS to store information about the services it is handling.
+        /// This table is used by the WTS to store information about the services it is handling.
         /// </summary>
-        public const string AisServices = "ais_services";
+        public const string WtsServices = "wts_services";
         /// <summary>
         /// This table is used by Wiser for the functionality of creating branches for customers and synchronising changes from another branch to the main/original branch,
         /// When a new item has been added in another branch and it gets synchronised to production, it will most likely get a different ID in the main branch.
@@ -162,7 +162,7 @@ namespace GeeksCoreLibrary.Core.Models
         public const string WiserIdMappings = "wiser_id_mappings";
         /// <summary>
         /// This table is used by Wiser to queue things for branches, such as creating a new branch or synchronising changes from one branch to the main branch.
-        /// The AIS will then handle this queue and do the actual work.
+        /// The WTS will then handle this queue and do the actual work.
         /// </summary>
         public const string WiserBranchesQueue = "wiser_branches_queue";
         /// <summary>
