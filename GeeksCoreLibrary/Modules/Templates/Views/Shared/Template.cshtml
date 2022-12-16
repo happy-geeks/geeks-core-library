@@ -133,6 +133,16 @@
         {
             @:<link href="@Model.MetaData.Canonical" rel="canonical" />
         }
+
+        if (!String.IsNullOrWhiteSpace(Model?.MetaData?.PreviousPageLink))
+        {
+            @:<link href="@Model.MetaData.PreviousPageLink" rel="prev" />
+        }
+
+        if (!String.IsNullOrWhiteSpace(Model?.MetaData?.NextPageLink))
+        {
+            @:<link href="@Model.MetaData.NextPageLink" rel="next" />
+        }
     }
 }
 

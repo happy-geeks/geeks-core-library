@@ -53,5 +53,15 @@ namespace GeeksCoreLibrary.Modules.Seo.Models
         /// If the body HTML contains a variable like '\[{seomodule_h3header}\|(.*?)\]', then that will be replaced with this text.
         /// </summary>
         public string H3Text { get; set; }
+
+        /// <summary>
+        /// Gets or sets the URL of the previous page. This is for pages that have pagination.
+        /// </summary>
+        public string PreviousPageLink { get; set; }
+
+        /// <summary>
+        /// Gets or sets the URL of the next page. This is for pages that have pagination.
+        /// </summary>
+        public string NextPageLink { get; set; }
     }
 }
