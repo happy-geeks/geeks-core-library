@@ -575,7 +575,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         }
                     }
 
-                    viewModel.MetaData.Canonical = canonicalUrl.ToString();
+                    // Call the Uri's ToString method instead of the UriBuilder's ToString, otherwise default ports will
+                    // be added (like 443 for https and 80 for http).
+                    viewModel.MetaData.Canonical = canonicalUrl.Uri.ToString();
                 }
             }
 

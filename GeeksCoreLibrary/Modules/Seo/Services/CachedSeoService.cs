@@ -29,7 +29,7 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
         /// <inheritdoc />
         public async Task<PageMetaDataModel> GetSeoDataForPageAsync(Uri pageUri)
         {
-            return await cache.GetOrAddAsync($"Seo_{pageUri.AbsolutePath}",
+            return await cache.GetOrAddAsync($"Seo_{pageUri.AbsoluteUri}",
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultSeoModuleCacheDuration;
