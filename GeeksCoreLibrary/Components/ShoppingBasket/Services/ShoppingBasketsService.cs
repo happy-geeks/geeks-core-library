@@ -401,7 +401,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                             {
                                 foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, Constants.BasketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true)).Where(basketItemId => basketItemId != shoppingBasket.Id))
                                 {
-                                    await wiserItemsService.DeleteAsync(basketItemId, skipPermissionsCheck: true);
+                                    await DeleteAsync(basketItemId);
                                 }
                             }
 
@@ -587,8 +587,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
                 }
             }
 
-            await wiserItemsService.SaveAsync(conceptOrder, userId, linkTypeOrderToUser, alwaysSaveValues: true, skipPermissionsCheck: true);
-            
+            if (userId > 0)
+            {
+                await wiserItemsService.SaveAsync(conceptOrder, userId, linkTypeOrderToUser, alwaysSaveValues: true, skipPermissionsCheck: true);
+            }
+            else
+            {
+                await wiserItemsService.SaveAsync(conceptOrder, alwaysSaveValues: true, skipPermissionsCheck: true);
+            }
+
             foreach (var line in basketLines)
             {
                 var conceptLine = new WiserItemModel
@@ -2311,6 +2318,23 @@ WHERE coupon.entity_type = 'coupon'", true);
             return domainList.Count == 0 || domainList.Contains(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext));
         }
 
+        /// <inheritdoc />
+        public async Task DeleteAsync(ulong basketItemId)
+        {
+            await DeleteLinesAsync(basketItemId);
+            await wiserItemsService.DeleteAsync(basketItemId, entityType: Constants.BasketEntityType, skipPermissionsCheck: true);
+        }
+
+        /// <inheritdoc />
+        public async Task DeleteLinesAsync(ulong basketItemId)
+        {
+            var lines = await wiserItemsService.GetLinkedItemIdsAsync(basketItemId, Constants.BasketLineToBasketLinkType, Constants.BasketLineEntityType);
+            foreach (var basketLineItemId in lines)
+            {
+                await wiserItemsService.DeleteAsync(basketLineItemId, entityType: Constants.BasketLineEntityType, skipPermissionsCheck: true);
+            }
+        }
+
         #region Private functions (helper functions)
 
         private void WriteEncryptedIdToCookie(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings)
@@ -2517,8 +2541,9 @@ WHERE coupon.entity_type = 'coupon'", true);
                 return (false, 0M, ShoppingBasket.HandleCouponResults.InvalidCouponCode, null, false, false);
             }
 
+            var isBusinessToBusiness = shoppingBasket.GetDetailValue<bool>("IsB2B");
             var maxDiscountIsTotalAmountProducts = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_maxdiscountistotalamountproducts", "true")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            var calculateOverPriceWithoutVat = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_calculateoverpricewithoutvat")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            var calculateOverPriceWithoutVat = isBusinessToBusiness || (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_calculateoverpricewithoutvat")).Equals("true", StringComparison.OrdinalIgnoreCase);
 
             logger.LogTrace($"Valid coupon added to shopping basket - maxDiscountIsTotalAmountProducts: {maxDiscountIsTotalAmountProducts} - calculateOverPriceWithoutVat: {calculateOverPriceWithoutVat}");
 
@@ -2573,8 +2598,9 @@ WHERE coupon.entity_type = 'coupon'", true);
 
             var freePaymentMethodCostsCoupon = coupon.GetDetailValue<bool>(CouponConstants.FreePaymentServiceProviderCostsKey);
             var freeShippingCostsCoupon = coupon.GetDetailValue<bool>(CouponConstants.FreeShippingCostsKey);
+            var isBusinessToBusinessCoupon = coupon.GetDetailValue<bool>(CouponConstants.BusinessToBusinessKey);
 
-            return discount != 0 || freePaymentMethodCostsCoupon || freeShippingCostsCoupon
+            return isBusinessToBusinessCoupon == isBusinessToBusiness && (discount != 0 || freePaymentMethodCostsCoupon || freeShippingCostsCoupon)
                 ? (true, discount, ShoppingBasket.HandleCouponResults.CouponAccepted, coupon, false, false)
                 : (false, 0M, ShoppingBasket.HandleCouponResults.InvalidCouponCode, null, false, true);
         }

@@ -263,11 +263,16 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             return Lines.Where(line => line != null && line.GetDetailValue("type").Equals(lineType, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
-        public void Reset()
+        public async Task ResetAsync()
         {
+            // First delete the basket from database.
+            await shoppingBasketsService.DeleteAsync(Main.Id);
+            
+            // Then delete the basket cookie.
             var httpContext = HttpContext ?? httpContextAccessor.HttpContext;
-
             httpContext?.Response.Cookies.Delete(Settings.CookieName);
+            
+            // And finally create a new basket.
             Main = new WiserItemModel();
             Lines = new List<WiserItemModel>();
         }
@@ -279,6 +284,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             Lines = new List<WiserItemModel>();
             Main.Id = id;
 
+            // Delete all basket lines, so that we won't have floating basket lines in the database that aren't linked to any basket.
+            await shoppingBasketsService.DeleteLinesAsync(id);
             await shoppingBasketsService.SaveAsync(Main, Lines, Settings);
         }
 
@@ -723,7 +730,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         /// <returns></returns>
         public async Task<string> HandleResetModeAsync()
         {
-            Reset();
+            ResetAsync();
 
             return await GetRenderedBasketAsync();
         }
@@ -856,7 +863,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             if (Settings.ResetOnLoad)
             {
                 // Reset the basket (creates a new basket).
-                Reset();
+                ResetAsync();
             }
 
             await shoppingBasketsService.RecalculateVariablesAsync(Main, Lines, Settings);

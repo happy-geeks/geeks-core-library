@@ -32,7 +32,6 @@ using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -1394,13 +1393,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 templateContent = await shoppingBasketsService.ReplaceBasketInTemplateAsync(conceptOrder, conceptOrderLines, basketSettings, templateContent, isForConfirmationEmail: true);
             }
 
-            //get customer basket email instead of the potentially linked user email address
+            // Get customer basket email instead of the potentially linked user email address.
             if (!String.IsNullOrWhiteSpace(orderProcessSettings.EmailAddressProperty) && !String.IsNullOrWhiteSpace(conceptOrder.GetDetailValue(orderProcessSettings.EmailAddressProperty)))
             {
                 userEmailAddress = conceptOrder.GetDetailValue(orderProcessSettings.EmailAddressProperty);
             }
 
-            //get merchant basket email instead of the potentially linked merchant email address
+            // Get merchant basket email instead of the potentially linked merchant email address.
             if (!String.IsNullOrWhiteSpace(orderProcessSettings.MerchantEmailAddressProperty) && !String.IsNullOrWhiteSpace(conceptOrder.GetDetailValue(orderProcessSettings.MerchantEmailAddressProperty)))
             {
                 merchantEmailAddress = conceptOrder.GetDetailValue(orderProcessSettings.MerchantEmailAddressProperty);

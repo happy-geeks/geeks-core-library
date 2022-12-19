@@ -15,6 +15,7 @@
         public const string FreeShippingCostsKey = "freeshippingcosts";
         public const string ValidFromKey = "validfrom";
         public const string ValidUntilKey = "validuntil";
+        public const string BusinessToBusinessKey = "isb2b";
         public const string DomainKey = "domain";
     }
 }

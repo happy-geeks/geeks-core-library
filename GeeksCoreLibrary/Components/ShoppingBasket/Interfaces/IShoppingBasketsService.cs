@@ -277,5 +277,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketTotal">The total price of the basket.</param>
         /// <returns>A <see langword="bool"/> indicating whether the coupon is valid or not.</returns>
         bool IsCouponValid(WiserItemModel coupon, decimal basketTotal);
+
+        /// <summary>
+        /// Deletes a basket and all it's basket lines from the database.
+        /// </summary>
+        /// <param name="basketItemId">The ID of the basket to delete.</param>
+        Task DeleteAsync(ulong basketItemId);
+
+        /// <summary>
+        /// Deletes a basket and all it's basket lines from the database.
+        /// </summary>
+        /// <param name="basketItemId">The ID of the basket to delete.</param>
+        Task DeleteLinesAsync(ulong basketItemId);
     }
 }
