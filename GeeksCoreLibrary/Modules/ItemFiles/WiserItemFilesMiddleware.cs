@@ -47,22 +47,22 @@ public class WiserItemFilesMiddleware
 
             if (!context.Items.ContainsKey(Constants.OriginalPathAndQueryStringKey))
             {
-                context.Items.Add(Constants.OriginalPathAndQueryStringKey, path + queryString.Value);
+                context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
             }
 
-            await HandleRewrites(context, path, queryString);
+            await HandleRewritesAsync(context, path, queryString);
 
             await this.next.Invoke(context);
         }
 
         /// <summary>
         /// This method checks if the current URI corresponds with one of the rewrites in the database.
-        /// If one if found, it rewrites the current path and query string to certain GCL pages, such as template.gcl.
+        /// If one is found, it rewrites the current path and query string to certain GCL pages, such as template.gcl.
         /// </summary>
         /// <param name="context">The current <see cref="HttpContext"/>.</param>
         /// <param name="path">The path of the current URI.</param>
         /// <param name="queryStringFromUrl">The query string from the URI.</param>
-        private async Task HandleRewrites(HttpContext context, string path, QueryString queryStringFromUrl)
+        private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
         {
             // Check if the current URL is that of an image or a file.
             var urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+)\/)?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));

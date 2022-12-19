@@ -49,7 +49,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             }
 
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
-            if (fileNumber <= 1)
+            if (fileNumber < 1)
             {
                 fileNumber = 1;
             }

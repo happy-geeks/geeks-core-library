@@ -79,7 +79,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
                 return NotFound();
             }
             
-            logger.LogDebug($"Get image from Wiser, itemId: '{itemId}', propertyName: '{propertyName}', filename: '{filename}', fileNumber: '{fileNumber}'");
+            logger.LogDebug($"Get file from Wiser, itemId: '{itemId}', propertyName: '{propertyName}', filename: '{filename}', fileNumber: '{fileNumber}'");
             byte[] fileBytes;
             DateTime lastModified;
 

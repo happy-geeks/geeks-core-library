@@ -50,22 +50,22 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
 
             if (!context.Items.ContainsKey(Constants.OriginalPathAndQueryStringKey))
             {
-                context.Items.Add(Constants.OriginalPathAndQueryStringKey, path + queryString.Value);
+                context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
             }
 
-            await HandleRewrites(context, path, queryString);
+            await HandleRewritesAsync(context, path, queryString);
 
             await this.next.Invoke(context);
         }
 
         /// <summary>
         /// This method checks if the current URI corresponds with one of the rewrites in the database.
-        /// If one if found, it rewrites the current path and query string to certain GCL pages, such as template.gcl.
+        /// If one is found, it rewrites the current path and query string to certain GCL pages, such as template.gcl.
         /// </summary>
         /// <param name="context">The current <see cref="HttpContext"/>.</param>
         /// <param name="path">The path of the current URI.</param>
         /// <param name="queryStringFromUrl">The query string from the URI.</param>
-        private async Task HandleRewrites(HttpContext context, string path, QueryString queryStringFromUrl)
+        private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
         {
             // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
             var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
