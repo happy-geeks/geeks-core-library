@@ -525,6 +525,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     viewModel.MetaData.SeoText = componentSeoData.SeoText;
                 }
+
+                if (!String.IsNullOrWhiteSpace(componentSeoData.PreviousPageLink) && String.IsNullOrWhiteSpace(viewModel.MetaData.PreviousPageLink))
+                {
+                    viewModel.MetaData.PreviousPageLink = componentSeoData.PreviousPageLink;
+                }
+
+                if (!String.IsNullOrWhiteSpace(componentSeoData.NextPageLink) && String.IsNullOrWhiteSpace(viewModel.MetaData.NextPageLink))
+                {
+                    viewModel.MetaData.NextPageLink = componentSeoData.NextPageLink;
+                }
             }
 
             // See if we need to add canonical to self, but only if no other canonical has been added yet.
@@ -596,14 +606,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null)
+        public void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null, string previousPageLink = null, string nextPageLink = null)
         {
             if (httpContextAccessor.HttpContext == null)
             {
                 return;
             }
 
-            if (String.IsNullOrWhiteSpace(seoTitle) && String.IsNullOrWhiteSpace(seoDescription) && String.IsNullOrWhiteSpace(seoKeyWords) && String.IsNullOrWhiteSpace(seoCanonical) && !noIndex && !noFollow && robots == null)
+            if (String.IsNullOrWhiteSpace(seoTitle) && String.IsNullOrWhiteSpace(seoDescription) && String.IsNullOrWhiteSpace(seoKeyWords) && String.IsNullOrWhiteSpace(seoCanonical) && !noIndex && !noFollow && robots == null && String.IsNullOrWhiteSpace(previousPageLink) && String.IsNullOrWhiteSpace(nextPageLink))
             {
                 return;
             }
@@ -652,6 +662,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     componentSeoData.MetaTags.Add("robots", String.Join(",", allRobots));
                 }
+            }
+
+            if (!String.IsNullOrWhiteSpace(previousPageLink) && String.IsNullOrWhiteSpace(componentSeoData.PreviousPageLink))
+            {
+                componentSeoData.PreviousPageLink = previousPageLink;
+            }
+
+            if (!String.IsNullOrWhiteSpace(nextPageLink) && String.IsNullOrWhiteSpace(componentSeoData.NextPageLink))
+            {
+                componentSeoData.NextPageLink = nextPageLink;
             }
 
             httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] = componentSeoData;
