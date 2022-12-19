@@ -255,5 +255,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             return shoppingBasketsService.IsCouponValid(coupon, basketTotal);
         }
+
+        /// <inheritdoc />
+        public async Task DeleteAsync(ulong basketItemId)
+        {
+            await shoppingBasketsService.DeleteAsync(basketItemId);
+        }
+
+        /// <inheritdoc />
+        public async Task DeleteLinesAsync(ulong basketItemId)
+        {
+            await shoppingBasketsService.DeleteLinesAsync(basketItemId);
+        }
     }
 }
