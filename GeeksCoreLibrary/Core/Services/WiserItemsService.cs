@@ -1579,7 +1579,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                     foreach (var linkSettings in allLinkTypeSettings.Where(l => l.CascadeDelete && String.Equals(l.DestinationEntityType, entityType)))
                     {
                         var linkTablePrefix = GetTablePrefixForLink(linkSettings);
-                        query = $@"SELECT item_id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE destination_item_id IN ({formattedItemIds})";
+                        var archiveSuffix = undelete ? WiserTableNames.ArchiveSuffix : "";
+                        query = $@"SELECT item_id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink}{archiveSuffix} WHERE destination_item_id IN ({formattedItemIds})";
                         var dataTable = await databaseConnection.GetAsync(query);
                         var children = dataTable.Rows.Cast<DataRow>().Select(dataRow => Convert.ToUInt64(dataRow["item_id"])).ToList();
                         await DeleteAsync(wiserItemsService, children, undelete, username, userId, saveHistory, linkSettings.SourceEntityType, false, skipPermissionsCheck);
