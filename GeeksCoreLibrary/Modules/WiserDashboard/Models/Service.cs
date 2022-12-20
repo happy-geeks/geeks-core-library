@@ -61,4 +61,9 @@ public class Service
     /// Gets or sets if the service need to be run an extra time.
     /// </summary>
     public bool ExtraRun { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ID of the template that holds the configuration. TemplateId 0 is a local file.
+    /// </summary>
+    public int TemplateId { get; set; }
 }
