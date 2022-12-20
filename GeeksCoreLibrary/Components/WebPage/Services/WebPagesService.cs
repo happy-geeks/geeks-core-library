@@ -130,12 +130,12 @@ LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{seoTitleAlias}` ON `{seoTitle
 
                 if (!String.IsNullOrWhiteSpace(pathMustContain) && settings.SearchNumberOfLevels > 0)
                 {
-                    query.Append(" AND CONCAT_WS('/'");
+                    query.Append(" AND CONCAT_WS('/', ''");
                     for (var i = settings.SearchNumberOfLevels; i > 0; i--)
                     {
                         query.Append($", IFNULL(`item{i}SeoName`.`value`, `item{i}SeoName`.`value`)");
                     }
-                    query.Append(") LIKE CONCAT('%', ?path, '%')");
+                    query.Append(", '') LIKE CONCAT('%', ?path, '%')");
                 }
             }
             query.AppendLine();
