@@ -97,6 +97,7 @@ namespace GeeksCoreLibrary.Core.Cms
                                 <li><strong>ServerSideCachingPerUrl</strong>: Component will be cached based on the URL, excluding the query string.</li>
                                 <li><strong>ServerSideCachingPerUrlAndQueryString</strong>: Component will be cached based on the URL, including the query string.</li>
                                 <li><strong>ServerSideCachingPerHostNameAndQueryString</strong>: Component will be cached based on the full URL, including domain and the query string.</li>
+                                <li><strong>ServerSideCachingBasedOnUrlRegex</strong>: Component will be cached based on a regular expression. When using this option, you need to enter a regular expression in the corresponding field below.</li>
                             </ul>",
             DeveloperRemarks = "",
             TabName = CmsAttributes.CmsTabName.Developer,
@@ -134,6 +135,20 @@ namespace GeeksCoreLibrary.Core.Cms
             DisplayOrder = 30
         )]
         public int CacheMinutes { get; set; }
+
+        /// <summary>
+        /// The regular expression for generating the unique cache key or file name.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Cache regex",
+            Description = @"<p>The regular expression to use for deciding the unique cache key. The value of each named group will be added to the cache key or file name. This is useful for a main menu for example, to cache the main menu separately for each main category on the site, so that the selected item in the menu will always be correct, even with caching.</p>
+                            <p>Example: If you use the regex ""\/products\/(?&lt;category&gt;.*)\/(?&lt;subCategory&gt;.*)\/(?&lt;product&gt;.*)\/"". This regex has 3 named groups (category, subCategory and product). If the user would then open the URL ""/products/drinks/soda/coca-cola/"", then the key or file name for the cache would be ""dynamicContent_123_drinks_soda_coca-cola"". This way the component will be cached separately for each product on the website.</p>",
+            DeveloperRemarks = "",
+            TabName = CmsAttributes.CmsTabName.Developer,
+            GroupName = CmsAttributes.CmsGroupName.Caching,
+            DisplayOrder = 30
+        )]
+        public string CacheRegex { get; set; }
 
         #endregion
     }
