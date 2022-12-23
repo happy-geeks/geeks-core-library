@@ -4,6 +4,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Enums;
@@ -448,6 +449,45 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     break;
                 case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
                     cacheKey.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.ServerSideCachingBasedOnUrlRegex:
+                    if (String.IsNullOrWhiteSpace(settings.CacheRegex))
+                    {
+                        throw new Exception($"Caching for component {dynamicContent.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but no regex has been entered.");
+                    }
+
+                    try
+                    {
+                        var regex = new Regex(settings.CacheRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                        var match = regex.Match(originalUri.PathAndQuery);
+                        if (!match.Success)
+                        {
+                            return "";
+                        }
+
+                        // Add all values of named groups to the cache key.
+                        foreach (Group group in match.Groups)
+                        {
+                            if (String.IsNullOrWhiteSpace(group.Name) || Int32.TryParse(group.Name, out _))
+                            {
+                                // Ignore groups without a name (when you have no name given in the regex, the group name will be a number).
+                                continue;
+                            }
+
+                            // Strip invalid characters that can't be in a file name.
+                            var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
+                            
+                            // Add the group value to the file name.
+                            cacheKey.Append($"{Uri.EscapeDataString(value)}_");
+                        }
+                    }
+                    catch (ArgumentException argumentException)
+                    {
+                        // ArgumentException will be thrown if the regex is not valid.
+                        logger.LogWarning(argumentException, $"Caching for template {dynamicContent.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered.");
+                        throw new Exception($"Caching for template {dynamicContent.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered. The exact error was: {argumentException.Message}");
+                    }
+
                     break;
                 case TemplateCachingModes.NoCaching:
                     return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
