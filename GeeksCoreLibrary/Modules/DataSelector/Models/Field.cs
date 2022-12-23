@@ -83,6 +83,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
             }
         }
 
+        [Obsolete("Use FieldHelpers.CreateTableAlias instead.")]
         public string TableAlias => $"{TableAliasPrefix}{FieldName}{(!String.IsNullOrWhiteSpace(LanguageCode) ? "_" + LanguageCode : "")}";
 
         /// <summary>
