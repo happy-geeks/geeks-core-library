@@ -20,7 +20,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Models
         public string RecipientType { get; set; }
 
         /// <summary>
-        /// Gets or sets the recipient's phone number.
+        /// Gets or sets the receiver's phone number.
         /// </summary>
         [JsonPropertyName("to")]
         public string Receiver { get; set; }

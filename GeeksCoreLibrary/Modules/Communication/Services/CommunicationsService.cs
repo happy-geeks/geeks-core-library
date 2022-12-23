@@ -851,7 +851,7 @@ WHERE id = ?id";
         {    
             var apiToken = smsSettings.ProviderId;
             var phoneNumberId = smsSettings.PhoneNumberId;
-            var resource = "https://graph.facebook.com/v14.0/" + phoneNumberId + "/messages";
+            var resource = $"https://graph.facebook.com/v14.0/{phoneNumberId}/messages";
 
             if (receiverPhoneNumber.StartsWith("+") || receiverPhoneNumber.StartsWith("00"))
             {
@@ -865,11 +865,11 @@ WHERE id = ?id";
                     // Phone number looks something like "+31612345678".
                     receiverPhoneNumber = receiverPhoneNumber.Remove(0, 1);
                 }
-             }
+            }
             else if (!receiverPhoneNumber.StartsWith("00"))
-             {
-              throw new ArgumentException("Phone number is missing the country code.");
-             }
+            {
+            throw new ArgumentException("Phone number is missing the country code.");
+            }
 
             // Now "sanitize" the phone number by removing all non-digit characters.
             receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
@@ -883,11 +883,15 @@ WHERE id = ?id";
                 senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
             }
 
-            if (!String.IsNullOrEmpty(communication.Content))
+            if (String.IsNullOrEmpty(communication.Content))
+            {
+                return;
+            }
+            else
             {
                 var metaConnection = new RestClient();
                 var request = new RestRequest(resource, Method.Post);
-                request.AddHeader("Authorization", "Bearer " + apiToken);
+                request.AddHeader("Authorization", $"Bearer {apiToken}");
                
                 request.AddJsonBody(new WhatsAppSendMessageRequestModel
                 {
@@ -937,7 +941,7 @@ WHERE id = ?id";
                     if (!String.IsNullOrEmpty(typeUrl))
                     {
                         request = new RestRequest(resource, Method.Post);
-                        request.AddHeader("Authorization", "Bearer " + apiToken);
+                        request.AddHeader("Authorization", $"Bearer {apiToken}");
                         request.AddJsonBody(new WhatsAppSendMessageRequestModel
                         {
                             MessagingProduct = "whatsapp",
@@ -963,7 +967,7 @@ WHERE id = ?id";
                     }
 
                     // If request (image/document/audio/video) was not success throw the status message as an exception.
-                    throw new Exception("image/document/audio/video has not been sent..." + response.ErrorMessage);
+                    throw new Exception($"image/document/audio/video has not been sent... {response.ErrorMessage}");
                 }
 
                 if (response.StatusCode == HttpStatusCode.OK)
@@ -971,7 +975,7 @@ WHERE id = ?id";
                     return;
                 }
                 //If request (communication.Content) was not success throw the status message as an exception.
-                throw new Exception("message content has not been sent..." + response.ErrorMessage);
+                throw new Exception($"message content has not been sent... {response.ErrorMessage}");
              }
         }
 
