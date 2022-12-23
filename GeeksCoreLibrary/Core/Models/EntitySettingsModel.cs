@@ -168,5 +168,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// So if the query returns a column "title", you can place that value in the HTML by adding "{title}" to the template.
         /// </summary>
         public string TemplateHtml { get; set; }
+        
+        /// <summary>
+        /// Gets or sets whether we should show statistics of items of this type in the dashboard module of Wiser.
+        /// </summary>
+        public bool ShowInDashboard { get; set; }
     }
 }
