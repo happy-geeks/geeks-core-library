@@ -30,9 +30,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber)
+        public async Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber)
         {
             return await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(uniquePaymentNumber);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByPspTransactionIdAsync(string pspTransactionId)
+        {
+            return await shoppingBasketsService.GetOrdersByPspTransactionIdAsync(pspTransactionId);
         }
 
         /// <inheritdoc />
