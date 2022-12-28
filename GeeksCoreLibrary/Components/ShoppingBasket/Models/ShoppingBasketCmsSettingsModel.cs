@@ -252,6 +252,16 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
             DisplayOrder = 130
         )]
         public bool MultipleBasketsPossible { get; set; }
+        
+        [CmsProperty(
+            PrettyName = "Item excluded from discount property name",
+            Description = "Items that have this property set to 1 are excluded from discount calculation.",
+            DeveloperRemarks = "",
+            TabName = CmsAttributes.CmsTabName.DataSource,
+            GroupName = CmsAttributes.CmsGroupName.Basic,
+            DisplayOrder = 140
+        )]
+        public string ItemExcludedFromDiscountPropertyName { get; set; }
 
         [CmsProperty(
             PrettyName = "SQL query",

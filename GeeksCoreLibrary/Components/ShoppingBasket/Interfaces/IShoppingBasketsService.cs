@@ -104,8 +104,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="round"></param>
         /// <param name="onlyIfVatRate"></param>
         /// <param name="withoutFactor"></param>
+        /// <param name="useOriginalPrice">Optional: Whether the "original_price" value should be used instead of the regular price value.</param>
         /// <returns></returns>
-        Task<decimal> GetLinePriceAsync(WiserItemModel shoppingBasket, WiserItemModel line, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, bool singlePrice = false, bool round = false, int onlyIfVatRate = -1, bool withoutFactor = false);
+        Task<decimal> GetLinePriceAsync(WiserItemModel shoppingBasket, WiserItemModel line, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, bool singlePrice = false, bool round = false, int onlyIfVatRate = -1, bool withoutFactor = false, bool useOriginalPrice = false);
 
         /// <summary>
         /// Function to recalculate the shipping-costs, re-evaluate the coupon, etc. after changing quantities, adding or removing products, etc.
@@ -147,6 +148,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <returns>The calculated payment method costs.</returns>
         Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true);
 
+        /// <summary>
+        /// Recalculates added coupons.
+        /// </summary>
+        /// <param name="shoppingBasket"></param>
+        /// <param name="basketLines"></param>
+        /// <param name="settings"></param>
+        /// <returns></returns>
+        Task RecalculateCoupons(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings);
+        
         Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds);
 
         /// <summary>
@@ -205,7 +215,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="couponCode">The coupon code to check and process.</param>
         /// <param name="createNewTransaction">Will be passed to the SaveAsync call.</param>
         /// <returns></returns>
-        Task<ShoppingBasket.HandleCouponResults> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true);
+        Task<HandleCouponResultModel> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true);
 
         /// <summary>
         /// Get lines of a specific type.
@@ -276,7 +286,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketTotal">The total price of the basket.</param>
         /// <returns>A <see langword="bool"/> indicating whether the coupon is valid or not.</returns>
         Task<bool> IsCouponValidAsync(string couponCode, decimal basketTotal);
-        
+
         /// <summary>
         /// Checks whether or not the given coupon is valid and can still be used.
         /// </summary>

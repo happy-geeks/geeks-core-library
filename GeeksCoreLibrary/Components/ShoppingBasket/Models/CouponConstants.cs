@@ -5,6 +5,7 @@
     /// </summary>
     public static class CouponConstants
     {
+        public const string Code = "code";
         public const string DiscountPercentageKey = "discountpercentage";
         public const string DiscountAmountKey = "discountamount";
         public const string MaxUseCountKey = "maxusecount";

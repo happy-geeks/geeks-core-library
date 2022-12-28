@@ -108,9 +108,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<decimal> GetLinePriceAsync(WiserItemModel shoppingBasket, WiserItemModel line, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, bool singlePrice = false, bool round = false, int onlyIfVatRate = -1, bool withoutFactor = false)
+        public async Task<decimal> GetLinePriceAsync(WiserItemModel shoppingBasket, WiserItemModel line, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, bool singlePrice = false, bool round = false, int onlyIfVatRate = -1, bool withoutFactor = false, bool useOriginalPrice = false)
         {
-            return await shoppingBasketsService.GetLinePriceAsync(shoppingBasket, line, settings, priceType, singlePrice, round, onlyIfVatRate, withoutFactor);
+            return await shoppingBasketsService.GetLinePriceAsync(shoppingBasket, line, settings, priceType, singlePrice, round, onlyIfVatRate, withoutFactor, useOriginalPrice);
         }
 
         /// <inheritdoc />

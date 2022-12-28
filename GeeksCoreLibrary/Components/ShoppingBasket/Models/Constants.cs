@@ -7,6 +7,18 @@
         public const string BasketLineCouponType = "coupon";
         public const string BasketEntityType = "basket";
         public const string BasketLineEntityType = "basketline";
+        /// <summary>
+        /// The property name of a basket line which contains the original price (price without any discounts).
+        /// </summary>
+        public const string OriginalPricePropertyName = "original_price";
+        /// <summary>
+        /// The property name of a coupon basket line that determines if its discount was divided over all products.
+        /// </summary>
+        public const string CouponDividedOverProductsPropertyName = "divided_over_products";
+        /// <summary>
+        /// The discount a product received from a coupon. The code of the coupon will be appended to this property name.
+        /// </summary>
+        public const string ProductCouponDiscountPropertyNamePrefix = "coupon_discount_";
         public const int BasketToUserLinkType = 5010;
         public const int BasketLineToBasketLinkType = 5002;
         public const int ProductToOrderLineLinkType = 5030;
@@ -21,6 +33,7 @@
         internal const string DefaultIncludesVatPropertyName = "includesvat";
         internal const string DefaultVatRatePropertyName = "vatrate";
         internal const string DefaultDiscountPropertyName = "discount";
+        internal const string DefaultItemExcludedFromDiscountPropertyName = "no_discount";
         internal const int DefaultMaxItemQuantity = 100;
 
         internal const string DefaultTemplate = @"<!-- There must always be an element with ID GclShoppingBasketContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
