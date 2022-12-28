@@ -1119,7 +1119,7 @@ WHERE item.id = ?itemId");
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
             databaseConnection.AddParameter("now", DateTime.Now);
 
-            var addedOnResetPart = !resetAddedOnDate ? "" : ", added_on = ?now";
+            var addedOnResetPart = !resetAddedOnDate ? "" : ", added_on = ?now, added_by = ?username";
 
             var query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
