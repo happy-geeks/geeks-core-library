@@ -578,6 +578,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             connectionStringForReading.ConnectionString = newConnectionStringForReading;
             connectionStringForWriting.ConnectionString = String.IsNullOrWhiteSpace(newConnectionStringForWriting) ? newConnectionStringForReading : newConnectionStringForWriting;
             await CleanUpAsync();
+            if (ConnectionForReading != null) await ConnectionForReading.CloseAsync();
+            if (ConnectionForWriting != null) await ConnectionForWriting.CloseAsync();
+            ConnectionForReading = null;
+            ConnectionForWriting = null;
         }
 
         /// <inheritdoc />
