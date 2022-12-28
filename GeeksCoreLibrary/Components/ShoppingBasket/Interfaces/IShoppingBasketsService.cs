@@ -10,11 +10,18 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
     public interface IShoppingBasketsService
     {
         /// <summary>
-        /// Get all baskets via unique payment number.
+        /// Get all orders via unique payment number.
         /// </summary>
-        /// <param name="uniquePaymentNumber">The value of the UniquePaymentNumber detail of Main.</param>
+        /// <param name="uniquePaymentNumber">The value of the UniquePaymentNumber detail of the order item.</param>
         /// <returns>A <see cref="List{WiserItemModel}"/> of <see cref="WiserItemModel"/> objects.</returns>
-        Task<List<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber);
+        Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber);
+        
+        /// <summary>
+        /// Get all orders via unique payment number.
+        /// </summary>
+        /// <param name="pspTransactionId">The value of the PspTransactionId detail of the order item.</param>
+        /// <returns>A <see cref="List{WiserItemModel}"/> of <see cref="WiserItemModel"/> objects.</returns>
+        Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByPspTransactionIdAsync(string pspTransactionId);
 
         /// <summary>
         /// Gets all baskets through a cookie name.

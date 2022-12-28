@@ -134,7 +134,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("template_html", MySqlDbType.MediumText),
                     new("enable_multiple_environments", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("icon_expanded", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
-                    new("use_dedicated_table", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("dedicated_table_prefix", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
                     new("delete_action", MySqlDbType.Enum, notNull: true, defaultValue: "archive", enumValues: new List<string> {"archive", "permanent", "hide", "disallow"}),
                     new("show_in_dashboard", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")

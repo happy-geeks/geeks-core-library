@@ -60,9 +60,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber)
+        public async Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber)
         {
-            var result = new List<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)>();
+            var result = new List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>();
             if (String.IsNullOrWhiteSpace(uniquePaymentNumber))
             {
                 return result;
@@ -72,11 +72,55 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("uniquePaymentNumber", uniquePaymentNumber);
-            var getBasketIdsResult = await databaseConnection.GetAsync($@"
-                SELECT `order`.id
-                FROM `{tablePrefix}{WiserTableNames.WiserItem}` AS `order`
-                JOIN `{tablePrefix}{WiserTableNames.WiserItemDetail}` AS uniquepaymentnumber ON uniquepaymentnumber.item_id = `order`.id AND uniquepaymentnumber.`key` = '{OrderProcess.Models.Constants.UniquePaymentNumberProperty}' AND uniquepaymentnumber.`value` = ?uniquePaymentNumber
-                WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}', '{OrderProcess.Models.Constants.ConceptOrderEntityType}');", true);
+            var query = $@"SELECT `order`.id
+FROM `{tablePrefix}{WiserTableNames.WiserItem}` AS `order`
+JOIN `{tablePrefix}{WiserTableNames.WiserItemDetail}` AS uniquepaymentnumber ON uniquepaymentnumber.item_id = `order`.id AND uniquepaymentnumber.`key` = '{OrderProcess.Models.Constants.UniquePaymentNumberProperty}' AND uniquepaymentnumber.`value` = ?uniquePaymentNumber
+WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}', '{OrderProcess.Models.Constants.ConceptOrderEntityType}');";
+            var getBasketIdsResult = await databaseConnection.GetAsync(query, true);
+
+            if (getBasketIdsResult.Rows.Count == 0)
+            {
+                return result;
+            }
+
+            foreach (DataRow dataRow in getBasketIdsResult.Rows)
+            {
+                var itemId = dataRow.Field<ulong>("id");
+                if (itemId == 0)
+                {
+                    continue;
+                }
+
+                var linkTypeOrderLineToOrder = await wiserItemsService.GetLinkTypeAsync(OrderProcess.Models.Constants.OrderEntityType, OrderProcess.Models.Constants.OrderLineEntityType);
+                if (linkTypeOrderLineToOrder == 0)
+                {
+                    linkTypeOrderLineToOrder = Constants.BasketLineToBasketLinkType;
+                }
+
+                result.Add((await wiserItemsService.GetItemDetailsAsync(itemId, entityType: OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true), await wiserItemsService.GetLinkedItemDetailsAsync(itemId, linkTypeOrderLineToOrder, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true)));
+            }
+
+            return result;
+        }
+
+        /// <inheritdoc />
+        public async Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByPspTransactionIdAsync(string pspTransactionId)
+        {
+            var result = new List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>();
+            if (String.IsNullOrWhiteSpace(pspTransactionId))
+            {
+                return result;
+            }
+
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(OrderProcess.Models.Constants.OrderEntityType);
+
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("pspTransactionId", pspTransactionId);
+            var query = $@"SELECT `order`.id
+FROM `{tablePrefix}{WiserTableNames.WiserItem}` AS `order`
+JOIN `{tablePrefix}{WiserTableNames.WiserItemDetail}` AS pspTransactionId ON pspTransactionId.item_id = `order`.id AND pspTransactionId.`key` = '{OrderProcess.Models.Constants.PaymentProviderTransactionId}' AND pspTransactionId.`value` = ?pspTransactionId
+WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}', '{OrderProcess.Models.Constants.ConceptOrderEntityType}');";
+            var getBasketIdsResult = await databaseConnection.GetAsync(query, true);
 
             if (getBasketIdsResult.Rows.Count == 0)
             {
@@ -509,8 +553,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             var user = await accountsService.GetUserDataFromCookieAsync();
             var userId = user.MainUserId;
             var createItemLinkBetweenBasketLineAndProduct = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_AlsoCreateItemLinkBetweenBasketLineAndProduct")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            var linkTypeOrderToUser = await wiserItemsService.GetLinkTypeAsync(user.EntityType, OrderProcess.Models.Constants.OrderEntityType);
             var linkTypeOrderLineToOrder = await wiserItemsService.GetLinkTypeAsync(OrderProcess.Models.Constants.OrderEntityType, OrderProcess.Models.Constants.OrderLineEntityType);
+
+            var userEntityType = user.EntityType;
+            if (String.IsNullOrWhiteSpace(userEntityType))
+            {
+                userEntityType = await objectsService.FindSystemObjectByDomainNameAsync("userEntityType", defaultResult: "relatie");
+            }
+
+            var linkTypeOrderToUser = await wiserItemsService.GetLinkTypeAsync(userEntityType, OrderProcess.Models.Constants.OrderEntityType);
             var newLines = new List<WiserItemModel>();
 
             if (linkTypeOrderToUser == 0)
@@ -751,6 +802,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             {
                 return template;
             }
+
+            shoppingBasket ??= new WiserItemModel();
+            basketLines ??= new List<WiserItemModel>();
 
             var repeatVars = new[] { "<!--{repeat:lines~?(.*?)}-->(.*?)<!--{/repeat:lines.*?}-->", "{repeat:lines~?(.*?)}(.*?){/repeat:lines.*?}" };
             var priceVars = new[] { "{price~(.*?)}", "{singleprice~(.*?)}", "{pricewithoutfactor~(.*?)}", "{singlepricewithoutfactor~(.*?)}" };
