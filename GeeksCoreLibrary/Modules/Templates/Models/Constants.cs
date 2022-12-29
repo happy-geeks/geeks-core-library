@@ -8,5 +8,8 @@
         public const string WiserUriOverrideForReplacements = "WiserUriOverride";
         public const string TemplatePreLoadQueryResultKey = "TemplatePreLoadQueryResult";
         public const string PageMetaDataFromComponentKey = "PageMetaDataFromComponent";
+        public const string TemplateCacheRootDirectoryName = "Templates";
+        public const string ComponentsCacheRootDirectoryName = "Components";
+        public const string PageCacheRootDirectoryName = "Pages";
     }
 }
