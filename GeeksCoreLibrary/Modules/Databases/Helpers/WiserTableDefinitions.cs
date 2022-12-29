@@ -645,13 +645,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserLoginLog,
-                LastUpdate = new DateTime(2022, 7, 7),
+                LastUpdate = new DateTime(2022, 12, 29),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("user_id", MySqlDbType.UInt64, notNull: true),
                     new("time_active", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00"),
-                    new("added_on", MySqlDbType.DateTime, notNull: true)
+                    new("added_on", MySqlDbType.DateTime, notNull: true),
+                    new("time_active_changed_on", MySqlDbType.DateTime, notNull: true)
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
