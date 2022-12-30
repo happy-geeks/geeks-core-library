@@ -130,7 +130,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
                 UserNeedsToBeLoggedIn = false
             };
 
-            if (isErrorPage)
+            if (!isErrorPage)
             {
                 webPageSettings.SetSeoInfo = true;
             }
