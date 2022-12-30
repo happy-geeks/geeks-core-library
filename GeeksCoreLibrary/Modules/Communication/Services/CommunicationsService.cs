@@ -6,15 +6,12 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
-using System.Security.Policy;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using BuckarooSdk.DataTypes.Response.Status;
 using CM.Text;
 using CM.Text.BusinessMessaging;
 using CM.Text.BusinessMessaging.Model;
-using CM.Text.BusinessMessaging.Model.MultiChannel;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -23,19 +20,14 @@ using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Communication.Models.SmtPeter;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using HtmlAgilityPack;
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using MimeKit;
 using RestSharp;
 using Newtonsoft.Json;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
-using Twilio.TwiML.Messaging;
-using System.ComponentModel;
-using RestSharp.Serializers.NewtonsoftJson;
 
 namespace GeeksCoreLibrary.Modules.Communication.Services
 {
