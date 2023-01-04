@@ -106,16 +106,21 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     {
                         if (String.IsNullOrWhiteSpace(cacheFolder))
                         {
-                            logger.LogWarning($"Content cache enabled for template '{cacheSettings.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website.");
+                            logger.LogWarning($"Content cache enabled for template '{cacheSettings.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website (on Windows / IIS, this is the user 'IIS_IUSRS' bij default).");
                         }
                         else
                         {
+                            // Build the cache directory, based on template type and name.
+                            fullCachePath = Path.Combine(cacheFolder, Constants.TemplateCacheRootDirectoryName, cacheSettings.Type.ToString(), $"{cacheSettings.Name.StripIllegalPathCharacters()} ({cacheSettings.Id})", cacheFileName);
                             logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
 
                             // Check if a cache file already exists and if it hasn't expired yet.
-                            fullCachePath = Path.Combine(cacheFolder, cacheFileName);
                             var fileInfo = new FileInfo(fullCachePath);
-                            if (fileInfo.Exists)
+                            if (fileInfo.Directory is { Exists: false })
+                            {
+                                fileInfo.Directory.Create();
+                            }
+                            else if (fileInfo.Exists)
                             {
                                 if (fileInfo.LastWriteTimeUtc.AddMinutes(cacheSettings.CachingMinutes) > DateTime.UtcNow)
                                 {
@@ -522,11 +527,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     var fileName = $"{cacheKey}.html";
                     var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
-                    var fullCachePath = Path.Combine(cacheFolder, fileName);
+                    var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
                     // Check if a cache file already exists and if it hasn't expired yet.
                     var fileInfo = new FileInfo(fullCachePath);
-                    if (fileInfo.Exists)
+                    if (fileInfo.Directory is { Exists: false })
+                    {
+                        fileInfo.Directory.Create();
+                    }
+                    else if (fileInfo.Exists)
                     {
                         if (fileInfo.LastWriteTimeUtc.AddMinutes(settings.CacheMinutes) > DateTime.UtcNow)
                         {

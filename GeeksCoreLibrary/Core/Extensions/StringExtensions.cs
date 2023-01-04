@@ -15,36 +15,52 @@ namespace GeeksCoreLibrary.Core.Extensions
     public static class StringExtensions
     {
         /// <summary>
-        /// URL encode a string
+        /// URL encode a string to make it safe to use in an URL.
         /// </summary>
-        /// <param name="input"></param>
+        /// <param name="input">The string to URL encode.</param>
+        /// <returns>The URL encoded string.</returns>
         public static string UrlEncode(this string input)
         {
             return System.Net.WebUtility.UrlEncode(input);
         }
 
         /// <summary>
-        /// URL decode a string
+        /// URL decode a string.
         /// </summary>
-        /// <param name="input"></param>
+        /// <param name="input">The string to URL decode.</param>
+        /// <returns>The URL decoded string.</returns>
         public static string UrlDecode(this string input)
         {
             return System.Net.WebUtility.UrlDecode(input);
         }
 
+        /// <summary>
+        /// HTML decode a string.
+        /// </summary>
+        /// <param name="input">The string to HTML decode.</param>
+        /// <returns>The HTML decoded string.</returns>
         public static string HtmlDecode(this string input)
         {
             return System.Net.WebUtility.HtmlDecode(input);
         }
 
+        /// <summary>
+        /// HTML encode a string to make it safe to put on a page.
+        /// </summary>
+        /// <param name="input">The string to HTML encode.</param>
+        /// <returns>The HTML encoded string.</returns>
         public static string HtmlEncode(this string input)
         {
             return System.Net.WebUtility.HtmlEncode(input);
         }
 
         /// <summary>
-        /// Replace function that is case insensitive
+        /// Replace values in a string with other values while ignoring casing differences.
         /// </summary>
+        /// <param name="input">The string to replaces the values in.</param>
+        /// <param name="oldValue">The value to replace.</param>
+        /// <param name="newValue">The new value.</param>
+        /// <returns>The string with all requested values replaced.</returns>
         public static string ReplaceCaseInsensitive(this string input, string oldValue, string newValue)
         {
             if (String.IsNullOrEmpty(input))
@@ -71,10 +87,11 @@ namespace GeeksCoreLibrary.Core.Extensions
         }
 
         /// <summary>
-        /// Converts a string to a SEO-friendly variant.
+        /// Converts a string to a SEO-friendly variant, for using in URLs.
+        /// This will make the string lower case, replace spaces with dashes (-) and remove all kinds of special characters.
         /// </summary>
-        /// <param name="input"></param>
-        /// <returns></returns>
+        /// <param name="input">The string to convert.</param>
+        /// <returns>The string that can be used in an URL.</returns>
         public static string ConvertToSeo(this string input)
         {
             if (String.IsNullOrEmpty(input))
@@ -161,9 +178,9 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <summary>
         /// Converts a string to a string that can be safely used in a MySQL query to avoid SQL injections.
         /// </summary>
-        /// <param name="input"></param>
+        /// <param name="input">The string to convert.</param>
         /// <param name="encloseInQuotes">Whether the value should be enclosed in quotes. You should never set this to <see langword="false"/>, unless you add quotes manually in your query! Otherwise SQL injection will still be possible!</param>
-        /// <returns></returns>
+        /// <returns>The converted string that can be safely used in a query, as long as quotes are added around it.</returns>
         public static string ToMySqlSafeValue(this string input, bool encloseInQuotes)
         {
             if (input == null)
@@ -580,11 +597,11 @@ namespace GeeksCoreLibrary.Core.Extensions
         }
 
         /// <summary>
-        /// Encrypts a string using a optional or standard encryption key.
+        /// Encrypts a string using the Triple DES method, using an optional or standard encryption key.
         /// </summary>
-        /// <param name="input"></param>
-        /// <param name="key"></param>
-        /// <returns></returns>
+        /// <param name="input">The string to encrypt.</param>
+        /// <param name="key">Optional: The key to use for encrypting. Will use the default key from the appsettings if empty.</param>
+        /// <returns>The encrypted string.</returns>
         public static string EncryptTripleDes(this string input, string key = "")
         {
             if (String.IsNullOrWhiteSpace(key))
@@ -614,9 +631,9 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <summary>
         /// Hashes a string, adds a salt, and returns the salt + hashed bytes as a Base64 string.
         /// </summary>
-        /// <param name="input"></param>
-        /// <param name="saltBytes"></param>
-        /// <returns></returns>
+        /// <param name="input">The string to hash.</param>
+        /// <param name="saltBytes">Optional: A byte array of the salt to use. If this contains no value, then a random salt will be generated and used.</param>
+        /// <returns>The Base64 string containing the SHA512 hash of the input + salt and the salt appended to it.</returns>
         public static string ToSha512ForPasswords(this string input, byte[] saltBytes = null)
         {
             using var sha512Hasher = SHA512.Create();
@@ -649,8 +666,8 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <summary>
         /// Hashes a string, and returns the hashed bytes as a Base64 string.
         /// </summary>
-        /// <param name="input"></param>
-        /// <returns></returns>
+        /// <param name="input">The string to hash.</param>
+        /// <returns>The Base64 string containing the SHA512 hash of the input.</returns>
         public static string ToSha512Simple(this string input)
         {
             using var sha512Hasher = SHA512.Create();
@@ -663,9 +680,9 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// Function Verifies an SHA512 hash (including salt) with the given input and returns whether it matches.
         /// The salt is removed from the hash and the input is hashed with the same salt is then compared this.
         /// </summary>
-        /// <param name="input"></param>
-        /// <param name="hash"></param>
-        /// <returns></returns>
+        /// <param name="input">The plain-text string to validate.</param>
+        /// <param name="hash">A Base64 string containing the SHA512 hash of a password + salt, appended with the same salt.</param>
+        /// <returns>Whether or not the input contains the same password as the one in the hash.</returns>
         public static bool VerifySha512(this string input, string hash)
         {
             // Convert base64-encoded hash value into a byte array.
@@ -698,10 +715,10 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <summary>
         /// Determines if a string is contained in a specified sequence by using a specified equality comparer.
         /// </summary>
-        /// <param name="input"></param>
+        /// <param name="input">The string to check.</param>
         /// <param name="comparer">The <see cref="StringComparer"/> that will be used when comparing values.</param>
         /// <param name="values">The array of values to check against.</param>
-        /// <returns></returns>
+        /// <returns>Whether or not the one of the values is the same as the input.</returns>
         public static bool InList(this string input, StringComparer comparer, params string[] values)
         {
             return values.Contains(input, comparer);
@@ -710,9 +727,9 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <summary>
         /// Determines if a string is contained in a specified sequence by using the <see cref="StringComparer.Ordinal"/> equality comparer.
         /// </summary>
-        /// <param name="input"></param>
+        /// <param name="input">The string to check.</param>
         /// <param name="values">The array of values to check against.</param>
-        /// <returns></returns>
+        /// <returns>Whether or not the one of the values is the same as the input.</returns>
         public static bool InList(this string input, params string[] values)
         {
             return input.InList(StringComparer.Ordinal, values);
@@ -721,11 +738,12 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <summary>
         /// Convert a string to a Dictionary, splitting rows with [RowSplitter] and cells with [ColumnSplitter].
         /// </summary>
-        /// <param name="input"></param>
-        /// <param name="rowSplitter"></param>
-        /// <param name="columnSplitter"></param>
-        /// <param name="addSortInKey"></param>
-        /// <param name="useFirstEntryIfExist"></param>
+        /// <param name="input">The string to convert.</param>
+        /// <param name="rowSplitter">The value that is used to divide the rows.</param>
+        /// <param name="columnSplitter">The value that is used to divide the columns.</param>
+        /// <param name="addSortInKey">Optional: Set to true to prepend all keys/columns with an index/counter and an underscore (_). Default value is false.</param>
+        /// <param name="useFirstEntryIfExist">Optional: If the input contains duplicate keys/columns, then the first one will be used if this is set to true, or the last one if it's set to false. Default value is true.</param>
+        /// <returns>The Dictionary made from the input.</returns>
         public static Dictionary<string, string> ToDictionary(this string input, string rowSplitter, string columnSplitter, bool addSortInKey = false, bool useFirstEntryIfExist = true)
         {
             var informationHolder = new List<string>();
@@ -758,16 +776,16 @@ namespace GeeksCoreLibrary.Core.Extensions
                 {
                     parameterList.Add(key, item.Split(columnSplitter)[1]);
                 }
-
             }
+            
             return parameterList;
         }
 
         /// <summary>
         /// Displays the entered string with the first letter in uppercase.
         /// </summary>
-        /// <param name="input"></param>
-        /// <returns></returns>
+        /// <param name="input">The string to capitalize the first letter of.</param>
+        /// <returns>The input with the first letter capitalized.</returns>
         public static string CapitalizeFirst(this string input)
         {
             if (String.IsNullOrEmpty(input))
@@ -781,11 +799,24 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <summary>
         /// Removes illegal characters from a file name.
         /// </summary>
-        /// <param name="input"></param>
-        /// <returns></returns>
+        /// <param name="input">The file name.</param>
+        /// <returns>A string that can be safely used as a file name on the machine that this application runs on.</returns>
         public static string StripIllegalFilenameCharacters(this string input)
         {
             var regexSearch = Path.GetInvalidFileNameChars().ToString();
+            var regex = new Regex($"[{Regex.Escape(regexSearch!)}]");
+            var output = regex.Replace(input, "");
+            return output.Replace("&", "_").Replace("+", "_");
+        }
+
+        /// <summary>
+        /// Removes illegal characters from a directory path.
+        /// </summary>
+        /// <param name="input">The directory name.</param>
+        /// <returns>A string that can be safely used as a directory name on the machine that this application runs on.</returns>
+        public static string StripIllegalPathCharacters(this string input)
+        {
+            var regexSearch = Path.GetInvalidPathChars().ToString();
             var regex = new Regex($"[{Regex.Escape(regexSearch!)}]");
             var output = regex.Replace(input, "");
             return output.Replace("&", "_").Replace("+", "_");
