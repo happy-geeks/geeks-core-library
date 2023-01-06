@@ -199,9 +199,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
             Template result;
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
                 result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             // Check login requirement.
@@ -314,7 +320,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
+        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var joinPart = gclSettings.Environment switch
             {
@@ -338,23 +344,33 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             databaseConnection.AddParameter("templateType", templateType.ToString());
             DateTime? result;
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            if (!await reader.ReadAsync())
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
-                return null;
-            }
+                if (!await reader.ReadAsync())
+                {
+                    return null;
+                }
 
-            var ordinal = reader.GetOrdinal("lastChanged");
-            result = await reader.IsDBNullAsync(ordinal) ? null : reader.GetDateTime(ordinal);
-            return result;
+                var ordinal = reader.GetOrdinal("lastChanged");
+                result = await reader.IsDBNullAsync(ordinal) ? null : reader.GetDateTime(ordinal);
+                return result;
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
+            }
         }
 
         /// <inheritdoc />
-        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
+        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss
                 ? $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')"
                 : $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'";
+
+            var pageModeQueryPart = $"t.pagemode = {(int)byInsertMode}";
 
             var joinPart = gclSettings.Environment switch
             {
@@ -410,6 +426,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND t.deleted <= 0
                         AND t.loadalways > 0
                         AND {templateTypeQueryPart}
+                        AND {pageModeQueryPart}
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
             var result = new TemplateResponse();
@@ -417,11 +434,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var idsLoaded = new List<int>();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            while (await reader.ReadAsync())
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
-                var template = await reader.ToTemplateModelAsync();
-                await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
+                while (await reader.ReadAsync())
+                {
+                    var template = await reader.ToTemplateModelAsync();
+                    await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
+                }
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             result.Content = resultBuilder.ToString();
@@ -501,11 +526,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND t.loadalways > 0
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            while (await reader.ReadAsync())
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
-                var template = await reader.ToTemplateModelAsync();
-                results.Add(template);
+                while (await reader.ReadAsync())
+                {
+                    var template = await reader.ToTemplateModelAsync();
+                    results.Add(template);
+                }
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             return results;
@@ -1224,17 +1257,22 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             var cssStringBuilder = new StringBuilder();
             var jsStringBuilder = new StringBuilder();
+            var externalCssFilesList = new List<string>();
+            var externalJavaScriptFilesList = new List<string>();
             foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
             {
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
                 (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+                (linkedTemplate.Type == TemplateTypes.Css ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
             }
 
             return new TemplateDataModel
             {
                 Content = template.Content,
                 LinkedCss = cssStringBuilder.ToString(),
-                LinkedJavascript = jsStringBuilder.ToString()
+                LinkedJavascript = jsStringBuilder.ToString(),
+                ExternalCssFiles = externalCssFilesList,
+                ExternalJavaScriptFiles = externalJavaScriptFilesList
             };
         }
 

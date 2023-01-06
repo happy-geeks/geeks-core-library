@@ -149,6 +149,18 @@ namespace GeeksCoreLibrary.Components.Pagination.Models
         )]
         public bool RenderForSinglePage { get; set; }
 
+        /// <summary>
+        /// Gets or sets whether "rel=next" and "rel=prev" link tags should be added to the page head.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Add previous and next link relation tags",
+            Description = "Whether \"rel=next\" and \"rel=prev\" link tags should be added to the page head.",
+            TabName = CmsAttributes.CmsTabName.Behavior,
+            GroupName = CmsAttributes.CmsGroupName.Seo,
+            DisplayOrder = 10
+        )]
+        public bool AddPreviousAndNextLinkRelationTags { get; set; }
+
         #endregion
 
         #region Tab Layout properties

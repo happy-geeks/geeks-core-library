@@ -178,7 +178,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.routine_return_type,
     template.trigger_timing,
     template.trigger_event,
-    template.trigger_table_name
+    template.trigger_table_name,
+    template.is_partial
 FROM {WiserTableNames.WiserTemplate} AS template
 {joinPart}
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -195,9 +196,15 @@ GROUP BY template.template_id
 ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
             Template result;
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
                 result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             // Check login requirement.
@@ -224,7 +231,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             // Check current login, and match user's roles against required roles of the template.
             var userData = await accountsService.GetUserDataFromCookieAsync();
 
-            if (userData is not {UserId: > 0} || (userData.Roles != null && !userData.Roles.Any(role => result.LoginRoles.Contains(role.Id))))
+            if (userData is not {UserId: > 0} || (result.LoginRoles != null && result.LoginRoles.Any() && userData.Roles != null && !userData.Roles.Any(role => result.LoginRoles.Contains(role.Id))))
             {
                 return emptyTemplate;
             }
@@ -353,7 +360,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
         }
 
         /// <inheritdoc />
-        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
+        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var joinPart = "";
             var whereClause = new List<string>();
@@ -368,14 +375,18 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
 
             whereClause.Add("template.removed = 0");
             whereClause.Add("template.load_always = 1");
-            whereClause.Add("template.template_type = ?templateType");
+
+            whereClause.Add(templateType is TemplateTypes.Css or TemplateTypes.Scss
+                ? $"template.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})"
+                : $"template.template_type = {(int)templateType}");
+
+            whereClause.Add($"template.insert_mode = {(int)byInsertMode}");
 
             var query = $@"SELECT MAX(template.changed_on) AS lastChanged
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         WHERE {String.Join(" AND ", whereClause)}";
 
-            databaseConnection.AddParameter("templateType", templateType);
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
             {
@@ -446,7 +457,8 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                         GROUP BY template.template_id
                         ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
                 while (await reader.ReadAsync())
                 {
@@ -454,12 +466,17 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                     results.Add(template);
                 }
             }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
+            }
 
             return results;
         }
 
         /// <inheritdoc />
-        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
+        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var joinPart = "";
             var whereClause = new List<string>();
@@ -478,6 +495,8 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             whereClause.Add(templateType is TemplateTypes.Css or TemplateTypes.Scss
                 ? $"template.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})"
                 : $"template.template_type = {(int)templateType}");
+
+            whereClause.Add($"template.insert_mode = {(int)byInsertMode}");
 
             var query = $@"SELECT
                             IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
@@ -527,13 +546,19 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var idsLoaded = new List<int>();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
 
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
                 while (await reader.ReadAsync())
                 {
                     var template = await reader.ToTemplateModelAsync();
                     await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
                 }
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             result.Content = resultBuilder.ToString();
@@ -797,7 +822,15 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 databaseConnection.AddParameter("propertyName", propertyName);
 
                 var queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
-                var dataTable = await databaseConnection.GetAsync(@$"SELECT * FROM `{WiserTableNames.WiserItemFile}` WHERE {queryWherePart} AND IF(?propertyName = '', 1=1, property_name = ?propertyName) AND content_type LIKE 'image%' ORDER BY id ASC");
+                var dataTable = await databaseConnection.GetAsync(@$"SELECT
+    item_id,
+    file_name,
+    property_name
+FROM `{WiserTableNames.WiserItemFile}`
+WHERE {queryWherePart}
+AND IF(?propertyName = '', 1=1, property_name = ?propertyName)
+AND content_type LIKE 'image%'
+ORDER BY id ASC");
 
                 if (dataTable.Rows.Count == 0)
                 {
@@ -1212,17 +1245,22 @@ ORDER BY ORDINAL_POSITION ASC";
 
             var cssStringBuilder = new StringBuilder();
             var jsStringBuilder = new StringBuilder();
+            var externalCssFilesList = new List<string>();
+            var externalJavaScriptFilesList = new List<string>();
             foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
             {
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
                 (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+                (linkedTemplate.Type == TemplateTypes.Css ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
             }
 
             return new TemplateDataModel
             {
                 Content = template.Content,
                 LinkedCss = cssStringBuilder.ToString(),
-                LinkedJavascript = jsStringBuilder.ToString()
+                LinkedJavascript = jsStringBuilder.ToString(),
+                ExternalCssFiles = externalCssFilesList,
+                ExternalJavaScriptFiles = externalJavaScriptFilesList
             };
         }
 
@@ -1268,6 +1306,45 @@ ORDER BY ORDINAL_POSITION ASC";
                     break;
                 case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
                     cacheFileName.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
+                    break;
+                case TemplateCachingModes.ServerSideCachingBasedOnUrlRegex:
+                    if (String.IsNullOrWhiteSpace(contentTemplate.CachingRegex))
+                    {
+                        throw new Exception($"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but no regex has been entered.");
+                    }
+
+                    try
+                    {
+                        var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                        var match = regex.Match(originalUri.PathAndQuery);
+                        if (!match.Success)
+                        {
+                            return "";
+                        }
+
+                        // Add all values of named groups to the cache key.
+                        foreach (Group group in match.Groups)
+                        {
+                            if (String.IsNullOrWhiteSpace(group.Name) || Int32.TryParse(group.Name, out _))
+                            {
+                                // Ignore groups without a name (when you have no name given in the regex, the group name will be a number).
+                                continue;
+                            }
+
+                            // Strip invalid characters that can't be in a file name.
+                            var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
+                            
+                            // Add the group value to the file name.
+                            cacheFileName.Append($"{Uri.EscapeDataString(value)}_");
+                        }
+                    }
+                    catch (ArgumentException argumentException)
+                    {
+                        // ArgumentException will be thrown if the regex is not valid.
+                        logger.LogWarning(argumentException, $"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered.");
+                        throw new Exception($"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered. The exact error was: {argumentException.Message}");
+                    }
+
                     break;
                 case TemplateCachingModes.NoCaching:
                     return "";

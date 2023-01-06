@@ -67,7 +67,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
 
                     if (currentDomain != mainDomainForRedirect && !ignoreDomains.Contains(currentDomain, StringComparer.OrdinalIgnoreCase))
                     {
-                        redirectToUrl = fullUri.ToString().Replace(currentDomain, mainDomainForRedirect);
+                        redirectToUrl = fullUri.AbsoluteUri.Replace(currentDomain, mainDomainForRedirect);
                     }
                 }
             }
@@ -133,7 +133,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
             if (await redirectService.ShouldRedirectToUrlWithTrailingSlashAsync())
             {
                 var fullUri = String.IsNullOrEmpty(redirectToUrl) ? HttpContextHelpers.GetOriginalRequestUri(context) : new Uri(redirectToUrl);
-                var urlWithoutQuery = fullUri.ToString();
+                var urlWithoutQuery = fullUri.AbsoluteUri;
                 if (!String.IsNullOrEmpty(fullUri.Query))
                 {
                     urlWithoutQuery = urlWithoutQuery.Replace(fullUri.Query, "");
@@ -153,7 +153,8 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
             if (await redirectService.ShouldRedirectToLowerCaseUrlAsync())
             {
                 var fullUri = String.IsNullOrEmpty(redirectToUrl) ? HttpContextHelpers.GetOriginalRequestUri(context) : new Uri(redirectToUrl);
-                var urlWithoutQuery = fullUri.ToString();
+                var urlWithoutQuery = fullUri.AbsoluteUri;
+
                 if (!String.IsNullOrEmpty(fullUri.Query))
                 {
                     urlWithoutQuery = urlWithoutQuery.Replace(fullUri.Query, "");
@@ -171,7 +172,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
                 var fullUri = String.IsNullOrEmpty(redirectToUrl) ? HttpContextHelpers.GetOriginalRequestUri(context) : new Uri(redirectToUrl);
                 if ((await redirectService.ShouldRedirectToHttpsAsync()) && (fullUri.Scheme != "https"))
                 {
-                    redirectToUrl = fullUri.ToString().Replace("http://", "https://");
+                    redirectToUrl = fullUri.AbsoluteUri.Replace("http://", "https://");
                 }
             }
 

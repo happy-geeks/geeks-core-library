@@ -19,7 +19,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
 
         /// <summary>
         /// Gets or sets the name of the root directory in the templates module.
-        /// This should be one of the following values: CSS, HTML, Scripts, QUERY or AIS.
+        /// This should be one of the following values: CSS, HTML, Scripts, QUERY or SERVICES.
         /// </summary>
         public string RootName { get; set; }
 
@@ -158,5 +158,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets the regular expression that is matched against the URL of the page, to decide whether to use the default header or footer.
         /// </summary>
         public string DefaultHeaderFooterRegex { get; set; }
+
+        /// <summary>
+        /// Gets or sets if this template is only a partial.
+        /// </summary>
+        public bool IsPartial { get; set; }
     }
 }

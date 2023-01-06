@@ -1,20 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.Models;
-using JetBrains.Annotations;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
 {
     public interface IShoppingBasketsService
     {
         /// <summary>
-        /// Get all baskets via unique payment number.
+        /// Get all orders via unique payment number.
         /// </summary>
-        /// <param name="uniquePaymentNumber">The value of the UniquePaymentNumber detail of Main.</param>
+        /// <param name="uniquePaymentNumber">The value of the UniquePaymentNumber detail of the order item.</param>
         /// <returns>A <see cref="List{WiserItemModel}"/> of <see cref="WiserItemModel"/> objects.</returns>
-        Task<List<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber);
+        Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber);
+        
+        /// <summary>
+        /// Get all orders via unique payment number.
+        /// </summary>
+        /// <param name="pspTransactionId">The value of the PspTransactionId detail of the order item.</param>
+        /// <returns>A <see cref="List{WiserItemModel}"/> of <see cref="WiserItemModel"/> objects.</returns>
+        Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByPspTransactionIdAsync(string pspTransactionId);
 
         /// <summary>
         /// Gets all baskets through a cookie name.
@@ -74,7 +81,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// Create a concept order out of a basket.
         /// </summary>
         /// <returns></returns>
-        Task<(ulong ConceptOrderId, WiserItemModel ConceptOrder, List<WiserItemModel> ConceptOrderLines)> MakeConceptOrderFromBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings);
+        Task<(ulong ConceptOrderId, WiserItemModel ConceptOrder, List<WiserItemModel> ConceptOrderLines)> MakeConceptOrderFromBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, OrderProcessBasketToConceptOrderMethods basketToConceptOrderMethod);
 
         /// <summary>
         /// Turns a concept order into a final order.
@@ -277,5 +284,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketTotal">The total price of the basket.</param>
         /// <returns>A <see langword="bool"/> indicating whether the coupon is valid or not.</returns>
         bool IsCouponValid(WiserItemModel coupon, decimal basketTotal);
+
+        /// <summary>
+        /// Deletes a basket and all it's basket lines from the database.
+        /// </summary>
+        /// <param name="basketItemId">The ID of the basket to delete.</param>
+        Task DeleteAsync(ulong basketItemId);
+
+        /// <summary>
+        /// Deletes a basket and all it's basket lines from the database.
+        /// </summary>
+        /// <param name="basketItemId">The ID of the basket to delete.</param>
+        Task DeleteLinesAsync(ulong basketItemId);
     }
 }

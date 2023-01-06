@@ -39,7 +39,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <summary>
         /// Sets the SEO meta data for the current page.
         /// </summary>
-        void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null);
+        void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null, string previousPageLink = null, string nextPageLink = null);
 
         /// <summary>
         /// Sets the Open Graph meta data for the current page.

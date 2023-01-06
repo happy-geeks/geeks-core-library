@@ -237,7 +237,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                         InvoiceNumber = orderId,
                         ShipmentType = "Commercial Goods"
                     };
-                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(UInt64.Parse(orderId), 5002, "orderline", skipPermissionsCheck: true);
+                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(UInt64.Parse(orderId), Components.ShoppingBasket.Models.Constants.BasketLineToBasketLinkType, Components.OrderProcess.Models.Constants.OrderLineEntityType, skipPermissionsCheck: true);
                     foreach (WiserItemModel orderLine in orderLines)
                     {
                         postNlRequest.Shipments.First()

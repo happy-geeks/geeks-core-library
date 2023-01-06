@@ -1,4 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.Templates.Models
+﻿using System.Collections.Generic;
+
+namespace GeeksCoreLibrary.Modules.Templates.Models
 {
     public class TemplateDataModel
     {
@@ -16,5 +18,15 @@
         /// Gets or sets the js content of the template.
         /// </summary>
         public string LinkedJavascript { get; set; }
+
+        /// <summary>
+        /// Gets or sets a collection of URLs for CSS libraries, usually hosted on some CDN.
+        /// </summary>
+        public List<string> ExternalCssFiles { get; init; } = new();
+
+        /// <summary>
+        /// Gets or sets a collection of URLs for JavaScript libraries, usually hosted on some CDN.
+        /// </summary>
+        public List<string> ExternalJavaScriptFiles { get; init; } = new();
     }
 }

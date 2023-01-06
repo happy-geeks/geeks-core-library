@@ -167,7 +167,7 @@ ORDER BY name ASC";
             var queryPrefix = "SET @_username = ?username; ";
             if (settings.Id <= 0)
             {
-                // Generate empty last processed list, because the AIS needs that.
+                // Generate empty last processed list, because the WTS needs that.
                 settings.LastProcessed = new List<LastProcessedModel>();
                 foreach (var setting in settings.Settings)
                 {

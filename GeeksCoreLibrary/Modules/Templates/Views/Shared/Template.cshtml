@@ -9,13 +9,17 @@
                 @:<link rel="stylesheet" href="@Html.Raw(css)" />
             }
         }
-        if (!String.IsNullOrWhiteSpace(Model?.Css?.GeneralCssFileName))
+        if (!String.IsNullOrWhiteSpace(Model?.Css?.GeneralStandardCssFileName))
         {
-            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.GeneralCssFileName)" />
+            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.GeneralStandardCssFileName)" />
         }
         if (!String.IsNullOrWhiteSpace(Model?.Css?.PageStandardCssFileName))
         {
             @:<link rel="stylesheet" href="@Html.Raw(Model.Css.PageStandardCssFileName)" />
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Css?.GeneralInlineHeadCss))
+        {
+            @:<style>@Html.Raw(Model.Css.GeneralInlineHeadCss)</style>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Css?.PageInlineHeadCss))
         {
@@ -33,13 +37,17 @@
                 @:<script src="@Html.Raw(javascript.Uri.ToString())" @Html.Raw(javascript.Async ? "async" : "") @Html.Raw(javascript.Defer ? "defer" : "")></script>
             }
         }
-        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralJavascriptFileName))
+        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralStandardJavaScriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.GeneralJavascriptFileName)"></script>
+            @:<script src="@Html.Raw(Model.Javascript.GeneralStandardJavaScriptFileName)"></script>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageStandardJavascriptFileName))
         {
             @:<script src="@Html.Raw(Model.Javascript.PageStandardJavascriptFileName)"></script>
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralInlineHeadJavaScript))
+        {
+            @:<script>@Html.Raw(Model.Javascript.GeneralInlineHeadJavaScript)</script>
         }
         if (Model?.Javascript?.PageInlineHeadJavascript != null)
         {
@@ -53,6 +61,14 @@
 
 @section FooterStyles {
     @{
+        if (!String.IsNullOrWhiteSpace(Model?.Css?.GeneralAsyncFooterCssFileName))
+        {
+            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.GeneralAsyncFooterCssFileName)" async />
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Css?.GeneralSyncFooterCssFileName))
+        {
+            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.GeneralSyncFooterCssFileName)" />
+        }
         if (!String.IsNullOrWhiteSpace(Model?.Css?.PageAsyncFooterCssFileName))
         {
             @:<link rel="stylesheet" href="@Html.Raw(Model.Css.PageAsyncFooterCssFileName)" async />
@@ -66,9 +82,16 @@
 
 @section FooterScripts {
     @{
-        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralFooterJavascriptFileName))
+        if (Model?.Javascript?.GeneralSyncFooterJavaScriptFileName != null)
         {
-            @:<script src="@Html.Raw(Model.Javascript.GeneralFooterJavascriptFileName)"></script>
+            foreach (var javascript in Model.Javascript.GeneralSyncFooterJavaScriptFileName)
+            {
+                @:<script src="@Html.Raw(javascript)"></script>
+            }
+        }
+        if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralAsyncFooterJavaScriptFileName))
+        {
+            @:<script src="@Html.Raw(Model.Javascript.GeneralAsyncFooterJavaScriptFileName)" async></script>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageAsyncFooterJavascriptFileName))
         {
@@ -109,6 +132,16 @@
         if (!String.IsNullOrWhiteSpace(Model?.MetaData?.Canonical))
         {
             @:<link href="@Model.MetaData.Canonical" rel="canonical" />
+        }
+
+        if (!String.IsNullOrWhiteSpace(Model?.MetaData?.PreviousPageLink))
+        {
+            @:<link href="@Model.MetaData.PreviousPageLink" rel="prev" />
+        }
+
+        if (!String.IsNullOrWhiteSpace(Model?.MetaData?.NextPageLink))
+        {
+            @:<link href="@Model.MetaData.NextPageLink" rel="next" />
         }
     }
 }

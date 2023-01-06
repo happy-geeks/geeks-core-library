@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -95,15 +96,15 @@ namespace GeeksCoreLibrary.Core.Extensions
                 // Add value to dictionary.
                 if (columnName.EndsWith(SeoSuffix, StringComparison.OrdinalIgnoreCase))
                 {
-                    result.Add(TrimPrefix(columnName[..^SeoSuffix.Length], requiredColumnNamePrefix), Convert.ToString(dataRow[dataColumn]).ConvertToSeo());
+                    result.TryAdd(TrimPrefix(columnName[..^SeoSuffix.Length], requiredColumnNamePrefix), Convert.ToString(dataRow[dataColumn]).ConvertToSeo());
                 }
                 else if (columnName.EndsWith(HtmlEncodeAllowBrSuffix, StringComparison.OrdinalIgnoreCase))
                 {
-                    result.Add(TrimPrefix(columnName[..^HtmlEncodeAllowBrSuffix.Length], requiredColumnNamePrefix), Convert.ToString(dataRow[dataColumn]).HtmlEncode().Replace("&lt;br /&gt;", "<br />"));
+                    result.TryAdd(TrimPrefix(columnName[..^HtmlEncodeAllowBrSuffix.Length], requiredColumnNamePrefix), Convert.ToString(dataRow[dataColumn]).HtmlEncode().Replace("&lt;br /&gt;", "<br />"));
                 }
                 else if (columnName.EndsWith(HtmlEncodeSuffix, StringComparison.OrdinalIgnoreCase))
                 {
-                    result.Add(TrimPrefix(columnName[..^HtmlEncodeSuffix.Length], requiredColumnNamePrefix), Convert.ToString(dataRow[dataColumn]).HtmlEncode());
+                    result.TryAdd(TrimPrefix(columnName[..^HtmlEncodeSuffix.Length], requiredColumnNamePrefix), Convert.ToString(dataRow[dataColumn]).HtmlEncode());
                 }
                 else if (columnName.EndsWith(EncryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(EncryptWithDateSuffix, StringComparison.OrdinalIgnoreCase))
                 {
@@ -114,7 +115,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                         value = value.EncryptWithAesWithSalt(encryptionKey, withDate);
                     }
 
-                    result.Add(TrimPrefix(columnName[..^(withDate ? EncryptWithDateSuffix : EncryptSuffix).Length], requiredColumnNamePrefix), value.UrlEncode());
+                    result.TryAdd(TrimPrefix(columnName[..^(withDate ? EncryptWithDateSuffix : EncryptSuffix).Length], requiredColumnNamePrefix), value.UrlEncode());
                 }
                 else if (columnName.EndsWith(EncryptListSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(EncryptListWithDateSuffix, StringComparison.OrdinalIgnoreCase))
                 {
@@ -126,7 +127,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                         value = String.Join(",", encryptedValues);
                     }
 
-                    result.Add(TrimPrefix(columnName[..^(withDate ? EncryptListWithDateSuffix : EncryptListSuffix).Length], requiredColumnNamePrefix), value);
+                    result.TryAdd(TrimPrefix(columnName[..^(withDate ? EncryptListWithDateSuffix : EncryptListSuffix).Length], requiredColumnNamePrefix), value);
                 }
                 else if (columnName.EndsWith(NormalEncryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(NormalEncryptWithDateSuffix, StringComparison.OrdinalIgnoreCase))
                 {
@@ -137,7 +138,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                         value = value.EncryptWithAes(encryptionKey, withDate);
                     }
 
-                    result.Add(TrimPrefix(columnName[..^(withDate ? NormalEncryptWithDateSuffix : NormalEncryptSuffix).Length], requiredColumnNamePrefix), value.UrlEncode());
+                    result.TryAdd(TrimPrefix(columnName[..^(withDate ? NormalEncryptWithDateSuffix : NormalEncryptSuffix).Length], requiredColumnNamePrefix), value.UrlEncode());
                 }
                 else if (columnName.EndsWith(NormalEncryptListSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(NormalEncryptListWithDateSuffix, StringComparison.OrdinalIgnoreCase))
                 {
@@ -149,7 +150,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                         value = String.Join(",", encryptedValues);
                     }
 
-                    result.Add(TrimPrefix(columnName[..^(withDate ? NormalEncryptListWithDateSuffix : NormalEncryptListSuffix).Length], requiredColumnNamePrefix), value);
+                    result.TryAdd(TrimPrefix(columnName[..^(withDate ? NormalEncryptListWithDateSuffix : NormalEncryptListSuffix).Length], requiredColumnNamePrefix), value);
                 }
                 else if (allowValueDecryption && (columnName.EndsWith(DecryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(DecryptWithDateSuffix, StringComparison.OrdinalIgnoreCase)))
                 {
@@ -171,7 +172,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                         value = value.UrlDecode().Replace(" ", "+").DecryptWithAesWithSalt(encryptionKey, withDate);
                     }
 
-                    result.Add(TrimPrefix(columnName[..^(withDate ? DecryptWithDateSuffix : DecryptSuffix).Length], requiredColumnNamePrefix), value);
+                    result.TryAdd(TrimPrefix(columnName[..^(withDate ? DecryptWithDateSuffix : DecryptSuffix).Length], requiredColumnNamePrefix), value);
                 }
                 else if (allowValueDecryption && (columnName.EndsWith(NormalDecryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(NormalDecryptWithDateSuffix, StringComparison.OrdinalIgnoreCase)))
                 {
@@ -193,11 +194,11 @@ namespace GeeksCoreLibrary.Core.Extensions
                         value = value.UrlDecode().Replace(" ", "+").DecryptWithAes(encryptionKey, withDate);
                     }
 
-                    result.Add(TrimPrefix(columnName[..^(withDate ? NormalDecryptWithDateSuffix : NormalDecryptSuffix).Length], requiredColumnNamePrefix), value);
+                    result.TryAdd(TrimPrefix(columnName[..^(withDate ? NormalDecryptWithDateSuffix : NormalDecryptSuffix).Length], requiredColumnNamePrefix), value);
                 }
                 else
                 {
-                    result.Add(TrimPrefix(columnName, requiredColumnNamePrefix), new JValue(dataRow[dataColumn]));
+                    result.TryAdd(TrimPrefix(columnName, requiredColumnNamePrefix), new JValue(dataRow[dataColumn]));
                 }
             }
 

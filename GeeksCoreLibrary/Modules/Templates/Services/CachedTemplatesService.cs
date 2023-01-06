@@ -4,6 +4,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Enums;
@@ -89,7 +90,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 // Get folder and file name.
                 var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
                 var cacheFileName = await GetTemplateOutputCacheFileNameAsync(cacheSettings, cacheSettings.Type.ToString());
-                fullCachePath = Path.Combine(cacheFolder, cacheFileName);
 
                 switch (cacheSettings.CachingLocation)
                 {
@@ -104,25 +104,38 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                     case TemplateCachingLocations.OnDisk:
                     {
-                        logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
-
-                        // Check if a cache file already exists and if it hasn't expired yet.
-                        var fileInfo = new FileInfo(fullCachePath);
-                        if (fileInfo.Exists)
+                        if (String.IsNullOrWhiteSpace(cacheFolder))
                         {
-                            if (fileInfo.LastWriteTimeUtc.AddMinutes(cacheSettings.CachingMinutes) > DateTime.UtcNow)
+                            logger.LogWarning($"Content cache enabled for template '{cacheSettings.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website (on Windows / IIS, this is the user 'IIS_IUSRS' bij default).");
+                        }
+                        else
+                        {
+                            // Build the cache directory, based on template type and name.
+                            fullCachePath = Path.Combine(cacheFolder, Constants.TemplateCacheRootDirectoryName, cacheSettings.Type.ToString(), $"{cacheSettings.Name.StripIllegalPathCharacters()} ({cacheSettings.Id})", cacheFileName);
+                            logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
+
+                            // Check if a cache file already exists and if it hasn't expired yet.
+                            var fileInfo = new FileInfo(fullCachePath);
+                            if (fileInfo.Directory is { Exists: false })
                             {
-                                using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
-                                var fileContents = await fileReader.ReadToEndAsync();
-                                templateContent = cacheSettings.Type != TemplateTypes.Html
-                                    ? fileContents
-                                    : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContents}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
-                                foundInOutputCache = true;
+                                fileInfo.Directory.Create();
                             }
-                            else
+                            else if (fileInfo.Exists)
                             {
-                                // Cleanup the old cache file if it has expired.
-                                fileInfo.Delete();
+                                if (fileInfo.LastWriteTimeUtc.AddMinutes(cacheSettings.CachingMinutes) > DateTime.UtcNow)
+                                {
+                                    using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
+                                    var fileContents = await fileReader.ReadToEndAsync();
+                                    templateContent = cacheSettings.Type != TemplateTypes.Html
+                                        ? fileContents
+                                        : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContents}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
+                                    foundInOutputCache = true;
+                                }
+                                else
+                                {
+                                    // Cleanup the old cache file if it has expired.
+                                    fileInfo.Delete();
+                                }
                             }
                         }
 
@@ -159,16 +172,26 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 template.Content = templateContent;
             }
-            else if (!String.IsNullOrEmpty(fullCachePath))
+            else
             {
                 switch (cacheSettings.CachingLocation)
                 {
                     case TemplateCachingLocations.InMemory:
-                        cache.Add(contentCacheKey, template.Content, DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes));
+                        if (!String.IsNullOrWhiteSpace(contentCacheKey))
+                        {
+                            cache.Add(contentCacheKey, template.Content, DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes));
+                        }
+
                         break;
                     case TemplateCachingLocations.OnDisk:
-                        await File.WriteAllTextAsync(fullCachePath, template.Content);
+                    {
+                        if (!String.IsNullOrEmpty(fullCachePath))
+                        {
+                            await File.WriteAllTextAsync(fullCachePath, template.Content);
+                        }
+
                         break;
+                    }
                     default:
                         throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
                 }
@@ -204,7 +227,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
+        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var cacheKey = $"GeneralTemplateLastChangedDate_{languagesService.CurrentLanguageCode ?? ""}_{templateType}";
             return await cache.GetOrAddAsync(cacheKey,
@@ -217,14 +240,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
+        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
-            var cacheKey = $"GeneralTemplateValue_{languagesService.CurrentLanguageCode ?? ""}_{templateType}";
+            var cacheKey = $"GeneralTemplateValue_{languagesService.CurrentLanguageCode ?? ""}_{templateType}_{byInsertMode:G}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-                    return await templatesService.GetGeneralTemplateValueAsync(templateType);
+                    return await templatesService.GetGeneralTemplateValueAsync(templateType, byInsertMode);
                 },
                 cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
@@ -432,6 +455,45 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
                     cacheKey.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
                     break;
+                case TemplateCachingModes.ServerSideCachingBasedOnUrlRegex:
+                    if (String.IsNullOrWhiteSpace(settings.CacheRegex))
+                    {
+                        throw new Exception($"Caching for component {dynamicContent.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but no regex has been entered.");
+                    }
+
+                    try
+                    {
+                        var regex = new Regex(settings.CacheRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                        var match = regex.Match(originalUri.PathAndQuery);
+                        if (!match.Success)
+                        {
+                            return "";
+                        }
+
+                        // Add all values of named groups to the cache key.
+                        foreach (Group group in match.Groups)
+                        {
+                            if (String.IsNullOrWhiteSpace(group.Name) || Int32.TryParse(group.Name, out _))
+                            {
+                                // Ignore groups without a name (when you have no name given in the regex, the group name will be a number).
+                                continue;
+                            }
+
+                            // Strip invalid characters that can't be in a file name.
+                            var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
+                            
+                            // Add the group value to the file name.
+                            cacheKey.Append($"{Uri.EscapeDataString(value)}_");
+                        }
+                    }
+                    catch (ArgumentException argumentException)
+                    {
+                        // ArgumentException will be thrown if the regex is not valid.
+                        logger.LogWarning(argumentException, $"Caching for template {dynamicContent.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered.");
+                        throw new Exception($"Caching for template {dynamicContent.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered. The exact error was: {argumentException.Message}");
+                    }
+
+                    break;
                 case TemplateCachingModes.NoCaching:
                     return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
                 default:
@@ -465,11 +527,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     var fileName = $"{cacheKey}.html";
                     var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
-                    var fullCachePath = Path.Combine(cacheFolder, fileName);
+                    var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
                     // Check if a cache file already exists and if it hasn't expired yet.
                     var fileInfo = new FileInfo(fullCachePath);
-                    if (fileInfo.Exists)
+                    if (fileInfo.Directory is { Exists: false })
+                    {
+                        fileInfo.Directory.Create();
+                    }
+                    else if (fileInfo.Exists)
                     {
                         if (fileInfo.LastWriteTimeUtc.AddMinutes(settings.CacheMinutes) > DateTime.UtcNow)
                         {

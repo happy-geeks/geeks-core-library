@@ -49,6 +49,10 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             }
 
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+            if (fileNumber < 1)
+            {
+                fileNumber = 1;
+            }
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("itemId", finalItemId);
@@ -57,7 +61,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 SELECT content_type, content, content_url, protected
                 FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE item_id = ?itemId AND property_name = ?propertyName
-                ORDER BY id
+                ORDER BY ordering ASC, id ASC
                 LIMIT {fileNumber - 1},1");
 
             if (!ValidateQueryResult(getImageResult, encryptedItemId))
@@ -66,8 +70,15 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"image_wiser2_{finalItemId}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
+            var localFilename = $"image_wiser2{entityTypePart}_{finalItemId}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
@@ -93,7 +104,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 SELECT content_type, content, content_url, protected
                 FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
-                ORDER BY id
+                ORDER BY ordering ASC, id ASC
                 LIMIT {fileNumber - 1},1");
 
             if (!ValidateQueryResult(getImageResult, encryptedItemLinkId))
@@ -102,8 +113,15 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"image_wiser2_{finalItemLinkId}_itemlink_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{filename}";
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
+            var localFilename = $"image_wiser2_{finalItemLinkId}_itemlink{linkTypePart}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{filename}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
@@ -135,8 +153,15 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"image_wiser2_{finalItemId}_direct_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
+            var localFilename = $"image_wiser2{entityTypePart}_{finalItemId}_direct_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
@@ -162,7 +187,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 SELECT content, content_url, protected
                 FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE item_id = ?itemId AND property_name = ?propertyName
-                ORDER BY id
+                ORDER BY ordering ASC, id ASC
                 LIMIT {fileNumber - 1},1");
 
             if (!ValidateQueryResult(getFileResult, encryptedItemId))
@@ -171,8 +196,15 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"file_wiser2_{finalItemId}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve file because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
+            var localFilename = $"file_wiser2{entityTypePart}_{finalItemId}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             return getFileResult.Rows.Count == 0
@@ -197,7 +229,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 SELECT content, content_url, protected
                 FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
                 WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
-                ORDER BY id
+                ORDER BY ordering ASC, id ASC
                 LIMIT {fileNumber - 1},1");
 
             if (!ValidateQueryResult(getFileResult, encryptedItemLinkId))
@@ -206,8 +238,15 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"file_wiser2_{finalItemLinkId}_itemlink_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve file because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
+            var localFilename = $"file_wiser2_{finalItemLinkId}_itemlink{linkTypePart}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             return getFileResult.Rows.Count == 0
@@ -238,8 +277,15 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
+            var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
             var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
-            var localFilename = $"file_wiser2_{finalItemId}_direct_{Path.GetFileName(filename)}";
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve file because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
+            var localFilename = $"file_wiser2{entityTypePart}_{finalItemId}_direct_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             return getFileResult.Rows.Count == 0
@@ -359,7 +405,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                         }
                         else
                         {
-                            var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl);
+                            var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
                             if (File.Exists(localFilePath))
                             {
                                 fileBytes = await File.ReadAllBytesAsync(localFilePath);
@@ -436,7 +482,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                     }
                     else
                     {
-                        var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl);
+                        var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
                         if (File.Exists(localFilePath))
                         {
                             fileBytes = await File.ReadAllBytesAsync(localFilePath);
