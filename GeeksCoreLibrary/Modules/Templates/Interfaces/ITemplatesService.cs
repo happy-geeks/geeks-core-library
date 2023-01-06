@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Templates.Enums;
@@ -284,5 +285,31 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// </summary>
         /// <returns>A list with all templates that have an URL regex set, but only the regex, ID and type of each template.</returns>
         Task<List<Template>> GetTemplateUrlsAsync();
+
+        /// <summary>
+        /// Get whether or not the rendering of a specific component should be logged.
+        /// </summary>
+        /// <param name="componentId">The ID of the component to check for.</param>
+        /// <returns>A boolean indicating whether the rendering of this component should be logged.</returns>
+        Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId);
+
+        /// <summary>
+        /// Get whether or not the rendering of a specific template should be logged.
+        /// </summary>
+        /// <param name="templateId">The ID of the template to check for.</param>
+        /// <returns>A boolean indicating whether the rendering of this template should be logged.</returns>
+        Task<bool> TemplateRenderingShouldBeLoggedAsync(int templateId);
+
+        /// <summary>
+        /// Adds a row to the log table for keeping track of when components and templates are being rendered and how long it takes every time.
+        /// </summary>
+        /// <param name="componentId">The ID of the component. Set to 0 if you're adding a log for a template.</param>
+        /// <param name="templateId">The ID of the template. Set to 0 if you're rendering a component.</param>
+        /// <param name="version">The version of the component or template.</param>
+        /// <param name="startTime">The date and time that the rendering started.</param>
+        /// <param name="endTime">The date and time that the rendering was finished.</param>
+        /// <param name="timeTaken">The amount of time, in milliseconds, that it took to render the component or template.</param>
+        /// <param name="error">Optional: If an error occurred, put that error here.</param>
+        Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "");
     }
 }

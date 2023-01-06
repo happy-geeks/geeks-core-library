@@ -648,5 +648,23 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 },
                 cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
+
+        /// <inheritdoc />
+        public async Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
+        {
+            return await templatesService.ComponentRenderingShouldBeLoggedAsync(componentId);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> TemplateRenderingShouldBeLoggedAsync(int templateId)
+        {
+            return await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
+        }
+
+        /// <inheritdoc />
+        public async Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "")
+        {
+            await templatesService.AddTemplateOrComponentRenderingLogAsync(componentId, templateId, version, startTime, endTime, timeTaken, error);
+        }
     }
 }

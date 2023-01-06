@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -56,6 +57,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly ILanguagesService languagesService;
         private readonly IFiltersService filtersService;
         private readonly IAccountsService accountsService;
+        private readonly IDatabaseHelpersService databaseHelpersService;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
@@ -72,7 +74,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IFiltersService filtersService,
             IObjectsService objectsService,
             ILanguagesService languagesService,
-            IAccountsService accountsService)
+            IAccountsService accountsService,
+            IDatabaseHelpersService databaseHelpersService)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -87,6 +90,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.objectsService = objectsService;
             this.languagesService = languagesService;
             this.accountsService = accountsService;
+            this.databaseHelpersService = databaseHelpersService;
         }
 
         /// <inheritdoc />
@@ -179,7 +183,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.trigger_timing,
     template.trigger_event,
     template.trigger_table_name,
-    template.is_partial
+    template.is_partial,
+    template.version
 FROM {WiserTableNames.WiserTemplate} AS template
 {joinPart}
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -441,7 +446,8 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                             template.grouping_key,
                             template.grouping_prefix,
                             template.pre_load_query,
-                            template.return_not_found_when_pre_load_query_has_no_data
+                            template.return_not_found_when_pre_load_query_has_no_data,
+                            template.version
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -525,7 +531,8 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                             template.grouping_key_column_name,
                             template.grouping_value_column_name,
                             template.grouping_key,
-                            template.grouping_prefix
+                            template.grouping_prefix,
+                            template.version
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -1080,34 +1087,60 @@ ORDER BY id ASC");
                 return "";
             }
 
-            var viewComponentName = dynamicContent.Name;
-
-            // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
-            var viewContext = new ViewContext(
-                actionContextAccessor.ActionContext,
-                NullView.Instance,
-                new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
-                new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
-                TextWriter.Null,
-                new HtmlHelperOptions());
-
-            // Set the context in the ViewComponentHelper, so that the ViewComponents that we use actually have the proper context.
-            (viewComponentHelper as IViewContextAware)?.Contextualize(viewContext);
-
-            // Dynamically invoke the correct ViewComponent.
-            var component = await viewComponentHelper.InvokeAsync(viewComponentName, new { dynamicContent, callMethod, forcedComponentMode, extraData });
-
-            // If there is a InvokeMethodResult, it means this that a specific method on a specific component was called via /gclcomponent.gcl
-            // and we only want to return the results of that method, instead of rendering the entire component.
-            if (viewContext.TempData.ContainsKey("InvokeMethodResult") && viewContext.TempData["InvokeMethodResult"] != null)
+            var logRenderingOfComponent = await ComponentRenderingShouldBeLoggedAsync(dynamicContent.Id);
+            var error = "";
+            var startTime = DateTime.Now;
+            var stopWatch = new Stopwatch();
+            try
             {
-                return viewContext.TempData["InvokeMethodResult"];
-            }
+                if (logRenderingOfComponent)
+                {
+                    stopWatch.Start();
+                }
 
-            await using var stringWriter = new StringWriter();
-            component.WriteTo(stringWriter, HtmlEncoder.Default);
-            var html = stringWriter.ToString();
-            return html;
+                var viewComponentName = dynamicContent.Name;
+
+                // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
+                var viewContext = new ViewContext(
+                    actionContextAccessor.ActionContext,
+                    NullView.Instance,
+                    new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
+                    new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
+                    TextWriter.Null,
+                    new HtmlHelperOptions());
+
+                // Set the context in the ViewComponentHelper, so that the ViewComponents that we use actually have the proper context.
+                (viewComponentHelper as IViewContextAware)?.Contextualize(viewContext);
+
+                // Dynamically invoke the correct ViewComponent.
+                var component = await viewComponentHelper.InvokeAsync(viewComponentName, new {dynamicContent, callMethod, forcedComponentMode, extraData});
+
+                // If there is a InvokeMethodResult, it means this that a specific method on a specific component was called via /gclcomponent.gcl
+                // and we only want to return the results of that method, instead of rendering the entire component.
+                if (viewContext.TempData.ContainsKey("InvokeMethodResult") && viewContext.TempData["InvokeMethodResult"] != null)
+                {
+                    return viewContext.TempData["InvokeMethodResult"];
+                }
+
+                await using var stringWriter = new StringWriter();
+                component.WriteTo(stringWriter, HtmlEncoder.Default);
+                var html = stringWriter.ToString();
+                return html;
+            }
+            catch (Exception exception)
+            {
+                error = exception.ToString();
+                throw;
+            }
+            finally
+            {
+                if (logRenderingOfComponent)
+                {
+                    stopWatch.Stop();
+                    var endTime = DateTime.Now;
+                    await AddTemplateOrComponentRenderingLogAsync(dynamicContent.Id, 0, dynamicContent.Version, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+                }
+            }
         }
 
         /// <inheritdoc />
@@ -1435,6 +1468,77 @@ AND template.url_regex <> ''";
             }
 
             return results;
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
+        {
+            var logRenderingOfComponentsSetting = await objectsService.FindSystemObjectByDomainNameAsync("log_rendering_of_components");
+            if (String.IsNullOrWhiteSpace(logRenderingOfComponentsSetting))
+            {
+                return false;
+            }
+            
+            if (String.Equals("all", logRenderingOfComponentsSetting, StringComparison.OrdinalIgnoreCase) || String.Equals("true", logRenderingOfComponentsSetting, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var listOfComponentIdsToLog = logRenderingOfComponentsSetting.Split(",").Select(value => !Int32.TryParse(value, out var id) ? 0 : id);
+            return listOfComponentIdsToLog.Contains(componentId);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> TemplateRenderingShouldBeLoggedAsync(int templateId)
+        {
+            var logRenderingOfTemplatesSetting = await objectsService.FindSystemObjectByDomainNameAsync("log_rendering_of_templates");
+            if (String.IsNullOrWhiteSpace(logRenderingOfTemplatesSetting))
+            {
+                return false;
+            }
+            
+            if (String.Equals("all", logRenderingOfTemplatesSetting, StringComparison.OrdinalIgnoreCase) || String.Equals("true", logRenderingOfTemplatesSetting, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var listOfTemplateIdsToLog = logRenderingOfTemplatesSetting.Split(",").Select(value => !Int32.TryParse(value, out var id) ? 0 : id);
+            return listOfTemplateIdsToLog.Contains(templateId);
+        }
+
+        /// <inheritdoc />
+        public async Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "")
+        {
+            try
+            {
+                var userData = await accountsService.GetUserDataFromCookieAsync();
+                
+                var tableName = componentId > 0 ? WiserTableNames.WiserDynamicContentRenderLog : WiserTableNames.WiserTemplateRenderLog;
+                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {tableName});
+                databaseConnection.AddParameter("rendering_content_id", componentId);
+                databaseConnection.AddParameter("rendering_template_id", templateId);
+                databaseConnection.AddParameter("rendering_version", version);
+                databaseConnection.AddParameter("rendering_url", HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext));
+                databaseConnection.AddParameter("rendering_environment", gclSettings.Environment.ToString());
+                databaseConnection.AddParameter("rendering_start", startTime);
+                databaseConnection.AddParameter("rendering_end", endTime);
+                databaseConnection.AddParameter("rendering_time_taken", timeTaken);
+                databaseConnection.AddParameter("rendering_user_id", userData.UserId);
+                databaseConnection.AddParameter("rendering_language_code", await languagesService.GetLanguageCodeAsync() ?? "");
+                databaseConnection.AddParameter("rendering_error", error);
+
+                var idColumn = componentId > 0 ? "content_id" : "template_id";
+                var idParameter = componentId > 0 ? "rendering_content_id" : "rendering_template_id";
+                var query = $@"INSERT INTO {tableName} ({idColumn}, version, url, environment, start, end, time_taken, user_id, language_code, error)
+VALUES (?{idParameter}, ?rendering_version, ?rendering_url, ?rendering_environment, ?rendering_start, ?rendering_end, ?rendering_time_taken, ?rendering_user_id, ?rendering_language_code, ?rendering_error)";
+                await databaseConnection.ExecuteAsync(query);
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, templateId > 0 
+                    ? $"Error while trying to log the render time of template #{templateId}" 
+                    : $"Error while trying to log the render time of component #{componentId}");
+            }
         }
 
         /// <summary>

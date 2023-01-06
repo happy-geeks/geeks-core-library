@@ -163,5 +163,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets if this template is only a partial.
         /// </summary>
         public bool IsPartial { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the version of the template that was loaded.
+        /// </summary>
+        public int Version { get; set; }
     }
 }
