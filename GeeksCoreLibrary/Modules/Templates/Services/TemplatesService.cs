@@ -13,6 +13,7 @@ using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -56,6 +57,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly ILanguagesService languagesService;
         private readonly IFiltersService filtersService;
         private readonly IAccountsService accountsService;
+        private readonly IWiserItemsService wiserItemsService;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
@@ -72,7 +74,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IFiltersService filtersService,
             IObjectsService objectsService,
             ILanguagesService languagesService,
-            IAccountsService accountsService)
+            IAccountsService accountsService,
+            IWiserItemsService wiserItemsService)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -87,6 +90,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.objectsService = objectsService;
             this.languagesService = languagesService;
             this.accountsService = accountsService;
+            this.wiserItemsService = wiserItemsService;
         }
 
         /// <inheritdoc />
@@ -1434,6 +1438,64 @@ AND template.url_regex <> ''";
                 });
             }
 
+            return results;
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            var results = new List<PageWidgetModel>();
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Constants.PageWidgetEntityType);
+            var globalWidgetsQuery = $@"SELECT
+	widget.id,
+	widget.title,
+	IF(languageSpecificHtml.id IS NULL, CONCAT_WS('', genericHtml.`value`, genericHtml.long_value), CONCAT_WS('', languageSpecificHtml.`value`, languageSpecificHtml.long_value)) AS html,
+	IFNULL(location.value, '{(int) Constants.PageWidgetDefaultLocation}') AS location
+FROM {tablePrefix}{WiserTableNames.WiserItem} AS widget
+LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS genericHtml ON genericHtml.item_id = widget.id AND genericHtml.`key` = '{Constants.PageWidgetHtmlPropertyName}'
+LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS languageSpecificHtml ON languageSpecificHtml.item_id = widget.id AND languageSpecificHtml.`key` = '{Constants.PageWidgetHtmlPropertyName}' AND languageSpecificHtml.language_code = '{languagesService.CurrentLanguageCode}'
+LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS location ON location.item_id = widget.id AND location.`key` = '{Constants.PageWidgetLocationPropertyName}'
+LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToParent ON linkToParent.item_id = widget.id AND linkToParent.type = {Constants.PageWidgetParentLinkType}
+WHERE widget.entity_type = '{Constants.PageWidgetEntityType}'
+ORDER BY IFNULL(linkToParent.destination_item_id, 0) ASC, IFNULL(linkToParent.ordering, widget.ordering) ASC";
+
+            var dataTable = await databaseConnection.GetAsync(globalWidgetsQuery);
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                var html = dataRow.Field<string>("html");
+                if (String.IsNullOrWhiteSpace(html))
+                {
+                    // No point in adding empty widgets to the page.
+                    continue;
+                }
+
+                results.Add(new PageWidgetModel
+                {
+                    Location = (PageWidgetLocations) Convert.ToInt32(dataRow["location"]),
+                    Html = html
+                });
+            }
+
+            return results;
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            return await GetPageWidgetsAsync(this, templateId, includeGlobalSnippets);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
+        {
+            var results = includeGlobalSnippets ? await templatesService.GetGlobalPageWidgetsAsync() : new List<PageWidgetModel>();
+            
+            if (templateId <= 0)
+            {
+                return results;
+            }
+            
+            // TODO: Add template specific widgets.
             return results;
         }
 

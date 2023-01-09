@@ -648,5 +648,37 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 },
                 cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            var cacheKey = $"page_widgets_{databaseConnection.GetDatabaseNameForCaching()}_global";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetGlobalPageWidgetsAsync();
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            return await GetPageWidgetsAsync(this, templateId, includeGlobalSnippets);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService service, int templateId, bool includeGlobalSnippets = true)
+        {
+            var cacheKey = $"page_widgets_{databaseConnection.GetDatabaseNameForCaching()}_{templateId}_{includeGlobalSnippets}";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetPageWidgetsAsync(service, templateId, includeGlobalSnippets);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+        }
     }
 }
