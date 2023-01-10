@@ -1473,10 +1473,14 @@ AND template.url_regex <> ''";
         /// <inheritdoc />
         public async Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
         {
-            var logRenderingOfComponentsSetting = await objectsService.FindSystemObjectByDomainNameAsync("log_rendering_of_components");
+            var logRenderingOfComponentsSetting = await objectsService.FindSystemObjectByDomainNameAsync($"log_rendering_of_components_{gclSettings.Environment}");
             if (String.IsNullOrWhiteSpace(logRenderingOfComponentsSetting))
             {
-                return false;
+                logRenderingOfComponentsSetting = await objectsService.FindSystemObjectByDomainNameAsync("log_rendering_of_components");
+                if (String.IsNullOrWhiteSpace(logRenderingOfComponentsSetting))
+                {
+                    return false;
+                }
             }
             
             if (String.Equals("all", logRenderingOfComponentsSetting, StringComparison.OrdinalIgnoreCase) || String.Equals("true", logRenderingOfComponentsSetting, StringComparison.OrdinalIgnoreCase))
@@ -1491,10 +1495,14 @@ AND template.url_regex <> ''";
         /// <inheritdoc />
         public async Task<bool> TemplateRenderingShouldBeLoggedAsync(int templateId)
         {
-            var logRenderingOfTemplatesSetting = await objectsService.FindSystemObjectByDomainNameAsync("log_rendering_of_templates");
+            var logRenderingOfTemplatesSetting = await objectsService.FindSystemObjectByDomainNameAsync($"log_rendering_of_templates_{gclSettings.Environment}");
             if (String.IsNullOrWhiteSpace(logRenderingOfTemplatesSetting))
             {
-                return false;
+                logRenderingOfTemplatesSetting = await objectsService.FindSystemObjectByDomainNameAsync("log_rendering_of_templates");
+                if (String.IsNullOrWhiteSpace(logRenderingOfTemplatesSetting))
+                {
+                    return false;
+                }
             }
             
             if (String.Equals("all", logRenderingOfTemplatesSetting, StringComparison.OrdinalIgnoreCase) || String.Equals("true", logRenderingOfTemplatesSetting, StringComparison.OrdinalIgnoreCase))
