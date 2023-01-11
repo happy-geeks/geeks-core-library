@@ -200,5 +200,99 @@ namespace GeeksCoreLibrary.Modules.Exports.Services
                 spreadsheetDocumentReferences.SheetData.Append(row);
             }
         }
+
+        /// <inheritdoc />
+        public List<string> GetColumnNames(string filePath)
+        {
+            var columnNames = new List<string>();
+            
+            using (var document = SpreadsheetDocument.Open(filePath, false))
+            {
+                var workbookPart = document.WorkbookPart;
+                var sharedStringTablePart = workbookPart.GetPartsOfType<SharedStringTablePart>().First();
+                var sharedStringTable = sharedStringTablePart.SharedStringTable;
+
+                var worksheetPart = workbookPart.WorksheetParts.First();
+                var sheet = worksheetPart.Worksheet;
+
+                var row = sheet.Descendants<Row>().First();
+                
+                 foreach (Cell cell in row.Elements<Cell>())
+                 {
+                     if (cell.DataType != null && cell.DataType == CellValues.SharedString)
+                     {
+                         int index = int.Parse(cell.CellValue.Text);
+                         columnNames.Add(sharedStringTable.ChildElements[index].InnerText);
+                     }
+                     else if (cell.CellValue != null)
+                     {
+                         columnNames.Add("");
+                     }
+                 }
+            }
+            
+            return columnNames;
+        }
+
+        /// <inheritdoc />
+        public int GetRowCount(string filePath)
+        {
+            using (var document = SpreadsheetDocument.Open(filePath, false))
+            {
+                var workbookPart = document.WorkbookPart;
+                var worksheetPart = workbookPart.WorksheetParts.First();
+                var sheet = worksheetPart.Worksheet;
+
+                return sheet.Descendants<Row>().Count();
+            }
+        }
+
+        /// <inheritdoc />
+        public List<List<string>> GetLines(string filePath, bool skipFirstLine = false)
+        {
+            var result = new List<List<string>>();
+
+            using (var document = SpreadsheetDocument.Open(filePath, false))
+            {
+                var workbookPart = document.WorkbookPart;
+                var sharedStringTablePart = workbookPart.GetPartsOfType<SharedStringTablePart>().First();
+                var sharedStringTable = sharedStringTablePart.SharedStringTable;
+
+                var worksheetPart = workbookPart.WorksheetParts.First();
+                var sheet = worksheetPart.Worksheet;
+
+                var rows = sheet.Descendants<Row>();
+                var firstRow = true;
+
+                foreach (var row in rows)
+                {
+                    if (firstRow && skipFirstLine)
+                    {
+                        firstRow = false;
+                        continue;
+                    }
+
+                    var columns = new List<string>();
+                    
+                    foreach (Cell cell in row.Elements<Cell>())
+                    {
+                        if (cell.DataType != null && cell.DataType == CellValues.SharedString)
+                        {
+                            int index = int.Parse(cell.CellValue.Text);
+                            columns.Add(sharedStringTable.ChildElements[index].InnerText);
+                        }
+                        else if (cell.CellValue != null)
+                        {
+                            columns.Add("");
+                        }
+                    }
+
+                    result.Add(columns);
+                    firstRow = false;
+                }
+            }
+            
+            return result;
+        }
     }
 }
