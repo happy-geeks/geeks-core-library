@@ -49,6 +49,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             }
 
             var path = context.Request.Path.ToUriComponent();
+            if (path.StartsWith("/api/", StringComparison.InvariantCultureIgnoreCase))
+            {
+                // An API URL is called, no need to find a template.
+                await this.next.Invoke(context);
+                return;
+            }
+            
             var queryString = context.Request.QueryString;
             if (!context.Items.ContainsKey(Constants.OriginalPathKey))
             {
