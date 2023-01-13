@@ -626,7 +626,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         subtemplate = subtemplate.Replace("{index}", index.ToString());
                         subtemplate = subtemplate.Replace("{volgnr}", (index + 1).ToString());
                         subtemplate = subtemplate.Replace("{count}", "{~count~}"); // Temporary replace count variable, otherwise this variable is replaced by the FillStringByClass function
-                        output += FillStringByClass(item, subtemplate).Replace("{~count~}", "{count}"); // Set back the count variable
+                        output += FillStringByClass(item, subtemplate, evaluateTemplate).Replace("{~count~}", "{count}"); // Set back the count variable
                         index += 1;
                     }
 
@@ -636,7 +636,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 else
                 {
                     // Use only the first item in the JSON
-                    output = FillStringByClass(input.First, inputString);
+                    output = FillStringByClass(input.First, inputString, evaluateTemplate);
                 }
             }
             else
@@ -686,7 +686,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                             subTemplateItem = subTemplateItem.Replace($"{{/repeat:{repeaterName}", $"{{/repeat:{repeaterName}({index})");
                             subTemplateItem = subTemplateItem.Replace($"{{~{repeaterName}.count~}}", $"{{{repeaterName}.count}}");
 
-                            subTemplateItem = FillStringByClassList(subObject, subTemplateItem);
+                            subTemplateItem = FillStringByClassList(subObject, subTemplateItem, evaluateTemplate);
 
                             templates.Append(subTemplateItem);
 
