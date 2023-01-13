@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -49,11 +50,18 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         [Route("template.jcl")]
         public async Task<IActionResult> Template()
         {
+            var error = "";
+            var startTime = DateTime.Now;
+            var stopWatch = new Stopwatch();
+            var logRenderingOfTemplate = false;
+            var templateId = 0;
+            var templateVersion = 0;
+            
             try
             {
                 var context = HttpContext;
                 var templateName = HttpContextHelpers.GetRequestValue(context, "templatename");
-                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out var templateId);
+                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
                 logger.LogDebug($"GetAsync content from HTML template, templateName: '{templateName}', templateId: '{templateId}'.");
 
                 if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
@@ -66,6 +74,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 var externalJavascript = new List<string>();
                 var externalCss = new List<string>();
                 var contentTemplate = await templatesService.GetTemplateAsync(templateId, templateName);
+
+                templateId = contentTemplate.Id;
+                templateVersion = contentTemplate.Version;
+                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
+                if (logRenderingOfTemplate)
+                {
+                    stopWatch.Start();
+                }
 
                 javascriptTemplates.AddRange(contentTemplate.JavascriptTemplates);
                 cssTemplates.AddRange(contentTemplate.CssTemplates);
@@ -204,12 +220,22 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
             catch (Exception exception)
             {
+                error = exception.ToString();
                 return new ContentResult
                 {
                     StatusCode = StatusCodes.Status500InternalServerError,
-                    Content = exception.ToString(),
+                    Content = $"<pre>{exception}</pre>",
                     ContentType = "text/html"
                 };
+            }
+            finally
+            {
+                if (logRenderingOfTemplate)
+                {
+                    stopWatch.Stop();
+                    var endTime = DateTime.Now;
+                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+                }
             }
         }
 
@@ -217,11 +243,18 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         [Route("json.jcl")]
         public async Task<IActionResult> JsonAsync()
         {
+            var error = "";
+            var startTime = DateTime.Now;
+            var stopWatch = new Stopwatch();
+            var logRenderingOfTemplate = false;
+            var templateId = 0;
+            var templateVersion = 0;
+
             try
             {
                 var context = HttpContext;
                 var templateName = HttpContextHelpers.GetRequestValue(context, "templatename");
-                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out var templateId);
+                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
                 logger.LogDebug($"JsonAsync content from query template, templateName: '{templateName}', templateId: '{templateId}'.");
 
                 if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
@@ -241,24 +274,49 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     return NotFound();
                 }
 
+                templateId = result.Id;
+                templateVersion = result.Version;
+                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
+                if (logRenderingOfTemplate)
+                {
+                    stopWatch.Start();
+                }
+
                 var jsonResult = await templatesService.GetJsonResponseFromQueryAsync(result);
 
                 return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
             }
             catch (Exception exception)
             {
+                error = exception.ToString();
                 return StatusCode(StatusCodes.Status500InternalServerError, exception);
+            }
+            finally
+            {
+                if (logRenderingOfTemplate)
+                {
+                    stopWatch.Stop();
+                    var endTime = DateTime.Now;
+                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+                }
             }
         }
 
         [Route("routine.gcl")]
         public async Task<IActionResult> RoutineAsync()
         {
+            var error = "";
+            var startTime = DateTime.Now;
+            var stopWatch = new Stopwatch();
+            var logRenderingOfTemplate = false;
+            var templateId = 0;
+            var templateVersion = 0;
+
             try
             {
                 var context = HttpContext;
                 var templateName = HttpContextHelpers.GetRequestValue(context, "templateName");
-                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out var templateId);
+                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out templateId);
                 logger.LogDebug($"JsonAsync content from query template, templateName: '{templateName}', templateId: '{templateId}'.");
 
                 if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
@@ -278,13 +336,31 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     return NotFound();
                 }
 
+                templateId = result.Id;
+                templateVersion = result.Version;
+                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
+                if (logRenderingOfTemplate)
+                {
+                    stopWatch.Start();
+                }
+
                 var jsonResult = await templatesService.GetJsonResponseFromRoutineAsync(result);
 
                 return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
             }
             catch (Exception exception)
             {
+                error = exception.ToString();
                 return StatusCode(StatusCodes.Status500InternalServerError, exception);
+            }
+            finally
+            {
+                if (logRenderingOfTemplate)
+                {
+                    stopWatch.Stop();
+                    var endTime = DateTime.Now;
+                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+                }
             }
         }
 
@@ -332,10 +408,17 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         [Route("partial.jcl")]
         public async Task<IActionResult> Partial()
         {
+            var error = "";
+            var startTime = DateTime.Now;
+            var stopWatch = new Stopwatch();
+            var logRenderingOfTemplate = false;
+            var templateId = 0;
+            var templateVersion = 0;
+
             try
             {
                 var context = HttpContext;
-                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out var templateId);
+                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out templateId);
                 var partialTemplateName = HttpContextHelpers.GetRequestValue(context, "partialName");
 
                 if (String.IsNullOrWhiteSpace(partialTemplateName) && templateId <= 0)
@@ -350,6 +433,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 if (template.Id <= 0 && template.LoginRequired)
                 {
                     return Unauthorized();
+                }
+
+                templateId = template.Id;
+                templateVersion = template.Version;
+                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
+                if (logRenderingOfTemplate)
+                {
+                    stopWatch.Start();
                 }
 
                 var templateContent = template.Content;
@@ -369,12 +460,22 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
             catch (Exception exception)
             {
+                error = exception.ToString();
                 return new ContentResult
                 {
                     StatusCode = StatusCodes.Status500InternalServerError,
                     Content = exception.ToString(),
                     ContentType = "text/html"
                 };
+            }
+            finally
+            {
+                if (logRenderingOfTemplate)
+                {
+                    stopWatch.Stop();
+                    var endTime = DateTime.Now;
+                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+                }
             }
         }
 

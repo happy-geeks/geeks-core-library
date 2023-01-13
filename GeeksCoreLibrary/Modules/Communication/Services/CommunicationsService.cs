@@ -10,6 +10,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CM.Text;
+using CM.Text.BusinessMessaging;
+using CM.Text.BusinessMessaging.Model;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -22,6 +24,7 @@ using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using RestSharp;
 using Newtonsoft.Json;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
@@ -704,7 +707,99 @@ WHERE id = ?id";
         private async Task SendCmSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
         {
             var apiKey = Guid.Parse(smsSettings.ProviderId);
-            
+            if (receiverPhoneNumber.StartsWith("+"))
+            {
+                // Phone number looks something like "+31612345678".
+                receiverPhoneNumber = receiverPhoneNumber.Substring(1).Insert(0, "00");
+            }
+            else if (!receiverPhoneNumber.StartsWith("00"))
+            {
+                throw new ArgumentException("Phone number is missing the country code.");
+            }
+
+            // Now "sanitize" the phone number by removing all non-digit characters.
+            receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+            var cmConnection = new TextClient(apiKey);
+            var senderName = communication.SenderName ?? smsSettings.SenderName;
+            if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+            {
+                senderName = senderName.Substring(0, 17);
+            }
+            else if (senderName.Length > 11)
+            {
+                senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+            }
+
+            var response = await cmConnection.SendMessageAsync(communication.Content, senderName, new[] {receiverPhoneNumber}, null);
+            if (response.statusCode == TextClientStatusCode.Ok)
+            {
+                return;
+            }
+
+            // If request was not success throw the status message as an exception.
+            throw new Exception(response.statusMessage);
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
+        {
+            var receivers = new List<CommunicationReceiverModel>();
+            var receiverAddresses = receiver.Split(';');
+            foreach (var receiverAddress in receiverAddresses)
+            {
+                var receiverModel = new CommunicationReceiverModel { Address = receiverAddress };
+                receivers.Add(receiverModel);
+            }
+
+            await SendWhatsAppAsync(receivers, body, sender, senderName, sendDate, attachments);
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
+        {
+            await SendWhatsAppAsync(new SingleCommunicationModel()
+            {
+                Receivers = receivers,
+                Content = body,
+                Sender = sender,
+                SenderName = senderName,
+                SendDate = sendDate,
+                AttachmentUrls = attachments
+
+            });
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppAsync(SingleCommunicationModel communication)
+        {
+            communication.Id = 0;
+            communication.Type = CommunicationTypes.WhatsApp;
+            communication.Subject ??= "";
+            await AddOrUpdateSingleCommunicationAsync(communication);
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings)
+        {
+            foreach (var receiver in communication.Receivers)
+            {
+                switch (smsSettings.Provider)
+                {
+                    case SmsServiceProviders.Cm:
+                        await SendCmWhatsAppDirectlyAsync(communication, smsSettings, receiver.Address);
+                        break;
+                    case SmsServiceProviders.Meta:
+                        await SendMetaWhatsAppDirectlyAsync(communication, smsSettings, receiver.Address);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(smsSettings.Provider), smsSettings.Provider.ToString());
+                }
+            }
+        }
+
+        private async Task SendCmWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
+        {
+            var apiKey = Guid.Parse(smsSettings.ProviderId);
             if (receiverPhoneNumber.StartsWith("+"))
             {
                 // Phone number looks something like "+31612345678".
@@ -719,7 +814,57 @@ WHERE id = ?id";
             receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
 
             var cmConnection = new TextClient(apiKey);
-            
+
+            var senderName = communication.SenderName ?? smsSettings.SenderName;
+            if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+            {
+                senderName = senderName.Substring(0, 17);
+            }
+            else if (senderName.Length > 11)
+            {
+                senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+            }
+            var builder = new MessageBuilder(communication.Content, senderName, new[] { receiverPhoneNumber });
+            builder.WithAllowedChannels(Channel.WhatsApp);
+            var message = builder.Build();
+
+            var response = await cmConnection.SendMessageAsync(message);
+
+            if (response.statusCode == TextClientStatusCode.Ok)
+            {
+                return;
+            }
+
+            // If request was not success throw the status message as an exception.
+            throw new Exception(response.statusMessage);
+        }
+    
+        private async Task SendMetaWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
+        {    
+            var apiToken = smsSettings.ProviderId;
+            var phoneNumberId = smsSettings.PhoneNumberId;
+            var resource = $"https://graph.facebook.com/v14.0/{phoneNumberId}/messages";
+
+            if (receiverPhoneNumber.StartsWith("+") || receiverPhoneNumber.StartsWith("00"))
+            {
+                if (receiverPhoneNumber.StartsWith("00"))
+                {
+                    // Phone number looks something like "0031612345678".
+                    receiverPhoneNumber = receiverPhoneNumber.Remove(0, 1).Remove(0, 1);
+                }
+                else
+                {
+                    // Phone number looks something like "+31612345678".
+                    receiverPhoneNumber = receiverPhoneNumber.Remove(0, 1);
+                }
+            }
+            else if (!receiverPhoneNumber.StartsWith("00"))
+            {
+            throw new ArgumentException("Phone number is missing the country code.");
+            }
+
+            // Now "sanitize" the phone number by removing all non-digit characters.
+            receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
             var senderName = communication.SenderName ?? smsSettings.SenderName;
             if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
             {
@@ -730,15 +875,100 @@ WHERE id = ?id";
                 senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
             }
 
-            var response = await cmConnection.SendMessageAsync(communication.Content, senderName, new[] {receiverPhoneNumber}, null);
-
-            if (response.statusCode == TextClientStatusCode.Ok)
+            if (String.IsNullOrEmpty(communication.Content))
             {
                 return;
             }
+            else
+            {
+                var metaConnection = new RestClient();
+                var request = new RestRequest(resource, Method.Post);
+                request.AddHeader("Authorization", $"Bearer {apiToken}");
+               
+                request.AddJsonBody(new WhatsAppSendMessageRequestModel
+                {
+                    MessagingProduct = "whatsapp",
+                    RecipientType = "individual",
+                    Receiver = receiverPhoneNumber,
+                    TypeMessage = "text",
+                    Body = new WhatsappBodyContentModel
+                    {
+                        PreviewUrl = false,
+                        BodyContent = communication.Content
+                    }
+                });
 
-            // If request was not success throw the status message as an exception.
-            throw new Exception(response.statusMessage);
+                var response = await metaConnection.ExecuteAsync(request);
+
+                foreach (var url in communication.AttachmentUrls)
+                {
+                    var typeUrl = "";
+                    switch (url)
+                    {
+                        case string a when a.Contains(".jpeg"):
+                        case string b when b.Contains(".png"):
+                        case string c when c.Contains(".jpg"):
+                            typeUrl = "image";
+                            break;
+                        case string d when d.Contains(".pdf"):
+                        case string e when e.Contains(".csv"):
+                        case string f when f.Contains(".txt"):
+                        case string g when g.Contains(".xls"):
+                        case string h when h.Contains(".xlsx"):
+                        case string i when i.Contains(".doc"):
+                        case string j when j.Contains(".docx"):
+                        case string k when k.Contains(".pptx"):
+                        case string l when l.Contains(".ppt"):
+                        case string m when m.Contains(".xml"):
+                            typeUrl = "document";
+                            break;
+                        case string n when n.Contains(".mp3"):
+                            typeUrl = "audio";
+                            break;
+                        case string o when o.Contains(".mp4"):
+                            typeUrl = "video";
+                            break;
+                    }
+
+                    if (!String.IsNullOrEmpty(typeUrl))
+                    {
+                        request = new RestRequest(resource, Method.Post);
+                        request.AddHeader("Authorization", $"Bearer {apiToken}");
+                        request.AddJsonBody(new WhatsAppSendMessageRequestModel
+                        {
+                            MessagingProduct = "whatsapp",
+                            RecipientType = "individual",
+                            Receiver = receiverPhoneNumber,
+                            TypeMessage = typeUrl,
+                            TypeUrlImage = typeUrl != "image" ? null : new AttachmentUrlsModel
+                            { Url = url },
+                            TypeUrlDocument = typeUrl != "document" ? null : new AttachmentUrlsModel
+                            { Url = url },
+                            TypeUrlAudio = typeUrl != "audio" ? null : new AttachmentUrlsModel
+                            { Url = url},
+                            TypeUrlVideo = typeUrl != "video" ? null : new AttachmentUrlsModel
+                            { Url = url }
+                        });
+                        
+                        response = await metaConnection.ExecuteAsync(request);
+                    }
+
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        return;
+                    }
+
+                    // If request (image/document/audio/video) was not success throw the status message as an exception.
+                    throw new Exception($"image/document/audio/video has not been sent... {response.ErrorMessage}");
+                }
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    return;
+                }
+                //If request (communication.Content) was not success throw the status message as an exception.
+                throw new Exception($"message content has not been sent... {response.ErrorMessage}");
+             }
         }
 
         /// <summary>
@@ -842,3 +1072,4 @@ WHERE id = ?id";
         }
     }
 }
+
