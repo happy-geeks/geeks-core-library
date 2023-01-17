@@ -1512,8 +1512,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     {
                         itemsRequest.FieldsInternal.AddRange(
                             connectionRow.Modes.Contains("up")
-                                ? UpdateFieldsWithInternals($"`{tableName}`.destination_item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
-                                : UpdateFieldsWithInternals($"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
+                                ? UpdateFieldsWithInternals(linkSettingsForUp is {UseParentItemId: true} ? $"`{previousLevelTableAlias}`.id" : $"`{tableName}`.destination_item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
+                                : UpdateFieldsWithInternals(linkSettingsForDown is {UseParentItemId: true} ? $"`{tableName}_item`.id" : $"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
                         );
                     }
 

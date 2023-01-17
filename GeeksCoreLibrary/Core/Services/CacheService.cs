@@ -97,6 +97,7 @@ namespace GeeksCoreLibrary.Core.Services
             }
 
             var withIssues = false;
+            // Delete files.
             foreach (var file in directoryInfo.GetFiles())
             {
                 try
@@ -105,12 +106,26 @@ namespace GeeksCoreLibrary.Core.Services
                 }
                 catch (Exception exception)
                 {
-                    logger.LogError(exception, $"An error occurred trying to delete '{file.FullName}'.");
+                    logger.LogError(exception, $"An error occurred trying to delete file '{file.FullName}'.");
                     withIssues = true;
                 }
             }
 
-            logger.LogInformation(withIssues ? "Cleared output cache, but some files could not be deleted." : "Cleared output cache.");
+            // Delete directories.
+            foreach (var directory in directoryInfo.GetDirectories())
+            {
+                try
+                {
+                    directory.Delete(true);
+                }
+                catch (Exception exception)
+                {
+                    logger.LogError(exception, $"An error occurred trying to delete directory '{directory.FullName}'.");
+                    withIssues = true;
+                }
+            }
+
+            logger.LogInformation(withIssues ? "Cleared output cache, but some files/directories could not be deleted." : "Cleared output cache.");
         }
 
         /// <inheritdoc />
