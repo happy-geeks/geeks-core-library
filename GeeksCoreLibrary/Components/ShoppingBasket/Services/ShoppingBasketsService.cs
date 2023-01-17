@@ -614,17 +614,17 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
             if (basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert)
             {
-                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, shoppingBasket.EntityType, conceptOrder.EntityType);
+                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, shoppingBasket.EntityType, conceptOrder.EntityType, skipPermissionsCheck: true, resetAddedOnDate: true);
                 
                 // Change link types if they are different between baskets and orders.
                 if (Constants.BasketLineToBasketLinkType != linkTypeOrderLineToOrder)
                 {
-                    await wiserItemsService.ChangeLinkTypesAsync(conceptOrder.Id, Constants.BasketLineToBasketLinkType, linkTypeOrderLineToOrder);
+                    await wiserItemsService.ChangeLinkTypesAsync(conceptOrder.Id, Constants.BasketLineToBasketLinkType, linkTypeOrderLineToOrder, skipPermissionsCheck: true);
                 }
 
                 if (userId > 0 && Constants.BasketToUserLinkType != linkTypeOrderToUser)
                 {
-                    await wiserItemsService.ChangeLinkTypeAsync(userId, Constants.BasketToUserLinkType, linkTypeOrderToUser, conceptOrder.Id);
+                    await wiserItemsService.ChangeLinkTypeAsync(userId, Constants.BasketToUserLinkType, linkTypeOrderToUser, conceptOrder.Id, skipPermissionsCheck: true);
                 }
             }
 
@@ -660,7 +660,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 
                 if (basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert)
                 {
-                    await wiserItemsService.ChangeEntityTypeAsync(conceptLine.Id, line.EntityType, conceptLine.EntityType);
+                    await wiserItemsService.ChangeEntityTypeAsync(conceptLine.Id, line.EntityType, conceptLine.EntityType, skipPermissionsCheck: true, resetAddedOnDate: true);
                 }
 
                 // Save all fields, also the readonly fields, so actual prices etc. will be saved to the database.
@@ -767,7 +767,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             {
                 await databaseConnection.BeginTransactionAsync();
 
-                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.ConceptOrderEntityType, OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true);
+                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.ConceptOrderEntityType, OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true, resetAddedOnDate: true);
 
                 // Check if there is a AfterCreateConceptOrder query in the templates module and execute this query if present.
                 var afterConvertToOrderQuery = (await templatesService.GetTemplateAsync(0, "AfterConvertToOrder", TemplateTypes.Query)).Content;

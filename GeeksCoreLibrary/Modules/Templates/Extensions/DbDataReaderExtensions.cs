@@ -51,6 +51,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations)await reader.GetFieldValueAsync<int>("caching_location");
             template.CachingRegex = reader.GetStringHandleNull("cache_regex");
             template.IsPartial = !reader.HasColumn("is_partial") ? false : Convert.ToBoolean(reader.GetValue("is_partial"));
+            template.Version = reader.GetInt32("version");
 
             if (!await reader.IsDBNullAsync("changed_on"))
             {

@@ -149,8 +149,10 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Set to true to force the change, without checking if the logged in user has permissions to do this. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        /// <param name="resetAddedOnDate">Optional: Set to true to reset the added on date and time of the item. This is useful for when converting a basket to an order for example, so that the added on date will be the moment the order was created, instead of when the original basket was created.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
+        Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, bool resetAddedOnDate = false);
 
         /// <summary>
         /// Changes an entity type of an item.
@@ -162,9 +164,10 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
-        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        /// <param name="skipPermissionsCheck">Optional: Set to true to force the change, without checking if the logged in user has permissions to do this. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        /// <param name="resetAddedOnDate">Optional: Set to true to reset the added on date and time of the item. This is useful for when converting a basket to an order for example, so that the added on date will be the moment the order was created, instead of when the original basket was created.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> ChangeEntityTypeAsync(IWiserItemsService wiserItemsService, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
+        Task<int> ChangeEntityTypeAsync(IWiserItemsService wiserItemsService, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, bool resetAddedOnDate = false);
 
         /// <summary>
         /// Deletes or un-deletes an item.
