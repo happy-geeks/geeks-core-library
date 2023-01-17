@@ -190,7 +190,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             }
             catch (Exception exception)
             {
-                logger.LogError($"An error occurred while trying to decrypt the basket ID '{encryptedId}': {exception}");
+                logger.LogError("An error occurred while trying to decrypt the basket ID '{encryptedId}': {exception}", encryptedId, exception);
                 return 0;
             }
         }
@@ -259,21 +259,20 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         /// <inheritdoc />
         public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true)
         {
-            logger.LogTrace($"GCL ShoppingBasket RecalculateVariablesAsync - skipping type: {skipType ?? "N/A"}");
+            logger.LogTrace("GCL ShoppingBasket RecalculateVariablesAsync - skipping type: {skipType}", skipType ?? "N/A");
 
-            if (!skipType.InList("shipping_costs", "paymentmethod_costs", Constants.BasketLineCouponType))
+            if (!skipType.InList("shipping_costs", "paymentmethod_costs", "coupon", Constants.BasketLineCouponType))
             {
+                await RecalculateCouponsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
                 await CalculateShippingCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
                 await CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
 
-                var discountGiven = 0M;
-                foreach (var couponLine in GetLines(basketLines, Constants.BasketLineCouponType))
-                {
-                    var code = couponLine.GetDetailValue("code");
-                    var handleCouponResult = await AddCouponToBasketAsync(shoppingBasket, basketLines, settings, code, createNewTransaction);
-                    logger.LogTrace($"GCL ShoppingBasket coupon result: {handleCouponResult:G}.");
-                }
+                // Second pass for coupons; in case prices have changed in the shipping costs and payment costs update.
+                await RecalculateCouponsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
             }
+
+            // Check if any standardized free product actions are applicable.
+            await CheckForFreeProductAsync(shoppingBasket, basketLines, settings, createNewTransaction);
 
             await SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
         }
@@ -925,7 +924,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 var numberFormat = "N2";
                 var localCultureName = cultureName;
 
-                logger.LogTrace($"GCL ShoppingBasket: Start replace price variable: {priceMatch.Value}");
+                logger.LogTrace("GCL ShoppingBasket: Start replace price variable: {priceMatch}", priceMatch.Value);
 
                 if (suffixArray.Length <= 1)
                 {
@@ -1370,6 +1369,152 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
+        public async Task RecalculateCouponsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
+        {
+            // Whether the discount will be divided over all products.
+            var divideDiscountOverProducts = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_divide_discount_over_products")).Equals("true", StringComparison.OrdinalIgnoreCase);
+
+            if (divideDiscountOverProducts)
+            {
+                // Start by resetting basket line prices to their original prices.
+                // This needs to be done before checking if there are any coupons in the basket.
+                foreach (var line in basketLines.Where(line => line.GetDetailValue("type") != Constants.BasketLineCouponType && line.ContainsDetail(Constants.OriginalPricePropertyName)))
+                {
+                    line.SetDetail(settings.PricePropertyName, line.GetDetailValue<decimal>(Constants.OriginalPricePropertyName));
+                }
+            }
+
+            var couponLines = GetLines(basketLines, "coupon");
+            if (couponLines.Count == 0)
+            {
+                return;
+            }
+
+            logger.LogTrace("Recalculating coupons");
+            
+            var discountGiven = 0M;
+            foreach (var couponCode in couponLines.Select(line => line.GetDetailValue("code")))
+            {
+                var coupon = await GetCouponAsync(couponCode);
+                if (coupon == null) continue;
+
+                var couponResult = await HandleCouponAsync(shoppingBasket, basketLines, settings, coupon, divideDiscountOverProducts);
+                await UpdateCouponAsync(shoppingBasket, basketLines, settings, couponResult, discountGiven, divideDiscountOverProducts, createNewTransaction);
+
+                var couponLine = couponLines.SingleOrDefault(line => line.GetDetailValue("code") == couponCode);
+                var couponDiscount = couponLine?.GetDetailValue<decimal>("price") ?? 0M;
+                discountGiven += couponDiscount;
+
+                logger.LogTrace("Recalculated coupon {couponCode}: {couponDiscount}", couponCode, couponResult.Discount);
+            }
+
+            logger.LogTrace("End recalculating coupons");
+        }
+
+        /// <inheritdoc />
+        public async Task UpdateCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, HandleCouponResultModel couponResult, decimal currentDiscount = 0M, bool divideDiscountOverProducts = false, bool createNewTransaction = true)
+        {
+            var couponDiscount = couponResult.Discount;
+            var couponProductId = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_productid");
+            var couponId = couponProductId;
+            if (String.IsNullOrWhiteSpace(couponId))
+            {
+                couponId = couponResult.Coupon.Id.ToString();
+            }
+
+            if (!couponResult.Valid)
+            {
+                // Coupon is not valid anymore.
+                if (!couponResult.DoRemove) return;
+
+                // Remove this coupon from the basket.
+                var couponLine = basketLines.SingleOrDefault(line => line.GetDetailValue("type") == Constants.BasketLineCouponType && line.GetDetailValue(Constants.ConnectedItemIdProperty) == couponId);
+                if (couponLine != null)
+                {
+                    await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { couponId });
+                }
+                return;
+            }
+            
+            var couponIncludesVat = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_inc_vat", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            var couponVatRateSetting = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_vat_rate");
+
+            if (couponResult.OnlyChangePrice)
+            {
+                foreach (var line in GetLines(basketLines, Constants.BasketLineCouponType).Where(line => line.GetDetailValue(Constants.ConnectedItemIdProperty) == couponId))
+                {
+                    line.SetDetail(divideDiscountOverProducts ? "total_discount" : "price", (couponDiscount * -1).ToString(CultureInfo.InvariantCulture));
+                    logger.LogTrace("Changed coupon price to: {couponDiscount}", couponDiscount * -1);
+                }
+
+                await SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
+            }
+            else
+            {
+                var details = new Dictionary<string, string>
+                {
+                    { "includesvat", couponIncludesVat ? "1" : "0" },
+                    { "vatrate", couponVatRateSetting },
+                    { "code", couponResult.Coupon.GetDetailValue(CouponConstants.Code) },
+                    { "description", "Kortingscode" },
+                    { Constants.CouponDividedOverProductsPropertyName, divideDiscountOverProducts ? "1" : "0" }
+                };
+
+                if (divideDiscountOverProducts)
+                {
+                    details.Add("total_discount", (couponResult.Discount * -1).ToString(CultureInfo.InvariantCulture));
+                    details.Add("price", "0");
+                }
+                else
+                {
+                    details.Add("price", (couponResult.Discount * -1).ToString(CultureInfo.InvariantCulture));
+                }
+
+                await AddLineAsync(shoppingBasket, basketLines, settings, couponId, Convert.ToUInt64(couponId), 1, Constants.BasketLineCouponType, details, createNewTransaction);
+            }
+
+            if (divideDiscountOverProducts && couponResult.ValidForItems != null)
+            {
+                var discountRemaining = couponResult.Discount;
+                var productCouponDiscountPropertyName = Constants.ProductCouponDiscountPropertyNamePrefix + couponResult.Coupon?.GetDetailValue(CouponConstants.Code);
+
+                WiserItemModel lastItemLine = null;
+
+                // Product prices must now be updated as well.
+                foreach (var itemId in couponResult.ValidForItems)
+                {
+                    var line = basketLines.FirstOrDefault(line => line.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty) == itemId);
+                    if (line == null) continue;
+
+                    // Always calculate over the original price.
+                    var lineOriginalPrice = line.GetDetailValue<decimal>(Constants.OriginalPricePropertyName);
+                    var lineQuantity = line.GetDetailValue<int>(settings.QuantityPropertyName);
+                    var lineTotalPrice = lineOriginalPrice * lineQuantity;
+                    if (lineTotalPrice == 0) continue;
+
+                    lastItemLine = line;
+
+                    // Determine how much discount this product will receive. It will always be relative to the total price of the basket line.
+                    // The current discount is added to the total products price because it's a negative value (so it's subtracting the discount).
+                    var linePricePercentage = lineTotalPrice / (couponResult.TotalProductsPrice + currentDiscount);
+                    var discount = Math.Round((couponResult.Discount * linePricePercentage) / lineQuantity, 2);
+
+                    // Update the price of the product.
+                    line.SetDetail(settings.PricePropertyName, (lineOriginalPrice - discount).ToString(CultureInfo.InvariantCulture));
+                    line.SetDetail(productCouponDiscountPropertyName, (-discount).ToString(CultureInfo.InvariantCulture));
+
+                    discountRemaining -= discount;
+                }
+
+                if (discountRemaining != 0 && lastItemLine != null)
+                {
+                    lastItemLine.SetDetail(settings.PricePropertyName, (lastItemLine.GetDetailValue<decimal>(settings.PricePropertyName) - discountRemaining).ToString(CultureInfo.InvariantCulture));
+                    lastItemLine.SetDetail(productCouponDiscountPropertyName, (lastItemLine.GetDetailValue<decimal>(productCouponDiscountPropertyName) - discountRemaining).ToString(CultureInfo.InvariantCulture));
+                }
+            }
+        }
+
+        /// <inheritdoc />
         public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
             var paymentMethodCosts = 0M;
@@ -1782,7 +1927,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             {
                 var nrOfCoupons = basketLines.Count(line => line.GetDetailValue("type") == Constants.BasketLineCouponType);
 
-                logger.LogTrace($"Nr of coupons used: {nrOfCoupons}");
+                logger.LogTrace("Nr of coupons used: {nrOfCoupons}", nrOfCoupons);
 
                 if (nrOfCoupons >= nrOfCouponsAllowed)
                 {
@@ -1791,82 +1936,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
             }
 
-            var couponIncludesVat = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_inc_vat", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            var couponVatRateSetting = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_vat_rate");
-
-            if (handleCouponResult.OnlyChangePrice)
-            {
-                foreach (var line in GetLines(basketLines, Constants.BasketLineCouponType).Where(line => line.GetDetailValue(Constants.ConnectedItemIdProperty) == couponId))
-                {
-                    line.SetDetail(divideDiscountOverProducts ? "total_discount" : "price", (handleCouponResult.Discount * -1).ToString(CultureInfo.InvariantCulture));
-                    logger.LogTrace($"Changed coupon price to: {handleCouponResult.Discount * -1}");
-                }
-
-                await SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
-            }
-            else
-            {
-                var details = new Dictionary<string, string>
-                {
-                    { "includesvat", couponIncludesVat ? "1" : "0" },
-                    { "vatrate", couponVatRateSetting },
-                    { "code", couponCode },
-                    { "description", "Kortingscode" },
-                    { Constants.CouponDividedOverProductsPropertyName, divideDiscountOverProducts ? "1" : "0" }
-                };
-
-                if (divideDiscountOverProducts)
-                {
-                    details.Add("total_discount", (handleCouponResult.Discount * -1).ToString(CultureInfo.InvariantCulture));
-                    details.Add("price", "0");
-                }
-                else
-                {
-                    details.Add("price", (handleCouponResult.Discount * -1).ToString(CultureInfo.InvariantCulture));
-                }
-
-                await AddLineAsync(shoppingBasket, basketLines, settings, couponId, Convert.ToUInt64(couponId), 1, Constants.BasketLineCouponType, details, createNewTransaction);
-            }
-
-            if (divideDiscountOverProducts && handleCouponResult.ValidForItems != null)
-            {
-                var discountRemaining = handleCouponResult.Discount;
-                var productCouponDiscountPropertyName = Constants.ProductCouponDiscountPropertyNamePrefix + handleCouponResult.Coupon?.GetDetailValue(CouponConstants.Code);
-
-                WiserItemModel lastItemLine = null;
-
-                // Product prices must now be updated as well.
-                foreach (var itemId in handleCouponResult.ValidForItems)
-                {
-                    var line = basketLines.FirstOrDefault(line => line.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty) == itemId);
-                    if (line == null) continue;
-
-                    // Always calculate over the original price.
-                    var lineOriginalPrice = line.GetDetailValue<decimal>(Constants.OriginalPricePropertyName);
-                    var lineQuantity = line.GetDetailValue<int>(settings.QuantityPropertyName);
-                    var lineTotalPrice = lineOriginalPrice * lineQuantity;
-                    if (lineTotalPrice == 0) continue;
-
-                    lastItemLine = line;
-
-                    // Determine how much discount this product will receive. It will always be relative to the total price of the basket line.
-                    // The current discount is added to the total products price because it's a negative value (so it's subtracting the discount).
-                    var linePricePercentage = lineTotalPrice / (handleCouponResult.TotalProductsPrice + currentDiscount);
-                    var discount = Math.Round((handleCouponResult.Discount * linePricePercentage) / lineQuantity, 2);
-
-                    // Update the price of the product.
-                    line.SetDetail(settings.PricePropertyName, (lineOriginalPrice - discount).ToString(CultureInfo.InvariantCulture));
-                    line.SetDetail(productCouponDiscountPropertyName, (-discount).ToString(CultureInfo.InvariantCulture));
-
-                    discountRemaining -= discount;
-                }
-
-                if (discountRemaining != 0 && lastItemLine != null)
-                {
-                    lastItemLine.SetDetail(settings.PricePropertyName, (lastItemLine.GetDetailValue<decimal>(settings.PricePropertyName) - discountRemaining).ToString(CultureInfo.InvariantCulture));
-                    lastItemLine.SetDetail(productCouponDiscountPropertyName, (lastItemLine.GetDetailValue<decimal>(productCouponDiscountPropertyName) - discountRemaining).ToString(CultureInfo.InvariantCulture));
-                }
-            }
+            await UpdateCouponAsync(shoppingBasket, basketLines, settings, handleCouponResult, 0M, divideDiscountOverProducts, createNewTransaction);
 
             return handleCouponResult;
         }
@@ -1927,11 +1997,11 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     vatRules.Add(rule);
                 }
 
-                logger.LogDebug($"{vatRules.Count} VAT rules loaded from database.");
+                logger.LogDebug("{count} VAT rules loaded from database.", vatRules.Count);
             }
             catch (Exception exception)
             {
-                logger.LogError($"Error loading VAT rules. Error message: {exception}");
+                logger.LogError("Error loading VAT rules. Error message: {exception}", exception);
             }
 
             return vatRules;
@@ -1952,7 +2022,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
             foreach (var line in basketLines.Where(line => (line.ContainsDetail("uniqueid") && line.GetDetailValue("uniqueid") == itemIdOrUniqueId) || (line.Id > 0 && line.Id.ToString() == itemIdOrUniqueId) || (line.ContainsDetail(Constants.ConnectedItemIdProperty) && line.GetDetailValue(Constants.ConnectedItemIdProperty) == itemIdOrUniqueId)))
             {
-                line.SetDetail(settings.QuantityPropertyName, quantity.ToString());
+                line.SetDetail(settings.QuantityPropertyName, quantity.ToString(CultureInfo.InvariantCulture));
             }
 
             await RecalculateVariablesAsync(shoppingBasket, basketLines, settings);
@@ -1984,7 +2054,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = false)
         {
             var freeProductActions = await GetFreeProductActionsAsync();
             if (freeProductActions.Count == 0)
@@ -2094,7 +2164,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 details["wiser2_free_action_show_banner"] = String.IsNullOrWhiteSpace(freeActionText) ? "0" : "1";
                 details["wiser2_free_action_banner"] = freeActionText;
 
-                await AddLineAsync(shoppingBasket, basketLines, settings, lineDetails: details);
+                await AddLineAsync(shoppingBasket, basketLines, settings, lineDetails: details, createNewTransaction: createNewTransaction);
             }
         }
 
@@ -2639,7 +2709,7 @@ WHERE coupon.entity_type = 'coupon'", true);
         /// <returns></returns>
         private async Task<HandleCouponResultModel> HandleCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, WiserItemModel coupon, bool divideDiscountOverProducts = false)
         {
-            var result = new HandleCouponResultModel { Coupon = coupon};
+            var result = new HandleCouponResultModel { Coupon = coupon };
             
             if (coupon == null || coupon.Id == 0)
             {
@@ -2733,7 +2803,7 @@ WHERE coupon.entity_type = 'coupon'", true);
             var maxDiscountIsTotalAmountProducts = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_maxdiscountistotalamountproducts", "true")).Equals("true", StringComparison.OrdinalIgnoreCase);
             var calculateOverPriceWithoutVat = isBusinessToBusiness || (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_calculateoverpricewithoutvat")).Equals("true", StringComparison.OrdinalIgnoreCase);
 
-            logger.LogTrace($"Valid coupon added to shopping basket - maxDiscountIsTotalAmountProducts: {maxDiscountIsTotalAmountProducts} - calculateOverPriceWithoutVat: {calculateOverPriceWithoutVat}");
+            logger.LogTrace("Valid coupon added to shopping basket - maxDiscountIsTotalAmountProducts: {maxDiscountIsTotalAmountProducts} - calculateOverPriceWithoutVat: {calculateOverPriceWithoutVat}", maxDiscountIsTotalAmountProducts, calculateOverPriceWithoutVat);
 
             var totalProductsPrice = 0M;
             var validForItems = new List<ulong>();
@@ -3139,7 +3209,7 @@ WHERE coupon.entity_type = 'coupon'", true);
                 // Check if there is a line with the same ID as the returned ID.
                 if (basketLines.Any(line => line.Id == lineId))
                 {
-                    logger.LogTrace($"Add ID '{lineId}' to remove-list");
+                    logger.LogTrace("Add ID '{lineId}' to remove-list", lineId);
                     linesToRemove.Add(lineId.ToString());
 
                     if (hasMessageColumn)
@@ -3153,7 +3223,7 @@ WHERE coupon.entity_type = 'coupon'", true);
                 }
                 else
                 {
-                    logger.LogTrace($"ID '{lineId}' does not belong to basket, ignored");
+                    logger.LogTrace("ID '{lineId}' does not belong to basket, ignored", lineId);
                 }
             }
 

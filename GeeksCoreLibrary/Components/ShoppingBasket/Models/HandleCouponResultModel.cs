@@ -5,20 +5,39 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models;
 
 public class HandleCouponResultModel
 {
+    /// <summary>
+    /// Gets or sets whether the coupon is valid.
+    /// </summary>
     public bool Valid { get; set; }
 
+    /// <summary>
+    /// Gets or sets the discount of the coupon.
+    /// </summary>
     public decimal Discount { get; set; }
 
+    /// <summary>
+    /// Gets or sets the validation result code.
+    /// </summary>
     public ShoppingBasket.HandleCouponResults ResultCode { get; set; }
 
+    /// <summary>
+    /// Gets or sets the <see cref="WiserItemModel"/> object representing the coupon that was handled.
+    /// </summary>
     public WiserItemModel Coupon { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether only the price should be updated of the coupon, in case the coupon was already added
+    /// but the discount is different.
+    /// </summary>
     public bool OnlyChangePrice { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether the coupon should be removed from the basket.
+    /// </summary>
     public bool DoRemove { get; set; }
 
     /// <summary>
-    /// The total price that the discount was calculated over.
+    /// Gets or sets the total price that the discount was calculated over.
     /// </summary>
     public decimal TotalProductsPrice { get; set; }
 

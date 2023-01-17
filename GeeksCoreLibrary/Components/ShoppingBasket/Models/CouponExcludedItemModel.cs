@@ -6,12 +6,12 @@
 public class CouponExcludedItemModel
 {
     /// <summary>
-    /// The item ID of the item.
+    /// The item ID of the basket item.
     /// </summary>
     public ulong ItemId { get; set; }
 
     /// <summary>
-    /// The name or description of the item that is excluded from the discount calculation.
+    /// The name or description of the basket item that is excluded from the discount calculation.
     /// </summary>
     public string Name { get; set; }
 }
