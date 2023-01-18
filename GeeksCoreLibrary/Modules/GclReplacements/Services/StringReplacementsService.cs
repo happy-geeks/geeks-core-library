@@ -605,7 +605,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string FillStringByClassList(JToken input, string inputString, bool evaluateTemplate = false, string repeatVariableName = "repeat")
         {
-            var output = "";
+            var output = new StringBuilder();
 
             if (input.Type == JTokenType.Array)
             {
@@ -626,25 +626,26 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         subtemplate = subtemplate.Replace("{index}", index.ToString());
                         subtemplate = subtemplate.Replace("{volgnr}", (index + 1).ToString());
                         subtemplate = subtemplate.Replace("{count}", "{~count~}"); // Temporary replace count variable, otherwise this variable is replaced by the FillStringByClass function
-                        output += FillStringByClass(item, subtemplate).Replace("{~count~}", "{count}"); // Set back the count variable
+                        output.Append(FillStringByClass(item, subtemplate, evaluateTemplate).Replace("{~count~}", "{count}")); // Set back the count variable
                         index += 1;
                     }
 
-                    output = m.Groups[1].Value + output + m.Groups[3].Value;
-                    output = output.Replace("{count}", index.ToString());
+                    output.Insert(0, m.Groups[1].Value);
+                    output.Append(m.Groups[3].Value);
+                    output.Replace("{count}", index.ToString());
                 }
                 else
                 {
                     // Use only the first item in the JSON
-                    output = FillStringByClass(input.First, inputString);
+                    output.Append(FillStringByClass(input.First, inputString, evaluateTemplate));
                 }
             }
             else
             {
-                output = FillStringByClass(input, inputString, evaluateTemplate);
+                output.Append(FillStringByClass(input, inputString, evaluateTemplate));
             }
 
-            return output;
+            return output.ToString();
         }
 
         /// <inheritdoc />
@@ -686,7 +687,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                             subTemplateItem = subTemplateItem.Replace($"{{/repeat:{repeaterName}", $"{{/repeat:{repeaterName}({index})");
                             subTemplateItem = subTemplateItem.Replace($"{{~{repeaterName}.count~}}", $"{{{repeaterName}.count}}");
 
-                            subTemplateItem = FillStringByClassList(subObject, subTemplateItem);
+                            subTemplateItem = FillStringByClassList(subObject, subTemplateItem, evaluateTemplate);
 
                             templates.Append(subTemplateItem);
 
