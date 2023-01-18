@@ -13,7 +13,6 @@ using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
-using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -22,7 +21,6 @@ using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
@@ -61,7 +59,6 @@ namespace GeeksCoreLibrary.Components.Configurator
         private readonly IDataSelectorsService dataSelectorsService;
         private readonly IObjectsService objectsService;
         private readonly IWiserItemsService wiserItemsService;
-        private readonly GclSettings gclSettings;
 
         private readonly Dictionary<string, Dictionary<string, Tuple<string, Dictionary<string, string>>>> stepNumbers = new();
 
@@ -78,13 +75,12 @@ namespace GeeksCoreLibrary.Components.Configurator
             };
         }
 
-        public Configurator(ILogger<Configurator> logger, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, IConfiguratorsService configuratorsService, IDataSelectorsService dataSelectorsService, ITemplatesService templatesService, IObjectsService objectsService, IWiserItemsService wiserItemsService, IOptions<GclSettings> gclSettings)
+        public Configurator(ILogger<Configurator> logger, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, IConfiguratorsService configuratorsService, IDataSelectorsService dataSelectorsService, ITemplatesService templatesService, IObjectsService objectsService, IWiserItemsService wiserItemsService)
         {
             this.configuratorsService = configuratorsService;
             this.dataSelectorsService = dataSelectorsService;
             this.objectsService = objectsService;
             this.wiserItemsService = wiserItemsService;
-            this.gclSettings = gclSettings.Value;
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
             DatabaseConnection = databaseConnection;
@@ -167,7 +163,9 @@ namespace GeeksCoreLibrary.Components.Configurator
             var currentMainStepHtml = new StringBuilder();
             var currentStepHtml = new StringBuilder();
             var currentStepsHtml = new StringBuilder();
-            var currentSubStepsHtml = new StringBuilder();
+
+            //var currentSubStepsHtml = new StringBuilder();
+            var currentSubSteps = new List<SubStepHtmlModel>();
 
             var currentConfiguratorName = StringReplacementsService.DoHttpRequestReplacements(Settings.ConfiguratorName).ToLowerInvariant();
             // Deze regex haalt alle niet vervangen {} weg.
@@ -184,14 +182,14 @@ namespace GeeksCoreLibrary.Components.Configurator
             var firstRow = configuratorData.Rows[0];
 
             // Basic templates.jjl_summary_template
-            var progressHtml = Settings.SummaryHtml.
-                ReplaceCaseInsensitive("{progress_template}", firstRow.Field<string>("progress_template")).
-                ReplaceCaseInsensitive("{progress_step_template}", firstRow.Field<string>("progress_step_template")).
-                ReplaceCaseInsensitive("{progress_substep_template}", firstRow.Field<string>("progress_substep_template"));
-            var renderedFinalSummaryHtml = Settings.FinalSummaryHtml.
-                ReplaceCaseInsensitive("{summary_template}", firstRow.Field<string>("summary_template")).
-                ReplaceCaseInsensitive("{summary_mainstep_template}", firstRow.Field<string>("summary_mainstep_template")).
-                ReplaceCaseInsensitive("{summary_step_template}", firstRow.Field<string>("summary_step_template"));
+            var progressHtml = Settings.SummaryHtml
+                .ReplaceCaseInsensitive("{progress_template}", firstRow.Field<string>("progress_template"))
+                .ReplaceCaseInsensitive("{progress_step_template}", firstRow.Field<string>("progress_step_template"))
+                .ReplaceCaseInsensitive("{progress_substep_template}", firstRow.Field<string>("progress_substep_template"));
+            var renderedFinalSummaryHtml = Settings.FinalSummaryHtml
+                .ReplaceCaseInsensitive("{summary_template}", firstRow.Field<string>("summary_template"))
+                .ReplaceCaseInsensitive("{summary_mainstep_template}", firstRow.Field<string>("summary_mainstep_template"))
+                .ReplaceCaseInsensitive("{summary_step_template}", firstRow.Field<string>("summary_step_template"));
 
             // First add all step numbers to the "_stepNumbers" dictionary, so that we have information about all steps before we start generating HTML.
             // If we don't do this, we can't make a step dependent on a future step.
@@ -205,6 +203,8 @@ namespace GeeksCoreLibrary.Components.Configurator
                 await DatabaseConnection.ExecuteAsync(preRenderStepsQuery);
             }
 
+            // Regex to find any '{substeps}' variables, including ones that define the sub step IDs.
+            var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
             foreach (DataRow row in configuratorData.Rows)
             {
                 var currentUrl = HttpContextHelpers.GetBaseUri(HttpContext).AbsoluteUri;
@@ -218,23 +218,60 @@ namespace GeeksCoreLibrary.Components.Configurator
                 if (row.Field<string>("mainstepname") != currentMainStepName)
                 {
                     // This is a new main step.
-                    if (currentMainStepHtml.ToString() != "")
+                    if (currentMainStepHtml.Length > 0)
                     {
                         // Add the last rendered step to the template
-                        if (currentStepHtml.ToString() != "")
+                        if (currentStepHtml.Length > 0)
                         {
-                            currentStepsHtml.Append(currentStepHtml.Replace("{substeps}", currentSubStepsHtml.ToString()));
+                            var regexMatches = subStepsRegex.Matches(currentStepHtml.ToString()).ToList();
+
+                            if (regexMatches.Count > 0)
+                            {
+                                foreach (var match in regexMatches)
+                                {
+                                    if (!String.IsNullOrWhiteSpace(match.Groups["ids"].Value))
+                                    {
+                                        var subStepValues = match.Groups["ids"].Value.Split('|');
+
+                                        var currentSubStepsHtml = new StringBuilder();
+                                        foreach (var subStepValue in subStepValues)
+                                        {
+                                            // Get sub step by either ID or name.
+                                            var subStep = UInt64.TryParse(subStepValue, out var subStepId)
+                                                ? currentSubSteps.FirstOrDefault(subStep => subStep.Id == subStepId)
+                                                : currentSubSteps.FirstOrDefault(subStep => subStep.Name.Equals(subStepValue, StringComparison.OrdinalIgnoreCase));
+
+                                            if (subStep == null) continue;
+
+                                            currentSubStepsHtml.Append(subStep.Html);
+                                        }
+
+                                        currentStepsHtml.Append(currentStepHtml.Replace(match.Value, currentSubStepsHtml.ToString()));
+                                    }
+                                    else
+                                    {
+                                        var currentSubStepsHtml = String.Join("", currentSubSteps.Select(subStep => subStep.Html));
+                                        currentStepsHtml.Append(currentStepHtml.Replace(match.Value, currentSubStepsHtml));
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // The HTML doesn't contain any "{substeps}" variables.
+                                currentStepsHtml.Append(currentStepHtml);
+                            }
+
                             currentStepHtml.Clear();
                         }
 
-                        allStepsHtml.Append(Settings.MainStepHtml.
-                                                ReplaceCaseInsensitive("{componentId}", ComponentId.ToString()).
-                                                ReplaceCaseInsensitive("{contentId}", ComponentId.ToString()).
-                                                ReplaceCaseInsensitive("{mainStepCount}", mainStepCount.ToString()).
-                                                ReplaceCaseInsensitive("{currentMainStepName}", currentMainStepName).
-                                                ReplaceCaseInsensitive("{mainStepContent}", currentMainStepHtml.ToString().
-                                                                           Replace("{steps}", currentStepsHtml.ToString()).
-                                                                           Replace("{progress}", progressHtml)));
+                        allStepsHtml.Append(Settings.MainStepHtml
+                            .ReplaceCaseInsensitive("{componentId}", ComponentId.ToString())
+                            .ReplaceCaseInsensitive("{contentId}", ComponentId.ToString())
+                            .ReplaceCaseInsensitive("{mainStepCount}", mainStepCount.ToString())
+                            .ReplaceCaseInsensitive("{currentMainStepName}", currentMainStepName)
+                            .ReplaceCaseInsensitive("{mainStepContent}", currentMainStepHtml.ToString()
+                                .Replace("{steps}", currentStepsHtml.ToString())
+                                .Replace("{progress}", progressHtml)));
 
                         mainStepCount += 1;
                     }
@@ -255,8 +292,8 @@ namespace GeeksCoreLibrary.Components.Configurator
                         currentMainStepHtml = new StringBuilder(currentMainStepTemplate);
                     }
 
-                    currentStepsHtml = new StringBuilder();
-                    currentSubStepsHtml = new StringBuilder();
+                    currentStepsHtml.Clear();
+                    currentSubSteps.Clear();
                 }
 
                 if (row.Field<string>("stepname") != currentStepName)
@@ -265,12 +302,48 @@ namespace GeeksCoreLibrary.Components.Configurator
                     stepCount += 1;
                     currentStepName = row.Field<string>("stepname");
 
-
                     WriteToTrace($"Starting HTML for new step. Step #{stepCount}, name: {currentStepName}");
 
-                    if (currentStepHtml.ToString() != "")
+                    if (currentStepHtml.Length > 0)
                     {
-                        currentStepsHtml.Append(currentStepHtml.Replace("{substeps}", currentSubStepsHtml.ToString()));
+                        var regexMatches = subStepsRegex.Matches(currentStepHtml.ToString()).ToList();
+
+                        if (regexMatches.Count > 0)
+                        {
+                            foreach (var match in regexMatches)
+                            {
+                                if (!String.IsNullOrWhiteSpace(match.Groups["ids"].Value))
+                                {
+                                    var subStepValues = match.Groups["ids"].Value.Split('|');
+
+                                    var currentSubStepsHtml = new StringBuilder();
+                                    foreach (var subStepValue in subStepValues)
+                                    {
+                                        // Get sub step by either ID or name.
+                                        var subStep = UInt64.TryParse(subStepValue, out var subStepId)
+                                            ? currentSubSteps.FirstOrDefault(subStep => subStep.Id == subStepId)
+                                            : currentSubSteps.FirstOrDefault(subStep => subStep.Name.Equals(subStepValue, StringComparison.OrdinalIgnoreCase));
+
+                                        if (subStep == null) continue;
+
+                                        currentSubStepsHtml.Append(subStep.Html);
+                                    }
+
+                                    currentStepsHtml.Append(currentStepHtml.Replace(match.Value, currentSubStepsHtml.ToString()));
+                                }
+                                else
+                                {
+                                    var currentSubStepsHtml = String.Join("", currentSubSteps.Select(subStep => subStep.Html));
+                                    currentStepsHtml.Append(currentStepHtml.Replace(match.Value, currentSubStepsHtml));
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // The HTML doesn't contain any "{substeps}" variables.
+                            currentStepsHtml.Append(currentStepHtml);
+                        }
+
                         currentStepHtml.Clear();
                     }
 
@@ -278,59 +351,107 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                     WriteToTrace($"1 - Starting HTML for new sub step. Sub step #{subStepCount}, name: {row.Field<string>("substepname")}");
 
-                    currentSubStepsHtml = new StringBuilder();
+                    currentSubSteps.Clear();
                     subStepCount += 1;
-                    currentSubStepsHtml.Append(await DoRenderingOfSubStepAsync(currentConfiguratorName, row, mainStepCount, stepCount, subStepCount));
+                    currentSubSteps.Add(new SubStepHtmlModel
+                    {
+                        Id = Convert.ToUInt64(row["subStepId"]),
+                        Name = row.Field<string>("substepname"),
+                        Html = await DoRenderingOfSubStepAsync(currentConfiguratorName, row, mainStepCount, stepCount, subStepCount)
+                    });
                 }
                 else
                 {
                     WriteToTrace($"2 - Starting HTML for new sub step. Sub step #{subStepCount}, name: {row.Field<string>("substepname")}");
 
                     subStepCount += 1;
-                    currentSubStepsHtml.Append(await DoRenderingOfSubStepAsync(currentConfiguratorName, row, mainStepCount, stepCount, subStepCount));
+                    currentSubSteps.Add(new SubStepHtmlModel
+                    {
+                        Id = Convert.ToUInt64(row["subStepId"]),
+                        Name = row.Field<string>("substepname"),
+                        Html = await DoRenderingOfSubStepAsync(currentConfiguratorName, row, mainStepCount, stepCount, subStepCount)
+                    });
                 }
             }
 
             // Add final main step.
-            if (currentStepHtml.ToString() != "")
+            if (currentStepHtml.Length > 0)
             {
-                currentStepsHtml.Append(currentStepHtml.Replace("{substeps}", currentSubStepsHtml.ToString()));
+                var regexMatches = subStepsRegex.Matches(currentStepHtml.ToString()).ToList();
+
+                if (regexMatches.Count > 0)
+                {
+                    foreach (var match in regexMatches)
+                    {
+                        if (!String.IsNullOrWhiteSpace(match.Groups["ids"].Value))
+                        {
+                            var subStepValues = match.Groups["ids"].Value.Split('|');
+
+                            var currentSubStepsHtml = new StringBuilder();
+                            foreach (var subStepValue in subStepValues)
+                            {
+                                // Get sub step by either ID or name.
+                                var subStep = UInt64.TryParse(subStepValue, out var subStepId)
+                                    ? currentSubSteps.FirstOrDefault(subStep => subStep.Id == subStepId)
+                                    : currentSubSteps.FirstOrDefault(subStep => subStep.Name.Equals(subStepValue, StringComparison.OrdinalIgnoreCase));
+
+                                if (subStep == null) continue;
+
+                                currentSubStepsHtml.Append(subStep.Html);
+                            }
+
+                            currentStepsHtml.Append(currentStepHtml.Replace(match.Value, currentSubStepsHtml.ToString()));
+                        }
+                        else
+                        {
+                            var currentSubStepsHtml = String.Join("", currentSubSteps.Select(subStep => subStep.Html));
+                            currentStepsHtml.Append(currentStepHtml.Replace(match.Value, currentSubStepsHtml));
+                        }
+                    }
+                }
+                else
+                {
+                    // The HTML doesn't contain any "{substeps}" variables.
+                    currentStepsHtml.Append(currentStepHtml);
+                }
+
                 currentStepHtml.Clear();
             }
 
-            allStepsHtml.Append(Settings.MainStepHtml.
-                                    ReplaceCaseInsensitive("{mainStepCount}", mainStepCount.ToString()).
-                                    ReplaceCaseInsensitive("{currentMainStepName}", currentMainStepName).
-                                    ReplaceCaseInsensitive("{mainStepContent}", currentMainStepHtml.ToString().
-                                                               ReplaceCaseInsensitive("{steps}", currentStepsHtml.ToString()).
-                                                               ReplaceCaseInsensitive("{progress}", progressHtml).
-                                                               ReplaceCaseInsensitive("{summary}", renderedFinalSummaryHtml)));
+            allStepsHtml.Append(Settings.MainStepHtml
+                .ReplaceCaseInsensitive("{mainStepCount}", mainStepCount.ToString())
+                .ReplaceCaseInsensitive("{currentMainStepName}", currentMainStepName)
+                .ReplaceCaseInsensitive("{mainStepContent}", currentMainStepHtml.ToString()
+                    .ReplaceCaseInsensitive("{steps}", currentStepsHtml.ToString())
+                    .ReplaceCaseInsensitive("{progress}", progressHtml)
+                    .ReplaceCaseInsensitive("{summary}", renderedFinalSummaryHtml)));
 
-            var renderedMobilePreProgressHtml = Settings.MobilePreProgressHtml.
-                ReplaceCaseInsensitive("{progress_pre_template}", firstRow.Field<string>("progress_pre_template")).
-                ReplaceCaseInsensitive("{progress_pre_step_template}", firstRow.Field<string>("progress_pre_step_template")).
-                ReplaceCaseInsensitive("{progress_pre_substep_template}", firstRow.Field<string>("progress_pre_substep_template"));
+            var renderedMobilePreProgressHtml = Settings.MobilePreProgressHtml
+                .ReplaceCaseInsensitive("{progress_pre_template}", firstRow.Field<string>("progress_pre_template"))
+                .ReplaceCaseInsensitive("{progress_pre_step_template}", firstRow.Field<string>("progress_pre_step_template"))
+                .ReplaceCaseInsensitive("{progress_pre_substep_template}", firstRow.Field<string>("progress_pre_substep_template"));
 
             var renderedMobilePostProgressHtml = Settings.MobilePostProgressHtml
-                .ReplaceCaseInsensitive("{progress_post_template}", firstRow.Field<string>("progress_post_template")).
-                ReplaceCaseInsensitive("{progress_post_step_template}", firstRow.Field<string>("progress_post_step_template")).
-                ReplaceCaseInsensitive("{progress_post_substep_template}", firstRow.Field<string>("progress_post_substep_template"));
+                .ReplaceCaseInsensitive("{progress_post_template}", firstRow.Field<string>("progress_post_template"))
+                .ReplaceCaseInsensitive("{progress_post_step_template}", firstRow.Field<string>("progress_post_step_template"))
+                .ReplaceCaseInsensitive("{progress_post_substep_template}", firstRow.Field<string>("progress_post_substep_template"));
 
             allStepsHtml.Replace("{progress_pre}", renderedMobilePreProgressHtml);
             allStepsHtml.Replace("{progress_post}", renderedMobilePostProgressHtml);
 
             var resultHtml = new StringBuilder();
-            resultHtml.Append("<div id=\"configurator\" data-customParameter=\"{customParam}|{customParamDependencies}\">".
-                                      Replace("{customParam}", firstRow.Field<string>("custom_param_name")).
-                                      Replace("{customParamDependencies}", firstRow.Field<string>("custom_param_dependencies")));
+            resultHtml.Append("<div id=\"configurator\" data-customParameter=\"{customParam}|{customParamDependencies}\">"
+                .Replace("{customParam}", firstRow.Field<string>("custom_param_name"))
+                .Replace("{customParamDependencies}", firstRow.Field<string>("custom_param_dependencies")));
 
-            resultHtml.Append(await StringReplacementsService.DoAllReplacementsAsync(firstRow.Field<string>("template").
-                                                                                      ReplaceCaseInsensitive("{mainsteps}", allStepsHtml.ToString()).
-                                                                                      ReplaceCaseInsensitive("{progress}", progressHtml).
-                                                                                      ReplaceCaseInsensitive("{summary}", renderedFinalSummaryHtml).
-                                                                                      ReplaceCaseInsensitive("{totalsteps}", mainStepCount.ToString()).
-                                                                                      ReplaceCaseInsensitive("{progress_post}", renderedMobilePostProgressHtml).
-                                                                                      ReplaceCaseInsensitive("{progress_pre}", renderedMobilePreProgressHtml), removeUnknownVariables: false));
+            resultHtml.Append(await StringReplacementsService.DoAllReplacementsAsync(firstRow.Field<string>("template")
+                .ReplaceCaseInsensitive("{mainsteps}", allStepsHtml.ToString())
+                .ReplaceCaseInsensitive("{progress}", progressHtml)
+                .ReplaceCaseInsensitive("{summary}", renderedFinalSummaryHtml)
+                .ReplaceCaseInsensitive("{totalsteps}", mainStepCount.ToString())
+                .ReplaceCaseInsensitive("{progress_post}", renderedMobilePostProgressHtml)
+                .ReplaceCaseInsensitive("{progress_pre}", renderedMobilePreProgressHtml), removeUnknownVariables: false));
+
             resultHtml.Append("</div>");
             WriteToTrace("End generating HTML");
             return new HtmlString(await TemplatesService.DoReplacesAsync(resultHtml.ToString(), false, removeUnknownVariables: false));
@@ -430,14 +551,12 @@ namespace GeeksCoreLibrary.Components.Configurator
             // Get the correct id for rendering the values if this step is dependent on other steps.
             if (Int32.TryParse(connectedId, out var connectedIdNumber))
             {
-
                 // If the parse is successful, the connected ID is a fixed value, like all products from category '5'.
                 dependentValue = connectedIdNumber.ToString();
             }
             else if (dependentValue == "-1" && !String.IsNullOrEmpty(dataSourceConnectedIdName) && !String.IsNullOrEmpty(HttpContextHelpers.GetRequestValue(HttpContext, dataSourceConnectedIdName)))
             {
                 // If the configurator is reloaded, then get the connected id from the URL.
-
                 dependentValue = HttpContextHelpers.GetRequestValue(HttpContext, dataSourceConnectedIdName);
             }
 
@@ -459,26 +578,27 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             WriteToTrace("RenderStep - RenderValues start");
             var renderedValuesAsync = await RenderValuesAsync(row.Field<string>("values_template"),
-                                                              row.Field<string>("variable_name"),
-                                                              row.Field<string>("datasource"),
-                                                              dependentValue,
-                                                              row.Field<string>("datasource_connectedtype"),
-                                                              row.Field<string>("fixed_valuelist"),
-                                                              row.Field<string>("custom_query"),
-                                                              row.Field<string>("check_connectedid"),
-                                                              row.Table.Columns.Contains("own_data_values") ? row.Field<string>("own_data_values") : "",
-                                                              configurator,
-                                                              row.Table.Columns.Contains("datasource_dataselectorid") ? row.Field<int?>("datasource_dataselectorid") ?? 0 : 0);
-            var renderedValues = renderedValuesAsync.renderedValues;
+                row.Field<string>("variable_name"),
+                row.Field<string>("datasource"),
+                dependentValue,
+                row.Field<string>("datasource_connectedtype"),
+                row.Field<string>("fixed_valuelist"),
+                row.Field<string>("custom_query"),
+                row.Field<string>("check_connectedid"),
+                row.Table.Columns.Contains("own_data_values") ? row.Field<string>("own_data_values") : "",
+                configurator,
+                row.Table.Columns.Contains("datasource_dataselectorid") ? row.Field<int?>("datasource_dataselectorid") ?? 0 : 0);
+
+            var renderedValues = renderedValuesAsync.RenderedValues;
             WriteToTrace($"RenderStep {row.Field<string>("stepname")} - connected to: {dataSourceConnectedIdName} - mainstepnumber: {mainStepNumber} - stepnumber: {stepNumber} - dependentvalue: {dependentValue} - datasource connectedid: {connectedId}");
 
             // Replace data source_values with the rendered values and return the step template.
             var stepInlineCss = renderedValues == "" ? "display:none;" : "";
 
-            var template = Settings.StepHtml.
-                ReplaceCaseInsensitive("{style}", stepInlineCss).
-                ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString()).
-                ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString());
+            var template = Settings.StepHtml
+                .ReplaceCaseInsensitive("{style}", stepInlineCss)
+                .ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString())
+                .ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString());
 
             if (!stepNumbers.ContainsKey(currentConfiguratorName))
             {
@@ -508,49 +628,82 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             template = template.ReplaceCaseInsensitive("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'");
 
-            var stepContent = "";
+            var stepContentBuilder = new StringBuilder();
+            var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
             if (renderedValues != "")
             {
-                stepContent += row.Field<string>("step_template").ReplaceCaseInsensitive("{datasource_values}", renderedValues).ReplaceCaseInsensitive("{datasource_count}", renderedValuesAsync.count.ToString());
-                if (stepContent.ToLower().Contains("{substeps}"))
+                var stepContent = row.Field<string>("step_template")
+                    .ReplaceCaseInsensitive("{datasource_values}", renderedValues)
+                    .ReplaceCaseInsensitive("{datasource_count}", renderedValuesAsync.Count.ToString());
+
+                var regexMatches = subStepsRegex.Matches(stepContent).ToList();
+                if (regexMatches.Count > 0)
                 {
                     WriteToTrace($"3 - Starting HTML for new sub step. Sub step name: {row.Field<string>("substepname")} - mainStepNumber: {mainStepNumber} - stepNumber: {stepNumber}");
 
                     if (subSteps != null)
                     {
-                        var subStepContents = new StringBuilder();
-                        var subStepCount = 0;
-                        foreach (DataRow subStepRow in subSteps)
+                        foreach (var match in regexMatches)
                         {
-                            subStepCount += 1;
-                            subStepContents.Append(await DoRenderingOfSubStepAsync(currentConfiguratorName, subStepRow, mainStepNumber, stepNumber, subStepCount, configurator: configurator));
+                            var subStepContents = new StringBuilder();
+                            var subStepCount = 0;
+
+                            if (!String.IsNullOrWhiteSpace(match.Groups["ids"].Value))
+                            {
+                                var renderForSubStepValues = match.Groups["ids"].Value.Split('|');
+                                foreach (var renderForSubStepValue in renderForSubStepValues)
+                                {
+                                    // Get sub step by either ID or name.
+                                    var subStepRow = UInt64.TryParse(renderForSubStepValue, out var subStepId)
+                                        ? subSteps.FirstOrDefault(subStep => Convert.ToUInt64(subStep["subStepId"]) == subStepId)
+                                        : subSteps.FirstOrDefault(subStep => subStep.Field<string>("substepname").Equals(renderForSubStepValue, StringComparison.OrdinalIgnoreCase));
+
+                                    if (subStepRow == null) continue;
+
+                                    subStepCount += 1;
+                                    subStepContents.Append(await DoRenderingOfSubStepAsync(currentConfiguratorName, subStepRow, mainStepNumber, stepNumber, subStepCount, configurator: configurator));
+                                }
+                            }
+                            else
+                            {
+                                foreach (var subStepRow in subSteps)
+                                {
+                                    subStepCount += 1;
+                                    subStepContents.Append(await DoRenderingOfSubStepAsync(currentConfiguratorName, subStepRow, mainStepNumber, stepNumber, subStepCount, configurator: configurator));
+                                }
+                            }
+
+                            stepContent = stepContent.ReplaceCaseInsensitive(match.Value, subStepContents.ToString());
                         }
-                        stepContent = stepContent.
-                            ReplaceCaseInsensitive("{substeps}", subStepContents.ToString());
                     }
                 }
                 else
                 {
                     WriteToTrace($"Sub step not generated, no variable 'substeps' found in main template. Sub step name: {row.Field<string>("substepname")} - mainStepNumber: {mainStepNumber} - stepNumber: {stepNumber}");
                 }
-                stepContent = stepContent.
-                    ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString()).
-                    ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString());
 
+                stepContent = stepContent
+                    .ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString())
+                    .ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString());
+
+                stepContentBuilder.Append(stepContent);
             }
             else
             {
                 WriteToTrace($"4 - Starting HTML for new sub step. Sub step name: {row.Field<string>("substepname")} - mainStepNumber: {mainStepNumber} - stepNumber: {stepNumber}");
-                stepContent += "<!-- NoValues -->";
-                if (row.Field<string>("step_template").ToLower().Contains("{substeps}"))
+                stepContentBuilder.Append("<!-- NoValues -->");
+                var stepTemplate = row.Field<string>("step_template");
+                var regexMatches = subStepsRegex.Matches(stepTemplate).ToList();
+                foreach (var match in regexMatches)
                 {
-                    stepContent += "{substeps}";
+                    stepContentBuilder.Append(match.Value);
                 }
             }
 
             WriteToTrace("End building stepContent");
 
-            template = template.ReplaceCaseInsensitive("{stepContent}", stepContent);
+            template = template.ReplaceCaseInsensitive("{stepContent}", stepContentBuilder.ToString());
 
             WriteToTrace("End ReplaceCaseInsensitive stepContent");
 
@@ -569,7 +722,7 @@ namespace GeeksCoreLibrary.Components.Configurator
         }
 
         /// <summary>
-        /// render substep 
+        /// Render sub step.
         /// </summary>
         /// <param name="currentConfiguratorName"></param>
         /// <param name="row"></param>
@@ -625,10 +778,11 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             WriteToTrace($"RenderSubStep {row.Field<string>("substepname")} - connected to: {datasourceConnectedIdName} - mainstepnumber: {mainStepNumber} - stepnumber: {stepNumber} - substepnumber: {subStepNumber} - dependentvalue: {dependentValue} - datasource connectedid: {connectedId}");
 
-            var template = Settings.SubStepHtml.
-                ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString()).
-                ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString()).
-                ReplaceCaseInsensitive("{subStepNumber}", subStepNumber.ToString());
+            var template = Settings.SubStepHtml
+                .ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString())
+                .ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString())
+                .ReplaceCaseInsensitive("{subStepNumber}", subStepNumber.ToString());
+
             if (!stepNumbers.ContainsKey(currentConfiguratorName))
             {
                 await LoadStepNumbersAsync(currentConfiguratorName);
@@ -649,7 +803,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         continue;
                     }
 
-                    var dependencyValue = "";
+                    string dependencyValue;
                     if (stepNumbersDictionary.ContainsKey(dependency))
                     {
                         dependencyValue = $"jjl_configurator_step-{stepNumbersDictionary[dependency].Item1}";
@@ -680,14 +834,14 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             var subStepContent = $"<!-- datasource: {row.Field<string>("substep_datasource")} - connectedId: {connectedId} {connectedIdNumber} -->";
 
-            if (renderedValues.renderedValues != "")
+            if (renderedValues.RenderedValues != "")
             {
-                subStepContent += row.Field<string>("substep_template").
-                    ReplaceCaseInsensitive("{datasource_values}", renderedValues.renderedValues).
-                    ReplaceCaseInsensitive("{datasource_count}", renderedValues.count.ToString()).
-                    ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString()).
-                    ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString()).
-                    ReplaceCaseInsensitive("{subStepNumber}", subStepNumber.ToString());
+                subStepContent += row.Field<string>("substep_template")
+                    .ReplaceCaseInsensitive("{datasource_values}", renderedValues.RenderedValues)
+                    .ReplaceCaseInsensitive("{datasource_count}", renderedValues.Count.ToString())
+                    .ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString())
+                    .ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString())
+                    .ReplaceCaseInsensitive("{subStepNumber}", subStepNumber.ToString());
             }
 
             template = template.ReplaceCaseInsensitive("{subStepContent}", subStepContent);
@@ -714,7 +868,7 @@ namespace GeeksCoreLibrary.Components.Configurator
         /// <param name="configuration"></param>
         /// <param name="dataSelectorId"></param>
         /// <returns></returns>
-        private async Task<(int count, string renderedValues)> RenderValuesAsync(string template, string variableName, string dataSource, string connectedId, string connectedType, string fixedValueList = "", string customQuery = "", string checkConnectedId = "", string ownDataValues = "", ConfigurationsModel configuration = null, int dataSelectorId = 0)
+        private async Task<(int Count, string RenderedValues)> RenderValuesAsync(string template, string variableName, string dataSource, string connectedId, string connectedType, string fixedValueList = "", string customQuery = "", string checkConnectedId = "", string ownDataValues = "", ConfigurationsModel configuration = null, int dataSelectorId = 0)
         {
             var query = "";
             var renderedValues = new StringBuilder();
@@ -844,6 +998,11 @@ namespace GeeksCoreLibrary.Components.Configurator
                                 WriteToTrace($"Products API returned non-200 status code: {result.StatusCode} with description: {result.StatusDescription} and content: {result.Content}", true);
                                 break;
                             }
+                            if (String.IsNullOrWhiteSpace(result.Content))
+                            {
+                                WriteToTrace("Products API returned a 200 status code, but the content was empty.", true);
+                                break;
+                            }
 
                             var responseData = (JToken)JsonConvert.DeserializeObject(result.Content);
                             var responseType = responseData?.GetType();
@@ -884,7 +1043,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                             query = await dataSelectorsService.GetQueryAsync(itemsRequest);
                             query = await StringReplacementsService.DoAllReplacementsAsync(query, null, false, false, false, true);
-                            query = await this.configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration, true);
+                            query = await configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration, true);
                             break;
                         }
                 }
@@ -906,8 +1065,6 @@ namespace GeeksCoreLibrary.Components.Configurator
             return (count, renderedValues.ToString());
         }
 
-
-       
         #endregion
 
         #region Web methods
@@ -1057,7 +1214,6 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             var mainStepCount = 0;
             var stepCount = 0;
-            var subStepCount = 0;
             var currentStepName = "";
             var currentMainStepName = "";
             var subSteps = new List<DataRow>();
@@ -1096,15 +1252,9 @@ namespace GeeksCoreLibrary.Components.Configurator
                         break;
                     }
 
-                    subStepCount = 1;
                     currentStepName = row.Field<string>("stepname");
-                    var variableName = row.Field<string>("variable_name");
 
                     stepCount += 1;
-                }
-                else if (!String.IsNullOrWhiteSpace(row.Field<string>("substepname")))
-                {
-                    subStepCount += 1;
                 }
 
                 // Catch on match
