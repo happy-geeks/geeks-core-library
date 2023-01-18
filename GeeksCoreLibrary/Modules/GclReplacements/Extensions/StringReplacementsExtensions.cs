@@ -328,5 +328,24 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         {
             return useInvariantCulture ? input?.ToLowerInvariant() : input?.ToLower();
         }
+
+        /// <summary>
+        /// Converts an input string to an image URL. Note that the URL is always relative, starting with a '<c>/</c>'.
+        /// </summary>
+        /// <param name="input">The string to encode.</param>
+        /// <param name="width">The width of the image.</param>
+        /// <param name="height">The height of the image.</param>
+        /// <returns>The image URL.</returns>
+        public static string QrCode(this string input, int width, int height)
+        {
+            if (String.IsNullOrWhiteSpace(input) || width <= 0 || height <= 0)
+            {
+                return String.Empty;
+            }
+
+            var url = $"/barcodes/generate?input={Uri.EscapeDataString(input)}&format=qr_code&width={width}&height={height}";
+
+            return url;
+        }
     }
 }
