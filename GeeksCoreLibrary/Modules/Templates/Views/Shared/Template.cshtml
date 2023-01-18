@@ -1,5 +1,4 @@
 ﻿@using GeeksCoreLibrary.Modules.Templates.Enums
-@using ZXing.QrCode.Internal
 @model GeeksCoreLibrary.Modules.Templates.ViewModels.PageViewModel
 @* ReSharper disable Razor.SectionNotResolved *@
 @section HeaderStyles {
@@ -179,7 +178,7 @@
         {
             foreach (var widget in Model.Widgets.Where(w => w.Location == PageWidgetLocations.HeaderTop))
             {
-                @Html.Raw(widget)
+                @Html.Raw(widget.Html)
             }
         }
     }
@@ -191,7 +190,7 @@
         {
             foreach (var widget in Model.Widgets.Where(w => w.Location == PageWidgetLocations.HeaderBottom))
             {
-                @Html.Raw(widget)
+                @Html.Raw(widget.Html)
             }
         }
     }
@@ -203,7 +202,7 @@
         {
             foreach (var widget in Model.Widgets.Where(w => w.Location == PageWidgetLocations.BodyTop))
             {
-                @Html.Raw(widget)
+                @Html.Raw(widget.Html)
             }
         }
     }
@@ -215,7 +214,7 @@
         {
             foreach (var widget in Model.Widgets.Where(w => w.Location == PageWidgetLocations.BodyBottom))
             {
-                @Html.Raw(widget)
+                @Html.Raw(widget.Html)
             }
         }
     }
