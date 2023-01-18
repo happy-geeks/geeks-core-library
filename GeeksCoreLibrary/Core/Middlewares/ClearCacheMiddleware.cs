@@ -2,26 +2,32 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Middlewares;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Core.Middlewares
 {
     public class ClearCacheMiddleware
     {
         private readonly RequestDelegate next;
+        private readonly ILogger<RewriteUrlToOrderProcessMiddleware> logger;
 
-        public ClearCacheMiddleware(RequestDelegate next)
+        public ClearCacheMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrderProcessMiddleware> logger)
         {
             this.next = next;
+            this.logger = logger;
         }
 
         public async Task Invoke(HttpContext context, ICacheService cacheService)
         {
+            logger.LogDebug("Invoked ClearCacheMiddleware");
+            
             // Don't event start processing if there's no query string or if the method is not GET.
             if (!context.Request.QueryString.HasValue || context.Request.Method != "GET")
             {

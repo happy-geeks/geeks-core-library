@@ -39,6 +39,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
 
         public async Task Invoke(HttpContext context, IObjectsService objectsService, ITemplatesService templatesService, ILanguagesService languagesService, IWebHostEnvironment webHostEnvironment, IOptions<GclSettings> gclSettings, IAppCache cache)
         {
+            logger.LogDebug("Invoked OutputCachingMiddleware");
+            
             // Don't even bother doing anything if it's not the correct route.
             if (!context.Request.Method.Equals("GET") || context.Request.Path != "/template.gcl")
             {

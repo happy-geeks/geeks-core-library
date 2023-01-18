@@ -35,6 +35,8 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
         /// <returns></returns>
         public async Task Invoke(HttpContext context, IObjectsService objectsService, IWebPagesService webPagesService)
         {
+            logger.LogDebug("Invoked RewriteUrlToWebPageMiddleware");
+            
             this.objectsService = objectsService;
             this.webPagesService = webPagesService;
             
