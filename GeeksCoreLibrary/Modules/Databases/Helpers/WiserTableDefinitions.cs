@@ -213,7 +213,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2022, 12, 9),
+                LastUpdate = new DateTime(2023, 1, 19),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -231,14 +231,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("cache_minutes", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("cache_location", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("cache_regex", MySqlDbType.VarChar, 255),
-                    new("handle_request", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
-                    new("handle_session", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
-                    new("handle_objects", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
-                    new("handle_standards", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
-                    new("handle_translations", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
-                    new("handle_dynamic_content", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
-                    new("handle_logic_blocks", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
-                    new("handle_mutators", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("login_required", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("login_role", MySqlDbType.VarChar, 50),
                     new("login_redirect_url", MySqlDbType.VarChar, 255),
@@ -268,7 +260,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("is_default_header", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("is_default_footer", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("default_header_footer_regex", MySqlDbType.VarChar, 255),
-                    new("is_partial", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
+                    new("is_partial", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                    new("widget_content", MySqlDbType.MediumText),
+                    new("widget_location", MySqlDbType.Int16, 4, notNull: true, defaultValue: "1")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {

@@ -1523,7 +1523,45 @@ ORDER BY IFNULL(linkToParent.destination_item_id, 0) ASC, IFNULL(linkToParent.or
                 return results;
             }
             
-            // TODO: Add template specific widgets.
+            var joinPart = "";
+            var whereClause = new List<string> { "template.template_id = ?id", "template.removed = 0" };
+            if (gclSettings.Environment == Environments.Development)
+            {
+                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+            }
+            else
+            {
+                whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
+            }
+
+            databaseConnection.AddParameter("id", templateId);
+            var query = $@"SELECT
+    template.widget_content,
+    template.widget_location
+FROM {WiserTableNames.WiserTemplate} AS template
+{joinPart}
+
+WHERE {String.Join(" AND ", whereClause)}
+LIMIT 1";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count == 0)
+            {
+                return results;
+            }
+
+            var html = dataTable.Rows[0].Field<string>("widget_content");
+            if (String.IsNullOrWhiteSpace(html))
+            {
+                return results;
+            }
+
+            results.Add(new PageWidgetModel
+            {
+                Html = html,
+                Location = (PageWidgetLocations) Convert.ToInt32(dataTable.Rows[0]["widget_location"])
+            });
+            
             return results;
         }
 
