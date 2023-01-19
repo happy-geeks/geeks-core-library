@@ -182,7 +182,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.groupingValueColumnName AS grouping_value_column_name,
                             t.groupingkey AS grouping_key,
                             t.groupingprefix AS grouping_prefix,
-                            t.issecure AS login_required
+                            t.issecure AS login_required,
+                            t.version
                         FROM easy_items i 
                         JOIN easy_templates t ON t.itemid = i.id
                         {joinPart}
@@ -411,7 +412,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.groupingKeyColumnName AS grouping_key_column_name,
                             t.groupingValueColumnName AS grouping_value_column_name,
                             t.groupingkey AS grouping_key,
-                            t.groupingprefix AS grouping_prefix
+                            t.groupingprefix AS grouping_prefix,
+                            t.version
                         FROM easy_items i 
                         JOIN easy_templates t ON i.id = t.itemid
                         {joinPart}
@@ -509,7 +511,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.groupingKeyColumnName AS grouping_key_column_name,
                             t.groupingValueColumnName AS grouping_value_column_name,
                             t.groupingkey AS grouping_key,
-                            t.groupingprefix AS grouping_prefix
+                            t.groupingprefix AS grouping_prefix,
+                            t.version
                         FROM easy_items i 
                         JOIN easy_templates t ON i.id = t.itemid
                         {joinPart}
@@ -1357,6 +1360,27 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             // Return an empty result here. This functionality is not made for legacy templates.
             return Task.FromResult(new List<Template>());
+        }
+
+        /// <inheritdoc />
+        public Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(false);
+        }
+
+        /// <inheritdoc />
+        public Task<bool> TemplateRenderingShouldBeLoggedAsync(int templateId)
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(false);
+        }
+
+        /// <inheritdoc />
+        public Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "")
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.CompletedTask;
         }
 
         /// <summary>

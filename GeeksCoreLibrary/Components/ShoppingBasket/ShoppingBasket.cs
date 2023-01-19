@@ -26,7 +26,6 @@ using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Html;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -39,7 +38,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
     )]
     public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, ShoppingBasket.ComponentModes>
     {
-        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly IObjectsService objectsService;
@@ -207,9 +205,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         }
 
         [ActivatorUtilitiesConstructor]
-        public ShoppingBasket(ILogger<ShoppingBasket> logger, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IShoppingBasketsService shoppingBasketsService, ITemplatesService templatesService, IWebHostEnvironment webHostEnvironment, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IAccountsService accountsService, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService)
+        public ShoppingBasket(ILogger<ShoppingBasket> logger, IDatabaseConnection databaseConnection, IShoppingBasketsService shoppingBasketsService, ITemplatesService templatesService, IWebHostEnvironment webHostEnvironment, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IAccountsService accountsService, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService)
         {
-            this.httpContextAccessor = httpContextAccessor;
             this.shoppingBasketsService = shoppingBasketsService;
             this.webHostEnvironment = webHostEnvironment;
             this.objectsService = objectsService;
@@ -267,11 +264,10 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         {
             // First delete the basket from database.
             await shoppingBasketsService.DeleteAsync(Main.Id);
-            
+
             // Then delete the basket cookie.
-            var httpContext = HttpContext ?? httpContextAccessor.HttpContext;
-            httpContext?.Response.Cookies.Delete(Settings.CookieName);
-            
+            HttpContext.Response.Cookies.Delete(Settings.CookieName);
+
             // And finally create a new basket.
             Main = new WiserItemModel();
             Lines = new List<WiserItemModel>();
@@ -478,11 +474,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         /// <returns>The rendered template, or an empty string if <paramref name="renderBasket"/> is <see langword="false"/>.</returns>
         public async Task<string> HandleAddItemsModeAsync(bool renderBasket = true)
         {
-            if (HttpContext == null)
-            {
-                return String.Empty;
-            }
-
             if (!String.IsNullOrWhiteSpace(HttpContextHelpers.GetRequestValue(HttpContext, "additem")))
             {
                 await AddSingleItemAsync();
@@ -505,11 +496,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         /// <returns>The rendered template, or an empty string if <paramref name="renderBasket"/> is <see langword="false"/>.</returns>
         public async Task<string> HandleUpdateItemModeAsync(bool renderBasket = true)
         {
-            if (HttpContext == null)
-            {
-                return String.Empty;
-            }
-
             using var reader = new StreamReader(Request.Body);
             var itemJson = await reader.ReadToEndAsync();
 
@@ -558,11 +544,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
 
         private async Task AddMultipleItemsAsync()
         {
-            if (HttpContext == null)
-            {
-                return;
-            }
-
             using var reader = new StreamReader(Request.Body);
             var itemsJson = await reader.ReadToEndAsync();
 
@@ -640,11 +621,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
 
         public async Task<string> HandleChangeQuantityModeAsync(bool renderBasket = true)
         {
-            if (HttpContext == null)
-            {
-                return String.Empty;
-            }
-
             using var reader = new StreamReader(Request.Body);
             var updateQuantitiesJson = await reader.ReadToEndAsync();
 
@@ -669,11 +645,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         /// <returns></returns>
         public async Task<string> HandleRemoveItemsModeAsync(bool renderBasket = true)
         {
-            if (HttpContext == null)
-            {
-                return String.Empty;
-            }
-
             var itemId = HttpContextHelpers.GetRequestValue(HttpContext, "deleteproductbyid");
             if (!String.IsNullOrWhiteSpace(itemId))
             {
@@ -698,15 +669,10 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         /// <returns></returns>
         public async Task<string> HandleAddCouponModeAsync(bool renderBasket = true)
         {
-            if (HttpContext == null)
-            {
-                return String.Empty;
-            }
-
             var addCouponResult = await shoppingBasketsService.AddCouponToBasketAsync(Main, Lines, Settings);
             var replacementData = new Dictionary<string, object>
             {
-                { "addCouponResult", addCouponResult.ToString("G") }
+                { "addCouponResult", addCouponResult.ResultCode.ToString("G") }
             };
             var result = renderBasket ? await GetRenderedBasketAsync(replacementData) : String.Empty;
 
@@ -730,8 +696,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         /// <returns></returns>
         public async Task<string> HandleResetModeAsync()
         {
-            ResetAsync();
-
+            await ResetAsync();
             return await GetRenderedBasketAsync();
         }
 
@@ -750,11 +715,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             }
             else
             {
-                if (HttpContext == null)
-                {
-                    return String.Empty;
-                }
-
                 pdfFileResult.FileDownloadName = !String.IsNullOrWhiteSpace(filename) ? Path.GetFileName(filename) : $"{Settings.Description}.pdf";
                 await pdfFileResult.ExecuteResultAsync(HttpContextHelpers.CreateActionContext(HttpContext));
             }
@@ -794,12 +754,6 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         /// <returns></returns>
         public async Task<string> HandleLegacyModeAsync()
         {
-            // Old JCL basket used request variables to determine which mode it's using instead of using a ComponentMode property.
-            if (Request == null)
-            {
-                return String.Empty;
-            }
-
             // Check mode request variable.
             var mode = HttpContextHelpers.GetRequestValue(HttpContext, "mode");
             if (!String.IsNullOrWhiteSpace(mode))
@@ -863,7 +817,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             if (Settings.ResetOnLoad)
             {
                 // Reset the basket (creates a new basket).
-                ResetAsync();
+                await ResetAsync();
             }
 
             await shoppingBasketsService.RecalculateVariablesAsync(Main, Lines, Settings);

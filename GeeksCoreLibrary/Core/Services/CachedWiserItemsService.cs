@@ -79,15 +79,15 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, bool resetAddedOnDate = false)
         {
-            return await ChangeEntityTypeAsync(this, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck);
+            return await ChangeEntityTypeAsync(this, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck, resetAddedOnDate);
         }
 
         /// <inheritdoc />
-        public async Task<int> ChangeEntityTypeAsync(IWiserItemsService service, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task<int> ChangeEntityTypeAsync(IWiserItemsService service, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, bool resetAddedOnDate = false)
         {
-            return await wiserItemsService.ChangeEntityTypeAsync(service, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck);
+            return await wiserItemsService.ChangeEntityTypeAsync(service, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck, resetAddedOnDate);
         }
 
         /// <inheritdoc />

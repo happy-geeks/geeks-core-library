@@ -1082,13 +1082,13 @@ WHERE item.id = ?itemId");
         }
 
         /// <inheritdoc />
-        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, bool resetAddedOnDate = false)
         {
-            return await ChangeEntityTypeAsync(this, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck);
+            return await ChangeEntityTypeAsync(this, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck, resetAddedOnDate);
         }
 
         /// <inheritdoc />
-        public async Task<int> ChangeEntityTypeAsync(IWiserItemsService wiserItemsService, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task<int> ChangeEntityTypeAsync(IWiserItemsService wiserItemsService, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, bool resetAddedOnDate = false)
         {
             if (!skipPermissionsCheck)
             {
@@ -1117,11 +1117,14 @@ WHERE item.id = ?itemId");
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("entityType", newEntityType);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("now", DateTime.Now);
+
+            var addedOnResetPart = !resetAddedOnDate ? "" : ", added_on = ?now, added_by = ?username";
 
             var query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
                         SET @saveHistory = ?saveHistoryGcl; 
-                        UPDATE {newEntityTypeTablePrefix}{WiserTableNames.WiserItem} SET entity_type = ?entityType, changed_by = ?username WHERE id = ?itemId LIMIT 1;";
+                        UPDATE {newEntityTypeTablePrefix}{WiserTableNames.WiserItem} SET entity_type = ?entityType, changed_by = ?username{addedOnResetPart} WHERE id = ?itemId LIMIT 1;";
             return await databaseConnection.ExecuteAsync(query);
         }
 
