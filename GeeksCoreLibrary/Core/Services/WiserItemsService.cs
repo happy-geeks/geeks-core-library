@@ -4426,10 +4426,21 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                                     }
                                 case "numeric-input":
                                     {
-                                        var valueAsString = wiserItemDetail.Value as string;
-                                        if (!String.IsNullOrEmpty(valueAsString))
+                                        // Make sure decimal values are always saved with a dot separator.
+                                        if (wiserItemDetail.Value is decimal valueAsDecimal)
                                         {
-                                            wiserItemDetail.Value = valueAsString.Replace(",", ".");
+                                            wiserItemDetail.Value = valueAsDecimal.ToString(new CultureInfo("en-US"));
+                                        }
+                                        else if (wiserItemDetail.Value is double valueAsDouble)
+                                        {
+                                            wiserItemDetail.Value = valueAsDouble.ToString(new CultureInfo("en-US"));
+                                        }
+                                        else if (wiserItemDetail.Value is string valueAsString 
+                                                 && !String.IsNullOrWhiteSpace(valueAsString) 
+                                                 && valueAsString.Contains(',') 
+                                                 && Decimal.TryParse(valueAsString, NumberStyles.Any, new CultureInfo("nl-NL"), out var parsedValueAsDecimal))
+                                        {
+                                            wiserItemDetail.Value = parsedValueAsDecimal.ToString(new CultureInfo("en-US"));
                                         }
 
                                         break;
@@ -4452,23 +4463,6 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                                 databaseConnection.AddParameter($"longValue{SeoPropertySuffix}{counter}", useLongValueColumn ? wiserItemDetail.Value.ToString().ConvertToSeo() : "");
                                 alsoSaveSeoValue = true;
                             }
-                        }
-                        
-                        // Make sure decimal values are always saved with a dot separator.
-                        if (wiserItemDetail.Value is decimal valueAsDecimal)
-                        {
-                            wiserItemDetail.Value = valueAsDecimal.ToString(new CultureInfo("en-US"));
-                        }
-                        else if (wiserItemDetail.Value is double valueAsDouble)
-                        {
-                            wiserItemDetail.Value = valueAsDouble.ToString(new CultureInfo("en-US"));
-                        }
-                        else if (wiserItemDetail.Value is string valueAsString 
-                                 && !String.IsNullOrWhiteSpace(valueAsString) 
-                                 && valueAsString.Contains(',') 
-                                 && Decimal.TryParse(valueAsString, NumberStyles.Any, new CultureInfo("nl-NL"), out var parsedValueAsDecimal))
-                        {
-                            wiserItemDetail.Value = parsedValueAsDecimal.ToString(new CultureInfo("en-US"));
                         }
 
                         databaseConnection.AddParameter($"value{counter}", useLongValueColumn ? "" : wiserItemDetail.Value);
