@@ -29,6 +29,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket
 {
@@ -347,9 +348,16 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                     { "BasketLineValidityMessage", basketLineValidityMessage }
                 };
 
+                // Replace extra data first.
                 if (extraData is { Count: > 0 })
                 {
-                    extraData.ToList().ForEach(kvp => additionalReplacementData[kvp.Key] = kvp.Value);
+                    // The "couponExcludedItems" entry is a special case.
+                    if (extraData.ContainsKey("couponExcludedItems") && extraData["couponExcludedItems"] is JArray { Count: > 0 } couponExcludedItemsArray)
+                    {
+                        StringReplacementsService.FillStringByClassList(couponExcludedItemsArray, template, true, "couponExcludedItemsRepeat");
+                    }
+
+                    extraData.Where(kvp => !kvp.Key.Equals("couponExcludedItems")).ToList().ForEach(kvp => additionalReplacementData[kvp.Key] = kvp.Value);
                 }
 
                 template = await shoppingBasketsService.ReplaceBasketInTemplateAsync(Main, Lines, Settings, template, stripNotExistingVariables: false, additionalReplacementData: additionalReplacementData);
@@ -672,8 +680,28 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             var addCouponResult = await shoppingBasketsService.AddCouponToBasketAsync(Main, Lines, Settings);
             var replacementData = new Dictionary<string, object>
             {
+                { "couponSuccess", addCouponResult.Valid ? "1" : "0" },
                 { "addCouponResult", addCouponResult.ResultCode.ToString("G") }
             };
+
+            // Add the excluded items as a JArray.
+            var excludedItems = new JArray();
+            if (addCouponResult.ExcludedItems is { Count: > 0 })
+            {
+                foreach (var excludedItem in addCouponResult.ExcludedItems)
+                {
+                    var obj = new JObject
+                    {
+                        { "ItemId", excludedItem.ItemId },
+                        { "Name", excludedItem.Name }
+                    };
+
+                    excludedItems.Add(obj);
+                }
+            }
+
+            replacementData.Add("couponExcludedItems", excludedItems);
+
             var result = renderBasket ? await GetRenderedBasketAsync(replacementData) : String.Empty;
 
             return result;

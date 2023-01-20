@@ -1429,10 +1429,21 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
                 // Remove this coupon from the basket.
                 var couponLine = basketLines.SingleOrDefault(line => line.GetDetailValue("type") == Constants.BasketLineCouponType && line.GetDetailValue(Constants.ConnectedItemIdProperty) == couponId);
-                if (couponLine != null)
+                if (couponLine == null) return;
+
+                // Also remove the "coupon_discount_X" property from the basket line.
+                if (divideDiscountOverProducts)
                 {
-                    await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { couponId });
+                    var productCouponDiscountPropertyName = Constants.ProductCouponDiscountPropertyNamePrefix + couponResult.Coupon?.GetDetailValue(CouponConstants.Code);
+                    foreach (var basketLine in basketLines.Where(basketLine => basketLine.ContainsDetail(productCouponDiscountPropertyName)))
+                    {
+                        // Setting the value to null or an empty string will cause the save function in WiserItemsService
+                        // to remove the detail instead of saving it with an empty value.
+                        basketLine.SetDetail(productCouponDiscountPropertyName, null);
+                    }
                 }
+
+                await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { couponId });
                 return;
             }
             
@@ -1908,20 +1919,6 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 handleCouponResult = await HandleCouponAsync(shoppingBasket, basketLines, settings, couponCode, divideDiscountOverProducts);
             }
 
-            var couponProductId = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_productid");
-            var couponId = String.IsNullOrWhiteSpace(couponProductId) ? handleCouponResult.Coupon?.Id.ToString() ?? "" : couponProductId;
-
-            if (!handleCouponResult.Valid)
-            {
-                // Remove a potentially existing coupon as it's no longer valid.
-                if (handleCouponResult.DoRemove)
-                {
-                    await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { couponId });
-                }
-
-                return handleCouponResult;
-            }
-
             // Check if the maximum amount of coupons has been reached yet.
             if (Int64.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("BASKET_numberOfCouponsAllowed", "0"), out var nrOfCouponsAllowed) && nrOfCouponsAllowed > 0)
             {
@@ -1936,7 +1933,10 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
             }
 
-            await UpdateCouponAsync(shoppingBasket, basketLines, settings, handleCouponResult, 0M, divideDiscountOverProducts, createNewTransaction);
+            if (handleCouponResult.Valid)
+            {
+                await UpdateCouponAsync(shoppingBasket, basketLines, settings, handleCouponResult, 0M, divideDiscountOverProducts, createNewTransaction);
+            }
 
             return handleCouponResult;
         }
