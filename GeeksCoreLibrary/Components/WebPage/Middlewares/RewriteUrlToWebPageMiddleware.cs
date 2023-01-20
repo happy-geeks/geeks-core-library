@@ -79,7 +79,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
         private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
         {
             // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
-            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex);
+            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (regEx.IsMatch(currentUrl.ToString()))
             {
@@ -105,7 +105,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
 
             foreach (var entry in (await objectsService.FindSystemObjectByDomainNameAsync("cms_fixedurl_page_method", "0")).Split(';', StringSplitOptions.RemoveEmptyEntries))
             {
-                var regex = new Regex(@"^\d+\|");
+                var regex = new Regex(@"^\d+\|", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 if (!entry.Contains("|", StringComparison.Ordinal) || !regex.IsMatch(entry))
                 {
                     continue;

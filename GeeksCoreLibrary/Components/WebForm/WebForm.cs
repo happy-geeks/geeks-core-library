@@ -327,6 +327,7 @@ namespace GeeksCoreLibrary.Components.WebForm
         {
             if (!Request.HasFormContentType || Request.Form.Count == 0)
             {
+                
                 return false;
             }
 

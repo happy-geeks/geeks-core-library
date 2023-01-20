@@ -204,7 +204,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             }
 
             // Regex to find any '{substeps}' variables, including ones that define the sub step IDs.
-            var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             foreach (DataRow row in configuratorData.Rows)
             {
                 var currentUrl = HttpContextHelpers.GetBaseUri(HttpContext).AbsoluteUri;
@@ -629,7 +629,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             template = template.ReplaceCaseInsensitive("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'");
 
             var stepContentBuilder = new StringBuilder();
-            var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
 
             if (renderedValues != "")
             {
@@ -1168,7 +1168,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
                     if (removeSvgUrlsFromIcons)
                     {
-                        var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>");
+                        var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                         foreach (Match match in regex.Matches(html.Value))
                         {
                             result[html.Key] = result[html.Key].Replace(match.Groups[1].Value, "");

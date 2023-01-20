@@ -18,7 +18,7 @@ namespace GeeksCoreLibrary.Core.Helpers
                 return "";
             }
 
-            var regex = new Regex(@"[^\w]");
+            var regex = new Regex(@"[^\w]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             return regex.Replace(input, "");
         }
     }
