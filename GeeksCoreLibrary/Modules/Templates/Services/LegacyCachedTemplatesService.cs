@@ -482,5 +482,23 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             await templatesService.AddTemplateOrComponentRenderingLogAsync(componentId, templateId, version, startTime, endTime, timeTaken, error);
         }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            return await templatesService.GetGlobalPageWidgetsAsync();
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            return await GetPageWidgetsAsync(this, templateId, includeGlobalSnippets);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService service, int templateId, bool includeGlobalSnippets = true)
+        {
+            return await templatesService.GetPageWidgetsAsync(service, templateId, includeGlobalSnippets);
+        }
     }
 }

@@ -188,12 +188,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<PageViewModel> CreatePageViewModelAsync(List<string> externalCss, List<int> cssTemplates, List<string> externalJavascript, List<int> javascriptTemplates, string newBodyHtml)
+        public async Task<PageViewModel> CreatePageViewModelAsync(List<string> externalCss, List<int> cssTemplates, List<string> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0)
         {
             var viewModel = new PageViewModel();
 
             // Add Google reCAPTCHAv3 if setup.
             await AddGoogleReCaptchaToViewModelAsync(viewModel);
+
+            viewModel.Widgets = await templatesService.GetPageWidgetsAsync(templateId);
 
             // Add CSS for all pages.
             var generalStandardCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css);
@@ -393,55 +395,55 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 viewModel.MetaData = await seoService.GetSeoDataForPageAsync(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext));
 
-                if (newBodyHtml.Contains("[{seomodule_", StringComparison.OrdinalIgnoreCase))
+                if (bodyHtml.Contains("[{seomodule_", StringComparison.OrdinalIgnoreCase))
                 {
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.SeoText))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_content}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_content}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_content}\|(.*?)\]", viewModel.MetaData.SeoText);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", viewModel.MetaData.SeoText);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_content}\|(.*?)\]", viewModel.MetaData.SeoText);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", viewModel.MetaData.SeoText);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H1Text))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", viewModel.MetaData.H1Text);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_h1header}]", viewModel.MetaData.H1Text);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", viewModel.MetaData.H1Text);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h1header}]", viewModel.MetaData.H1Text);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H2Text))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", viewModel.MetaData.H2Text);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_h2header}]", viewModel.MetaData.H2Text);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", viewModel.MetaData.H2Text);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h2header}]", viewModel.MetaData.H2Text);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H3Text))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", viewModel.MetaData.H3Text);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_h3header}]", viewModel.MetaData.H3Text);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", viewModel.MetaData.H3Text);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h3header}]", viewModel.MetaData.H3Text);
                     }
                 }
             }
 
             // Handle any left over seo module things.
-            if (newBodyHtml.Contains("[{seomodule_"))
+            if (bodyHtml.Contains("[{seomodule_"))
             {
-                newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", "");
-                newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_.*?}\|(.*?)\]", "$1");
+                bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", "");
+                bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_.*?}\|(.*?)\]", "$1");
             }
 
             // Check if some component is adding external JavaScript libraries to the page.
@@ -456,7 +458,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             viewModel.Css.ExternalCss.AddRange(externalCss);
             viewModel.Javascript.ExternalJavascript.AddRange(externalScripts);
-            viewModel.Body = newBodyHtml;
+            viewModel.Body = bodyHtml;
 
             // Add viewport.
             var viewportSystemObjectValue = await objectsService.FindSystemObjectByDomainNameAsync("metatag_viewport", "false");

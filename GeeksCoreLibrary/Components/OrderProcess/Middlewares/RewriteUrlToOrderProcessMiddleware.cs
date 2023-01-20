@@ -27,6 +27,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
         /// </summary>
         public async Task Invoke(HttpContext context, IOrderProcessesService orderProcessesService)
         {
+            logger.LogDebug("Invoked RewriteUrlToOrderProcessMiddleware");
+            
             this.orderProcessesService = orderProcessesService;
 
             if (HttpContextHelpers.IsGclMiddleWarePage(context))

@@ -311,5 +311,31 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="timeTaken">The amount of time, in milliseconds, that it took to render the component or template.</param>
         /// <param name="error">Optional: If an error occurred, put that error here.</param>
         Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "");
+
+        /// <summary>
+        /// Gets all custom HTML snippets that should be loaded on all pages.
+        /// This will return all HTML snippets in the order that they should be loaded.
+        /// </summary>
+        /// <returns>A list of HTML snippets for the given template, in the order that they should be added to the page.</returns>
+        Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync();
+
+        /// <summary>
+        /// Gets all custom HTML snippets for a template. By default this will also include snippets that are added globally, to load on all pages.
+        /// This will return all HTML snippets in the order that they should be loaded. Global widgets will always be added first, then template specific widgets.
+        /// </summary>
+        /// <param name="templateId">The ID of the template to load the snippets for.</param>
+        /// <param name="includeGlobalSnippets">Optional: Whether to include global snippets that are added for all pages. Default is <see langword="true"/>.</param>
+        /// <returns>A list of HTML snippets for the given template, in the order that they should be added to the page.</returns>
+        Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true);
+
+        /// <summary>
+        /// Gets all custom HTML snippets for a template. By default this will also include snippets that are added globally, to load on all pages.
+        /// This will return all HTML snippets in the order that they should be loaded. Global widgets will always be added first, then template specific widgets.
+        /// </summary>
+        /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetGlobalPageWidgetsAsync() in this method.</param>
+        /// <param name="templateId">The ID of the template to load the snippets for.</param>
+        /// <param name="includeGlobalSnippets">Optional: Whether to include global snippets that are added for all pages. Default is <see langword="true"/>.</param>
+        /// <returns>A list of HTML snippets for the given template, in the order that they should be added to the page.</returns>
+        Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true);
     }
 }

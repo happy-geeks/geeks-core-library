@@ -1,4 +1,5 @@
-﻿@model GeeksCoreLibrary.Modules.Templates.ViewModels.PageViewModel
+﻿@using GeeksCoreLibrary.Modules.Templates.Enums
+@model GeeksCoreLibrary.Modules.Templates.ViewModels.PageViewModel
 @* ReSharper disable Razor.SectionNotResolved *@
 @section HeaderStyles {
     @{
@@ -167,6 +168,54 @@
         if (!String.IsNullOrWhiteSpace(Model?.GoogleAnalytics?.InlineBodyNoScript))
         {
             @:<noscript>@Html.Raw(Model.GoogleAnalytics.InlineBodyNoScript)</noscript>
+        }
+    }
+}
+
+@section HeaderTopWidgets {
+    @{
+        if (Model?.Widgets != null)
+        {
+            foreach (var widget in Model.Widgets.Where(w => w.Location == PageWidgetLocations.HeaderTop))
+            {
+                @Html.Raw(widget.Html)
+            }
+        }
+    }
+}
+
+@section HeaderBottomWidgets {
+    @{
+        if (Model?.Widgets != null)
+        {
+            foreach (var widget in Model.Widgets.Where(w => w.Location == PageWidgetLocations.HeaderBottom))
+            {
+                @Html.Raw(widget.Html)
+            }
+        }
+    }
+}
+
+@section BodyTopWidgets {
+    @{
+        if (Model?.Widgets != null)
+        {
+            foreach (var widget in Model.Widgets.Where(w => w.Location == PageWidgetLocations.BodyTop))
+            {
+                @Html.Raw(widget.Html)
+            }
+        }
+    }
+}
+
+@section BodyBottomWidgets {
+    @{
+        if (Model?.Widgets != null)
+        {
+            foreach (var widget in Model.Widgets.Where(w => w.Location == PageWidgetLocations.BodyBottom))
+            {
+                @Html.Raw(widget.Html)
+            }
         }
     }
 }

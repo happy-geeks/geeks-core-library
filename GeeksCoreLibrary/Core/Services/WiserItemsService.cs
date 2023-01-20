@@ -18,7 +18,6 @@ using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
-using GeeksCoreLibrary.Modules.DataSelector.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -4317,166 +4316,160 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
             {
                 case "":
                 case null:
+                {
+                    valueChanged = !String.IsNullOrEmpty(previousField?.Value?.ToString()) || !String.Equals(wiserItemDetail.GroupName, previousField?.GroupName, StringComparison.OrdinalIgnoreCase);
+
+                    if (String.IsNullOrWhiteSpace(wiserItemDetail.GroupName) || String.IsNullOrWhiteSpace(wiserItemDetail.Key))
                     {
-                        valueChanged = !String.IsNullOrEmpty(previousField?.Value?.ToString()) || !String.Equals(wiserItemDetail.GroupName, previousField?.GroupName, StringComparison.OrdinalIgnoreCase);
-
-                        if (String.IsNullOrWhiteSpace(wiserItemDetail.GroupName) || String.IsNullOrWhiteSpace(wiserItemDetail.Key))
-                        {
-                            // Empty values will be deleted from database, so no need to add a parameter to the connection.
-                            deleteValue = true;
-                        }
-                        else
-                        {
-                            databaseConnection.AddParameter($"value{counter}", "");
-                            databaseConnection.AddParameter($"longValue{counter}", "");
-                        }
-
-                        break;
+                        // Empty values will be deleted from database, so no need to add a parameter to the connection.
+                        deleteValue = true;
                     }
+                    else
+                    {
+                        databaseConnection.AddParameter($"value{counter}", "");
+                        databaseConnection.AddParameter($"longValue{counter}", "");
+                    }
+
+                    break;
+                }
 
                 case JArray valueAsJsonArray:
+                {
+                    var valueAsList = valueAsJsonArray.Cast<object>().ToList();
+                    var value = String.Join(",", valueAsList);
+                    valueChanged = previousField?.Value?.ToString() != value;
+                    useLongValueColumn = value.Length > 1000;
+                    databaseConnection.AddParameter($"value{counter}", useLongValueColumn ? "" : value);
+                    databaseConnection.AddParameter($"longValue{counter}", useLongValueColumn ? value : "");
+
+                    if ((valueChanged || alwaysSaveValues) && options.Any() && (bool) options[SaveSeoValueKey])
                     {
-                        var valueAsList = valueAsJsonArray.Cast<object>().ToList();
-                        var value = String.Join(",", valueAsList);
-                        valueChanged = previousField?.Value?.ToString() != value;
-                        useLongValueColumn = value.Length > 1000;
-                        databaseConnection.AddParameter($"value{counter}", useLongValueColumn ? "" : value);
-                        databaseConnection.AddParameter($"longValue{counter}", useLongValueColumn ? value : "");
-
-                        if ((valueChanged || alwaysSaveValues) && options.Any() && (bool)options[SaveSeoValueKey])
-                        {
-                            value = String.Join(",", valueAsList.Select(v => v.ToString().ConvertToSeo()));
-                            databaseConnection.AddParameter($"value{SeoPropertySuffix}{counter}", useLongValueColumn ? "" : value);
-                            databaseConnection.AddParameter($"longValue{SeoPropertySuffix}{counter}", useLongValueColumn ? value : "");
-                            alsoSaveSeoValue = true;
-                        }
-
-                        break;
+                        value = String.Join(",", valueAsList.Select(v => v.ToString().ConvertToSeo()));
+                        databaseConnection.AddParameter($"value{SeoPropertySuffix}{counter}", useLongValueColumn ? "" : value);
+                        databaseConnection.AddParameter($"longValue{SeoPropertySuffix}{counter}", useLongValueColumn ? value : "");
+                        alsoSaveSeoValue = true;
                     }
+
+                    break;
+                }
 
                 default:
+                {
+                    valueChanged = previousField?.Value?.ToString() != wiserItemDetail.Value?.ToString();
+                    useLongValueColumn = wiserItemDetail.Value?.ToString()?.Length > 1000;
+
+                    // Check if we need to adjust the value that gets saved in the database, such as encrypting or hashing it.
+                    if ((valueChanged || alwaysSaveValues) && options.Any())
                     {
-                        valueChanged = previousField?.Value?.ToString() != wiserItemDetail.Value?.ToString();
-                        useLongValueColumn = wiserItemDetail.Value?.ToString()?.Length > 1000;
-
-                        // Check if we need to adjust the value that gets saved in the database, such as encrypting or hashing it.
-                        if ((valueChanged || alwaysSaveValues) && options.Any())
+                        switch (options[FieldTypeKey].ToString().ToLowerInvariant())
                         {
-                            switch (options[FieldTypeKey].ToString().ToLowerInvariant())
+                            case "secure-input":
                             {
-                                case "secure-input":
+                                var securityMethod = "GCL_SHA512";
+
+                                if (options.ContainsKey(SecurityMethodKey))
+                                {
+                                    securityMethod = options[SecurityMethodKey]?.ToString()?.ToUpperInvariant();
+                                }
+
+                                var securityKey = "";
+                                if (securityMethod.InList("GCL_AES", "JCL_AES", "AES"))
+                                {
+                                    if (options.ContainsKey(SecurityKeyKey))
                                     {
-                                        var securityMethod = "GCL_SHA512";
-
-                                        if (options.ContainsKey(SecurityMethodKey))
-                                        {
-                                            securityMethod = options[SecurityMethodKey]?.ToString()?.ToUpperInvariant();
-                                        }
-
-                                        var securityKey = "";
-                                        if (securityMethod.InList("GCL_AES", "JCL_AES", "AES"))
-                                        {
-                                            if (options.ContainsKey(SecurityKeyKey))
-                                            {
-                                                securityKey = options[SecurityKeyKey]?.ToString() ?? "";
-                                            }
-
-                                            if (String.IsNullOrEmpty(securityKey))
-                                            {
-                                                securityKey = encryptionKey;
-                                            }
-                                        }
-
-                                        switch (securityMethod)
-                                        {
-                                            case "GCL_SHA512":
-                                            case "JCL_SHA512":
-                                                wiserItemDetail.Value = wiserItemDetail.Value.ToString().ToSha512ForPasswords();
-                                                break;
-                                            case "GCL_AES":
-                                            case "JCL_AES":
-                                                wiserItemDetail.Value = wiserItemDetail.Value.ToString().EncryptWithAesWithSalt(securityKey);
-                                                break;
-                                            case "AES":
-                                                wiserItemDetail.Value = wiserItemDetail.Value.ToString().EncryptWithAes(securityKey);
-                                                break;
-                                            default:
-                                                throw new Exception($"Unsupported security method used ({options[SecurityMethodKey]} for field '{wiserItemDetail.Key}' with language '{wiserItemDetail.LanguageCode}'!");
-                                        }
-
-                                        break;
+                                        securityKey = options[SecurityKeyKey]?.ToString() ?? "";
                                     }
-                                case "date-time picker":
+
+                                    if (String.IsNullOrEmpty(securityKey))
                                     {
-                                        if (!options.ContainsKey("type") || !(wiserItemDetail.Value is DateTime dateTimeValue))
-                                        {
-                                            break;
-                                        }
-
-                                        switch (options["type"]?.ToString()?.ToLowerInvariant())
-                                        {
-                                            case "time":
-                                                wiserItemDetail.Value = dateTimeValue.ToString("HH:mm");
-                                                break;
-                                            case "date":
-                                                wiserItemDetail.Value = dateTimeValue.ToString("yyyy-MM-dd");
-                                                break;
-                                        }
-
-                                        break;
+                                        securityKey = encryptionKey;
                                     }
-                                case "numeric-input":
-                                    {
-                                        var valueAsString = wiserItemDetail.Value as string;
-                                        if (!String.IsNullOrEmpty(valueAsString))
-                                        {
-                                            wiserItemDetail.Value = valueAsString.Replace(",", ".");
-                                        }
+                                }
 
+                                switch (securityMethod)
+                                {
+                                    case "GCL_SHA512":
+                                    case "JCL_SHA512":
+                                        wiserItemDetail.Value = wiserItemDetail.Value.ToString().ToSha512ForPasswords();
                                         break;
-                                    }
-                                case "htmleditor":
-                                    {
-                                        var valueAsString = wiserItemDetail.Value as string;
-                                        if (!String.IsNullOrEmpty(valueAsString))
-                                        {
-                                            wiserItemDetail.Value = await ReplaceHtmlForSavingAsync(valueAsString, options.ContainsKey("allowAbsoluteImageUrls") && (options["allowAbsoluteImageUrls"]?.ToString().Equals("true", StringComparison.OrdinalIgnoreCase) ?? false));
-                                        }
+                                    case "GCL_AES":
+                                    case "JCL_AES":
+                                        wiserItemDetail.Value = wiserItemDetail.Value.ToString().EncryptWithAesWithSalt(securityKey);
+                                        break;
+                                    case "AES":
+                                        wiserItemDetail.Value = wiserItemDetail.Value.ToString().EncryptWithAes(securityKey);
+                                        break;
+                                    default:
+                                        throw new Exception($"Unsupported security method used ({options[SecurityMethodKey]} for field '{wiserItemDetail.Key}' with language '{wiserItemDetail.LanguageCode}'!");
+                                }
 
-                                        break;
-                                    }
+                                break;
                             }
-
-                            if ((bool)options[SaveSeoValueKey])
+                            case "date-time picker":
                             {
-                                databaseConnection.AddParameter($"value{SeoPropertySuffix}{counter}", useLongValueColumn ? "" : wiserItemDetail.Value.ToString().ConvertToSeo());
-                                databaseConnection.AddParameter($"longValue{SeoPropertySuffix}{counter}", useLongValueColumn ? wiserItemDetail.Value.ToString().ConvertToSeo() : "");
-                                alsoSaveSeoValue = true;
+                                if (!options.ContainsKey("type") || !(wiserItemDetail.Value is DateTime dateTimeValue))
+                                {
+                                    break;
+                                }
+
+                                switch (options["type"]?.ToString()?.ToLowerInvariant())
+                                {
+                                    case "time":
+                                        wiserItemDetail.Value = dateTimeValue.ToString("HH:mm");
+                                        break;
+                                    case "date":
+                                        wiserItemDetail.Value = dateTimeValue.ToString("yyyy-MM-dd");
+                                        break;
+                                }
+
+                                break;
+                            }
+                            case "numeric-input":
+                            {
+                                // Make sure decimal values are always saved with a dot separator.
+                                if (wiserItemDetail.Value is decimal valueAsDecimal)
+                                {
+                                    wiserItemDetail.Value = valueAsDecimal.ToString(new CultureInfo("en-US"));
+                                }
+                                else if (wiserItemDetail.Value is double valueAsDouble)
+                                {
+                                    wiserItemDetail.Value = valueAsDouble.ToString(new CultureInfo("en-US"));
+                                }
+                                else if (wiserItemDetail.Value is string valueAsString
+                                         && !String.IsNullOrWhiteSpace(valueAsString)
+                                         && valueAsString.Contains(',')
+                                         && Decimal.TryParse(valueAsString, NumberStyles.Any, new CultureInfo("nl-NL"), out var parsedValueAsDecimal))
+                                {
+                                    wiserItemDetail.Value = parsedValueAsDecimal.ToString(new CultureInfo("en-US"));
+                                }
+
+                                break;
+                            }
+                            case "htmleditor":
+                            {
+                                var valueAsString = wiserItemDetail.Value as string;
+                                if (!String.IsNullOrEmpty(valueAsString))
+                                {
+                                    wiserItemDetail.Value = await ReplaceHtmlForSavingAsync(valueAsString, options.ContainsKey("allowAbsoluteImageUrls") && (options["allowAbsoluteImageUrls"]?.ToString().Equals("true", StringComparison.OrdinalIgnoreCase) ?? false));
+                                }
+
+                                break;
                             }
                         }
-                        
-                        // Make sure decimal values are always saved with a dot separator.
-                        if (wiserItemDetail.Value is decimal valueAsDecimal)
-                        {
-                            wiserItemDetail.Value = valueAsDecimal.ToString(new CultureInfo("en-US"));
-                        }
-                        else if (wiserItemDetail.Value is double valueAsDouble)
-                        {
-                            wiserItemDetail.Value = valueAsDouble.ToString(new CultureInfo("en-US"));
-                        }
-                        else if (wiserItemDetail.Value is string valueAsString 
-                                 && !String.IsNullOrWhiteSpace(valueAsString) 
-                                 && valueAsString.Contains(',') 
-                                 && Decimal.TryParse(valueAsString, NumberStyles.Any, new CultureInfo("nl-NL"), out var parsedValueAsDecimal))
-                        {
-                            wiserItemDetail.Value = parsedValueAsDecimal.ToString(new CultureInfo("en-US"));
-                        }
 
-                        databaseConnection.AddParameter($"value{counter}", useLongValueColumn ? "" : wiserItemDetail.Value);
-                        databaseConnection.AddParameter($"longValue{counter}", useLongValueColumn ? wiserItemDetail.Value : "");
-
-                        break;
+                        if ((bool) options[SaveSeoValueKey])
+                        {
+                            databaseConnection.AddParameter($"value{SeoPropertySuffix}{counter}", useLongValueColumn ? "" : wiserItemDetail.Value.ToString().ConvertToSeo());
+                            databaseConnection.AddParameter($"longValue{SeoPropertySuffix}{counter}", useLongValueColumn ? wiserItemDetail.Value.ToString().ConvertToSeo() : "");
+                            alsoSaveSeoValue = true;
+                        }
                     }
+
+                    databaseConnection.AddParameter($"value{counter}", useLongValueColumn ? "" : wiserItemDetail.Value);
+                    databaseConnection.AddParameter($"longValue{counter}", useLongValueColumn ? wiserItemDetail.Value : "");
+
+                    break;
+                }
             }
 
             // If the value itself hasn't changed, check if the key, language code or group name has been changed, but only if we found the field based on ID.

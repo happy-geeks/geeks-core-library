@@ -37,6 +37,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         /// </summary>
         public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService)
         {
+            logger.LogDebug("Invoked RewriteUrlToTemplateMiddleware");
+            
             this.objectsService = objectsService;
             this.databaseConnection = databaseConnection;
             this.templatesService = templatesService;

@@ -1383,6 +1383,27 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             return Task.CompletedTask;
         }
 
+        /// <inheritdoc />
+        public Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<PageWidgetModel>());
+        }
+
+        /// <inheritdoc />
+        public Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<PageWidgetModel>());
+        }
+
+        /// <inheritdoc />
+        public Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<PageWidgetModel>());
+        }
+
         /// <summary>
         /// Do all replacement which have to do with request, session or cookie.
         /// Only use this function if you can't add ITemplatesService via dependency injection, otherwise you should use the non static functions <see cref="IStringReplacementsService.DoSessionReplacements" /> and <see cref="IStringReplacementsService.DoHttpRequestReplacements"/>.
