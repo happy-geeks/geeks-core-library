@@ -8,17 +8,36 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.DataSelector.Helpers;
+using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Models;
+using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.DataSelector.Services;
 
-public class NewDataSelectorsService : IScopedService
+public class NewDataSelectorsService : INewDataSelectorsService, IScopedService
 {
     private readonly IWiserItemsService wiserItemsService;
 
     public NewDataSelectorsService(IWiserItemsService wiserItemsService)
     {
         this.wiserItemsService = wiserItemsService;
+    }
+
+    public async Task<string> GetQueryAsync(ItemsRequest itemsRequest)
+    {
+        if (!String.IsNullOrWhiteSpace(itemsRequest.Query))
+        {
+            return itemsRequest.Query;
+        }
+
+        if (String.IsNullOrWhiteSpace(itemsRequest.Selector?.Main?.EntityName) && (itemsRequest.Selector?.Main?.Scopes == null || itemsRequest.Selector.Main.Scopes.Length == 0) && (itemsRequest.Selector?.Having == null || itemsRequest.Selector.Having.Length == 0) && String.IsNullOrWhiteSpace(itemsRequest.ContainsPath) && String.IsNullOrWhiteSpace(itemsRequest.EntityTypes))
+        {
+            return String.Empty;
+        }
+
+        var queryBuilder = new StringBuilder();
+        
+        itemsRequest.Selector.Connections
     }
 
     /// <summary>
@@ -94,6 +113,12 @@ public class NewDataSelectorsService : IScopedService
 
                 connectionForQuery.JoinQueryPart = joinStringBuilder.ToString();
                 connectionForQuery.Fields = await CreateQueryJoinsForConnectionFieldsAsync(connectionRow, iterationCounts);
+
+                if (connectionRow.Connections is { Length: > 0 })
+                {
+                    // Add connections of this connection.
+                    result.AddRange(await CreateQueryJoinsAsync(connectionRow.Connections, connectionRow, iterationCounts));
+                }
             }
         }
 
@@ -105,14 +130,18 @@ public class NewDataSelectorsService : IScopedService
         var result = new List<FieldForQuery>(connectionRow.Fields.Length);
 
         var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(connectionRow.EntityName);
-        var joinPrefix = connectionRow.Modes.Contains("optional", StringComparer.OrdinalIgnoreCase) ? "LEFT " : String.Empty;
+        var isOptional = connectionRow.Modes.Contains("optional", StringComparer.OrdinalIgnoreCase);
+        var joinPrefix = isOptional ? "LEFT " : String.Empty;
 
         var fieldIteration = 0;
         foreach (var field in connectionRow.Fields)
         {
             fieldIteration++;
 
-            var fieldForQuery = new FieldForQuery();
+            var fieldForQuery = new FieldForQuery
+            {
+                Field = field
+            };
 
             // Check which table should be used, wiser_item or wiser_itemdetail.
             var tableName =
@@ -140,9 +169,106 @@ public class NewDataSelectorsService : IScopedService
                 }
             }
 
+            // Check if there are scopes specifically for this field.
+            var scopeQuery = new StringBuilder();
+            foreach (var scope in connectionRow.Scopes)
+            {
+                if (scope.ScopeRows == null || scope.ScopeRows.Length == 0) continue;
+
+                var scopeRows = scope.ScopeRows.Where(sr => sr.Key.FieldName.Equals(field.FieldName, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (scopeRows.Count == 0)
+                {
+                    continue;
+                }
+
+                scopeQuery.Append(" AND (");
+
+                foreach (var scopeRow in scopeRows)
+                {
+                    if (scopeQuery.Length > 0)
+                    {
+                        scopeQuery.Append(" OR ");
+                    }
+                    
+                    var op = ConvertOperator(scopeRow.Operator);
+                    if (scopeRow.Value is JArray array)
+                    {
+                        var valueArray = array.ToObject<string[]>() ?? Array.Empty<string>();
+
+                        switch (op)
+                        {
+                            case "=":
+                                scopeQuery.Append($"`{field.FieldAlias}` IN ({String.Join(", ", valueArray.Select(v => v.ToMySqlSafeValue(true)))})");
+                                break;
+                            case "<>":
+                                scopeQuery.Append($"`{field.FieldAlias}` NOT IN ({String.Join(", ", valueArray.Select(v => v.ToMySqlSafeValue(true)))})");
+                                break;
+                            default:
+                                scopeQuery.Append($"`{field.FieldAlias}` {op} {(valueArray.FirstOrDefault() ?? String.Empty).ToMySqlSafeValue(true)}");
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        scopeQuery.Append($"`{field.FieldAlias}` {op} {Convert.ToString(scopeRow.Value).ToMySqlSafeValue(true)}");
+                    }
+                }
+
+                scopeQuery.Append(')');
+            }
+
+            fieldForQuery.ScopesQueryPart = scopeQuery.ToString();
+
             result.Add(fieldForQuery);
         }
 
+        // Handle scopes that reference fields that aren't in the selected fields.
+        var queryPart = new StringBuilder();
+        foreach (var scope in connectionRow.Scopes)
+        {
+            if (scope.ScopeRows == null || scope.ScopeRows.Length == 0) continue;
+
+            var connectionRowFields = connectionRow.Fields.Select(field => field.FieldName);
+
+            var scopeRows = scope.ScopeRows.Where(sr => !connectionRowFields.Contains(sr.Key.FieldName)).ToList();
+            if (scopeRows.Count == 0)
+            {
+                continue;
+            }
+
+            foreach (var scopeRow in scope.ScopeRows)
+            {
+                
+
+                if (queryPart.Length > 0)
+                {
+                    queryPart.Append(" OR ");
+                }
+
+                var op = ConvertOperator(scopeRow.Operator);
+                
+            }
+        }
+
         return result;
+    }
+
+    /// <summary>
+    /// Converts the string version of an operator to a MySQL operator.
+    /// </summary>
+    /// <param name="operatorString">The operator of a scope.</param>
+    /// <returns></returns>
+    private string ConvertOperator(string operatorString)
+    {
+        return operatorString.ToLowerInvariant() switch
+        {
+            "is not equal to" => "<>",
+            "is less than" => "<",
+            "is less than or equal to" => "<=",
+            "is greater than" => ">",
+            "is greater than or equal to" => ">=",
+            "is not empty" => "<>",
+            _ => "="
+        };
     }
 }
