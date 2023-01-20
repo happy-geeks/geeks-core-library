@@ -28,6 +28,8 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
 
         public async Task Invoke(HttpContext context, IRedirectService redirectService, IOptions<GclSettings> gclSettings, IObjectsService objectsService)
         {
+            logger.LogDebug("Invoked RedirectMiddleWare");
+            
             this.gclSettings = gclSettings.Value;
             
             // TODO: Use UriBuilder instead of string, for better performance and easier manipulation of the URL?

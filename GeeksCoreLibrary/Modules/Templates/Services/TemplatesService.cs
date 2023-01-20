@@ -1471,6 +1471,101 @@ AND template.url_regex <> ''";
         }
 
         /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            var results = new List<PageWidgetModel>();
+            var globalWidgetsQuery = $@"SELECT
+	widget.id,
+	widget.title,
+	IF(languageSpecificHtml.id IS NULL, CONCAT_WS('', genericHtml.`value`, genericHtml.long_value), CONCAT_WS('', languageSpecificHtml.`value`, languageSpecificHtml.long_value)) AS html,
+	IFNULL(location.value, '{(int) Constants.PageWidgetDefaultLocation}') AS location
+FROM {WiserTableNames.WiserItem} AS widget
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS genericHtml ON genericHtml.item_id = widget.id AND genericHtml.`key` = '{Constants.PageWidgetHtmlPropertyName}'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS languageSpecificHtml ON languageSpecificHtml.item_id = widget.id AND languageSpecificHtml.`key` = '{Constants.PageWidgetHtmlPropertyName}' AND languageSpecificHtml.language_code = '{languagesService.CurrentLanguageCode}'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS location ON location.item_id = widget.id AND location.`key` = '{Constants.PageWidgetLocationPropertyName}'
+LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToParent ON linkToParent.item_id = widget.id AND linkToParent.type = {Constants.PageWidgetParentLinkType}
+WHERE widget.entity_type = '{Constants.PageWidgetEntityType}'
+ORDER BY IFNULL(linkToParent.destination_item_id, 0) ASC, IFNULL(linkToParent.ordering, widget.ordering) ASC";
+
+            var dataTable = await databaseConnection.GetAsync(globalWidgetsQuery);
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                var html = dataRow.Field<string>("html");
+                if (String.IsNullOrWhiteSpace(html))
+                {
+                    // No point in adding empty widgets to the page.
+                    continue;
+                }
+
+                results.Add(new PageWidgetModel
+                {
+                    Location = (PageWidgetLocations) Convert.ToInt32(dataRow["location"]),
+                    Html = html
+                });
+            }
+
+            return results;
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            return await GetPageWidgetsAsync(this, templateId, includeGlobalSnippets);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
+        {
+            var results = includeGlobalSnippets ? await templatesService.GetGlobalPageWidgetsAsync() : new List<PageWidgetModel>();
+            
+            if (templateId <= 0)
+            {
+                return results;
+            }
+            
+            var joinPart = "";
+            var whereClause = new List<string> { "template.template_id = ?id", "template.removed = 0" };
+            if (gclSettings.Environment == Environments.Development)
+            {
+                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+            }
+            else
+            {
+                whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
+            }
+
+            databaseConnection.AddParameter("id", templateId);
+            var query = $@"SELECT
+    template.widget_content,
+    template.widget_location
+FROM {WiserTableNames.WiserTemplate} AS template
+{joinPart}
+
+WHERE {String.Join(" AND ", whereClause)}
+LIMIT 1";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count == 0)
+            {
+                return results;
+            }
+
+            var html = dataTable.Rows[0].Field<string>("widget_content");
+            if (String.IsNullOrWhiteSpace(html))
+            {
+                return results;
+            }
+
+            results.Add(new PageWidgetModel
+            {
+                Html = html,
+                Location = (PageWidgetLocations) Convert.ToInt32(dataTable.Rows[0]["widget_location"])
+            });
+            
+            return results;
+        }
+
+        /// <inheritdoc />
         public async Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
         {
             var logRenderingOfComponentsSetting = await objectsService.FindSystemObjectByDomainNameAsync($"log_rendering_of_components_{gclSettings.Environment}");

@@ -23,6 +23,8 @@ namespace GeeksCoreLibrary.Modules.Languages.Middlewares
 
         public async Task Invoke(HttpContext context, IHttpContextAccessor httpContextAccessor, ILanguagesService languagesService)
         {
+            logger.LogDebug("Invoked LanguagesMiddleware");
+            
             this.httpContextAccessor = httpContextAccessor;
             this.languagesService = languagesService;
 

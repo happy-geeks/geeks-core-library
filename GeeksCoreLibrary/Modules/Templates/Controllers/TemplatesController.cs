@@ -201,7 +201,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     return Content(newBodyHtml, "text/html");
                 }
 
-                var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml);
+                var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml, templateId);
 
                 // If a component set the status code to a 4xx status code, then return that actual status code
                 // here too, so the StatusCodePagesWithReExecute middleware can handle the showing of custom error pages.

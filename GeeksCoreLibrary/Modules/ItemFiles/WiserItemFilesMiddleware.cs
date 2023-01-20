@@ -26,6 +26,8 @@ public class WiserItemFilesMiddleware
         /// </summary>
         public async Task Invoke(HttpContext context)
         {
+            logger.LogDebug("Invoked WiserItemFilesMiddleware");
+            
             if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
                 // If this happens, it means that another middleware has already found something and we don't need to do this again.
