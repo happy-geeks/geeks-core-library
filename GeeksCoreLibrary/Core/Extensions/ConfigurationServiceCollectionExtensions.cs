@@ -49,6 +49,8 @@ using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Services;
+using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
+using GeeksCoreLibrary.Modules.DataSelector.Services;
 using GeeksCoreLibrary.Modules.ItemFiles;
 using JetBrains.Annotations;
 using WebMarkupMin.AspNetCore3;
@@ -219,6 +221,15 @@ namespace GeeksCoreLibrary.Core.Extensions
                 services.AddScoped<ITemplatesService, TemplatesService>();
             }
 
+            // Data selector service.
+            if (gclSettings.UseLegacyDataSelector)
+            {
+                services.AddScoped<IDataSelectorsService, LegacyDataSelectorsService>();
+            }
+            else
+            {
+                services.AddScoped<IDataSelectorsService, DataSelectorsService>();
+            }
 
             // Configure automatic scanning of classes for dependency injection.
             services.Scan(scan => scan

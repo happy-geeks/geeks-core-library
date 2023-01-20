@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Net;
-using System.Security.Claims;
+﻿using System.Net;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.DataSelector.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -29,7 +27,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Interfaces
         /// <param name="itemsRequest"></param>
         Task<string> GetQueryAsync(ItemsRequest itemsRequest);
 
-        /// <summary>
+        /*/// <summary>
         /// Will replace request variables in the scopes of the main connection and the other connections.
         /// </summary>
         /// <param name="selector">The <see cref="Models.DataSelector"/> object to update.</param>
@@ -45,7 +43,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Interfaces
         /// Will replace request variables in the given scopes.
         /// </summary>
         /// <param name="scopes">The collection of <see cref="Scope"/> objects to update.</param>
-        void ReplaceVariableValuesInScopes(IEnumerable<Scope> scopes);
+        void ReplaceVariableValuesInScopes(IEnumerable<Scope> scopes);*/
 
         /// <summary>
         /// Executes the data selector query and returns the results as JSON.

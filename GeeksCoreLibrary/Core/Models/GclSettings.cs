@@ -206,6 +206,11 @@ namespace GeeksCoreLibrary.Core.Models
         public bool UseLegacyWiser1TemplateModule { get; set; }
 
         /// <summary>
+        /// Whether to use the older Wiser 1/2 data selector instead of the newer one.
+        /// </summary>
+        public bool UseLegacyDataSelector { get; set; }
+
+        /// <summary>
         /// A list of domain names that are considered to be test domains. E.g.: my-test-domain.com
         /// </summary>
         public string[] TestDomains { get; set; } = Array.Empty<string>();

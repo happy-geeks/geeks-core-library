@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using GeeksCoreLibrary.Modules.DataSelector.Models;
 
 namespace GeeksCoreLibrary.Modules.DataSelector.Helpers;
@@ -14,8 +15,10 @@ public static class FieldHelpers
     /// <param name="fieldIteration">The iteration count of the current field.</param>
     /// <param name="languageCode">Optional: The language code of the value.</param>
     /// <returns>A combination of the field's name and language code.</returns>
-    public static string CreateTableJoinAlias(Field field, IEnumerable<int> joinIterationCounts, int fieldIteration, string languageCode = null)
+    public static string CreateTableJoinAlias(Field field, IEnumerable<ConnectionIterationModel> joinIterationCounts, int fieldIteration, string languageCode = null)
     {
-        return $"item_{String.Join("_", joinIterationCounts)}_detail_{field.FieldName}_{fieldIteration}{(!String.IsNullOrWhiteSpace(languageCode) ? "_" + languageCode : "")}";
+        var iterationsPart = joinIterationCounts == null ? "main" : String.Join("_", joinIterationCounts.Select(it => it.Count));
+        
+        return $"item_{iterationsPart}_detail_{field.FieldName}_{fieldIteration}{(!String.IsNullOrWhiteSpace(languageCode) ? "_" + languageCode : "")}";
     }
 }
