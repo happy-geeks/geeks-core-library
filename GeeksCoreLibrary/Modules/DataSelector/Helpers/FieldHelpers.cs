@@ -12,13 +12,12 @@ public static class FieldHelpers
     /// </summary>
     /// <param name="field">The <see cref="Field"/> object for which this table alias will be created.</param>
     /// <param name="joinIterationCounts">Array containing the current iteration of each level this field's connection has traversed, with the last entry being the iteration of the current connection.</param>
-    /// <param name="fieldIteration">The iteration count of the current field.</param>
     /// <param name="languageCode">Optional: The language code of the value.</param>
     /// <returns>A combination of the field's name and language code.</returns>
-    public static string CreateTableJoinAlias(Field field, IEnumerable<ConnectionIterationModel> joinIterationCounts, int fieldIteration, string languageCode = null)
+    public static string CreateTableJoinAlias(Field field, IEnumerable<ConnectionIterationModel> joinIterationCounts, string languageCode = null)
     {
         var iterationsPart = joinIterationCounts == null ? "main" : String.Join("_", joinIterationCounts.Select(it => it.Count));
         
-        return $"item_{iterationsPart}_detail_{field.FieldName}_{fieldIteration}{(!String.IsNullOrWhiteSpace(languageCode) ? "_" + languageCode : "")}";
+        return $"item_{iterationsPart}_detail_{field.FieldName}{(!String.IsNullOrWhiteSpace(languageCode) ? "_" + languageCode : "")}";
     }
 }

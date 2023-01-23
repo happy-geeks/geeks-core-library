@@ -80,9 +80,13 @@ public class DataSelectorsService : IDataSelectorsService
         var mainFieldQueryParts = await CreateQueryJoinsForConnectionFieldsAsync(mainConnectionRow, null);
         foreach (var fieldQueryPart in mainFieldQueryParts)
         {
-            if (selectQueryBuilder.Length > 0) selectQueryBuilder.Append(", ");
+            if (!String.IsNullOrWhiteSpace(fieldQueryPart.SelectQueryPart))
+            {
+                if (selectQueryBuilder.Length > 0) selectQueryBuilder.Append(", ");
 
-            selectQueryBuilder.Append(fieldQueryPart.SelectQueryPart);
+                selectQueryBuilder.Append(fieldQueryPart.SelectQueryPart);
+            }
+
             if (!String.IsNullOrWhiteSpace(fieldQueryPart.JoinQueryPart))
             {
                 joinQueryBuilder.AppendLine(fieldQueryPart.JoinQueryPart);
@@ -90,7 +94,7 @@ public class DataSelectorsService : IDataSelectorsService
 
             if (!String.IsNullOrWhiteSpace(fieldQueryPart.ScopesQueryPart))
             {
-                whereQueryBuilder.Append($" AND {fieldQueryPart.ScopesQueryPart}");
+                whereQueryBuilder.Append(fieldQueryPart.ScopesQueryPart);
             }
         }
 
@@ -105,12 +109,16 @@ public class DataSelectorsService : IDataSelectorsService
             // Add JOIN parts.
             joinQueryBuilder.Append(queryPart.JoinQueryPart);
 
-            // Add SELECT parts.
+            // Add SELECT, JOIN and WHERE parts for the fields.
             foreach (var fieldQueryPart in queryPart.Fields)
             {
-                if (selectQueryBuilder.Length > 0) selectQueryBuilder.Append(", ");
+                if (!String.IsNullOrWhiteSpace(fieldQueryPart.SelectQueryPart))
+                {
+                    if (selectQueryBuilder.Length > 0) selectQueryBuilder.Append(", ");
 
-                selectQueryBuilder.Append(fieldQueryPart.SelectQueryPart);
+                    selectQueryBuilder.Append(fieldQueryPart.SelectQueryPart);
+                }
+
                 if (!String.IsNullOrWhiteSpace(fieldQueryPart.JoinQueryPart))
                 {
                     joinQueryBuilder.AppendLine(fieldQueryPart.JoinQueryPart);
@@ -118,7 +126,7 @@ public class DataSelectorsService : IDataSelectorsService
 
                 if (!String.IsNullOrWhiteSpace(fieldQueryPart.ScopesQueryPart))
                 {
-                    whereQueryBuilder.Append($" AND {fieldQueryPart.ScopesQueryPart}");
+                    whereQueryBuilder.Append(fieldQueryPart.ScopesQueryPart);
                 }
             }
         }
@@ -250,7 +258,7 @@ public class DataSelectorsService : IDataSelectorsService
                     var sourceColumnName = connectionIsParent ? "id" : "parent_item_id";
                     var destinationColumnName = connectionIsParent ? "parent_item_id" : "id";
 
-                    joinStringBuilder.AppendLine($"{joinPrefix}JOIN `{tablePrefix}{WiserTableNames.WiserItem}` AS `{tableAlias}` ON `{tableAlias}`.`{destinationColumnName}` = `{previousItemTableAlias}`.`{sourceColumnName}`");
+                    joinStringBuilder.AppendLine($"{joinPrefix}JOIN `{tablePrefix}{WiserTableNames.WiserItem}` AS `{tableAlias}` ON `{tableAlias}`.`{destinationColumnName}` = `{previousItemTableAlias}`.`{sourceColumnName}` AND `{tableAlias}`.`entity_type` = {connectionRow.EntityName.ToMySqlSafeValue(true)}");
                 }
                 else
                 {
@@ -258,7 +266,7 @@ public class DataSelectorsService : IDataSelectorsService
                     var destinationColumnName = connectionIsParent ? "item_id" : "destination_item_id";
 
                     joinStringBuilder.AppendLine($"{joinPrefix}JOIN `{linkSettings.DedicatedTablePrefix}{WiserTableNames.WiserItemLink}` AS `{linkTableAlias}` ON `{linkTableAlias}`.`{destinationColumnName}` = `{previousItemTableAlias}`.`id`");
-                    joinStringBuilder.AppendLine($"{joinPrefix}JOIN `{tablePrefix}{WiserTableNames.WiserItem}` AS `{tableAlias}` ON `{tableAlias}`.`id` = `{linkTableAlias}`.`{sourceColumnName}`");
+                    joinStringBuilder.AppendLine($"{joinPrefix}JOIN `{tablePrefix}{WiserTableNames.WiserItem}` AS `{tableAlias}` ON `{tableAlias}`.`id` = `{linkTableAlias}`.`{sourceColumnName}` AND `{tableAlias}`.`entity_type` = {connectionRow.EntityName.ToMySqlSafeValue(true)}");
                 }
 
                 connectionForQuery.JoinQueryPart = joinStringBuilder.ToString();
@@ -299,6 +307,7 @@ public class DataSelectorsService : IDataSelectorsService
         var tablePrefix = await GetTablePrefixForEntityAsync(connectionRow.EntityName);
         var isOptional = connectionRow.Modes.Contains("optional", StringComparer.OrdinalIgnoreCase);
         var joinPrefix = isOptional ? "LEFT " : String.Empty;
+        var iterationCounts = iterations?.Select(it => it.Count).ToArray();
 
         var fieldIteration = 1;
         foreach (var field in finalFields)
@@ -315,13 +324,122 @@ public class DataSelectorsService : IDataSelectorsService
                 ? WiserTableNames.WiserItem
                 : WiserTableNames.WiserItemDetail;
 
+            // Make sure at least one language code is set, even if it's just an empty string.
             var languageCodes = new List<string>(field.LanguageCodes ?? Array.Empty<string>());
             if (languageCodes.Count == 0)
             {
                 languageCodes.Add(String.Empty);
             }
 
-            var iterationCounts = iterations?.Select(it => it.Count).ToArray();
+            // Create a prefix for this iteration, so the data set to JSON converter knows which elements are nested.
+            var iterationPrefix = new StringBuilder();
+            if (iterations != null)
+            {
+                iterationPrefix.Append(String.Join("~", iterations.Where(it => !String.IsNullOrWhiteSpace(it.PreviousEntityName)).Select(it => it.PreviousEntityName)));
+                if (iterationPrefix.Length > 0) iterationPrefix.Append('~');
+                iterationPrefix.Append($"{connectionRow.EntityName}~");
+            }
+
+            if (tableName.Equals(WiserTableNames.WiserItem))
+            {
+                var tableAlias = iterationCounts == null ? "item_main" : $"item_{String.Join("_", iterationCounts)}";
+
+                fieldForQuery.SelectQueryPart = field.FieldName switch
+                {
+                    "itemtitle" => $"`{tableAlias}`.`title` AS `{iterationPrefix}{field.FieldAlias}`",
+                    "idencrypted" => $"`{tableAlias}`.`id` AS `{iterationPrefix}{field.FieldAlias}_encrypt_withdate`",
+                    _ => $"`{tableAlias}`.`{field.FieldName}` AS `{iterationPrefix}{field.FieldAlias}`"
+                };
+            }
+            else
+            {
+                foreach (var tableAlias in languageCodes.Select(languageCode => FieldHelpers.CreateTableJoinAlias(field, iterations, languageCode)))
+                {
+                    fieldForQuery.SelectQueryPart = $"CONCAT_WS('', `{tableAlias}`.`value`, `{tableAlias}`.`long_value`) AS `{iterationPrefix}{field.FieldAlias}`";
+
+                    var joinOn = iterationCounts == null ? "item_main" : $"item_{String.Join("_", iterationCounts)}";
+                    fieldForQuery.JoinQueryPart = $"{joinPrefix}JOIN `{tablePrefix}{tableName}` AS `{tableAlias}` ON `{tableAlias}`.item_id = {joinOn}.id AND `{tableAlias}`.`key` = {field.FieldName.ToMySqlSafeValue(true)}";
+                }
+            }
+
+            // Check if there are scopes specifically for this field.
+            var scopeQuery = new StringBuilder();
+            if (connectionRow.Scopes != null)
+            {
+                foreach (var scope in connectionRow.Scopes)
+                {
+                    if (scope.ScopeRows == null || scope.ScopeRows.Length == 0) continue;
+
+                    var scopeRows = scope.ScopeRows.Where(sr => sr.Key.FieldName.Equals(field.FieldName, StringComparison.OrdinalIgnoreCase)).ToList();
+                    if (scopeRows.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    scopeQuery.Append(" AND (");
+
+                    var first = true;
+                    foreach (var scopeRow in scopeRows)
+                    {
+                        if (!first) scopeQuery.Append(" OR ");
+
+                        first = false;
+
+                        scopeQuery.Append(CreateScopeRowQueryPart(scopeRow, field, iterations));
+                    }
+
+                    scopeQuery.Append(')');
+                }
+            }
+
+            fieldForQuery.ScopesQueryPart = scopeQuery.ToString();
+
+            result.Add(fieldForQuery);
+        }
+
+        // Handle scopes that reference fields that aren't in the selected fields.
+        if (connectionRow.Scopes == null)
+        {
+            return result;
+        }
+
+        var scopeFields = new List<Field>();
+        var connectionRowFields = finalFields.Select(field => field.FieldName).ToList();
+        foreach (var scope in connectionRow.Scopes)
+        {
+            if (scope.ScopeRows == null || scope.ScopeRows.Length == 0) continue;
+
+            foreach (var scopeRow in scope.ScopeRows)
+            {
+                if (!connectionRowFields.Contains(scopeRow.Key.FieldName) && scopeFields.All(field => field.FieldName != scopeRow.Key.FieldName))
+                {
+                    scopeFields.Add(scopeRow.Key);
+                }
+            }
+        }
+
+        // More fields to be added to the list of FieldForQuery objects for any scope that isn't part of the select
+        // fields. This is needed to make sure additional JOINs are created for these scopes, otherwise they'll
+        // reference fields that aren't retrieved.
+        var additionalFields = new List<FieldForQuery>();
+
+        foreach (var field in scopeFields)
+        {
+            var fieldForQuery = new FieldForQuery
+            {
+                Field = field
+            };
+
+            var tableName = field.FieldName.InList("id", "idencrypted", "unique_uuid", "itemtitle", "changed_on", "changed_by")
+                ? WiserTableNames.WiserItem
+                : WiserTableNames.WiserItemDetail;
+
+            var languageCodes = new List<string>(field.LanguageCodes ?? Array.Empty<string>());
+            if (languageCodes.Count == 0)
+            {
+                languageCodes.Add(String.Empty);
+            }
+
             var iterationPrefix = new StringBuilder();
 
             if (iterations != null)
@@ -344,16 +462,15 @@ public class DataSelectorsService : IDataSelectorsService
             }
             else
             {
-                foreach (var tableAlias in languageCodes.Select(languageCode => FieldHelpers.CreateTableJoinAlias(field, iterations, fieldIteration, languageCode)))
+                foreach (var tableAlias in languageCodes.Select(languageCode => FieldHelpers.CreateTableJoinAlias(field, iterations, languageCode)))
                 {
                     fieldForQuery.SelectQueryPart = $"CONCAT_WS('', `{tableAlias}`.`value`, `{tableAlias}`.`long_value`) AS `{iterationPrefix}{field.FieldAlias}`";
 
                     var joinOn = iterationCounts == null ? "item_main" : $"item_{String.Join("_", iterationCounts)}";
-                    fieldForQuery.JoinQueryPart = $"{joinPrefix}JOIN `{tablePrefix}{tableName}` AS `{tableAlias}` ON `{tableAlias}`.item_id = {joinOn}.id";
+                    fieldForQuery.JoinQueryPart = $"{joinPrefix}JOIN `{tablePrefix}{tableName}` AS `{tableAlias}` ON `{tableAlias}`.item_id = {joinOn}.id AND `{tableAlias}`.`key` = {field.FieldName.ToMySqlSafeValue(true)}";
                 }
             }
 
-            // Check if there are scopes specifically for this field.
             var scopeQuery = new StringBuilder();
             if (connectionRow.Scopes != null)
             {
@@ -369,35 +486,14 @@ public class DataSelectorsService : IDataSelectorsService
 
                     scopeQuery.Append(" AND (");
 
+                    var first = true;
                     foreach (var scopeRow in scopeRows)
                     {
-                        if (scopeQuery.Length > 0)
-                        {
-                            scopeQuery.Append(" OR ");
-                        }
+                        if (!first) scopeQuery.Append(" OR ");
 
-                        var op = ConvertOperator(scopeRow.Operator);
-                        if (scopeRow.Value is JArray array)
-                        {
-                            var valueArray = array.ToObject<string[]>() ?? Array.Empty<string>();
+                        first = false;
 
-                            switch (op)
-                            {
-                                case "=":
-                                    scopeQuery.Append($"`{field.FieldAlias}` IN ({String.Join(", ", valueArray.Select(v => v.ToMySqlSafeValue(true)))})");
-                                    break;
-                                case "<>":
-                                    scopeQuery.Append($"`{field.FieldAlias}` NOT IN ({String.Join(", ", valueArray.Select(v => v.ToMySqlSafeValue(true)))})");
-                                    break;
-                                default:
-                                    scopeQuery.Append($"`{field.FieldAlias}` {op} {(valueArray.FirstOrDefault() ?? String.Empty).ToMySqlSafeValue(true)}");
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            scopeQuery.Append($"`{field.FieldAlias}` {op} {Convert.ToString(scopeRow.Value).ToMySqlSafeValue(true)}");
-                        }
+                        scopeQuery.Append(CreateScopeRowQueryPart(scopeRow, field, iterations));
                     }
 
                     scopeQuery.Append(')');
@@ -406,38 +502,62 @@ public class DataSelectorsService : IDataSelectorsService
 
             fieldForQuery.ScopesQueryPart = scopeQuery.ToString();
 
-            result.Add(fieldForQuery);
+            additionalFields.Add(fieldForQuery);
         }
 
-        // Handle scopes that reference fields that aren't in the selected fields.
-        var queryPart = new StringBuilder();
-        if (connectionRow.Scopes != null)
-        {
-            foreach (var scope in connectionRow.Scopes)
-            {
-                if (scope.ScopeRows == null || scope.ScopeRows.Length == 0) continue;
-
-                var connectionRowFields = finalFields.Select(field => field.FieldName);
-
-                var scopeRows = scope.ScopeRows.Where(sr => !connectionRowFields.Contains(sr.Key.FieldName)).ToList();
-                if (scopeRows.Count == 0)
-                {
-                    continue;
-                }
-
-                foreach (var scopeRow in scope.ScopeRows)
-                {
-                    if (queryPart.Length > 0)
-                    {
-                        queryPart.Append(" OR ");
-                    }
-
-                    var op = ConvertOperator(scopeRow.Operator);
-                }
-            }
-        }
+        result.AddRange(additionalFields);
 
         return result;
+    }
+
+    /// <summary>
+    /// Creates the query part for a single scope row.
+    /// </summary>
+    /// <param name="scopeRow">The scope row.</param>
+    /// <param name="field">The field being handled.</param>
+    /// <param name="iterations">The current iteration.</param>
+    /// <returns>The query part for a field as defined by the scope row to be used in the WHERE part of the query.</returns>
+    private static string CreateScopeRowQueryPart(ScopeRow scopeRow, Field field, ConnectionIterationModel[] iterations)
+    {
+        var iterationCounts = iterations?.Select(it => it.Count).ToArray();
+        var scopeQuery = new StringBuilder();
+        
+        // Check which table should be used, wiser_item or wiser_itemdetail.
+        var scopeTableName = field.FieldName.InList("id", "idencrypted", "unique_uuid", "itemtitle", "changed_on", "changed_by")
+            ? WiserTableNames.WiserItem
+            : WiserTableNames.WiserItemDetail;
+        var tableAlias = scopeTableName.Equals(WiserTableNames.WiserItem)
+            ? iterationCounts == null ? "item_main" : $"item_{String.Join("_", iterationCounts)}"
+            : FieldHelpers.CreateTableJoinAlias(scopeRow.Key, iterations);
+        var fieldName = scopeTableName.Equals(WiserTableNames.WiserItem)
+            ? $"`{tableAlias}`.`{field.FieldName}`"
+            : $"CONCAT_WS('', `{tableAlias}`.`value`, `{tableAlias}`.`long_value`)";
+
+        var op = ConvertOperator(scopeRow.Operator);
+
+        if (scopeRow.Value is JArray array)
+        {
+            var valueArray = array.ToObject<string[]>() ?? Array.Empty<string>();
+
+            switch (op)
+            {
+                case "=":
+                    scopeQuery.Append($"{fieldName} IN ({String.Join(", ", valueArray.Select(v => v.ToMySqlSafeValue(true)))})");
+                    break;
+                case "<>":
+                    scopeQuery.Append($"{fieldName} NOT IN ({String.Join(", ", valueArray.Select(v => v.ToMySqlSafeValue(true)))})");
+                    break;
+                default:
+                    scopeQuery.Append($"{fieldName} {op} {(valueArray.FirstOrDefault() ?? String.Empty).ToMySqlSafeValue(true)}");
+                    break;
+            }
+        }
+        else
+        {
+            scopeQuery.Append($"{fieldName} {op} {Convert.ToString(scopeRow.Value).ToMySqlSafeValue(true)}");
+        }
+
+        return scopeQuery.ToString();
     }
 
     /// <summary>
