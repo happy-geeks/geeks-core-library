@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using Renci.SshNet;
 using GeeksCoreLibrary.Modules.Ftps.Interfaces;
 using GeeksCoreLibrary.Modules.Ftps.Models;
 
 namespace GeeksCoreLibrary.Modules.Ftps.Handlers;
 
-public class SftpHandler : IFtpHandler
+public class SftpHandler : IFtpHandler, IScopedService
 {
     private SftpClient client;
 

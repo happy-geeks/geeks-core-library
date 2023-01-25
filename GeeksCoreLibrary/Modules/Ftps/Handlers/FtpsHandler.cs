@@ -2,17 +2,17 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Ftps.Extensions;
 using GeeksCoreLibrary.Modules.Ftps.Interfaces;
 using FluentFTP;
 using FluentFTP.Helpers;
+using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Modules.Ftps.Models;
 
 namespace GeeksCoreLibrary.Modules.Ftps.Handlers;
 
-public class FtpsHandler : IFtpHandler
+public class FtpsHandler : IFtpHandler, IScopedService
 {
     private AsyncFtpClient client;
 
@@ -20,9 +20,9 @@ public class FtpsHandler : IFtpHandler
     public async Task OpenConnectionAsync(FtpSettings ftpSettings)
     {
         client = new AsyncFtpClient(ftpSettings.Host, ftpSettings.User, ftpSettings.Password, ftpSettings.Port);
-        client.EncryptionMode = ftpSettings.EncryptionMode.ConvertToFtpsEncryptionMode();
-        client.ValidateAnyCertificate = ftpSettings.Host.StartsWith("localhost", StringComparison.OrdinalIgnoreCase);
-        client.DataConnectionType = ftpSettings.UsePassive ? FtpDataConnectionType.AutoPassive : FtpDataConnectionType.AutoActive;
+        client.Config.EncryptionMode = ftpSettings.EncryptionMode.ConvertToFtpsEncryptionMode();
+        client.Config.ValidateAnyCertificate = ftpSettings.Host.StartsWith("localhost", StringComparison.OrdinalIgnoreCase);
+        client.Config.DataConnectionType = ftpSettings.UsePassive ? FtpDataConnectionType.AutoPassive : FtpDataConnectionType.AutoActive;
 
         await client.Connect();
     }
