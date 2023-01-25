@@ -2040,7 +2040,7 @@ namespace GeeksCoreLibrary.Components.Account
             // Validate the password with a regex, if we have one.
             if (!String.IsNullOrWhiteSpace(newPassword) && !String.IsNullOrWhiteSpace(Settings.PasswordValidationRegex))
             {
-                var regex = new Regex(Settings.PasswordValidationRegex);
+                var regex = new Regex(Settings.PasswordValidationRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 if (!regex.IsMatch(newPassword))
                 {
                     return ResetOrChangePasswordResults.PasswordNotSecure;

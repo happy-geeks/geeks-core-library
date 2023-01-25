@@ -1067,7 +1067,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             // Strip variables from template if not replaced.
             if (stripNotExistingVariables)
             {
-                var regex = new Regex(@"{[^\]}\s]*}");
+                var regex = new Regex(@"{[^\]}\s]*}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 template = regex.Replace(template, "");
             }
 

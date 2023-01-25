@@ -358,7 +358,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             var userData = await GetUserDataFromCookieAsync();
-            var regex = new Regex(@"\[?\{Account(Wiser2)?_(?<property>.*?)\}\]?");
+            var regex = new Regex(@"\[?\{Account(Wiser2)?_(?<property>.*?)\}\]?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var match = regex.Match(input);
             var replacementsDone = new List<string>();
             while (match.Success)
