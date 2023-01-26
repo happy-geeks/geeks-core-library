@@ -79,15 +79,15 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, bool resetAddedOnDate = false)
         {
-            return await ChangeEntityTypeAsync(this, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck);
+            return await ChangeEntityTypeAsync(this, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck, resetAddedOnDate);
         }
 
         /// <inheritdoc />
-        public async Task<int> ChangeEntityTypeAsync(IWiserItemsService service, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task<int> ChangeEntityTypeAsync(IWiserItemsService service, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, bool resetAddedOnDate = false)
         {
-            return await wiserItemsService.ChangeEntityTypeAsync(service, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck);
+            return await wiserItemsService.ChangeEntityTypeAsync(service, itemId, currentEntityType, newEntityType, username, userId, saveHistory, skipPermissionsCheck, resetAddedOnDate);
         }
 
         /// <inheritdoc />
@@ -159,6 +159,30 @@ namespace GeeksCoreLibrary.Core.Services
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
                     return await wiserItemsService.GetUserModulePermissions(moduleId, userId);
+                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
+        }
+
+        /// <inheritdoc />
+        public async Task<AccessRights> GetUserQueryPermissionsAsync(int queryId, ulong userId)
+        {
+            var cacheKey = $"user_query_permission_{queryId}_{userId}_{databaseConnection.GetDatabaseNameForCaching()}";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
+                    return await wiserItemsService.GetUserQueryPermissionsAsync(queryId, userId);
+                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
+        }
+        
+        /// <inheritdoc />
+        public async Task<AccessRights> GetUserDataSelectorPermissionsAsync(int dataSelectorId, ulong userId)
+        {
+            var cacheKey = $"user_data_selector_permission_{dataSelectorId}_{userId}_{databaseConnection.GetDatabaseNameForCaching()}";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
+                    return await wiserItemsService.GetUserDataSelectorPermissionsAsync(dataSelectorId, userId);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }
 
@@ -481,6 +505,12 @@ namespace GeeksCoreLibrary.Core.Services
         public async Task<string> ReplaceHtmlForViewingAsync(string input)
         {
             return await wiserItemsService.ReplaceHtmlForViewingAsync(input);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceRelativeImagesToAbsoluteAsync(string input, string imagesDomain)
+        {
+            return await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(input, imagesDomain);
         }
 
         /// <inheritdoc />

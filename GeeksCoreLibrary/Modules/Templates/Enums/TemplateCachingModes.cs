@@ -24,6 +24,10 @@
         /// <summary>
         /// Template will be cached based on the full URL, including domain and the query string.
         /// </summary>
-        ServerSideCachingPerHostNameAndQueryString = 5
+        ServerSideCachingPerHostNameAndQueryString = 5,
+        /// <summary>
+        /// Template will be cached based on the cache regex. Every named group in this regex will be added to the cache key. 
+        /// </summary>
+        ServerSideCachingBasedOnUrlRegex = 6
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -9,6 +10,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CM.Text;
+using CM.Text.BusinessMessaging;
+using CM.Text.BusinessMessaging.Model;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -21,24 +24,250 @@ using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using RestSharp;
+using Newtonsoft.Json;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 
 namespace GeeksCoreLibrary.Modules.Communication.Services
 {
+    /// <inheritdoc cref="ICommunicationsService" />
     public class CommunicationsService : ICommunicationsService, IScopedService
     {
         private readonly GclSettings gclSettings;
         private readonly ILogger<CommunicationsService> logger;
         private readonly IWiserItemsService wiserItemsService;
         private readonly IDatabaseConnection databaseConnection;
+        private readonly IDatabaseHelpersService databaseHelpersService;
 
-        public CommunicationsService(IOptions<GclSettings> gclSettings, ILogger<CommunicationsService> logger, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection)
+        /// <summary>
+        /// Creates a new instance of <see cref="CommunicationsService"/>.
+        /// </summary>
+        public CommunicationsService(IOptions<GclSettings> gclSettings, ILogger<CommunicationsService> logger, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
             this.wiserItemsService = wiserItemsService;
             this.databaseConnection = databaseConnection;
+            this.databaseHelpersService = databaseHelpersService;
+        }
+
+        /// <inheritdoc />
+        public async Task<CommunicationSettingsModel> GetSettingsAsync(int id, bool nameOnly = false)
+        {
+            await UpdateCommunicationTableAsync();
+
+            var otherColumns = @", 
+receiver_list,
+receivers_data_selector_id,
+receivers_query_id,
+content_data_selector_id,
+content_query_id,
+settings,
+send_trigger_type,
+trigger_start,
+trigger_end,
+trigger_time,
+trigger_period_value,
+trigger_period_type,
+trigger_week_days,
+trigger_day_of_month,
+last_processed,
+added_by,
+added_on,
+changed_by,
+changed_on";
+
+            var query = $@"SELECT
+    id,
+    name
+    {(nameOnly ? "" : otherColumns)}
+FROM {WiserTableNames.WiserCommunication}
+WHERE id = ?id";
+
+            databaseConnection.AddParameter("id", id);
+            var dataTable = await databaseConnection.GetAsync(query);
+            return dataTable.Rows.Count == 0 ? null : DataRowToCommunicationSettingsModel(dataTable.Rows[0], nameOnly);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<CommunicationSettingsModel>> GetSettingsAsync(CommunicationTypes? type = null, bool namesOnly = false)
+        {
+            await UpdateCommunicationTableAsync();
+
+            var whereClause = "";
+            if (type.HasValue)
+            {
+                whereClause = $"WHERE JSON_CONTAINS(JSON_EXTRACT(settings, '$[*].Type'), '{(int)type}')";
+            }
+
+            var otherColumns = @", 
+receiver_list,
+receivers_data_selector_id,
+receivers_query_id,
+content_data_selector_id,
+content_query_id,
+settings,
+send_trigger_type,
+trigger_start,
+trigger_end,
+trigger_time,
+trigger_period_value,
+trigger_period_type,
+trigger_week_days,
+trigger_day_of_month,
+last_processed,
+added_by,
+added_on,
+changed_by,
+changed_on";
+            
+            var query = $@"SELECT
+    id,
+    name
+    {(namesOnly ? "" : otherColumns)}
+FROM {WiserTableNames.WiserCommunication}
+{whereClause}
+ORDER BY name ASC";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            var results = dataTable.Rows.Cast<DataRow>().Select(dataRow => DataRowToCommunicationSettingsModel(dataRow, namesOnly));
+            return results.ToList();
+        }
+
+        /// <inheritdoc />
+        public async Task<CommunicationSettingsModel> SaveSettingsAsync(CommunicationSettingsModel settings, string username = "GCL")
+        {
+            await UpdateCommunicationTableAsync();
+
+            if (settings.SendTriggerType == SendTriggerTypes.Direct)
+            {
+                settings.TriggerStart = DateTime.Now;
+            }
+            
+            databaseConnection.AddParameter("username", username);
+            databaseConnection.AddParameter("id", settings.Id);
+            databaseConnection.AddParameter("name", settings.Name);
+            databaseConnection.AddParameter("receivers_data_selector_id", settings.ReceiversDataSelectorId);
+            databaseConnection.AddParameter("receivers_query_id", settings.ReceiversQueryId);
+            databaseConnection.AddParameter("content_data_selector_id", settings.ContentDataSelectorId);
+            databaseConnection.AddParameter("content_query_id", settings.ContentQueryId);
+            databaseConnection.AddParameter("receiver_list", String.Join(";", settings.ReceiversList));
+            databaseConnection.AddParameter("settings", JsonConvert.SerializeObject(settings.Settings));
+            databaseConnection.AddParameter("send_trigger_type", settings.SendTriggerType.ToString().ToLowerInvariant());
+            databaseConnection.AddParameter("trigger_start", settings.TriggerStart);
+            databaseConnection.AddParameter("trigger_end", settings.TriggerEnd);
+            databaseConnection.AddParameter("trigger_time", settings.TriggerTime);
+            databaseConnection.AddParameter("trigger_period_value", settings.TriggerPeriodValue);
+            databaseConnection.AddParameter("trigger_period_type", settings.TriggerPeriodType?.ToString().ToLowerInvariant());
+            databaseConnection.AddParameter("trigger_week_days", (int?)settings.TriggerWeekDays ?? 0);
+            databaseConnection.AddParameter(settings.Id <= 0 ? "added_on" : "changed_on", DateTime.Now);
+            databaseConnection.AddParameter(settings.Id <= 0 ? "added_by" : "changed_by", username);
+
+            var queryPrefix = "SET @_username = ?username; ";
+            if (settings.Id <= 0)
+            {
+                // Generate empty last processed list, because the WTS needs that.
+                settings.LastProcessed = new List<LastProcessedModel>();
+                foreach (var setting in settings.Settings)
+                {
+                    settings.LastProcessed.Add(new LastProcessedModel { Type = setting.Type });
+                }
+                
+                databaseConnection.AddParameter("last_processed", JsonConvert.SerializeObject(settings.LastProcessed));
+
+                var query = $@"{queryPrefix}
+INSERT INTO {WiserTableNames.WiserCommunication}
+(
+    name,
+    receiver_list,
+    receivers_data_selector_id,
+    receivers_query_id,
+    content_data_selector_id,
+    content_query_id,
+    settings,
+    send_trigger_type,
+    trigger_start,
+    trigger_end,
+    trigger_time,
+    trigger_period_value,
+    trigger_period_type,
+    trigger_week_days,
+    last_processed,
+    added_on,
+    added_by
+)
+VALUES
+(
+    ?name,
+    ?receiver_list,
+    ?receivers_data_selector_id,
+    ?receivers_query_id,
+    ?content_data_selector_id,
+    ?content_query_id,
+    ?settings,
+    ?send_trigger_type,
+    ?trigger_start,
+    ?trigger_end,
+    ?trigger_time,
+    ?trigger_period_value,
+    ?trigger_period_type,
+    ?trigger_week_days,
+    ?last_processed,
+    ?added_on,
+    ?added_by
+)";
+
+                settings.Id = (int)await databaseConnection.InsertRecordAsync(query);
+            }
+            else
+            {
+                var query = $@"{queryPrefix}
+UPDATE {WiserTableNames.WiserCommunication}
+SET name = ?name,
+    receiver_list = ?receiver_list,
+    receivers_data_selector_id = ?receivers_data_selector_id,
+    receivers_query_id = ?receivers_query_id,
+    content_data_selector_id = ?content_data_selector_id,
+    content_query_id = ?content_query_id,
+    settings = ?settings,
+    send_trigger_type = ?send_trigger_type,
+    trigger_start = ?trigger_start,
+    trigger_end = ?trigger_end,
+    trigger_time = ?trigger_time,
+    trigger_period_value = ?trigger_period_value,
+    trigger_period_type = ?trigger_period_type,
+    trigger_week_days = ?trigger_week_days,
+    changed_on = ?changed_on,
+    changed_by = ?changed_by
+WHERE id = ?id";
+
+                await databaseConnection.ExecuteAsync(query);
+            }
+
+            return settings;
+        }
+
+        /// <inheritdoc />
+        public async Task DeleteSettingsAsync(int id, string username = "GCL")
+        {
+            await UpdateCommunicationTableAsync();
+            
+            databaseConnection.AddParameter("id", id);
+            databaseConnection.AddParameter("username", username);
+            var query = $"SET @_username = ?username; DELETE FROM {WiserTableNames.WiserCommunication} WHERE id = ?id";
+            await databaseConnection.ExecuteAsync(query);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> CommunicationExistsAsync(int id)
+        {
+            await UpdateCommunicationTableAsync();
+            
+            databaseConnection.AddParameter("id", id);
+            var query = $"SELECT NULL FROM {WiserTableNames.WiserCommunication} WHERE id = ?id";
+            var dataTable = await databaseConnection.GetAsync(query);
+            return dataTable.Rows.Count > 0;
         }
 
         /// <inheritdoc />
@@ -478,7 +707,99 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
         private async Task SendCmSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
         {
             var apiKey = Guid.Parse(smsSettings.ProviderId);
-            
+            if (receiverPhoneNumber.StartsWith("+"))
+            {
+                // Phone number looks something like "+31612345678".
+                receiverPhoneNumber = receiverPhoneNumber.Substring(1).Insert(0, "00");
+            }
+            else if (!receiverPhoneNumber.StartsWith("00"))
+            {
+                throw new ArgumentException("Phone number is missing the country code.");
+            }
+
+            // Now "sanitize" the phone number by removing all non-digit characters.
+            receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+            var cmConnection = new TextClient(apiKey);
+            var senderName = communication.SenderName ?? smsSettings.SenderName;
+            if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+            {
+                senderName = senderName.Substring(0, 17);
+            }
+            else if (senderName.Length > 11)
+            {
+                senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+            }
+
+            var response = await cmConnection.SendMessageAsync(communication.Content, senderName, new[] {receiverPhoneNumber}, null);
+            if (response.statusCode == TextClientStatusCode.Ok)
+            {
+                return;
+            }
+
+            // If request was not success throw the status message as an exception.
+            throw new Exception(response.statusMessage);
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
+        {
+            var receivers = new List<CommunicationReceiverModel>();
+            var receiverAddresses = receiver.Split(';');
+            foreach (var receiverAddress in receiverAddresses)
+            {
+                var receiverModel = new CommunicationReceiverModel { Address = receiverAddress };
+                receivers.Add(receiverModel);
+            }
+
+            await SendWhatsAppAsync(receivers, body, sender, senderName, sendDate, attachments);
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
+        {
+            await SendWhatsAppAsync(new SingleCommunicationModel()
+            {
+                Receivers = receivers,
+                Content = body,
+                Sender = sender,
+                SenderName = senderName,
+                SendDate = sendDate,
+                AttachmentUrls = attachments
+
+            });
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppAsync(SingleCommunicationModel communication)
+        {
+            communication.Id = 0;
+            communication.Type = CommunicationTypes.WhatsApp;
+            communication.Subject ??= "";
+            await AddOrUpdateSingleCommunicationAsync(communication);
+        }
+
+        /// <inheritdoc />
+        public async Task SendWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings)
+        {
+            foreach (var receiver in communication.Receivers)
+            {
+                switch (smsSettings.Provider)
+                {
+                    case SmsServiceProviders.Cm:
+                        await SendCmWhatsAppDirectlyAsync(communication, smsSettings, receiver.Address);
+                        break;
+                    case SmsServiceProviders.Meta:
+                        await SendMetaWhatsAppDirectlyAsync(communication, smsSettings, receiver.Address);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(smsSettings.Provider), smsSettings.Provider.ToString());
+                }
+            }
+        }
+
+        private async Task SendCmWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
+        {
+            var apiKey = Guid.Parse(smsSettings.ProviderId);
             if (receiverPhoneNumber.StartsWith("+"))
             {
                 // Phone number looks something like "+31612345678".
@@ -493,7 +814,57 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
             receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
 
             var cmConnection = new TextClient(apiKey);
-            
+
+            var senderName = communication.SenderName ?? smsSettings.SenderName;
+            if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+            {
+                senderName = senderName.Substring(0, 17);
+            }
+            else if (senderName.Length > 11)
+            {
+                senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+            }
+            var builder = new MessageBuilder(communication.Content, senderName, new[] { receiverPhoneNumber });
+            builder.WithAllowedChannels(Channel.WhatsApp);
+            var message = builder.Build();
+
+            var response = await cmConnection.SendMessageAsync(message);
+
+            if (response.statusCode == TextClientStatusCode.Ok)
+            {
+                return;
+            }
+
+            // If request was not success throw the status message as an exception.
+            throw new Exception(response.statusMessage);
+        }
+    
+        private async Task SendMetaWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
+        {    
+            var apiToken = smsSettings.ProviderId;
+            var phoneNumberId = smsSettings.PhoneNumberId;
+            var resource = $"https://graph.facebook.com/v14.0/{phoneNumberId}/messages";
+
+            if (receiverPhoneNumber.StartsWith("+") || receiverPhoneNumber.StartsWith("00"))
+            {
+                if (receiverPhoneNumber.StartsWith("00"))
+                {
+                    // Phone number looks something like "0031612345678".
+                    receiverPhoneNumber = receiverPhoneNumber.Remove(0, 1).Remove(0, 1);
+                }
+                else
+                {
+                    // Phone number looks something like "+31612345678".
+                    receiverPhoneNumber = receiverPhoneNumber.Remove(0, 1);
+                }
+            }
+            else if (!receiverPhoneNumber.StartsWith("00"))
+            {
+            throw new ArgumentException("Phone number is missing the country code.");
+            }
+
+            // Now "sanitize" the phone number by removing all non-digit characters.
+            receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
             var senderName = communication.SenderName ?? smsSettings.SenderName;
             if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
             {
@@ -504,15 +875,201 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
                 senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
             }
 
-            var response = await cmConnection.SendMessageAsync(communication.Content, senderName, new[] {receiverPhoneNumber}, null);
-
-            if (response.statusCode == TextClientStatusCode.Ok)
+            if (String.IsNullOrEmpty(communication.Content))
             {
                 return;
             }
+            else
+            {
+                var metaConnection = new RestClient();
+                var request = new RestRequest(resource, Method.Post);
+                request.AddHeader("Authorization", $"Bearer {apiToken}");
+               
+                request.AddJsonBody(new WhatsAppSendMessageRequestModel
+                {
+                    MessagingProduct = "whatsapp",
+                    RecipientType = "individual",
+                    Receiver = receiverPhoneNumber,
+                    TypeMessage = "text",
+                    Body = new WhatsappBodyContentModel
+                    {
+                        PreviewUrl = false,
+                        BodyContent = communication.Content
+                    }
+                });
 
-            // If request was not success throw the status message as an exception.
-            throw new Exception(response.statusMessage);
+                var response = await metaConnection.ExecuteAsync(request);
+
+                foreach (var url in communication.AttachmentUrls)
+                {
+                    var typeUrl = "";
+                    switch (url)
+                    {
+                        case string a when a.Contains(".jpeg"):
+                        case string b when b.Contains(".png"):
+                        case string c when c.Contains(".jpg"):
+                            typeUrl = "image";
+                            break;
+                        case string d when d.Contains(".pdf"):
+                        case string e when e.Contains(".csv"):
+                        case string f when f.Contains(".txt"):
+                        case string g when g.Contains(".xls"):
+                        case string h when h.Contains(".xlsx"):
+                        case string i when i.Contains(".doc"):
+                        case string j when j.Contains(".docx"):
+                        case string k when k.Contains(".pptx"):
+                        case string l when l.Contains(".ppt"):
+                        case string m when m.Contains(".xml"):
+                            typeUrl = "document";
+                            break;
+                        case string n when n.Contains(".mp3"):
+                            typeUrl = "audio";
+                            break;
+                        case string o when o.Contains(".mp4"):
+                            typeUrl = "video";
+                            break;
+                    }
+
+                    if (!String.IsNullOrEmpty(typeUrl))
+                    {
+                        request = new RestRequest(resource, Method.Post);
+                        request.AddHeader("Authorization", $"Bearer {apiToken}");
+                        request.AddJsonBody(new WhatsAppSendMessageRequestModel
+                        {
+                            MessagingProduct = "whatsapp",
+                            RecipientType = "individual",
+                            Receiver = receiverPhoneNumber,
+                            TypeMessage = typeUrl,
+                            TypeUrlImage = typeUrl != "image" ? null : new AttachmentUrlsModel
+                            { Url = url },
+                            TypeUrlDocument = typeUrl != "document" ? null : new AttachmentUrlsModel
+                            { Url = url },
+                            TypeUrlAudio = typeUrl != "audio" ? null : new AttachmentUrlsModel
+                            { Url = url},
+                            TypeUrlVideo = typeUrl != "video" ? null : new AttachmentUrlsModel
+                            { Url = url }
+                        });
+                        
+                        response = await metaConnection.ExecuteAsync(request);
+                    }
+
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        return;
+                    }
+
+                    // If request (image/document/audio/video) was not success throw the status message as an exception.
+                    throw new Exception($"image/document/audio/video has not been sent... {response.ErrorMessage}");
+                }
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    return;
+                }
+                //If request (communication.Content) was not success throw the status message as an exception.
+                throw new Exception($"message content has not been sent... {response.ErrorMessage}");
+             }
+        }
+
+        /// <summary>
+        /// Update the wiser_communication table with any new columns or indexes that might have been added at some point.
+        /// In october 2022 we overhauled the entire structure of the table, which the <see cref="IDatabaseHelpersService"/> cannot handle, so we rename the old table as backup and then recreate it.
+        /// </summary>
+        private async Task UpdateCommunicationTableAsync()
+        {
+            var tableChanges = await databaseHelpersService.GetLastTableUpdatesAsync(databaseConnection.ConnectedDatabase);
+            if ((!tableChanges.ContainsKey(WiserTableNames.WiserCommunication) || tableChanges[WiserTableNames.WiserCommunication] < new DateTime(2022, 10, 18)) && await databaseHelpersService.TableExistsAsync(WiserTableNames.WiserCommunication))
+            {
+                // We changed the table wiser_communication a lot and the databaseHelpersService does not support renaming columns.
+                // However, the old table was not used anywhere on production, so we rename the old table and then re-create it with the new structure.
+                await databaseHelpersService.RenameTableAsync(WiserTableNames.WiserCommunication, $"_{WiserTableNames.WiserCommunication}_backup_{DateTime.Now:yyyy-MM-dd}");
+            }
+
+            await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {WiserTableNames.WiserCommunication});
+        }
+
+        /// <summary>
+        /// Converts a <see cref="DataRow"/>, with data from the table wiser_communication, to a <see cref="CommunicationSettingsModel"/>.
+        /// </summary>
+        /// <param name="dataRow">The <see cref="DataRow"/>.</param>
+        /// <param name="nameOnly">Optional: Whether to only get the name (and ID) or everything.</param>
+        /// <returns>The <see cref="CommunicationSettingsModel"/>.</returns>
+        private CommunicationSettingsModel DataRowToCommunicationSettingsModel(DataRow dataRow, bool nameOnly = false)
+        {
+            // All simple properties.
+            var result = new CommunicationSettingsModel
+            {
+                Id = dataRow.Field<int>("id"),
+                Name = dataRow.Field<string>("name")
+            };
+
+            if (nameOnly)
+            {
+                return result;
+            }
+
+            result.ReceiversDataSelectorId = dataRow.Field<int>("receivers_data_selector_id");
+            result.ReceiversQueryId = dataRow.Field<int>("receivers_query_id");
+            result.ContentDataSelectorId = dataRow.Field<int>("content_data_selector_id");
+            result.ContentQueryId = dataRow.Field<int>("content_query_id");
+            result.TriggerStart = dataRow.Field<DateTime?>("trigger_start");
+            result.TriggerEnd = dataRow.Field<DateTime?>("trigger_end");
+            result.TriggerTime = dataRow.Field<TimeSpan?>("trigger_time");
+            result.TriggerPeriodValue = Convert.ToInt32(dataRow["trigger_period_value"]);
+            result.TriggerWeekDays = dataRow.Field<TriggerWeekDays>("trigger_week_days");
+            result.TriggerDayOfMonth = Convert.ToInt32(dataRow["trigger_day_of_month"]);
+            result.AddedBy = dataRow.Field<string>("added_by");
+            result.AddedOn = dataRow.Field<DateTime>("added_on");
+            result.ChangedBy = dataRow.Field<string>("changed_by");
+            result.ChangedOn = dataRow.Field<DateTime?>("changed_on");
+
+            if (Enum.TryParse(typeof(TriggerPeriodTypes), dataRow.Field<string>("trigger_period_type"), true, out var triggerPeriodType) && triggerPeriodType != null)
+            {
+                result.TriggerPeriodType = (TriggerPeriodTypes) triggerPeriodType;
+            }
+
+            if (Enum.TryParse(typeof(SendTriggerTypes), dataRow.Field<string>("send_trigger_type"), true, out var sendTriggerType) && sendTriggerType != null)
+            {
+                result.SendTriggerType = (SendTriggerTypes) sendTriggerType;
+            }
+
+            // Settings are saved as JSON in database, so deserialize them here.
+            var settings = dataRow.Field<string>("settings");
+            try
+            {
+                if (!String.IsNullOrWhiteSpace(settings))
+                {
+                    result.Settings = JsonConvert.DeserializeObject<List<CommunicationContentSettingsModel>>(settings);
+                }
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, $"An error occurred while trying to deserialize the settings of communication with ID '{result.Id}'");
+            }
+
+            // Last processed is saved as JSON in database, so deserialize them here.
+            var lastProcessed = dataRow.Field<string>("last_processed");
+            try
+            {
+                if (!String.IsNullOrWhiteSpace(lastProcessed))
+                {
+                    result.LastProcessed = JsonConvert.DeserializeObject<List<LastProcessedModel>>(lastProcessed);
+                }
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, $"An error occurred while trying to deserialize the last processed data of communication with ID '{result.Id}'");
+            }
+
+            // Receivers are saved semicolon seperated in database, convert that to a list of strings.
+            var receivers = dataRow.Field<string>("receiver_list");
+            if (!String.IsNullOrWhiteSpace(receivers))
+            {
+                result.ReceiversList = receivers.Split(";", StringSplitOptions.TrimEntries & StringSplitOptions.RemoveEmptyEntries).ToList();
+            }
+
+            return result;
         }
     }
 }
+

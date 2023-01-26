@@ -1,4 +1,5 @@
-﻿using GeeksCoreLibrary.Modules.Seo.Models;
+﻿using System.Collections.Generic;
+using GeeksCoreLibrary.Modules.Seo.Models;
 using GeeksCoreLibrary.Modules.Templates.Models;
 
 namespace GeeksCoreLibrary.Modules.Templates.ViewModels
@@ -29,5 +30,11 @@ namespace GeeksCoreLibrary.Modules.Templates.ViewModels
         /// Gets or sets Google Analytics scripts for the web site.
         /// </summary>
         public PageGoogleAnalyticsModel GoogleAnalytics { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets any HTML widgets that should be added to this page.
+        /// These should be added in the same order as they are in this list.
+        /// </summary>
+        public List<PageWidgetModel> Widgets { get; set; } = new();
     }
 }

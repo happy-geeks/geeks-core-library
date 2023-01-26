@@ -4,7 +4,6 @@
     {
         Email,
         Sms,
-        WhatsApp,
-        Pdf
+        WhatsApp
     }
 }

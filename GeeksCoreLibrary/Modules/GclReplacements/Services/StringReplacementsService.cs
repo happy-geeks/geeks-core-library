@@ -53,8 +53,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             formatters = typeof(StringReplacementsExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public);
 
             // Create some regular expressions so they can be re-used instead of creating them each time the function is called.
-            formatterRegex = new Regex(@"(?<methodname>[^\(\)]+)(?:\((?<parameters>[^\)]+)\))?");
-            logicSnippetRegex = new Regex(@"\[if\((?<left>((?!\[if\().)*?)(?<op>=|!|<|>|&lt;|&gt;|%)(?<right>((?!\[if\().)*?)\)\](?<text>((?!\[if\().)*?)\[endif\]", RegexOptions.Singleline);
+            formatterRegex = new Regex(@"(?<methodname>[^\(\)]+)(?:\((?<parameters>[^\)]+)\))?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+            logicSnippetRegex = new Regex(@"\[if\((?<left>((?!\[if\().)*?)(?<op>=|!|<|>|&lt;|&gt;|%)(?<right>((?!\[if\().)*?)\)\](?<text>((?!\[if\().)*?)\[endif\]", RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
         }
 
         /// <inheritdoc />
@@ -66,7 +66,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             }
 
             // Reusable variables.
-            Regex r;
+            Regex regex;
             var dataDictionary = new Dictionary<string, object>();
 
             // Defaults.
@@ -87,8 +87,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             {
                 dataDictionary.Clear();
 
-                r = new Regex(@"\[SO{([^\}]+)}]");
-                foreach (Match m in r.Matches(input))
+                regex = new Regex(@"\[SO{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                foreach (Match m in regex.Matches(input))
                 {
                     var value = m.Groups[1].Value;
                     if (dataDictionary.ContainsKey(value))
@@ -128,8 +128,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 {
                     dataDictionary.Clear();
 
-                    r = new Regex(@"\[T{([^\}]+)}]");
-                    foreach (Match m in r.Matches(input))
+                    regex = new Regex(@"\[T{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                    foreach (Match m in regex.Matches(input))
                     {
                         var value = m.Groups[1].Value;
                         if (dataDictionary.ContainsKey(value))
@@ -155,8 +155,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         objectsTypeNumber = -100;
                     }
 
-                    r = new Regex(@"\[O{([^\}]+)}]");
-                    foreach (Match m in r.Matches(input))
+                    regex = new Regex(@"\[O{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                    foreach (Match m in regex.Matches(input))
                     {
                         var value = m.Groups[1].Value;
                         if (dataDictionary.ContainsKey(value))
@@ -324,6 +324,48 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 dataDictionary.Add(item, Encoding.UTF8.GetString(rawValue));
             }
             return DoReplacements(input, dataDictionary, forQuery: forQuery);
+        }
+
+        /// <inheritdoc />
+        public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true)
+        {
+            if (replaceData == null)
+            {
+                return input;
+            }
+            
+            var output = input;
+            var dataDictionary = new Dictionary<string, object>(caseSensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
+            // Get property values from the current level to use for replacements.
+            foreach (JProperty item in replaceData)
+            {
+                if (item.Value.Type != JTokenType.Array && item.Value.Type != JTokenType.Object)
+                {
+                    dataDictionary.Add(item.Name, item.Value);
+                }
+            }
+
+            // Do the replacements for the current level.
+            output = DoReplacements(output, dataDictionary, forQuery: forQuery);
+
+            // Repeat the process for each object in the current level until the bottom is reached.
+            foreach (JProperty item in replaceData)
+            {
+                if (item.Value.Type == JTokenType.Object)
+                {
+                    output = DoReplacements(output, item.Value, forQuery, caseSensitive);
+                }
+                else if (item.Value.Type == JTokenType.Array)
+                {
+                    foreach (JObject subItem in item.Value)
+                    {
+                        output = DoReplacements(output, subItem, forQuery, caseSensitive);
+                    }
+                }
+            }
+
+            return output;
         }
 
         /// <inheritdoc />
@@ -535,7 +577,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 return input;
             }
 
-            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\?([^\]{suffix}\s]*){suffix}");
+            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\~([^\]{suffix}\s]*){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
             foreach (Match match in regex.Matches(input))
             {
                 input = input.Replace(match.Value, match.Groups[2].Value);
@@ -555,7 +597,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             prefix = Regex.Escape(prefix);
             suffix = Regex.Escape(suffix);
 
-            var regex = new Regex($@"{prefix}[^\]{suffix}\s]*{suffix}");
+            var regex = new Regex($@"{prefix}[^\]{suffix}\s]*{suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             return regex.Replace(input, "");
         }
@@ -563,13 +605,13 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string FillStringByClassList(JToken input, string inputString, bool evaluateTemplate = false, string repeatVariableName = "repeat")
         {
-            var output = "";
+            var output = new StringBuilder();
 
             if (input.Type == JTokenType.Array)
             {
                 var array = (JArray)input;
 
-                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.Singleline);
+                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
                 var m = reg.Match(inputString);
 
                 if (m.Success)
@@ -584,31 +626,32 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         subtemplate = subtemplate.Replace("{index}", index.ToString());
                         subtemplate = subtemplate.Replace("{volgnr}", (index + 1).ToString());
                         subtemplate = subtemplate.Replace("{count}", "{~count~}"); // Temporary replace count variable, otherwise this variable is replaced by the FillStringByClass function
-                        output += FillStringByClass(item, subtemplate).Replace("{~count~}", "{count}"); // Set back the count variable
+                        output.Append(FillStringByClass(item, subtemplate, evaluateTemplate).Replace("{~count~}", "{count}")); // Set back the count variable
                         index += 1;
                     }
 
-                    output = m.Groups[1].Value + output + m.Groups[3].Value;
-                    output = output.Replace("{count}", index.ToString());
+                    output.Insert(0, m.Groups[1].Value);
+                    output.Append(m.Groups[3].Value);
+                    output.Replace("{count}", index.ToString());
                 }
                 else
                 {
                     // Use only the first item in the JSON
-                    output = FillStringByClass(input.First, inputString);
+                    output.Append(FillStringByClass(input.First, inputString, evaluateTemplate));
                 }
             }
             else
             {
-                output = FillStringByClass(input, inputString, evaluateTemplate);
+                output.Append(FillStringByClass(input, inputString, evaluateTemplate));
             }
 
-            return output;
+            return output.ToString();
         }
 
         /// <inheritdoc />
         public string FillStringByClass(JToken input, string inputString, bool evaluateTemplate = false)
         {
-            var regexRepeats = new Regex(@"{repeat:([^\.]+?)}");
+            var regexRepeats = new Regex(@"{repeat:([^\.]+?)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             // Handle the repeaters, duplicate (parts of) the template.
             // First get all repeaters in string.
@@ -624,27 +667,31 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     var templates = new StringBuilder();
                     var index = 0;
 
-                    if (GetPropertyValue(input, repeaterName).Type != JTokenType.String)
+                    var propertyValue = GetPropertyValue(input, repeaterName);
+                    if (propertyValue == null)
                     {
-                        var propertyValue = GetPropertyValue(input, repeaterName);
-                        if (propertyValue != null)
+                        continue;
+                    }
+
+                    if (propertyValue.Type != JTokenType.String)
+                    {
+                        foreach (var subObject in propertyValue)
                         {
-                            foreach (var unused in propertyValue)
-                            {
-                                // Prevention of replacing {repeaterName.count} by {repeaterName(0).count}: First replace by {~repeaterName.count~}, on the end replace back
-                                var subTemplateItem = subTemplate;
-                                subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.count}}", "{~" + repeaterName + ".count~}");
-                                subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.index}}", index.ToString());
-                                subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.volgnr}}", (index + 1).ToString());
-                                subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}", $"{{{repeaterName}({index})");
-                                subTemplateItem = subTemplateItem.Replace($"{{repeat:{repeaterName}", $"{{repeat:{repeaterName}({index})");
-                                subTemplateItem = subTemplateItem.Replace($"{{/repeat:{repeaterName}", $"{{/repeat:{repeaterName}({index})");
-                                subTemplateItem = subTemplateItem.Replace($"{{~{repeaterName}.count~}}", $"{{{repeaterName}.count}}");
+                            // Prevention of replacing {repeaterName.count} by {repeaterName(0).count}: First replace by {~repeaterName.count~}, on the end replace back
+                            var subTemplateItem = subTemplate;
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.count}}", "{~" + repeaterName + ".count~}");
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.index}}", index.ToString());
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.volgnr}}", (index + 1).ToString());
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}", $"{{{repeaterName}({index})");
+                            subTemplateItem = subTemplateItem.Replace($"{{repeat:{repeaterName}", $"{{repeat:{repeaterName}({index})");
+                            subTemplateItem = subTemplateItem.Replace($"{{/repeat:{repeaterName}", $"{{/repeat:{repeaterName}({index})");
+                            subTemplateItem = subTemplateItem.Replace($"{{~{repeaterName}.count~}}", $"{{{repeaterName}.count}}");
 
-                                templates.Append(subTemplateItem);
+                            subTemplateItem = FillStringByClassList(subObject, subTemplateItem, evaluateTemplate);
 
-                                index += 1;
-                            }
+                            templates.Append(subTemplateItem);
+
+                            index += 1;
                         }
                     }
 
@@ -679,7 +726,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             // Replace all variables
             // Get matches like: {customer.address.streetline1}
-            var regex = new Regex("{(.[^}]*)}");
+            var regex = new Regex("{(.[^}]*)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
             foreach (Match m in regex.Matches(inputString))
             {
                 var value = GetPropertyValue(input, MakeColumnValueFromVariable(m.Value));
@@ -757,7 +804,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <param name="prefix">The prefix of replacement variables. The default is '{'.</param>
         /// <param name="suffix">The suffix of replacement variables. The default is '}'.</param>
         /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
-        /// <returns></returns>
+        /// <returns>An array of <see cref="StringReplacementVariable"/>.</returns>
         private static StringReplacementVariable[] GetReplacementVariables(string input, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
             if (String.IsNullOrWhiteSpace(input))
@@ -768,7 +815,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             prefix = Regex.Escape(prefix);
             suffix = Regex.Escape(suffix);
 
-            var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}");
+            var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             var result = new List<StringReplacementVariable>();
             foreach (Match match in regex.Matches(input))
@@ -778,14 +825,17 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 var formatters = "";
                 var defaultValue = "";
 
-                //Checks for default values
-                if (fieldName.Contains("?"))
+                // Checks for default values.
+                var defaultValueSeparatorLocation = fieldName.LastIndexOf("~", StringComparison.Ordinal);
+                if (defaultValueSeparatorLocation > 0) // This 0 is on purpose, it wouldn't make sense if the default value separator is the first character of the variable.
                 {
-                    var questionMarkIndexOf = fieldName.LastIndexOf("?");
-                    var colonIndexOf = fieldName.LastIndexOf(":");
-                    var defaultValueWithQuestionMark = colonIndexOf == -1 ? fieldName.Substring(questionMarkIndexOf) : fieldName.Substring(questionMarkIndexOf, colonIndexOf);
-                    defaultValue = defaultValueWithQuestionMark.Remove(0, 1);
-                    fieldName = fieldName.Remove(questionMarkIndexOf, defaultValueWithQuestionMark.Length);
+                    var colonIndexOf = fieldName.LastIndexOf(":", StringComparison.Ordinal);
+                    if (defaultValueSeparatorLocation + 1 > colonIndexOf)
+                    {
+                        var defaultValueWithSeparator = colonIndexOf == -1 ? fieldName.Substring(defaultValueSeparatorLocation) : fieldName.Substring(defaultValueSeparatorLocation, colonIndexOf);
+                        defaultValue = defaultValueWithSeparator.Remove(0, 1);
+                        fieldName = fieldName.Remove(defaultValueSeparatorLocation, defaultValueWithSeparator.Length);
+                    }
                 }
                 
                 // Colons that are escaped with a backslash are temporarily replaced with "~~COLON~~".
@@ -793,7 +843,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
                 // Check if formatters are used. If the field ends with a colon, it's assumed to be part of the field name and not the formatter separator.
                 // No check is performed to see if the formatters are valid, as that would slow things down too much.
-                if (fieldName.Contains(":") && !fieldName.Trim().EndsWith(":"))
+                if (fieldName.Contains(':') && !fieldName.Trim().EndsWith(':'))
                 {
                     var lastColonIndex = fieldName.LastIndexOf(":", StringComparison.Ordinal);
                     formatters = fieldName[lastColonIndex..].TrimStart(':');
@@ -857,7 +907,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             if (propertyName.Contains("("))
             {
-                var regex = new Regex(@"(.*)\((\d.*)\)(.*)");
+                var regex = new Regex(@"(.*)\((\d.*)\)(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
                 var m = regex.Match(propertyName);
                 if (!m.Success)
                 {

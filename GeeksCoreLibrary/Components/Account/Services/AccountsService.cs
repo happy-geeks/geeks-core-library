@@ -30,8 +30,9 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly IDatabaseHelpersService databaseHelpersService;
         private readonly IWiserItemsService wiserItemsService;
         private readonly AccountCmsSettingsModel accountCmsSettingsModel;
+        private readonly IRolesService rolesService;
 
-        public AccountsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<AccountsService> logger, IDatabaseHelpersService databaseHelpersService, IWiserItemsService wiserItemsService, AccountCmsSettingsModel accountCmsSettingsModel)
+        public AccountsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<AccountsService> logger, IDatabaseHelpersService databaseHelpersService, IRolesService rolesService, IWiserItemsService wiserItemsService, AccountCmsSettingsModel accountCmsSettingsModel)
         {
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
@@ -41,6 +42,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             this.databaseHelpersService = databaseHelpersService;
             this.wiserItemsService = wiserItemsService;
             this.accountCmsSettingsModel = accountCmsSettingsModel;
+            this.rolesService = rolesService;
         }
         
         /// <inheritdoc />
@@ -136,7 +138,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                     IpAddress = dataSetFirstRow.Field<string>("ip_address"),
                     UserAgent = dataSetFirstRow.Field<string>("user_agent"),
                     MainUserEntityType = dataSetFirstRow.Field<string>("main_user_entity_type"),
-                    Role = dataSetFirstRow.Field<string>("role"),
+                    Roles = await GetUserRolesAsync(userId),
                     ExtraData = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
                 };
 
@@ -219,7 +221,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
         
         /// <inheritdoc />
-        public async Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account", string role = null)
+        public async Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account")
         {
             // Make sure we always have a valid main user ID. If the user is logging in with a main user, this should be the same as the user ID.
             if (mainUserId == 0)
@@ -243,7 +245,6 @@ namespace GeeksCoreLibrary.Components.Account.Services
             databaseConnection.AddParameter("main_user_id", mainUserId);
             databaseConnection.AddParameter("entity_type", entityTypeToUse);
             databaseConnection.AddParameter("main_user_entity_type", mainUserEntityType);
-            databaseConnection.AddParameter("role", role);
             databaseConnection.AddParameter("ip_address", HttpContextHelpers.GetUserIpAddress(httpContextAccessor.HttpContext));
             databaseConnection.AddParameter("user_agent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor.HttpContext, HeaderNames.UserAgent));
             databaseConnection.AddParameter("expires", DateTime.Now.AddDays(amountOfDaysToRememberCookie));
@@ -380,7 +381,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             var userData = await GetUserDataFromCookieAsync();
-            var regex = new Regex(@"\[?\{Account(Wiser2)?_(?<property>.*?)\}\]?");
+            var regex = new Regex(@"\[?\{Account(Wiser2)?_(?<property>.*?)\}\]?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var match = regex.Match(input);
             var replacementsDone = new List<string>();
             while (match.Success)
@@ -422,6 +423,26 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             return input;
+        }
+
+        /// <inheritdoc />
+        public async Task<List<RoleModel>> GetUserRolesAsync(ulong userId, bool includePermissions = false)
+        {
+            databaseConnection.AddParameter("userId", userId);
+            var rolesData = await databaseConnection.GetAsync($"SELECT role_id FROM `{WiserTableNames.WiserUserRoles}` WHERE user_id = ?userId");
+            if (rolesData.Rows.Count == 0)
+            {
+                return new List<RoleModel>(0);
+            }
+
+            // Turn the retrieved role IDs into a List of integers.
+            var userRoleIds = rolesData.Rows.Cast<DataRow>().Select(dataRow => Convert.ToInt32(dataRow["role_id"])).ToList();
+
+            // Retrieve all rows.
+            var roles = await rolesService.GetRolesAsync(includePermissions);
+
+            // Filter the roles based on the user's role IDs and return a List of the remaining rows.
+            return roles.Where(role => userRoleIds.Contains(role.Id)).ToList();
         }
     }
 }

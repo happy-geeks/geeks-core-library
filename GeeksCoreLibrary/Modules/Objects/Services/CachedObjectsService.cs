@@ -58,10 +58,18 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
 
                 var objects = new Dictionary<string, SettingObject>(StringComparer.OrdinalIgnoreCase);
 
-                await using var reader = await databaseConnection.GetReaderAsync(@"SELECT `key`, `value`, `description`, `typenr` FROM easy_objects WHERE active = 1");
-                while (await reader.ReadAsync())
+                var reader = await databaseConnection.GetReaderAsync(@"SELECT `key`, `value`, `description`, `typenr` FROM easy_objects WHERE active = 1");
+                try
                 {
-                    objects.Add($"{reader.GetStringHandleNull("key")}{reader.GetInt32(reader.GetOrdinal("typenr"))}", reader.ToObjectModel());
+                    while (await reader.ReadAsync())
+                    {
+                        objects.Add($"{reader.GetStringHandleNull("key")}{reader.GetInt32(reader.GetOrdinal("typenr"))}", reader.ToObjectModel());
+                    }
+                }
+                finally
+                {
+                    await reader.CloseAsync();
+                    await reader.DisposeAsync();
                 }
 
                 return objects;

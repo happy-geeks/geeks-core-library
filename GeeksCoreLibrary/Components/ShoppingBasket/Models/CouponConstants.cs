@@ -5,6 +5,7 @@
     /// </summary>
     public static class CouponConstants
     {
+        public const string Code = "code";
         public const string DiscountPercentageKey = "discountpercentage";
         public const string DiscountAmountKey = "discountamount";
         public const string MaxUseCountKey = "maxusecount";
@@ -15,6 +16,7 @@
         public const string FreeShippingCostsKey = "freeshippingcosts";
         public const string ValidFromKey = "validfrom";
         public const string ValidUntilKey = "validuntil";
+        public const string BusinessToBusinessKey = "isb2b";
         public const string DomainKey = "domain";
     }
 }

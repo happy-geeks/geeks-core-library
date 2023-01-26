@@ -4,6 +4,7 @@ using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -16,7 +17,6 @@ using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Models;
 using GeeksCoreLibrary.Modules.Exports.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
-using GeeksCoreLibrary.Modules.GclConverters.Models;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -204,6 +204,10 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     if (!String.IsNullOrWhiteSpace(itemsRequest.Selector?.Main?.EntityName) && itemsRequest.Selector.Main.EntityName.Equals(entityType, StringComparison.OrdinalIgnoreCase))
                     {
                         mainEntityTablePrefix = tablePrefix;
+                        if (!String.IsNullOrWhiteSpace(mainEntityTablePrefix) && !mainEntityTablePrefix.EndsWith("_"))
+                        {
+                            mainEntityTablePrefix = $"{mainEntityTablePrefix}_";
+                        }
                     }
                 }
             }
@@ -317,180 +321,207 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             {
                 foreach (var field in itemsRequest.FieldsInternal)
                 {
-                    if (field.FieldName == "idencrypted")
+                    var languageCodes = new List<string>();
+                    if (field.LanguageCodes != null && field.LanguageCodes.Any())
                     {
-                        if (field.TableAliasPrefix == "idv_")
+                        languageCodes.AddRange(field.LanguageCodes);
+                    }
+                    else if (!String.IsNullOrWhiteSpace(itemsRequest.LanguageCode))
+                    {
+                        languageCodes.Add(itemsRequest.LanguageCode);
+                    }
+
+                    // At least entry is required, so if no language codes are used at all, simply add an empty string as the only value.
+                    if (languageCodes.Count == 0)
+                    {
+                        languageCodes.Add(String.Empty);
+                    }
+
+                    // If multiple language codes are used, the table alias will include the language code to make the table alias unique.
+                    var hasMultipleLanguages = languageCodes.Count > 1;
+                    foreach (var languageCode in languageCodes)
+                    {
+                        // Create unique table alias. Remove any backticks, as they could potentially allow SQL injections.
+                        var fieldName = field.FieldName.Replace("`", "");
+                        var selectAlias = hasMultipleLanguages ? $"{field.SelectAlias.Replace("`", "")}_{languageCode.Replace("`", "")}" : field.SelectAlias.Replace("`", "");
+                        var fieldAlias = hasMultipleLanguages ? $"{field.FieldAlias.Replace("`", "")}_{languageCode.Replace("`", "")}" : field.FieldAlias.Replace("`", "");
+                        var tableAlias = hasMultipleLanguages ? $"{field.TableAlias.Replace("`", "")}_{languageCode.Replace("`", "")}" : field.TableAlias.Replace("`", "");
+                        var tableAliasPrefix = field.TableAliasPrefix.Replace("`", "");
+
+                        if (fieldName == "idencrypted")
                         {
-                            if (String.IsNullOrWhiteSpace(field.FieldAlias))
+                            if (tableAliasPrefix == "idv_")
                             {
-                                field.FieldAlias = "idencrypted_encrypt_withdate";
+                                if (String.IsNullOrWhiteSpace(fieldAlias))
+                                {
+                                    fieldAlias = "idencrypted_encrypt_withdate";
+                                }
+                                else if (!field.FieldAlias.EndsWith("_encrypt_withdate"))
+                                {
+                                    fieldAlias = $"{fieldAlias}_encrypt_withdate";
+                                }
+
+                                queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.id")} AS `{fieldAlias}`");
                             }
-                            else if (!field.FieldAlias.EndsWith("_encrypt_withdate"))
+                            else if (field.FieldFromField)
                             {
-                                field.FieldAlias = $"{field.FieldAlias}_encrypt_withdate";
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAlias}`.id")} AS `{selectAlias}_encrypt_withdate`");
                             }
-                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.id")} AS `{field.FieldAlias}`");
+                            else
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.Replace("idv_", "")}item`.id")} AS `{selectAlias}_encrypt_withdate`");
+                            }
                         }
-                        else if (field.FieldFromField)
+                        else if (field.FieldName == "itemtitle")
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.id")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}_encrypt_withdate`");
+                            if (field.TableAliasPrefix == "idv_")
+                            {
+                                if (String.IsNullOrWhiteSpace(fieldAlias))
+                                {
+                                    fieldAlias = "itemtitle";
+                                }
+
+                                queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.title")} AS `{fieldAlias}`");
+                            }
+                            else if (field.FieldFromField)
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAlias}`.title")} AS `{selectAlias}`");
+                            }
+                            else
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.Replace("idv_", "")}item`.title")} AS `{selectAlias}`");
+                            }
+                        }
+                        else if (field.FieldName == "unique_uuid")
+                        {
+                            if (field.TableAliasPrefix == "idv_")
+                            {
+                                if (String.IsNullOrWhiteSpace(fieldAlias))
+                                {
+                                    fieldAlias = "unique_uuid";
+                                }
+
+                                queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.unique_uuid")} AS `{fieldAlias}`");
+                            }
+                            else if (field.FieldFromField)
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAlias}`.unique_uuid")} AS `{selectAlias}`");
+                            }
+                            else
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.Replace("idv_", "")}item`.unique_uuid")} AS `{selectAlias}`");
+                            }
+                        }
+                        else if (field.FieldName == "parentitemtitle")
+                        {
+                            // TODO: Add possibility to retrieve ParentItemTitle from connected rows, but we'll need to join up a couple of times, or not if we're joining down.
+                            if (String.IsNullOrWhiteSpace(fieldAlias))
+                            {
+                                fieldAlias = "parentitemtitle";
+                            }
+
+                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc2.title")} AS `{fieldAlias}`");
+                            containsParentItemFields = true;
+                        }
+                        else if (field.FieldName == "id")
+                        {
+                            if (field.TableAliasPrefix == "idv_")
+                            {
+                                if (String.IsNullOrWhiteSpace(fieldAlias))
+                                {
+                                    fieldAlias = "id";
+                                }
+
+                                queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.id")} AS `{fieldAlias}`");
+                            }
+                            else if (field.FieldFromField)
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAlias}`.id")} AS `{selectAlias}`");
+                            }
+                            else if (field.IsLinkField)
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix}`.id")} AS `{selectAlias}`");
+                            }
+                            else
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.Replace("idv_", "")}item`.id")} AS `{selectAlias}`");
+                            }
+                        }
+                        else if (field.FieldName == "moduleid")
+                        {
+                            if (field.TableAliasPrefix == "idv_")
+                            {
+                                if (String.IsNullOrWhiteSpace(fieldAlias))
+                                {
+                                    fieldAlias = "moduleid";
+                                }
+
+                                queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.moduleid")} AS `{fieldAlias}`");
+                            }
+                            else if (field.FieldFromField)
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAlias}`.moduleid")} AS `{selectAlias}`");
+                            }
+                            else
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.Replace("idv_", "")}item`.moduleid")} AS `{selectAlias}`");
+                            }
+                        }
+                        else if (field.FieldName.InList("changed_on", "changed_by"))
+                        {
+                            if (field.TableAliasPrefix == "idv_")
+                            {
+                                if (String.IsNullOrWhiteSpace(fieldAlias))
+                                {
+                                    fieldAlias = field.FieldName;
+                                }
+
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"ilc1.`{fieldName}`")} AS `{fieldAlias}`");
+                            }
+                            else if (field.FieldFromField)
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAlias}`.`{fieldName}`")} AS `{selectAlias}`");
+                            }
+                            else
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.Replace("idv_", "")}item`.`{fieldName}`")} AS `{selectAlias}`");
+                            }
+                        }
+                        else if (field.FieldName.Equals("item_ordering"))
+                        {
+                            if (field.TableAliasPrefix == "idv_")
+                            {
+                                if (String.IsNullOrWhiteSpace(fieldAlias))
+                                {
+                                    fieldAlias = "item_ordering";
+                                }
+
+                                queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.ordering")} AS `{fieldAlias}`");
+                            }
+                            else if (field.FieldFromField)
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAlias}`.ordering")} AS `{selectAlias}`");
+                            }
+                            else
+                            {
+                                queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.Replace("idv_", "")}item`.ordering")} AS `{selectAlias}`");
+                            }
+                        }
+                        else if (field.FieldName.Equals("link_ordering"))
+                        {
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.Replace("idv_", "").TrimEnd('_')}`.ordering")} AS `{selectAlias}`");
                         }
                         else
                         {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.id")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}_encrypt_withdate`");
+                            queryBuilder.AppendLine($", {GetFormattedField(field, $"CONCAT_WS('', `{tableAlias}`.`value`, `{tableAlias}`.long_value)")} AS `{selectAlias}`");
                         }
-                    }
-                    else if (field.FieldName == "itemtitle")
-                    {
-                        if (field.TableAliasPrefix == "idv_")
+
+                        if (itemsRequest.JoinDetail.All(f => f.TableAlias != field.TableAlias))
                         {
-                            if (String.IsNullOrWhiteSpace(field.FieldAlias))
+                            if (!String.IsNullOrWhiteSpace(field.JoinOn))
                             {
-                                field.FieldAlias = "itemtitle";
+                                itemsRequest.JoinDetail.Add(field);
                             }
-
-                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.title")} AS `{field.FieldAlias}`");
-                        }
-                        else if (field.FieldFromField)
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.title")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.title")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                    }
-                    else if (field.FieldName == "unique_uuid")
-                    {
-                        if (field.TableAliasPrefix == "idv_")
-                        {
-                            if (String.IsNullOrWhiteSpace(field.FieldAlias))
-                            {
-                                field.FieldAlias = "unique_uuid";
-                            }
-
-                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.unique_uuid")} AS `{field.FieldAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else if (field.FieldFromField)
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.unique_uuid")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.unique_uuid")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                    }
-                    else if (field.FieldName == "parentitemtitle")
-                    {
-                        // TODO: Add possibility to retrieve ParentItemTitle from connected rows, but we'll need to join up a couple of times, or not if we're joining down.
-                        if (String.IsNullOrWhiteSpace(field.FieldAlias))
-                        {
-                            field.FieldAlias = "parentitemtitle";
-                        }
-
-                        queryBuilder.AppendLine($", {GetFormattedField(field, "ilc2.title")} AS `{field.FieldAlias}`");
-                        containsParentItemFields = true;
-                    }
-                    else if (field.FieldName == "id")
-                    {
-                        if (field.TableAliasPrefix == "idv_")
-                        {
-                            if (String.IsNullOrWhiteSpace(field.FieldAlias))
-                            {
-                                field.FieldAlias = "id";
-                            }
-
-                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.id")} AS `{field.FieldAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else if (field.FieldFromField)
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.id")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else if (field.IsLinkField)
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.ToMySqlSafeValue(false)}`.id")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.id")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                    }
-                    else if (field.FieldName == "moduleid")
-                    {
-                        if (field.TableAliasPrefix == "idv_")
-                        {
-                            if (String.IsNullOrWhiteSpace(field.FieldAlias))
-                            {
-                                field.FieldAlias = "moduleid";
-                            }
-
-                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.moduleid")} AS `{field.FieldAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else if (field.FieldFromField)
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.moduleid")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "")}item`.moduleid")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                    }
-                    else if (field.FieldName.InList("changed_on", "changed_by"))
-                    {
-                        if (field.TableAliasPrefix == "idv_")
-                        {
-                            if (String.IsNullOrWhiteSpace(field.FieldAlias))
-                            {
-                                field.FieldAlias = field.FieldName;
-                            }
-
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"ilc1.`{field.FieldName.ToMySqlSafeValue(false)}`")} AS `{field.FieldAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else if (field.FieldFromField)
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.`{field.FieldName.ToMySqlSafeValue(false)}`")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.`{field.FieldName.ToMySqlSafeValue(false)}`")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                    }
-                    else if (field.FieldName.Equals("item_ordering"))
-                    {
-                        if (field.TableAliasPrefix == "idv_")
-                        {
-                            if (String.IsNullOrWhiteSpace(field.FieldAlias))
-                            {
-                                field.FieldAlias = "item_ordering";
-                            }
-
-                            queryBuilder.AppendLine($", {GetFormattedField(field, "ilc1.ordering")} AS `{field.FieldAlias}`");
-                        }
-                        else if (field.FieldFromField)
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAlias.ToMySqlSafeValue(false)}`.ordering")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                        else
-                        {
-                            queryBuilder.AppendLine($", {GetFormattedField(field, $"`{field.TableAliasPrefix.Replace("idv_", "").ToMySqlSafeValue(false)}item`.ordering")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                        }
-                    }
-                    else if (field.FieldName.Equals("link_ordering"))
-                    {
-                        var tableAliasPrefix = field.TableAliasPrefix.Replace("idv_", "").TrimEnd('_');
-
-                        queryBuilder.AppendLine($", {GetFormattedField(field, $"`{tableAliasPrefix.ToMySqlSafeValue(false)}`.ordering")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                    }
-                    else
-                    {
-                        queryBuilder.AppendLine($", {GetFormattedField(field, $"CONCAT_WS('', `{field.TableAlias.ToMySqlSafeValue(false)}`.`value`, `{field.TableAlias.ToMySqlSafeValue(false)}`.long_value)")} AS `{field.SelectAlias.ToMySqlSafeValue(false)}`");
-                    }
-
-                    if (itemsRequest.JoinDetail.All(f => f.TableAlias != field.TableAlias))
-                    {
-                        if (!String.IsNullOrWhiteSpace(field.JoinOn))
-                        {
-                            itemsRequest.JoinDetail.Add(field);
                         }
                     }
                 }
@@ -551,27 +582,47 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             {
                 foreach (var item in itemsRequest.JoinDetail)
                 {
-                    var languageCodePart = "";
-                    if (!String.IsNullOrWhiteSpace(item.LanguageCode))
+                    var languageCodes = new List<string>();
+                    if (item.LanguageCodes != null && item.LanguageCodes.Any())
                     {
-                        languageCodePart = $" AND `{item.TableAlias.ToMySqlSafeValue(false)}`.language_code = {item.LanguageCode.ToMySqlSafeValue(true)}";
+                        languageCodes.AddRange(item.LanguageCodes);
                     }
                     else if (!String.IsNullOrWhiteSpace(itemsRequest.LanguageCode))
                     {
-                        languageCodePart = $" AND `{item.TableAlias.ToMySqlSafeValue(false)}`.language_code = {itemsRequest.LanguageCode.ToMySqlSafeValue(true)}";
+                        languageCodes.Add(itemsRequest.LanguageCode);
                     }
 
-                    if (item.IsLinkField)
+                    // At least entry is required, so if no language codes are used at all, simply add an empty string as the only value.
+                    if (languageCodes.Count == 0)
                     {
-                        queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLinkDetail}` AS `{item.TableAlias.ToMySqlSafeValue(false)}` ON `{item.TableAlias.ToMySqlSafeValue(false)}`.itemlink_id = {item.JoinOn} AND `{item.TableAlias.ToMySqlSafeValue(false)}`.`key` = '{item.FieldName.ToMySqlSafeValue(false)}' {languageCodePart}");
+                        languageCodes.Add(String.Empty);
                     }
-                    else if (item.FieldFromField && item.IsReservedFieldName)
+
+                    // If multiple language codes are used, the table alias will include the language code to make the table alias unique.
+                    var hasMultipleLanguages = languageCodes.Count > 1;
+                    foreach (var languageCode in languageCodes)
                     {
-                        queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItem}` AS `{item.TableAlias}` ON `{item.TableAlias.ToMySqlSafeValue(false)}`.id = {item.JoinOn}");
-                    }
-                    else
-                    {
-                        queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItemDetail}` AS `{item.TableAlias}` ON `{item.TableAlias.ToMySqlSafeValue(false)}`.item_id = {item.JoinOn} AND `{item.TableAlias.ToMySqlSafeValue(false)}`.`key` = '{item.FieldName.ToMySqlSafeValue(false)}' {languageCodePart}");
+                        // Create unique table alias. Remove any backticks, as they could potentially allow SQL injections.
+                        var tableAlias = hasMultipleLanguages ? $"{item.TableAlias.Replace("`", "")}_{languageCode.Replace("`", "")}" : item.TableAlias.Replace("`", "");
+
+                        var languageCodePart = "";
+                        if (!String.IsNullOrWhiteSpace(languageCode))
+                        {
+                            languageCodePart = $" AND `{tableAlias}`.language_code = {languageCode.ToMySqlSafeValue(true)}";
+                        }
+
+                        if (item.IsLinkField)
+                        {
+                            queryBuilder.AppendLine($"LEFT JOIN `{WiserTableNames.WiserItemLinkDetail}` AS `{tableAlias}` ON `{tableAlias}`.itemlink_id = {item.JoinOn} AND `{tableAlias}`.`key` = {item.FieldName.ToMySqlSafeValue(true)} {languageCodePart}");
+                        }
+                        else if (item.FieldFromField && item.IsReservedFieldName)
+                        {
+                            queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItem}` AS `{tableAlias}` ON `{tableAlias}`.id = {item.JoinOn}");
+                        }
+                        else
+                        {
+                            queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItemDetail}` AS `{tableAlias}` ON `{tableAlias}`.item_id = {item.JoinOn} AND `{tableAlias}`.`key` = {item.FieldName.ToMySqlSafeValue(true)} {languageCodePart}");
+                        }
                     }
                 }
             }
@@ -1389,10 +1440,17 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                 foreach (var connectionRow in connection.ConnectionRows)
                 {
+                    var linkSettingsForUp = itemsRequest.LinkTypeSettings.FirstOrDefault(l => l.Type == connectionRow.TypeNumber && l.DestinationEntityType.Equals(connectionRow.EntityName, StringComparison.OrdinalIgnoreCase) && l.SourceEntityType.Equals(itemsRequest.EntityTypes?.Split(',').First(), StringComparison.OrdinalIgnoreCase));
+                    var linkSettingsForDown = itemsRequest.LinkTypeSettings.FirstOrDefault(l => l.Type == connectionRow.TypeNumber && l.DestinationEntityType.Equals(itemsRequest.EntityTypes?.Split(',').First(), StringComparison.OrdinalIgnoreCase) && l.SourceEntityType.Equals(connectionRow.EntityName, StringComparison.OrdinalIgnoreCase));
+                    
                     var tablePrefix = "";
                     if (!String.IsNullOrWhiteSpace(connectionRow.EntityName) && itemsRequest.DedicatedTables.ContainsKey(connectionRow.EntityName))
                     {
                         tablePrefix = itemsRequest.DedicatedTables[connectionRow.EntityName];
+                        if (!String.IsNullOrWhiteSpace(tablePrefix) && !tablePrefix.EndsWith("_"))
+                        {
+                            tablePrefix = $"{tablePrefix}_";
+                        }
                     }
 
                     if (!connectionRow.Equals(connection.ConnectionRows[0]))
@@ -1406,11 +1464,25 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     {
                         if (connectionRow.Modes.Contains("up"))
                         {
-                            queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}`.destination_item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}`.destination_item_id = {String.Join(", ", connectionRow.ItemIds.Single())}");
+                            if (linkSettingsForUp is {UseParentItemId: true})
+                            {
+                                queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}_item`.id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}_item`.id = {connectionRow.ItemIds.Single()}");
+                            }
+                            else
+                            {
+                                queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}`.destination_item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}`.destination_item_id = {connectionRow.ItemIds.Single()}");
+                            }
                         }
                         else
                         {
-                            queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}`.item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}`.item_id = {String.Join(", ", connectionRow.ItemIds.Single())}");
+                            if (linkSettingsForDown is {UseParentItemId: true})
+                            {
+                                queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{previousLevelTableAlias}`.id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{previousLevelTableAlias}`.id = {connectionRow.ItemIds.Single()}");
+                            }
+                            else
+                            {
+                                queryPartLink.Append(connectionRow.ItemIds.Length > 1 ? $"`{tableName}`.item_id IN ({String.Join(", ", connectionRow.ItemIds)})" : $"`{tableName}`.item_id = {connectionRow.ItemIds.Single()}");
+                            }
                         }
                     }
                     else
@@ -1440,8 +1512,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     {
                         itemsRequest.FieldsInternal.AddRange(
                             connectionRow.Modes.Contains("up")
-                                ? UpdateFieldsWithInternals($"`{tableName}`.destination_item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
-                                : UpdateFieldsWithInternals($"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
+                                ? UpdateFieldsWithInternals(linkSettingsForUp is {UseParentItemId: true} ? $"`{previousLevelTableAlias}`.id" : $"`{tableName}`.destination_item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
+                                : UpdateFieldsWithInternals(linkSettingsForDown is {UseParentItemId: true} ? $"`{tableName}_item`.id" : $"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
                         );
                     }
 
@@ -1467,7 +1539,21 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     }
 
                     // Process the scope of the connection (constraint on connection).
-                    await ProcessScopesAsync(itemsRequest, connectionRow.Scopes, connectionRow.Modes.Contains("up") ? $"`{tableName}`.destination_item_id" : $"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Modes.Contains("optional"));
+                    string joinDetailOn;
+                    if (connectionRow.Modes.Contains("up"))
+                    {
+                        joinDetailOn = linkSettingsForUp is {UseParentItemId: true} 
+                            ? $"`{tableName}_item`.id" 
+                            : $"`{tableName}`.destination_item_id";
+                    }
+                    else
+                    {
+                        joinDetailOn = linkSettingsForUp is {UseParentItemId: true} 
+                            ? $"`{previousLevelTableAlias}`.id" 
+                            : $"`{tableName}`.item_id";
+                    }
+
+                    await ProcessScopesAsync(itemsRequest, connectionRow.Scopes, joinDetailOn, $"idv_{tableName}_", connectionRow.Modes.Contains("optional"));
 
                     // Add "AND" to query part if query part is not empty.
                     if (queryPartLink.Length > 0)
@@ -1645,7 +1731,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
         private async Task<string> CreateHavingRowQueryPart(HavingRow havingRow, string selectAlias)
         {
-            var formattedField = GetFormattedField(havingRow.Key, $"`{selectAlias}");
+            var formattedField = GetFormattedField(havingRow.Key, $"`{selectAlias}`");
 
             if (havingRow.Value is JArray array)
             {

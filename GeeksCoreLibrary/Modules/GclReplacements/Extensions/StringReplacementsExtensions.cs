@@ -199,7 +199,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <returns></returns>
         public static string StripHtml(this string input)
         {
-            var tagRegex = new Regex("<(.|\\n)*?>");
+            var tagRegex = new Regex("<(.|\\n)*?>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var scriptRegex = new Regex("<script.*?/script>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             return tagRegex.Replace(scriptRegex.Replace(input, ""), "");
         }
@@ -221,7 +221,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <returns></returns>
         public static string StripInlineStyle(this string input)
         {
-            var regex = new Regex(" ?style=\".*?\"");
+            var regex = new Regex(" ?style=\".*?\"", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             return String.IsNullOrEmpty(input) ? input : regex.Replace(input, "");
         }
 
@@ -327,6 +327,25 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         public static string Lowercase(this string input, bool useInvariantCulture = false)
         {
             return useInvariantCulture ? input?.ToLowerInvariant() : input?.ToLower();
+        }
+
+        /// <summary>
+        /// Converts an input string to an image URL. Note that the URL is always relative, starting with a '<c>/</c>'.
+        /// </summary>
+        /// <param name="input">The string to encode.</param>
+        /// <param name="width">The width of the image.</param>
+        /// <param name="height">The height of the image.</param>
+        /// <returns>The image URL.</returns>
+        public static string QrCode(this string input, int width, int height)
+        {
+            if (String.IsNullOrWhiteSpace(input) || width <= 0 || height <= 0)
+            {
+                return String.Empty;
+            }
+
+            var url = $"/barcodes/generate?input={Uri.EscapeDataString(input)}&format=qr_code&width={width}&height={height}";
+
+            return url;
         }
     }
 }

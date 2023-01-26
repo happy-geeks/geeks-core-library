@@ -58,6 +58,8 @@ namespace GeeksCoreLibrary.Components.Pagination.Models
 
         public bool showPagingOnOnePage { get; set; }
 
+        public bool AddRelPrevNextLinkTags { get; set; }
+
         public PaginationCmsSettingsModel ToSettingsModel()
         {
             var paginationCmsSettingsModel = new PaginationCmsSettingsModel
@@ -84,6 +86,7 @@ namespace GeeksCoreLibrary.Components.Pagination.Models
                 DotsTemplate = DotsTemplate,
                 DotsOffset = Convert.ToInt32(DotsOffset),
                 RenderForSinglePage = showPagingOnOnePage,
+                AddPreviousAndNextLinkRelationTags = AddRelPrevNextLinkTags,
 
                 // Inherited items from abstract parent
                 HandleRequest = HandleRequest,
@@ -118,6 +121,7 @@ namespace GeeksCoreLibrary.Components.Pagination.Models
                 LinkFormat = settings.LinkFormat,
                 DotsTemplate = settings.DotsTemplate,
                 DotsOffset = settings.DotsOffset.ToString(),
+                AddRelPrevNextLinkTags = settings.AddPreviousAndNextLinkRelationTags,
 
                 showPagingOnOnePage = settings.RenderForSinglePage,
                 HandleRequest = settings.HandleRequest,

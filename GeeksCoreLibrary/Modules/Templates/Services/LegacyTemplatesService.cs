@@ -182,7 +182,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.groupingValueColumnName AS grouping_value_column_name,
                             t.groupingkey AS grouping_key,
                             t.groupingprefix AS grouping_prefix,
-                            t.issecure AS login_required
+                            t.issecure AS login_required,
+                            t.version
                         FROM easy_items i 
                         JOIN easy_templates t ON t.itemid = i.id
                         {joinPart}
@@ -199,9 +200,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
             Template result;
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
                 result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             // Check login requirement.
@@ -314,7 +321,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType)
+        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var joinPart = gclSettings.Environment switch
             {
@@ -338,23 +345,33 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             databaseConnection.AddParameter("templateType", templateType.ToString());
             DateTime? result;
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            if (!await reader.ReadAsync())
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
-                return null;
-            }
+                if (!await reader.ReadAsync())
+                {
+                    return null;
+                }
 
-            var ordinal = reader.GetOrdinal("lastChanged");
-            result = await reader.IsDBNullAsync(ordinal) ? null : reader.GetDateTime(ordinal);
-            return result;
+                var ordinal = reader.GetOrdinal("lastChanged");
+                result = await reader.IsDBNullAsync(ordinal) ? null : reader.GetDateTime(ordinal);
+                return result;
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
+            }
         }
 
         /// <inheritdoc />
-        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType)
+        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
             var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss
                 ? $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')"
                 : $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'";
+
+            var pageModeQueryPart = $"t.pagemode = {(int)byInsertMode}";
 
             var joinPart = gclSettings.Environment switch
             {
@@ -395,7 +412,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.groupingKeyColumnName AS grouping_key_column_name,
                             t.groupingValueColumnName AS grouping_value_column_name,
                             t.groupingkey AS grouping_key,
-                            t.groupingprefix AS grouping_prefix
+                            t.groupingprefix AS grouping_prefix,
+                            t.version
                         FROM easy_items i 
                         JOIN easy_templates t ON i.id = t.itemid
                         {joinPart}
@@ -410,6 +428,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND t.deleted <= 0
                         AND t.loadalways > 0
                         AND {templateTypeQueryPart}
+                        AND {pageModeQueryPart}
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
             var result = new TemplateResponse();
@@ -417,11 +436,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var idsLoaded = new List<int>();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            while (await reader.ReadAsync())
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
-                var template = await reader.ToTemplateModelAsync();
-                await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
+                while (await reader.ReadAsync())
+                {
+                    var template = await reader.ToTemplateModelAsync();
+                    await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
+                }
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             result.Content = resultBuilder.ToString();
@@ -484,7 +511,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             t.groupingKeyColumnName AS grouping_key_column_name,
                             t.groupingValueColumnName AS grouping_value_column_name,
                             t.groupingkey AS grouping_key,
-                            t.groupingprefix AS grouping_prefix
+                            t.groupingprefix AS grouping_prefix,
+                            t.version
                         FROM easy_items i 
                         JOIN easy_templates t ON i.id = t.itemid
                         {joinPart}
@@ -501,11 +529,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         AND t.loadalways > 0
                         ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
 
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            while (await reader.ReadAsync())
+            var reader = await databaseConnection.GetReaderAsync(query);
+            try
             {
-                var template = await reader.ToTemplateModelAsync();
-                results.Add(template);
+                while (await reader.ReadAsync())
+                {
+                    var template = await reader.ToTemplateModelAsync();
+                    results.Add(template);
+                }
+            }
+            finally
+            {
+                await reader.CloseAsync();
+                await reader.DisposeAsync();
             }
 
             return results;
@@ -703,7 +739,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return input;
             }
 
-            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]");
+            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
             foreach (Match m in imageTemplatingRegex.Matches(input))
             {
                 var replacementParameters = m.Groups[1].Value.Split(":");
@@ -770,7 +806,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
                 var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
-                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)");
+                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
                 var totalItems = items.Count;
                 var index = 1;
@@ -856,7 +892,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             while (counter < max && (input.Contains("<[", StringComparison.Ordinal) || input.Contains("[include", StringComparison.Ordinal)))
             {
                 counter += 1;
-                var inclusionsRegex = new Regex(@"<\[(.*?)\]>");
+                var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -893,7 +929,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                 }
 
-                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]");
+                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -1182,7 +1218,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
             }
 
-            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled);
+            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var pusherMatches = pusherRegex.Matches(query);
             foreach (Match match in pusherMatches)
             {
@@ -1206,6 +1242,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public Task<JArray> GetJsonResponseFromRoutineAsync(RoutineTemplate routineTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false)
+        {
+            throw new NotImplementedException("Legacy templates don't support executing routines.");
+        }
+
+        /// <inheritdoc />
         public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             return await GetTemplateDataAsync(this, id, name, parentId, parentName);
@@ -1218,17 +1260,22 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             var cssStringBuilder = new StringBuilder();
             var jsStringBuilder = new StringBuilder();
+            var externalCssFilesList = new List<string>();
+            var externalJavaScriptFilesList = new List<string>();
             foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
             {
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
                 (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+                (linkedTemplate.Type == TemplateTypes.Css ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
             }
 
             return new TemplateDataModel
             {
                 Content = template.Content,
                 LinkedCss = cssStringBuilder.ToString(),
-                LinkedJavascript = jsStringBuilder.ToString()
+                LinkedJavascript = jsStringBuilder.ToString(),
+                ExternalCssFiles = externalCssFilesList,
+                ExternalJavaScriptFiles = externalJavaScriptFilesList
             };
         }
 
@@ -1306,6 +1353,55 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             cacheFileName.Append(extension);
 
             return cacheFileName.ToString();
+        }
+
+        /// <inheritdoc />
+        public Task<List<Template>> GetTemplateUrlsAsync()
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<Template>());
+        }
+
+        /// <inheritdoc />
+        public Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(false);
+        }
+
+        /// <inheritdoc />
+        public Task<bool> TemplateRenderingShouldBeLoggedAsync(int templateId)
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(false);
+        }
+
+        /// <inheritdoc />
+        public Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "")
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.CompletedTask;
+        }
+
+        /// <inheritdoc />
+        public Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<PageWidgetModel>());
+        }
+
+        /// <inheritdoc />
+        public Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<PageWidgetModel>());
+        }
+
+        /// <inheritdoc />
+        public Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<PageWidgetModel>());
         }
 
         /// <summary>

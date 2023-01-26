@@ -6,16 +6,20 @@
     <meta charset="utf-8" />
     <title>@(Model.MetaData.PageTitle + Model.MetaData.GlobalPageTitleSuffix)</title>
     @await RenderSectionAsync("MetaData", false)
+    @await RenderSectionAsync("HeaderTopWidgets", false)
     @await RenderSectionAsync("HeaderGoogleAnalyticsScripts", false)
     @await Html.PartialAsync("_Favicons")
     @await RenderSectionAsync("HeaderStyles", false)
     @await RenderSectionAsync("HeaderScripts", false)
+    @await RenderSectionAsync("HeaderBottomWidgets", false)
 </head>
 <body>
 <input type="hidden" id="RequestVerificationToken" name="RequestVerificationToken" value="@Xsrf.GetAndStoreTokens(Context).RequestToken">
+@await RenderSectionAsync("BodyTopWidgets", false)
 @await RenderSectionAsync("BodyGoogleAnalyticsScripts", false)
 @RenderBody()
 @await RenderSectionAsync("FooterStyles", false)
 @await RenderSectionAsync("FooterScripts", false)
+@await RenderSectionAsync("BodyBottomWidgets", false)
 </body>
 </html>

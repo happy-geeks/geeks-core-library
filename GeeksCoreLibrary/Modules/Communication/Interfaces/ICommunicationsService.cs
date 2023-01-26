@@ -1,13 +1,53 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Communication.Enums;
 using GeeksCoreLibrary.Modules.Communication.Models;
 
 namespace GeeksCoreLibrary.Modules.Communication.Interfaces
 {
+    /// <summary>
+    /// A service for doing everything with communications, such as saving settings for periodic communications and sending e-mail and SMS messages.
+    /// </summary>
     public interface ICommunicationsService
     {
+        /// <summary>
+        /// Get the settings of a specific row from wiser_communication. 
+        /// </summary>
+        /// <param name="id">The ID of the communication settings to get.</param>
+        /// <param name="nameOnly">Optional: Whether to only get the name or everything.</param>
+        /// <returns>A <see cref="CommunicationSettingsModel"/> with the settings, or <see langword="null"/> if it doesn't exist.</returns>
+        Task<CommunicationSettingsModel> GetSettingsAsync(int id, bool nameOnly = false);
+
+        /// <summary>
+        /// Get the settings of all communications of a specific type (such as SMS or e-mail).
+        /// </summary>
+        /// <param name="type">Optional: The <see cref="CommunicationTypes"/> to get the settings for. Leave null to get everything.</param>
+        /// <param name="namesOnly">Optional: Whether to only get the names (and IDs) or everything.</param>
+        /// <returns>A list of <see cref="CommunicationSettingsModel"/>.</returns>
+        Task<List<CommunicationSettingsModel>> GetSettingsAsync(CommunicationTypes? type = null, bool namesOnly = false);
+
+        /// <summary>
+        /// Create new settings or updates existing settings (based on <see cref="CommunicationSettingsModel.Id"/>).
+        /// </summary>
+        /// <param name="settings">The <see cref="CommunicationSettingsModel"/> to create or update.</param>
+        /// <param name="username">Optional: The user that did the save. This can be a user from Wiser, if this was updated via Wiser.</param>
+        Task<CommunicationSettingsModel> SaveSettingsAsync(CommunicationSettingsModel settings, string username = "GCL");
+
+        /// <summary>
+        /// Delete a row of communication settings.
+        /// </summary>
+        /// <param name="id">The ID of the settings to delete.</param>
+        /// <param name="username">Optional: The user that did the save. This can be a user from Wiser, if this was updated via Wiser.</param>
+        Task DeleteSettingsAsync(int id, string username = "GCL");
+
+        /// <summary>
+        /// Check whether a communication with specified ID (still) exists. 
+        /// </summary>
+        /// <param name="id">The ID to check.</param>
+        /// <returns>A boolean, indicating whether it exists or not.</returns>
+        Task<bool> CommunicationExistsAsync(int id);
+        
         /// <summary>
         /// Send an e-mail to someone.
         /// </summary>
@@ -104,5 +144,39 @@ namespace GeeksCoreLibrary.Modules.Communication.Interfaces
         /// <param name="smsSettings">The sms settings to use.</param>
         /// <returns></returns>
         Task SendSmsDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings);
+
+        /// <summary>
+        /// Send a message using WhatsApp to someone.
+        /// </summary>
+        /// <param name="receiver">The phone number(s) that should receive this SMS. You can add multiple receivers by separating them with a semicolon.</param>
+        /// <param name="body">The body of the SMS.</param>
+        /// <param name="sender">Optional: The sender of the message. Leave empty or <see langword="null"/> to use the default sender. Default is <see langowrd="null" />.</param>
+        /// <param name="senderName">Optional: The sender name of the message. Leave empty or <see langword="null"/> to use the default sender name. Default is <see langowrd="null" />.</param>
+        /// <param name="sendDate">Optional: The date and time that this SMS should get sent. Leave null to send it right away.</param>
+        Task SendWhatsAppAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null);
+
+        /// <summary>
+        /// Send a message using WhatsApp to someone.
+        /// </summary>
+        /// <param name="receivers">The phone number(s) that should receive this SMS.</param>
+        /// <param name="body">The body of the SMS.</param>
+        /// <param name="sender">Optional: The sender of the message. Leave empty or <see langword="null"/> to use the default sender. Default is <see langowrd="null" />.</param>
+        /// <param name="senderName">Optional: The sender name of the message. Leave empty or <see langword="null"/> to use the default sender name. Default is <see langowrd="null" />.</param>
+        /// <param name="sendDate">Optional: The date and time that this SMS should get sent. Leave null to send it right away.</param>
+        Task SendWhatsAppAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null);
+
+        /// <summary>
+        /// Send a message using WhatsApp to someone.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> with information for sending the SMS.</param>
+        Task SendWhatsAppAsync(SingleCommunicationModel communication);
+
+        /// <summary>
+        /// Uses an WhatsApp provider to send message directly.
+        /// </summary>
+        /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
+        /// <param name="smsSettings">The sms settings to use.</param>
+        /// <returns></returns>
+        Task SendWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings);
     }
 }

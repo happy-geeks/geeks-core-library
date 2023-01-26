@@ -5,9 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.WebPage.Interfaces;
+using GeeksCoreLibrary.Components.WebPage.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
+using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Components.WebPage.Services
@@ -15,16 +18,20 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
     public class WebPagesService : IWebPagesService, IScopedService
     {
         private readonly IDatabaseConnection databaseConnection;
+        private readonly ILanguagesService languagesService;
+        private readonly IStringReplacementsService stringReplacementsService;
         private readonly GclSettings gclSettings;
 
-        public WebPagesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings)
+        public WebPagesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, ILanguagesService languagesService, IStringReplacementsService stringReplacementsService)
         {
             this.databaseConnection = databaseConnection;
+            this.languagesService = languagesService;
+            this.stringReplacementsService = stringReplacementsService;
             this.gclSettings = gclSettings.Value;
         }
 
         /// <inheritdoc />
-        public async Task<(ulong Id, string Title, string FixedUrl, List<string> Path, List<ulong> Parents)?> GetWebPageViaFixedUrl(string fixedUrl)
+        public async Task<(ulong Id, string Title, string FixedUrl, List<string> Path, List<ulong> Parents)?> GetWebPageViaFixedUrlAsync(string fixedUrl)
         {
             if (String.IsNullOrWhiteSpace(fixedUrl))
             {
@@ -68,6 +75,80 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
                 Path: firstRow.Field<string>("path")?.Split('/').ToList(),
                 Parents: firstRow.Field<string>("parents")?.Split('/').Select(UInt64.Parse).ToList()
             );
+        }
+
+        /// <inheritdoc />
+        public async Task<DataTable> GetWebPageResultAsync(WebPageCmsSettingsModel settings, Dictionary<string, string> extraData = null)
+        {
+            var query = new StringBuilder($@"SELECT
+    webPage.id,
+    webPage.title AS `name`,
+    CONCAT_WS('', webPageHtml.`value`, webPageHtml.long_value) AS `html`,
+    webPageHtml.language_code,
+    webPageTitle.`value` AS `title`,
+    CONCAT_WS('', webPageDescription.`value`, webPageDescription.long_value) AS `metadescription`
+FROM `{WiserTableNames.WiserItem}` AS webPage
+LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageSeoName ON webPageSeoName.item_id = webPage.id AND webPageSeoName.`key` = '{CoreConstants.SeoTitlePropertyName}'
+LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageHtml ON webPageHtml.item_id = webPage.id AND webPageHtml.`key` = 'html' AND webPageHtml.language_code = ?languageCode
+LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageTitle ON webPageTitle.item_id = webPage.id AND webPageTitle.`key` = 'title' AND webPageTitle.language_code = ?languageCode
+LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageDescription ON webPageDescription.item_id = webPage.id AND webPageDescription.`key` = 'description' AND webPageDescription.language_code = ?languageCode
+");
+
+            var pathMustContain = settings.PathMustContainName;
+            if (!String.IsNullOrWhiteSpace(pathMustContain) && settings.SearchNumberOfLevels > 0)
+            {
+                if (settings.HandleRequest)
+                {
+                    pathMustContain = stringReplacementsService.DoHttpRequestReplacements(pathMustContain);
+                }
+
+                for (var i = 1; i <= settings.SearchNumberOfLevels; i++)
+                {
+                    var itemLinkAlias = $"searchUpLink{i}";
+                    var itemAlias = $"searchUpItem{i}";
+                    var titleAlias = $"item{i}Title";
+                    var seoTitleAlias = $"item{i}SeoName";
+                    var previousLink = i == 1 ? "webPage.id" : $"searchUpLink{i - 1}.destination_item_id";
+
+                    query.AppendLine($@"LEFT JOIN `{WiserTableNames.WiserItemLink}` AS `{itemLinkAlias}` ON `{itemLinkAlias}`.item_id = {previousLink}
+LEFT JOIN `{WiserTableNames.WiserItem}` AS `{itemAlias}` ON `{itemAlias}`.id = `{itemLinkAlias}`.destination_item_id
+LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{titleAlias}` ON `{titleAlias}`.item_id = `{itemAlias}`.id AND `{titleAlias}`.`key` = 'title'
+LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{seoTitleAlias}` ON `{seoTitleAlias}`.item_id = `{itemAlias}`.id AND `{seoTitleAlias}`.`key` = '{CoreConstants.SeoTitlePropertyName}'");
+                }
+            }
+
+            // WHERE part.
+            query.Append("WHERE webPage.entity_type = 'webpagina' AND webPage.published_environment >= ?environment");
+
+            if (settings.PageId > 0)
+            {
+                query.Append(" AND webPage.id = ?pageItemId");
+            }
+            else if (!String.IsNullOrWhiteSpace(settings.PageName))
+            {
+                query.Append(" AND IFNULL(webPageSeoName.`value`, webPageTitle.`value`) = ?pageName");
+
+                if (!String.IsNullOrWhiteSpace(pathMustContain) && settings.SearchNumberOfLevels > 0)
+                {
+                    query.Append(" AND CONCAT_WS('/', ''");
+                    for (var i = settings.SearchNumberOfLevels; i > 0; i--)
+                    {
+                        query.Append($", IFNULL(`item{i}SeoName`.`value`, `item{i}SeoName`.`value`)");
+                    }
+                    query.Append(", '') LIKE CONCAT('%', ?path, '%')");
+                }
+            }
+            query.AppendLine();
+
+            // LIMIT part.
+            query.Append("LIMIT 1");
+
+            databaseConnection.AddParameter("pageName", await stringReplacementsService.DoAllReplacementsAsync(stringReplacementsService.DoReplacements(settings.PageName, extraData)));
+            databaseConnection.AddParameter("pageItemId", settings.PageId);
+            databaseConnection.AddParameter("path", await stringReplacementsService.DoAllReplacementsAsync(stringReplacementsService.DoReplacements(settings.PathMustContainName, extraData)));
+            databaseConnection.AddParameter("languageCode", await stringReplacementsService.DoAllReplacementsAsync(languagesService.CurrentLanguageCode ?? ""));
+            databaseConnection.AddParameter("environment", (int)gclSettings.Environment);
+            return await databaseConnection.GetAsync(query.ToString(), true);
         }
     }
 }

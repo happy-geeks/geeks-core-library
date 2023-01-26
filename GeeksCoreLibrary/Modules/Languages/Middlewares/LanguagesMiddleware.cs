@@ -1,4 +1,5 @@
-﻿using GeeksCoreLibrary.Core.Helpers;
+﻿using System;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Models;
 using Microsoft.AspNetCore.Http;
@@ -23,11 +24,13 @@ namespace GeeksCoreLibrary.Modules.Languages.Middlewares
 
         public async Task Invoke(HttpContext context, IHttpContextAccessor httpContextAccessor, ILanguagesService languagesService)
         {
+            logger.LogDebug("Invoked LanguagesMiddleware");
+            
             this.httpContextAccessor = httpContextAccessor;
             this.languagesService = languagesService;
 
             // Only handle the setting of the language session on pages, not on images, css, js, etc.
-            var regEx = new Regex(@"(\.jpe?g|\.gif|\.png|\.webp|\.svg|\.bmp|\.tif|\.ico|\.woff2?|\.css|\.js|\.webmanifest)(?:\?.*)?$");
+            var regEx = new Regex(@"(\.jpe?g|\.gif|\.png|\.webp|\.svg|\.bmp|\.tif|\.ico|\.woff2?|\.css|\.js|\.webmanifest)(?:\?.*)?$", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (!regEx.IsMatch(currentUrl.ToString()))
             {

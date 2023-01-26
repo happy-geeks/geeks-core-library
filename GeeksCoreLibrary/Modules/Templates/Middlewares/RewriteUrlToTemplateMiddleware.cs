@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using GeeksCoreLibrary.Modules.Templates.Enums;
+using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
@@ -21,6 +23,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         private readonly ILogger<RewriteUrlToTemplateMiddleware> logger;
         private IObjectsService objectsService;
         private IDatabaseConnection databaseConnection;
+        private ITemplatesService templatesService;
 
         public RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<RewriteUrlToTemplateMiddleware> logger)
         {
@@ -30,16 +33,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
 
         /// <summary>
         /// Invoke the middleware.
-        /// IObjectsService and IDatabaseConnection are here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
+        /// IObjectsService, IDatabaseConnection and templatesService are here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
         /// </summary>
-        /// <param name="context"></param>
-        /// <param name="objectsService"></param>
-        /// <param name="databaseConnection"></param>
-        /// <returns></returns>
-        public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection)
+        public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService)
         {
+            logger.LogDebug("Invoked RewriteUrlToTemplateMiddleware");
+            
             this.objectsService = objectsService;
             this.databaseConnection = databaseConnection;
+            this.templatesService = templatesService;
             
             if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
@@ -49,6 +51,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             }
 
             var path = context.Request.Path.ToUriComponent();
+            if (path.StartsWith("/api/", StringComparison.InvariantCultureIgnoreCase))
+            {
+                // An API URL is called, no need to find a template.
+                await this.next.Invoke(context);
+                return;
+            }
+            
             var queryString = context.Request.QueryString;
             if (!context.Items.ContainsKey(Constants.OriginalPathKey))
             {
@@ -62,25 +71,68 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
 
             if (!context.Items.ContainsKey(Constants.OriginalPathAndQueryStringKey))
             {
-                context.Items.Add(Constants.OriginalPathAndQueryStringKey, path + queryString.Value);
+                context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
             }
 
-            await HandleRewrites(context, path, queryString);
+            await HandleRewritesAsync(context, path, queryString);
 
             await this.next.Invoke(context);
         }
 
         /// <summary>
         /// This method checks if the current URI corresponds with one of the rewrites in the database.
-        /// If one if found, it rewrites the current path and query string to certain GCL pages, such as template.gcl.
+        /// If one is found, it rewrites the current path and query string to certain GCL pages, such as template.gcl.
         /// </summary>
         /// <param name="context">The current <see cref="HttpContext"/>.</param>
         /// <param name="path">The path of the current URI.</param>
         /// <param name="queryStringFromUrl">The query string from the URI.</param>
-        private async Task HandleRewrites(HttpContext context, string path, QueryString queryStringFromUrl)
+        private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
         {
             logger.LogDebug($"Start HandleRewrites, path: {path}");
 
+            // First check if there are templates with an URL regex that matches the current URL.
+            var templatesWithUrls = await templatesService.GetTemplateUrlsAsync();
+            foreach (var template in templatesWithUrls)
+            {
+                var regex = new Regex(template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                var matchResult = regex.Match(path);
+                if (!matchResult.Success)
+                {
+                    continue;
+                }
+
+                // Add all matched groups to the query string, so that they can be used as variables in templates.
+                var queryString = new QueryString();
+                foreach (Group matchGroup in matchResult.Groups)
+                {
+                    queryString = queryString.Add(matchGroup.Name, matchGroup.Value);
+                }
+                
+                // Extra query string in the template.
+                queryString = CombineQueryString(queryString, $"?templateId={template.Id}");
+                queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
+
+                // Redirect to the correct controller.
+                switch (template.Type)
+                {
+                    case TemplateTypes.Html:
+                        context.Request.Path = "/template.gcl";
+                        break;
+                    case TemplateTypes.Query:
+                        context.Request.Path = "/json.gcl";
+                        break;
+                    case TemplateTypes.Routine:
+                        context.Request.Path = "/routine.gcl";
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(template.Type), template.Type.ToString());
+                }
+
+                context.Request.QueryString = queryString;
+                break;
+            }
+
+            // If we haven't found a matching URL yet, check the old legacy settings.
             var urlRewrites = (await GetValues("url_syntax_templates")).ToList();
             var fixedUrlQuery = await objectsService.FindSystemObjectByDomainNameAsync("fixedurl_query");
 
@@ -103,7 +155,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 var urlMatchLastPart = urlRewrite[(lastIndex + 1)..];
 
                 // Example: ^/informatie/(?<name>.*?)/(?<pname>.*?)/$
-                var regex = new Regex(urlMatchFirstPart);
+                var regex = new Regex(urlMatchFirstPart, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 var matchResult = regex.Match(path);
 
                 if (alsoMatchWithQueryString && !matchResult.Success)

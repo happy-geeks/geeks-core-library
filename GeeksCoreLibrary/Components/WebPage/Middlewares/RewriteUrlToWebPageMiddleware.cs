@@ -35,6 +35,8 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
         /// <returns></returns>
         public async Task Invoke(HttpContext context, IObjectsService objectsService, IWebPagesService webPagesService)
         {
+            logger.LogDebug("Invoked RewriteUrlToWebPageMiddleware");
+            
             this.objectsService = objectsService;
             this.webPagesService = webPagesService;
             
@@ -59,25 +61,25 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
 
             if (!context.Items.ContainsKey(Constants.OriginalPathAndQueryStringKey))
             {
-                context.Items.Add(Constants.OriginalPathAndQueryStringKey, path + queryString.Value);
+                context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
             }
 
-            await HandleRewrites(context, path, queryString);
+            await HandleRewritesAsync(context, path, queryString);
 
             await this.next.Invoke(context);
         }
 
         /// <summary>
         /// This method checks if the current URI corresponds with one of the rewrites in the database.
-        /// If one if found, it rewrites the current path and query string to certain GCL pages, such as template.gcl.
+        /// If one is found, it rewrites the current path and query string to certain GCL pages, such as template.gcl.
         /// </summary>
         /// <param name="context">The current <see cref="HttpContext"/>.</param>
         /// <param name="path">The path of the current URI.</param>
         /// <param name="queryStringFromUrl">The query string from the URI.</param>
-        private async Task HandleRewrites(HttpContext context, string path, QueryString queryStringFromUrl)
+        private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
         {
             // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
-            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex);
+            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (regEx.IsMatch(currentUrl.ToString()))
             {
@@ -90,7 +92,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
                 return;
             }
 
-            var webPage = await webPagesService.GetWebPageViaFixedUrl(path);
+            var webPage = await webPagesService.GetWebPageViaFixedUrlAsync(path);
             if (!webPage.HasValue || webPage.Value.Id == 0)
             {
                 return;
@@ -103,7 +105,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
 
             foreach (var entry in (await objectsService.FindSystemObjectByDomainNameAsync("cms_fixedurl_page_method", "0")).Split(';', StringSplitOptions.RemoveEmptyEntries))
             {
-                var regex = new Regex(@"^\d+\|");
+                var regex = new Regex(@"^\d+\|", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 if (!entry.Contains("|", StringComparison.Ordinal) || !regex.IsMatch(entry))
                 {
                     continue;

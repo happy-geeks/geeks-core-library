@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.Enums;
@@ -29,9 +30,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber)
+        public async Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber)
         {
             return await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(uniquePaymentNumber);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByPspTransactionIdAsync(string pspTransactionId)
+        {
+            return await shoppingBasketsService.GetOrdersByPspTransactionIdAsync(pspTransactionId);
         }
 
         /// <inheritdoc />
@@ -77,9 +84,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<(ulong ConceptOrderId, WiserItemModel ConceptOrder, List<WiserItemModel> ConceptOrderLines)> MakeConceptOrderFromBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<(ulong ConceptOrderId, WiserItemModel ConceptOrder, List<WiserItemModel> ConceptOrderLines)> MakeConceptOrderFromBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, OrderProcessBasketToConceptOrderMethods basketToConceptOrderMethod)
         {
-            return await shoppingBasketsService.MakeConceptOrderFromBasketAsync(shoppingBasket, basketLines, settings);
+            return await shoppingBasketsService.MakeConceptOrderFromBasketAsync(shoppingBasket, basketLines, settings, basketToConceptOrderMethod);
         }
 
         /// <inheritdoc />
@@ -101,9 +108,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<decimal> GetLinePriceAsync(WiserItemModel shoppingBasket, WiserItemModel line, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, bool singlePrice = false, bool round = false, int onlyIfVatRate = -1, bool withoutFactor = false)
+        public async Task<decimal> GetLinePriceAsync(WiserItemModel shoppingBasket, WiserItemModel line, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, bool singlePrice = false, bool round = false, int onlyIfVatRate = -1, bool withoutFactor = false, bool useOriginalPrice = false)
         {
-            return await shoppingBasketsService.GetLinePriceAsync(shoppingBasket, line, settings, priceType, singlePrice, round, onlyIfVatRate, withoutFactor);
+            return await shoppingBasketsService.GetLinePriceAsync(shoppingBasket, line, settings, priceType, singlePrice, round, onlyIfVatRate, withoutFactor, useOriginalPrice);
         }
 
         /// <inheritdoc />
@@ -125,15 +132,27 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
-            return await shoppingBasketsService.CalculateShippingCostsAsync(shoppingBasket, basketLines, settings);
+            return await shoppingBasketsService.CalculateShippingCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
         }
 
         /// <inheritdoc />
-        public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task RecalculateCouponsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
         {
-            return await shoppingBasketsService.CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings);
+            await shoppingBasketsService.RecalculateCouponsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
+        }
+
+        /// <inheritdoc />
+        public async Task UpdateCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, HandleCouponResultModel couponResult, decimal currentDiscount = 0M, bool divideDiscountOverProducts = false, bool createNewTransaction = true)
+        {
+            await shoppingBasketsService.UpdateCouponAsync(shoppingBasket, basketLines, settings, couponResult, currentDiscount, divideDiscountOverProducts, createNewTransaction);
+        }
+
+        /// <inheritdoc />
+        public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
+        {
+            return await shoppingBasketsService.CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
         }
 
         /// <inheritdoc />
@@ -167,7 +186,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<ShoppingBasket.HandleCouponResults> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true)
+        public async Task<HandleCouponResultModel> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true)
         {
             return await shoppingBasketsService.AddCouponToBasketAsync(shoppingBasket, basketLines, settings, couponCode, createNewTransaction);
         }
@@ -179,9 +198,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings)
+        public async Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = false)
         {
-            await shoppingBasketsService.CheckForFreeProductAsync(shoppingBasket, basketLines, settings);
+            await shoppingBasketsService.CheckForFreeProductAsync(shoppingBasket, basketLines, settings, createNewTransaction);
         }
 
         /// <inheritdoc />
@@ -253,6 +272,18 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         public bool IsCouponValid(WiserItemModel coupon, decimal basketTotal)
         {
             return shoppingBasketsService.IsCouponValid(coupon, basketTotal);
+        }
+
+        /// <inheritdoc />
+        public async Task DeleteAsync(ulong basketItemId)
+        {
+            await shoppingBasketsService.DeleteAsync(basketItemId);
+        }
+
+        /// <inheritdoc />
+        public async Task DeleteLinesAsync(ulong basketItemId)
+        {
+            await shoppingBasketsService.DeleteLinesAsync(basketItemId);
         }
     }
 }

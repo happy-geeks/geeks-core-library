@@ -29,7 +29,6 @@ using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Razor;
@@ -46,10 +45,12 @@ using GeeksCoreLibrary.Components.OrderProcess.Middlewares;
 using GeeksCoreLibrary.Components.OrderProcess.Services;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Services;
+using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
+using GeeksCoreLibrary.Modules.Barcodes.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Services;
+using GeeksCoreLibrary.Modules.ItemFiles;
 using JetBrains.Annotations;
-using Microsoft.AspNetCore.Server.IISIntegration;
 using WebMarkupMin.AspNetCore3;
 using WebMarkupMin.Core;
 
@@ -94,6 +95,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             builder.UseMiddleware<RedirectMiddleWare>();
 
             builder.UseWebMarkupMin();
+            builder.UseMiddleware<WiserItemFilesMiddleware>();
             builder.UseMiddleware<RewriteUrlToOrderProcessMiddleware>();
             builder.UseMiddleware<RewriteUrlToWebPageMiddleware>();
             builder.UseMiddleware<RewriteUrlToTemplateMiddleware>();
@@ -267,6 +269,8 @@ namespace GeeksCoreLibrary.Core.Extensions
             services.Decorate<IShoppingBasketsService, CachedShoppingBasketsService>();
             services.Decorate<IDataSelectorParsersService, CachedDataSelectorParsersService>();
             services.Decorate<IOrderProcessesService, CachedOrderProcessesService>();
+            services.Decorate<IRolesService, CachedRolesService>();
+            services.Decorate<IBarcodesService, CachedBarcodesService>();
             
             if (gclSettings.UseLegacyWiser1TemplateModule)
             {

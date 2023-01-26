@@ -188,19 +188,39 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<PageViewModel> CreatePageViewModelAsync(List<string> externalCss, List<int> cssTemplates, List<string> externalJavascript, List<int> javascriptTemplates, string newBodyHtml)
+        public async Task<PageViewModel> CreatePageViewModelAsync(List<string> externalCss, List<int> cssTemplates, List<string> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0)
         {
             var viewModel = new PageViewModel();
 
             // Add Google reCAPTCHAv3 if setup.
             await AddGoogleReCaptchaToViewModelAsync(viewModel);
 
+            viewModel.Widgets = await templatesService.GetPageWidgetsAsync(templateId);
+
             // Add CSS for all pages.
-            var generalCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css);
-            externalCss.AddRange(generalCss.ExternalFiles);
-            if (!String.IsNullOrWhiteSpace(generalCss.Content))
+            var generalStandardCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css);
+            externalCss.AddRange(generalStandardCss.ExternalFiles);
+            if (!String.IsNullOrWhiteSpace(generalStandardCss.Content))
             {
-                viewModel.Css.GeneralCssFileName = $"/css/gcl_general.css?c={generalCss.LastChangeDate:yyyyMMddHHmmss}";
+                viewModel.Css.GeneralStandardCssFileName = $"/css/gcl_general.css?mode=Standard&c={generalStandardCss.LastChangeDate:yyyyMMddHHmmss}";
+            }
+
+            var generalInlineHeadCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css, ResourceInsertModes.InlineHead);
+            if (!String.IsNullOrWhiteSpace(generalInlineHeadCss.Content))
+            {
+                viewModel.Css.GeneralInlineHeadCss = generalInlineHeadCss.Content;
+            }
+
+            var generalSyncFooterCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css, ResourceInsertModes.SyncFooter);
+            if (!String.IsNullOrWhiteSpace(generalSyncFooterCss.Content))
+            {
+                viewModel.Css.GeneralSyncFooterCssFileName = $"/css/gcl_general.css?mode=SyncFooter&c={generalSyncFooterCss.LastChangeDate:yyyyMMddHHmmss}";
+            }
+
+            var generalAsyncFooterCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css, ResourceInsertModes.AsyncFooter);
+            if (!String.IsNullOrWhiteSpace(generalAsyncFooterCss.Content))
+            {
+                viewModel.Css.GeneralAsyncFooterCssFileName = $"/css/gcl_general.css?mode=AsyncFooter&c={generalAsyncFooterCss.LastChangeDate:yyyyMMddHHmmss}";
             }
 
             // Add css for this specific page.
@@ -215,6 +235,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 foreach (var template in templates)
                 {
                     externalCss.AddRange(template.ExternalFiles);
+
+                    if (String.IsNullOrWhiteSpace(template.Content))
+                    {
+                        continue;
+                    }
+
                     switch (template.InsertMode)
                     {
                         case ResourceInsertModes.Standard:
@@ -258,20 +284,40 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 }
             }
 
-            // Add Javascript for all pages.
-            var moveAllJavascriptToBottom = (await objectsService.FindSystemObjectByDomainNameAsync("javascriptmovetobottom", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            var generalJavascript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js);
-            externalJavascript.AddRange(generalJavascript.ExternalFiles);
-            if (!String.IsNullOrWhiteSpace(generalJavascript.Content))
+            // Add JavaScript for all pages.
+            var moveAllJavaScriptToBottom = (await objectsService.FindSystemObjectByDomainNameAsync("javascriptmovetobottom", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            var generalStandardJavaScript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js);
+            externalJavascript.AddRange(generalStandardJavaScript.ExternalFiles);
+            if (!String.IsNullOrWhiteSpace(generalStandardJavaScript.Content))
             {
-                if (moveAllJavascriptToBottom)
+                if (moveAllJavaScriptToBottom)
                 {
-                    viewModel.Javascript.GeneralFooterJavascriptFileName = $"/scripts/gcl_general.js?c={generalJavascript.LastChangeDate:yyyyMMddHHmmss}";
+                    viewModel.Javascript.GeneralSyncFooterJavaScriptFileName ??= new List<string>();
+                    viewModel.Javascript.GeneralSyncFooterJavaScriptFileName.Add($"/scripts/gcl_general.js?mode=Standard&c={generalStandardJavaScript.LastChangeDate:yyyyMMddHHmmss}");
                 }
                 else
                 {
-                    viewModel.Javascript.GeneralJavascriptFileName = $"/scripts/gcl_general.js?c={generalJavascript.LastChangeDate:yyyyMMddHHmmss}";
+                    viewModel.Javascript.GeneralStandardJavaScriptFileName = $"/scripts/gcl_general.js?mode=Standard&c={generalStandardJavaScript.LastChangeDate:yyyyMMddHHmmss}";
                 }
+            }
+
+            var generalInlineHeadJavaScript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js, ResourceInsertModes.InlineHead);
+            if (!String.IsNullOrWhiteSpace(generalInlineHeadJavaScript.Content))
+            {
+                viewModel.Javascript.GeneralInlineHeadJavaScript = generalInlineHeadJavaScript.Content;
+            }
+
+            var generalSyncFooterJavaScript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js, ResourceInsertModes.SyncFooter);
+            if (!String.IsNullOrWhiteSpace(generalSyncFooterJavaScript.Content))
+            {
+                viewModel.Javascript.GeneralSyncFooterJavaScriptFileName ??= new List<string>();
+                viewModel.Javascript.GeneralSyncFooterJavaScriptFileName.Add($"/scripts/gcl_general.js?mode=SyncFooter&c={generalSyncFooterJavaScript.LastChangeDate:yyyyMMddHHmmss}");
+            }
+
+            var generalAsyncFooterJavaScript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js, ResourceInsertModes.AsyncFooter);
+            if (!String.IsNullOrWhiteSpace(generalAsyncFooterJavaScript.Content))
+            {
+                viewModel.Javascript.GeneralAsyncFooterJavaScriptFileName = $"/scripts/gcl_general.js?mode=AsyncFooter&c={generalAsyncFooterJavaScript.LastChangeDate:yyyyMMddHHmmss}";
             }
 
             // Add Javascript for this specific page.
@@ -286,10 +332,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 foreach (var template in templates)
                 {
                     externalJavascript.AddRange(template.ExternalFiles);
+
+                    if (String.IsNullOrWhiteSpace(template.Content))
+                    {
+                        continue;
+                    }
+
                     switch (template.InsertMode)
                     {
                         case ResourceInsertModes.Standard:
-                            if (moveAllJavascriptToBottom)
+                            if (moveAllJavaScriptToBottom)
                             {
                                 syncFooterJavascriptTemplates.Add(template.Id);
                             }
@@ -343,55 +395,55 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 viewModel.MetaData = await seoService.GetSeoDataForPageAsync(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext));
 
-                if (newBodyHtml.Contains("[{seomodule_", StringComparison.OrdinalIgnoreCase))
+                if (bodyHtml.Contains("[{seomodule_", StringComparison.OrdinalIgnoreCase))
                 {
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.SeoText))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_content}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_content}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_content}\|(.*?)\]", viewModel.MetaData.SeoText);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", viewModel.MetaData.SeoText);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_content}\|(.*?)\]", viewModel.MetaData.SeoText);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", viewModel.MetaData.SeoText);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H1Text))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", viewModel.MetaData.H1Text);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_h1header}]", viewModel.MetaData.H1Text);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", viewModel.MetaData.H1Text);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h1header}]", viewModel.MetaData.H1Text);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H2Text))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", viewModel.MetaData.H2Text);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_h2header}]", viewModel.MetaData.H2Text);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", viewModel.MetaData.H2Text);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h2header}]", viewModel.MetaData.H2Text);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H3Text))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", viewModel.MetaData.H3Text);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_h3header}]", viewModel.MetaData.H3Text);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", viewModel.MetaData.H3Text);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h3header}]", viewModel.MetaData.H3Text);
                     }
                 }
             }
 
             // Handle any left over seo module things.
-            if (newBodyHtml.Contains("[{seomodule_"))
+            if (bodyHtml.Contains("[{seomodule_"))
             {
-                newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", "");
-                newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_.*?}\|(.*?)\]", "$1");
+                bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", "");
+                bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_.*?}\|(.*?)\]", "$1");
             }
 
             // Check if some component is adding external JavaScript libraries to the page.
@@ -406,7 +458,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             viewModel.Css.ExternalCss.AddRange(externalCss);
             viewModel.Javascript.ExternalJavascript.AddRange(externalScripts);
-            viewModel.Body = newBodyHtml;
+            viewModel.Body = bodyHtml;
 
             // Add viewport.
             var viewportSystemObjectValue = await objectsService.FindSystemObjectByDomainNameAsync("metatag_viewport", "false");
@@ -475,6 +527,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     viewModel.MetaData.SeoText = componentSeoData.SeoText;
                 }
+
+                if (!String.IsNullOrWhiteSpace(componentSeoData.PreviousPageLink) && String.IsNullOrWhiteSpace(viewModel.MetaData.PreviousPageLink))
+                {
+                    viewModel.MetaData.PreviousPageLink = componentSeoData.PreviousPageLink;
+                }
+
+                if (!String.IsNullOrWhiteSpace(componentSeoData.NextPageLink) && String.IsNullOrWhiteSpace(viewModel.MetaData.NextPageLink))
+                {
+                    viewModel.MetaData.NextPageLink = componentSeoData.NextPageLink;
+                }
             }
 
             // See if we need to add canonical to self, but only if no other canonical has been added yet.
@@ -525,7 +587,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         }
                     }
 
-                    viewModel.MetaData.Canonical = canonicalUrl.ToString();
+                    // Call the Uri's ToString method instead of the UriBuilder's ToString, otherwise default ports will
+                    // be added (like 443 for https and 80 for http).
+                    viewModel.MetaData.Canonical = canonicalUrl.Uri.ToString();
                 }
             }
 
@@ -546,14 +610,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null)
+        public void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null, string previousPageLink = null, string nextPageLink = null)
         {
             if (httpContextAccessor.HttpContext == null)
             {
                 return;
             }
 
-            if (String.IsNullOrWhiteSpace(seoTitle) && String.IsNullOrWhiteSpace(seoDescription) && String.IsNullOrWhiteSpace(seoKeyWords) && String.IsNullOrWhiteSpace(seoCanonical) && !noIndex && !noFollow && robots == null)
+            if (String.IsNullOrWhiteSpace(seoTitle) && String.IsNullOrWhiteSpace(seoDescription) && String.IsNullOrWhiteSpace(seoKeyWords) && String.IsNullOrWhiteSpace(seoCanonical) && !noIndex && !noFollow && robots == null && String.IsNullOrWhiteSpace(previousPageLink) && String.IsNullOrWhiteSpace(nextPageLink))
             {
                 return;
             }
@@ -602,6 +666,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     componentSeoData.MetaTags.Add("robots", String.Join(",", allRobots));
                 }
+            }
+
+            if (!String.IsNullOrWhiteSpace(previousPageLink) && String.IsNullOrWhiteSpace(componentSeoData.PreviousPageLink))
+            {
+                componentSeoData.PreviousPageLink = previousPageLink;
+            }
+
+            if (!String.IsNullOrWhiteSpace(nextPageLink) && String.IsNullOrWhiteSpace(componentSeoData.NextPageLink))
+            {
+                componentSeoData.NextPageLink = nextPageLink;
             }
 
             httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] = componentSeoData;

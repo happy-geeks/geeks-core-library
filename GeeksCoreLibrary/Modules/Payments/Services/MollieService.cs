@@ -264,7 +264,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             // The Mollie payment ID is saved in all baskets, so just use the one from the first basket.
-            var molliePaymentId = baskets.First().ShoppingBasket.GetDetailValue(Components.OrderProcess.Models.Constants.PaymentProviderTransactionId);
+            var molliePaymentId = baskets.First().Order.GetDetailValue(Components.OrderProcess.Models.Constants.PaymentProviderTransactionId);
 
             var restClient = new RestClient(ApiBaseUrl)
             {

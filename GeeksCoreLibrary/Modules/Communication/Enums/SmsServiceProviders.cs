@@ -3,5 +3,6 @@
 public enum SmsServiceProviders
 {
     Twilio,
-    Cm
+    Cm,
+    Meta
 }

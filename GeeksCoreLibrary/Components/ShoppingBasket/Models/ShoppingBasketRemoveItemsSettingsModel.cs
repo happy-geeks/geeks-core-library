@@ -27,5 +27,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
         
         [DefaultValue(Constants.DefaultDiscountPropertyName)]
         internal string DiscountPropertyName { get; }
+        
+        [DefaultValue(Constants.DefaultItemExcludedFromDiscountPropertyName)]
+        internal string ItemExcludedFromDiscountPropertyName { get; }
     }
 }
