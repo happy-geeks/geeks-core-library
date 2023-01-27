@@ -199,7 +199,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <returns></returns>
         public static string StripHtml(this string input)
         {
-            var tagRegex = new Regex("<(.|\\n)*?>");
+            var tagRegex = new Regex("<(.|\\n)*?>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var scriptRegex = new Regex("<script.*?/script>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             return tagRegex.Replace(scriptRegex.Replace(input, ""), "");
         }
@@ -221,7 +221,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <returns></returns>
         public static string StripInlineStyle(this string input)
         {
-            var regex = new Regex(" ?style=\".*?\"");
+            var regex = new Regex(" ?style=\".*?\"", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             return String.IsNullOrEmpty(input) ? input : regex.Replace(input, "");
         }
 

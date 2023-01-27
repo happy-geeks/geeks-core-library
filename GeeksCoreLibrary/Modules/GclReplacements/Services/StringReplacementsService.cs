@@ -53,8 +53,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             formatters = typeof(StringReplacementsExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public);
 
             // Create some regular expressions so they can be re-used instead of creating them each time the function is called.
-            formatterRegex = new Regex(@"(?<methodname>[^\(\)]+)(?:\((?<parameters>[^\)]+)\))?");
-            logicSnippetRegex = new Regex(@"\[if\((?<left>((?!\[if\().)*?)(?<op>=|!|<|>|&lt;|&gt;|%)(?<right>((?!\[if\().)*?)\)\](?<text>((?!\[if\().)*?)\[endif\]", RegexOptions.Singleline);
+            formatterRegex = new Regex(@"(?<methodname>[^\(\)]+)(?:\((?<parameters>[^\)]+)\))?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+            logicSnippetRegex = new Regex(@"\[if\((?<left>((?!\[if\().)*?)(?<op>=|!|<|>|&lt;|&gt;|%)(?<right>((?!\[if\().)*?)\)\](?<text>((?!\[if\().)*?)\[endif\]", RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
         }
 
         /// <inheritdoc />
@@ -66,7 +66,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             }
 
             // Reusable variables.
-            Regex r;
+            Regex regex;
             var dataDictionary = new Dictionary<string, object>();
 
             // Defaults.
@@ -87,8 +87,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             {
                 dataDictionary.Clear();
 
-                r = new Regex(@"\[SO{([^\}]+)}]");
-                foreach (Match m in r.Matches(input))
+                regex = new Regex(@"\[SO{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                foreach (Match m in regex.Matches(input))
                 {
                     var value = m.Groups[1].Value;
                     if (dataDictionary.ContainsKey(value))
@@ -128,8 +128,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 {
                     dataDictionary.Clear();
 
-                    r = new Regex(@"\[T{([^\}]+)}]");
-                    foreach (Match m in r.Matches(input))
+                    regex = new Regex(@"\[T{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                    foreach (Match m in regex.Matches(input))
                     {
                         var value = m.Groups[1].Value;
                         if (dataDictionary.ContainsKey(value))
@@ -155,8 +155,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         objectsTypeNumber = -100;
                     }
 
-                    r = new Regex(@"\[O{([^\}]+)}]");
-                    foreach (Match m in r.Matches(input))
+                    regex = new Regex(@"\[O{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                    foreach (Match m in regex.Matches(input))
                     {
                         var value = m.Groups[1].Value;
                         if (dataDictionary.ContainsKey(value))
@@ -577,7 +577,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 return input;
             }
 
-            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\~([^\]{suffix}\s]*){suffix}");
+            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\~([^\]{suffix}\s]*){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
             foreach (Match match in regex.Matches(input))
             {
                 input = input.Replace(match.Value, match.Groups[2].Value);
@@ -597,7 +597,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             prefix = Regex.Escape(prefix);
             suffix = Regex.Escape(suffix);
 
-            var regex = new Regex($@"{prefix}[^\]{suffix}\s]*{suffix}");
+            var regex = new Regex($@"{prefix}[^\]{suffix}\s]*{suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             return regex.Replace(input, "");
         }
@@ -611,7 +611,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             {
                 var array = (JArray)input;
 
-                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.Singleline);
+                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
                 var m = reg.Match(inputString);
 
                 if (m.Success)
@@ -651,7 +651,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string FillStringByClass(JToken input, string inputString, bool evaluateTemplate = false)
         {
-            var regexRepeats = new Regex(@"{repeat:([^\.]+?)}");
+            var regexRepeats = new Regex(@"{repeat:([^\.]+?)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             // Handle the repeaters, duplicate (parts of) the template.
             // First get all repeaters in string.
@@ -726,7 +726,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             // Replace all variables
             // Get matches like: {customer.address.streetline1}
-            var regex = new Regex("{(.[^}]*)}");
+            var regex = new Regex("{(.[^}]*)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
             foreach (Match m in regex.Matches(inputString))
             {
                 var value = GetPropertyValue(input, MakeColumnValueFromVariable(m.Value));
@@ -815,7 +815,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             prefix = Regex.Escape(prefix);
             suffix = Regex.Escape(suffix);
 
-            var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}");
+            var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             var result = new List<StringReplacementVariable>();
             foreach (Match match in regex.Matches(input))
@@ -907,7 +907,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             if (propertyName.Contains("("))
             {
-                var regex = new Regex(@"(.*)\((\d.*)\)(.*)");
+                var regex = new Regex(@"(.*)\((\d.*)\)(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
                 var m = regex.Match(propertyName);
                 if (!m.Success)
                 {

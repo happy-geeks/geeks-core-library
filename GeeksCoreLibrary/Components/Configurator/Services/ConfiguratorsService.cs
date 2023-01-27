@@ -625,7 +625,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
                     requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
-                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                     requestJson = regex.Replace(requestJson, "null");
 
                     // If there is no request JSON it is useless to do an API call.
@@ -839,7 +839,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     requestJson = await ReplaceConfiguratorItemsAsync(requestJson, input, false);
                     requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
-                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                     requestJson = regex.Replace(requestJson, "null");
 
                     // If there is no request JSON it is useless to do an API call.

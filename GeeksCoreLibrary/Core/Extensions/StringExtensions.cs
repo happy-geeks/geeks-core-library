@@ -804,7 +804,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         public static string StripIllegalFilenameCharacters(this string input)
         {
             var regexSearch = Path.GetInvalidFileNameChars().ToString();
-            var regex = new Regex($"[{Regex.Escape(regexSearch!)}]");
+            var regex = new Regex($"[{Regex.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var output = regex.Replace(input, "");
             return output.Replace("&", "_").Replace("+", "_");
         }
@@ -817,7 +817,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         public static string StripIllegalPathCharacters(this string input)
         {
             var regexSearch = Path.GetInvalidPathChars().ToString();
-            var regex = new Regex($"[{Regex.Escape(regexSearch!)}]");
+            var regex = new Regex($"[{Regex.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var output = regex.Replace(input, "");
             return output.Replace("&", "_").Replace("+", "_");
         }

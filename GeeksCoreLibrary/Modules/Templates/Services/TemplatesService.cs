@@ -781,7 +781,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 return input;
             }
 
-            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]");
+            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             foreach (Match m in imageTemplatingRegex.Matches(input))
             {
                 var replacementParameters = m.Groups[1].Value.Split(":");
@@ -856,7 +856,7 @@ ORDER BY id ASC");
                 var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
                 var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
-                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)");
+                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
                 var totalItems = items.Count;
                 var index = 1;
@@ -942,7 +942,7 @@ ORDER BY id ASC");
             while (counter < max && (input.Contains("<[", StringComparison.Ordinal) || input.Contains("[include", StringComparison.Ordinal)))
             {
                 counter += 1;
-                var inclusionsRegex = new Regex(@"<\[(.*?)\]>");
+                var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -979,7 +979,7 @@ ORDER BY id ASC");
                     }
                 }
 
-                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]");
+                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;

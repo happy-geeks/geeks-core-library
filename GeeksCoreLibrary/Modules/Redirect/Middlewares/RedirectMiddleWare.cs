@@ -44,7 +44,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
             var redirectPermanent = true;
 
             // Redirect module.
-            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex); // Only handle redirect module on pages, not on images, css, js, etc.
+            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)); // Only handle redirect module on pages, not on images, css, js, etc.
             var oldUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (!regEx.IsMatch(oldUrl.ToString()))
             {
@@ -98,7 +98,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
 
                     var newUrl = newUrlSplit.Length > 2 ? newUrlSplit[2] : newUrlSplit[1];
                     var urlCase = newUrlSplit.Length > 2 ? newUrlSplit[1] : "";
-                    var regex = new Regex(oldUrlRegex);
+                    var regex = new Regex(oldUrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                     var match = regex.Match(urlWithoutQuery);
                     if (!match.Success)
                     {
