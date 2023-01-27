@@ -18,7 +18,7 @@ namespace GeeksCoreLibrary.Core.Helpers
                 return input;
             }
 
-            var regex = new Regex(@"\@import url\((.+?)\);", RegexOptions.Singleline);
+            var regex = new Regex(@"\@import url\((.+?)\);", RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(30));
             var importList = new List<string>();
 
             foreach (Match match in regex.Matches(input))
