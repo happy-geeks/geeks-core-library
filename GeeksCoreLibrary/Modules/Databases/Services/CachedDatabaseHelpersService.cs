@@ -223,5 +223,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             await databaseHelpersService.RenameTableAsync(currentTableName, newTableName);
         }
+
+        /// <inheritdoc />
+        public async Task OptimizeTablesAsync(params string[] tableNames)
+        {
+            await databaseHelpersService.OptimizeTablesAsync(tableNames);
+        }
     }
 }
