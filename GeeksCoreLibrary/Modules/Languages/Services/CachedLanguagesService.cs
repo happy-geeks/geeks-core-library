@@ -57,7 +57,8 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         /// <inheritdoc />
         public async Task<string> GetTranslationAsync(string original, string languageItemCode = null, string defaultValue = null)
         {
-            var cachedLanguages = await CacheLanguageAsync(!String.IsNullOrWhiteSpace(languageItemCode) ? languageItemCode : CurrentLanguageCode);
+            var languageCode = !String.IsNullOrWhiteSpace(languageItemCode) ? languageItemCode : (CurrentLanguageCode ?? await GetLanguageCodeAsync());
+            var cachedLanguages = await CacheLanguageAsync(languageCode);
             return cachedLanguages.ContainsKey(original) && !String.IsNullOrEmpty(cachedLanguages[original]?.ToString()) ? cachedLanguages[original]?.ToString() : (defaultValue ?? original);
         }
 
