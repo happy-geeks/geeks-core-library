@@ -763,7 +763,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             if (tableNames.Any())
             {
-                await databaseConnection.ExecuteAsync($"OPTIMIZE TABLE {String.Join(',', tableNames)}");
+                await databaseConnection.ExecuteAsync($"OPTIMIZE TABLE {String.Join(',', tableNames.Select(tableName => $"`{tableName.ToMySqlSafeValue(false)}`"))}");
             }
         }
     }
