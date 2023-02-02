@@ -622,12 +622,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserDashboard,
-                LastUpdate = new DateTime(2022, 7, 7),
+                LastUpdate = new DateTime(2023, 2, 1),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("last_update", MySqlDbType.DateTime, notNull: true),
                     new("items_data", MySqlDbType.MediumText),
+                    new("entities_data", MySqlDbType.MediumText),
                     new("user_login_count_top10", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("user_login_count_other", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("user_login_time_top10", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00"),
@@ -810,6 +811,28 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 {
                     new(WiserTableNames.WiserTemplateRenderLog, "idx_template_id_version", IndexTypes.Normal, new List<string> { "template_id", "version" }),
                     new(WiserTableNames.WiserTemplateRenderLog, "idx_environment", IndexTypes.Normal, new List<string> { "environment", "template_id", "version" })
+                }
+            },
+            
+            // gcl_database_connection_log
+            new WiserTableDefinitionModel
+            {
+                Name = Constants.DatabaseConnectionLogTableName,
+                LastUpdate = new DateTime(2023, 2, 1),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("opened", MySqlDbType.DateTime, notNull: true),
+                    new("closed", MySqlDbType.DateTime),
+                    new("url", MySqlDbType.MediumText),
+                    new("http_method", MySqlDbType.VarChar, 20),
+                    new("database_service_instance_id", MySqlDbType.VarChar, 40),
+                    new("type", MySqlDbType.Enum, enumValues: new List<string> { "read", "write" })
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(Constants.DatabaseConnectionLogTableName, "idx_instance_id", IndexTypes.Normal, new List<string> { "database_service_instance_id" }),
+                    new(Constants.DatabaseConnectionLogTableName, "idx_closed", IndexTypes.Normal, new List<string> { "closed" })
                 }
             }
         };

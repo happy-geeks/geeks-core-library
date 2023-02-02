@@ -70,7 +70,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
         private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
         {
             // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
-            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (regEx.IsMatch(currentUrl.ToString()))
             {

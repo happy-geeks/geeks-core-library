@@ -739,7 +739,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return input;
             }
 
-            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]");
+            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
             foreach (Match m in imageTemplatingRegex.Matches(input))
             {
                 var replacementParameters = m.Groups[1].Value.Split(":");
@@ -806,7 +806,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
                 var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
-                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)");
+                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
                 var totalItems = items.Count;
                 var index = 1;
@@ -892,7 +892,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             while (counter < max && (input.Contains("<[", StringComparison.Ordinal) || input.Contains("[include", StringComparison.Ordinal)))
             {
                 counter += 1;
-                var inclusionsRegex = new Regex(@"<\[(.*?)\]>");
+                var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -929,7 +929,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                 }
 
-                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]");
+                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -1218,7 +1218,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
             }
 
-            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled);
+            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var pusherMatches = pusherRegex.Matches(query);
             foreach (Match match in pusherMatches)
             {

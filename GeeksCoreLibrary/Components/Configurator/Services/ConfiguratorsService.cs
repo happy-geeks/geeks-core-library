@@ -625,7 +625,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
                     requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
-                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                     requestJson = regex.Replace(requestJson, "null");
 
                     // If there is no request JSON it is useless to do an API call.
@@ -743,7 +743,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             configuration.Details.AddRange(input.QueryStringItems.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
 
             // save main item
-            await wiserItemsService.SaveAsync(configuration, parentId, skipPermissionsCheck: true);
+            await wiserItemsService.SaveAsync(configuration, parentId, skipPermissionsCheck: true, saveHistory: false);
 
             // save configuration line query, we run this query to get all the other variables that need to be added to the configuration line like ean, purchaseprice etc.
             var saveConfigLineQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationLineQuery");
@@ -787,7 +787,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 }
 
                 // save configuration line
-                await wiserItemsService.SaveAsync(configurationItem, skipPermissionsCheck: true);
+                await wiserItemsService.SaveAsync(configurationItem, skipPermissionsCheck: true, saveHistory: false);
             }
 
             var dataTable = await GetConfiguratorDataAsync(input.Configurator);
@@ -839,7 +839,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     requestJson = await ReplaceConfiguratorItemsAsync(requestJson, input, false);
                     requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
-                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                     requestJson = regex.Replace(requestJson, "null");
 
                     // If there is no request JSON it is useless to do an API call.
