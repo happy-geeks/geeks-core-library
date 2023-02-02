@@ -6,7 +6,7 @@ using MySql.Data.MySqlClient;
 
 namespace GeeksCoreLibrary.Modules.Databases.Interfaces
 {
-    public interface IDatabaseConnection : IDisposable
+    public interface IDatabaseConnection : IAsyncDisposable, IDisposable
     {
         /// <summary>
         /// Gets the name of the database that the connection is currently connected to.

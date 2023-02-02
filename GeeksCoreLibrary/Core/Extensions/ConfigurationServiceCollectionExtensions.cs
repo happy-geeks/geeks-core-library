@@ -48,6 +48,7 @@ using GeeksCoreLibrary.Components.ShoppingBasket.Services;
 using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Databases.Middlewares;
 using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.ItemFiles;
 using JetBrains.Annotations;
@@ -87,6 +88,8 @@ namespace GeeksCoreLibrary.Core.Extensions
             builder.UseStatusCodePagesWithReExecute("/webpage.gcl", "?errorCode={0}");
 
             builder.UseSession();
+
+            builder.UseMiddleware<CreateAndUpdateTablesMiddleware>();
 
             builder.UseMiddleware<ClearCacheMiddleware>();
 

@@ -209,5 +209,12 @@ namespace GeeksCoreLibrary.Core.Models
         /// A list of domain names that are considered to be test domains. E.g.: my-test-domain.com
         /// </summary>
         public string[] TestDomains { get; set; } = Array.Empty<string>();
+        
+        /// <summary>
+        /// Whether to log whenever a database connection gets opened and closed.
+        /// These logs will be saved in the table "gcl_database_connection_log".
+        /// That table will be automatically created if it doesn't exist yet. 
+        /// </summary>
+        public bool LogOpeningAndClosingOfConnections { get; set; }
     }
 }
