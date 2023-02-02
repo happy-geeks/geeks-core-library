@@ -622,12 +622,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserDashboard,
-                LastUpdate = new DateTime(2022, 7, 7),
+                LastUpdate = new DateTime(2023, 2, 1),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("last_update", MySqlDbType.DateTime, notNull: true),
                     new("items_data", MySqlDbType.MediumText),
+                    new("entities_data", MySqlDbType.MediumText),
                     new("user_login_count_top10", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("user_login_count_other", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("user_login_time_top10", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00"),
