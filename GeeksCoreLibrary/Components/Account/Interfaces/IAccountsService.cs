@@ -42,17 +42,17 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <summary>
         /// Saves the 2FA key from the user in the database
         /// </summary>
-        /// <param name="user_id"></param>
+        /// <param name="userId"></param>
         /// <param name="user2FAKey"></param>
         /// <returns></returns>
-        Task Save2FaKeyAsync(ulong user_id, string user2FaKey);
+        Task Save2FaKeyAsync(ulong userId, string user2FaKey);
 
         /// <summary>
         /// Gets the 2FA key from the user in the database
         /// </summary>
-        /// <param name="user_id"></param>
+        /// <param name="userId"></param>
         /// <returns></returns>
-        Task<String> Get2FaKeyAsync(ulong user_id);
+        Task<String> Get2FaKeyAsync(ulong userId, string entityType);
         
         /// <summary>
         /// Attempts to log off the user. This will delete the user's cookie from their browser and our database.

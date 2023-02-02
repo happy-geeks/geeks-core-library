@@ -28,11 +28,9 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly IObjectsService objectsService;
         private readonly ILogger<AccountsService> logger;
         private readonly IDatabaseHelpersService databaseHelpersService;
-        private readonly IWiserItemsService wiserItemsService;
-        private readonly AccountCmsSettingsModel accountCmsSettingsModel;
         private readonly IRolesService rolesService;
 
-        public AccountsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<AccountsService> logger, IDatabaseHelpersService databaseHelpersService, IRolesService rolesService, IWiserItemsService wiserItemsService, AccountCmsSettingsModel accountCmsSettingsModel)
+        public AccountsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<AccountsService> logger, IDatabaseHelpersService databaseHelpersService, IRolesService rolesService)
         {
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
@@ -40,8 +38,6 @@ namespace GeeksCoreLibrary.Components.Account.Services
             this.objectsService = objectsService;
             this.logger = logger;
             this.databaseHelpersService = databaseHelpersService;
-            this.wiserItemsService = wiserItemsService;
-            this.accountCmsSettingsModel = accountCmsSettingsModel;
             this.rolesService = rolesService;
         }
         
@@ -263,22 +259,30 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
-        public async Task Save2FaKeyAsync(ulong user_id, string user2FAKey)
+        public async Task Save2FaKeyAsync(ulong userId, string user2FAKey)
         {
-            var userItem = await wiserItemsService.GetItemDetailsAsync(user_id, entityType: accountCmsSettingsModel.EntityType);
-            userItem.SetDetail(Constants.GoogleAuthenticationVerificationIdFieldName, user2FAKey);
-            await wiserItemsService.SaveAsync(userItem);
-            // var query = "INSERT INTO wiser_itemdetail (item_id,key, value) VALUES (user_id,User2FAKey, user2FAKey) ";
-            // await databaseConnection.ExecuteAsync(query);
+            // Note: Can't use IWiserItemsService here, because then we get a circular reference.
+            var query = @"INSERT INTO wiser_itemdetail (item_id, `key`, `value`)
+                        VALUES (?userId, 'User2FAKey', ?user2FAKey)
+                        ON DUPLICATE KEY UPDATE value = VALUES(value)";
+            databaseConnection.AddParameter("userId", userId);
+            databaseConnection.AddParameter("user2FAKey", user2FAKey);
+            await databaseConnection.ExecuteAsync(query);
         }
         
         /// <inheritdoc />
-        public async Task<String> Get2FaKeyAsync(ulong user_id)
+        public async Task<String> Get2FaKeyAsync(ulong userId, string entityType)
         {
-            var userItem = await wiserItemsService.GetItemDetailsAsync(user_id, entityType: accountCmsSettingsModel.EntityType);
-            return userItem.GetDetailValue(Constants.GoogleAuthenticationVerificationIdFieldName);
-            // var query = "SELECT value FROM wiser_itemdetail WHERE item_id = user_id AND key = User2FAKey";
-            // await databaseConnection.ExecuteAsync(query);
+            // Note: Can't use IWiserItemsService here, because then we get a circular reference.
+            var query = @"SELECT value FROM wiser_itemdetail WHERE item_id = ?userId AND `key` = 'User2FAKey'";
+            databaseConnection.AddParameter("userId", userId);
+            var result = await databaseConnection.GetAsync(query, true);
+            if (result.Rows.Count <= 0)
+            {
+                return null;
+            }
+            var dataRow = result.Rows[0];
+            return dataRow["value"].ToString();
         }
 
         /// <inheritdoc />

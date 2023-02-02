@@ -383,13 +383,14 @@ namespace GeeksCoreLibrary.Components.Account
                 return (template, stepNumber);
             }
 
-            var googleAuthKey = await AccountsService.Get2FaKeyAsync(Convert.ToUInt64(sessionUserId));
+            var googleAuthKey = await AccountsService.Get2FaKeyAsync(Convert.ToUInt64(sessionUserId), Settings.EntityType);
             
             if (String.IsNullOrEmpty(googleAuthKey))
             {
                 googleAuthKey = Guid.NewGuid().ToString().Replace("-", "");
                 TwoFactorAuthenticator tfa = new TwoFactorAuthenticator();
                 SetupCode setupInfo = tfa.GenerateSetupCode("Wiser", username, googleAuthKey, false, 3);
+                await AccountsService.Save2FaKeyAsync(Convert.ToUInt64(sessionUserId), googleAuthKey);
                 return (template.ReplaceCaseInsensitive("{googleAuthenticationQrImageUrl}", setupInfo.QrCodeSetupImageUrl), stepNumber);
             }
 
@@ -1691,25 +1692,25 @@ namespace GeeksCoreLibrary.Components.Account
                 usingGoogleAuthentication = Settings.EnableGoogleAuthenticator && !String.IsNullOrWhiteSpace(googleAuthenticationVerificationId);
             }
 
-            if (usingGoogleAuthentication)
-            {
-                if (String.IsNullOrWhiteSpace(googleAuthenticatorPin))
-                {
-                    WriteToTrace("No googleAuthenticationPin or googleAuthenticationVerificationId given.");
-                    return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
-                }
-                
-                
-                TwoFactorAuthenticator tfa = new TwoFactorAuthenticator();
-                var googleAuthKey = await AccountsService.Get2FaKeyAsync(decryptedUserId);
-                bool result = tfa.ValidateTwoFactorPIN(googleAuthKey, googleAuthenticatorPin);
-                if (!result)
-                {
-                    WriteToTrace("Authentication failed, codes do not match");
-                    return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
-                }
-
-            }
+            // if (!usingGoogleAuthentication)
+            // {
+            //     if (String.IsNullOrWhiteSpace(googleAuthenticatorPin))
+            //     {
+            //         WriteToTrace("No googleAuthenticationPin or googleAuthenticationVerificationId given.");
+            //         return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
+            //     }
+            //     
+            //     var sessionId = session.GetString($"{Constants.UserIdSessionKey}_{ComponentId}");
+            //     TwoFactorAuthenticator tfa = new TwoFactorAuthenticator();
+            //     var googleAuthKey = await AccountsService.Get2FaKeyAsync(Convert.ToUInt64(sessionId), Settings.EntityType);
+            //     bool result = tfa.ValidateTwoFactorPIN(googleAuthKey, googleAuthenticatorPin);
+            //     if (!result)
+            //     {
+            //         WriteToTrace("Authentication failed, codes do not match");
+            //         return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
+            //     }
+            //
+            // }
 
             // Save the login value in the session, so that we can remember it during the rest of the steps if the mode is LoginMultipleSteps.
             if (!String.IsNullOrWhiteSpace(loginValue))
@@ -1787,19 +1788,22 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 // Verify 2 factor authentication, if enabled.
-                if (usingGoogleAuthentication)
+                if (!usingGoogleAuthentication)
                 {
-                    var sessionUserId = session.GetString($"{Constants.UserIdSessionKey}_{ComponentId}");
-                    throw new NotImplementedException("Google authenticator not yet implemented!");
-                    /* TODO:
-                    Dim googleAuthenticator = New GoogleAuthenticator(GoogleAuthenticatorSiteId, sessionUserId, loginValue, "")
-                    If Not googleAuthenticator.Verify(googleAuthenticationVerificationId, googleAuthenticationPin) Then
-                        SaveLoginAttempt(connection, False, loggedInUserId)
-                        Return (Result:=LoginResults.InvalidTwoFactorAuthentication, 0, EmailAddress:=userEmail)
-                    End If
-
-                    googleAuthenticator.SaveAndEnable(googleAuthenticationVerificationId)
-                    */
+                    if (String.IsNullOrWhiteSpace(googleAuthenticatorPin))
+                    {
+                        WriteToTrace("No googleAuthenticationPin or googleAuthenticationVerificationId given.");
+                        return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
+                    }
+                    
+                    var tfa = new TwoFactorAuthenticator();
+                    var googleAuthKey = await AccountsService.Get2FaKeyAsync(loggedInUserId, Settings.EntityType);
+                    bool result = tfa.ValidateTwoFactorPIN(googleAuthKey, googleAuthenticatorPin);
+                    if (!result)
+                    {
+                        WriteToTrace("Authentication failed, codes do not match");
+                        return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
+                    }
                 }
                 else if (Settings.EnableGoogleAuthenticator)
                 {
