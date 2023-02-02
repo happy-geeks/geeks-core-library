@@ -35,6 +35,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
+        public async ValueTask DisposeAsync()
+        {
+            await databaseConnection.DisposeAsync();
+        }
+
+        /// <inheritdoc />
         public void Dispose()
         {
             databaseConnection.Dispose();
