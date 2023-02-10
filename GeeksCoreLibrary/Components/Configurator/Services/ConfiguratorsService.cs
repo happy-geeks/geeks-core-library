@@ -863,7 +863,6 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         Value = requestJson,
                         GroupName = saveApi.Title
                     });
-                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
                     
                     var restResponse = await restClient.ExecuteAsync(restRequest);
                     
@@ -873,7 +872,6 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         Value = restResponse.Content,
                         GroupName = saveApi.Title
                     });
-                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
                     
                     if (!restResponse.IsSuccessful || restResponse.Content == null)
                     {
@@ -883,6 +881,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     // If the call only needed to be made and no supplier ID needs to be retrieved the last part can be skipped.
                     if (String.IsNullOrWhiteSpace(supplierIdKey))
                     {
+                        await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
                         continue;
                     }
 
@@ -905,7 +904,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         Value = supplierId,
                         GroupName = saveApi.Title
                     });
-                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
+                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
                 }
                 catch (Exception e)
                 {
@@ -917,7 +916,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         Value = e.ToString(),
                         GroupName = saveApi.Title
                     });
-                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
+                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
                 }
             }
 

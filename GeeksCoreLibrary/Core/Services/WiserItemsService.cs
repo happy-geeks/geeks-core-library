@@ -98,6 +98,9 @@ namespace GeeksCoreLibrary.Core.Services
                 if (wiserItem.Id == 0)
                 {
                     wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck);
+                    
+                    // When a new item has been created the values always need to be saved. There is no use to check if they have been changed since they are all new.
+                    alwaysSaveValues = true;
                 }
 
                 var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck);
