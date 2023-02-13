@@ -4,6 +4,9 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Models;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
 {
@@ -305,6 +308,28 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         public static string Sha512(this string input)
         {
             return input?.ToSha512ForPasswords();
+        }
+
+        /// <summary>
+        /// Hash this string.
+        /// </summary>
+        /// <param name="input">The text to hash.</param>
+        /// <param name="algorithm">The hashing algorithm to use.</param>
+        /// <param name="representation">The way the hashed value needs to be represented.</param>
+        /// <returns>The hashed string in the requested representation.</returns>
+        public static string Hash(this string input, string algorithm, string representation)
+        {
+            if (!Enum.TryParse<HashAlgorithms>(algorithm, true, out var hashAlgorithm))
+            {
+                throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm, null);
+            }
+            
+            if (!Enum.TryParse<HashRepresentations>(representation, true, out var hashRepresentation))
+            {
+                throw new ArgumentOutOfRangeException(nameof(representation), representation, null);
+            }
+            
+            return StringHelpers.HashValue(input, new HashSettingsModel() {Algorithm = hashAlgorithm, Representation = hashRepresentation});
         }
 
         /// <summary>

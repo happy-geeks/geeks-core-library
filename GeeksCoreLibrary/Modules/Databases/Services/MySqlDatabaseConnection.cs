@@ -722,6 +722,8 @@ SELECT LAST_INSERT_ID();";
         /// <param name="disposeConnection">Set to true to dispose the connection at the end.</param>
         private async Task AddConnectionCloseLogAsync(bool isWriteConnection, bool disposeConnection = false)
         {
+            var commandToUse = isWriteConnection && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? CommandForWriting : CommandForReading;
+            
             try
             {
                 if (!gclSettings.LogOpeningAndClosingOfConnections && ((isWriteConnection && writeConnectionLogId == 0) || (!isWriteConnection && readConnectionLogId == 0)))
@@ -735,8 +737,6 @@ SELECT LAST_INSERT_ID();";
                     // So the table obviously won't exist yet during startup and we don't want an error from that.
                     return;
                 }
-
-                var commandToUse = isWriteConnection && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? CommandForWriting : CommandForReading;
 
                 if (commandToUse == null)
                 {
@@ -769,8 +769,16 @@ SELECT LAST_INSERT_ID();";
             {
                 if (disposeConnection)
                 {
-                    await (isWriteConnection ? ConnectionForWriting : ConnectionForReading).DisposeAsync();
-                    await (isWriteConnection ? CommandForWriting : CommandForReading).DisposeAsync();
+                    if (commandToUse != null)
+                    {
+                        await commandToUse.DisposeAsync();
+                    }
+
+                    var connection = (isWriteConnection ? ConnectionForWriting : ConnectionForReading);
+                    if (connection != null)
+                    {
+                        await connection.DisposeAsync();
+                    }
                 }
             }
         }
