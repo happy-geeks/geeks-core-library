@@ -21,6 +21,7 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
@@ -434,7 +435,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         break;
                     case OrderProcessStepTypes.OrderConfirmation:
                     case OrderProcessStepTypes.OrderPending:
-                        var confirmationHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, step, steps, paymentMethods);
+                        var orderId = Convert.ToUInt64(httpContextAccessor.HttpContext.Request.Query["order"].ToString().Decrypt());
+                        var order = await wiserItemsService.GetItemDetailsAsync(orderId,  entityType: Constants.OrderEntityType, skipPermissionsCheck: true);
+                        var confirmationHtml = ReplaceEntityDataInTemplate(order, currentItems, step, steps, paymentMethods);
                         groupsBuilder.AppendLine(confirmationHtml);
 
                         // Empty the shopping basket.
