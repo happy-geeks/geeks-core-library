@@ -23,6 +23,7 @@ using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -855,6 +856,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                     orderId = conceptOrderId;
                 }
+                // Add order ID to the URLs for later reference.
+                var queryParameters = new Dictionary<string, string> {{"order", orderId.ToString().Encrypt()}};
+                paymentMethodSettings.PaymentServiceProvider.SuccessUrl = UriHelpers.AddToQueryString(paymentMethodSettings.PaymentServiceProvider.SuccessUrl, queryParameters);
+                paymentMethodSettings.PaymentServiceProvider.PendingUrl = UriHelpers.AddToQueryString(paymentMethodSettings.PaymentServiceProvider.PendingUrl, queryParameters);
 
                 // Generate invoice number.
                 var invoiceNumber = "";
@@ -935,12 +940,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                 if (convertConceptOrderToOrder)
                 {
-                    foreach (var (main, _) in conceptOrders)
-                    {
-                        await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
-                        // TODO: Call "TransactionFinished" site function.
-                    }
-                    
                     await HandlePaymentStatusUpdateAsync(orderProcessesService, orderProcessSettings, conceptOrders, "Success", true, convertConceptOrderToOrder);
 
                     return new PaymentRequestResult
