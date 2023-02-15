@@ -436,7 +436,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     case OrderProcessStepTypes.OrderConfirmation:
                     case OrderProcessStepTypes.OrderPending:
                         var order = new WiserItemModel();
-                        string errorMessage = null;
+                        var errorMessage = "";
                         if (httpContextAccessor.HttpContext == null || !httpContextAccessor.HttpContext.Request.Query.ContainsKey("order"))
                         {
                             errorMessage = "Order not found, please contact us";
@@ -466,12 +466,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         }
 
                         var confirmationHtml = ReplaceEntityDataInTemplate(order, currentItems, step, steps, paymentMethods);
-
-                        if (!String.IsNullOrWhiteSpace(errorMessage))
-                        {
-                            confirmationHtml = confirmationHtml.Replace("{loadOrderError}", await languagesService.GetTranslationAsync(errorMessage));
-                        }
-                        
+                        confirmationHtml = confirmationHtml.Replace("{loadOrderError}", await languagesService.GetTranslationAsync(errorMessage));
                         groupsBuilder.AppendLine(confirmationHtml);
 
                         // Empty the shopping basket.
