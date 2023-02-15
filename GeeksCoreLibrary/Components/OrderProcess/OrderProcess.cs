@@ -21,6 +21,7 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
@@ -434,7 +435,38 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         break;
                     case OrderProcessStepTypes.OrderConfirmation:
                     case OrderProcessStepTypes.OrderPending:
-                        var confirmationHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, step, steps, paymentMethods);
+                        var order = new WiserItemModel();
+                        var errorMessage = "";
+                        if (httpContextAccessor.HttpContext == null || !httpContextAccessor.HttpContext.Request.Query.ContainsKey("order"))
+                        {
+                            errorMessage = "Order not found, please contact us";
+                            Logger.LogError("Failed to get the order by ID during the confirmation step in the order process because query string was not set.");
+                        }
+                        else
+                        {
+                            var encryptedOrderId = httpContextAccessor.HttpContext.Request.Query["order"].ToString();
+                            if (String.IsNullOrWhiteSpace(encryptedOrderId))
+                            {
+                                errorMessage = "Order not found, please contact us";
+                                Logger.LogError("Failed to get the order by ID during the confirmation step in the order process because no order ID was given.");
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    var orderId = Convert.ToUInt64(encryptedOrderId.Decrypt());
+                                    order = await wiserItemsService.GetItemDetailsAsync(orderId, entityType: Constants.OrderEntityType, skipPermissionsCheck: true);
+                                }
+                                catch (Exception exception)
+                                {
+                                    errorMessage = "Order not found, please contact us";
+                                    Logger.LogError($"Failed to get the order by ID during the confirmation step in the order process due to exception while processing encrypted ID '{encryptedOrderId}': {exception}");
+                                }
+                            }
+                        }
+
+                        var confirmationHtml = ReplaceEntityDataInTemplate(order, currentItems, step, steps, paymentMethods);
+                        confirmationHtml = confirmationHtml.Replace("{loadOrderError}", await languagesService.GetTranslationAsync(errorMessage));
                         groupsBuilder.AppendLine(confirmationHtml);
 
                         // Empty the shopping basket.

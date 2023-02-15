@@ -49,7 +49,7 @@ namespace GeeksCoreLibrary.Core.Helpers
 
             if (!regex.IsMatch(ean))
             {
-                throw new ArgumentException($"Value '{ean}' is an invalid EAN. The EAN must consist of 12 numerical values",ean);
+                throw new ArgumentException($"Value '{ean}' is an invalid EAN. The EAN must consist of 12 numerical values", ean);
             }
 
             var calculationSum = 0;
@@ -79,7 +79,7 @@ namespace GeeksCoreLibrary.Core.Helpers
         public static string HashValue(string value, HashSettingsModel hashSettings)
         {
             HashAlgorithm hashAlgorithm;
-            
+
             switch (hashSettings.Algorithm)
             {
                 case HashAlgorithms.MD5:
@@ -97,10 +97,10 @@ namespace GeeksCoreLibrary.Core.Helpers
                 default:
                     throw new ArgumentOutOfRangeException(nameof(hashSettings.Algorithm), hashSettings.Algorithm, null);
             }
-            
+
             var bytes = Encoding.ASCII.GetBytes(value);
             var hashBytes = hashAlgorithm.ComputeHash(bytes);
-            
+
             hashAlgorithm.Dispose();
 
             switch (hashSettings.Representation)
