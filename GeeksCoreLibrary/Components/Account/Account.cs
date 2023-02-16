@@ -48,8 +48,6 @@ namespace GeeksCoreLibrary.Components.Account
         private readonly ICommunicationsService communicationsService;
         private readonly IWiserItemsService wiserItemsService;
         
-        //Remove when a better way is found
-        // private string googleAuthKey = "";
 
         #region Enums
 
@@ -369,7 +367,7 @@ namespace GeeksCoreLibrary.Components.Account
         /// <param name="template">The HTML template that is going to be shown to the user.</param>
         /// <param name="stepNumber">The current step number. Note: This is a ref parameter and the function will change the value based on whether the user already has 2FA setup or not.</param>
         /// <returns></returns>
-        private async Task<(string Template, int StepNumber)> RenderGoogleAuthenticator(string template, int stepNumber)
+        private async Task<(string Template, int StepNumber)> RenderGoogleAuthenticatorAsync(string template, int stepNumber)
         {
             if (!Settings.EnableGoogleAuthenticator)
             {
@@ -383,24 +381,18 @@ namespace GeeksCoreLibrary.Components.Account
                 return (template, stepNumber);
             }
 
-            var googleAuthKey = await AccountsService.Get2FaKeyAsync(Convert.ToUInt64(sessionUserId), Settings.EntityType);
+            var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId));
             
-            if (String.IsNullOrEmpty(googleAuthKey))
+            if (String.IsNullOrEmpty(googleAuthenticationKey))
             {
-                googleAuthKey = Guid.NewGuid().ToString().Replace("-", "");
+                googleAuthenticationKey = Guid.NewGuid().ToString().Replace("-", "");
                 TwoFactorAuthenticator tfa = new TwoFactorAuthenticator();
-                SetupCode setupInfo = tfa.GenerateSetupCode("Wiser", username, googleAuthKey, false, 3);
-                await AccountsService.Save2FaKeyAsync(Convert.ToUInt64(sessionUserId), googleAuthKey);
+                SetupCode setupInfo = tfa.GenerateSetupCode(Settings.GoogleAuthenticatorSiteId, username, googleAuthenticationKey, false, 3);
+                await AccountsService.Save2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId), googleAuthenticationKey);
                 return (template.ReplaceCaseInsensitive("{googleAuthenticationQrImageUrl}", setupInfo.QrCodeSetupImageUrl), stepNumber);
             }
-
-
-
+            
             return (template, stepNumber);
-            // return $"<!-- Google Authenticator not implemented yet. --> {template}";
-            /*var googleAuthenticator = new GoogleAuthenticator(GoogleAuthenticatorSiteId, sessionUserId, username, "");
-            stepNumber = googleAuthenticator.HasAuthEnabled() ? LoginSteps.LoginWithTwoFactorAuthentication : LoginSteps.SetupTwoFactorAuthentication;
-            return template.ReplaceCaseInsensitive("{googleAuthenticationQrImageUrl}", googleAuthenticator.GetQrCodeUrl()).ReplaceCaseInsensitive("{googleAuthenticationVerificationId}", googleAuthenticator.GetVerificationId());*/
         }
 
         #endregion
@@ -458,7 +450,7 @@ namespace GeeksCoreLibrary.Components.Account
                         default:
                         {
                             // There was an error, show that error to the user.
-                            var (template, newStepNumber) = await RenderGoogleAuthenticator(Settings.Template, stepNumber);
+                            var (template, newStepNumber) = await RenderGoogleAuthenticatorAsync(Settings.Template, stepNumber);
                             stepNumber = newStepNumber;
                             resultHtml = template.ReplaceCaseInsensitive("{error}", Settings.TemplateError.ReplaceCaseInsensitive("{errorType}", loginResult.Result.ToString()));
                             break;
@@ -593,7 +585,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                         case LoginResults.TwoFactorAuthenticationRequired:
                         {
-                            var (template, newStepNumber) = await RenderGoogleAuthenticator(Settings.Template, stepNumber);
+                            var (template, newStepNumber) = await RenderGoogleAuthenticatorAsync(Settings.Template, stepNumber);
                             stepNumber = newStepNumber;
                             resultHtml = template.ReplaceCaseInsensitive("{error}", "");
                             break;
@@ -617,7 +609,7 @@ namespace GeeksCoreLibrary.Components.Account
                         default:
                         {
                             // There was an error, show that error to the user.
-                            var (template, newStepNumber) = await RenderGoogleAuthenticator(Settings.Template, stepNumber);
+                            var (template, newStepNumber) = await RenderGoogleAuthenticatorAsync(Settings.Template, stepNumber);
                             stepNumber = newStepNumber;
                             resultHtml = template.ReplaceCaseInsensitive("{error}", Settings.TemplateError.ReplaceCaseInsensitive("{errorType}", loginResult.Result.ToString()));
                             break;
@@ -1692,26 +1684,6 @@ namespace GeeksCoreLibrary.Components.Account
                 usingGoogleAuthentication = Settings.EnableGoogleAuthenticator && !String.IsNullOrWhiteSpace(googleAuthenticationVerificationId);
             }
 
-            // if (!usingGoogleAuthentication)
-            // {
-            //     if (String.IsNullOrWhiteSpace(googleAuthenticatorPin))
-            //     {
-            //         WriteToTrace("No googleAuthenticationPin or googleAuthenticationVerificationId given.");
-            //         return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
-            //     }
-            //     
-            //     var sessionId = session.GetString($"{Constants.UserIdSessionKey}_{ComponentId}");
-            //     TwoFactorAuthenticator tfa = new TwoFactorAuthenticator();
-            //     var googleAuthKey = await AccountsService.Get2FaKeyAsync(Convert.ToUInt64(sessionId), Settings.EntityType);
-            //     bool result = tfa.ValidateTwoFactorPIN(googleAuthKey, googleAuthenticatorPin);
-            //     if (!result)
-            //     {
-            //         WriteToTrace("Authentication failed, codes do not match");
-            //         return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
-            //     }
-            //
-            // }
-
             // Save the login value in the session, so that we can remember it during the rest of the steps if the mode is LoginMultipleSteps.
             if (!String.IsNullOrWhiteSpace(loginValue))
             {
@@ -1788,7 +1760,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 // Verify 2 factor authentication, if enabled.
-                if (!usingGoogleAuthentication)
+                if (usingGoogleAuthentication)
                 {
                     if (String.IsNullOrWhiteSpace(googleAuthenticatorPin))
                     {
@@ -1797,8 +1769,8 @@ namespace GeeksCoreLibrary.Components.Account
                     }
                     
                     var tfa = new TwoFactorAuthenticator();
-                    var googleAuthKey = await AccountsService.Get2FaKeyAsync(loggedInUserId, Settings.EntityType);
-                    bool result = tfa.ValidateTwoFactorPIN(googleAuthKey, googleAuthenticatorPin);
+                    var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(loggedInUserId);
+                    bool result = tfa.ValidateTwoFactorPIN(googleAuthenticationKey, googleAuthenticatorPin);
                     if (!result)
                     {
                         WriteToTrace("Authentication failed, codes do not match");

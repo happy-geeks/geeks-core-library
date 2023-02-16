@@ -259,23 +259,25 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
-        public async Task Save2FaKeyAsync(ulong userId, string user2FAKey)
+        public async Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FAKey)
         {
             // Note: Can't use IWiserItemsService here, because then we get a circular reference.
-            var query = @"INSERT INTO wiser_itemdetail (item_id, `key`, `value`)
+            var query = @"INSERT INTO ?tableName (item_id, `key`, `value`)
                         VALUES (?userId, 'User2FAKey', ?user2FAKey)
                         ON DUPLICATE KEY UPDATE value = VALUES(value)";
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("user2FAKey", user2FAKey);
+            databaseConnection.AddParameter("tableName", WiserTableNames.WiserItemDetail);
             await databaseConnection.ExecuteAsync(query);
         }
         
         /// <inheritdoc />
-        public async Task<String> Get2FaKeyAsync(ulong userId, string entityType)
+        public async Task<String> Get2FactorAuthenticationKeyAsync(ulong userId)
         {
             // Note: Can't use IWiserItemsService here, because then we get a circular reference.
-            var query = @"SELECT value FROM wiser_itemdetail WHERE item_id = ?userId AND `key` = 'User2FAKey'";
+            var query = @"SELECT value FROM ?tableName WHERE item_id = ?userId AND `key` = 'User2FAKey'";
             databaseConnection.AddParameter("userId", userId);
+            databaseConnection.AddParameter("tableName", WiserTableNames.WiserItemDetail);
             var result = await databaseConnection.GetAsync(query, true);
             if (result.Rows.Count <= 0)
             {
