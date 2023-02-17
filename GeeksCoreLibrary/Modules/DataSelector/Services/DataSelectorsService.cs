@@ -895,7 +895,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 Content = dataSelectorQuery
             };
 
-            return (await templatesService.GetJsonResponseFromQueryAsync(queryTemplate, recursive: true), HttpStatusCode.OK, String.Empty);
+            return (await templatesService.GetJsonResponseFromQueryAsync(queryTemplate, recursive: true, childItemsMustHaveId: true), HttpStatusCode.OK, String.Empty);
         }
         
         /// <inheritdoc />

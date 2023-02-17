@@ -37,7 +37,8 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// Turns properties that are grouped into a sub-array.
         /// </summary>
         /// <param name="token">A <see cref="JToken"/> that should have its type set to <see cref="JTokenType.Object"/>.</param>
-        private static void MakeSubArray(JToken token)
+        /// <param name="childItemsMustHaveId">Optional: Forces child items in an object to have a non-null value in the <c>id</c> column. This is for data selectors that have optional child items.</param>
+        private static void MakeSubArray(JToken token, bool childItemsMustHaveId = false)
         {
             if (token.Type != JTokenType.Object)
             {
@@ -53,7 +54,7 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             foreach (var group in groups)
             {
-                if (!properties.Any(p => p.Name.Equals($"{group}~id")))
+                if (!properties.Any(p => p.Name.Equals($"{group}~id")) || (childItemsMustHaveId && properties.First(p => p.Name.Equals($"{group}~id")).Value.Type == JTokenType.Null))
                 {
                     propertiesToRemove.AddRange(properties.Where(p => p.Name.StartsWith($"{group}~", StringComparison.Ordinal)).Select(property => property.Name));
                 }
@@ -212,8 +213,9 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <param name="skipNullValues">Optional: Set to <see langword="true"/> to skip values that are <see langword="null"/>. Default is <see langword="false"/>.</param>
         /// <param name="allowValueDecryption">Optional: Set to <see langword="true"/> to allow values to be decrypted (for columns that contain the _decrypt suffix for example), otherwise values will be added in the <see cref="JObject"/> as is. Default value is <see langword="false"/>.</param>
         /// <param name="recursive"></param>
-        /// <returns>An <see cref="JArray"/> with the data from the <see cref="DataTable"/>.</returns>
-        public static JArray ToJsonArray(this DataTable dataTable, QueryGroupingSettings groupingSettings, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false)
+        /// <param name="childItemsMustHaveId">Optional: Forces child items in an object to have a non-null value in the <c>id</c> column. This is for data selectors that have optional child items.</param>
+        /// <returns>A <see cref="JArray"/> with the data from the <see cref="DataTable"/>.</returns>
+        public static JArray ToJsonArray(this DataTable dataTable, QueryGroupingSettings groupingSettings, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false, bool childItemsMustHaveId = false)
         {
             var result = new JArray();
             if (dataTable == null || dataTable.Rows.Count == 0)
@@ -235,7 +237,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             var innerResult = dataTable.ToJsonArray(encryptionKey, skipNullValues, allowValueDecryption);
             foreach (var item in innerResult)
             {
-                MakeSubArray(item);
+                MakeSubArray(item, childItemsMustHaveId);
             }
 
             // Merge objects inside array by key.
