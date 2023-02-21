@@ -142,7 +142,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
                 }
 
                 var urlExtension = System.IO.Path.GetExtension(urlWithoutQuery);
-                if (String.IsNullOrEmpty(urlExtension)) // Don't redirect urls ending on .aspx or another extension
+                if (String.IsNullOrEmpty(urlExtension))
                 {
                     if (!urlWithoutQuery.EndsWith("/"))
                     {
