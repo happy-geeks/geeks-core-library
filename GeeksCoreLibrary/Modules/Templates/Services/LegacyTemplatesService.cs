@@ -1203,7 +1203,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false)
+        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false, bool childItemsMustHaveId = false)
         {
             var query = queryTemplate?.Content;
             if (String.IsNullOrWhiteSpace(query))
@@ -1231,7 +1231,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             var dataTable = await databaseConnection.GetAsync(query);
-            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive);
+            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
 
             if (pusherMatches.Any())
             {
