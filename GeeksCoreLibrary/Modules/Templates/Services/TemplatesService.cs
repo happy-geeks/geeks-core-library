@@ -1499,7 +1499,7 @@ ORDER BY IFNULL(linkToParent.destination_item_id, 0) ASC, IFNULL(linkToParent.or
 
                 results.Add(new PageWidgetModel
                 {
-                    Location = (PageWidgetLocations) Convert.ToInt32(dataRow["location"]),
+                    Location = (PageWidgetLocations) Convert.ToInt32(dataRow["widget_location"]),
                     Html = html
                 });
             }
