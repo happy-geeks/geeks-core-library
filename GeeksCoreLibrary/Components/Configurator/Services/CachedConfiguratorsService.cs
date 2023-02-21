@@ -26,7 +26,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         private readonly GclSettings gclSettings;
         private readonly ICacheService cacheService;
 
-        public CachedConfiguratorsService(IConfiguratorsService configuratorsService, IAppCache appCache, IOptions<GclSettings> gclSettings, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor, ICacheService cacheService)
+        public CachedConfiguratorsService(IConfiguratorsService configuratorsService,
+            IAppCache appCache,
+            IOptions<GclSettings> gclSettings,
+            IObjectsService objectsService,
+            ICacheService cacheService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.configuratorsService = configuratorsService;
             this.appCache = appCache;
@@ -43,7 +48,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             var addHostNameToCache = String.Equals(await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_CacheDataByDomain"), "true", StringComparison.OrdinalIgnoreCase);
             if (addHostNameToCache)
             {
-                var httpContext = httpContextAccessor.HttpContext;
+                var httpContext = httpContextAccessor?.HttpContext;
                 hostName = httpContext != null ? HttpContextHelpers.GetHostName(httpContext) : "";
             }
             return await appCache.GetOrAddAsync($"GetConfiguratorDataAsync_{(!String.IsNullOrWhiteSpace(hostName) && addHostNameToCache ? $"{hostName}_" : "")}{name}",

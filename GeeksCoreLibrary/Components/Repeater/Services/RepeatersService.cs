@@ -22,7 +22,10 @@ namespace GeeksCoreLibrary.Components.Repeater.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly GclSettings gclSettings;
 
-        public RepeatersService(IDatabaseConnection databaseConnection, ILanguagesService languagesService, IHttpContextAccessor httpContextAccessor, IOptions<GclSettings> gclSettings)
+        public RepeatersService(IDatabaseConnection databaseConnection,
+            ILanguagesService languagesService,
+            IOptions<GclSettings> gclSettings,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
             this.languagesService = languagesService;

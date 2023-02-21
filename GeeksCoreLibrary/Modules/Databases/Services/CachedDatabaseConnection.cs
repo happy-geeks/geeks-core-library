@@ -25,7 +25,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private readonly ConcurrentDictionary<string, object> parameters = new();
         private readonly GclSettings gclSettings;
 
-        public CachedDatabaseConnection(IDatabaseConnection databaseConnection, IAppCache cache, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, ICacheService cacheService)
+        public CachedDatabaseConnection(IDatabaseConnection databaseConnection,
+            IAppCache cache,
+            IOptions<GclSettings> gclSettings,
+            ICacheService cacheService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
             this.cache = cache;
@@ -70,7 +74,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 return databaseConnection.GetAsync(query, cleanUp: cleanUp, useWritingConnectionIfAvailable: useWritingConnectionIfAvailable);
             }
 
-            var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheName = new StringBuilder($"GCL_QUERY_{currentUri.Host}");
 
             if (gclSettings.MultiLanguageBasedOnUrlSegments)
@@ -105,7 +109,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             if (gclSettings.MultiLanguageBasedOnUrlSegments)
             {
-                cacheName.Append(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).Segments.First().Trim('/'));
+                cacheName.Append(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).Segments.First().Trim('/'));
             }
 
             cacheName.Append(query.ToSha512Simple());

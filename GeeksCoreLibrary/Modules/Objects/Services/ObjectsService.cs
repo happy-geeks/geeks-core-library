@@ -22,7 +22,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
         /// </summary>
         /// <param name="databaseConnection"></param>
         /// <param name="httpContextAccessor"></param>
-        public ObjectsService(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor)
+        public ObjectsService(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
             this.httpContextAccessor = httpContextAccessor;
@@ -35,17 +35,17 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
             var domain = overrideDomain;
             if (String.IsNullOrEmpty(domain))
             {
-                domain = HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext);
+                domain = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext);
             }
 
             if (searchFromSpecificToGeneral)
             {
                 // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext, new List<string>(), true)}");
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true)}");
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext, includingTestWww: true)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true)}");
                 }
 
                 if (String.IsNullOrEmpty(finalResult))
@@ -62,17 +62,17 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                     }
                     else if (!String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
                     {
-                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext)}");
+                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext)}");
                     }
                 }
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext).Split('.')[0]}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext).Split('.')[0]}");
                 }
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{HttpContextHelpers.GetUrlPrefix(httpContextAccessor.HttpContext)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext)}");
                 }
                 if (String.IsNullOrEmpty(finalResult))
                 {
@@ -84,11 +84,11 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                 finalResult = await GetSystemObjectValueAsync(objectKey);
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{HttpContextHelpers.GetUrlPrefix(httpContextAccessor.HttpContext)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext)}");
                 }
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext).Split('.')[0]}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext).Split('.')[0]}");
                 }
                 if (String.IsNullOrEmpty(finalResult))
                 {
@@ -104,25 +104,25 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                     }
                     else if (!String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
                     {
-                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext)}");
+                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext)}");
                     }
                 }
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext, includingTestWww: true)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true)}");
                 }
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
                     // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext, new List<string>(), true)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true)}");
                 }
             }
 
             if (finalResult != null && finalResult.Contains("{"))
             {
-                finalResult = LegacyTemplatesService.DoHttpContextReplacements(finalResult, httpContextAccessor.HttpContext);
+                finalResult = LegacyTemplatesService.DoHttpContextReplacements(finalResult, httpContextAccessor?.HttpContext);
             }
 
             if (!String.IsNullOrEmpty(finalResult))

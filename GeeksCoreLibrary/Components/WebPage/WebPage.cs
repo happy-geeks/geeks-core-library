@@ -38,7 +38,14 @@ namespace GeeksCoreLibrary.Components.WebPage
 
         #region Constructor
 
-        public WebPage(ILogger<WebPage> logger, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor, IPagesService pagesService, IWebPagesService webPagesService)
+        public WebPage(ILogger<WebPage> logger,
+            IStringReplacementsService stringReplacementsService,
+            IDatabaseConnection databaseConnection,
+            ITemplatesService templatesService,
+            IAccountsService accountsService,
+            IPagesService pagesService,
+            IWebPagesService webPagesService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.httpContextAccessor = httpContextAccessor;
             this.pagesService = pagesService;
@@ -122,7 +129,7 @@ namespace GeeksCoreLibrary.Components.WebPage
             {
                 if (Settings.ReturnNotFoundStatusCodeOnNoData)
                 {
-                    HttpContextHelpers.Return404(httpContextAccessor.HttpContext);
+                    HttpContextHelpers.Return404(httpContextAccessor?.HttpContext);
                 }
                 else
                 {

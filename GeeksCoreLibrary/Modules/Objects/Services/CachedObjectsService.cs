@@ -31,7 +31,12 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
         private readonly string hostNameIncludingTestWww;
         private readonly string urlPrefix;
 
-        public CachedObjectsService(IObjectsService objectsService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, ICacheService cacheService)
+        public CachedObjectsService(IObjectsService objectsService,
+            IAppCache cache,
+            IOptions<GclSettings> gclSettings,
+            IDatabaseConnection databaseConnection,
+            ICacheService cacheService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.objectsService = objectsService;
             this.cache = cache;
@@ -40,9 +45,9 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
             this.cacheService = cacheService;
             this.gclSettings = gclSettings.Value;
 
-            hostName = HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext);
-            hostNameIncludingTestWww = HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext, includingTestWww: true);
-            urlPrefix = HttpContextHelpers.GetUrlPrefix(httpContextAccessor.HttpContext);
+            hostName = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext);
+            hostNameIncludingTestWww = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true);
+            urlPrefix = HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext);
         }
 
         /// <summary>
@@ -91,7 +96,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
             if (searchFromSpecificToGeneral)
             {
                 // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext, new List<string>(), true)}");
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true)}");
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
@@ -166,13 +171,13 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                 if (String.IsNullOrEmpty(finalResult))
                 {
                     // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext, new List<string>(), true)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true)}");
                 }
             }
 
             if (finalResult != null && finalResult.Contains("{"))
             {
-                finalResult = LegacyTemplatesService.DoHttpContextReplacements(finalResult, httpContextAccessor.HttpContext);
+                finalResult = LegacyTemplatesService.DoHttpContextReplacements(finalResult, httpContextAccessor?.HttpContext);
             }
 
             if (!String.IsNullOrEmpty(finalResult))
