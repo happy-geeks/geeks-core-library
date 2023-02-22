@@ -113,5 +113,22 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
         /// Gets or sets whether this column should be part of the primary key.
         /// </summary>
         public bool IsPrimaryKey { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether this column is a virtual column.
+        /// </summary>
+        public bool IsVirtual { get; set; }
+
+        /// <summary>
+        /// Gets or sets the type of virtual column.
+        /// This is only used if <see cref="IsVirtual"/> is set to <see langword="true"/>.
+        /// </summary>
+        public VirtualTypes VirtualType { get; set; } = VirtualTypes.Virtual;
+
+        /// <summary>
+        /// Gets or sets the expression for a virtual column.
+        /// This is only used if <see cref="IsVirtual"/> is set to <see langword="true"/>.
+        /// </summary>
+        public string VirtualExpression { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Linq;
 using System.Text;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Databases.Enums;
 using GeeksCoreLibrary.Modules.Databases.Exceptions;
 using GeeksCoreLibrary.Modules.Databases.Extensions;
 using GeeksCoreLibrary.Modules.Databases.Helpers;
@@ -645,49 +647,59 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 queryBuilder.Append(" UNSIGNED");
             }
 
+            if (settings.IsVirtual)
+            {
+                var virtualType = settings.VirtualType.ToString("G").ToUpperInvariant();
+                queryBuilder.Append($" GENERATED ALWAYS AS ({settings.VirtualExpression}) {virtualType}");
+            }
+
             if (settings.NotNull)
             {
                 queryBuilder.Append(" NOT NULL");
             }
 
-            if (settings.DefaultValue != null)
+            // Some modifiers/keywords don't work with virtual columns.
+            if (!settings.IsVirtual)
             {
-                if (settings.DefaultValue.Equals("CURRENT_TIMESTAMP"))
+                if (settings.DefaultValue != null)
                 {
-                    queryBuilder.Append(" DEFAULT CURRENT_TIMESTAMP");
-                }
-                else if (settings.Type == MySqlDbType.Enum)
-                {
-                    if (settings.EnumValues == null || !settings.EnumValues.Any())
+                    if (settings.DefaultValue.Equals("CURRENT_TIMESTAMP"))
                     {
-                        throw new DatabaseColumnMissingEnumValuesException(tableName, settings.Name);
+                        queryBuilder.Append(" DEFAULT CURRENT_TIMESTAMP");
                     }
-
-                    if (!String.IsNullOrEmpty(settings.DefaultValue) && settings.EnumValues.Contains(settings.DefaultValue))
+                    else if (settings.Type == MySqlDbType.Enum)
                     {
-                        // Given default value exists in the list, so use it.
+                        if (settings.EnumValues == null || !settings.EnumValues.Any())
+                        {
+                            throw new DatabaseColumnMissingEnumValuesException(tableName, settings.Name);
+                        }
+
+                        if (!String.IsNullOrEmpty(settings.DefaultValue) && settings.EnumValues.Contains(settings.DefaultValue))
+                        {
+                            // Given default value exists in the list, so use it.
+                            queryBuilder.Append($" DEFAULT {settings.DefaultValue.ToMySqlSafeValue(true)}");
+                        }
+                        else if (settings.NotNull)
+                        {
+                            // Given default value doesn't exist, and null values aren't allowed, so use first value from list.
+                            queryBuilder.Append($" DEFAULT {settings.EnumValues.First().ToMySqlSafeValue(true)}");
+                        }
+                    }
+                    else
+                    {
                         queryBuilder.Append($" DEFAULT {settings.DefaultValue.ToMySqlSafeValue(true)}");
                     }
-                    else if (settings.NotNull)
-                    {
-                        // Given default value doesn't exist, and null values aren't allowed, so use first value from list.
-                        queryBuilder.Append($" DEFAULT {settings.EnumValues.First().ToMySqlSafeValue(true)}");
-                    }
                 }
-                else
+
+                if (settings.UpdateTimeStampOnChange)
                 {
-                    queryBuilder.Append($" DEFAULT {settings.DefaultValue.ToMySqlSafeValue(true)}");
+                    queryBuilder.Append(" ON UPDATE CURRENT_TIMESTAMP");
                 }
-            }
 
-            if (settings.UpdateTimeStampOnChange)
-            {
-                queryBuilder.Append(" ON UPDATE CURRENT_TIMESTAMP");
-            }
-
-            if (settings.AutoIncrement)
-            {
-                queryBuilder.Append(" AUTO_INCREMENT");
+                if (settings.AutoIncrement)
+                {
+                    queryBuilder.Append(" AUTO_INCREMENT");
+                }
             }
 
             if (!String.IsNullOrWhiteSpace(settings.Comment))
