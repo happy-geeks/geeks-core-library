@@ -698,8 +698,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             if (!String.IsNullOrWhiteSpace(settings.AddAfterColumnName))
             {
-                databaseConnection.AddParameter($"addAfterColumnName{parameterSuffix}", settings.AddAfterColumnName);
-                queryBuilder.Append($" AFTER ?addAfterColumnName{parameterSuffix}");
+                queryBuilder.Append($" AFTER `{settings.AddAfterColumnName}`");
             }
 
             return queryBuilder;
