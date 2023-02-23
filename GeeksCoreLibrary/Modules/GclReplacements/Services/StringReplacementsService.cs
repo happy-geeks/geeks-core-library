@@ -230,7 +230,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string DoSessionReplacements(string input, bool forQuery = false)
         {
-            if (httpContextAccessor.HttpContext?.Features.Get<ISessionFeature>() == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
+            if (httpContextAccessor.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
             {
                 return input;
             }
