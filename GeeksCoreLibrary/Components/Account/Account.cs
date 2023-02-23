@@ -385,8 +385,8 @@ namespace GeeksCoreLibrary.Components.Account
             if (String.IsNullOrEmpty(googleAuthenticationKey))
             {
                 googleAuthenticationKey = Guid.NewGuid().ToString().Replace("-", "");
-                TwoFactorAuthenticator tfa = new TwoFactorAuthenticator();
-                SetupCode setupInfo = tfa.GenerateSetupCode(Settings.GoogleAuthenticatorSiteId, username, googleAuthenticationKey, false, 3);
+                TwoFactorAuthenticator twoFactorAuthenticator = new TwoFactorAuthenticator();
+                SetupCode setupInfo = twoFactorAuthenticator.GenerateSetupCode(Settings.GoogleAuthenticatorSiteId, username, googleAuthenticationKey, false, 3);
                 await AccountsService.Save2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId), googleAuthenticationKey);
                 return (template.ReplaceCaseInsensitive("{googleAuthenticationQrImageUrl}", setupInfo.QrCodeSetupImageUrl), stepNumber);
             }
@@ -1767,9 +1767,9 @@ namespace GeeksCoreLibrary.Components.Account
                         return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
                     }
                     
-                    var tfa = new TwoFactorAuthenticator();
+                    var twoFactorAuthenticator = new TwoFactorAuthenticator();
                     var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(loggedInUserId);
-                    bool result = tfa.ValidateTwoFactorPIN(googleAuthenticationKey, googleAuthenticatorPin);
+                    bool result = twoFactorAuthenticator.ValidateTwoFactorPIN(googleAuthenticationKey, googleAuthenticatorPin);
                     if (!result)
                     {
                         WriteToTrace("Authentication failed, codes do not match");
