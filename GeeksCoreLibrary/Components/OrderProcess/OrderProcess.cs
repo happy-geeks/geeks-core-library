@@ -21,6 +21,7 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
@@ -233,7 +234,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 WiserItemModel userData;
                 if (loggedInUser.UserId > 0)
                 {
-                    userData = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId, entityType: Account.Models.Constants.DefaultEntityType, skipPermissionsCheck: true);
+                    userData = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId, entityType: loggedInUser.EntityType, skipPermissionsCheck: true);
                 }
                 else
                 {
@@ -254,7 +255,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             .Select(item => (linkTypeSettings, item)));
                     }
 
-                    if (userData.Id > 0 && String.Equals(linkTypeSettings.DestinationEntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase))
+                    if (userData.Id > 0 && String.Equals(linkTypeSettings.DestinationEntityType, userData.EntityType, StringComparison.OrdinalIgnoreCase))
                     {
                         currentItems.AddRange((await wiserItemsService.GetLinkedItemDetailsAsync(userData.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id, skipPermissionsCheck: true)).Select(item => (linkTypeSettings, item)));
                     }
@@ -434,7 +435,38 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         break;
                     case OrderProcessStepTypes.OrderConfirmation:
                     case OrderProcessStepTypes.OrderPending:
-                        var confirmationHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, step, steps, paymentMethods);
+                        var order = new WiserItemModel();
+                        var errorMessage = "";
+                        if (httpContextAccessor.HttpContext == null || !httpContextAccessor.HttpContext.Request.Query.ContainsKey("order"))
+                        {
+                            errorMessage = "Order not found, please contact us";
+                            Logger.LogError("Failed to get the order by ID during the confirmation step in the order process because query string was not set.");
+                        }
+                        else
+                        {
+                            var encryptedOrderId = httpContextAccessor.HttpContext.Request.Query["order"].ToString();
+                            if (String.IsNullOrWhiteSpace(encryptedOrderId))
+                            {
+                                errorMessage = "Order not found, please contact us";
+                                Logger.LogError("Failed to get the order by ID during the confirmation step in the order process because no order ID was given.");
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    var orderId = Convert.ToUInt64(encryptedOrderId.Decrypt());
+                                    order = await wiserItemsService.GetItemDetailsAsync(orderId, entityType: Constants.OrderEntityType, skipPermissionsCheck: true);
+                                }
+                                catch (Exception exception)
+                                {
+                                    errorMessage = "Order not found, please contact us";
+                                    Logger.LogError($"Failed to get the order by ID during the confirmation step in the order process due to exception while processing encrypted ID '{encryptedOrderId}': {exception}");
+                                }
+                            }
+                        }
+
+                        var confirmationHtml = ReplaceEntityDataInTemplate(order, currentItems, step, steps, paymentMethods);
+                        confirmationHtml = confirmationHtml.Replace("{loadOrderError}", await languagesService.GetTranslationAsync(errorMessage));
                         groupsBuilder.AppendLine(confirmationHtml);
 
                         // Empty the shopping basket.
@@ -811,6 +843,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         private async Task<string> RenderFieldAsync(OrderProcessFieldModel field, WiserItemModel shoppingBasket, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems)
         {
             var fieldValue = field.Value;
+            var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
             if (String.IsNullOrEmpty(fieldValue) && field.InputFieldType != OrderProcessInputTypes.Password)
             {
                 if (!field.SaveTo.Any())
@@ -818,7 +851,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
                     if (String.IsNullOrWhiteSpace(fieldValue))
                     {
-                        var account = currentItems.FirstOrDefault(item => String.Equals(item.Item.EntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase));
+                        var account = currentItems.FirstOrDefault(item => String.Equals(item.Item.EntityType, loggedInUser.UserId > 0 ? loggedInUser.EntityType : Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase));
                         if (account.Item != null)
                         {
                             fieldValue = account.Item.GetDetailValue(field.FieldId);
@@ -1065,7 +1098,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                             var userData = currentItems.Single(item => item.Item.EntityType == Account.Models.Constants.DefaultEntityType).Item;
                                             var userId = userData.Id;
                                             var parentId = userId;
-                                            var linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(saveLocation.LinkType, saveLocation.EntityType, Account.Models.Constants.DefaultEntityType);
+                                            var linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(saveLocation.LinkType, saveLocation.EntityType, userId > 0 ? userData.EntityType : Account.Models.Constants.DefaultEntityType);
                                             if (linkSettings == null || linkSettings.Id == 0)
                                             {
                                                 parentId = shoppingBasket.Id;

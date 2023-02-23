@@ -1,6 +1,10 @@
 ﻿using System;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
+using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Core.Models;
 
 namespace GeeksCoreLibrary.Core.Helpers
 {
@@ -45,7 +49,7 @@ namespace GeeksCoreLibrary.Core.Helpers
 
             if (!regex.IsMatch(ean))
             {
-                throw new ArgumentException($"Value '{ean}' is an invalid EAN. The EAN must consist of 12 numerical values",ean);
+                throw new ArgumentException($"Value '{ean}' is an invalid EAN. The EAN must consist of 12 numerical values", ean);
             }
 
             var calculationSum = 0;
@@ -64,6 +68,50 @@ namespace GeeksCoreLibrary.Core.Helpers
             }
 
             return (10 - calculationSum % 10) % 10;
+        }
+
+        /// <summary>
+        /// Hash a value given a specific algorithm and return it in the given representation.
+        /// </summary>
+        /// <param name="value">The value to hash.</param>
+        /// <param name="hashSettings">The settings to use for hashing.</param>
+        /// <returns>Returns the value hashed with the algorithm converted to the given representation.</returns>
+        public static string HashValue(string value, HashSettingsModel hashSettings)
+        {
+            HashAlgorithm hashAlgorithm;
+
+            switch (hashSettings.Algorithm)
+            {
+                case HashAlgorithms.MD5:
+                    hashAlgorithm = MD5.Create();
+                    break;
+                case HashAlgorithms.SHA256:
+                    hashAlgorithm = SHA256.Create();
+                    break;
+                case HashAlgorithms.SHA384:
+                    hashAlgorithm = SHA384.Create();
+                    break;
+                case HashAlgorithms.SHA512:
+                    hashAlgorithm = SHA512.Create();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(hashSettings.Algorithm), hashSettings.Algorithm, null);
+            }
+
+            var bytes = Encoding.ASCII.GetBytes(value);
+            var hashBytes = hashAlgorithm.ComputeHash(bytes);
+
+            hashAlgorithm.Dispose();
+
+            switch (hashSettings.Representation)
+            {
+                case HashRepresentations.Base64:
+                    return Convert.ToBase64String(hashBytes);
+                case HashRepresentations.Hex:
+                    return Convert.ToHexString(hashBytes);
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(hashSettings.Representation), hashSettings.Representation, null);
+            }
         }
     }
 }

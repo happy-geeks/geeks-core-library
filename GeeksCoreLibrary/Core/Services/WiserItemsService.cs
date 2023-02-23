@@ -98,6 +98,9 @@ namespace GeeksCoreLibrary.Core.Services
                 if (wiserItem.Id == 0)
                 {
                     wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck);
+                    
+                    // When a new item has been created the values always need to be saved. There is no use to check if they have been changed since they are all new.
+                    alwaysSaveValues = true;
                 }
 
                 var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck);
@@ -2905,7 +2908,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
             query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
                         SET @saveHistory = ?saveHistoryJcl;
-                        DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS d WHERE d.itemlink_id IN({String.Join(",", ids)});
+                        DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} WHERE itemlink_id IN({String.Join(",", ids)});
                         DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE id IN({String.Join(",", ids)})";
             await databaseConnection.ExecuteAsync(query);
         }
@@ -4278,7 +4281,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
             // If we don't have a group name, we only want to compare a field with the same language code, because the language code can't be changed for normal fields anyway and we don't want to accidentally overwrite the wrong language code.
             if (!hasGroupName)
             {
-                previousField = previousFields.FirstOrDefault(f => f.Id == wiserItemDetail.Id || String.Equals(f.LanguageCode, wiserItemDetail.LanguageCode, StringComparison.OrdinalIgnoreCase));
+                previousField = previousFields.FirstOrDefault(f => f.Id == wiserItemDetail.Id || String.Equals(f.LanguageCode ?? "", wiserItemDetail.LanguageCode ?? "", StringComparison.OrdinalIgnoreCase));
             }
             else
             {

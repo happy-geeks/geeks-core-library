@@ -11,6 +11,7 @@ using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -21,6 +22,7 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
 
@@ -29,6 +31,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
     /// <inheritdoc cref="IStringReplacementsService" />
     public class StringReplacementsService : IStringReplacementsService, IScopedService
     {
+        private readonly GclSettings gclSettings;
         private readonly IObjectsService objectsService;
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
@@ -42,8 +45,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
         private const string RawFormatterName = "Raw";
 
-        public StringReplacementsService(IObjectsService objectsService, ILanguagesService languagesService, IHttpContextAccessor httpContextAccessor, IAccountsService accountsService, IDatabaseConnection databaseConnection)
+        public StringReplacementsService(IOptions<GclSettings> gclSettings, IObjectsService objectsService, ILanguagesService languagesService, IHttpContextAccessor httpContextAccessor, IAccountsService accountsService, IDatabaseConnection databaseConnection)
         {
+            this.gclSettings = gclSettings.Value;
             this.objectsService = objectsService;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
@@ -80,6 +84,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             dataDictionary.Add("LanguageCode", languagesService.CurrentLanguageCode);
             dataDictionary.Add("language_code", languagesService.CurrentLanguageCode);
             dataDictionary.Add("Hostname", HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext));
+            dataDictionary.Add("Environment", (int)gclSettings.Environment);
             input = DoReplacements(input, dataDictionary, forQuery: forQuery);
 
             // System object replaces.
@@ -225,7 +230,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string DoSessionReplacements(string input, bool forQuery = false)
         {
-            if (httpContextAccessor.HttpContext?.Features.Get<ISessionFeature>() == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
+            if (httpContextAccessor.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
             {
                 return input;
             }
