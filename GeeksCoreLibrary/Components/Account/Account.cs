@@ -48,7 +48,6 @@ namespace GeeksCoreLibrary.Components.Account
         private readonly ICommunicationsService communicationsService;
         private readonly IWiserItemsService wiserItemsService;
         
-
         #region Enums
 
         public enum ComponentModes

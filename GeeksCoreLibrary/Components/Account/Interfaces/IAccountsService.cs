@@ -42,15 +42,15 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <summary>
         /// Saves the 2FA key from the user in the database
         /// </summary>
-        /// <param name="userId"></param>
-        /// <param name="user2FAKey"></param>
+        /// <param name="userId">The User ID of the user</param>
+        /// <param name="user2FactorAuthenticationKey">A random generated string used for authentication</param>
         /// <returns></returns>
-        Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FaKey);
+        Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FactorAuthenticationKey);
 
         /// <summary>
         /// Gets the 2FA key from the user in the database
         /// </summary>
-        /// <param name="userId"></param>
+        /// <param name="userId">The ID of the user</param>
         /// <returns></returns>
         Task<String> Get2FactorAuthenticationKeyAsync(ulong userId);
         

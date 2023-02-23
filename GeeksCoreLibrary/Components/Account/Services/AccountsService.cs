@@ -259,14 +259,14 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
-        public async Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FAKey)
+        public async Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FactorAuthenticationKey)
         {
             // Note: Can't use IWiserItemsService here, because then we get a circular reference.
             var query = @"INSERT INTO ?tableName (item_id, `key`, `value`)
                         VALUES (?userId, 'User2FAKey', ?user2FAKey)
                         ON DUPLICATE KEY UPDATE value = VALUES(value)";
             databaseConnection.AddParameter("userId", userId);
-            databaseConnection.AddParameter("user2FAKey", user2FAKey);
+            databaseConnection.AddParameter("user2FAKey", user2FactorAuthenticationKey);
             databaseConnection.AddParameter("tableName", WiserTableNames.WiserItemDetail);
             await databaseConnection.ExecuteAsync(query);
         }
