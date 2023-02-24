@@ -39,7 +39,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IObjectsService objectsService;
         private readonly IDatabaseConnection databaseConnection;
 
-        public PagesService(IOptions<GclSettings> gclSettings, ILogger<PagesService> logger, IObjectsService objectsService, ITemplatesService templatesService, ISeoService seoService, IHttpContextAccessor httpContextAccessor, IRedirectService redirectService, IDatabaseConnection databaseConnection)
+        public PagesService(IOptions<GclSettings> gclSettings,
+            ILogger<PagesService> logger,
+            IObjectsService objectsService,
+            ITemplatesService templatesService,
+            ISeoService seoService,
+            IRedirectService redirectService,
+            IDatabaseConnection databaseConnection,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -393,7 +400,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             // Get SEO data and replace the body with data from seo module if applicable.
             if (await seoService.SeoModuleIsEnabledAsync())
             {
-                viewModel.MetaData = await seoService.GetSeoDataForPageAsync(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext));
+                viewModel.MetaData = await seoService.GetSeoDataForPageAsync(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext));
 
                 if (bodyHtml.Contains("[{seomodule_", StringComparison.OrdinalIgnoreCase))
                 {
@@ -448,7 +455,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             // Check if some component is adding external JavaScript libraries to the page.
             var externalScripts = externalJavascript.Select(ej => new JavaScriptResource { Uri = new Uri(ej) }).ToList();
-            if (httpContextAccessor.HttpContext?.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] is List<JavaScriptResource> componentExternalJavaScriptLibraries)
+            if (httpContextAccessor?.HttpContext?.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] is List<JavaScriptResource> componentExternalJavaScriptLibraries)
             {
                 foreach (var externalLibrary in componentExternalJavaScriptLibraries.Where(externalLibrary => !externalScripts.Any(l => l.Uri.AbsoluteUri.Equals(externalLibrary.Uri.AbsoluteUri, StringComparison.OrdinalIgnoreCase))))
                 {
@@ -480,7 +487,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Check if some component is adding SEO data to the page.
-            if (httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
+            if (httpContextAccessor?.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
             {
                 if (componentSeoData.MetaTags != null && componentSeoData.MetaTags.Any())
                 {
@@ -545,7 +552,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var canonicalSetting = await objectsService.FindSystemObjectByDomainNameAsync("always_add_canonical_to_self");
                 if (canonicalSetting.Equals("true", StringComparison.OrdinalIgnoreCase) || canonicalSetting.Equals("1", StringComparison.Ordinal))
                 {
-                    var canonicalUrl = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                    var canonicalUrl = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor?.HttpContext);
                     var parametersToIncludeForCanonical = (await objectsService.FindSystemObjectByDomainNameAsync("include_parameters_canonical")).Split(",", StringSplitOptions.RemoveEmptyEntries);
 
                     if (!parametersToIncludeForCanonical.Any())
@@ -612,7 +619,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null, string previousPageLink = null, string nextPageLink = null)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return;
             }
@@ -684,7 +691,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public void SetOpenGraphData(IDictionary<string, string> openGraphValues)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return;
             }

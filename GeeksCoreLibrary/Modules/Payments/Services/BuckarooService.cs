@@ -40,7 +40,12 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IDatabaseConnection databaseConnection;
 
-        public BuckarooService(ILogger<BuckarooService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService) 
+        public BuckarooService(ILogger<BuckarooService> logger,
+            IOptions<GclSettings> gclSettings,
+            IShoppingBasketsService shoppingBasketsService,
+            IDatabaseConnection databaseConnection,
+            IDatabaseHelpersService databaseHelpersService,
+            IHttpContextAccessor httpContextAccessor = null) 
             : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
         {
             this.logger = logger;

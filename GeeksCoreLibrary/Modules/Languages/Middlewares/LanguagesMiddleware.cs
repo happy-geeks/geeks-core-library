@@ -42,7 +42,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Middlewares
 
         private async Task SetLanguageSession()
         {
-            var session = httpContextAccessor.HttpContext?.Session;
+            var session = httpContextAccessor?.HttpContext?.Session;
             if (session == null)
             {
                 return;

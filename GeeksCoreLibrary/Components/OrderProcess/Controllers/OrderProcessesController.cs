@@ -43,13 +43,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
         public OrderProcessesController(ILogger<OrderProcessesController> logger,
                                         ITemplatesService templatesService,
                                         IPagesService pagesService,
-                                        IActionContextAccessor actionContextAccessor,
-                                        IHttpContextAccessor httpContextAccessor,
-                                        ITempDataProvider tempDataProvider,
-                                        IViewComponentHelper viewComponentHelper,
                                         IDataSelectorsService dataSelectorsService,
                                         IOrderProcessesService orderProcessesService,
-                                        IWiserItemsService wiserItemsService)
+                                        IWiserItemsService wiserItemsService,
+                                        IActionContextAccessor actionContextAccessor = null,
+                                        IHttpContextAccessor httpContextAccessor = null,
+                                        IViewComponentHelper viewComponentHelper = null,
+                                        ITempDataProvider tempDataProvider = null)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -202,6 +202,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
 
         private async Task<string> RenderAndExecuteComponentAsync(OrderProcess.ComponentModes componentMode, ulong orderProcessId)
         {
+            if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+            {
+                throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+            }
+            
             // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
             var viewContext = new ViewContext(
                 actionContextAccessor.ActionContext,
