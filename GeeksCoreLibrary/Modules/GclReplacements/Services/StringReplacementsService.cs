@@ -610,13 +610,18 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string FillStringByClassList(JToken input, string inputString, bool evaluateTemplate = false, string repeatVariableName = "repeat")
         {
+            if (input == null || String.IsNullOrWhiteSpace(inputString))
+            {
+                return inputString;
+            }
+            
             var output = new StringBuilder();
 
             if (input.Type == JTokenType.Array)
             {
                 var array = (JArray)input;
 
-                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(30));
                 var m = reg.Match(inputString);
 
                 if (m.Success)
@@ -631,7 +636,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         subtemplate = subtemplate.Replace("{index}", index.ToString());
                         subtemplate = subtemplate.Replace("{volgnr}", (index + 1).ToString());
                         subtemplate = subtemplate.Replace("{count}", "{~count~}"); // Temporary replace count variable, otherwise this variable is replaced by the FillStringByClass function
-                        output.Append(FillStringByClass(item, subtemplate, evaluateTemplate).Replace("{~count~}", "{count}")); // Set back the count variable
+                        output.Append(FillStringByClass(input, subtemplate, evaluateTemplate).Replace("{~count~}", "{count}")); // Set back the count variable
                         index += 1;
                     }
 
@@ -656,6 +661,11 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string FillStringByClass(JToken input, string inputString, bool evaluateTemplate = false)
         {
+            if (input == null || String.IsNullOrWhiteSpace(inputString))
+            {
+                return inputString;
+            }
+
             var regexRepeats = new Regex(@"{repeat:([^\.]+?)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             // Handle the repeaters, duplicate (parts of) the template.
@@ -692,7 +702,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                             subTemplateItem = subTemplateItem.Replace($"{{/repeat:{repeaterName}", $"{{/repeat:{repeaterName}({index})");
                             subTemplateItem = subTemplateItem.Replace($"{{~{repeaterName}.count~}}", $"{{{repeaterName}.count}}");
 
-                            subTemplateItem = FillStringByClassList(subObject, subTemplateItem, evaluateTemplate);
+                            subTemplateItem = FillStringByClassList(input, subTemplateItem, evaluateTemplate);
 
                             templates.Append(subTemplateItem);
 
@@ -924,7 +934,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 if (!String.IsNullOrWhiteSpace(m.Groups[3].Value))
                 {
                     innerValue = GetPropertyValue(input, m.Groups[1].Value);
-                    if (innerValue.Type != JTokenType.Array)
+                    if (innerValue is not {Type: JTokenType.Array})
                     {
                         return null;
                     }
