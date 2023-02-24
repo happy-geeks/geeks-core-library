@@ -641,7 +641,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         subtemplate = subtemplate.Replace("{index}", index.ToString());
                         subtemplate = subtemplate.Replace("{volgnr}", (index + 1).ToString());
                         subtemplate = subtemplate.Replace("{count}", "{~count~}"); // Temporary replace count variable, otherwise this variable is replaced by the FillStringByClass function
-                        output.Append(FillStringByClass(input, subtemplate, evaluateTemplate).Replace("{~count~}", "{count}")); // Set back the count variable
+                        output.Append(FillStringByClass(item, subtemplate, evaluateTemplate).Replace("{~count~}", "{count}")); // Set back the count variable
                         index += 1;
                     }
 
@@ -702,12 +702,12 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                             subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.count}}", "{~" + repeaterName + ".count~}");
                             subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.index}}", index.ToString());
                             subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.volgnr}}", (index + 1).ToString());
-                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}", $"{{{repeaterName}({index})");
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.", "{");
                             subTemplateItem = subTemplateItem.Replace($"{{repeat:{repeaterName}", $"{{repeat:{repeaterName}({index})");
                             subTemplateItem = subTemplateItem.Replace($"{{/repeat:{repeaterName}", $"{{/repeat:{repeaterName}({index})");
                             subTemplateItem = subTemplateItem.Replace($"{{~{repeaterName}.count~}}", $"{{{repeaterName}.count}}");
 
-                            subTemplateItem = FillStringByClassList(input, subTemplateItem, evaluateTemplate);
+                            subTemplateItem = FillStringByClassList(subObject, subTemplateItem, evaluateTemplate);
 
                             templates.Append(subTemplateItem);
 
