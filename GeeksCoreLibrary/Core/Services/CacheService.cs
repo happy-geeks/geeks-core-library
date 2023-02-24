@@ -21,7 +21,7 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public ConcurrentDictionary<CacheAreas, CancellationTokenSource> CancellationTokenSources { get; }
 
-        public CacheService(IWebHostEnvironment webHostEnvironment, ILogger<CacheService> logger)
+        public CacheService(ILogger<CacheService> logger, IWebHostEnvironment webHostEnvironment = null)
         {
             this.webHostEnvironment = webHostEnvironment;
             this.logger = logger;

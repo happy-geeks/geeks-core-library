@@ -81,11 +81,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             IDatabaseConnection databaseConnection,
             ITemplatesService templatesService,
             IAccountsService accountsService,
-            IHttpContextAccessor httpContextAccessor,
             IOrderProcessesService orderProcessesService,
             IShoppingBasketsService shoppingBasketsService,
             IWiserItemsService wiserItemsService,
-            IMeasurementProtocolService measurementProtocolService)
+            IMeasurementProtocolService measurementProtocolService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
@@ -155,7 +155,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             }
 
             // Get the active step.
-            var activeStepValue = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.ActiveStepRequestKey);
+            var activeStepValue = HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, Constants.ActiveStepRequestKey);
             Int32.TryParse(activeStepValue, out var parsedActiveStep);
             ActiveStep = parsedActiveStep > 0 ? parsedActiveStep : 1;
 
@@ -210,7 +210,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // If we have an invalid active step, return a 404.
                 if (ActiveStep <= 0 || ActiveStep > steps.Count)
                 {
-                    HttpContextHelpers.Return404(httpContextAccessor.HttpContext);
+                    HttpContextHelpers.Return404(httpContextAccessor?.HttpContext);
                     return "";
                 }
                 
@@ -284,7 +284,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 if (nextStep <= steps.Count && steps[ActiveStep].Type != OrderProcessStepTypes.OrderConfirmation && steps[ActiveStep].Type != OrderProcessStepTypes.OrderPending)
                 {
                     // If we still have a next step and that step is not for the order confirmation, then go to the next step.
-                    nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                    nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor?.HttpContext);
                     var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
                     nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
                     nextStepQueryString.Remove(Constants.ErrorFromPaymentOutRequestKey);
@@ -352,7 +352,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 }
 
                 // Generate URI for previous step.
-                var previousStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                var previousStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor?.HttpContext);
                 var previousStep = ActiveStep - 1;
                 var previousStepQueryString = HttpUtility.ParseQueryString(previousStepUri.Query);
                 previousStepQueryString.Remove(Constants.ErrorFromPaymentOutRequestKey);
@@ -437,7 +437,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     case OrderProcessStepTypes.OrderPending:
                         var order = new WiserItemModel();
                         var errorMessage = "";
-                        if (httpContextAccessor.HttpContext == null || !httpContextAccessor.HttpContext.Request.Query.ContainsKey("order"))
+                        if (httpContextAccessor?.HttpContext == null || !httpContextAccessor.HttpContext.Request.Query.ContainsKey("order"))
                         {
                             errorMessage = "Order not found, please contact us";
                             Logger.LogError("Failed to get the order by ID during the confirmation step in the order process because query string was not set.");
@@ -625,7 +625,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns>The output HTML of the component.</returns>
         private async Task<string> HandlePaymentOutModeAsync()
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return "HttpContext not available.";
             }
@@ -650,7 +650,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns>The output HTML of the component.</returns>
         private async Task<string> HandlePaymentInModeAsync()
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return "HttpContext not available.";
             }
@@ -676,7 +676,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns>The output HTML of the component.</returns>
         private async Task<string> HandlePaymentReturnModeAsync()
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return "HttpContext not available.";
             }

@@ -16,7 +16,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Services
         private readonly IDatabaseConnection databaseConnection;
         private readonly IObjectsService objectsService;
 
-        public RedirectService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor)
+        public RedirectService(IDatabaseConnection databaseConnection, IObjectsService objectsService)
         {
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;

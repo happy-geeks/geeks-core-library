@@ -20,7 +20,13 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public bool LogPaymentActions { get; set; }
 
-        public NoPspService(IDatabaseHelpersService databaseHelpersService, IDatabaseConnection databaseConnection, ILogger<NoPspService> logger, IHttpContextAccessor httpContextAccessor) : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
+        public NoPspService(IDatabaseHelpersService databaseHelpersService,
+            IDatabaseConnection databaseConnection,
+            ILogger<NoPspService> logger,
+            IHttpContextAccessor httpContextAccessor = null) : base(databaseHelpersService,
+            databaseConnection,
+            logger,
+            httpContextAccessor)
         {
         }
 

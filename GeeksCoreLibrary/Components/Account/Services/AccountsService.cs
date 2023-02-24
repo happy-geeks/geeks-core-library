@@ -30,7 +30,13 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly IDatabaseHelpersService databaseHelpersService;
         private readonly IRolesService rolesService;
 
-        public AccountsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<AccountsService> logger, IDatabaseHelpersService databaseHelpersService, IRolesService rolesService)
+        public AccountsService(IOptions<GclSettings> gclSettings,
+            IDatabaseConnection databaseConnection,
+            IObjectsService objectsService,
+            ILogger<AccountsService> logger,
+            IDatabaseHelpersService databaseHelpersService,
+            IRolesService rolesService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
@@ -44,7 +50,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         /// <inheritdoc />
         public async Task<UserCookieDataModel> GetUserDataFromCookieAsync()
         {
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
             if (httpContext == null)
             {
                 throw new Exception("HttpContext is null.");
@@ -191,7 +197,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         /// <inheritdoc />
         public ulong GetRecentlyCreateAccountId()
         {
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
             if (httpContext == null)
             {
                 throw new Exception("HttpContext is null.");
@@ -241,8 +247,8 @@ namespace GeeksCoreLibrary.Components.Account.Services
             databaseConnection.AddParameter("main_user_id", mainUserId);
             databaseConnection.AddParameter("entity_type", entityTypeToUse);
             databaseConnection.AddParameter("main_user_entity_type", mainUserEntityType);
-            databaseConnection.AddParameter("ip_address", HttpContextHelpers.GetUserIpAddress(httpContextAccessor.HttpContext));
-            databaseConnection.AddParameter("user_agent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor.HttpContext, HeaderNames.UserAgent));
+            databaseConnection.AddParameter("ip_address", HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext));
+            databaseConnection.AddParameter("user_agent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, HeaderNames.UserAgent));
             databaseConnection.AddParameter("expires", DateTime.Now.AddDays(amountOfDaysToRememberCookie));
             databaseConnection.AddParameter("login_date", DateTime.Now);
             await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(Constants.AuthenticationTokensTableName, 0UL);
@@ -262,7 +268,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         public async Task LogoutUserAsync(AccountCmsSettingsModel settings)
         {
             // Do some initial checks, to make sure we have everything we need and the user is actually still logged in.
-            var currentContext = httpContextAccessor.HttpContext;
+            var currentContext = httpContextAccessor?.HttpContext;
             if (currentContext == null)
             {
                 logger.LogError("HttpContext is null, can't log out the user!");

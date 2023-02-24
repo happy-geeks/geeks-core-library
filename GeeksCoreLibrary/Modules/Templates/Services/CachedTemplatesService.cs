@@ -43,7 +43,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IObjectsService objectsService;
         private readonly ILanguagesService languagesService;
 
-        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, ICacheService cacheService, IWebHostEnvironment webHostEnvironment, IObjectsService objectsService, ILanguagesService languagesService)
+        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger,
+            ITemplatesService templatesService,
+            IAppCache cache,
+            IOptions<GclSettings> gclSettings,
+            IDatabaseConnection databaseConnection,
+            ICacheService cacheService,
+            IObjectsService objectsService,
+            ILanguagesService languagesService,
+            IHttpContextAccessor httpContextAccessor = null,
+            IWebHostEnvironment webHostEnvironment = null)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -440,7 +449,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
             }
 
-            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheKey = new StringBuilder($"dynamicContent_{languagesService.CurrentLanguageCode ?? ""}_{dynamicContent.Id}_");
             switch (settings.CachingMode)
             {
@@ -508,7 +517,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 }
             }
 
-            string html;
+            string html = null;
             var addedToCache = false;
             switch (settings.CachingLocation)
             {
@@ -525,33 +534,41 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     break;
                 case TemplateCachingLocations.OnDisk:
                 {
-                    var fileName = $"{cacheKey}.html";
                     var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
-                    var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
-
-                    // Check if a cache file already exists and if it hasn't expired yet.
-                    var fileInfo = new FileInfo(fullCachePath);
-                    if (fileInfo.Directory is { Exists: false })
+                    if (String.IsNullOrWhiteSpace(cacheFolder))
                     {
-                        fileInfo.Directory.Create();
+                        logger.LogWarning($"Content cache enabled for component '{dynamicContent.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website (on Windows / IIS, this is the user 'IIS_IUSRS' bij default).");
                     }
-                    else if (fileInfo.Exists)
+                    else
                     {
-                        if (fileInfo.LastWriteTimeUtc.AddMinutes(settings.CacheMinutes) > DateTime.UtcNow)
+                        var fileName = $"{cacheKey}.html";
+                        var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
+
+                        // Check if a cache file already exists and if it hasn't expired yet.
+                        var fileInfo = new FileInfo(fullCachePath);
+                        if (fileInfo.Directory is {Exists: false})
                         {
-                            using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
-                            var fileContents = await fileReader.ReadToEndAsync();
-                            html = $"<!-- START DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->{fileContents}<!-- END DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->";
-                            return html;
+                            fileInfo.Directory.Create();
+                        }
+                        else if (fileInfo.Exists)
+                        {
+                            if (fileInfo.LastWriteTimeUtc.AddMinutes(settings.CacheMinutes) > DateTime.UtcNow)
+                            {
+                                using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
+                                var fileContents = await fileReader.ReadToEndAsync();
+                                html = $"<!-- START DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->{fileContents}<!-- END DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->";
+                                return html;
+                            }
+
+                            // Cleanup the old cache file if it has expired.
+                            fileInfo.Delete();
                         }
 
-                        // Cleanup the old cache file if it has expired.
-                        fileInfo.Delete();
+                        html = (string) await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                        addedToCache = true;
+                        await File.WriteAllTextAsync(fullCachePath, html);
                     }
 
-                    html = (string)await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-                    addedToCache = true;
-                    await File.WriteAllTextAsync(fullCachePath, html);
                     break;
                 }
                 default:
@@ -559,7 +576,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Cache page SEO data,
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return html;
             }

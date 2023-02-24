@@ -30,7 +30,11 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         /// <summary>
         /// Creates a new instance of <see cref="LanguagesService"/>.
         /// </summary>
-        public LanguagesService(ILogger<LanguagesService> logger, IDatabaseConnection databaseConnection, IObjectsService objectsService, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor)
+        public LanguagesService(ILogger<LanguagesService> logger,
+            IDatabaseConnection databaseConnection,
+            IObjectsService objectsService,
+            IOptions<GclSettings> gclSettings,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.logger = logger;
             this.databaseConnection = databaseConnection;
@@ -81,7 +85,7 @@ AND (`value` = ?gcl_original OR long_value = ?gcl_original)");
         public async Task<string> GetLanguageCodeAsync()
         {
             // Check if it should be overriden through a query string.
-            if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Request.Query.ContainsKey(Constants.LanguageCodeQueryStringKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey]))
+            if (httpContextAccessor?.HttpContext != null && httpContextAccessor.HttpContext.Request.Query.ContainsKey(Constants.LanguageCodeQueryStringKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey]))
             {
                 CurrentLanguageCode = httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey];
                 logger.LogDebug($"LanguageCode determined through query string: {CurrentLanguageCode}");
@@ -97,7 +101,7 @@ AND (`value` = ?gcl_original OR long_value = ?gcl_original)");
                 return languageCode;
             }
 
-            if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Request.Headers.ContainsKey(Constants.LanguageCodeHeaderKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Headers[Constants.LanguageCodeHeaderKey]))
+            if (httpContextAccessor?.HttpContext != null && httpContextAccessor.HttpContext.Request.Headers.ContainsKey(Constants.LanguageCodeHeaderKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Headers[Constants.LanguageCodeHeaderKey]))
             {
                 CurrentLanguageCode = httpContextAccessor.HttpContext.Request.Headers[Constants.LanguageCodeHeaderKey];
                 logger.LogDebug($"LanguageCode determined through HTTP header: {CurrentLanguageCode}");
@@ -154,7 +158,7 @@ ORDER BY IFNULL(link.ordering, language.title)";
             logger.LogDebug("Start GetDefaultWiserLanguage");
 
             var result = String.Empty;
-            var userLanguages = httpContextAccessor.HttpContext?.Request.GetTypedHeaders().AcceptLanguage.OrderByDescending(v => v.Quality ?? 1).Select(v => v.Value.Value).ToList();
+            var userLanguages = httpContextAccessor?.HttpContext?.Request.GetTypedHeaders().AcceptLanguage.OrderByDescending(v => v.Quality ?? 1).Select(v => v.Value.Value).ToList();
 
             var getDefaultLanguageResult = await databaseConnection.GetAsync(
 $@"SELECT 
