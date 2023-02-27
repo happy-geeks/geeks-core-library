@@ -44,7 +44,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 
         private SortedList<int, decimal> vatFactorsByRate;
 
-        public ShoppingBasketsService(IOptions<GclSettings> gclSettings, ILogger<ShoppingBasketsService> logger, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IWiserItemsService wiserItemsService, IAccountsService accountsService, ITemplatesService templatesService, IStringReplacementsService stringReplacementsService, ITempDataDictionaryFactory tempDataDictionaryFactory, ILanguagesService languagesService)
+        public ShoppingBasketsService(IOptions<GclSettings> gclSettings,
+            ILogger<ShoppingBasketsService> logger,
+            IDatabaseConnection databaseConnection,
+            IObjectsService objectsService,
+            IWiserItemsService wiserItemsService,
+            IAccountsService accountsService,
+            ITemplatesService templatesService,
+            IStringReplacementsService stringReplacementsService,
+            ILanguagesService languagesService,
+            IHttpContextAccessor httpContextAccessor = null,
+            ITempDataDictionaryFactory tempDataDictionaryFactory = null)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -161,7 +171,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         {
             var result = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
 
-            var cookieValue = HttpContextHelpers.ReadCookie(httpContextAccessor.HttpContext, cookieName);
+            var cookieValue = HttpContextHelpers.ReadCookie(httpContextAccessor?.HttpContext, cookieName);
             var basketIds = cookieValue.DecryptWithAesWithSalt(gclSettings.ShoppingBasketEncryptionKey).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(id => Convert.ToUInt64(id)).ToArray();
 
             foreach (var basketId in basketIds)
@@ -177,7 +187,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         /// <inheritdoc />
         public ulong GetBasketItemId(string cookieName)
         {
-            var cookieValue = HttpContextHelpers.ReadCookie(httpContextAccessor.HttpContext, cookieName);
+            var cookieValue = HttpContextHelpers.ReadCookie(httpContextAccessor?.HttpContext, cookieName);
             return DecryptBasketItemId(cookieValue);
         }
 
@@ -290,7 +300,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             {
                 if (String.IsNullOrWhiteSpace(encryptedItemId) && !String.IsNullOrWhiteSpace(settings.CookieName))
                 {
-                    encryptedItemId = httpContextAccessor.HttpContext?.Request.Cookies[settings.CookieName];
+                    encryptedItemId = httpContextAccessor?.HttpContext?.Request.Cookies[settings.CookieName];
                 }
 
                 if (!String.IsNullOrWhiteSpace(encryptedItemId))
@@ -394,7 +404,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     if (!loadBasketFromUser)
                     {
                         // Retrieve the TempData object, but make sure it doesn't cause a NullReferenceException.
-                        var tempData = tempDataDictionaryFactory?.GetTempData(httpContextAccessor.HttpContext);
+                        var tempData = tempDataDictionaryFactory?.GetTempData(httpContextAccessor?.HttpContext);
                         var dataKey = $"ShoppingBasketQueriesExecuted_{settings.CookieName}";
                         var allowGeneralQueries = tempData == null || !tempData.ContainsKey(dataKey) || Convert.ToInt32(tempData[dataKey]) != 1;
 
@@ -1894,7 +1904,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         /// <inheritdoc />
         public async Task<HandleCouponResultModel> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true)
         {
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
 
             if (httpContext == null)
             {
@@ -2201,7 +2211,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         /// <inheritdoc />
         public async Task<VatRule> GetVatRuleByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
         {
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
 
             var userDetails = await GetUserDetailsAsync();
             if (userDetails.ContainsKey("pay_btw") && userDetails["pay_btw"] == "0")
@@ -2423,7 +2433,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 if (deleteCookieIfBasketIsLinkedToSomeoneElse && linkedUsers.All(id => id != userId))
                 {
                     // Delete the cookie if this basket is linked to a different user.
-                    httpContextAccessor.HttpContext?.Response.Cookies.Delete(basketSettings.CookieName);
+                    httpContextAccessor?.HttpContext?.Response.Cookies.Delete(basketSettings.CookieName);
                 }
 
                 return;
@@ -2468,7 +2478,7 @@ WHERE coupon.entity_type = 'coupon'", true);
                 return false;
             }
 
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
 
             // Validate date range.
             var validFrom = coupon.ContainsDetail(CouponConstants.ValidFromKey) ? DateTime.ParseExact(coupon.GetDetailValue(CouponConstants.ValidFromKey), "yyyy-MM-dd", CultureInfo.InvariantCulture) : DateTime.MinValue;
@@ -2501,7 +2511,7 @@ WHERE coupon.entity_type = 'coupon'", true);
             }
 
             var domainList = domain.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList().FindAll(it => it != "0" && it != "");
-            return domainList.Count == 0 || domainList.Contains(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext));
+            return domainList.Count == 0 || domainList.Contains(HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext));
         }
 
         /// <inheritdoc />
@@ -2525,7 +2535,7 @@ WHERE coupon.entity_type = 'coupon'", true);
 
         private void WriteEncryptedIdToCookie(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings)
         {
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
             var expires = DateTimeOffset.Now.AddDays(settings.CookieAgeInDays);
             var encryptedId = EncryptBasketItemId(shoppingBasket.Id);
             HttpContextHelpers.WriteCookie(httpContext, settings.CookieName, encryptedId, expires, isEssential: true);

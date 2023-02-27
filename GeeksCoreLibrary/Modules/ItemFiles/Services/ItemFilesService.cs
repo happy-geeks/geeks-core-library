@@ -30,7 +30,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly IWiserItemsService wiserItemsService;
 
-        public ItemFilesService(ILogger<ItemFilesService> logger, IDatabaseConnection databaseConnection, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor, IWebHostEnvironment webHostEnvironment, IWiserItemsService wiserItemsService)
+        public ItemFilesService(ILogger<ItemFilesService> logger,
+            IDatabaseConnection databaseConnection,
+            IObjectsService objectsService,
+            IWiserItemsService wiserItemsService,
+            IHttpContextAccessor httpContextAccessor = null,
+            IWebHostEnvironment webHostEnvironment = null)
         {
             this.logger = logger;
             this.databaseConnection = databaseConnection;
@@ -353,6 +358,11 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         /// <returns></returns>
         private async Task<(byte[] FileBytes, DateTime LastModified)> HandleImage(DataRow dataRow, string saveLocation, string propertyName, int preferredWidth, int preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
         {
+            if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
+            {
+                return (null, DateTime.MinValue);
+            }
+
             byte[] fileBytes;
             var imageIsProtected = false;
 
@@ -390,7 +400,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
                     if (!String.IsNullOrWhiteSpace(contentUrl))
                     {
-                        var requestUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+                        var requestUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
 
                         if (Uri.TryCreate(contentUrl, UriKind.Absolute, out var contentUri) && contentUri.GetLeftPart(UriPartial.Authority).Equals(requestUrl.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
                         {
@@ -467,7 +477,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
                 if (!String.IsNullOrWhiteSpace(contentUrl))
                 {
-                    var requestUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+                    var requestUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
 
                     if (Uri.TryCreate(contentUrl, UriKind.Absolute, out var contentUri) && contentUri.GetLeftPart(UriPartial.Authority).Equals(requestUrl.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
                     {

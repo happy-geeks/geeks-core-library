@@ -30,18 +30,22 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IAppCache cache;
         private readonly IDatabaseConnection databaseConnection;
         private readonly GclSettings gclSettings;
-        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ICacheService cacheService;
         private readonly IWebHostEnvironment webHostEnvironment;
 
-        public LegacyCachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, ICacheService cacheService, IWebHostEnvironment webHostEnvironment)
+        public LegacyCachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger,
+            ITemplatesService templatesService,
+            IAppCache cache,
+            IOptions<GclSettings> gclSettings,
+            IDatabaseConnection databaseConnection,
+            ICacheService cacheService,
+            IWebHostEnvironment webHostEnvironment = null)
         {
             this.logger = logger;
             this.templatesService = templatesService;
             this.cache = cache;
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
-            this.httpContextAccessor = httpContextAccessor;
             this.cacheService = cacheService;
             this.webHostEnvironment = webHostEnvironment;
         }

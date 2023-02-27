@@ -55,7 +55,15 @@ namespace GeeksCoreLibrary.Components.Filter
 
         #region Constructor
 
-        public Filter(ILogger<Filter> logger, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IFiltersService filterService, ILanguagesService languageService)
+        public Filter(ILogger<Filter> logger,
+            IStringReplacementsService stringReplacementsService,
+            IDatabaseConnection databaseConnection,
+            ITemplatesService templatesService,
+            IAccountsService accountsService,
+            IObjectsService objectsService,
+            IFiltersService filterService,
+            ILanguagesService languageService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.httpContextAccessor = httpContextAccessor;
             this.objectsService = objectsService;
@@ -143,7 +151,7 @@ namespace GeeksCoreLibrary.Components.Filter
         /// <returns></returns>
         private async Task<string> GenerateFiltersAsync()
         {
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
             if (httpContext == null)
             {
                 throw new Exception("HttpContext is null.");

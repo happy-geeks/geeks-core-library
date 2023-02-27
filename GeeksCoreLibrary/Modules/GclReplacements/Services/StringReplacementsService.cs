@@ -45,7 +45,12 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
         private const string RawFormatterName = "Raw";
 
-        public StringReplacementsService(IOptions<GclSettings> gclSettings, IObjectsService objectsService, ILanguagesService languagesService, IHttpContextAccessor httpContextAccessor, IAccountsService accountsService, IDatabaseConnection databaseConnection)
+        public StringReplacementsService(IOptions<GclSettings> gclSettings,
+            IObjectsService objectsService,
+            ILanguagesService languagesService,
+            IAccountsService accountsService,
+            IDatabaseConnection databaseConnection,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.gclSettings = gclSettings.Value;
             this.objectsService = objectsService;
@@ -83,7 +88,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             dataDictionary.Add("NowDay", curDateTime.Day.ToString());
             dataDictionary.Add("LanguageCode", languagesService.CurrentLanguageCode);
             dataDictionary.Add("language_code", languagesService.CurrentLanguageCode);
-            dataDictionary.Add("Hostname", HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext));
+            dataDictionary.Add("Hostname", HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext));
             dataDictionary.Add("Environment", (int)gclSettings.Environment);
             input = DoReplacements(input, dataDictionary, forQuery: forQuery);
 
@@ -122,7 +127,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 }
 
                 // Request replacements.
-                if (handleRequest && httpContextAccessor.HttpContext != null)
+                if (handleRequest && httpContextAccessor?.HttpContext != null)
                 {
                     input = DoHttpRequestReplacements(input, forQuery);
                     input = DoSessionReplacements(input, forQuery);
@@ -149,7 +154,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 }
 
                 // CMS objects.
-                if (input.Contains("[O{") && httpContextAccessor.HttpContext != null)
+                if (input.Contains("[O{") && httpContextAccessor?.HttpContext != null)
                 {
                     dataDictionary.Clear();
 
@@ -197,7 +202,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string DoHttpRequestReplacements(string input, bool forQuery = false)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return input;
             }
@@ -230,7 +235,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string DoSessionReplacements(string input, bool forQuery = false)
         {
-            if (httpContextAccessor.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
+            if (httpContextAccessor?.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
             {
                 return input;
             }
@@ -610,13 +615,18 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string FillStringByClassList(JToken input, string inputString, bool evaluateTemplate = false, string repeatVariableName = "repeat")
         {
+            if (input == null || String.IsNullOrWhiteSpace(inputString))
+            {
+                return inputString;
+            }
+            
             var output = new StringBuilder();
 
             if (input.Type == JTokenType.Array)
             {
                 var array = (JArray)input;
 
-                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(30));
                 var m = reg.Match(inputString);
 
                 if (m.Success)
@@ -656,6 +666,11 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string FillStringByClass(JToken input, string inputString, bool evaluateTemplate = false)
         {
+            if (input == null || String.IsNullOrWhiteSpace(inputString))
+            {
+                return inputString;
+            }
+
             var regexRepeats = new Regex(@"{repeat:([^\.]+?)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             // Handle the repeaters, duplicate (parts of) the template.
@@ -687,7 +702,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                             subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.count}}", "{~" + repeaterName + ".count~}");
                             subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.index}}", index.ToString());
                             subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.volgnr}}", (index + 1).ToString());
-                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}", $"{{{repeaterName}({index})");
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.", "{");
                             subTemplateItem = subTemplateItem.Replace($"{{repeat:{repeaterName}", $"{{repeat:{repeaterName}({index})");
                             subTemplateItem = subTemplateItem.Replace($"{{/repeat:{repeaterName}", $"{{/repeat:{repeaterName}({index})");
                             subTemplateItem = subTemplateItem.Replace($"{{~{repeaterName}.count~}}", $"{{{repeaterName}.count}}");
@@ -924,7 +939,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 if (!String.IsNullOrWhiteSpace(m.Groups[3].Value))
                 {
                     innerValue = GetPropertyValue(input, m.Groups[1].Value);
-                    if (innerValue.Type != JTokenType.Array)
+                    if (innerValue is not {Type: JTokenType.Array})
                     {
                         return null;
                     }

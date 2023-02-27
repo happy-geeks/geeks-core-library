@@ -21,7 +21,7 @@ public class CachedBarcodesService : IBarcodesService
     /// <summary>
     /// Creates a new instance of <see cref="CachedBarcodesService"/>.
     /// </summary>
-    public CachedBarcodesService(IOptions<GclSettings> gclSettings, IBarcodesService barcodesService, IWebHostEnvironment webHostEnvironment, ILogger<CachedBarcodesService> logger)
+    public CachedBarcodesService(IOptions<GclSettings> gclSettings, IBarcodesService barcodesService, ILogger<CachedBarcodesService> logger, IWebHostEnvironment webHostEnvironment = null)
     {
         this.gclSettings = gclSettings.Value;
         this.barcodesService = barcodesService;

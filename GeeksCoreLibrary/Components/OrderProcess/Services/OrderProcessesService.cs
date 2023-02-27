@@ -70,11 +70,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             ITemplatesService templatesService,
             IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory,
             ICommunicationsService communicationsService,
-            IHttpContextAccessor httpContextAccessor,
             ILogger<OrderProcessesService> logger,
             IObjectsService objectsService,
             IMeasurementProtocolService measurementProtocolService,
-            IHtmlToPdfConverterService htmlToPdfConverterService)
+            IHtmlToPdfConverterService htmlToPdfConverterService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
             this.shoppingBasketsService = shoppingBasketsService;
@@ -794,7 +794,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 }
                 else
                 {
-                    webhookUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext));
+                    webhookUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext));
                 }
 
                 webhookUrl.Path = Constants.PaymentInPage;
@@ -806,7 +806,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 paymentMethodSettings.PaymentServiceProvider.WebhookUrl = webhookUrl.ToString();
 
                 // Build the return URL.
-                var returnUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext))
+                var returnUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext))
                 {
                     Path = Constants.PaymentReturnPage
                 };
@@ -1159,7 +1159,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var paymentMethodSettings = await orderProcessesService.GetPaymentMethodAsync(paymentMethodId);
             if (orderProcessSettings == null || orderProcessSettings.Id == 0 || paymentMethodSettings == null || paymentMethodSettings.Id == 0)
             {
-                logger.LogError($"Called HandlePaymentServiceProviderWebhookAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)}");
+                logger.LogError($"Called HandlePaymentServiceProviderWebhookAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}");
                 return false;
             }
 
@@ -1205,7 +1205,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             
             if (orderProcessSettings == null || orderProcessSettings.Id == 0 || paymentMethodSettings == null || paymentMethodSettings.Id == 0)
             {
-                logger.LogError($"Called HandlePaymentReturnAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)}");
+                logger.LogError($"Called HandlePaymentReturnAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}");
                 return new PaymentReturnResult
                 {
                     Action = PaymentResultActions.Redirect,
@@ -1446,19 +1446,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             return paymentServiceProvider switch
             {
-                PaymentServiceProviders.Buckaroo => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "brq_invoicenumber"),
-                PaymentServiceProviders.MultiSafepay => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "transactionid"),
-                PaymentServiceProviders.RaboOmniKassa => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "order_id"),
-                PaymentServiceProviders.Mollie => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "invoice_number"),
+                PaymentServiceProviders.Buckaroo => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "brq_invoicenumber"),
+                PaymentServiceProviders.MultiSafepay => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "transactionid"),
+                PaymentServiceProviders.RaboOmniKassa => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "order_id"),
+                PaymentServiceProviders.Mollie => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "invoice_number"),
                 _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), $"Payment service provider '{paymentServiceProvider:G}' is not yet supported.")
             };
         }
 
         private (string FailUrl, string SuccessUrl, string PendingUrl) BuildUrls(OrderProcessSettingsModel orderProcessSettings, List<OrderProcessStepModel> steps, WiserItemModel shoppingBasket = null)
         {
-            var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) { Path = orderProcessSettings.FixedUrl };
-            var successUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) { Path = orderProcessSettings.FixedUrl };
-            var pendingUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) { Path = orderProcessSettings.FixedUrl };
+            var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
+            var successUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
+            var pendingUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
 
             var failUrlQueryString = HttpUtility.ParseQueryString(failUrl.Query);
             failUrlQueryString[Constants.ErrorFromPaymentOutRequestKey] = "true";
