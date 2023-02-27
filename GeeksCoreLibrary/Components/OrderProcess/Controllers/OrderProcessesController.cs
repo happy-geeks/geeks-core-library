@@ -13,7 +13,6 @@ using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.Services;
-using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -85,6 +84,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
         }
 
         [Route(Constants.PaymentInPage)]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> PaymentInAsync()
         {
             var context = HttpContext;
@@ -100,6 +100,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
         }
 
         [Route(Constants.PaymentReturnPage)]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> PaymentReturnAsync()
         {
             var context = HttpContext;
