@@ -776,8 +776,21 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             {
                 // Build the webhook URL.
                 UriBuilder webhookUrl;
+                
+                var pspWebhookDomain = await objectsService.GetSystemObjectValueAsync("psp_webhook_domain");
+
+                // If a specific webhook domain is set for the PSP always use it.
+                if (!String.IsNullOrWhiteSpace(pspWebhookDomain))
+                {
+                    if (!pspWebhookDomain.StartsWith("http", StringComparison.Ordinal) && !pspWebhookDomain.StartsWith("//", StringComparison.Ordinal))
+                    {
+                        pspWebhookDomain = $"https://{pspWebhookDomain}";
+                    }
+
+                    webhookUrl = new UriBuilder(pspWebhookDomain);
+                }
                 // The PSP can't reach our development and test environments, so use the main domain in those cases.
-                if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
+                else if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
                 {
                     var mainDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
                     if (String.IsNullOrWhiteSpace(mainDomain))
