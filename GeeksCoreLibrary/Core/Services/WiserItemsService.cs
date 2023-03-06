@@ -1828,8 +1828,12 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
 
             if (wiserItem?.Details != null)
             {
-                var dictionary = wiserItem.Details.ToDictionary(d => d.Key, d => d.Value ?? "");
-                queryToExecute = stringReplacementsService.DoReplacements(queryToExecute, dictionary, forQuery: true);
+                var groupedDetails = wiserItem.Details.GroupBy(x => x.LanguageCode);
+                foreach (var group in groupedDetails)
+                {
+                    var dictionary = group.ToDictionary(d => d.Key, d => d.Value ?? "");
+                    queryToExecute = stringReplacementsService.DoReplacements(queryToExecute, dictionary, forQuery: true);
+                }
             }
 
             var dataTable = await databaseConnection.GetAsync(queryToExecute, true);
