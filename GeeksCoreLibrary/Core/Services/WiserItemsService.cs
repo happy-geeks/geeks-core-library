@@ -474,7 +474,12 @@ UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET parent_item_id = ?parentId, 
                 var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId, wiserItem);
                 if (!isPossible.ok)
                 {
-                    throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{itemId}'.")
+                    if (String.IsNullOrWhiteSpace(isPossible.errorMessage))
+                    {
+                        isPossible.errorMessage = $"User '{userId}' is not allowed to update item '{itemId}'.";
+                    }
+
+                    throw new InvalidAccessPermissionsException(isPossible.errorMessage)
                     {
                         Action = EntityActions.Update,
                         ItemId = itemId,
