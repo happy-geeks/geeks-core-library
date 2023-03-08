@@ -2133,6 +2133,13 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
                 var tempQuery = addToBasketQuery;
 
+                // Make sure the language code has a value.
+                if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+                {
+                    // This function fills the property "CurrentLanguageCode".
+                    await languagesService.GetLanguageCodeAsync();
+                }
+
                 var queryReplacements = new Dictionary<string, string>()
                 {
                     { "quantity", "1" },

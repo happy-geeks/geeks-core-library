@@ -53,6 +53,13 @@ namespace GeeksCoreLibrary.Core.Controllers
                 return new ObjectResult("Forbidden") { StatusCode = StatusCodes.Status403Forbidden };
             }
 
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             var item = await wiserItemsService.GetItemDetailsAsync(itemId, languageCode: languagesService.CurrentLanguageCode, entityType: entityType);
 
             return new ObjectResult(item);
