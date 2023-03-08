@@ -520,7 +520,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     lineIds.Add(line.Id);
                 }
 
-                await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, Constants.BasketLineToBasketLinkType, lineIds, entityType: Constants.BasketLineEntityType, createNewTransaction: !createNewTransaction, skipPermissionsCheck: true);
+                await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, Constants.BasketLineToBasketLinkType, lineIds, entityType: Constants.BasketLineEntityType, createNewTransaction: false, skipPermissionsCheck: true);
 
                 if (newBasket)
                 {
@@ -1831,8 +1831,10 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
                 if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
             }
-            catch
+            catch (Exception exception)
             {
+                logger.LogError(exception, "An error occured while trying to add one or more lines to the shopping basket.");
+
                 if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
                 throw;
             }
@@ -2130,6 +2132,13 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
 
                 var tempQuery = addToBasketQuery;
+
+                // Make sure the language code has a value.
+                if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+                {
+                    // This function fills the property "CurrentLanguageCode".
+                    await languagesService.GetLanguageCodeAsync();
+                }
 
                 var queryReplacements = new Dictionary<string, string>()
                 {

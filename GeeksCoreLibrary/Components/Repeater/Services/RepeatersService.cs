@@ -41,6 +41,13 @@ namespace GeeksCoreLibrary.Components.Repeater.Services
                 throw new Exception("HttpContext is not available.");
             }
 
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             var fullUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).PathAndQuery;
             databaseConnection.AddParameter("gcl_baseUrl", fullUrl);
             databaseConnection.AddParameter("gcl_languageCode", languagesService.CurrentLanguageCode ?? "");

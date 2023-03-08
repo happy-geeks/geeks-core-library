@@ -897,6 +897,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 // Check if the order is a test order.
                 var isTestOrder = gclSettings.Environment.InList(Environments.Test, Environments.Development);
 
+                // Make sure the language code has a value.
+                if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+                {
+                    // This function fills the property "CurrentLanguageCode".
+                    await languagesService.GetLanguageCodeAsync();
+                }
+
                 // Save data to the concept order(s).
                 foreach (var (main, lines) in conceptOrders)
                 {
@@ -1006,6 +1013,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var replyToName = "";
 
             var orderIsFinished = false;
+
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
 
             foreach (var (main, lines) in conceptOrders)
             {

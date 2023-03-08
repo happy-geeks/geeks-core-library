@@ -141,7 +141,14 @@ LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS `{seoTitleAlias}` ON `{seoTitle
             query.AppendLine();
 
             // LIMIT part.
-            query.Append("LIMIT 1");
+            query.Append("LIMIT 1"); 
+
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
 
             databaseConnection.AddParameter("pageName", await stringReplacementsService.DoAllReplacementsAsync(stringReplacementsService.DoReplacements(settings.PageName, extraData)));
             databaseConnection.AddParameter("pageItemId", settings.PageId);

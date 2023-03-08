@@ -65,6 +65,13 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2", defaultResult: "0")).Equals("1");
                 var filterParametersToExclude = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude", defaultResult: "templateid,pagenr,gclid,_ga");
 
+                // Make sure that the language code is filled.
+                if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+                {
+                    // This function fills the property "CurrentLanguageCode".
+                    await languagesService.GetLanguageCodeAsync();
+                }
+
                 // Get a list of filters from the URL
                 if (!String.IsNullOrEmpty(filterParameter))
                 {
@@ -73,6 +80,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                         filters.Add(item.Key, item.Value);
                     }
                 }
+                
                 if (String.IsNullOrEmpty(filterParameter) | filterParameterMixedMode)
                 {
                     foreach (var key in httpContext.Request.Query.Keys)

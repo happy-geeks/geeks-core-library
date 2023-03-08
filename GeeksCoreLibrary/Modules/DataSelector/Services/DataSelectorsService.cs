@@ -1037,6 +1037,13 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                 if (String.IsNullOrWhiteSpace(data.LanguageCode))
                 {
+                    // Make sure the language code has a value.
+                    if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+                    {
+                        // This function fills the property "CurrentLanguageCode".
+                        await languagesService.GetLanguageCodeAsync();
+                    }
+                    
                     data.LanguageCode = languagesService.CurrentLanguageCode;
                 }
 

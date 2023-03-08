@@ -1412,6 +1412,13 @@ ORDER BY ORDINAL_POSITION ASC";
                 }
             }
 
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             // And finally add the language code to the file name.
             if (!String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
             {

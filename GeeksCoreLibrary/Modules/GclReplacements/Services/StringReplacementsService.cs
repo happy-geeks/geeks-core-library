@@ -81,6 +81,13 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             // Defaults.
             var curDateTime = DateTime.Now;
 
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             dataDictionary.Clear();
             dataDictionary.Add("NowDateTime", curDateTime.ToString("yyyy-MM-dd HH:mm:ss"));
             dataDictionary.Add("NowYear", curDateTime.Year.ToString());
