@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Account.Models;
@@ -12,8 +12,10 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
@@ -29,6 +31,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly ILogger<AccountsService> logger;
         private readonly IDatabaseHelpersService databaseHelpersService;
         private readonly IRolesService rolesService;
+        private readonly IServiceProvider serviceProvider;
 
         public AccountsService(IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
@@ -36,6 +39,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             ILogger<AccountsService> logger,
             IDatabaseHelpersService databaseHelpersService,
             IRolesService rolesService,
+            IServiceProvider serviceProvider,
             IHttpContextAccessor httpContextAccessor = null)
         {
             this.gclSettings = gclSettings.Value;
@@ -45,6 +49,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             this.logger = logger;
             this.databaseHelpersService = databaseHelpersService;
             this.rolesService = rolesService;
+            this.serviceProvider = serviceProvider;
         }
         
         /// <inheritdoc />
@@ -364,47 +369,31 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             var userData = await GetUserDataFromCookieAsync();
-            var regex = new Regex(@"\[?\{Account(Wiser2)?_(?<property>.*?)\}\]?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
-            var match = regex.Match(input);
-            var replacementsDone = new List<string>();
-            while (match.Success)
+            
+            var replaceData = new Dictionary<string, object>();
+            foreach (PropertyDescriptor property in TypeDescriptor.GetProperties(userData))
             {
-                var propertyName = match.Groups["property"].Value;
-                if (replacementsDone.Any(x => x.Equals(propertyName)))
-                {
-                    match = match.NextMatch();
-                    continue;
-                }
-
-                var userDataProperty = userData.GetType().GetProperty(propertyName);
-                string value = null;
-                if (userDataProperty != null)
-                {
-                    value = userDataProperty.GetValue(userData)?.ToString() ?? "";
-                }
-                else if (userData.ExtraData != null && userData.ExtraData.ContainsKey(propertyName))
-                {
-                    value = userData.ExtraData[propertyName] ?? "";
-                }
-
-                if (value != null)
-                {
-                    if (forQuery)
-                    {
-                        var parameterName = DatabaseHelpers.CreateValidParameterName(match.Value);
-                        databaseConnection.AddParameter(parameterName, value);
-                        value = $"?{parameterName}";
-                        input = input.Replace($"'{match.Value}'", value);
-                    }
-
-                    input = input.Replace(match.Value, value);
-                }
-
-                replacementsDone.Add(propertyName);
-
-                match = match.NextMatch();
+                replaceData.Add(property.Name, property.GetValue(userData) ?? "");
             }
 
+            if (userData.ExtraData != null)
+            {
+                foreach (var keyValuePair in userData.ExtraData)
+                {
+                    if (replaceData.ContainsKey(keyValuePair.Key))
+                    {
+                        continue;
+                    }
+
+                    replaceData.Add(keyValuePair.Key, keyValuePair.Value);
+                }
+            }
+
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var stringReplacementsService = scope.ServiceProvider.GetRequiredService<IStringReplacementsService>();
+            input = stringReplacementsService.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{Account_");
+            input = stringReplacementsService.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{AccountWiser2_");
+            
             return input;
         }
 
