@@ -767,7 +767,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     ErrorMessage = $"Invalid payment method '{selectedPaymentMethodId}'"
                 };
             }
-
+            
             paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl;
             paymentMethodSettings.PaymentServiceProvider.SuccessUrl = successUrl;
             paymentMethodSettings.PaymentServiceProvider.PendingUrl = pendingUrl;
@@ -863,12 +863,22 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 var conceptOrders = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
                 foreach (var (main, lines) in shoppingBaskets)
                 {
-                    var (conceptOrderId, conceptOrder, conceptOrderLines) = await shoppingBasketsService.MakeConceptOrderFromBasketAsync(main, lines, basketSettings, orderProcessSettings.BasketToConceptOrderMethod);
+                    var basketToConceptOrderMethod = orderProcessSettings.BasketToConceptOrderMethod;
+                    if (paymentMethodSettings.PaymentServiceProvider.Type != PaymentServiceProviders.NoPsp && basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert)
+                    {
+                        // Converting a basket to a concept order is only allowed for payment methods that don't go via an external PSP.
+                        // Otherwise users can create an order with only one product, start a payment, go back to the website and add several more products,
+                        // then finish their original payment and they will have several free products. This is not possible when there is no external PSP, that's why we allow it there.
+                        basketToConceptOrderMethod = OrderProcessBasketToConceptOrderMethods.CreateCopy;
+                    }
+
+                    var (conceptOrderId, conceptOrder, conceptOrderLines) = await shoppingBasketsService.MakeConceptOrderFromBasketAsync(main, lines, basketSettings, basketToConceptOrderMethod);
 
                     conceptOrders.Add((conceptOrder, conceptOrderLines));
 
                     orderId = conceptOrderId;
                 }
+                
                 // Add order ID to the URLs for later reference.
                 var queryParameters = new Dictionary<string, string> {{"order", orderId.ToString().Encrypt()}};
                 paymentMethodSettings.PaymentServiceProvider.SuccessUrl = UriHelpers.AddToQueryString(paymentMethodSettings.PaymentServiceProvider.SuccessUrl, queryParameters);
