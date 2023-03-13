@@ -270,7 +270,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
-        public async Task LogoutUserAsync(AccountCmsSettingsModel settings)
+        public async Task LogoutUserAsync(AccountCmsSettingsModel settings, bool isAutoLogout = false)
         {
             // Do some initial checks, to make sure we have everything we need and the user is actually still logged in.
             var currentContext = httpContextAccessor?.HttpContext;
@@ -353,7 +353,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             {
                 currentContext.Response.Headers.Add($"x-{settings.OciHookUrlKey}", ociUrl);
 
-                if (settings.EnableOciLogin)
+                if (settings.EnableOciLogin && !isAutoLogout)
                 {
                     currentContext.Response.Redirect(ociUrl);
                 }

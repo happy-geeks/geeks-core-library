@@ -37,12 +37,13 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// </summary>
         /// <param name="selector">The selector of the token.</param>
         Task RemoveCookieTokenAsync(string selector);
-        
+
         /// <summary>
         /// Attempts to log off the user. This will delete the user's cookie from their browser and our database.
         /// </summary>
         /// <param name="settings">The settings of the account component.</param>
-        Task LogoutUserAsync(AccountCmsSettingsModel settings);
+        /// <param name="isAutoLogout">Optional: Whether this is an automatic logout via code or not.</param>
+        Task LogoutUserAsync(AccountCmsSettingsModel settings, bool isAutoLogout = false);
 
         /// <summary>
         /// Do all replacements for the account component on a string.
