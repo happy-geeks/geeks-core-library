@@ -52,13 +52,14 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// </summary>
         /// <param name="userId">The ID of the user</param>
         /// <returns></returns>
-        Task<String> Get2FactorAuthenticationKeyAsync(ulong userId);
+        Task<string> Get2FactorAuthenticationKeyAsync(ulong userId);
         
         /// <summary>
         /// Attempts to log off the user. This will delete the user's cookie from their browser and our database.
         /// </summary>
         /// <param name="settings">The settings of the account component.</param>
-        Task LogoutUserAsync(AccountCmsSettingsModel settings);
+        /// <param name="isAutoLogout">Optional: Whether this is an automatic logout via code or not.</param>
+        Task LogoutUserAsync(AccountCmsSettingsModel settings, bool isAutoLogout = false);
 
         /// <summary>
         /// Do all replacements for the account component on a string.

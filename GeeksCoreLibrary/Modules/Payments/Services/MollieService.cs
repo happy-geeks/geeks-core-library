@@ -38,7 +38,12 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IDatabaseConnection databaseConnection;
 
-        public MollieService(ILogger<MollieService> logger, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService) 
+        public MollieService(ILogger<MollieService> logger,
+            IObjectsService objectsService,
+            IShoppingBasketsService shoppingBasketsService,
+            IDatabaseConnection databaseConnection,
+            IDatabaseHelpersService databaseHelpersService,
+            IHttpContextAccessor httpContextAccessor = null) 
             : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
         {
             this.logger = logger;
@@ -51,7 +56,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return new PaymentRequestResult
                 {
@@ -168,7 +173,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
         private string BuildUrl(string webhookUrl, string invoiceNumber)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return String.Empty;
             }
@@ -186,7 +191,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public async Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return new StatusUpdateResult
                 {
@@ -248,7 +253,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         public async Task<PaymentReturnResult> HandlePaymentReturnAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
         {
             var mollieSettings = (MollieSettingsModel)paymentMethodSettings.PaymentServiceProvider;
-            var invoiceNumber = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "invoice_number");
+            var invoiceNumber = HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "invoice_number");
 
             var baskets = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(invoiceNumber);
             if (baskets == null || baskets.Count == 0)

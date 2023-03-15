@@ -474,7 +474,12 @@ UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET parent_item_id = ?parentId, 
                 var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId, wiserItem);
                 if (!isPossible.ok)
                 {
-                    throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{itemId}'.")
+                    if (String.IsNullOrWhiteSpace(isPossible.errorMessage))
+                    {
+                        isPossible.errorMessage = $"User '{userId}' is not allowed to update item '{itemId}'.";
+                    }
+
+                    throw new InvalidAccessPermissionsException(isPossible.errorMessage)
                     {
                         Action = EntityActions.Update,
                         ItemId = itemId,
@@ -1828,8 +1833,12 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
 
             if (wiserItem?.Details != null)
             {
-                var dictionary = wiserItem.Details.ToDictionary(d => d.Key, d => d.Value ?? "");
-                queryToExecute = stringReplacementsService.DoReplacements(queryToExecute, dictionary, forQuery: true);
+                var groupedDetails = wiserItem.Details.GroupBy(x => x.LanguageCode);
+                foreach (var group in groupedDetails)
+                {
+                    var dictionary = group.ToDictionary(d => d.Key, d => d.Value ?? "");
+                    queryToExecute = stringReplacementsService.DoReplacements(queryToExecute, dictionary, forQuery: true);
+                }
             }
 
             var dataTable = await databaseConnection.GetAsync(queryToExecute, true);

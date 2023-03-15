@@ -117,10 +117,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public Task<bool> DatabaseExistsAsync(string databaseName)
+        public async Task<bool> DatabaseExistsAsync(string databaseName)
         {
             var cacheName = $"CachedDatabaseHelpersService_DatabaseExistsAsync_{databaseName}";
-            return cache.GetOrAddAsync(cacheName,
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;

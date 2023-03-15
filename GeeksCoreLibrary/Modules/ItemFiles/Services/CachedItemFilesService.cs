@@ -16,7 +16,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly IItemFilesService itemFilesService;
 
-        public CachedItemFilesService(IOptions<GclSettings> gclSettings, IWebHostEnvironment webHostEnvironment, IItemFilesService itemFilesService)
+        public CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFilesService itemFilesService, IWebHostEnvironment webHostEnvironment = null)
         {
             this.gclSettings = gclSettings.Value;
             this.webHostEnvironment = webHostEnvironment;
@@ -108,6 +108,11 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         /// <returns></returns>
         private bool ValidateItemFile(string localFilename)
         {
+            if (webHostEnvironment == null)
+            {
+                return false;
+            }
+
             var localDirectory = Path.Combine(webHostEnvironment.WebRootPath, Constants.DefaultFilesDirectory);
             if (!Directory.Exists(localDirectory))
             {
@@ -126,6 +131,11 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         /// <returns></returns>
         private async Task<(byte[] FileBytes, DateTime LastModified)> GetFileBytesAsync(string localFilename)
         {
+            if (webHostEnvironment == null)
+            {
+                return (null, DateTime.MinValue);
+            }
+
             var localDirectory = Path.Combine(webHostEnvironment.WebRootPath, Constants.DefaultFilesDirectory);
             var fileLocation = Path.Combine(localDirectory, localFilename);
 

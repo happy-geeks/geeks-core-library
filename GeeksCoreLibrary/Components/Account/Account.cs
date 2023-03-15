@@ -421,6 +421,11 @@ namespace GeeksCoreLibrary.Components.Account
                 var ociPassword = HttpContextHelpers.GetRequestValue(httpContext, Settings.OciPasswordKey);
                 var encryptedWiserUserId = HttpContextHelpers.GetRequestValue(httpContext, Settings.WiserLoginUserIdKey);
 
+                if (Settings.EnableOciLogin && !String.IsNullOrWhiteSpace(ociUsername) && !String.IsNullOrWhiteSpace(ociPassword))
+                {
+                    await AccountsService.LogoutUserAsync(Settings, true);
+                }
+
                 if (Settings.EnableOciLogin && !String.IsNullOrWhiteSpace(ociHookUrl))
                 {
                     HttpContextHelpers.WriteCookie(httpContext, Constants.OciHookUrlCookieName, ociHookUrl);
@@ -428,7 +433,6 @@ namespace GeeksCoreLibrary.Components.Account
 
                 if (Settings.EnableOciLogin && !String.IsNullOrWhiteSpace(ociUsername) && !String.IsNullOrWhiteSpace(ociPassword))
                 {
-                    await AccountsService.LogoutUserAsync(Settings);
                     var loginResult = await LoginUserAsync(stepNumber, ociUsername, ociPassword, (int)ComponentModes.LoginSingleStep);
                     userId = loginResult.UserId;
 
@@ -458,7 +462,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
                 else if (Settings.EnableWiserLogin && !String.IsNullOrWhiteSpace(encryptedWiserUserId))
                 {
-                    await AccountsService.LogoutUserAsync(Settings);
+                    await AccountsService.LogoutUserAsync(Settings, true);
                     var loginResult = await LoginUserAsync(stepNumber, overrideComponentMode: (int)ComponentModes.LoginSingleStep, encryptedUserId: encryptedWiserUserId);
                     userId = loginResult.UserId;
 

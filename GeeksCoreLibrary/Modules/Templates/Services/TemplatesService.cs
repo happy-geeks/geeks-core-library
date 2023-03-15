@@ -66,16 +66,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
             IStringReplacementsService stringReplacementsService,
-            IHttpContextAccessor httpContextAccessor,
-            IViewComponentHelper viewComponentHelper,
-            ITempDataProvider tempDataProvider,
-            IActionContextAccessor actionContextAccessor,
-            IWebHostEnvironment webHostEnvironment,
             IFiltersService filtersService,
             IObjectsService objectsService,
             ILanguagesService languagesService,
             IAccountsService accountsService,
-            IDatabaseHelpersService databaseHelpersService)
+            IDatabaseHelpersService databaseHelpersService,
+            IHttpContextAccessor httpContextAccessor = null,
+            IActionContextAccessor actionContextAccessor = null,
+            IViewComponentHelper viewComponentHelper = null,
+            IWebHostEnvironment webHostEnvironment = null,
+            ITempDataProvider tempDataProvider = null)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -227,7 +227,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 LoginRoles = result.LoginRoles
             };
 
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 // No context available; return empty template without doing a login check.
                 return emptyTemplate;
@@ -551,7 +551,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
 
             var reader = await databaseConnection.GetReaderAsync(query);
             try
@@ -595,7 +595,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
             var templates = await templatesService.GetTemplatesAsync(templateIds, true);
 
             foreach (var template in templates.Where(t => t.Type == templateType))
@@ -662,6 +662,11 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 throw new ArgumentNullException(nameof(fileNames));
             }
 
+            if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
+            {
+                return "";
+            }
+
             var enumerable = fileNames.ToList();
             if (!enumerable.Any())
             {
@@ -713,7 +718,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             }
 
             // Start with special template replacements for the pre load query that you can set in HTML templates in the templates module in Wiser.
-            if (httpContextAccessor != null && httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
+            if (httpContextAccessor?.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
             {
                 input = stringReplacementsService.DoReplacements(input, (DataRow)httpContextAccessor.HttpContext.Items[Constants.TemplatePreLoadQueryResultKey], forQuery, prefix: "{template.");
             }
@@ -1086,6 +1091,11 @@ ORDER BY id ASC");
             {
                 return "";
             }
+            
+            if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+            {
+                throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+            }
 
             var logRenderingOfComponent = await ComponentRenderingShouldBeLoggedAsync(dynamicContent.Id);
             var error = "";
@@ -1306,7 +1316,7 @@ ORDER BY ORDINAL_POSITION ASC";
         /// <inheritdoc />
         public async Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
         {
-            if (httpContextAccessor.HttpContext == null || String.IsNullOrWhiteSpace(template?.PreLoadQuery))
+            if (httpContextAccessor?.HttpContext == null || String.IsNullOrWhiteSpace(template?.PreLoadQuery))
             {
                 return true;
             }
@@ -1325,7 +1335,7 @@ ORDER BY ORDINAL_POSITION ASC";
         /// <inheritdoc />
         public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
-            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
             switch (contentTemplate.CachingMode)
             {
@@ -1389,7 +1399,7 @@ ORDER BY ORDINAL_POSITION ASC";
             var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (cookieCacheDeviation.Length > 0)
             {
-                var requestCookies = httpContextAccessor.HttpContext?.Request.Cookies;
+                var requestCookies = httpContextAccessor?.HttpContext?.Request.Cookies;
                 foreach (var cookieName in cookieCacheDeviation)
                 {
                     if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
@@ -1400,6 +1410,13 @@ ORDER BY ORDINAL_POSITION ASC";
                     var combinedCookiePart = $"{cookieName}:{cookieValue}";
                     cacheFileName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
                 }
+            }
+
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
             }
 
             // And finally add the language code to the file name.
@@ -1435,10 +1452,21 @@ ORDER BY ORDINAL_POSITION ASC";
 	template.url_regex
 FROM {WiserTableNames.WiserTemplate} AS template
 LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = template.template_id AND otherVersion.version > template.version
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 WHERE otherVersion.id IS NULL
 AND template.template_type IN ({(int)TemplateTypes.Html}, {(int)TemplateTypes.Query}, {(int)TemplateTypes.Routine})
 AND template.url_regex IS NOT NULL
-AND template.url_regex <> ''";
+AND template.url_regex <> ''
+ORDER BY parent5.ordering ASC, 
+    parent4.ordering ASC, 
+    parent3.ordering ASC, 
+    parent2.ordering ASC, 
+    parent1.ordering ASC, 
+    template.ordering ASC";
             }
             else
             {
@@ -1448,10 +1476,21 @@ SELECT
 	template.template_type,
 	template.url_regex
 FROM {WiserTableNames.WiserTemplate} AS template
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 WHERE (template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}
 AND template.template_type IN ({(int)TemplateTypes.Html}, {(int)TemplateTypes.Query}, {(int)TemplateTypes.Routine})
 AND template.url_regex IS NOT NULL
-AND template.url_regex <> ''";
+AND template.url_regex <> ''
+ORDER BY parent5.ordering ASC, 
+    parent4.ordering ASC, 
+    parent3.ordering ASC, 
+    parent2.ordering ASC, 
+    parent1.ordering ASC, 
+    template.ordering ASC";
             }
 
             var dataTable = await databaseConnection.GetAsync(query);
@@ -1478,7 +1517,7 @@ AND template.url_regex <> ''";
 	widget.id,
 	widget.title,
 	IF(languageSpecificHtml.id IS NULL, CONCAT_WS('', genericHtml.`value`, genericHtml.long_value), CONCAT_WS('', languageSpecificHtml.`value`, languageSpecificHtml.long_value)) AS html,
-	IFNULL(location.value, '{(int) Constants.PageWidgetDefaultLocation}') AS location
+	IFNULL(location.value, '{(int) Constants.PageWidgetDefaultLocation}') AS widget_location
 FROM {WiserTableNames.WiserItem} AS widget
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS genericHtml ON genericHtml.item_id = widget.id AND genericHtml.`key` = '{Constants.PageWidgetHtmlPropertyName}'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS languageSpecificHtml ON languageSpecificHtml.item_id = widget.id AND languageSpecificHtml.`key` = '{Constants.PageWidgetHtmlPropertyName}' AND languageSpecificHtml.language_code = '{languagesService.CurrentLanguageCode}'
@@ -1621,7 +1660,7 @@ LIMIT 1";
                 databaseConnection.AddParameter("rendering_content_id", componentId);
                 databaseConnection.AddParameter("rendering_template_id", templateId);
                 databaseConnection.AddParameter("rendering_version", version);
-                databaseConnection.AddParameter("rendering_url", HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext));
+                databaseConnection.AddParameter("rendering_url", HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext));
                 databaseConnection.AddParameter("rendering_environment", gclSettings.Environment.ToString());
                 databaseConnection.AddParameter("rendering_start", startTime);
                 databaseConnection.AddParameter("rendering_end", endTime);

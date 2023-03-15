@@ -206,7 +206,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         }
 
         [ActivatorUtilitiesConstructor]
-        public ShoppingBasket(ILogger<ShoppingBasket> logger, IDatabaseConnection databaseConnection, IShoppingBasketsService shoppingBasketsService, ITemplatesService templatesService, IWebHostEnvironment webHostEnvironment, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IAccountsService accountsService, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService)
+        public ShoppingBasket(ILogger<ShoppingBasket> logger, IDatabaseConnection databaseConnection, IShoppingBasketsService shoppingBasketsService, ITemplatesService templatesService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IAccountsService accountsService, IHtmlToPdfConverterService htmlToPdfConverterService, ICommunicationsService communicationsService, IWebHostEnvironment webHostEnvironment = null)
         {
             this.shoppingBasketsService = shoppingBasketsService;
             this.webHostEnvironment = webHostEnvironment;

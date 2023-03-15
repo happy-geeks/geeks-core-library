@@ -622,7 +622,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserDashboard,
-                LastUpdate = new DateTime(2023, 2, 1),
+                LastUpdate = new DateTime(2023, 2, 23),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -631,8 +631,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("entities_data", MySqlDbType.MediumText),
                     new("user_login_count_top10", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("user_login_count_other", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
-                    new("user_login_time_top10", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00"),
-                    new("user_login_time_other", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00")
+                    new("user_login_active_top10", MySqlDbType.Int64, notNull: true, defaultValue: "0"),
+                    new("user_login_active_other", MySqlDbType.Int64, notNull: true, defaultValue: "0")
                 }
             },
 
@@ -640,12 +640,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserLoginLog,
-                LastUpdate = new DateTime(2022, 12, 29),
+                LastUpdate = new DateTime(2023, 2, 23),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("user_id", MySqlDbType.UInt64, notNull: true),
-                    new("time_active", MySqlDbType.Time, notNull: true, defaultValue: "00:00:00"),
+                    new("time_active_in_seconds", MySqlDbType.Int64, notNull: true, defaultValue: "0"),
                     new("added_on", MySqlDbType.DateTime, notNull: true),
                     new("time_active_changed_on", MySqlDbType.DateTime, notNull: true)
                 },
@@ -656,7 +656,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 }
             },
 
-            
             // wiser_query
             new WiserTableDefinitionModel
             {

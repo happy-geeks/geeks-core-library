@@ -70,11 +70,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             ITemplatesService templatesService,
             IPaymentServiceProviderServiceFactory paymentServiceProviderServiceFactory,
             ICommunicationsService communicationsService,
-            IHttpContextAccessor httpContextAccessor,
             ILogger<OrderProcessesService> logger,
             IObjectsService objectsService,
             IMeasurementProtocolService measurementProtocolService,
-            IHtmlToPdfConverterService htmlToPdfConverterService)
+            IHtmlToPdfConverterService htmlToPdfConverterService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
             this.shoppingBasketsService = shoppingBasketsService;
@@ -767,7 +767,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     ErrorMessage = $"Invalid payment method '{selectedPaymentMethodId}'"
                 };
             }
-
+            
             paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl;
             paymentMethodSettings.PaymentServiceProvider.SuccessUrl = successUrl;
             paymentMethodSettings.PaymentServiceProvider.PendingUrl = pendingUrl;
@@ -776,8 +776,21 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             {
                 // Build the webhook URL.
                 UriBuilder webhookUrl;
+                
+                var pspWebhookDomain = await objectsService.GetSystemObjectValueAsync("psp_webhook_domain");
+
+                // If a specific webhook domain is set for the PSP always use it.
+                if (!String.IsNullOrWhiteSpace(pspWebhookDomain))
+                {
+                    if (!pspWebhookDomain.StartsWith("http", StringComparison.Ordinal) && !pspWebhookDomain.StartsWith("//", StringComparison.Ordinal))
+                    {
+                        pspWebhookDomain = $"https://{pspWebhookDomain}";
+                    }
+
+                    webhookUrl = new UriBuilder(pspWebhookDomain);
+                }
                 // The PSP can't reach our development and test environments, so use the main domain in those cases.
-                if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
+                else if (gclSettings.Environment.InList(Environments.Development, Environments.Test))
                 {
                     var mainDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
                     if (String.IsNullOrWhiteSpace(mainDomain))
@@ -794,7 +807,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 }
                 else
                 {
-                    webhookUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext));
+                    webhookUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext));
                 }
 
                 webhookUrl.Path = Constants.PaymentInPage;
@@ -806,7 +819,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 paymentMethodSettings.PaymentServiceProvider.WebhookUrl = webhookUrl.ToString();
 
                 // Build the return URL.
-                var returnUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext))
+                var returnUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext))
                 {
                     Path = Constants.PaymentReturnPage
                 };
@@ -850,12 +863,22 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 var conceptOrders = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
                 foreach (var (main, lines) in shoppingBaskets)
                 {
-                    var (conceptOrderId, conceptOrder, conceptOrderLines) = await shoppingBasketsService.MakeConceptOrderFromBasketAsync(main, lines, basketSettings, orderProcessSettings.BasketToConceptOrderMethod);
+                    var basketToConceptOrderMethod = orderProcessSettings.BasketToConceptOrderMethod;
+                    if (paymentMethodSettings.PaymentServiceProvider.Type != PaymentServiceProviders.NoPsp && basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert)
+                    {
+                        // Converting a basket to a concept order is only allowed for payment methods that don't go via an external PSP.
+                        // Otherwise users can create an order with only one product, start a payment, go back to the website and add several more products,
+                        // then finish their original payment and they will have several free products. This is not possible when there is no external PSP, that's why we allow it there.
+                        basketToConceptOrderMethod = OrderProcessBasketToConceptOrderMethods.CreateCopy;
+                    }
+
+                    var (conceptOrderId, conceptOrder, conceptOrderLines) = await shoppingBasketsService.MakeConceptOrderFromBasketAsync(main, lines, basketSettings, basketToConceptOrderMethod);
 
                     conceptOrders.Add((conceptOrder, conceptOrderLines));
 
                     orderId = conceptOrderId;
                 }
+                
                 // Add order ID to the URLs for later reference.
                 var queryParameters = new Dictionary<string, string> {{"order", orderId.ToString().Encrypt()}};
                 paymentMethodSettings.PaymentServiceProvider.SuccessUrl = UriHelpers.AddToQueryString(paymentMethodSettings.PaymentServiceProvider.SuccessUrl, queryParameters);
@@ -883,6 +906,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                 // Check if the order is a test order.
                 var isTestOrder = gclSettings.Environment.InList(Environments.Test, Environments.Development);
+
+                // Make sure the language code has a value.
+                if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+                {
+                    // This function fills the property "CurrentLanguageCode".
+                    await languagesService.GetLanguageCodeAsync();
+                }
 
                 // Save data to the concept order(s).
                 foreach (var (main, lines) in conceptOrders)
@@ -993,6 +1023,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var replyToName = "";
 
             var orderIsFinished = false;
+
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
 
             foreach (var (main, lines) in conceptOrders)
             {
@@ -1159,7 +1196,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var paymentMethodSettings = await orderProcessesService.GetPaymentMethodAsync(paymentMethodId);
             if (orderProcessSettings == null || orderProcessSettings.Id == 0 || paymentMethodSettings == null || paymentMethodSettings.Id == 0)
             {
-                logger.LogError($"Called HandlePaymentServiceProviderWebhookAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)}");
+                logger.LogError($"Called HandlePaymentServiceProviderWebhookAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}");
                 return false;
             }
 
@@ -1205,7 +1242,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             
             if (orderProcessSettings == null || orderProcessSettings.Id == 0 || paymentMethodSettings == null || paymentMethodSettings.Id == 0)
             {
-                logger.LogError($"Called HandlePaymentReturnAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)}");
+                logger.LogError($"Called HandlePaymentReturnAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}");
                 return new PaymentReturnResult
                 {
                     Action = PaymentResultActions.Redirect,
@@ -1446,19 +1483,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             return paymentServiceProvider switch
             {
-                PaymentServiceProviders.Buckaroo => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "brq_invoicenumber"),
-                PaymentServiceProviders.MultiSafepay => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "transactionid"),
-                PaymentServiceProviders.RaboOmniKassa => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "order_id"),
-                PaymentServiceProviders.Mollie => HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "invoice_number"),
+                PaymentServiceProviders.Buckaroo => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "brq_invoicenumber"),
+                PaymentServiceProviders.MultiSafepay => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "transactionid"),
+                PaymentServiceProviders.RaboOmniKassa => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "order_id"),
+                PaymentServiceProviders.Mollie => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "invoice_number"),
                 _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), $"Payment service provider '{paymentServiceProvider:G}' is not yet supported.")
             };
         }
 
         private (string FailUrl, string SuccessUrl, string PendingUrl) BuildUrls(OrderProcessSettingsModel orderProcessSettings, List<OrderProcessStepModel> steps, WiserItemModel shoppingBasket = null)
         {
-            var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) { Path = orderProcessSettings.FixedUrl };
-            var successUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) { Path = orderProcessSettings.FixedUrl };
-            var pendingUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor.HttpContext)) { Path = orderProcessSettings.FixedUrl };
+            var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
+            var successUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
+            var pendingUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
 
             var failUrlQueryString = HttpUtility.ParseQueryString(failUrl.Query);
             failUrlQueryString[Constants.ErrorFromPaymentOutRequestKey] = "true";

@@ -64,15 +64,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
             IStringReplacementsService stringReplacementsService,
-            IHttpContextAccessor httpContextAccessor,
-            IViewComponentHelper viewComponentHelper,
-            ITempDataProvider tempDataProvider,
-            IActionContextAccessor actionContextAccessor,
-            IWebHostEnvironment webHostEnvironment,
             IFiltersService filtersService,
             IObjectsService objectsService,
             ILanguagesService languagesService,
-            IAccountsService accountsService)
+            IAccountsService accountsService,
+            IHttpContextAccessor httpContextAccessor = null,
+            IActionContextAccessor actionContextAccessor = null,
+            IWebHostEnvironment webHostEnvironment = null,
+            IViewComponentHelper viewComponentHelper = null,
+            ITempDataProvider tempDataProvider = null)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -225,7 +225,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 LoginRedirectUrl = await objectsService.FindSystemObjectByDomainNameAsync("defaultloginurl", "/")
             };
 
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 // No context available; return empty template without doing a login check.
                 return emptyTemplate;
@@ -434,7 +434,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
 
             var reader = await databaseConnection.GetReaderAsync(query);
             try
@@ -559,7 +559,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
             var templates = await templatesService.GetTemplatesAsync(templateIds, true);
 
             foreach (var template in templates.Where(t => t.Type == templateType))
@@ -624,6 +624,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             if (fileNames == null)
             {
                 throw new ArgumentNullException(nameof(fileNames));
+            }
+
+            if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
+            {
+                return "";
             }
 
             var enumerable = fileNames.ToList();
@@ -1059,6 +1064,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return "";
             }
 
+            if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+            {
+                throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+            }
+
             string viewComponentName;
             switch (dynamicContent.Name)
             {
@@ -1296,7 +1306,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
-            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
             switch (contentTemplate.CachingMode)
             {
@@ -1321,7 +1331,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (cookieCacheDeviation.Length > 0)
             {
-                var requestCookies = httpContextAccessor.HttpContext?.Request.Cookies;
+                var requestCookies = httpContextAccessor?.HttpContext?.Request.Cookies;
                 foreach (var cookieName in cookieCacheDeviation)
                 {
                     if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
@@ -1332,6 +1342,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     var combinedCookiePart = $"{cookieName}:{cookieValue}";
                     cacheFileName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
                 }
+            }
+
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
             }
 
             // And finally add the language code to the file name.

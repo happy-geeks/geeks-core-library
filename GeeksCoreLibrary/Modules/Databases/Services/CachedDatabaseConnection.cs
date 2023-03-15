@@ -25,7 +25,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private readonly ConcurrentDictionary<string, object> parameters = new();
         private readonly GclSettings gclSettings;
 
-        public CachedDatabaseConnection(IDatabaseConnection databaseConnection, IAppCache cache, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, ICacheService cacheService)
+        public CachedDatabaseConnection(IDatabaseConnection databaseConnection,
+            IAppCache cache,
+            IOptions<GclSettings> gclSettings,
+            ICacheService cacheService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
             this.cache = cache;
@@ -56,21 +60,21 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public string ConnectedDatabaseForWriting => databaseConnection.ConnectedDatabaseForWriting;
 
         /// <inheritdoc />
-        public Task<DbDataReader> GetReaderAsync(string query)
+        public async Task<DbDataReader> GetReaderAsync(string query)
         {
-            return databaseConnection.GetReaderAsync(query);
+            return await databaseConnection.GetReaderAsync(query);
         }
 
         /// <inheritdoc />
-        public Task<DataTable> GetAsync(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
+        public async Task<DataTable> GetAsync(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
         {
             // TODO: This skipCache parameter is temporary, and will be removed once a better solution is found to skip cache.
             if (skipCache)
             {
-                return databaseConnection.GetAsync(query, cleanUp: cleanUp, useWritingConnectionIfAvailable: useWritingConnectionIfAvailable);
+                return await databaseConnection.GetAsync(query, cleanUp: cleanUp, useWritingConnectionIfAvailable: useWritingConnectionIfAvailable);
             }
 
-            var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheName = new StringBuilder($"GCL_QUERY_{currentUri.Host}");
 
             if (gclSettings.MultiLanguageBasedOnUrlSegments)
@@ -84,7 +88,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 cacheName.Append($"{key}={value}");
             }
 
-            return cache.GetOrAddAsync(cacheName.ToString(),
+            return await cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
@@ -93,19 +97,19 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public Task<string> GetAsJsonAsync(string query, bool formatResult = false, bool skipCache = false)
+        public async Task<string> GetAsJsonAsync(string query, bool formatResult = false, bool skipCache = false)
         {
             // TODO: This skipCache parameter is temporary, and will be removed once a better solution is found to skip cache.
             if (skipCache)
             {
-                return databaseConnection.GetAsJsonAsync(query, formatResult);
+                return await databaseConnection.GetAsJsonAsync(query, formatResult);
             }
 
             var cacheName = new StringBuilder("GCL_QUERY_");
 
             if (gclSettings.MultiLanguageBasedOnUrlSegments)
             {
-                cacheName.Append(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).Segments.First().Trim('/'));
+                cacheName.Append(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).Segments.First().Trim('/'));
             }
 
             cacheName.Append(query.ToSha512Simple());
@@ -114,7 +118,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 cacheName.Append($"{key}={value}");
             }
 
-            return cache.GetOrAddAsync(cacheName.ToString(),
+            return await cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
@@ -123,39 +127,39 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public Task<int> ExecuteAsync(string query, bool useWritingConnectionIfAvailable = true, bool cleanUp = true)
+        public async Task<int> ExecuteAsync(string query, bool useWritingConnectionIfAvailable = true, bool cleanUp = true)
         {
-            return databaseConnection.ExecuteAsync(query, useWritingConnectionIfAvailable);
+            return await databaseConnection.ExecuteAsync(query, useWritingConnectionIfAvailable);
         }
 
         /// <inheritdoc />
-        public Task<T> InsertOrUpdateRecordBasedOnParametersAsync<T>(string tableName, T id = default, string idColumnName = "id", bool ignoreErrors = false, bool useWritingConnectionIfAvailable = true)
+        public async Task<T> InsertOrUpdateRecordBasedOnParametersAsync<T>(string tableName, T id = default, string idColumnName = "id", bool ignoreErrors = false, bool useWritingConnectionIfAvailable = true)
         {
-            return databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(tableName, id, idColumnName, ignoreErrors, useWritingConnectionIfAvailable);
+            return await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(tableName, id, idColumnName, ignoreErrors, useWritingConnectionIfAvailable);
         }
 
         /// <inheritdoc />
-        public Task<long> InsertRecordAsync(string query, bool useWritingConnectionIfAvailable = true)
+        public async Task<long> InsertRecordAsync(string query, bool useWritingConnectionIfAvailable = true)
         {
-            return databaseConnection.InsertRecordAsync(query, useWritingConnectionIfAvailable);
+            return await databaseConnection.InsertRecordAsync(query, useWritingConnectionIfAvailable);
         }
 
         /// <inheritdoc />
-        public Task<IDbTransaction> BeginTransactionAsync(bool forceNewTransaction = false)
+        public async Task<IDbTransaction> BeginTransactionAsync(bool forceNewTransaction = false)
         {
-            return databaseConnection.BeginTransactionAsync(forceNewTransaction);
+            return await databaseConnection.BeginTransactionAsync(forceNewTransaction);
         }
 
         /// <inheritdoc />
-        public Task CommitTransactionAsync(bool throwErrorIfNoActiveTransaction = true)
+        public async Task CommitTransactionAsync(bool throwErrorIfNoActiveTransaction = true)
         {
-            return databaseConnection.CommitTransactionAsync(throwErrorIfNoActiveTransaction);
+            await databaseConnection.CommitTransactionAsync(throwErrorIfNoActiveTransaction);
         }
 
         /// <inheritdoc />
-        public Task RollbackTransactionAsync(bool throwErrorIfNoActiveTransaction = true)
+        public async Task RollbackTransactionAsync(bool throwErrorIfNoActiveTransaction = true)
         {
-            return databaseConnection.RollbackTransactionAsync(throwErrorIfNoActiveTransaction);
+            await databaseConnection.RollbackTransactionAsync(throwErrorIfNoActiveTransaction);
         }
 
         /// <inheritdoc />
