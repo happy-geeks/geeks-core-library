@@ -24,7 +24,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 {
     public class ConfiguratorsService : IConfiguratorsService, IScopedService
     {
-        private readonly ILogger<Configurator> logger;
+        private readonly ILogger<ConfiguratorsService> logger;
         private readonly IDatabaseConnection databaseConnection;
         private readonly IObjectsService objectsService;
         private readonly IWiserItemsService wiserItemsService;
@@ -75,7 +75,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             ("substep_", "free_content1"), ("substep_", "free_content2"), ("substep_", "free_content3"), ("substep_", "free_content4"), ("substep_", "free_content5")
         };
 
-        public ConfiguratorsService(ILogger<Configurator> logger,
+        public ConfiguratorsService(ILogger<ConfiguratorsService> logger,
             IDatabaseConnection databaseConnection,
             IObjectsService objectsService,
             IWiserItemsService wiserItemsService,
@@ -530,11 +530,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             catch (ArgumentException e)
             {
                 // ArgumentException is thrown when the response of the API was not successful.
+                logger.LogError(e, "Error while trying to get price from an API.");
                 return result;
             }
             catch (Exception e)
             {
-                logger.LogError(e.ToString());
+                logger.LogError(e, "Error while trying to get price from an API.");
                 return result;
             }
 
@@ -656,13 +657,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                             throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
                     }
 
-
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
                     var restResponse = await restClient.ExecuteAsync(restRequest);
                     if (!restResponse.IsSuccessful || restResponse.Content == null)
                     {
-                        logger.LogWarning($"Error while trying to get price from an API. The API response HTTP code was '{restResponse.StatusCode}' and the result was: {restResponse.Content}");
+                        logger.LogWarning("Error while trying to get price from an API. The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}", restResponse.StatusCode, restResponse.Content);
                         continue;
                     }
 
@@ -711,7 +711,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             // Return if price of configuration is 0 and configurations with zero price must not be saved
             if (!saveZeroPriceConfigurations && prices.customerPrice <= 0)
             {
-                logger.LogInformation($"Saving configuration skipped because of zero price.");
+                logger.LogInformation("Saving configuration skipped because of zero price.");
                 return 0;
             }
 
@@ -875,7 +875,14 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     
                     if (!restResponse.IsSuccessful || restResponse.Content == null)
                     {
-                        throw new ArgumentException();
+                        // Save the configuration so the response is logged.
+                        await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
+
+                        // Log the error and throw an exception.
+                        var messageResponsePart = String.IsNullOrWhiteSpace(restResponse.Content) ? "<empty>" : restResponse.Content;
+
+                        logger.LogError("Error while trying to execute Save API '{saveApiTitle}' - Status code: '{restResponseStatusCode}' - Response from API: {restResponseContent}", saveApi.Title, restResponse.StatusCode.ToString("D"), messageResponsePart);
+                        throw new Exception($"Error while trying to execute Save API '{saveApi.Title}' - Status code: '{restResponse.StatusCode:D}' - Response from API: {messageResponsePart}");
                     }
 
                     // If the call only needed to be made and no supplier ID needs to be retrieved the last part can be skipped.
@@ -908,9 +915,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 }
                 catch (Exception e)
                 {
-                    logger.LogError($"Error thrown during the saving of a configuration at an external API.{Environment.NewLine}{e}");
+                    logger.LogError(e, "Error thrown during the saving of a configuration at an external API.");
                     
-                    configuration.Details.Add(new WiserItemDetailModel()
+                    configuration.Details.Add(new WiserItemDetailModel
                     {
                         Key = "gcl_save_configuration_exception",
                         Value = e.ToString(),
