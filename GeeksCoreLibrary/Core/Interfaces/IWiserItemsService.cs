@@ -894,5 +894,18 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="template">The HTML template that might contain one or more entity blocks.</param>
         /// <returns>The same template but with all entity blocks fully rendered.</returns>
         Task<string> ReplaceAllEntityBlocksAsync(string template);
+
+        /// <summary>
+        /// Save a single item detail to the database. This will check if the item detail already exists (based on key and language code) and updates the row if it does, or insert one if it doesn't.
+        /// This function will not check for permissions and will not do any conversions for saving dates and whatnot.
+        /// This is only meant for saving simple string values. In other cases, you should use "UpdateAsync".
+        /// </summary>
+        /// <param name="itemDetail">The <see cref="WiserItemDetailModel"/> with the data to save.</param>
+        /// <param name="itemId">The ID of the item, if this is a detail for an item.</param>
+        /// <param name="itemLinkId">The ID of the item link, if this is a detail for a link.</param>
+        /// <param name="entityType">Optional: The entity type of the corresponding item. This is needed when that entity type uses dedicated tables.</param>
+        /// <param name="username">Optional: The username of the user that is making the change. This is used in wiser_history. Default value is "JCL".</param>
+        /// <param name="saveHistory">Optional: Whether or not to log this change in wiser_history. Default value is "true".</param>
+        Task SaveItemDetailAsync(WiserItemDetailModel itemDetail, ulong itemId = 0, ulong itemLinkId = 0, string entityType = null, string username = "JCL", bool saveHistory = true);
     }
 }

@@ -13,10 +13,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
+using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -4113,6 +4115,184 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
             }
 
             return template;
+        }
+
+        /// <inheritdoc />
+        public async Task SaveItemDetailAsync(WiserItemDetailModel itemDetail, ulong itemId = 0, ulong itemLinkId = 0, string entityType = null, string username = "JCL", bool saveHistory = true)
+        {
+            var hasTransactionFromOuterScope = databaseConnection.HasActiveTransaction();
+            
+            var retries = 0;
+            var transactionCompleted = false;
+
+            while (!transactionCompleted)
+            {
+                try
+                {
+                    if (!hasTransactionFromOuterScope)
+                    {
+                        await databaseConnection.BeginTransactionAsync();
+                    }
+
+                    var tablePrefix = await GetTablePrefixForEntityAsync(entityType);
+                    if (itemId == 0 && itemLinkId == 0)
+                    {
+                        throw new ArgumentException($"Please enter a value in either {nameof(itemId)} or {nameof(itemLinkId)}.");
+                    }
+
+                    if (String.IsNullOrWhiteSpace(itemDetail?.Key))
+                    {
+                        throw new ArgumentException($"Please enter a value in the Key property of {nameof(itemDetail)}.");
+                    }
+
+                    var useLongValueColumn = itemDetail.Value?.ToString()?.Length > 1000;
+                    databaseConnection.AddParameter("saveDetailUsername", username);
+                    databaseConnection.AddParameter("saveDetailSaveHistory", saveHistory);
+                    databaseConnection.AddParameter("saveDetailItemId", itemId);
+                    databaseConnection.AddParameter("saveDetailItemLinkId", itemLinkId);
+                    databaseConnection.AddParameter("saveDetailKey", itemDetail.Key);
+                    databaseConnection.AddParameter("saveDetailValue", useLongValueColumn ? "" : itemDetail.Value);
+                    databaseConnection.AddParameter("saveDetailLongValue", useLongValueColumn ? itemDetail.Value : "");
+                    databaseConnection.AddParameter("saveDetailLanguageCode", itemDetail.LanguageCode ?? "");
+                    databaseConnection.AddParameter("saveDetailGroupName", itemDetail.GroupName ?? "");
+
+                    string query = null;
+                    if (itemDetail.Id == 0)
+                    {
+                        if (itemId > 0)
+                        {
+                            query = $@"SELECT id 
+FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
+WHERE item_id = ?saveDetailItemId 
+AND `key` = ?saveDetailKey 
+AND language_code = ?saveDetailLanguageCode
+LIMIT 1";
+                        }
+                        else
+                        {
+                            query = $@"SELECT id 
+FROM {WiserTableNames.WiserItemLinkDetail} 
+WHERE itemlink_id = ?saveDetailItemLinkId 
+AND `key` = ?saveDetailKey
+AND language_code = ?saveDetailLanguageCode
+LIMIT 1";
+                        }
+
+                        if (!hasTransactionFromOuterScope)
+                        {
+                            // The 'FOR UPDATE' command locks the row in the table, so that it cannot be changed by other processes.
+                            // We only add this when we have created our own transaction in this function, because otherwise
+                            // we might have too long transactions and then we can get deadlocks.
+                            query += " FOR UPDATE";
+                        }
+
+                        var dataTable = await databaseConnection.GetAsync(query);
+                        if (dataTable.Rows.Count > 0)
+                        {
+                            itemDetail.Id = dataTable.Rows[0].Field<ulong>("id");
+                        }
+                    }
+
+                    query = null;
+                    var isEmpty = itemDetail.Value == null || (string) itemDetail.Value == "";
+                    if (itemDetail.Id == 0)
+                    {
+                        if (!isEmpty && itemId > 0)
+                        {
+                            query = $@"SET @_username = ?saveDetailUsername;
+SET @saveHistory = ?saveDetailSaveHistory;
+INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (`language_code`, `item_id`, `groupname`, `key`, `value`, `long_value`)
+VALUES (?saveDetailLanguageCode, ?saveDetailItemId, ?saveDetailGroupName, ?saveDetailKey, ?saveDetailValue, ?saveDetailLongValue);
+SELECT LAST_INSERT_ID() AS newDetailId;";
+                        }
+                        else if (!isEmpty && itemLinkId > 0)
+                        {
+                            query = $@"SET @_username = ?saveDetailUsername;
+SET @saveHistory = ?saveDetailSaveHistory;
+INSERT INTO {WiserTableNames.WiserItemLinkDetail} (`language_code`, `itemlink_id`, `groupname`, `key`, `value`, `long_value`)
+VALUES (?saveDetailLanguageCode, ?saveDetailItemLinkId, ?saveDetailGroupName, ?saveDetailKey, ?saveDetailValue, ?saveDetailLongValue);
+SELECT LAST_INSERT_ID() AS newDetailId;";
+                        }
+
+                        if (!String.IsNullOrEmpty(query))
+                        {
+                            var dataTable = await databaseConnection.GetAsync(query);
+                            itemDetail.Id = Convert.ToUInt64(dataTable.Rows[0]["newDetailId"]);
+                        }
+                    }
+                    else
+                    {
+                        databaseConnection.AddParameter("saveDetailId", itemDetail.Id);
+                        if (isEmpty && itemId > 0)
+                        {
+                            query = $@"SET @_username = ?saveDetailUsername;
+SET @saveHistory = ?saveDetailSaveHistory;
+DELETE FROM {tablePrefix}{WiserTableNames.WiserItemDetail}
+WHERE id = ?saveDetailId";
+                        }
+                        else if (!isEmpty && itemId > 0)
+                        {
+                            query = $@"SET @_username = ?saveDetailUsername;
+SET @saveHistory = ?saveDetailSaveHistory;
+UPDATE {tablePrefix}{WiserTableNames.WiserItemDetail}
+SET `groupname` = ?saveDetailGroupName, `value` = ?saveDetailValue, `long_value` = ?saveDetailLongValue
+WHERE id = ?saveDetailId";
+                        }
+                        else if (isEmpty && itemLinkId > 0)
+                        {
+                            query = $@"SET @_username = ?saveDetailUsername;
+SET @saveHistory = ?saveDetailSaveHistory;
+DELETE FROM {WiserTableNames.WiserItemLinkDetail}
+WHERE id = ?saveDetailId";
+                        }
+                        else if (!isEmpty && itemLinkId > 0)
+                        {
+                            query = $@"SET @_username = ?saveDetailUsername;
+SET @saveHistory = ?saveDetailSaveHistory;
+UPDATE {WiserTableNames.WiserItemLinkDetail}
+SET `groupname` = ?saveDetailGroupName, `value` = ?saveDetailValue, `long_value` = ?saveDetailLongValue
+WHERE id = ?saveDetailId";
+                        }
+
+                        if (!String.IsNullOrEmpty(query))
+                        {
+                            await databaseConnection.ExecuteAsync(query);
+                        }
+                    }
+
+                    if (!hasTransactionFromOuterScope)
+                    {
+                        await databaseConnection.CommitTransactionAsync();
+                    }
+                    
+                    transactionCompleted = true;
+                }
+                catch (MySqlException mySqlException)
+                {
+                    await databaseConnection.RollbackTransactionAsync(false);
+
+                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < MySqlDatabaseConnection.MaxRetriesAfterDeadlock)
+                    {
+                        // Exception is a deadlock or something similar, retry the transaction.
+                        retries++;
+                        Thread.Sleep(200);
+                    }
+                    else
+                    {
+                        // Exception is not a deadlock, throw it.
+                        throw;
+                    }
+                }
+                catch (Exception)
+                {
+                    if (!hasTransactionFromOuterScope)
+                    {
+                        await databaseConnection.RollbackTransactionAsync();
+                    }
+
+                    throw;
+                }
+            }
         }
 
         #endregion
