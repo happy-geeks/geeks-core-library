@@ -740,9 +740,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var selectedPaymentMethodId = shoppingBaskets.First().Main.GetDetailValue<ulong>(Constants.PaymentMethodProperty);
             var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
             var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
+            var conceptOrders = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
 
             // Build the fail, success and pending URLs.
-            var (failUrl, successUrl, pendingUrl) = BuildUrls(orderProcessSettings, steps, shoppingBaskets.First().Main);
+            var (failUrl, successUrl, pendingUrl) = BuildUrls(orderProcessSettings, steps);
 
             // Check if we have a valid payment method.
             if (selectedPaymentMethodId == 0)
@@ -860,7 +861,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 // Convert baskets to concept orders.
                 var orderId = 0UL;
                 var basketSettings = await shoppingBasketsService.GetSettingsAsync();
-                var conceptOrders = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
                 foreach (var (main, lines) in shoppingBaskets)
                 {
                     var basketToConceptOrderMethod = orderProcessSettings.BasketToConceptOrderMethod;
@@ -927,6 +927,25 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     main.SetDetail(Constants.IsTestOrderProperty, isTestOrder ? 1 : 0);
                     await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
                 }
+                
+                // Allow custom code to be executed before we send the user to the PSP and cancel the payment if the code returned false.
+                var beforeOutResult = await orderProcessesService.PaymentRequestBeforeOutAsync(conceptOrders, orderProcessSettings, paymentMethodSettings);
+                if (beforeOutResult is {Successful: false})
+                {
+                    if (String.IsNullOrWhiteSpace(beforeOutResult.ActionData) && beforeOutResult.Action == PaymentRequestActions.Redirect)
+                    {
+                        beforeOutResult.ActionData = failUrl;
+                    }
+                    if (String.IsNullOrWhiteSpace(beforeOutResult.ErrorMessage))
+                    {
+                        beforeOutResult.ErrorMessage = "Custom code in PaymentRequestBeforeOutAsync returned an unsuccessful result.";
+                    }
+                    
+                    // Delete the concept order(s) if this failed.
+                    await DeleteConceptOrdersAsync(conceptOrders);
+
+                    return beforeOutResult;
+                }
 
                 var convertConceptOrderToOrder = paymentMethodSettings.PaymentServiceProvider.OrdersCanBeSetDirectlyToFinished;
 
@@ -951,8 +970,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         await shoppingBasketsService.UseCouponAsync(couponItem, totalBasketPrice);
                     }
                 }
-
-                // TODO: Call "TransactionBeforeOut" site function.
 
                 if (!convertConceptOrderToOrder && paymentMethodSettings.PaymentServiceProvider.SkipPaymentWhenOrderAmountEqualsZero)
                 {
@@ -989,6 +1006,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             catch (Exception exception)
             {
                 logger.LogCritical(exception, $"An exception occurred in {Constants.PaymentOutPage}");
+
+                try
+                {
+                    // Delete the concept order(s) if this failed.
+                    await DeleteConceptOrdersAsync(conceptOrders);
+                }
+                catch (Exception deleteException)
+                {
+                    logger.LogError(deleteException, "Tried to delete concept orders after exception, but failed.");
+                }
+
                 return new PaymentRequestResult
                 {
                     Successful = false,
@@ -1022,7 +1050,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var replyToAddress = "";
             var replyToName = "";
 
-            var orderIsFinished = false;
+            var hasAlreadyBeenConvertedToOrderBefore = false;
 
             // Make sure the language code has a value.
             if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
@@ -1033,7 +1061,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             foreach (var (main, lines) in conceptOrders)
             {
-                orderIsFinished = main.EntityType == Constants.OrderEntityType;
+                hasAlreadyBeenConvertedToOrderBefore = main.EntityType == Constants.OrderEntityType;
 
                 // Get email content and addresses.
                 var mailValues = await GetMailValuesAsync(orderProcessSettings, main, lines);
@@ -1116,11 +1144,18 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 main.SetDetail(Constants.PaymentHistoryProperty, $"{DateTime.Now:yyyyMMddHHmmss} - {newStatus}", true);
 
                 // If order is not finished yet and the payment was successful.
-                if (!orderIsFinished && isSuccessfulStatus && convertConceptOrderToOrder)
+                if (!hasAlreadyBeenConvertedToOrderBefore && isSuccessfulStatus && convertConceptOrderToOrder)
                 {
                     await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
                 }
-
+                
+                // Allow custom code to be executed before we send the user to the PSP and cancel the payment if the code returned false.
+                var success = await orderProcessesService.PaymentStatusUpdateBeforeCommunicationAsync(main, lines, orderProcessSettings, hasAlreadyBeenConvertedToOrderBefore, isSuccessfulStatus);
+                if (!success)
+                {
+                    return false;
+                }
+                
                 if (!String.IsNullOrWhiteSpace(userEmailAddress) && !String.IsNullOrWhiteSpace(emailContent))
                 {
                     mailsToSendToUser.Add(new SingleCommunicationModel
@@ -1159,7 +1194,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 }
             }
 
-            if (!orderIsFinished)
+            if (!hasAlreadyBeenConvertedToOrderBefore)
             {
                 foreach (var mailToSend in mailsToSendToUser)
                 {
@@ -1292,9 +1327,31 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             }
 
             var files = await wiserItemsService.GetItemFilesAsync(new[] { orderId }, "item_id", Constants.InvoicePdfProperty);
-            return files.OrderBy(file => file.Id).LastOrDefault();
+            return files.MaxBy(file => file.Id);
         }
 
+        /// <inheritdoc />
+        public Task<PaymentRequestResult> PaymentRequestBeforeOutAsync(List<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
+        {
+            // We do nothing here. This function is meant to overwrite in projects so custom code snippets can be executed.
+            // Use the decorator pattern to create an overwrite of IOrderProcessesService and then add custom code in this snippet.
+            return Task.FromResult(new PaymentRequestResult { Successful = true });
+        }
+
+        /// <inheritdoc />
+        public Task<bool> PaymentStatusUpdateBeforeCommunicationAsync(WiserItemModel main, List<WiserItemModel> lines, OrderProcessSettingsModel orderProcessSettings, bool wasHandledBefore, bool isSuccessfulStatus)
+        {
+            // We do nothing here. This function is meant to overwrite in projects so custom code snippets can be executed.
+            // Use the decorator pattern to create an overwrite of IOrderProcessesService and then add custom code in this snippet.
+            return Task.FromResult(true);
+        }
+
+        /// <summary>
+        /// Converts a <see cref="DataRow"/> to a <see cref="PaymentMethodSettingsModel"/>.
+        /// </summary>
+        /// <param name="dataRow">The <see cref="DataRow"/> to convert.</param>
+        /// <returns>A <see cref="PaymentMethodSettingsModel"/> with the data from the <see cref="DataRow"/>.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">When using a PaymentServiceProvider that we don't support.</exception>
         private PaymentMethodSettingsModel DataRowToPaymentMethodSettingsModel(DataRow dataRow)
         {
             // Build the payment settings model.
@@ -1332,7 +1389,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 {
                     ApiKey = GetSecretKeyValue(dataRow, "mollieApiKey")
                 },
-                _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), paymentServiceProvider.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), paymentServiceProvider.ToString(), "Unsupported value used.")
             };
 
             // Settings that are the same for all PSPs.
@@ -1351,6 +1408,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             return result;
         }
 
+        /// <summary>
+        /// Get and decrypt a secret key from a <see cref="DataRow"/>.
+        /// </summary>
+        /// <param name="dataRow">The <see cref="DataRow"/> to get the secret key from.</param>
+        /// <param name="itemDetailKey">The name of the column that contains the secret key, without the environment suffix.</param>
+        /// <returns>The decrypted secret key, if it exists, or null if it doesn't.</returns>
         private string GetSecretKeyValue(DataRow dataRow, string itemDetailKey)
         {
             var suffix = gclSettings.Environment.InList(Environments.Development, Environments.Test) ? "Test" : "Live";
@@ -1363,6 +1426,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             return result.DecryptWithAesWithSalt();
         }
 
+        /// <summary>
+        /// Get all values we need for sending an e-mail, such as an order confirmation.
+        /// </summary>
+        /// <param name="orderProcessSettings">The order process settings.</param>
+        /// <param name="conceptOrder">The <see cref="WiserItemModel"/> of the (concept) order.</param>
+        /// <param name="conceptOrderLines">A list of <see cref="WiserItemModel"/> with all (concept) order lines.</param>
+        /// <param name="forMerchantMail">Optional: Set to true when this is meant for an e-mail that is sent to the merchant, or false when this is for an e-mail to the user. Default value is false.</param>
+        /// <param name="forAttachment">Optional: Set to true if you're calling this method to get the template for an e-mail attachment, such as an invoice PDF.</param>
+        /// <returns>An <see cref="EmailValues"/> with all data needed to send the e-mail.</returns>
         private async Task<EmailValues> GetMailValuesAsync(OrderProcessSettingsModel orderProcessSettings, WiserItemModel conceptOrder, List<WiserItemModel> conceptOrderLines, bool forMerchantMail = false, bool forAttachment = false)
         {
             var userEmailAddress = "";
@@ -1491,7 +1563,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             };
         }
 
-        private (string FailUrl, string SuccessUrl, string PendingUrl) BuildUrls(OrderProcessSettingsModel orderProcessSettings, List<OrderProcessStepModel> steps, WiserItemModel shoppingBasket = null)
+        /// <summary>
+        /// Build URLs that can be used in the order process, such as the URL for a successful payment and an URL for a failed payment.
+        /// </summary>
+        /// <param name="orderProcessSettings">The settings of the current order process.</param>
+        /// <param name="steps">The list of steps from the current order process.</param>
+        /// <returns>The new URLs.</returns>
+        private (string FailUrl, string SuccessUrl, string PendingUrl) BuildUrls(OrderProcessSettingsModel orderProcessSettings, List<OrderProcessStepModel> steps)
         {
             var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
             var successUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
@@ -1540,6 +1618,27 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             successUrl.Query = successUrlQueryString.ToString()!;
             pendingUrl.Query = pendingUrlQueryString.ToString()!;
             return (failUrl.ToString(), successUrl.ToString(), pendingUrl.ToString());
+        }
+
+        /// <summary>
+        /// Delete concept orders. This should be called if an error occurs before the user is sent to the PSP.
+        /// </summary>
+        /// <param name="conceptOrders"></param>
+        private async Task DeleteConceptOrdersAsync(List<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders)
+        {
+            if (conceptOrders == null)
+            {
+                return;
+            }
+
+            foreach (var (main, lines) in conceptOrders)
+            {
+                await wiserItemsService.DeleteAsync(main.Id, entityType: Constants.ConceptOrderEntityType, skipPermissionsCheck: true);
+                foreach (var line in lines)
+                {
+                    await wiserItemsService.DeleteAsync(line.Id, entityType: Constants.OrderLineEntityType, skipPermissionsCheck: true);
+                }
+            }
         }
     }
 }
