@@ -548,5 +548,11 @@ namespace GeeksCoreLibrary.Core.Services
         {
             return await wiserItemsService.ReplaceAllEntityBlocksAsync(template);
         }
+
+        /// <inheritdoc />
+        public async Task SaveItemDetailAsync(WiserItemDetailModel itemDetail, ulong itemId = 0, ulong itemLinkId = 0, string entityType = null, string username = "JCL", bool saveHistory = true)
+        {
+            await wiserItemsService.SaveItemDetailAsync(itemDetail, itemId, itemLinkId, entityType, username, saveHistory);
+        }
     }
 }

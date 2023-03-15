@@ -211,5 +211,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             databaseConnection.SetCommandTimeout(value);
         }
+
+        /// <inheritdoc />
+        public bool HasActiveTransaction()
+        {
+            return databaseConnection.HasActiveTransaction();
+        }
     }
 }

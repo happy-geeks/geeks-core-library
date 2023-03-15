@@ -270,6 +270,27 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
+        public async Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FactorAuthenticationKey, string entityType = Constants.DefaultEntityType)
+        {
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var wiserItemsService = scope.ServiceProvider.GetRequiredService<IWiserItemsService>();
+            await wiserItemsService.SaveItemDetailAsync(new WiserItemDetailModel
+            {
+                Key = Constants.TotpFieldName,
+                Value = user2FactorAuthenticationKey
+            }, userId, entityType: entityType);
+        }
+        
+        /// <inheritdoc />
+        public async Task<string> Get2FactorAuthenticationKeyAsync(ulong userId, string entityType = Constants.DefaultEntityType)
+        {
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var wiserItemsService = scope.ServiceProvider.GetRequiredService<IWiserItemsService>();
+            var user = await wiserItemsService.GetItemDetailsAsync(userId, entityType: entityType);
+            return user.GetDetailValue(Constants.TotpFieldName);
+        }
+
+        /// <inheritdoc />
         public async Task LogoutUserAsync(AccountCmsSettingsModel settings, bool isAutoLogout = false)
         {
             // Do some initial checks, to make sure we have everything we need and the user is actually still logged in.

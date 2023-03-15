@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
@@ -23,6 +24,17 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 {
     public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     {
+        public const int MaxRetriesAfterDeadlock = 5;
+        public static readonly List<int> MySqlErrorCodesToRetry = new()
+        {
+            (int) MySqlErrorCode.LockDeadlock,
+            (int) MySqlErrorCode.LockWaitTimeout,
+            (int) MySqlErrorCode.UnableToConnectToHost,
+            (int) MySqlErrorCode.TooManyUserConnections,
+            (int) MySqlErrorCode.ConnectionCountError,
+            (int) MySqlErrorCode.TableDefinitionChanged
+        };
+        
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ILogger<MySqlDatabaseConnection> logger;
         private readonly IBranchesService branchesService;
@@ -615,6 +627,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 CommandForWriting.CommandTimeout = value;
             }
+        }
+
+        /// <inheritdoc />
+        public bool HasActiveTransaction()
+        {
+            return transaction != null;
         }
 
         private async Task SetTimezone(MySqlCommand command)

@@ -1,3 +1,4 @@
+﻿using System;
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Models;
@@ -38,6 +39,23 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <param name="selector">The selector of the token.</param>
         Task RemoveCookieTokenAsync(string selector);
 
+        /// <summary>
+        /// Saves the 2FA key from the user in the database
+        /// </summary>
+        /// <param name="userId">The User ID of the user</param>
+        /// <param name="user2FactorAuthenticationKey">A random generated string used for authentication</param>
+        /// <param name="entityType">The entity type of the user account in wiser_item.</param>
+        /// <returns></returns>
+        Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FactorAuthenticationKey, string entityType = Constants.DefaultEntityType);
+
+        /// <summary>
+        /// Gets the 2FA key from the user in the database
+        /// </summary>
+        /// <param name="userId">The ID of the user</param>
+        /// <param name="entityType">The entity type of the user account in wiser_item.</param>
+        /// <returns></returns>
+        Task<string> Get2FactorAuthenticationKeyAsync(ulong userId, string entityType = Constants.DefaultEntityType);
+        
         /// <summary>
         /// Attempts to log off the user. This will delete the user's cookie from their browser and our database.
         /// </summary>
