@@ -17,7 +17,7 @@
         
         // Table names.
         internal const string AuthenticationTokensTableName = "gcl_user_auth_token";
-
+        
         // Query string keys.
         internal const string LogoutQueryStringKey = "logoutUser";
         internal const string UserIdQueryStringKey = "user";
@@ -67,6 +67,7 @@
         internal const string DefaultOciUsernameKey = "username";
         internal const string DefaultOciPasswordKey = "password";
         internal const string DefaultOciHookUrlKey = "HOOK_URL";
+        internal const string TotpFieldName = "User2FAKey";
         internal const string DefaultPasswordValidationRegex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$";
 
         internal const string DefaultLoginMainQuery = @"SELECT account.title

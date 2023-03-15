@@ -270,30 +270,24 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
-        public async Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FactorAuthenticationKey)
+        public async Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FactorAuthenticationKey, string entityType = Constants.DefaultEntityType)
         {
-            // Note: Can't use IWiserItemsService here, because then we get a circular reference.
-            var query = @$"INSERT INTO {WiserTableNames.WiserItemDetail} (item_id, `key`, `value`)
-                        VALUES (?userId, 'User2FAKey', ?user2FAKey)
-                        ON DUPLICATE KEY UPDATE value = VALUES(value)";
-            databaseConnection.AddParameter("userId", userId);
-            databaseConnection.AddParameter("user2FAKey", user2FactorAuthenticationKey);
-            await databaseConnection.ExecuteAsync(query);
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var wiserItemsService = scope.ServiceProvider.GetRequiredService<IWiserItemsService>();
+            await wiserItemsService.SaveItemDetailAsync(new WiserItemDetailModel
+            {
+                Key = Constants.TotpFieldName,
+                Value = user2FactorAuthenticationKey
+            }, userId, entityType: entityType);
         }
         
         /// <inheritdoc />
-        public async Task<String> Get2FactorAuthenticationKeyAsync(ulong userId)
+        public async Task<string> Get2FactorAuthenticationKeyAsync(ulong userId, string entityType = Constants.DefaultEntityType)
         {
-            // Note: Can't use IWiserItemsService here, because then we get a circular reference.
-            var query = @$"SELECT value FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?userId AND `key` = 'User2FAKey'";
-            databaseConnection.AddParameter("userId", userId);
-            var result = await databaseConnection.GetAsync(query, true);
-            if (result.Rows.Count <= 0)
-            {
-                return null;
-            }
-            var dataRow = result.Rows[0];
-            return dataRow["value"].ToString();
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var wiserItemsService = scope.ServiceProvider.GetRequiredService<IWiserItemsService>();
+            var user = await wiserItemsService.GetItemDetailsAsync(userId, entityType: entityType);
+            return user.GetDetailValue(Constants.TotpFieldName);
         }
 
         /// <inheritdoc />
