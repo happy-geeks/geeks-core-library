@@ -52,7 +52,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
     <PackageReference Include="MultiSafepay" Version="0.8.7" />
     <PackageReference Include="MySql.Data" Version="8.0.32" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="RestSharp" Version="108.0.3" />
     <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="108.0.3" />
     <PackageReference Include="Scrutor" Version="4.2.1" />
