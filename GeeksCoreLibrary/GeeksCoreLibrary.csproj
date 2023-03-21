@@ -5,11 +5,11 @@
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>3.0.0</Version>
+    <Version>3.0.1</Version>
     <Company>Happy Geeks B.V.</Company>
     <Description>Our base/core library that we use for most of our other projects.</Description>
-    <AssemblyVersion>3.0.0.0</AssemblyVersion>
-    <FileVersion>3.0.0.0</FileVersion>
+    <AssemblyVersion>3.0.1.0</AssemblyVersion>
+    <FileVersion>3.0.1.0</FileVersion>
     <PackageDescription>Geeks Core Library</PackageDescription>
     <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
@@ -79,7 +79,7 @@
     </Reference>
     <Content Include="lib\OmniKassa.dll">
       <Pack>true</Pack>
-      <PackagePath>lib\net6.0\</PackagePath>
+      <PackagePath>lib\net7.0\</PackagePath>
     </Content>
   </ItemGroup>
 
