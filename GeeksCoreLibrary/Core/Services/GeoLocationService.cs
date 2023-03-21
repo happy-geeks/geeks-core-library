@@ -30,8 +30,7 @@ namespace GeeksCoreLibrary.Core.Services
             }
 
             // Create client and request.
-            var restClient = new RestClient("https://api.pro6pp.nl");
-            restClient.UseNewtonsoftJson();
+            var restClient = new RestClient(configureSerialization: s => s.UseNewtonsoftJson());
 
             var restRequest = new RestRequest("/v1/autocomplete", Method.Get);
             restRequest.AddQueryParameter("auth_key", authKey);
