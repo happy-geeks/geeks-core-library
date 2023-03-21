@@ -81,10 +81,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var description = $"Order #{invoiceNumber}";
 
             // Build and execute payment request.
-            var restClient = new RestClient(ApiBaseUrl)
+            var restClient = new RestClient(new RestClientOptions(ApiBaseUrl)
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
-            };
+            });
             var restRequest = new RestRequest("/payments", Method.Post);
             restRequest.AddParameter("amount[currency]", mollieSettings.Currency, ParameterType.GetOrPost);
             restRequest.AddParameter("amount[value]", totalPrice.ToString("F2", CultureInfo.InvariantCulture), ParameterType.GetOrPost);
@@ -205,10 +205,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // Mollie sends one POST parameter called "id".
             var mollieOrderId = httpContextAccessor.HttpContext.Request.Form["id"];
 
-            var restClient = new RestClient(ApiBaseUrl)
+            var restClient = new RestClient(new RestClientOptions(ApiBaseUrl)
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
-            };
+            });
             var restRequest = new RestRequest($"/payments/{mollieOrderId}", Method.Get);
 
             // Execute the request. The result will be a JSON object.
@@ -271,10 +271,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // The Mollie payment ID is saved in all baskets, so just use the one from the first basket.
             var molliePaymentId = baskets.First().Order.GetDetailValue(Components.OrderProcess.Models.Constants.PaymentProviderTransactionId);
 
-            var restClient = new RestClient(ApiBaseUrl)
+            var restClient = new RestClient(new RestClientOptions(ApiBaseUrl)
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
-            };
+            });
             var restRequest = new RestRequest($"/payments/{molliePaymentId}", Method.Get);
 
             var restResponse = await restClient.ExecuteAsync(restRequest);
