@@ -11,6 +11,7 @@ using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -21,6 +22,7 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
 
@@ -29,6 +31,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
     /// <inheritdoc cref="IStringReplacementsService" />
     public class StringReplacementsService : IStringReplacementsService, IScopedService
     {
+        private readonly GclSettings gclSettings;
         private readonly IObjectsService objectsService;
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
@@ -42,8 +45,14 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
         private const string RawFormatterName = "Raw";
 
-        public StringReplacementsService(IObjectsService objectsService, ILanguagesService languagesService, IHttpContextAccessor httpContextAccessor, IAccountsService accountsService, IDatabaseConnection databaseConnection)
+        public StringReplacementsService(IOptions<GclSettings> gclSettings,
+            IObjectsService objectsService,
+            ILanguagesService languagesService,
+            IAccountsService accountsService,
+            IDatabaseConnection databaseConnection,
+            IHttpContextAccessor httpContextAccessor = null)
         {
+            this.gclSettings = gclSettings.Value;
             this.objectsService = objectsService;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
@@ -53,8 +62,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             formatters = typeof(StringReplacementsExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public);
 
             // Create some regular expressions so they can be re-used instead of creating them each time the function is called.
-            formatterRegex = new Regex(@"(?<methodname>[^\(\)]+)(?:\((?<parameters>[^\)]+)\))?");
-            logicSnippetRegex = new Regex(@"\[if\((?<left>((?!\[if\().)*?)(?<op>=|!|<|>|&lt;|&gt;|%)(?<right>((?!\[if\().)*?)\)\](?<text>((?!\[if\().)*?)\[endif\]", RegexOptions.Singleline);
+            formatterRegex = new Regex(@"(?<methodname>[^\(\)]+)(?:\((?<parameters>[^\)]+)\))?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+            logicSnippetRegex = new Regex(@"\[if\((?<left>((?!\[if\().)*?)(?<op>=|!|<|>|&lt;|&gt;|%)(?<right>((?!\[if\().)*?)\)\](?<text>((?!\[if\().)*?)\[endif\]", RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
         }
 
         /// <inheritdoc />
@@ -66,11 +75,18 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             }
 
             // Reusable variables.
-            Regex r;
+            Regex regex;
             var dataDictionary = new Dictionary<string, object>();
 
             // Defaults.
             var curDateTime = DateTime.Now;
+
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
 
             dataDictionary.Clear();
             dataDictionary.Add("NowDateTime", curDateTime.ToString("yyyy-MM-dd HH:mm:ss"));
@@ -79,7 +95,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             dataDictionary.Add("NowDay", curDateTime.Day.ToString());
             dataDictionary.Add("LanguageCode", languagesService.CurrentLanguageCode);
             dataDictionary.Add("language_code", languagesService.CurrentLanguageCode);
-            dataDictionary.Add("Hostname", HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext));
+            dataDictionary.Add("Hostname", HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext));
+            dataDictionary.Add("Environment", (int)gclSettings.Environment);
             input = DoReplacements(input, dataDictionary, forQuery: forQuery);
 
             // System object replaces.
@@ -87,8 +104,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             {
                 dataDictionary.Clear();
 
-                r = new Regex(@"\[SO{([^\}]+)}]");
-                foreach (Match m in r.Matches(input))
+                regex = new Regex(@"\[SO{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                foreach (Match m in regex.Matches(input))
                 {
                     var value = m.Groups[1].Value;
                     if (dataDictionary.ContainsKey(value))
@@ -117,7 +134,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 }
 
                 // Request replacements.
-                if (handleRequest && httpContextAccessor.HttpContext != null)
+                if (handleRequest && httpContextAccessor?.HttpContext != null)
                 {
                     input = DoHttpRequestReplacements(input, forQuery);
                     input = DoSessionReplacements(input, forQuery);
@@ -128,8 +145,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 {
                     dataDictionary.Clear();
 
-                    r = new Regex(@"\[T{([^\}]+)}]");
-                    foreach (Match m in r.Matches(input))
+                    regex = new Regex(@"\[T{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                    foreach (Match m in regex.Matches(input))
                     {
                         var value = m.Groups[1].Value;
                         if (dataDictionary.ContainsKey(value))
@@ -144,7 +161,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 }
 
                 // CMS objects.
-                if (input.Contains("[O{") && httpContextAccessor.HttpContext != null)
+                if (input.Contains("[O{") && httpContextAccessor?.HttpContext != null)
                 {
                     dataDictionary.Clear();
 
@@ -155,8 +172,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         objectsTypeNumber = -100;
                     }
 
-                    r = new Regex(@"\[O{([^\}]+)}]");
-                    foreach (Match m in r.Matches(input))
+                    regex = new Regex(@"\[O{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                    foreach (Match m in regex.Matches(input))
                     {
                         var value = m.Groups[1].Value;
                         if (dataDictionary.ContainsKey(value))
@@ -192,7 +209,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string DoHttpRequestReplacements(string input, bool forQuery = false)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return input;
             }
@@ -225,7 +242,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string DoSessionReplacements(string input, bool forQuery = false)
         {
-            if (httpContextAccessor.HttpContext?.Features.Get<ISessionFeature>() == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
+            if (httpContextAccessor?.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
             {
                 return input;
             }
@@ -577,7 +594,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 return input;
             }
 
-            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\~([^\]{suffix}\s]*){suffix}");
+            var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\~([^\]{suffix}\s]*){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
             foreach (Match match in regex.Matches(input))
             {
                 input = input.Replace(match.Value, match.Groups[2].Value);
@@ -597,7 +614,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             prefix = Regex.Escape(prefix);
             suffix = Regex.Escape(suffix);
 
-            var regex = new Regex($@"{prefix}[^\]{suffix}\s]*{suffix}");
+            var regex = new Regex($@"{prefix}[^\]{suffix}\s]*{suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             return regex.Replace(input, "");
         }
@@ -605,13 +622,18 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <inheritdoc />
         public string FillStringByClassList(JToken input, string inputString, bool evaluateTemplate = false, string repeatVariableName = "repeat")
         {
-            var output = "";
+            if (input == null || String.IsNullOrWhiteSpace(inputString))
+            {
+                return inputString;
+            }
+            
+            var output = new StringBuilder();
 
             if (input.Type == JTokenType.Array)
             {
                 var array = (JArray)input;
 
-                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.Singleline);
+                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(30));
                 var m = reg.Match(inputString);
 
                 if (m.Success)
@@ -626,31 +648,37 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         subtemplate = subtemplate.Replace("{index}", index.ToString());
                         subtemplate = subtemplate.Replace("{volgnr}", (index + 1).ToString());
                         subtemplate = subtemplate.Replace("{count}", "{~count~}"); // Temporary replace count variable, otherwise this variable is replaced by the FillStringByClass function
-                        output += FillStringByClass(item, subtemplate).Replace("{~count~}", "{count}"); // Set back the count variable
+                        output.Append(FillStringByClass(item, subtemplate, evaluateTemplate).Replace("{~count~}", "{count}")); // Set back the count variable
                         index += 1;
                     }
 
-                    output = m.Groups[1].Value + output + m.Groups[3].Value;
-                    output = output.Replace("{count}", index.ToString());
+                    output.Insert(0, m.Groups[1].Value);
+                    output.Append(m.Groups[3].Value);
+                    output.Replace("{count}", index.ToString());
                 }
                 else
                 {
                     // Use only the first item in the JSON
-                    output = FillStringByClass(input.First, inputString);
+                    output.Append(FillStringByClass(input.First, inputString, evaluateTemplate));
                 }
             }
             else
             {
-                output = FillStringByClass(input, inputString, evaluateTemplate);
+                output.Append(FillStringByClass(input, inputString, evaluateTemplate));
             }
 
-            return output;
+            return output.ToString();
         }
 
         /// <inheritdoc />
         public string FillStringByClass(JToken input, string inputString, bool evaluateTemplate = false)
         {
-            var regexRepeats = new Regex(@"{repeat:([^\.]+?)}");
+            if (input == null || String.IsNullOrWhiteSpace(inputString))
+            {
+                return inputString;
+            }
+
+            var regexRepeats = new Regex(@"{repeat:([^\.]+?)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             // Handle the repeaters, duplicate (parts of) the template.
             // First get all repeaters in string.
@@ -681,12 +709,12 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                             subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.count}}", "{~" + repeaterName + ".count~}");
                             subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.index}}", index.ToString());
                             subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.volgnr}}", (index + 1).ToString());
-                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}", $"{{{repeaterName}({index})");
+                            subTemplateItem = subTemplateItem.Replace($"{{{repeaterName}.", "{");
                             subTemplateItem = subTemplateItem.Replace($"{{repeat:{repeaterName}", $"{{repeat:{repeaterName}({index})");
                             subTemplateItem = subTemplateItem.Replace($"{{/repeat:{repeaterName}", $"{{/repeat:{repeaterName}({index})");
                             subTemplateItem = subTemplateItem.Replace($"{{~{repeaterName}.count~}}", $"{{{repeaterName}.count}}");
 
-                            subTemplateItem = FillStringByClassList(subObject, subTemplateItem);
+                            subTemplateItem = FillStringByClassList(subObject, subTemplateItem, evaluateTemplate);
 
                             templates.Append(subTemplateItem);
 
@@ -725,7 +753,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             // Replace all variables
             // Get matches like: {customer.address.streetline1}
-            var regex = new Regex("{(.[^}]*)}");
+            var regex = new Regex("{(.[^}]*)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
             foreach (Match m in regex.Matches(inputString))
             {
                 var value = GetPropertyValue(input, MakeColumnValueFromVariable(m.Value));
@@ -814,7 +842,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             prefix = Regex.Escape(prefix);
             suffix = Regex.Escape(suffix);
 
-            var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}");
+            var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 
             var result = new List<StringReplacementVariable>();
             foreach (Match match in regex.Matches(input))
@@ -906,7 +934,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             if (propertyName.Contains("("))
             {
-                var regex = new Regex(@"(.*)\((\d.*)\)(.*)");
+                var regex = new Regex(@"(.*)\((\d.*)\)(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
                 var m = regex.Match(propertyName);
                 if (!m.Success)
                 {
@@ -918,7 +946,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 if (!String.IsNullOrWhiteSpace(m.Groups[3].Value))
                 {
                     innerValue = GetPropertyValue(input, m.Groups[1].Value);
-                    if (innerValue.Type != JTokenType.Array)
+                    if (innerValue is not {Type: JTokenType.Array})
                     {
                         return null;
                     }

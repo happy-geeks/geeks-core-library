@@ -39,7 +39,13 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
         private MultiSafepayClient client;
 
-        public MultiSafePayService(ILogger<MultiSafePayService> logger, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService) 
+        public MultiSafePayService(ILogger<MultiSafePayService> logger,
+            IOptions<GclSettings> gclSettings,
+            IObjectsService objectsService,
+            IShoppingBasketsService shoppingBasketsService,
+            IDatabaseConnection databaseConnection,
+            IDatabaseHelpersService databaseHelpersService,
+            IHttpContextAccessor httpContextAccessor = null) 
             : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
         {
             this.logger = logger;

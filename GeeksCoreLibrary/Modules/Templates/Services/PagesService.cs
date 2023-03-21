@@ -39,7 +39,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IObjectsService objectsService;
         private readonly IDatabaseConnection databaseConnection;
 
-        public PagesService(IOptions<GclSettings> gclSettings, ILogger<PagesService> logger, IObjectsService objectsService, ITemplatesService templatesService, ISeoService seoService, IHttpContextAccessor httpContextAccessor, IRedirectService redirectService, IDatabaseConnection databaseConnection)
+        public PagesService(IOptions<GclSettings> gclSettings,
+            ILogger<PagesService> logger,
+            IObjectsService objectsService,
+            ITemplatesService templatesService,
+            ISeoService seoService,
+            IRedirectService redirectService,
+            IDatabaseConnection databaseConnection,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -188,12 +195,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<PageViewModel> CreatePageViewModelAsync(List<string> externalCss, List<int> cssTemplates, List<string> externalJavascript, List<int> javascriptTemplates, string newBodyHtml)
+        public async Task<PageViewModel> CreatePageViewModelAsync(List<string> externalCss, List<int> cssTemplates, List<string> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0)
         {
             var viewModel = new PageViewModel();
 
             // Add Google reCAPTCHAv3 if setup.
             await AddGoogleReCaptchaToViewModelAsync(viewModel);
+
+            viewModel.Widgets = await templatesService.GetPageWidgetsAsync(templateId);
 
             // Add CSS for all pages.
             var generalStandardCss = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css);
@@ -391,62 +400,62 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             // Get SEO data and replace the body with data from seo module if applicable.
             if (await seoService.SeoModuleIsEnabledAsync())
             {
-                viewModel.MetaData = await seoService.GetSeoDataForPageAsync(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext));
+                viewModel.MetaData = await seoService.GetSeoDataForPageAsync(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext));
 
-                if (newBodyHtml.Contains("[{seomodule_", StringComparison.OrdinalIgnoreCase))
+                if (bodyHtml.Contains("[{seomodule_", StringComparison.OrdinalIgnoreCase))
                 {
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.SeoText))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_content}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_content}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_content}\|(.*?)\]", viewModel.MetaData.SeoText);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", viewModel.MetaData.SeoText);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_content}\|(.*?)\]", viewModel.MetaData.SeoText);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", viewModel.MetaData.SeoText);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H1Text))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", viewModel.MetaData.H1Text);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_h1header}]", viewModel.MetaData.H1Text);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", viewModel.MetaData.H1Text);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h1header}]", viewModel.MetaData.H1Text);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H2Text))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", viewModel.MetaData.H2Text);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_h2header}]", viewModel.MetaData.H2Text);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", viewModel.MetaData.H2Text);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h2header}]", viewModel.MetaData.H2Text);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H3Text))
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", "$1");
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", "$1");
                     }
                     else
                     {
-                        newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", viewModel.MetaData.H3Text);
-                        newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_h3header}]", viewModel.MetaData.H3Text);
+                        bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", viewModel.MetaData.H3Text);
+                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h3header}]", viewModel.MetaData.H3Text);
                     }
                 }
             }
 
             // Handle any left over seo module things.
-            if (newBodyHtml.Contains("[{seomodule_"))
+            if (bodyHtml.Contains("[{seomodule_"))
             {
-                newBodyHtml = newBodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", "");
-                newBodyHtml = Regex.Replace(newBodyHtml, @"\[{seomodule_.*?}\|(.*?)\]", "$1");
+                bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", "");
+                bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_.*?}\|(.*?)\]", "$1");
             }
 
             // Check if some component is adding external JavaScript libraries to the page.
             var externalScripts = externalJavascript.Select(ej => new JavaScriptResource { Uri = new Uri(ej) }).ToList();
-            if (httpContextAccessor.HttpContext?.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] is List<JavaScriptResource> componentExternalJavaScriptLibraries)
+            if (httpContextAccessor?.HttpContext?.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] is List<JavaScriptResource> componentExternalJavaScriptLibraries)
             {
                 foreach (var externalLibrary in componentExternalJavaScriptLibraries.Where(externalLibrary => !externalScripts.Any(l => l.Uri.AbsoluteUri.Equals(externalLibrary.Uri.AbsoluteUri, StringComparison.OrdinalIgnoreCase))))
                 {
@@ -456,7 +465,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             viewModel.Css.ExternalCss.AddRange(externalCss);
             viewModel.Javascript.ExternalJavascript.AddRange(externalScripts);
-            viewModel.Body = newBodyHtml;
+            viewModel.Body = bodyHtml;
 
             // Add viewport.
             var viewportSystemObjectValue = await objectsService.FindSystemObjectByDomainNameAsync("metatag_viewport", "false");
@@ -478,7 +487,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Check if some component is adding SEO data to the page.
-            if (httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
+            if (httpContextAccessor?.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
             {
                 if (componentSeoData.MetaTags != null && componentSeoData.MetaTags.Any())
                 {
@@ -543,7 +552,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var canonicalSetting = await objectsService.FindSystemObjectByDomainNameAsync("always_add_canonical_to_self");
                 if (canonicalSetting.Equals("true", StringComparison.OrdinalIgnoreCase) || canonicalSetting.Equals("1", StringComparison.Ordinal))
                 {
-                    var canonicalUrl = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                    var canonicalUrl = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor?.HttpContext);
                     var parametersToIncludeForCanonical = (await objectsService.FindSystemObjectByDomainNameAsync("include_parameters_canonical")).Split(",", StringSplitOptions.RemoveEmptyEntries);
 
                     if (!parametersToIncludeForCanonical.Any())
@@ -610,7 +619,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public void SetPageSeoData(string seoTitle = null, string seoDescription = null, string seoKeyWords = null, string seoCanonical = null, bool noIndex = false, bool noFollow = false, IEnumerable<string> robots = null, string previousPageLink = null, string nextPageLink = null)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return;
             }
@@ -682,7 +691,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public void SetOpenGraphData(IDictionary<string, string> openGraphValues)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return;
             }

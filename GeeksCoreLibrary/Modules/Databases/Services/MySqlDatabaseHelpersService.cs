@@ -119,8 +119,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
-            databaseConnection.AddParameter("columnName", columnName);
-            await databaseConnection.ExecuteAsync($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` DROP COLUMN ?columnName");
+            await databaseConnection.ExecuteAsync($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` DROP COLUMN `{columnName.ToMySqlSafeValue(false)}`");
         }
 
         /// <inheritdoc />
@@ -698,8 +697,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             if (!String.IsNullOrWhiteSpace(settings.AddAfterColumnName))
             {
-                databaseConnection.AddParameter($"addAfterColumnName{parameterSuffix}", settings.AddAfterColumnName);
-                queryBuilder.Append($" AFTER ?addAfterColumnName{parameterSuffix}");
+                queryBuilder.Append($" AFTER `{settings.AddAfterColumnName.ToMySqlSafeValue(false)}`");
             }
 
             return queryBuilder;
@@ -756,6 +754,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
 
             return (mysqlType, unsigned);
+        }
+        
+        /// <inheritdoc />
+        public async Task OptimizeTablesAsync(params string[] tableNames)
+        {
+            if (tableNames.Any())
+            {
+                await databaseConnection.ExecuteAsync($"OPTIMIZE TABLE {String.Join(',', tableNames.Select(tableName => $"`{tableName.ToMySqlSafeValue(false)}`"))}");
+            }
         }
     }
 }

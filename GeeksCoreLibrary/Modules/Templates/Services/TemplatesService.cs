@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -56,6 +57,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly ILanguagesService languagesService;
         private readonly IFiltersService filtersService;
         private readonly IAccountsService accountsService;
+        private readonly IDatabaseHelpersService databaseHelpersService;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
@@ -64,15 +66,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
             IStringReplacementsService stringReplacementsService,
-            IHttpContextAccessor httpContextAccessor,
-            IViewComponentHelper viewComponentHelper,
-            ITempDataProvider tempDataProvider,
-            IActionContextAccessor actionContextAccessor,
-            IWebHostEnvironment webHostEnvironment,
             IFiltersService filtersService,
             IObjectsService objectsService,
             ILanguagesService languagesService,
-            IAccountsService accountsService)
+            IAccountsService accountsService,
+            IDatabaseHelpersService databaseHelpersService,
+            IHttpContextAccessor httpContextAccessor = null,
+            IActionContextAccessor actionContextAccessor = null,
+            IViewComponentHelper viewComponentHelper = null,
+            IWebHostEnvironment webHostEnvironment = null,
+            ITempDataProvider tempDataProvider = null)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -87,6 +90,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.objectsService = objectsService;
             this.languagesService = languagesService;
             this.accountsService = accountsService;
+            this.databaseHelpersService = databaseHelpersService;
         }
 
         /// <inheritdoc />
@@ -179,7 +183,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.trigger_timing,
     template.trigger_event,
     template.trigger_table_name,
-    template.is_partial
+    template.is_partial,
+    template.version
 FROM {WiserTableNames.WiserTemplate} AS template
 {joinPart}
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -222,7 +227,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 LoginRoles = result.LoginRoles
             };
 
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 // No context available; return empty template without doing a login check.
                 return emptyTemplate;
@@ -441,7 +446,8 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                             template.grouping_key,
                             template.grouping_prefix,
                             template.pre_load_query,
-                            template.return_not_found_when_pre_load_query_has_no_data
+                            template.return_not_found_when_pre_load_query_has_no_data,
+                            template.version
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -525,7 +531,8 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                             template.grouping_key_column_name,
                             template.grouping_value_column_name,
                             template.grouping_key,
-                            template.grouping_prefix
+                            template.grouping_prefix,
+                            template.version
                         FROM {WiserTableNames.WiserTemplate} AS template
                         {joinPart}
                         LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -544,7 +551,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
 
             var reader = await databaseConnection.GetReaderAsync(query);
             try
@@ -588,7 +595,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
             var templates = await templatesService.GetTemplatesAsync(templateIds, true);
 
             foreach (var template in templates.Where(t => t.Type == templateType))
@@ -655,6 +662,11 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 throw new ArgumentNullException(nameof(fileNames));
             }
 
+            if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
+            {
+                return "";
+            }
+
             var enumerable = fileNames.ToList();
             if (!enumerable.Any())
             {
@@ -706,7 +718,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             }
 
             // Start with special template replacements for the pre load query that you can set in HTML templates in the templates module in Wiser.
-            if (httpContextAccessor != null && httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
+            if (httpContextAccessor?.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
             {
                 input = stringReplacementsService.DoReplacements(input, (DataRow)httpContextAccessor.HttpContext.Items[Constants.TemplatePreLoadQueryResultKey], forQuery, prefix: "{template.");
             }
@@ -774,7 +786,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 return input;
             }
 
-            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]");
+            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             foreach (Match m in imageTemplatingRegex.Matches(input))
             {
                 var replacementParameters = m.Groups[1].Value.Split(":");
@@ -849,7 +861,7 @@ ORDER BY id ASC");
                 var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
                 var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
-                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)");
+                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
                 var totalItems = items.Count;
                 var index = 1;
@@ -935,7 +947,7 @@ ORDER BY id ASC");
             while (counter < max && (input.Contains("<[", StringComparison.Ordinal) || input.Contains("[include", StringComparison.Ordinal)))
             {
                 counter += 1;
-                var inclusionsRegex = new Regex(@"<\[(.*?)\]>");
+                var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -972,7 +984,7 @@ ORDER BY id ASC");
                     }
                 }
 
-                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]");
+                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -1079,35 +1091,66 @@ ORDER BY id ASC");
             {
                 return "";
             }
-
-            var viewComponentName = dynamicContent.Name;
-
-            // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
-            var viewContext = new ViewContext(
-                actionContextAccessor.ActionContext,
-                NullView.Instance,
-                new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
-                new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
-                TextWriter.Null,
-                new HtmlHelperOptions());
-
-            // Set the context in the ViewComponentHelper, so that the ViewComponents that we use actually have the proper context.
-            (viewComponentHelper as IViewContextAware)?.Contextualize(viewContext);
-
-            // Dynamically invoke the correct ViewComponent.
-            var component = await viewComponentHelper.InvokeAsync(viewComponentName, new { dynamicContent, callMethod, forcedComponentMode, extraData });
-
-            // If there is a InvokeMethodResult, it means this that a specific method on a specific component was called via /gclcomponent.gcl
-            // and we only want to return the results of that method, instead of rendering the entire component.
-            if (viewContext.TempData.ContainsKey("InvokeMethodResult") && viewContext.TempData["InvokeMethodResult"] != null)
+            
+            if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
             {
-                return viewContext.TempData["InvokeMethodResult"];
+                throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
             }
 
-            await using var stringWriter = new StringWriter();
-            component.WriteTo(stringWriter, HtmlEncoder.Default);
-            var html = stringWriter.ToString();
-            return html;
+            var logRenderingOfComponent = await ComponentRenderingShouldBeLoggedAsync(dynamicContent.Id);
+            var error = "";
+            var startTime = DateTime.Now;
+            var stopWatch = new Stopwatch();
+            try
+            {
+                if (logRenderingOfComponent)
+                {
+                    stopWatch.Start();
+                }
+
+                var viewComponentName = dynamicContent.Name;
+
+                // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
+                var viewContext = new ViewContext(
+                    actionContextAccessor.ActionContext,
+                    NullView.Instance,
+                    new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
+                    new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
+                    TextWriter.Null,
+                    new HtmlHelperOptions());
+
+                // Set the context in the ViewComponentHelper, so that the ViewComponents that we use actually have the proper context.
+                (viewComponentHelper as IViewContextAware)?.Contextualize(viewContext);
+
+                // Dynamically invoke the correct ViewComponent.
+                var component = await viewComponentHelper.InvokeAsync(viewComponentName, new {dynamicContent, callMethod, forcedComponentMode, extraData});
+
+                // If there is a InvokeMethodResult, it means this that a specific method on a specific component was called via /gclcomponent.gcl
+                // and we only want to return the results of that method, instead of rendering the entire component.
+                if (viewContext.TempData.ContainsKey("InvokeMethodResult") && viewContext.TempData["InvokeMethodResult"] != null)
+                {
+                    return viewContext.TempData["InvokeMethodResult"];
+                }
+
+                await using var stringWriter = new StringWriter();
+                component.WriteTo(stringWriter, HtmlEncoder.Default);
+                var html = stringWriter.ToString();
+                return html;
+            }
+            catch (Exception exception)
+            {
+                error = exception.ToString();
+                throw;
+            }
+            finally
+            {
+                if (logRenderingOfComponent)
+                {
+                    stopWatch.Stop();
+                    var endTime = DateTime.Now;
+                    await AddTemplateOrComponentRenderingLogAsync(dynamicContent.Id, 0, dynamicContent.Version, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+                }
+            }
         }
 
         /// <inheritdoc />
@@ -1172,7 +1215,7 @@ ORDER BY id ASC");
         }
 
         /// <inheritdoc />
-        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false)
+        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false, bool childItemsMustHaveId = false)
         {
             var query = queryTemplate?.Content;
             if (String.IsNullOrWhiteSpace(query))
@@ -1200,7 +1243,7 @@ ORDER BY id ASC");
             }
 
             var dataTable = await databaseConnection.GetAsync(query);
-            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive);
+            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
 
             if (pusherMatches.Any())
             {
@@ -1273,7 +1316,7 @@ ORDER BY ORDINAL_POSITION ASC";
         /// <inheritdoc />
         public async Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
         {
-            if (httpContextAccessor.HttpContext == null || String.IsNullOrWhiteSpace(template?.PreLoadQuery))
+            if (httpContextAccessor?.HttpContext == null || String.IsNullOrWhiteSpace(template?.PreLoadQuery))
             {
                 return true;
             }
@@ -1292,7 +1335,7 @@ ORDER BY ORDINAL_POSITION ASC";
         /// <inheritdoc />
         public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
-            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
             switch (contentTemplate.CachingMode)
             {
@@ -1356,7 +1399,7 @@ ORDER BY ORDINAL_POSITION ASC";
             var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (cookieCacheDeviation.Length > 0)
             {
-                var requestCookies = httpContextAccessor.HttpContext?.Request.Cookies;
+                var requestCookies = httpContextAccessor?.HttpContext?.Request.Cookies;
                 foreach (var cookieName in cookieCacheDeviation)
                 {
                     if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
@@ -1367,6 +1410,13 @@ ORDER BY ORDINAL_POSITION ASC";
                     var combinedCookiePart = $"{cookieName}:{cookieValue}";
                     cacheFileName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
                 }
+            }
+
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
             }
 
             // And finally add the language code to the file name.
@@ -1402,10 +1452,21 @@ ORDER BY ORDINAL_POSITION ASC";
 	template.url_regex
 FROM {WiserTableNames.WiserTemplate} AS template
 LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = template.template_id AND otherVersion.version > template.version
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 WHERE otherVersion.id IS NULL
 AND template.template_type IN ({(int)TemplateTypes.Html}, {(int)TemplateTypes.Query}, {(int)TemplateTypes.Routine})
 AND template.url_regex IS NOT NULL
-AND template.url_regex <> ''";
+AND template.url_regex <> ''
+ORDER BY parent5.ordering ASC, 
+    parent4.ordering ASC, 
+    parent3.ordering ASC, 
+    parent2.ordering ASC, 
+    parent1.ordering ASC, 
+    template.ordering ASC";
             }
             else
             {
@@ -1415,10 +1476,21 @@ SELECT
 	template.template_type,
 	template.url_regex
 FROM {WiserTableNames.WiserTemplate} AS template
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 WHERE (template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}
 AND template.template_type IN ({(int)TemplateTypes.Html}, {(int)TemplateTypes.Query}, {(int)TemplateTypes.Routine})
 AND template.url_regex IS NOT NULL
-AND template.url_regex <> ''";
+AND template.url_regex <> ''
+ORDER BY parent5.ordering ASC, 
+    parent4.ordering ASC, 
+    parent3.ordering ASC, 
+    parent2.ordering ASC, 
+    parent1.ordering ASC, 
+    template.ordering ASC";
             }
 
             var dataTable = await databaseConnection.GetAsync(query);
@@ -1435,6 +1507,180 @@ AND template.url_regex <> ''";
             }
 
             return results;
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            var results = new List<PageWidgetModel>();
+            var globalWidgetsQuery = $@"SELECT
+	widget.id,
+	widget.title,
+	IF(languageSpecificHtml.id IS NULL, CONCAT_WS('', genericHtml.`value`, genericHtml.long_value), CONCAT_WS('', languageSpecificHtml.`value`, languageSpecificHtml.long_value)) AS html,
+	IFNULL(location.value, '{(int) Constants.PageWidgetDefaultLocation}') AS widget_location
+FROM {WiserTableNames.WiserItem} AS widget
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS genericHtml ON genericHtml.item_id = widget.id AND genericHtml.`key` = '{Constants.PageWidgetHtmlPropertyName}'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS languageSpecificHtml ON languageSpecificHtml.item_id = widget.id AND languageSpecificHtml.`key` = '{Constants.PageWidgetHtmlPropertyName}' AND languageSpecificHtml.language_code = '{languagesService.CurrentLanguageCode}'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS location ON location.item_id = widget.id AND location.`key` = '{Constants.PageWidgetLocationPropertyName}'
+LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToParent ON linkToParent.item_id = widget.id AND linkToParent.type = {Constants.PageWidgetParentLinkType}
+WHERE widget.entity_type = '{Constants.PageWidgetEntityType}'
+ORDER BY IFNULL(linkToParent.destination_item_id, 0) ASC, IFNULL(linkToParent.ordering, widget.ordering) ASC";
+
+            var dataTable = await databaseConnection.GetAsync(globalWidgetsQuery);
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                var html = dataRow.Field<string>("html");
+                if (String.IsNullOrWhiteSpace(html))
+                {
+                    // No point in adding empty widgets to the page.
+                    continue;
+                }
+
+                results.Add(new PageWidgetModel
+                {
+                    Location = (PageWidgetLocations) Convert.ToInt32(dataRow["widget_location"]),
+                    Html = html
+                });
+            }
+
+            return results;
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            return await GetPageWidgetsAsync(this, templateId, includeGlobalSnippets);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
+        {
+            var results = includeGlobalSnippets ? await templatesService.GetGlobalPageWidgetsAsync() : new List<PageWidgetModel>();
+            
+            if (templateId <= 0)
+            {
+                return results;
+            }
+            
+            var joinPart = "";
+            var whereClause = new List<string> { "template.template_id = ?id", "template.removed = 0" };
+            if (gclSettings.Environment == Environments.Development)
+            {
+                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+            }
+            else
+            {
+                whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
+            }
+
+            databaseConnection.AddParameter("id", templateId);
+            var query = $@"SELECT
+    template.widget_content,
+    template.widget_location
+FROM {WiserTableNames.WiserTemplate} AS template
+{joinPart}
+
+WHERE {String.Join(" AND ", whereClause)}
+LIMIT 1";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count == 0)
+            {
+                return results;
+            }
+
+            var html = dataTable.Rows[0].Field<string>("widget_content");
+            if (String.IsNullOrWhiteSpace(html))
+            {
+                return results;
+            }
+
+            results.Add(new PageWidgetModel
+            {
+                Html = html,
+                Location = (PageWidgetLocations) Convert.ToInt32(dataTable.Rows[0]["widget_location"])
+            });
+            
+            return results;
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
+        {
+            var logRenderingOfComponentsSetting = await objectsService.FindSystemObjectByDomainNameAsync($"log_rendering_of_components_{gclSettings.Environment}");
+            if (String.IsNullOrWhiteSpace(logRenderingOfComponentsSetting))
+            {
+                logRenderingOfComponentsSetting = await objectsService.FindSystemObjectByDomainNameAsync("log_rendering_of_components");
+                if (String.IsNullOrWhiteSpace(logRenderingOfComponentsSetting))
+                {
+                    return false;
+                }
+            }
+            
+            if (String.Equals("all", logRenderingOfComponentsSetting, StringComparison.OrdinalIgnoreCase) || String.Equals("true", logRenderingOfComponentsSetting, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var listOfComponentIdsToLog = logRenderingOfComponentsSetting.Split(",").Select(value => !Int32.TryParse(value, out var id) ? 0 : id);
+            return listOfComponentIdsToLog.Contains(componentId);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> TemplateRenderingShouldBeLoggedAsync(int templateId)
+        {
+            var logRenderingOfTemplatesSetting = await objectsService.FindSystemObjectByDomainNameAsync($"log_rendering_of_templates_{gclSettings.Environment}");
+            if (String.IsNullOrWhiteSpace(logRenderingOfTemplatesSetting))
+            {
+                logRenderingOfTemplatesSetting = await objectsService.FindSystemObjectByDomainNameAsync("log_rendering_of_templates");
+                if (String.IsNullOrWhiteSpace(logRenderingOfTemplatesSetting))
+                {
+                    return false;
+                }
+            }
+            
+            if (String.Equals("all", logRenderingOfTemplatesSetting, StringComparison.OrdinalIgnoreCase) || String.Equals("true", logRenderingOfTemplatesSetting, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var listOfTemplateIdsToLog = logRenderingOfTemplatesSetting.Split(",").Select(value => !Int32.TryParse(value, out var id) ? 0 : id);
+            return listOfTemplateIdsToLog.Contains(templateId);
+        }
+
+        /// <inheritdoc />
+        public async Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "")
+        {
+            try
+            {
+                var userData = await accountsService.GetUserDataFromCookieAsync();
+                
+                var tableName = componentId > 0 ? WiserTableNames.WiserDynamicContentRenderLog : WiserTableNames.WiserTemplateRenderLog;
+                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {tableName});
+                databaseConnection.AddParameter("rendering_content_id", componentId);
+                databaseConnection.AddParameter("rendering_template_id", templateId);
+                databaseConnection.AddParameter("rendering_version", version);
+                databaseConnection.AddParameter("rendering_url", HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext));
+                databaseConnection.AddParameter("rendering_environment", gclSettings.Environment.ToString());
+                databaseConnection.AddParameter("rendering_start", startTime);
+                databaseConnection.AddParameter("rendering_end", endTime);
+                databaseConnection.AddParameter("rendering_time_taken", timeTaken);
+                databaseConnection.AddParameter("rendering_user_id", userData.UserId);
+                databaseConnection.AddParameter("rendering_language_code", await languagesService.GetLanguageCodeAsync() ?? "");
+                databaseConnection.AddParameter("rendering_error", error);
+
+                var idColumn = componentId > 0 ? "content_id" : "template_id";
+                var idParameter = componentId > 0 ? "rendering_content_id" : "rendering_template_id";
+                var query = $@"INSERT INTO {tableName} ({idColumn}, version, url, environment, start, end, time_taken, user_id, language_code, error)
+VALUES (?{idParameter}, ?rendering_version, ?rendering_url, ?rendering_environment, ?rendering_start, ?rendering_end, ?rendering_time_taken, ?rendering_user_id, ?rendering_language_code, ?rendering_error)";
+                await databaseConnection.ExecuteAsync(query);
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, templateId > 0 
+                    ? $"Error while trying to log the render time of template #{templateId}" 
+                    : $"Error while trying to log the render time of component #{componentId}");
+            }
         }
 
         /// <summary>

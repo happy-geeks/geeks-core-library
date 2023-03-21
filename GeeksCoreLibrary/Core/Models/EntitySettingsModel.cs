@@ -170,7 +170,7 @@ namespace GeeksCoreLibrary.Core.Models
         public string TemplateHtml { get; set; }
         
         /// <summary>
-        /// Gets or sets whether we should show statistics of items of this type in the dashboard module of Wiser.
+        /// Gets or sets whether statistics of this entity type should be shown in the dashboard module in Wiser.
         /// </summary>
         public bool ShowInDashboard { get; set; }
     }

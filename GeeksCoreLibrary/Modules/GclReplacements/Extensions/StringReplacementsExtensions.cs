@@ -4,6 +4,9 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Models;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
 {
@@ -199,7 +202,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <returns></returns>
         public static string StripHtml(this string input)
         {
-            var tagRegex = new Regex("<(.|\\n)*?>");
+            var tagRegex = new Regex("<(.|\\n)*?>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             var scriptRegex = new Regex("<script.*?/script>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             return tagRegex.Replace(scriptRegex.Replace(input, ""), "");
         }
@@ -221,7 +224,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <returns></returns>
         public static string StripInlineStyle(this string input)
         {
-            var regex = new Regex(" ?style=\".*?\"");
+            var regex = new Regex(" ?style=\".*?\"", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
             return String.IsNullOrEmpty(input) ? input : regex.Replace(input, "");
         }
 
@@ -308,6 +311,28 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         }
 
         /// <summary>
+        /// Hash this string.
+        /// </summary>
+        /// <param name="input">The text to hash.</param>
+        /// <param name="algorithm">The hashing algorithm to use.</param>
+        /// <param name="representation">The way the hashed value needs to be represented.</param>
+        /// <returns>The hashed string in the requested representation.</returns>
+        public static string Hash(this string input, string algorithm, string representation)
+        {
+            if (!Enum.TryParse<HashAlgorithms>(algorithm, true, out var hashAlgorithm))
+            {
+                throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm, null);
+            }
+            
+            if (!Enum.TryParse<HashRepresentations>(representation, true, out var hashRepresentation))
+            {
+                throw new ArgumentOutOfRangeException(nameof(representation), representation, null);
+            }
+            
+            return StringHelpers.HashValue(input, new HashSettingsModel() {Algorithm = hashAlgorithm, Representation = hashRepresentation});
+        }
+
+        /// <summary>
         /// Converts this string to uppercase.
         /// </summary>
         /// <param name="input"></param>
@@ -327,6 +352,25 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         public static string Lowercase(this string input, bool useInvariantCulture = false)
         {
             return useInvariantCulture ? input?.ToLowerInvariant() : input?.ToLower();
+        }
+
+        /// <summary>
+        /// Converts an input string to an image URL. Note that the URL is always relative, starting with a '<c>/</c>'.
+        /// </summary>
+        /// <param name="input">The string to encode.</param>
+        /// <param name="width">The width of the image.</param>
+        /// <param name="height">The height of the image.</param>
+        /// <returns>The image URL.</returns>
+        public static string QrCode(this string input, int width, int height)
+        {
+            if (String.IsNullOrWhiteSpace(input) || width <= 0 || height <= 0)
+            {
+                return String.Empty;
+            }
+
+            var url = $"/barcodes/generate?input={Uri.EscapeDataString(input)}&format=qr_code&width={width}&height={height}";
+
+            return url;
         }
     }
 }

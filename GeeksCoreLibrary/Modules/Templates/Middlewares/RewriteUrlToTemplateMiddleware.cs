@@ -37,6 +37,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         /// </summary>
         public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService)
         {
+            logger.LogDebug("Invoked RewriteUrlToTemplateMiddleware");
+            
             this.objectsService = objectsService;
             this.databaseConnection = databaseConnection;
             this.templatesService = templatesService;
@@ -49,6 +51,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             }
 
             var path = context.Request.Path.ToUriComponent();
+            if (path.StartsWith("/api/", StringComparison.InvariantCultureIgnoreCase))
+            {
+                // An API URL is called, no need to find a template.
+                await this.next.Invoke(context);
+                return;
+            }
+            
             var queryString = context.Request.QueryString;
             if (!context.Items.ContainsKey(Constants.OriginalPathKey))
             {
@@ -85,7 +94,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             var templatesWithUrls = await templatesService.GetTemplateUrlsAsync();
             foreach (var template in templatesWithUrls)
             {
-                var regex = new Regex(template.UrlRegex);
+                var regex = new Regex(template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 var matchResult = regex.Match(path);
                 if (!matchResult.Success)
                 {
@@ -146,7 +155,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 var urlMatchLastPart = urlRewrite[(lastIndex + 1)..];
 
                 // Example: ^/informatie/(?<name>.*?)/(?<pname>.*?)/$
-                var regex = new Regex(urlMatchFirstPart);
+                var regex = new Regex(urlMatchFirstPart, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                 var matchResult = regex.Match(path);
 
                 if (alsoMatchWithQueryString && !matchResult.Success)

@@ -18,6 +18,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Extensions;
 using LazyCache;
 
 namespace GeeksCoreLibrary.Modules.Templates.Middlewares
@@ -38,6 +39,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
 
         public async Task Invoke(HttpContext context, IObjectsService objectsService, ITemplatesService templatesService, ILanguagesService languagesService, IWebHostEnvironment webHostEnvironment, IOptions<GclSettings> gclSettings, IAppCache cache)
         {
+            logger.LogDebug("Invoked OutputCachingMiddleware");
+            
             // Don't even bother doing anything if it's not the correct route.
             if (!context.Request.Method.Equals("GET") || context.Request.Path != "/template.gcl")
             {
@@ -110,13 +113,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
             if (String.IsNullOrWhiteSpace(cacheFolder))
             {
-                logger.LogWarning("Content cache is enabled but the directory 'contentcache' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                logger.LogWarning("Content cache is enabled but the directory 'contentcache' does not exist. Please create it and give it modify permissions to the user that is running the website (on Windows / IIS, this is the user 'IIS_IUSRS' bij default).");
                 await next.Invoke(context);
                 return;
             }
 
             var cacheFileName = await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate);
-            var fullCachePath = Path.Combine(cacheFolder, cacheFileName);
+            var fullCachePath = Path.Combine(cacheFolder, Models.Constants.PageCacheRootDirectoryName, contentTemplate.Type.ToString(), $"{contentTemplate.Name.StripIllegalPathCharacters()} ({contentTemplate.Id})", cacheFileName);
             var cacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
 
             switch (contentTemplate.CachingLocation)
@@ -133,7 +136,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
 
                     // Check if a cache file already exists and if it hasn't expired yet.
                     var fileInfo = new FileInfo(fullCachePath);
-                    if (fileInfo.Exists)
+                    if (fileInfo.Directory is { Exists: false })
+                    {
+                        fileInfo.Directory.Create();
+                    } 
+                    else if (fileInfo.Exists)
                     {
                         if (fileInfo.LastWriteTimeUtc.AddMinutes(contentTemplate.CachingMinutes) > DateTime.UtcNow)
                         {
@@ -208,7 +215,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                         break;
                     case TemplateCachingLocations.OnDisk:
                         // Write the HTML to the cache file.
-                        await File.WriteAllTextAsync(Path.Combine(cacheFolder, cacheFileName), pageHtml);
+                        await File.WriteAllTextAsync(fullCachePath, pageHtml);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingLocation), contentTemplate.CachingLocation.ToString());

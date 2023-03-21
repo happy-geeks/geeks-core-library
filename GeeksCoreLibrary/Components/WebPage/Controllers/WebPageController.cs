@@ -38,12 +38,12 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
         public WebPageController(ILogger<WebPageController> logger,
                                  ITemplatesService templatesService,
                                  IPagesService pagesService,
-                                 IActionContextAccessor actionContextAccessor,
-                                 IHttpContextAccessor httpContextAccessor,
-                                 ITempDataProvider tempDataProvider,
-                                 IViewComponentHelper viewComponentHelper,
                                  IDataSelectorsService dataSelectorsService,
-                                 IWiserItemsService wiserItemsService)
+                                 IWiserItemsService wiserItemsService,
+                                 IActionContextAccessor actionContextAccessor = null,
+                                 IHttpContextAccessor httpContextAccessor = null,
+                                 ITempDataProvider tempDataProvider = null,
+                                 IViewComponentHelper viewComponentHelper = null)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -60,6 +60,11 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
         [Route("cmspage.jcl")]
         public async Task<IActionResult> WebPageAsync()
         {
+            if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+            {
+                throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+            }
+
             var context = HttpContext;
             string cmsPagePath;
             string webPageIdString;
@@ -130,7 +135,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
                 UserNeedsToBeLoggedIn = false
             };
 
-            if (isErrorPage)
+            if (!isErrorPage)
             {
                 webPageSettings.SetSeoInfo = true;
             }

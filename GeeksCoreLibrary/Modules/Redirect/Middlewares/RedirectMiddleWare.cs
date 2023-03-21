@@ -28,6 +28,8 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
 
         public async Task Invoke(HttpContext context, IRedirectService redirectService, IOptions<GclSettings> gclSettings, IObjectsService objectsService)
         {
+            logger.LogDebug("Invoked RedirectMiddleWare");
+            
             this.gclSettings = gclSettings.Value;
             
             // TODO: Use UriBuilder instead of string, for better performance and easier manipulation of the URL?
@@ -42,7 +44,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
             var redirectPermanent = true;
 
             // Redirect module.
-            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex); // Only handle redirect module on pages, not on images, css, js, etc.
+            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)); // Only handle redirect module on pages, not on images, css, js, etc.
             var oldUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (!regEx.IsMatch(oldUrl.ToString()))
             {
@@ -96,7 +98,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
 
                     var newUrl = newUrlSplit.Length > 2 ? newUrlSplit[2] : newUrlSplit[1];
                     var urlCase = newUrlSplit.Length > 2 ? newUrlSplit[1] : "";
-                    var regex = new Regex(oldUrlRegex);
+                    var regex = new Regex(oldUrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                     var match = regex.Match(urlWithoutQuery);
                     if (!match.Success)
                     {
@@ -140,7 +142,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
                 }
 
                 var urlExtension = System.IO.Path.GetExtension(urlWithoutQuery);
-                if (String.IsNullOrEmpty(urlExtension)) // Don't redirect urls ending on .aspx or another extension
+                if (String.IsNullOrEmpty(urlExtension))
                 {
                     if (!urlWithoutQuery.EndsWith("/"))
                     {

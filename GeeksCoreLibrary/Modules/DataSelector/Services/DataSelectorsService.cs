@@ -895,7 +895,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 Content = dataSelectorQuery
             };
 
-            return (await templatesService.GetJsonResponseFromQueryAsync(queryTemplate, recursive: true), HttpStatusCode.OK, String.Empty);
+            return (await templatesService.GetJsonResponseFromQueryAsync(queryTemplate, recursive: true, childItemsMustHaveId: true), HttpStatusCode.OK, String.Empty);
         }
         
         /// <inheritdoc />
@@ -1037,6 +1037,13 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                 if (String.IsNullOrWhiteSpace(data.LanguageCode))
                 {
+                    // Make sure the language code has a value.
+                    if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+                    {
+                        // This function fills the property "CurrentLanguageCode".
+                        await languagesService.GetLanguageCodeAsync();
+                    }
+                    
                     data.LanguageCode = languagesService.CurrentLanguageCode;
                 }
 
@@ -1512,8 +1519,8 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     {
                         itemsRequest.FieldsInternal.AddRange(
                             connectionRow.Modes.Contains("up")
-                                ? UpdateFieldsWithInternals($"`{tableName}`.destination_item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
-                                : UpdateFieldsWithInternals($"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
+                                ? UpdateFieldsWithInternals(linkSettingsForUp is {UseParentItemId: true} ? $"`{previousLevelTableAlias}`.id" : $"`{tableName}`.destination_item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
+                                : UpdateFieldsWithInternals(linkSettingsForDown is {UseParentItemId: true} ? $"`{tableName}_item`.id" : $"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
                         );
                     }
 

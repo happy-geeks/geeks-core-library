@@ -174,6 +174,16 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserLoginLog = "wiser_login_log";
         /// <summary>
+        /// This table is used for keeping track of how when components are rendered and how long it takes to render them.
+        /// This is then used in Wiser to show information about the performance of each component.
+        /// </summary>
+        public const string WiserDynamicContentRenderLog = "wiser_dynamic_content_render_log";
+        /// <summary>
+        /// This table is used for keeping track of how when templates are rendered and how long it takes to render them.
+        /// This is then used in Wiser to show information about the performance of each template.
+        /// </summary>
+        public const string WiserTemplateRenderLog = "wiser_template_render_log";
+        /// <summary>
         /// All deleted items will be moved to archive tables, this is the suffix for those archive tables.
         /// </summary>
         public const string ArchiveSuffix = "_archive";

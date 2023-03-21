@@ -22,7 +22,10 @@ namespace GeeksCoreLibrary.Components.Repeater.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly GclSettings gclSettings;
 
-        public RepeatersService(IDatabaseConnection databaseConnection, ILanguagesService languagesService, IHttpContextAccessor httpContextAccessor, IOptions<GclSettings> gclSettings)
+        public RepeatersService(IDatabaseConnection databaseConnection,
+            ILanguagesService languagesService,
+            IOptions<GclSettings> gclSettings,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
             this.languagesService = languagesService;
@@ -36,6 +39,13 @@ namespace GeeksCoreLibrary.Components.Repeater.Services
             if (httpContextAccessor?.HttpContext == null)
             {
                 throw new Exception("HttpContext is not available.");
+            }
+
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
             }
 
             var fullUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).PathAndQuery;

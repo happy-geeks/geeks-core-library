@@ -149,8 +149,10 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
+        /// <param name="skipPermissionsCheck">Optional: Set to true to force the change, without checking if the logged in user has permissions to do this. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        /// <param name="resetAddedOnDate">Optional: Set to true to reset the added on date and time of the item. This is useful for when converting a basket to an order for example, so that the added on date will be the moment the order was created, instead of when the original basket was created.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
+        Task<int> ChangeEntityTypeAsync(ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, bool resetAddedOnDate = false);
 
         /// <summary>
         /// Changes an entity type of an item.
@@ -162,9 +164,10 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
         /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
         /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
-        /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        /// <param name="skipPermissionsCheck">Optional: Set to true to force the change, without checking if the logged in user has permissions to do this. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+        /// <param name="resetAddedOnDate">Optional: Set to true to reset the added on date and time of the item. This is useful for when converting a basket to an order for example, so that the added on date will be the moment the order was created, instead of when the original basket was created.</param>
         /// <returns>The amount of affected rows.</returns>
-        Task<int> ChangeEntityTypeAsync(IWiserItemsService wiserItemsService, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false);
+        Task<int> ChangeEntityTypeAsync(IWiserItemsService wiserItemsService, ulong itemId, string currentEntityType, string newEntityType, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, bool resetAddedOnDate = false);
 
         /// <summary>
         /// Deletes or un-deletes an item.
@@ -891,5 +894,18 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="template">The HTML template that might contain one or more entity blocks.</param>
         /// <returns>The same template but with all entity blocks fully rendered.</returns>
         Task<string> ReplaceAllEntityBlocksAsync(string template);
+
+        /// <summary>
+        /// Save a single item detail to the database. This will check if the item detail already exists (based on key and language code) and updates the row if it does, or insert one if it doesn't.
+        /// This function will not check for permissions and will not do any conversions for saving dates and whatnot.
+        /// This is only meant for saving simple string values. In other cases, you should use "UpdateAsync".
+        /// </summary>
+        /// <param name="itemDetail">The <see cref="WiserItemDetailModel"/> with the data to save.</param>
+        /// <param name="itemId">The ID of the item, if this is a detail for an item.</param>
+        /// <param name="itemLinkId">The ID of the item link, if this is a detail for a link.</param>
+        /// <param name="entityType">Optional: The entity type of the corresponding item. This is needed when that entity type uses dedicated tables.</param>
+        /// <param name="username">Optional: The username of the user that is making the change. This is used in wiser_history. Default value is "JCL".</param>
+        /// <param name="saveHistory">Optional: Whether or not to log this change in wiser_history. Default value is "true".</param>
+        Task SaveItemDetailAsync(WiserItemDetailModel itemDetail, ulong itemId = 0, ulong itemLinkId = 0, string entityType = null, string username = "JCL", bool saveHistory = true);
     }
 }

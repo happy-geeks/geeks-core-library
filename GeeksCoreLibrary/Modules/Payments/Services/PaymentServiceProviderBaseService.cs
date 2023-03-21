@@ -24,7 +24,10 @@ public class PaymentServiceProviderBaseService
     /// <summary>
     /// Create a new instance of <see cref="PaymentServiceProviderBaseService"/>.
     /// </summary>
-    protected PaymentServiceProviderBaseService(IDatabaseHelpersService databaseHelpersService, IDatabaseConnection databaseConnection, ILogger<PaymentServiceProviderBaseService> logger, IHttpContextAccessor httpContextAccessor)
+    protected PaymentServiceProviderBaseService(IDatabaseHelpersService databaseHelpersService,
+        IDatabaseConnection databaseConnection,
+        ILogger<PaymentServiceProviderBaseService> logger,
+        IHttpContextAccessor httpContextAccessor = null)
     {
         this.databaseHelpersService = databaseHelpersService;
         this.databaseConnection = databaseConnection;

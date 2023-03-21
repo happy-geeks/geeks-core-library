@@ -30,18 +30,22 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IAppCache cache;
         private readonly IDatabaseConnection databaseConnection;
         private readonly GclSettings gclSettings;
-        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ICacheService cacheService;
         private readonly IWebHostEnvironment webHostEnvironment;
 
-        public LegacyCachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, ICacheService cacheService, IWebHostEnvironment webHostEnvironment)
+        public LegacyCachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger,
+            ITemplatesService templatesService,
+            IAppCache cache,
+            IOptions<GclSettings> gclSettings,
+            IDatabaseConnection databaseConnection,
+            ICacheService cacheService,
+            IWebHostEnvironment webHostEnvironment = null)
         {
             this.logger = logger;
             this.templatesService = templatesService;
             this.cache = cache;
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
-            this.httpContextAccessor = httpContextAccessor;
             this.cacheService = cacheService;
             this.webHostEnvironment = webHostEnvironment;
         }
@@ -418,9 +422,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false)
+        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false, bool childItemsMustHaveId = false)
         {
-            return await templatesService.GetJsonResponseFromQueryAsync(queryTemplate, encryptionKey, skipNullValues, allowValueDecryption, recursive);
+            return await templatesService.GetJsonResponseFromQueryAsync(queryTemplate, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
         }
 
         /// <inheritdoc />
@@ -463,6 +467,42 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<List<Template>> GetTemplateUrlsAsync()
         {
             return await templatesService.GetTemplateUrlsAsync();
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
+        {
+            return await templatesService.ComponentRenderingShouldBeLoggedAsync(componentId);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> TemplateRenderingShouldBeLoggedAsync(int templateId)
+        {
+            return await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
+        }
+
+        /// <inheritdoc />
+        public async Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "")
+        {
+            await templatesService.AddTemplateOrComponentRenderingLogAsync(componentId, templateId, version, startTime, endTime, timeTaken, error);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            return await templatesService.GetGlobalPageWidgetsAsync();
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            return await GetPageWidgetsAsync(this, templateId, includeGlobalSnippets);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService service, int templateId, bool includeGlobalSnippets = true)
+        {
+            return await templatesService.GetPageWidgetsAsync(service, templateId, includeGlobalSnippets);
         }
     }
 }

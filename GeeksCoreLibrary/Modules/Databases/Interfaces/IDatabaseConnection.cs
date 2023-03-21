@@ -6,7 +6,7 @@ using MySql.Data.MySqlClient;
 
 namespace GeeksCoreLibrary.Modules.Databases.Interfaces
 {
-    public interface IDatabaseConnection : IDisposable
+    public interface IDatabaseConnection : IAsyncDisposable, IDisposable
     {
         /// <summary>
         /// Gets the name of the database that the connection is currently connected to.
@@ -143,5 +143,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// </summary>
         /// <param name="value"></param>
         void SetCommandTimeout(int value);
+
+        /// <summary>
+        /// Check whether the connection currently has an active transaction.
+        /// </summary>
+        bool HasActiveTransaction();
     }
 }
