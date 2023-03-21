@@ -107,7 +107,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
-                    new("customer_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("name", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
                     new("module_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("accepted_childtypes", MySqlDbType.VarChar, 1000, notNull: true, defaultValue: ""),
