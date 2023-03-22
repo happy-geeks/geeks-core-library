@@ -627,9 +627,11 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 return;
             }
 
-            if (!String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex))
+            if (!template.Type.InList(TemplateTypes.Css, TemplateTypes.Scss, TemplateTypes.Js) && !String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex))
             {
                 // Skip this template if it has an URL regex and that regex does not match the current URL.
+                // This is skipped for CSS, SCSS and JS templates, otherwise they might exclude themselves when the
+                // request URL is for the CSS/JS templates (e.g.: "/css/gclcss_123.css").
                 return;
             }
 
@@ -1285,6 +1287,7 @@ ORDER BY ORDINAL_POSITION ASC";
         public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             var template = await templatesService.GetTemplateAsync(id, name, TemplateTypes.Html, parentId, parentName);
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
 
             var cssStringBuilder = new StringBuilder();
             var jsStringBuilder = new StringBuilder();
@@ -1293,8 +1296,15 @@ ORDER BY ORDINAL_POSITION ASC";
             foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
             {
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
-                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
-                (linkedTemplate.Type == TemplateTypes.Css ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
+
+                // Validate the template regex, if it has one.
+                if (!String.IsNullOrWhiteSpace(linkedTemplate.UrlRegex) && !String.IsNullOrWhiteSpace(currentUrl) && !Regex.IsMatch(currentUrl, linkedTemplate.UrlRegex))
+                {
+                    continue;
+                }
+
+                (linkedTemplate.Type.InList(TemplateTypes.Css, TemplateTypes.Scss) ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+                (linkedTemplate.Type.InList(TemplateTypes.Css, TemplateTypes.Scss) ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
             }
 
             return new TemplateDataModel
