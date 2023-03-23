@@ -591,7 +591,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return;
             }
 
-            if (!template.Type.InList(TemplateTypes.Css, TemplateTypes.Scss, TemplateTypes.Js) && !String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex))
+            if (!template.Type.InList(TemplateTypes.Css, TemplateTypes.Scss, TemplateTypes.Js) && !String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)))
             {
                 // Skip this template if it has an URL regex and that regex does not match the current URL.
                 // This is skipped for CSS, SCSS and JS templates, otherwise they might exclude themselves when the
@@ -1280,7 +1280,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
 
                 // Validate the template regex, if it has one.
-                if (!String.IsNullOrWhiteSpace(linkedTemplate.UrlRegex) && !String.IsNullOrWhiteSpace(currentUrl) && !Regex.IsMatch(currentUrl, linkedTemplate.UrlRegex))
+                if (!String.IsNullOrWhiteSpace(linkedTemplate.UrlRegex) && !String.IsNullOrWhiteSpace(currentUrl) && !Regex.IsMatch(currentUrl, linkedTemplate.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)))
                 {
                     continue;
                 }
