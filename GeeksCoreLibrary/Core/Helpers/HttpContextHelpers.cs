@@ -57,8 +57,9 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <param name="httpContext">The <see cref="HttpContext"/> object whose request should be handled.</param>
         /// <param name="testDomains">Optional: Which domains should be considered as test domains. These domain names will be stripped from the hostname.</param>
         /// <param name="includingTestWww">Optional: Whether "www." and "test." should be added to the result.</param>
+        /// <param name="includePort">Optional: Whether to also return the port number in the URL (but only if it's a custom port, not with 80 and 443). Default is true.</param>
         /// <returns>The hostname as a string.</returns>
-        public static string GetHostName(HttpContext httpContext, List<string> testDomains = null, bool includingTestWww = false)
+        public static string GetHostName(HttpContext httpContext, List<string> testDomains = null, bool includingTestWww = false, bool includePort = true)
         {
             if (httpContext == null)
             {
@@ -100,7 +101,7 @@ namespace GeeksCoreLibrary.Core.Helpers
             // Will only return a port if the request URL contains a port (e.g.: "site.com:1234").
             var port = httpContext.Request.Host.Port;
 
-            return port.HasValue ? $"{hostname}:{port}" : hostname;
+            return port.HasValue && includePort ? $"{hostname}:{port}" : hostname;
         }
 
         /// <summary>

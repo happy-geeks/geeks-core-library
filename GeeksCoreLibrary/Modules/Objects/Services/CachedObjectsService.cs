@@ -45,8 +45,8 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
             this.cacheService = cacheService;
             this.gclSettings = gclSettings.Value;
 
-            hostName = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext);
-            hostNameIncludingTestWww = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true);
+            hostName = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false);
+            hostNameIncludingTestWww = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true, includePort: false);
             urlPrefix = HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext);
         }
 
