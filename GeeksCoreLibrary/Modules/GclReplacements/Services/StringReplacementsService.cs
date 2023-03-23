@@ -166,7 +166,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     dataDictionary.Clear();
 
                     // Try to get the type number by host name.
-                    if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext)), out var objectsTypeNumber) || objectsTypeNumber == 0)
+                    if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext, includePort: false)), out var objectsTypeNumber) || objectsTypeNumber == 0)
                     {
                         // Revert to -100 if the parsing failed or if it returned 0. This is a special value that will look through all objects, ignoring the type number completely.
                         objectsTypeNumber = -100;
