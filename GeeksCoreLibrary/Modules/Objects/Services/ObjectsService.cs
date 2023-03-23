@@ -35,17 +35,17 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
             var domain = overrideDomain;
             if (String.IsNullOrEmpty(domain))
             {
-                domain = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext);
+                domain = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false);
             }
 
             if (searchFromSpecificToGeneral)
             {
                 // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true)}");
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true, includePort: false)}");
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true, includePort: false)}");
                 }
 
                 if (String.IsNullOrEmpty(finalResult))
@@ -62,13 +62,13 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                     }
                     else if (!String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
                     {
-                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext)}");
+                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false)}");
                     }
                 }
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext).Split('.')[0]}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false).Split('.')[0]}");
                 }
                 if (String.IsNullOrEmpty(finalResult))
                 {
@@ -88,7 +88,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                 }
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext).Split('.')[0]}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false).Split('.')[0]}");
                 }
                 if (String.IsNullOrEmpty(finalResult))
                 {
@@ -104,19 +104,19 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                     }
                     else if (!String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
                     {
-                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext)}");
+                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false)}");
                     }
                 }
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true, includePort: false)}");
                 }
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
                     // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true, includePort: false)}");
                 }
             }
 

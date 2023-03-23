@@ -51,7 +51,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             this.rolesService = rolesService;
             this.serviceProvider = serviceProvider;
         }
-        
+
         /// <inheritdoc />
         public async Task<UserCookieDataModel> GetUserDataFromCookieAsync()
         {
@@ -66,7 +66,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             {
                 return (UserCookieDataModel) httpContext.Items[Constants.UserDataCachingKey];
             }
-            
+
             var defaultAnonymousUserModel = new UserCookieDataModel();
 
             try
@@ -111,7 +111,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                                 WHERE selector = ?selector
                                 AND entity_type = ?entityType
                                 AND expires > NOW()";
-                
+
                 databaseConnection.AddParameter("selector", cookieValueParts[0]);
                 databaseConnection.AddParameter("entityType", cookieValueParts[2]);
                 var result = await databaseConnection.GetAsync(query, true);
@@ -226,7 +226,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
             return result;
         }
-        
+
         /// <inheritdoc />
         public async Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account")
         {
@@ -235,7 +235,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             {
                 mainUserId = userId;
             }
-            
+
             await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> { Constants.AuthenticationTokensTableName });
 
             // Delete all expired token, there is no point in keeping them.
@@ -260,7 +260,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
             return $"{selector}:{Uri.EscapeDataString(validator.EncryptWithAes(gclSettings.AccountCookieValueEncryptionKey))}:{entityTypeToUse}";
         }
-        
+
         /// <inheritdoc />
         public async Task RemoveCookieTokenAsync(string selector)
         {
@@ -280,13 +280,13 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 Value = user2FactorAuthenticationKey
             }, userId, entityType: entityType);
         }
-        
+
         /// <inheritdoc />
         public async Task<string> Get2FactorAuthenticationKeyAsync(ulong userId, string entityType = Constants.DefaultEntityType)
         {
             await using var scope = serviceProvider.CreateAsyncScope();
             var wiserItemsService = scope.ServiceProvider.GetRequiredService<IWiserItemsService>();
-            var user = await wiserItemsService.GetItemDetailsAsync(userId, entityType: entityType);
+            var user = await wiserItemsService.GetItemDetailsAsync(userId, entityType: entityType, skipPermissionsCheck: true);
             return user.GetDetailValue(Constants.TotpFieldName);
         }
 
@@ -324,14 +324,14 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             var cookiesToDelete = (settings.CookiesToDeleteAfterLogout ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-            
+
             // Get basket cookie name from settings and delete that cookie.
             var basketCookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName");
             if (!String.IsNullOrWhiteSpace(basketCookieName) && !cookiesToDelete.Contains(basketCookieName))
             {
                 cookiesToDelete.Add(basketCookieName);
             }
-            
+
             // Also delete any cookies with the default cookie name constant.
             if (!cookiesToDelete.Contains(ShoppingBasket.Models.Constants.DefaultCookieName))
             {
@@ -380,7 +380,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 }
             }
         }
-        
+
         /// <inheritdoc />
         public async Task<string> DoAccountReplacementsAsync(string input, bool forQuery = false)
         {
@@ -390,7 +390,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             var userData = await GetUserDataFromCookieAsync();
-            
+
             var replaceData = new Dictionary<string, object>();
             foreach (PropertyDescriptor property in TypeDescriptor.GetProperties(userData))
             {
@@ -414,7 +414,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             var stringReplacementsService = scope.ServiceProvider.GetRequiredService<IStringReplacementsService>();
             input = stringReplacementsService.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{Account_");
             input = stringReplacementsService.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{AccountWiser2_");
-            
+
             return input;
         }
 
