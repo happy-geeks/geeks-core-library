@@ -63,7 +63,7 @@ namespace GeeksCoreLibrary.Core.Helpers
         {
             if (httpContext == null)
             {
-                return null;
+                return String.Empty;
             }
 
             testDomains ??= GclSettings.Current.TestDomains?.ToList() ?? new List<string>();

@@ -36,5 +36,12 @@ namespace GeeksCoreLibrary.Modules.Branches.Models
         /// Only applicable for certain modes.
         /// </summary>
         public DateTime? End { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the ID of the data selector for the items to copy.
+        /// This means that only items that are retrieved with the data selector will be copied.
+        /// Only applicable for certain modes.
+        /// </summary>
+        public int DataSelector { get; set; }
     }
 }
