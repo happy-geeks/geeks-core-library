@@ -98,7 +98,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(Components.Account.Models.Constants.AuthenticationTokensTableName, "idx_selector", IndexTypes.Unique, new List<string> { "selector", "entity_type" })
                 }
             },
-            
+
             // wiser_entity
             new WiserTableDefinitionModel
             {
@@ -272,7 +272,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserTemplate, "idx_environment", IndexTypes.Normal, new List<string> { "published_environment", "removed" })
                 }
             },
-            
+
             // wiser_commit
             new WiserTableDefinitionModel
             {
@@ -288,7 +288,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("completed", MySqlDbType.Int16, notNull: true, defaultValue: "0")
                 }
             },
-            
+
             // wiser_commit_dynamic_content
             new WiserTableDefinitionModel
             {
@@ -304,7 +304,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("added_by", MySqlDbType.VarChar, 255)
                 }
             },
-            
+
             // wiser_commit_template
             new WiserTableDefinitionModel
             {
@@ -318,6 +318,64 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("commit_id", MySqlDbType.Int32, notNull: true),
                     new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
                     new("added_by", MySqlDbType.VarChar, 255)
+                }
+            },
+
+            // wiser_commit_reviews
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommitReviews,
+                LastUpdate = new DateTime(2023, 3, 22),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("commit_id", MySqlDbType.Int32, notNull: true),
+                    new("requested_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("requested_by", MySqlDbType.Int64, notNull: true, comment: "Negative numbers are IDs of admins"),
+                    new("requested_by_name", MySqlDbType.VarChar, 255),
+                    new("reviewed_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("reviewed_by", MySqlDbType.Int64, notNull: true, defaultValue: "0", comment: "Negative numbers are IDs of admins"),
+                    new("reviewed_by_name", MySqlDbType.VarChar, 255),
+                    new("status", MySqlDbType.Enum, enumValues: new List<string> { "Pending", "Approved", "RequestChanges" })
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new (WiserTableNames.WiserCommitReviews, "idx_commit_id", IndexTypes.Unique, new List<string> { "commit_id" }),
+                    new (WiserTableNames.WiserCommitReviews, "idx_requested_by", IndexTypes.Normal, new List<string> { "requested_by" }),
+                    new (WiserTableNames.WiserCommitReviews, "idx_reviewed_by", IndexTypes.Normal, new List<string> { "reviewed_by" })
+                }
+            },
+
+            // wiser_commit_review_comments
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommitReviewComments,
+                LastUpdate = new DateTime(2023, 3, 22),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("review_id", MySqlDbType.Int32, notNull: true),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                    new("added_by", MySqlDbType.Int64, notNull: true, comment: "Negative numbers are IDs of admins"),
+                    new("added_by_name", MySqlDbType.VarChar, 255),
+                    new("text", MySqlDbType.MediumText)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new (WiserTableNames.WiserCommitReviewComments, "idx_review_id", IndexTypes.Normal, new List<string> { "review_id" }),
+                    new (WiserTableNames.WiserCommitReviewComments, "idx_added_by", IndexTypes.Normal, new List<string> { "added_by" })
+                }
+            },
+
+            // wiser_commit_review_requests
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserCommitReviewRequests,
+                LastUpdate = new DateTime(2023, 3, 22),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("review_id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true),
+                    new("requested_user", MySqlDbType.Int64, notNull: true, isPrimaryKey: true, comment: "Negative numbers are IDs of admins"),
                 }
             },
 
@@ -485,7 +543,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WtsLogs, "idx_dated_configuration", IndexTypes.Normal, new List<string> { "added_on", "configuration", "time_id", "is_test" })
                 }
             },
-            
+
             // wts_services
             new WiserTableDefinitionModel
             {
@@ -512,7 +570,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WtsServices, "idx_action", IndexTypes.Normal, new List<string> { "configuration", "action" })
                 }
             },
-            
+
             // wiser_id_mappings
             new WiserTableDefinitionModel
             {
@@ -530,7 +588,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserIdMappings, "idx_unique", IndexTypes.Unique, new List<string> { "table_name", "our_id" })
                 }
             },
-            
+
             // wiser_itemfile
             new WiserTableDefinitionModel
             {
@@ -562,7 +620,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserItemFile, "idx_item_link_id", IndexTypes.Normal, new List<string> { "itemlink_id", "property_name" })
                 }
             },
-            
+
             // wiser_link
             new WiserTableDefinitionModel
             {
@@ -588,7 +646,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserLink, "idx_link", IndexTypes.Unique, new List<string> { "type", "destination_entity_type", "connected_entity_type" })
                 }
             },
-            
+
             // wiser_branches_queue
             new WiserTableDefinitionModel
             {
@@ -674,7 +732,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserQuery, "idx_show_in_export_module", IndexTypes.Normal, new List<string> { "show_in_export_module" })
                 }
             },
-            
+
             // wiser_permission
             new WiserTableDefinitionModel
             {
@@ -701,7 +759,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserPermission, "role_id", IndexTypes.Unique, new List<string> { "role_id", "entity_name", "item_id", "entity_property_id", "module_id", "query_id", "data_selector_id" })
                 }
             },
-            
+
             // log_psp
             new WiserTableDefinitionModel
             {
@@ -724,7 +782,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("type", MySqlDbType.Enum, enumValues: new List<string> { "incoming", "outgoing" })
                 }
             },
-            
+
             // wiser_communication
             new WiserTableDefinitionModel
             {
@@ -759,7 +817,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new (WiserTableNames.WiserCommunication, "idx_name", IndexTypes.Unique, new List<string> { "name" })
                 }
             },
-            
+
             // wiser_dynamic_content_render_log
             new WiserTableDefinitionModel
             {
@@ -785,7 +843,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserDynamicContentRenderLog, "idx_environment", IndexTypes.Normal, new List<string> { "environment", "content_id", "version" })
                 }
             },
-            
+
             // wiser_template_render_log
             new WiserTableDefinitionModel
             {
@@ -811,7 +869,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserTemplateRenderLog, "idx_environment", IndexTypes.Normal, new List<string> { "environment", "template_id", "version" })
                 }
             },
-            
+
             // gcl_database_connection_log
             new WiserTableDefinitionModel
             {
