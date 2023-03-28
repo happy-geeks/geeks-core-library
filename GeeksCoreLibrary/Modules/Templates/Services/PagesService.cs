@@ -93,7 +93,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 foreach (DataRow globalHeaderDataRow in globalHeaders.Rows)
                 {
                     headerRegexCheck = globalHeaderDataRow.Field<string>("default_header_footer_regex");
-                    if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck))
+                    if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)))
                     {
                         continue;
                     }
@@ -114,7 +114,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             headerRegexCheck = await objectsService.FindSystemObjectByDomainNameAsync("headerregexcheck");
-            if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck))
+            if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)))
             {
                 return "";
             }
@@ -161,7 +161,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 foreach (DataRow globalFooterDataRow in globalFooters.Rows)
                 {
                     headerRegexCheck = globalFooterDataRow.Field<string>("default_header_footer_regex");
-                    if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck))
+                    if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)))
                     {
                         continue;
                     }
@@ -182,7 +182,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             headerRegexCheck = await objectsService.FindSystemObjectByDomainNameAsync("footerregexcheck");
-            if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck))
+            if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)))
             {
                 return "";
             }
@@ -198,6 +198,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<PageViewModel> CreatePageViewModelAsync(List<string> externalCss, List<int> cssTemplates, List<string> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0)
         {
             var viewModel = new PageViewModel();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
 
             // Add Google reCAPTCHAv3 if setup.
             await AddGoogleReCaptchaToViewModelAsync(viewModel);
@@ -244,6 +245,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     externalCss.AddRange(template.ExternalFiles);
 
                     if (String.IsNullOrWhiteSpace(template.Content))
+                    {
+                        continue;
+                    }
+
+                    // Validate the template regex, if it has one.
+                    if (!String.IsNullOrWhiteSpace(template.UrlRegex) && !String.IsNullOrWhiteSpace(currentUrl) && !Regex.IsMatch(currentUrl, template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)))
                     {
                         continue;
                     }
