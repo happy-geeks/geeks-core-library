@@ -9,12 +9,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
         {
         }
 
-        public IndexSettingsModel(string tableName , string name, IndexTypes type = IndexTypes.Normal, List<string> fields = null)
+        public IndexSettingsModel(string tableName , string name, IndexTypes type = IndexTypes.Normal, List<string> fields = null, string comment = null)
         {
             Name = name;
             Type = type;
             TableName = tableName;
             Fields = fields ?? new List<string>();
+            Comment = comment;
         }
 
         /// <summary>
@@ -36,5 +37,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
         /// Gets or sets the fields that are part of this index.
         /// </summary>
         public List<string> Fields { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the comment describing the index.
+        /// </summary>
+        public string Comment { get; set; }
     }
 }

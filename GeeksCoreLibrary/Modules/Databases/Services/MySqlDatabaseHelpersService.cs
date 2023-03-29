@@ -295,7 +295,27 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             
             foreach (var index in indexes.Where(index => !String.IsNullOrWhiteSpace(index.Name) && index.Fields != null && index.Fields.Any()))
             {
-                var createIndexQuery = $"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue(false)}` (`{String.Join("`,`", index.Fields.Select(f => f.ToMySqlSafeValue(false)))}`)";
+                // Create a list of the fields. This is to ensure the sub-part (length or expression) is handled
+                // correctly and not considered as part of the field's name.
+                var fields = new List<string>(index.Fields.Count);
+                foreach (var field in index.Fields)
+                {
+                    var subPartStart = field.LastIndexOf('(');
+                    var subPartEnd = field.LastIndexOf(')');
+                    // Check if the field contains both opening and closing parentheses and if the closing parenthesis
+                    // comes after the opening parenthesis.
+                    if (subPartStart == -1 || subPartEnd == -1 || subPartStart > subPartEnd)
+                    {
+                        // Either the '(' or ')' is missing, or '(' comes after ')'.
+                        fields.Add($"`{field.ToMySqlSafeValue(false)}`");
+                        continue;
+                    }
+
+                    fields.Add($"`{field[..subPartStart].ToMySqlSafeValue(false)}`{field[subPartStart..].ToMySqlSafeValue(false)}");
+                }
+
+                var commentPart = String.IsNullOrWhiteSpace(index.Comment) ? String.Empty : $" COMMENT '{index.Comment.ToMySqlSafeValue(false)}'";
+                var createIndexQuery = $"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue(false)}` ({String.Join(",", fields)}){commentPart}";
                 
                 databaseConnection.AddParameter("indexName", index.Name);
 
