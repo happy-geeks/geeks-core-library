@@ -86,7 +86,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="conceptOrders">The (concept) orders of the user that the payment update is for.</param>
         /// <param name="newStatus">The new status of the payment.</param>
         /// <param name="isSuccessfulStatus">Whether or not the new status means that the payment was successful.</param>
-        /// <param name="convertConceptOrderToOrder">Optional: Whether or not to convert the concept order(s) to order(s). Default value is <see langword="true"/>.</param>
+        /// <param name="convertConceptOrderToOrder">Optional: Whether or not to convert the concept order(s) to order(s). Default value is true.</param>
         Task<bool> HandlePaymentStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, string newStatus, bool isSuccessfulStatus, bool convertConceptOrderToOrder = true);
 
         /// <summary>
@@ -97,7 +97,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="conceptOrders">The (concept) orders of the user that the payment update is for.</param>
         /// <param name="newStatus">The new status of the payment.</param>
         /// <param name="isSuccessfulStatus">Whether or not the new status means that the payment was successful.</param>
-        /// <param name="convertConceptOrderToOrder">Optional: Whether or not to convert the concept order(s) to order(s). Default value is <see langword="true"/>.</param>
+        /// <param name="convertConceptOrderToOrder">Optional: Whether or not to convert the concept order(s) to order(s). Default value is true.</param>
         Task<bool> HandlePaymentStatusUpdateAsync(IOrderProcessesService orderProcessesService, OrderProcessSettingsModel orderProcessSettings, ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, string newStatus, bool isSuccessfulStatus, bool convertConceptOrderToOrder = true);
 
         /// <summary>
@@ -134,10 +134,34 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
 
         /// <summary>
         /// Gets the invoice PDF file from an order. If there are multiple, the most recent one will be returned.
-        /// This will check which user is logged in and of the requested order belong to them. If it doesn't, it wll return <see langword="null" />.
+        /// This will check which user is logged in and of the requested order belong to them. If it doesn't, it wll return null.
         /// </summary>
         /// <param name="orderId">The ID of the order to get the invoice of.</param>
         /// <returns>The <see cref="WiserItemFileModel"/> of the most recent invoice.</returns>
         Task<WiserItemFileModel> GetInvoicePdfAsync(ulong orderId);
+
+        /// <summary>
+        /// This function can be used to add custom code snippets in your project. This will be executed just before the user gets send to the PSP.
+        /// If you return false here, then the concept orders will be deleted the the user will be sent back to the checkout. 
+        /// </summary>
+        /// <param name="conceptOrders">The list of concept orders that were created for the user from their baskets. It's allowed to add custom values to these orders and also to change existing values.</param>
+        /// <param name="orderProcessSettings">The settings of the current order process.</param>
+        /// <param name="paymentMethodSettings">The settings of the payment method that the user selected.</param>
+        /// <returns>A <see cref="PaymentRequestResult"/>, use the property "Success" to indicate whether or not your custom validation succeeded. If this is false, the user will not be sent to the PSP, but to the fail URL, or the URL you enter in "ActionData".</returns>
+        // ReSharper disable UnusedParameter.Global
+        Task<PaymentRequestResult> PaymentRequestBeforeOutAsync(List<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings);
+
+        /// <summary>
+        /// This function can be used to add custom code snippets in your project. This will be executed after a status update of the PSP has been handled, but before the order confirmation is being sent to the user..
+        /// If the user paid for multiple orders at once, this function will be called once for each order.
+        /// </summary>
+        /// <param name="main">The <see cref="WiserItemModel"/> of the order.</param>
+        /// <param name="lines">A list of <see cref="WiserItemModel"/> with the order lines.</param>
+        /// <param name="orderProcessSettings">The settings of the current order process.</param>
+        /// <param name="wasHandledBefore">This will be true if the current order has already been handled and converted from concept order to order before. Sometimes PSPs send duplicate status updates, in those cases this can be true.</param>
+        /// <param name="isSuccessfulStatus">Whether the payment of the user was successful.</param>
+        /// <returns>If you return false, then the confirmation e-mail of this order will not be sent to the user.</returns>
+        Task<bool> PaymentStatusUpdateBeforeCommunicationAsync(WiserItemModel main, List<WiserItemModel> lines, OrderProcessSettingsModel orderProcessSettings, bool wasHandledBefore, bool isSuccessfulStatus);
+        // ReSharper restore UnusedParameter.Global
     }
 }

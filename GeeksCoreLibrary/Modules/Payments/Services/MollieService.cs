@@ -38,7 +38,12 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly IDatabaseConnection databaseConnection;
 
-        public MollieService(ILogger<MollieService> logger, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IShoppingBasketsService shoppingBasketsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService) 
+        public MollieService(ILogger<MollieService> logger,
+            IObjectsService objectsService,
+            IShoppingBasketsService shoppingBasketsService,
+            IDatabaseConnection databaseConnection,
+            IDatabaseHelpersService databaseHelpersService,
+            IHttpContextAccessor httpContextAccessor = null) 
             : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
         {
             this.logger = logger;
@@ -51,7 +56,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return new PaymentRequestResult
                 {
@@ -76,10 +81,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var description = $"Order #{invoiceNumber}";
 
             // Build and execute payment request.
-            var restClient = new RestClient(ApiBaseUrl)
+            var restClient = new RestClient(new RestClientOptions(ApiBaseUrl)
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
-            };
+            });
             var restRequest = new RestRequest("/payments", Method.Post);
             restRequest.AddParameter("amount[currency]", mollieSettings.Currency, ParameterType.GetOrPost);
             restRequest.AddParameter("amount[value]", totalPrice.ToString("F2", CultureInfo.InvariantCulture), ParameterType.GetOrPost);
@@ -168,7 +173,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
         private string BuildUrl(string webhookUrl, string invoiceNumber)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return String.Empty;
             }
@@ -186,7 +191,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public async Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return new StatusUpdateResult
                 {
@@ -200,10 +205,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // Mollie sends one POST parameter called "id".
             var mollieOrderId = httpContextAccessor.HttpContext.Request.Form["id"];
 
-            var restClient = new RestClient(ApiBaseUrl)
+            var restClient = new RestClient(new RestClientOptions(ApiBaseUrl)
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
-            };
+            });
             var restRequest = new RestRequest($"/payments/{mollieOrderId}", Method.Get);
 
             // Execute the request. The result will be a JSON object.
@@ -248,7 +253,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         public async Task<PaymentReturnResult> HandlePaymentReturnAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
         {
             var mollieSettings = (MollieSettingsModel)paymentMethodSettings.PaymentServiceProvider;
-            var invoiceNumber = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, "invoice_number");
+            var invoiceNumber = HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "invoice_number");
 
             var baskets = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(invoiceNumber);
             if (baskets == null || baskets.Count == 0)
@@ -266,10 +271,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             // The Mollie payment ID is saved in all baskets, so just use the one from the first basket.
             var molliePaymentId = baskets.First().Order.GetDetailValue(Components.OrderProcess.Models.Constants.PaymentProviderTransactionId);
 
-            var restClient = new RestClient(ApiBaseUrl)
+            var restClient = new RestClient(new RestClientOptions(ApiBaseUrl)
             {
                 Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(mollieSettings.ApiKey, "Bearer")
-            };
+            });
             var restRequest = new RestRequest($"/payments/{molliePaymentId}", Method.Get);
 
             var restResponse = await restClient.ExecuteAsync(restRequest);

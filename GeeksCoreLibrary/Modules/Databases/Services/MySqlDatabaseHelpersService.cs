@@ -121,8 +121,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
-            databaseConnection.AddParameter("columnName", columnName);
-            await databaseConnection.ExecuteAsync($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` DROP COLUMN ?columnName");
+            await databaseConnection.ExecuteAsync($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` DROP COLUMN `{columnName.ToMySqlSafeValue(false)}`");
         }
 
         /// <inheritdoc />
@@ -710,8 +709,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             if (!String.IsNullOrWhiteSpace(settings.AddAfterColumnName))
             {
-                databaseConnection.AddParameter($"addAfterColumnName{parameterSuffix}", settings.AddAfterColumnName);
-                queryBuilder.Append($" AFTER ?addAfterColumnName{parameterSuffix}");
+                queryBuilder.Append($" AFTER `{settings.AddAfterColumnName.ToMySqlSafeValue(false)}`");
             }
 
             return queryBuilder;

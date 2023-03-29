@@ -32,7 +32,13 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
         private readonly ILogger<HtmlToPdfConverterService> logger;
         private readonly GclSettings gclSettings;
 
-        public HtmlToPdfConverterService(IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IWebHostEnvironment webHostEnvironment, IOptions<GclSettings> gclSettings, ILogger<HtmlToPdfConverterService> logger)
+        public HtmlToPdfConverterService(IDatabaseConnection databaseConnection,
+            IObjectsService objectsService,
+            IStringReplacementsService stringReplacementsService,
+            IOptions<GclSettings> gclSettings,
+            ILogger<HtmlToPdfConverterService> logger,
+            IHttpContextAccessor httpContextAccessor = null,
+            IWebHostEnvironment webHostEnvironment = null)
         {
             this.httpContextAccessor = httpContextAccessor;
             this.databaseConnection = databaseConnection;
@@ -364,6 +370,11 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
 
         private async Task<string> RetrieveBackgroundImageAsync(ulong itemId, string backgroundPropertyName)
         {
+            if (webHostEnvironment == null)
+            {
+                return null;
+            }
+
             databaseConnection.AddParameter("itemId", itemId);
             databaseConnection.AddParameter("propertyName", backgroundPropertyName);
             var getImageResult = await databaseConnection.GetAsync($@"

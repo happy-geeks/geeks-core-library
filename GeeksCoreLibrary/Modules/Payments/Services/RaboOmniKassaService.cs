@@ -44,7 +44,13 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private string refreshToken = "";
         private string signingKey = "";
 
-        public RaboOmniKassaService(IShoppingBasketsService shoppingBasketsService, IObjectsService objectsService, IHttpContextAccessor httpContextAccessor, IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, IDatabaseHelpersService databaseHelpersService, ILogger<RaboOmniKassaService> logger) 
+        public RaboOmniKassaService(IShoppingBasketsService shoppingBasketsService,
+            IObjectsService objectsService,
+            IDatabaseConnection databaseConnection,
+            IOptions<GclSettings> gclSettings,
+            IDatabaseHelpersService databaseHelpersService,
+            ILogger<RaboOmniKassaService> logger,
+            IHttpContextAccessor httpContextAccessor = null) 
             : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
         {
             this.shoppingBasketsService = shoppingBasketsService;
@@ -318,6 +324,11 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <returns>Returns a valid <see cref="PaymentCompletedResponse"/> object.</returns>
         private PaymentCompletedResponse CreatePaymentCompletedResponse()
         {
+            if (httpContextAccessor?.HttpContext == null)
+            {
+                throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+            }
+
             var orderId = httpContextAccessor.HttpContext.Request.Query["order_id"].ToString(); //Invoice number as provided by us.
             var status = httpContextAccessor.HttpContext.Request.Query["status"].ToString();
             var signature = httpContextAccessor.HttpContext.Request.Query["signature"].ToString();

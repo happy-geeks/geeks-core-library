@@ -13,7 +13,6 @@ using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.Services;
-using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -43,13 +42,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
         public OrderProcessesController(ILogger<OrderProcessesController> logger,
                                         ITemplatesService templatesService,
                                         IPagesService pagesService,
-                                        IActionContextAccessor actionContextAccessor,
-                                        IHttpContextAccessor httpContextAccessor,
-                                        ITempDataProvider tempDataProvider,
-                                        IViewComponentHelper viewComponentHelper,
                                         IDataSelectorsService dataSelectorsService,
                                         IOrderProcessesService orderProcessesService,
-                                        IWiserItemsService wiserItemsService)
+                                        IWiserItemsService wiserItemsService,
+                                        IActionContextAccessor actionContextAccessor = null,
+                                        IHttpContextAccessor httpContextAccessor = null,
+                                        IViewComponentHelper viewComponentHelper = null,
+                                        ITempDataProvider tempDataProvider = null)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -85,6 +84,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
         }
 
         [Route(Constants.PaymentInPage)]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> PaymentInAsync()
         {
             var context = HttpContext;
@@ -100,6 +100,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
         }
 
         [Route(Constants.PaymentReturnPage)]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> PaymentReturnAsync()
         {
             var context = HttpContext;
@@ -202,6 +203,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
 
         private async Task<string> RenderAndExecuteComponentAsync(OrderProcess.ComponentModes componentMode, ulong orderProcessId)
         {
+            if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+            {
+                throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+            }
+            
             // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
             var viewContext = new ViewContext(
                 actionContextAccessor.ActionContext,

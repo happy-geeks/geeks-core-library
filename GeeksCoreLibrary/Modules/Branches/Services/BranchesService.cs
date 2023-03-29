@@ -15,7 +15,7 @@ namespace GeeksCoreLibrary.Modules.Branches.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ILogger<BranchesService> logger;
 
-        public BranchesService(IHttpContextAccessor httpContextAccessor, ILogger<BranchesService> logger)
+        public BranchesService(ILogger<BranchesService> logger, IHttpContextAccessor httpContextAccessor = null)
         {
             this.httpContextAccessor = httpContextAccessor;
             this.logger = logger;
@@ -24,7 +24,7 @@ namespace GeeksCoreLibrary.Modules.Branches.Services
         /// <inheritdoc />
         public string GetDatabaseNameFromCookie()
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return null;
             }
@@ -49,7 +49,7 @@ namespace GeeksCoreLibrary.Modules.Branches.Services
         /// <inheritdoc />
         public void SaveDatabaseNameToCookie(string databaseName)
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return;
             }

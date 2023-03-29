@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Account.Models;
@@ -12,8 +12,10 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
@@ -29,8 +31,16 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly ILogger<AccountsService> logger;
         private readonly IDatabaseHelpersService databaseHelpersService;
         private readonly IRolesService rolesService;
+        private readonly IServiceProvider serviceProvider;
 
-        public AccountsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<AccountsService> logger, IDatabaseHelpersService databaseHelpersService, IRolesService rolesService)
+        public AccountsService(IOptions<GclSettings> gclSettings,
+            IDatabaseConnection databaseConnection,
+            IObjectsService objectsService,
+            ILogger<AccountsService> logger,
+            IDatabaseHelpersService databaseHelpersService,
+            IRolesService rolesService,
+            IServiceProvider serviceProvider,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
@@ -39,12 +49,13 @@ namespace GeeksCoreLibrary.Components.Account.Services
             this.logger = logger;
             this.databaseHelpersService = databaseHelpersService;
             this.rolesService = rolesService;
+            this.serviceProvider = serviceProvider;
         }
-        
+
         /// <inheritdoc />
         public async Task<UserCookieDataModel> GetUserDataFromCookieAsync()
         {
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
             if (httpContext == null)
             {
                 throw new Exception("HttpContext is null.");
@@ -55,7 +66,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             {
                 return (UserCookieDataModel) httpContext.Items[Constants.UserDataCachingKey];
             }
-            
+
             var defaultAnonymousUserModel = new UserCookieDataModel();
 
             try
@@ -100,7 +111,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                                 WHERE selector = ?selector
                                 AND entity_type = ?entityType
                                 AND expires > NOW()";
-                
+
                 databaseConnection.AddParameter("selector", cookieValueParts[0]);
                 databaseConnection.AddParameter("entityType", cookieValueParts[2]);
                 var result = await databaseConnection.GetAsync(query, true);
@@ -191,7 +202,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         /// <inheritdoc />
         public ulong GetRecentlyCreateAccountId()
         {
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
             if (httpContext == null)
             {
                 throw new Exception("HttpContext is null.");
@@ -215,7 +226,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
             return result;
         }
-        
+
         /// <inheritdoc />
         public async Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account")
         {
@@ -224,7 +235,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             {
                 mainUserId = userId;
             }
-            
+
             await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> { Constants.AuthenticationTokensTableName });
 
             // Delete all expired token, there is no point in keeping them.
@@ -241,15 +252,15 @@ namespace GeeksCoreLibrary.Components.Account.Services
             databaseConnection.AddParameter("main_user_id", mainUserId);
             databaseConnection.AddParameter("entity_type", entityTypeToUse);
             databaseConnection.AddParameter("main_user_entity_type", mainUserEntityType);
-            databaseConnection.AddParameter("ip_address", HttpContextHelpers.GetUserIpAddress(httpContextAccessor.HttpContext));
-            databaseConnection.AddParameter("user_agent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor.HttpContext, HeaderNames.UserAgent));
+            databaseConnection.AddParameter("ip_address", HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext));
+            databaseConnection.AddParameter("user_agent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, HeaderNames.UserAgent));
             databaseConnection.AddParameter("expires", DateTime.Now.AddDays(amountOfDaysToRememberCookie));
             databaseConnection.AddParameter("login_date", DateTime.Now);
             await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(Constants.AuthenticationTokensTableName, 0UL);
 
             return $"{selector}:{Uri.EscapeDataString(validator.EncryptWithAes(gclSettings.AccountCookieValueEncryptionKey))}:{entityTypeToUse}";
         }
-        
+
         /// <inheritdoc />
         public async Task RemoveCookieTokenAsync(string selector)
         {
@@ -259,10 +270,31 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
-        public async Task LogoutUserAsync(AccountCmsSettingsModel settings)
+        public async Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FactorAuthenticationKey, string entityType = Constants.DefaultEntityType)
+        {
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var wiserItemsService = scope.ServiceProvider.GetRequiredService<IWiserItemsService>();
+            await wiserItemsService.SaveItemDetailAsync(new WiserItemDetailModel
+            {
+                Key = Constants.TotpFieldName,
+                Value = user2FactorAuthenticationKey
+            }, userId, entityType: entityType);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> Get2FactorAuthenticationKeyAsync(ulong userId, string entityType = Constants.DefaultEntityType)
+        {
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var wiserItemsService = scope.ServiceProvider.GetRequiredService<IWiserItemsService>();
+            var user = await wiserItemsService.GetItemDetailsAsync(userId, entityType: entityType, skipPermissionsCheck: true);
+            return user.GetDetailValue(Constants.TotpFieldName);
+        }
+
+        /// <inheritdoc />
+        public async Task LogoutUserAsync(AccountCmsSettingsModel settings, bool isAutoLogout = false)
         {
             // Do some initial checks, to make sure we have everything we need and the user is actually still logged in.
-            var currentContext = httpContextAccessor.HttpContext;
+            var currentContext = httpContextAccessor?.HttpContext;
             if (currentContext == null)
             {
                 logger.LogError("HttpContext is null, can't log out the user!");
@@ -292,14 +324,14 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             var cookiesToDelete = (settings.CookiesToDeleteAfterLogout ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-            
+
             // Get basket cookie name from settings and delete that cookie.
             var basketCookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName");
             if (!String.IsNullOrWhiteSpace(basketCookieName) && !cookiesToDelete.Contains(basketCookieName))
             {
                 cookiesToDelete.Add(basketCookieName);
             }
-            
+
             // Also delete any cookies with the default cookie name constant.
             if (!cookiesToDelete.Contains(ShoppingBasket.Models.Constants.DefaultCookieName))
             {
@@ -342,13 +374,13 @@ namespace GeeksCoreLibrary.Components.Account.Services
             {
                 currentContext.Response.Headers.Add($"x-{settings.OciHookUrlKey}", ociUrl);
 
-                if (settings.EnableOciLogin)
+                if (settings.EnableOciLogin && !isAutoLogout)
                 {
                     currentContext.Response.Redirect(ociUrl);
                 }
             }
         }
-        
+
         /// <inheritdoc />
         public async Task<string> DoAccountReplacementsAsync(string input, bool forQuery = false)
         {
@@ -358,46 +390,30 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             var userData = await GetUserDataFromCookieAsync();
-            var regex = new Regex(@"\[?\{Account(Wiser2)?_(?<property>.*?)\}\]?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
-            var match = regex.Match(input);
-            var replacementsDone = new List<string>();
-            while (match.Success)
+
+            var replaceData = new Dictionary<string, object>();
+            foreach (PropertyDescriptor property in TypeDescriptor.GetProperties(userData))
             {
-                var propertyName = match.Groups["property"].Value;
-                if (replacementsDone.Any(x => x.Equals(propertyName)))
-                {
-                    match = match.NextMatch();
-                    continue;
-                }
+                replaceData.Add(property.Name, property.GetValue(userData) ?? "");
+            }
 
-                var userDataProperty = userData.GetType().GetProperty(propertyName);
-                string value = null;
-                if (userDataProperty != null)
+            if (userData.ExtraData != null)
+            {
+                foreach (var keyValuePair in userData.ExtraData)
                 {
-                    value = userDataProperty.GetValue(userData)?.ToString() ?? "";
-                }
-                else if (userData.ExtraData != null && userData.ExtraData.ContainsKey(propertyName))
-                {
-                    value = userData.ExtraData[propertyName] ?? "";
-                }
-
-                if (value != null)
-                {
-                    if (forQuery)
+                    if (replaceData.ContainsKey(keyValuePair.Key))
                     {
-                        var parameterName = DatabaseHelpers.CreateValidParameterName(match.Value);
-                        databaseConnection.AddParameter(parameterName, value);
-                        value = $"?{parameterName}";
-                        input = input.Replace($"'{match.Value}'", value);
+                        continue;
                     }
 
-                    input = input.Replace(match.Value, value);
+                    replaceData.Add(keyValuePair.Key, keyValuePair.Value);
                 }
-
-                replacementsDone.Add(propertyName);
-
-                match = match.NextMatch();
             }
+
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var stringReplacementsService = scope.ServiceProvider.GetRequiredService<IStringReplacementsService>();
+            input = stringReplacementsService.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{Account_");
+            input = stringReplacementsService.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{AccountWiser2_");
 
             return input;
         }

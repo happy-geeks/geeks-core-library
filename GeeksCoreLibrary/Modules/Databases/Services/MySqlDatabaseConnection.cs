@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
@@ -23,6 +24,17 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 {
     public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     {
+        public const int MaxRetriesAfterDeadlock = 5;
+        public static readonly List<int> MySqlErrorCodesToRetry = new()
+        {
+            (int) MySqlErrorCode.LockDeadlock,
+            (int) MySqlErrorCode.LockWaitTimeout,
+            (int) MySqlErrorCode.UnableToConnectToHost,
+            (int) MySqlErrorCode.TooManyUserConnections,
+            (int) MySqlErrorCode.ConnectionCountError,
+            (int) MySqlErrorCode.TableDefinitionChanged
+        };
+        
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ILogger<MySqlDatabaseConnection> logger;
         private readonly IBranchesService branchesService;
@@ -49,7 +61,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <summary>
         /// Creates a new instance of <see cref="MySqlDatabaseConnection"/>.
         /// </summary>
-        public MySqlDatabaseConnection(IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, ILogger<MySqlDatabaseConnection> logger, IBranchesService branchesService)
+        public MySqlDatabaseConnection(IOptions<GclSettings> gclSettings,
+            ILogger<MySqlDatabaseConnection> logger,
+            IBranchesService branchesService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.httpContextAccessor = httpContextAccessor;
             this.logger = logger;
@@ -69,7 +84,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 connectionStringForWriting.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForWriting.Database;
             }
 
-            logger.LogTrace($"Created new instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)}");
+            logger.LogTrace($"Created new instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
         }
 
         /// <inheritdoc />
@@ -81,7 +96,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async Task<DbDataReader> GetReaderAsync(string query)
         {
-            logger.LogTrace($"Called GetReaderAsync of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)}");
+            logger.LogTrace($"Called GetReaderAsync of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
             await EnsureOpenConnectionForReadingAsync();
             CommandForReading.CommandText = query;
 
@@ -452,7 +467,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async ValueTask DisposeAsync()
         {
-            logger.LogTrace($"Disposing instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)}");
+            logger.LogTrace($"Disposing instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
             if (dataReader != null)
             {
                 await dataReader.DisposeAsync();
@@ -472,7 +487,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public void Dispose()
         {
-            logger.LogTrace($"Disposing instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)}");
+            logger.LogTrace($"Disposing instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
             dataReader?.Dispose();
             AddConnectionCloseLogAsync(false, true);
             AddConnectionCloseLogAsync(true, true);
@@ -614,6 +629,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
         }
 
+        /// <inheritdoc />
+        public bool HasActiveTransaction()
+        {
+            return transaction != null;
+        }
+
         private async Task SetTimezone(MySqlCommand command)
         {
             try
@@ -677,7 +698,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
                 var url = "";
                 var httpMethod = "";
-                if (httpContextAccessor.HttpContext != null)
+                if (httpContextAccessor?.HttpContext != null)
                 {
                     url = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
                     httpMethod = httpContextAccessor.HttpContext.Request.Method;
