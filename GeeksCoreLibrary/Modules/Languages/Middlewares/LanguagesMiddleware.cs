@@ -1,10 +1,7 @@
-﻿using System;
-using GeeksCoreLibrary.Core.Helpers;
-using GeeksCoreLibrary.Modules.Languages.Interfaces;
+﻿using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace GeeksCoreLibrary.Modules.Languages.Middlewares
@@ -13,7 +10,6 @@ namespace GeeksCoreLibrary.Modules.Languages.Middlewares
     {
         private readonly RequestDelegate next;
         private readonly ILogger<LanguagesMiddleware> logger;
-        private IHttpContextAccessor httpContextAccessor;
         private ILanguagesService languagesService;
 
         public LanguagesMiddleware(RequestDelegate next, ILogger<LanguagesMiddleware> logger)
@@ -22,27 +18,18 @@ namespace GeeksCoreLibrary.Modules.Languages.Middlewares
             this.logger = logger;
         }
 
-        public async Task Invoke(HttpContext context, IHttpContextAccessor httpContextAccessor, ILanguagesService languagesService)
+        public async Task Invoke(HttpContext context, ILanguagesService languagesService)
         {
             logger.LogDebug("Invoked LanguagesMiddleware");
-            
-            this.httpContextAccessor = httpContextAccessor;
+
             this.languagesService = languagesService;
-
-            // Only handle the setting of the language session on pages, not on images, css, js, etc.
-            var regEx = new Regex(@"(\.jpe?g|\.gif|\.png|\.webp|\.svg|\.bmp|\.tif|\.ico|\.woff2?|\.css|\.js|\.webmanifest)(?:\?.*)?$", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
-            if (!regEx.IsMatch(currentUrl.ToString()))
-            {
-                await SetLanguageSession();
-            }
-
+            await SetLanguageSession(context);
             await next.Invoke(context);
         }
 
-        private async Task SetLanguageSession()
+        private async Task SetLanguageSession(HttpContext context)
         {
-            var session = httpContextAccessor?.HttpContext?.Session;
+            var session = context?.Session;
             if (session == null)
             {
                 return;
@@ -52,7 +39,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Middlewares
             session.SetString(Constants.LanguageCodeSessionKey, languageCode);
             session.SetString(Constants.LegacyLanguageCodeSessionKey, languageCode);
 
-            logger.LogDebug($"Set language code '{languageCode}' in session '{Constants.LanguageCodeSessionKey}'.");
+            logger.LogDebug("Set language code '{languageCode}' in session '{sessionName}'.", languageCode, Constants.LanguageCodeSessionKey);
         }
     }
 }
