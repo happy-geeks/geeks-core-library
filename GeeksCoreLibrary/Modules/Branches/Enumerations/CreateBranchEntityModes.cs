@@ -32,6 +32,10 @@
         /// <summary>
         /// Copy all items of the given entity type, that were created between two dates.
         /// </summary>
-        CreatedBetween
+        CreatedBetween,
+        /// <summary>
+        /// Copy all items of the given entity type, that are returned by the data selector.
+        /// </summary>
+        DataSelector
     }
 }
