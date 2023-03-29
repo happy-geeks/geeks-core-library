@@ -662,7 +662,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     var restResponse = await restClient.ExecuteAsync(restRequest);
                     if (!restResponse.IsSuccessful || restResponse.Content == null)
                     {
-                        logger.LogWarning("Error while trying to get price from an API. The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}", restResponse.StatusCode, restResponse.Content);
+                        logger.LogWarning("Error while trying to get price from an API ({priceApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}",  priceApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
                         continue;
                     }
 
