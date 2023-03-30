@@ -11,7 +11,6 @@ using GeeksCoreLibrary.Core.Services;
 using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
 using GeeksCoreLibrary.Modules.ItemFiles.Services;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
-using GeeksCoreLibrary.Modules.Languages.Middlewares;
 using GeeksCoreLibrary.Modules.Languages.Services;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Services;
@@ -92,8 +91,6 @@ namespace GeeksCoreLibrary.Core.Extensions
             builder.UseMiddleware<CreateAndUpdateTablesMiddleware>();
 
             builder.UseMiddleware<ClearCacheMiddleware>();
-
-            builder.UseMiddleware<LanguagesMiddleware>();
 
             builder.UseMiddleware<RedirectMiddleWare>();
 
