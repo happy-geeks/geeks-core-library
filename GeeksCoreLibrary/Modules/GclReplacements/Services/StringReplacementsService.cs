@@ -95,6 +95,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             dataDictionary.Add("NowDay", curDateTime.Day.ToString());
             dataDictionary.Add("LanguageCode", languagesService.CurrentLanguageCode);
             dataDictionary.Add("language_code", languagesService.CurrentLanguageCode);
+            dataDictionary.Add("MlJclLanguageCode", languagesService.CurrentLanguageCode); // Legacy key for old library support.
             dataDictionary.Add("Hostname", HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext));
             dataDictionary.Add("Environment", (int)gclSettings.Environment);
             input = DoReplacements(input, dataDictionary, forQuery: forQuery);
