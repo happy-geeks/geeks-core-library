@@ -640,22 +640,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     var restClient = new RestClient();
                     var restRequest = new RestRequest(endpoint, requestMethod);
 
-                    var authenticationType = priceApi.GetDetailValue<int>("authentication_type");
-
-                    switch (authenticationType)
-                    {
-                        case 1: // Oauth 2.0
-                            // TODO handle OAuth 2
-                            restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
-                            throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
-                        case 2: // Token
-                            var token = priceApi.GetDetailValue("token");
-                            token = await stringReplacementsService.DoAllReplacementsAsync(token);
-                            restRequest.AddHeader("Authorization", $"Token {token}");
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
-                    }
+                    await AddAuthenticationToApiCall(restRequest, priceApi);
+                    await AddAcceptLanguageToApiCall(restRequest);
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
@@ -854,6 +840,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     var restRequest = new RestRequest(endpoint, requestMethod);
 
                     await AddAuthenticationToApiCall(restRequest, saveApi);
+                    await AddAcceptLanguageToApiCall(restRequest);
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
@@ -999,6 +986,19 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
+            }
+        }
+        
+        /// <summary>
+        /// Add the correct Accept-Language header to the API request if one is provided as system object.
+        /// </summary>
+        /// <param name="request">The request to add the Accept-Language header to.</param>
+        private async Task AddAcceptLanguageToApiCall(RestRequest request)
+        {
+            var languageCode = await objectsService.FindSystemObjectByDomainNameAsync("configurator_api_language_code");
+            if (!String.IsNullOrWhiteSpace(languageCode))
+            {
+                request.AddHeader("Accept-Language", languageCode);
             }
         }
     }
