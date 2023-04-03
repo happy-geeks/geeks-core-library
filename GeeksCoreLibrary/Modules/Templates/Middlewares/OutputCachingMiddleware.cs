@@ -40,7 +40,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         public async Task Invoke(HttpContext context, IObjectsService objectsService, ITemplatesService templatesService, ILanguagesService languagesService, IWebHostEnvironment webHostEnvironment, IOptions<GclSettings> gclSettings, IAppCache cache)
         {
             logger.LogDebug("Invoked OutputCachingMiddleware");
-            
+
             // Don't even bother doing anything if it's not the correct route.
             if (!context.Request.Method.Equals("GET") || context.Request.Path != "/template.gcl")
             {
@@ -52,7 +52,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             this.languagesService = languagesService;
             this.gclSettings = gclSettings.Value;
 
-            // Check if 
+            // Check if
             var templateName = HttpContextHelpers.GetRequestValue(context, "templatename");
             Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out var templateId);
 
@@ -101,7 +101,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             if (!String.IsNullOrWhiteSpace(contentTemplate.CachingRegex))
             {
                 var requestUri = HttpContextHelpers.GetOriginalRequestUri(context);
-                if (!Regex.IsMatch(requestUri.PathAndQuery, contentTemplate.CachingRegex, RegexOptions.None, TimeSpan.FromMilliseconds(200)))
+                if (!Regex.IsMatch(requestUri.PathAndQuery, contentTemplate.CachingRegex, RegexOptions.None, TimeSpan.FromMilliseconds(2000)))
                 {
                     logger.LogDebug($"Content cache disabled for page '{HttpContextHelpers.GetOriginalRequestUri(context)}', because the regular expression ({contentTemplate.CachingRegex}) from the template settings ({contentTemplate.Id}) does not match the current URL ({requestUri.AbsolutePath}).");
                     await next.Invoke(context);
@@ -139,7 +139,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                     if (fileInfo.Directory is { Exists: false })
                     {
                         fileInfo.Directory.Create();
-                    } 
+                    }
                     else if (fileInfo.Exists)
                     {
                         if (fileInfo.LastWriteTimeUtc.AddMinutes(contentTemplate.CachingMinutes) > DateTime.UtcNow)

@@ -204,7 +204,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             }
 
             // Regex to find any '{substeps}' variables, including ones that define the sub step IDs.
-            var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             foreach (DataRow row in configuratorData.Rows)
             {
                 var currentUrl = HttpContextHelpers.GetBaseUri(HttpContext).AbsoluteUri;
@@ -524,7 +524,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         // We subtract one from step count, because the stepCount gets increased after adding the step, but that's too early for sub steps.
                         stepNumbers[configuratorName][variableName].Item2.Add(subStepVariableName, $"{mainStepCount}-{stepCount - 1}-{subStepCount}");
                     }
-                    
+
                     subStepCount += 1;
                 }
             }
@@ -629,7 +629,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             template = template.ReplaceCaseInsensitive("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'");
 
             var stepContentBuilder = new StringBuilder();
-            var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
 
             if (renderedValues != "")
             {
@@ -1148,7 +1148,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     result.Add($"jjl_configurator_step-{step.MainStep}-{step.Step}", await TemplatesService.DoReplacesAsync(await RenderStep(configuration.Configurator, step.MainStep, step.Step, step.DependentValue, configuration, dataTable), removeUnknownVariables: false));
                 }
             }
-            
+
             var useAbsoluteImageUrls = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "absoluteImageUrls"), "true", StringComparison.OrdinalIgnoreCase);
             var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
 
@@ -1163,12 +1163,12 @@ namespace GeeksCoreLibrary.Components.Configurator
                         var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
                         result[html.Key] = await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(result[html.Key], imagesDomain);
                     }
-                    
+
                     // Remove the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website.
                     // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
                     if (removeSvgUrlsFromIcons)
                     {
-                        var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                        var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                         foreach (Match match in regex.Matches(html.Value))
                         {
                             result[html.Key] = result[html.Key].Replace(match.Groups[1].Value, "");
@@ -1176,12 +1176,12 @@ namespace GeeksCoreLibrary.Components.Configurator
                     }
                 }
             }
-            
+
             return result;
         }
 
         /// <summary>
-        /// Renders the HTML for a certain step. 
+        /// Renders the HTML for a certain step.
         /// This method is meant to be called via AJAX, via jclcomponent.jcl.
         /// </summary>
         /// <param name="name">The name of the configurator.</param>

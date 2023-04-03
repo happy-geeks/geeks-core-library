@@ -29,9 +29,9 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
         public async Task Invoke(HttpContext context, IRedirectService redirectService, IOptions<GclSettings> gclSettings, IObjectsService objectsService)
         {
             logger.LogDebug("Invoked RedirectMiddleWare");
-            
+
             this.gclSettings = gclSettings.Value;
-            
+
             // TODO: Use UriBuilder instead of string, for better performance and easier manipulation of the URL?
             var redirectToUrl = "";
 
@@ -44,7 +44,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
             var redirectPermanent = true;
 
             // Redirect module.
-            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)); // Only handle redirect module on pages, not on images, css, js, etc.
+            var regEx = new Regex(CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)); // Only handle redirect module on pages, not on images, css, js, etc.
             var oldUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (!regEx.IsMatch(oldUrl.ToString()))
             {
@@ -98,7 +98,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
 
                     var newUrl = newUrlSplit.Length > 2 ? newUrlSplit[2] : newUrlSplit[1];
                     var urlCase = newUrlSplit.Length > 2 ? newUrlSplit[1] : "";
-                    var regex = new Regex(oldUrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                    var regex = new Regex(oldUrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                     var match = regex.Match(urlWithoutQuery);
                     if (!match.Success)
                     {
@@ -186,7 +186,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
             }
 
             // Only proceed to next middleware if there's no redirect.
-            if (String.IsNullOrEmpty(redirectToUrl)) 
+            if (String.IsNullOrEmpty(redirectToUrl))
             {
                 await next.Invoke(context);
             }

@@ -45,7 +45,7 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <returns>The validation digit</returns>
         public static int CalculateGtn13ValidationDigit(string ean)
         {
-            var regex = new Regex("^[0-9]{12}$", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            var regex = new Regex("^[0-9]{12}$", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
 
             if (!regex.IsMatch(ean))
             {

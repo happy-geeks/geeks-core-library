@@ -56,7 +56,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             var logRenderingOfTemplate = false;
             var templateId = 0;
             var templateVersion = 0;
-            
+
             try
             {
                 var context = HttpContext;
@@ -189,7 +189,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(context, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
                 if (removeSvgUrlsFromIcons)
                 {
-                    var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
+                    var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                     foreach (Match match in regex.Matches(newBodyHtml))
                     {
                         newBodyHtml = newBodyHtml.Replace(match.Groups[1].Value, "");

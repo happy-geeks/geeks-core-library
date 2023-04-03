@@ -184,13 +184,13 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 var keyField = dr.Field<string>("key");
                 var valueField = dr.Field<string>("value");
 
-                // skip field 
+                // skip field
                 if (String.IsNullOrWhiteSpace(entityType) || String.IsNullOrWhiteSpace(valueField))
                 {
                     continue;
                 }
 
-                // fill properties 
+                // fill properties
                 switch (entityType.ToLowerInvariant())
                 {
                     case "configurator":
@@ -510,7 +510,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
         {
             (decimal purchasePrice, decimal customerPrice, decimal fromPrice) result = (0, 0, 0);
-            
+
             var dataTable = await GetConfiguratorDataAsync(input.Configurator);
 
             if (dataTable == null || dataTable.Rows.Count == 0)
@@ -626,7 +626,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
                     requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
-                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                     requestJson = regex.Replace(requestJson, "null");
 
                     // If there is no request JSON it is useless to do an API call.
@@ -677,7 +677,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         {
             var keyParts = new List<string>(key.Split('.'));
             var currentObject = responseData;
-            
+
             // Step into the object till only 1 key part is left.
             while (keyParts.Count > 1)
             {
@@ -708,12 +708,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 ModuleId = 854
             };
             var deliveryTime = await GetDeliveryTimeAsync(input);
-            
-            // add optional 
+
+            // add optional
             var saveConfigQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationQuery");
             await AddItemDetailsFromQueryToWiserItemModelAsync(saveConfigQuery, configuration, input.QueryStringItems);
 
-            // set up details 
+            // set up details
             configuration.Details.AddRange(new List<WiserItemDetailModel>
             {
                 new() { Key = "quantity", Value = input.Quantity },
@@ -825,7 +825,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     requestJson = await ReplaceConfiguratorItemsAsync(requestJson, input, false);
                     requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
-                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                     requestJson = regex.Replace(requestJson, "null");
 
                     // If there is no request JSON it is useless to do an API call.
@@ -850,16 +850,16 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         Value = requestJson,
                         GroupName = saveApi.Title
                     });
-                    
+
                     var restResponse = await restClient.ExecuteAsync(restRequest);
-                    
+
                     configuration.Details.Add(new WiserItemDetailModel()
                     {
                         Key = "gcl_response",
                         Value = restResponse.Content,
                         GroupName = saveApi.Title
                     });
-                    
+
                     if (!restResponse.IsSuccessful || restResponse.Content == null)
                     {
                         // Save the configuration so the response is logged.
@@ -903,7 +903,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 catch (Exception e)
                 {
                     logger.LogError(e, "Error thrown during the saving of a configuration at an external API.");
-                    
+
                     configuration.Details.Add(new WiserItemDetailModel
                     {
                         Key = "gcl_save_configuration_exception",
@@ -931,14 +931,14 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             {
                 return;
             }
-            
+
             // replace system objects in query
             query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables:false, forQuery:true);
-            
+
             if (parameters is {Count: > 0})
             {
                 query = stringReplacementsService.DoReplacements(query, parameters, forQuery: true);
-                
+
                 foreach (var parameter in parameters)
                 {
                     databaseConnection.AddParameter(parameter.Key, parameter.Value);
@@ -988,7 +988,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
             }
         }
-        
+
         /// <summary>
         /// Add the correct Accept-Language header to the API request if one is provided as system object.
         /// </summary>

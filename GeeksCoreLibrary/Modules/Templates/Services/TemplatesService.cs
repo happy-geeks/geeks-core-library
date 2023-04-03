@@ -627,7 +627,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 return;
             }
 
-            if (!template.Type.InList(TemplateTypes.Css, TemplateTypes.Scss, TemplateTypes.Js) && !String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)))
+            if (!template.Type.InList(TemplateTypes.Css, TemplateTypes.Scss, TemplateTypes.Js) && !String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
             {
                 // Skip this template if it has an URL regex and that regex does not match the current URL.
                 // This is skipped for CSS, SCSS and JS templates, otherwise they might exclude themselves when the
@@ -788,7 +788,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 return input;
             }
 
-            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             foreach (Match m in imageTemplatingRegex.Matches(input))
             {
                 var replacementParameters = m.Groups[1].Value.Split(":");
@@ -863,7 +863,7 @@ ORDER BY id ASC");
                 var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
                 var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
-                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
                 var totalItems = items.Count;
                 var index = 1;
@@ -949,7 +949,7 @@ ORDER BY id ASC");
             while (counter < max && (input.Contains("<[", StringComparison.Ordinal) || input.Contains("[include", StringComparison.Ordinal)))
             {
                 counter += 1;
-                var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -986,7 +986,7 @@ ORDER BY id ASC");
                     }
                 }
 
-                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -1093,7 +1093,7 @@ ORDER BY id ASC");
             {
                 return "";
             }
-            
+
             if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
             {
                 throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
@@ -1232,7 +1232,7 @@ ORDER BY id ASC");
                 query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
             }
 
-            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
             var pusherMatches = pusherRegex.Matches(query);
             foreach (Match match in pusherMatches)
             {
@@ -1298,7 +1298,7 @@ ORDER BY ORDINAL_POSITION ASC";
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
 
                 // Validate the template regex, if it has one.
-                if (!String.IsNullOrWhiteSpace(linkedTemplate.UrlRegex) && !String.IsNullOrWhiteSpace(currentUrl) && !Regex.IsMatch(currentUrl, linkedTemplate.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200)))
+                if (!String.IsNullOrWhiteSpace(linkedTemplate.UrlRegex) && !String.IsNullOrWhiteSpace(currentUrl) && !Regex.IsMatch(currentUrl, linkedTemplate.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
                 {
                     continue;
                 }
@@ -1368,7 +1368,7 @@ ORDER BY ORDINAL_POSITION ASC";
 
                     try
                     {
-                        var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                        var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
                         var match = regex.Match(originalUri.PathAndQuery);
                         if (!match.Success)
                         {
@@ -1386,7 +1386,7 @@ ORDER BY ORDINAL_POSITION ASC";
 
                             // Strip invalid characters that can't be in a file name.
                             var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
-                            
+
                             // Add the group value to the file name.
                             cacheFileName.Append($"{Uri.EscapeDataString(value)}_");
                         }
@@ -1566,12 +1566,12 @@ ORDER BY IFNULL(linkToParent.destination_item_id, 0) ASC, IFNULL(linkToParent.or
         public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
         {
             var results = includeGlobalSnippets ? await templatesService.GetGlobalPageWidgetsAsync() : new List<PageWidgetModel>();
-            
+
             if (templateId <= 0)
             {
                 return results;
             }
-            
+
             var joinPart = "";
             var whereClause = new List<string> { "template.template_id = ?id", "template.removed = 0" };
             if (gclSettings.Environment == Environments.Development)
@@ -1610,7 +1610,7 @@ LIMIT 1";
                 Html = html,
                 Location = (PageWidgetLocations) Convert.ToInt32(dataTable.Rows[0]["widget_location"])
             });
-            
+
             return results;
         }
 
@@ -1626,7 +1626,7 @@ LIMIT 1";
                     return false;
                 }
             }
-            
+
             if (String.Equals("all", logRenderingOfComponentsSetting, StringComparison.OrdinalIgnoreCase) || String.Equals("true", logRenderingOfComponentsSetting, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
@@ -1648,7 +1648,7 @@ LIMIT 1";
                     return false;
                 }
             }
-            
+
             if (String.Equals("all", logRenderingOfTemplatesSetting, StringComparison.OrdinalIgnoreCase) || String.Equals("true", logRenderingOfTemplatesSetting, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
@@ -1664,7 +1664,7 @@ LIMIT 1";
             try
             {
                 var userData = await accountsService.GetUserDataFromCookieAsync();
-                
+
                 var tableName = componentId > 0 ? WiserTableNames.WiserDynamicContentRenderLog : WiserTableNames.WiserTemplateRenderLog;
                 await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {tableName});
                 databaseConnection.AddParameter("rendering_content_id", componentId);
@@ -1687,8 +1687,8 @@ VALUES (?{idParameter}, ?rendering_version, ?rendering_url, ?rendering_environme
             }
             catch (Exception exception)
             {
-                logger.LogError(exception, templateId > 0 
-                    ? $"Error while trying to log the render time of template #{templateId}" 
+                logger.LogError(exception, templateId > 0
+                    ? $"Error while trying to log the render time of template #{templateId}"
                     : $"Error while trying to log the render time of component #{componentId}");
             }
         }

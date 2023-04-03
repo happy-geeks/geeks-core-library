@@ -222,7 +222,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cacheKey = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
                 },
@@ -235,7 +235,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cacheKey = $"GetTemplateIdFromName_{name}_{type}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateIdFromNameAsync(name, type);
                 },
@@ -251,11 +251,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 // This function fills the property "CurrentLanguageCode".
                 await languagesService.GetLanguageCodeAsync();
             }
-            
+
             var cacheKey = $"GeneralTemplateLastChangedDate_{languagesService.CurrentLanguageCode ?? ""}_{templateType}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetGeneralTemplateLastChangedDateAsync(templateType);
                 },
@@ -341,7 +341,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             return templatesService.HandleIncludesAsync(service, input, handleStringReplacements, dataRow, handleRequest, forQuery, templateType);
         }
-        
+
         /// <inheritdoc />
         public Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
         {
@@ -357,11 +357,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 // This function fills the property "CurrentLanguageCode".
                 await languagesService.GetLanguageCodeAsync();
             }
-            
+
             var cacheKey = $"image_template_{languagesService.CurrentLanguageCode ?? ""}_{input.ToSha512Simple()}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.HandleImageTemplating(input);
                 },
@@ -417,7 +417,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         Title = dataRow.Field<string>("title")
                     });
             }
-                        
+
             cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
 
             return dynamicContent;
@@ -507,7 +507,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                     try
                     {
-                        var regex = new Regex(settings.CacheRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                        var regex = new Regex(settings.CacheRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
                         var match = regex.Match(originalUri.PathAndQuery);
                         if (!match.Success)
                         {
@@ -525,7 +525,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                             // Strip invalid characters that can't be in a file name.
                             var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
-                            
+
                             // Add the group value to the file name.
                             cacheKey.Append($"{Uri.EscapeDataString(value)}_");
                         }
@@ -694,7 +694,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cacheKey = $"template_urls_{databaseConnection.GetDatabaseNameForCaching()}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateUrlsAsync();
                 },
@@ -725,7 +725,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cacheKey = $"page_widgets_{databaseConnection.GetDatabaseNameForCaching()}_global";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetGlobalPageWidgetsAsync();
                 },
@@ -744,7 +744,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cacheKey = $"page_widgets_{databaseConnection.GetDatabaseNameForCaching()}_{templateId}_{includeGlobalSnippets}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetPageWidgetsAsync(service, templateId, includeGlobalSnippets);
                 },

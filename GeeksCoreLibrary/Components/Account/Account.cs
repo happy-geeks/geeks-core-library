@@ -47,7 +47,7 @@ namespace GeeksCoreLibrary.Components.Account
         private readonly IObjectsService objectsService;
         private readonly ICommunicationsService communicationsService;
         private readonly IWiserItemsService wiserItemsService;
-        
+
         #region Enums
 
         public enum ComponentModes
@@ -381,7 +381,7 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId));
-            
+
             if (String.IsNullOrEmpty(googleAuthenticationKey))
             {
                 googleAuthenticationKey = Guid.NewGuid().ToString().Replace("-", "");
@@ -390,7 +390,7 @@ namespace GeeksCoreLibrary.Components.Account
                 await AccountsService.Save2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId), googleAuthenticationKey);
                 return (template.ReplaceCaseInsensitive("{googleAuthenticationQrImageUrl}", setupInfo.QrCodeSetupImageUrl), stepNumber);
             }
-            
+
             return (template, stepNumber);
         }
 
@@ -1172,7 +1172,7 @@ namespace GeeksCoreLibrary.Components.Account
             var password = HttpContextHelpers.GetRequestValue(httpContext, Settings.OciPasswordKey);
             if (String.IsNullOrWhiteSpace(hookUrl))
             {
-                //hookUrl = 
+                //hookUrl =
             }*/
         }
 
@@ -1210,7 +1210,7 @@ namespace GeeksCoreLibrary.Components.Account
             var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
             var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType);
             await SaveGoogleClientIdAsync(userId);
-            
+
             var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
             HttpContextHelpers.WriteCookie(HttpContext, Constants.CookieName, cookieValue, offset, isEssential: true);
 
@@ -1770,7 +1770,7 @@ namespace GeeksCoreLibrary.Components.Account
                         WriteToTrace("No googleAuthenticationPin or googleAuthenticationVerificationId given.");
                         return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
                     }
-                    
+
                     var twoFactorAuthenticator = new TwoFactorAuthenticator();
                     var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(loggedInUserId);
                     bool result = twoFactorAuthenticator.ValidateTwoFactorPIN(googleAuthenticationKey, googleAuthenticatorPin);
@@ -2056,7 +2056,7 @@ namespace GeeksCoreLibrary.Components.Account
             // Validate the password with a regex, if we have one.
             if (!String.IsNullOrWhiteSpace(newPassword) && !String.IsNullOrWhiteSpace(Settings.PasswordValidationRegex))
             {
-                var regex = new Regex(Settings.PasswordValidationRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                var regex = new Regex(Settings.PasswordValidationRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 if (!regex.IsMatch(newPassword))
                 {
                     return ResetOrChangePasswordResults.PasswordNotSecure;

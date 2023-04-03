@@ -617,14 +617,14 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             var conceptOrder = new WiserItemModel
             {
                 Id = basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert ? shoppingBasket.Id : 0,
-                EntityType = OrderProcess.Models.Constants.ConceptOrderEntityType, 
+                EntityType = OrderProcess.Models.Constants.ConceptOrderEntityType,
                 Details = new List<WiserItemDetailModel>(shoppingBasket.Details)
             };
 
             if (basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert)
             {
                 await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, shoppingBasket.EntityType, conceptOrder.EntityType, skipPermissionsCheck: true, resetAddedOnDate: true);
-                
+
                 // Change link types if they are different between baskets and orders.
                 if (Constants.BasketLineToBasketLinkType != linkTypeOrderLineToOrder)
                 {
@@ -666,7 +666,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     Details = line.Details,
                     Title = line.Title
                 };
-                
+
                 if (basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert)
                 {
                     await wiserItemsService.ChangeEntityTypeAsync(conceptLine.Id, line.EntityType, conceptLine.EntityType, skipPermissionsCheck: true, resetAddedOnDate: true);
@@ -684,7 +684,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
 
                 conceptLine = await wiserItemsService.SaveAsync(conceptLine, conceptOrder.Id, linkTypeOrderLineToOrder, alwaysSaveValues: true, skipPermissionsCheck: true);
-                
+
                 if (basketToConceptOrderMethod != OrderProcessBasketToConceptOrderMethods.Convert)
                 {
                     if (createItemLinkBetweenBasketLineAndProduct)
@@ -695,7 +695,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                             await wiserItemsService.AddItemLinkAsync(productId, conceptLine.Id, productToBasketLineLinkType, skipPermissionsCheck: true);
                         }
                     }
-                    
+
                     // Check if child item links of the order lines should be copied over to the concept order.
                     var copyBasketLinesLinkedItems = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_CopyLinkedItemsToConceptOrderLines")).Equals("true", StringComparison.OrdinalIgnoreCase);
                     if (copyBasketLinesLinkedItems)
@@ -1077,7 +1077,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             // Strip variables from template if not replaced.
             if (stripNotExistingVariables)
             {
-                var regex = new Regex(@"{[^\]}\s]*}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                var regex = new Regex(@"{[^\]}\s]*}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 template = regex.Replace(template, "");
             }
 
@@ -1401,7 +1401,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             }
 
             logger.LogTrace("Recalculating coupons");
-            
+
             var discountGiven = 0M;
             foreach (var couponCode in couponLines.Select(line => line.GetDetailValue("code")))
             {
@@ -1456,7 +1456,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { couponId });
                 return;
             }
-            
+
             var couponIncludesVat = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_inc_vat", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
             var couponVatRateSetting = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_vat_rate");
 
@@ -2689,7 +2689,7 @@ WHERE coupon.entity_type = 'coupon'", true);
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="shoppingBasket"></param>
         /// <param name="basketLines"></param>
@@ -2700,7 +2700,7 @@ WHERE coupon.entity_type = 'coupon'", true);
         private async Task<HandleCouponResultModel> HandleCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode, bool divideDiscountOverProducts = false)
         {
             var result = new HandleCouponResultModel();
-            
+
             if (String.IsNullOrWhiteSpace(couponCode))
             {
                 result.ResultCode = ShoppingBasket.HandleCouponResults.InvalidCouponCode;
@@ -2729,7 +2729,7 @@ WHERE coupon.entity_type = 'coupon'", true);
         private async Task<HandleCouponResultModel> HandleCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, WiserItemModel coupon, bool divideDiscountOverProducts = false)
         {
             var result = new HandleCouponResultModel { Coupon = coupon };
-            
+
             if (coupon == null || coupon.Id == 0)
             {
                 result.ResultCode = ShoppingBasket.HandleCouponResults.InvalidCouponCode;
@@ -3004,7 +3004,7 @@ WHERE coupon.entity_type = 'coupon'", true);
             {
                 line.SetDetail("type", type);
             }
-            
+
             // Save the price value in the original price property as well.
             if (line.ContainsDetail(settings.PricePropertyName))
             {

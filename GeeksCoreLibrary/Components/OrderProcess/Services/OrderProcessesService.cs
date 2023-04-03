@@ -99,7 +99,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             {
                 throw new ArgumentNullException(nameof(orderProcessId));
             }
-            
+
             var query = @$"SELECT 
                                 orderProcess.id,
 	                            IFNULL(titleSeo.value, orderProcess.title) AS name,
@@ -149,7 +149,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             AND orderProcess.published_environment >= ?publishedEnvironment
                             GROUP BY orderProcess.id
                             LIMIT 1";
-            
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("id", orderProcessId);
             databaseConnection.AddParameter("publishedEnvironment", (int)gclSettings.Environment);
@@ -202,7 +202,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             AND orderProcess.published_environment >= ?publishedEnvironment
                             AND IFNULL(fixedUrl.value, '/payment.html') = ?fixedUrl
                             LIMIT 1";
-            
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("fixedUrl", fixedUrl);
             databaseConnection.AddParameter("publishedEnvironment", (int)gclSettings.Environment);
@@ -315,7 +315,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             databaseConnection.AddParameter("id", orderProcessId);
             var dataTable = await databaseConnection.GetAsync(query);
-            
+
             foreach (DataRow dataRow in dataTable.Rows)
             {
                 // Get the step if it already exists in the results, or create a new one if it doesn't.
@@ -389,13 +389,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     {
                         return k.Value;
                     }
-                    
+
                     return ordering.ToString().PadLeft(11, '0');
                 }).ToDictionary(k => k.Key, k => k.Value);
 
                 // Strip the ordering numbers from the values.
                 fieldValuesDictionary = fieldValuesDictionary.ToDictionary(k => k.Key.Contains("|") ? k.Key[..k.Key.LastIndexOf("|", StringComparison.Ordinal)] : k.Key, k => k.Value.Contains("|") ? k.Value[..k.Value.LastIndexOf("|", StringComparison.Ordinal)] : k.Value);
-                
+
                 // Create a new field model and add it to the current group.
                 var field = new OrderProcessFieldModel
                 {
@@ -447,15 +447,15 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         {
                             throw new Exception($"Invalid save location found for field {field.Id}: {saveLocation}");
                         }
-                        
+
                         field.SaveTo.Add(saveToSettings);
-                        
+
                         if (!saveToSettings.PropertyName.Contains("[") || !saveToSettings.PropertyName.EndsWith("]"))
                         {
                             continue;
                         }
 
-                        // We can indicate what type number to use with adding the suffix "[X]", but we don't need the type number here, so just strip that. 
+                        // We can indicate what type number to use with adding the suffix "[X]", but we don't need the type number here, so just strip that.
                         split = saveToSettings.PropertyName.Split('[');
                         saveToSettings.PropertyName = split.First();
                         var linkTypeString = split.Last().TrimEnd(']');
@@ -581,7 +581,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 if (!String.IsNullOrWhiteSpace(field.Pattern))
                 {
                     // If the field is not mandatory, then it can be empty but must still pass validation if it's not empty.
-                    return (!field.Mandatory && String.IsNullOrEmpty(field.Value)) || Regex.IsMatch(field.Value, field.Pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                    return (!field.Mandatory && String.IsNullOrEmpty(field.Value)) || Regex.IsMatch(field.Value, field.Pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
                 }
 
                 var isValid = field.Mandatory switch
@@ -590,7 +590,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     false when String.IsNullOrWhiteSpace(field.Value) => true,
                     _ => field.InputFieldType switch
                     {
-                        OrderProcessInputTypes.Email => Regex.IsMatch(field.Value, @"(@)(.+)$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(200)),
+                        OrderProcessInputTypes.Email => Regex.IsMatch(field.Value, @"(@)(.+)$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000)),
                         OrderProcessInputTypes.Number => Decimal.TryParse(field.Value, NumberStyles.Any, new CultureInfo("en-US"), out _),
                         _ => true
                     }
@@ -600,7 +600,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 {
                     return isValid;
                 }
-                
+
                 // Check if the entered value is unique.
                 foreach (var saveLocation in field.SaveTo)
                 {
@@ -613,7 +613,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     var itemsOfEntityType = currentItems?.Where(item => String.Equals(item.Item.EntityType, saveLocation.EntityType, StringComparison.CurrentCultureIgnoreCase) && item.LinkSettings.Type == saveLocation.LinkType).ToList();
                     var idsClause = itemsOfEntityType == null || !itemsOfEntityType.Any() ? "" : $"AND item.id NOT IN ({String.Join(",", itemsOfEntityType.Select(item => item.Item.Id))})";
                     var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(saveLocation.EntityType);
-                    
+
                     databaseConnection.AddParameter("entityType", saveLocation.EntityType);
                     databaseConnection.AddParameter("propertyName", saveLocation.PropertyName);
                     databaseConnection.AddParameter("value", field.Value);
@@ -650,7 +650,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             {
                 throw new ArgumentNullException(nameof(paymentMethodId));
             }
-            
+
             var query = $@"SELECT 
 	                            paymentMethod.id AS paymentMethodId,
 	                            paymentMethod.title AS paymentMethodTitle,
@@ -768,7 +768,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     ErrorMessage = $"Invalid payment method '{selectedPaymentMethodId}'"
                 };
             }
-            
+
             paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl;
             paymentMethodSettings.PaymentServiceProvider.SuccessUrl = successUrl;
             paymentMethodSettings.PaymentServiceProvider.PendingUrl = pendingUrl;
@@ -777,7 +777,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             {
                 // Build the webhook URL.
                 UriBuilder webhookUrl;
-                
+
                 var pspWebhookDomain = await objectsService.GetSystemObjectValueAsync("psp_webhook_domain");
 
                 // If a specific webhook domain is set for the PSP always use it.
@@ -878,7 +878,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                     orderId = conceptOrderId;
                 }
-                
+
                 // Add order ID to the URLs for later reference.
                 var queryParameters = new Dictionary<string, string> {{"order", orderId.ToString().Encrypt()}};
                 paymentMethodSettings.PaymentServiceProvider.SuccessUrl = UriHelpers.AddToQueryString(paymentMethodSettings.PaymentServiceProvider.SuccessUrl, queryParameters);
@@ -927,7 +927,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     main.SetDetail(Constants.IsTestOrderProperty, isTestOrder ? 1 : 0);
                     await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
                 }
-                
+
                 // Allow custom code to be executed before we send the user to the PSP and cancel the payment if the code returned false.
                 var beforeOutResult = await orderProcessesService.PaymentRequestBeforeOutAsync(conceptOrders, orderProcessSettings, paymentMethodSettings);
                 if (beforeOutResult is {Successful: false})
@@ -940,7 +940,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     {
                         beforeOutResult.ErrorMessage = "Custom code in PaymentRequestBeforeOutAsync returned an unsuccessful result.";
                     }
-                    
+
                     // Delete the concept order(s) if this failed.
                     await DeleteConceptOrdersAsync(conceptOrders);
 
@@ -1000,7 +1000,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 // Get the correct service based on name.
                 var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Title);
                 paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
-                
+
                 return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, paymentMethodSettings, uniquePaymentNumber);
             }
             catch (Exception exception)
@@ -1115,7 +1115,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 {
                     // Get PDF settings.
                     var pdfSettings = await htmlToPdfConverterService.GetHtmlToPdfSettingsAsync(orderProcessSettings.StatusUpdateInvoiceTemplateId, languagesService.CurrentLanguageCode);
-                    if (!String.IsNullOrWhiteSpace(pdfSettings.Html)) 
+                    if (!String.IsNullOrWhiteSpace(pdfSettings.Html))
                     {
                         pdfSettings.Html = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Html, isForConfirmationEmail: true);
                         pdfSettings.Header = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Header, isForConfirmationEmail: true);
@@ -1148,14 +1148,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 {
                     await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
                 }
-                
+
                 // Allow custom code to be executed before we send the user to the PSP and cancel the payment if the code returned false.
                 var success = await orderProcessesService.PaymentStatusUpdateBeforeCommunicationAsync(main, lines, orderProcessSettings, hasAlreadyBeenConvertedToOrderBefore, isSuccessfulStatus);
                 if (!success)
                 {
                     return false;
                 }
-                
+
                 if (!String.IsNullOrWhiteSpace(userEmailAddress) && !String.IsNullOrWhiteSpace(emailContent))
                 {
                     mailsToSendToUser.Add(new SingleCommunicationModel
@@ -1203,7 +1203,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         await communicationsService.SendEmailAsync(mailToSend);
                     }
                 }
-                
+
                 foreach (var mailToSend in mailsToSendToMerchant)
                 {
                     if (!mailToSend.Receivers.Any() || String.IsNullOrWhiteSpace(mailToSend.Content))
@@ -1237,11 +1237,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             var invoiceNumber = GetInvoiceNumberFromRequest(paymentMethodSettings.PaymentServiceProvider.Type);
             var conceptOrders = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(invoiceNumber);
-            
+
             // Create the correct service for the payment service provider using the factory.
             var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Type);
             paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
-            
+
             // Let the payment service provider service handle the status update.
             var pspUpdateResult = await paymentServiceProviderService.ProcessStatusUpdateAsync(orderProcessSettings, paymentMethodSettings);
 
@@ -1274,7 +1274,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             // Build the fail, success and pending URLs.
             var (failUrl, successUrl, pendingUrl) = BuildUrls(orderProcessSettings, steps);
-            
+
             if (orderProcessSettings == null || orderProcessSettings.Id == 0 || paymentMethodSettings == null || paymentMethodSettings.Id == 0)
             {
                 logger.LogError($"Called HandlePaymentReturnAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}");
@@ -1284,11 +1284,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     ActionData = failUrl
                 };
             }
-            
+
             paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl;
             paymentMethodSettings.PaymentServiceProvider.SuccessUrl = successUrl;
             paymentMethodSettings.PaymentServiceProvider.PendingUrl = pendingUrl;
-            
+
             if (paymentMethodSettings.PaymentServiceProvider.Type == PaymentServiceProviders.Unknown)
             {
                 return new PaymentReturnResult
@@ -1313,7 +1313,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             }
 
             var userData = await accountsService.GetUserDataFromCookieAsync();
-            
+
             var linkTypeOrderToUser = await wiserItemsService.GetLinkTypeAsync(Account.Models.Constants.DefaultEntityType, Constants.OrderEntityType);
             if (linkTypeOrderToUser == 0)
             {
@@ -1458,7 +1458,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 templatePropertyName = Constants.StatusUpdateMailToConsumerProperty;
                 templateItemId = orderProcessSettings.StatusUpdateMailTemplateId;
             }
-            
+
             if (!String.IsNullOrWhiteSpace(conceptOrder.GetDetailValue(templatePropertyName)) && UInt64.TryParse(conceptOrder.GetDetailValue(templatePropertyName), out var idFromOrder) && idFromOrder > 0)
             {
                 templateItemId = idFromOrder;
@@ -1538,10 +1538,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 }
             };
         }
-        
+
         /// <summary>
         /// Gets the invoice number from the request.
-        /// Each PSP sends this number in their own way, this method will get the number from the request based on which PSP is being used.  
+        /// Each PSP sends this number in their own way, this method will get the number from the request based on which PSP is being used.
         /// </summary>
         /// <param name="paymentServiceProvider">The PSP that is being used.</param>
         /// <returns></returns>

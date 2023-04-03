@@ -248,7 +248,7 @@ namespace GeeksCoreLibrary.Core.Cms
 
             if (doVariablesCheck)
             {
-                var expression = new Regex("{.*?}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                var expression = new Regex("{.*?}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 if (expression.IsMatch(queryToUse))
                 {
                     // Don't proceed, query from data selector contains variables, this gives syntax errors.

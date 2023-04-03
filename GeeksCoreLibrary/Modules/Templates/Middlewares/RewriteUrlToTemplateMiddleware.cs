@@ -38,11 +38,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService)
         {
             logger.LogDebug("Invoked RewriteUrlToTemplateMiddleware");
-            
+
             this.objectsService = objectsService;
             this.databaseConnection = databaseConnection;
             this.templatesService = templatesService;
-            
+
             if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
                 // If this happens, it means that another middleware has already found something and we don't need to do this again.
@@ -57,7 +57,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 await this.next.Invoke(context);
                 return;
             }
-            
+
             var queryString = context.Request.QueryString;
             if (!context.Items.ContainsKey(Constants.OriginalPathKey))
             {
@@ -94,7 +94,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             var templatesWithUrls = await templatesService.GetTemplateUrlsAsync();
             foreach (var template in templatesWithUrls)
             {
-                var regex = new Regex(template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                var regex = new Regex(template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 var matchResult = regex.Match(path);
                 if (!matchResult.Success)
                 {
@@ -107,7 +107,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 {
                     queryString = queryString.Add(matchGroup.Name, matchGroup.Value);
                 }
-                
+
                 // Extra query string in the template.
                 queryString = CombineQueryString(queryString, $"?templateId={template.Id}");
                 queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
@@ -155,7 +155,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 var urlMatchLastPart = urlRewrite[(lastIndex + 1)..];
 
                 // Example: ^/informatie/(?<name>.*?)/(?<pname>.*?)/$
-                var regex = new Regex(urlMatchFirstPart, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+                var regex = new Regex(urlMatchFirstPart, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 var matchResult = regex.Match(path);
 
                 if (alsoMatchWithQueryString && !matchResult.Success)

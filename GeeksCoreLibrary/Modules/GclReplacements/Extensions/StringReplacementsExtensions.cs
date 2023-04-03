@@ -202,7 +202,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <returns></returns>
         public static string StripHtml(this string input)
         {
-            var tagRegex = new Regex("<(.|\\n)*?>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            var tagRegex = new Regex("<(.|\\n)*?>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             var scriptRegex = new Regex("<script.*?/script>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             return tagRegex.Replace(scriptRegex.Replace(input, ""), "");
         }
@@ -224,7 +224,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         /// <returns></returns>
         public static string StripInlineStyle(this string input)
         {
-            var regex = new Regex(" ?style=\".*?\"", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            var regex = new Regex(" ?style=\".*?\"", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             return String.IsNullOrEmpty(input) ? input : regex.Replace(input, "");
         }
 
@@ -323,12 +323,12 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
             {
                 throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm, null);
             }
-            
+
             if (!Enum.TryParse<HashRepresentations>(representation, true, out var hashRepresentation))
             {
                 throw new ArgumentOutOfRangeException(nameof(representation), representation, null);
             }
-            
+
             return StringHelpers.HashValue(input, new HashSettingsModel() {Algorithm = hashAlgorithm, Representation = hashRepresentation});
         }
 
