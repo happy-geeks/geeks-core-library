@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
@@ -141,7 +142,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 if (retryCount >= gclSettings.MaximumRetryCountForQueries)
                 {
                     logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                    throw;
+                    throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
                 switch (mySqlException.Number)
@@ -157,7 +158,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         return await GetAsync(query, retryCount + 1);
                     default:
                         logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                        throw;
+                        throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
             }
             finally
@@ -215,7 +216,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 if (retryCount >= gclSettings.MaximumRetryCountForQueries)
                 {
                     logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                    throw;
+                    throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
                 switch (mySqlException.Number)
@@ -230,7 +231,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         return await ExecuteAsync(query, retryCount + 1);
                     default:
                         logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                        throw;
+                        throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
             }
             finally
