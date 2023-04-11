@@ -754,7 +754,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 
             // Replace all variables
             // Get matches like: {customer.address.streetline1}
-            var regex = new Regex("{(.[^}]*)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            var regex = new Regex("{([^};]*[^};\\s])}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             foreach (Match m in regex.Matches(inputString))
             {
                 var value = GetPropertyValue(input, MakeColumnValueFromVariable(m.Value));
