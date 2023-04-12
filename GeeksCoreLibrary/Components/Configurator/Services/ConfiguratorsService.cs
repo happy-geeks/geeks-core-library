@@ -233,6 +233,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                             }
 
                             item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
+
+                            // if variable name isn't set, fill it with title in mysql safe value.
+                            if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["variable_name"].ToString()))
+                            {
+                                item["mainstep_variable_name"] = titleField;
+                            }
                         }
 
                         break;

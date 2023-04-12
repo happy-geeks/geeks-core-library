@@ -40,9 +40,13 @@ namespace GeeksCoreLibrary.Components.Configurator
         public enum ComponentModes
         {
             /// <summary>
-            ///  A default configurator with main steps, steps, substeps and a summary.
+            /// A default configurator with main steps, steps, substeps and a summary.
             /// </summary>
-            Default = 1
+            Default = 1,
+            /// <summary>
+            /// The configurator is in Vue mode. This means that the configurator is rendered in Vue and the component only renders the Vue component.
+            /// </summary>
+            Vue = 2
         }
 
         public enum LegacyComponentMode
@@ -151,12 +155,15 @@ namespace GeeksCoreLibrary.Components.Configurator
                 return new HtmlString("");
             }
 
-            var mainStepCount = 1;
+            var mainStepCount = Settings.ComponentMode == ComponentModes.Vue ? 0 : 1;
             var stepCount = 0;
             var subStepCount = 0;
 
             var currentMainStepName = "";
             var currentStepName = "";
+
+            var mainStepVariableName = "";
+            var stepVariableName = "";
 
             // String builders for building the output HTML.
             var allStepsHtml = new StringBuilder();
@@ -277,7 +284,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     }
 
                     // Create the new step template and clear variables.
-                    stepCount = 0;
+                    stepCount = Settings.ComponentMode == ComponentModes.Vue ? 0 : 1;
                     currentMainStepName = row.Field<string>("mainstepname");
 
                     WriteToTrace($"Starting HTML for new main step. Main step #{mainStepCount}, name: {currentMainStepName}");
@@ -289,7 +296,18 @@ namespace GeeksCoreLibrary.Components.Configurator
                         currentMainStepTemplate = currentMainStepTemplate.Replace("{stepname}", row.Field<string>("mainstepname"));
                         currentMainStepTemplate = await StringReplacementsService.DoAllReplacementsAsync(currentMainStepTemplate, row, removeUnknownVariables: false);
 
-                        currentMainStepHtml = new StringBuilder(currentMainStepTemplate);
+                        currentMainStepHtml.Clear();
+
+                        if (Settings.ComponentMode == ComponentModes.Vue)
+                        {
+                            mainStepVariableName = row.Field<string>("mainstep_variable_name");
+                            currentMainStepHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{mainStepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{mainStepCount}')\" :enabled=\"stepEnabled('{mainStepCount}')\">");
+                        }
+                        currentMainStepHtml.Append(currentMainStepTemplate);
+                        if (Settings.ComponentMode == ComponentModes.Vue)
+                        {
+                            currentMainStepHtml.Append("</step>");
+                        }
                     }
 
                     currentStepsHtml.Clear();
@@ -298,8 +316,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                 if (row.Field<string>("stepname") != currentStepName)
                 {
-                    subStepCount = 0;
-                    stepCount += 1;
+                    subStepCount = Settings.ComponentMode == ComponentModes.Vue ? 0 : 1;
                     currentStepName = row.Field<string>("stepname");
 
                     WriteToTrace($"Starting HTML for new step. Step #{stepCount}, name: {currentStepName}");
@@ -308,6 +325,12 @@ namespace GeeksCoreLibrary.Components.Configurator
                     {
                         var regexMatches = subStepsRegex.Matches(currentStepHtml.ToString()).ToList();
 
+                        if (Settings.ComponentMode == ComponentModes.Vue)
+                        {
+                            stepVariableName = row.Field<string>("variable_name");
+                            var position = $"{mainStepCount}-{stepCount}";
+                            currentStepsHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{position}')\" :enabled=\"stepEnabled('{position}')\">");
+                        }
                         if (regexMatches.Count > 0)
                         {
                             foreach (var match in regexMatches)
@@ -343,34 +366,44 @@ namespace GeeksCoreLibrary.Components.Configurator
                             // The HTML doesn't contain any "{substeps}" variables.
                             currentStepsHtml.Append(currentStepHtml);
                         }
+                        if (Settings.ComponentMode == ComponentModes.Vue)
+                        {
+                            currentStepsHtml.Append("</step>");
+                        }
 
                         currentStepHtml.Clear();
                     }
 
                     currentStepHtml.Append(await RenderStepAsync(currentConfiguratorName, row, mainStepCount, stepCount));
 
+                    stepCount += 1;
+
                     WriteToTrace($"1 - Starting HTML for new sub step. Sub step #{subStepCount}, name: {row.Field<string>("substepname")}");
 
                     currentSubSteps.Clear();
-                    subStepCount += 1;
                     currentSubSteps.Add(new SubStepHtmlModel
                     {
                         Id = Convert.ToUInt64(row["subStepId"]),
                         Name = row.Field<string>("substepname"),
+                        VariableName = row.Field<string>("substep_variable_name"),
+                        Index = subStepCount,
                         Html = await DoRenderingOfSubStepAsync(currentConfiguratorName, row, mainStepCount, stepCount, subStepCount)
                     });
+                    subStepCount += 1;
                 }
                 else
                 {
                     WriteToTrace($"2 - Starting HTML for new sub step. Sub step #{subStepCount}, name: {row.Field<string>("substepname")}");
 
-                    subStepCount += 1;
                     currentSubSteps.Add(new SubStepHtmlModel
                     {
                         Id = Convert.ToUInt64(row["subStepId"]),
                         Name = row.Field<string>("substepname"),
+                        VariableName = row.Field<string>("substep_variable_name"),
+                        Index = subStepCount,
                         Html = await DoRenderingOfSubStepAsync(currentConfiguratorName, row, mainStepCount, stepCount, subStepCount)
                     });
+                    subStepCount += 1;
                 }
             }
 
@@ -379,6 +412,11 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 var regexMatches = subStepsRegex.Matches(currentStepHtml.ToString()).ToList();
 
+                if (Settings.ComponentMode == ComponentModes.Vue)
+                {
+                    var position = $"{mainStepCount}-{stepCount}";
+                    currentStepsHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{position}')\" :enabled=\"stepEnabled('{position}')\">");
+                }
                 if (regexMatches.Count > 0)
                 {
                     foreach (var match in regexMatches)
@@ -397,7 +435,16 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                                 if (subStep == null) continue;
 
+                                if (Settings.ComponentMode == ComponentModes.Vue)
+                                {
+                                    var position = $"{mainStepCount}-{stepCount}-{subStep.Index}";
+                                    currentStepsHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{position}')\" :enabled=\"stepEnabled('{position}')\">");
+                                }
                                 currentSubStepsHtml.Append(subStep.Html);
+                                if (Settings.ComponentMode == ComponentModes.Vue)
+                                {
+                                    currentStepsHtml.Append("</step>");
+                                }
                             }
 
                             currentStepsHtml.Append(currentStepHtml.Replace(match.Value, currentSubStepsHtml.ToString()));
@@ -413,6 +460,10 @@ namespace GeeksCoreLibrary.Components.Configurator
                 {
                     // The HTML doesn't contain any "{substeps}" variables.
                     currentStepsHtml.Append(currentStepHtml);
+                }
+                if (Settings.ComponentMode == ComponentModes.Vue)
+                {
+                    currentStepsHtml.Append("</step>");
                 }
 
                 currentStepHtml.Clear();
