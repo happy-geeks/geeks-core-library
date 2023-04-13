@@ -151,7 +151,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // If we're not in a transaction, retry the query if it's a deadlock.
                 if (MySqlErrorCodesToRetry.Contains(mySqlException.Number))
                 {
-                    Thread.Sleep(100);
+                    Thread.Sleep(200);
                     return await GetAsync(query, retryCount + 1, cleanUp, useWritingConnectionIfAvailable);
                 }
 
