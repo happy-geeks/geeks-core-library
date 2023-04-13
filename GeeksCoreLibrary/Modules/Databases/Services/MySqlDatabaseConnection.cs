@@ -25,7 +25,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 {
     public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     {
-        public const int MaxRetriesAfterDeadlock = 5;
         public static readonly List<int> MySqlErrorCodesToRetry = new()
         {
             (int) MySqlErrorCode.LockDeadlock,
@@ -151,7 +150,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // If we're not in a transaction, retry the query if it's a deadlock.
                 if (MySqlErrorCodesToRetry.Contains(mySqlException.Number))
                 {
-                    Thread.Sleep(200);
+                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     return await GetAsync(query, retryCount + 1, cleanUp, useWritingConnectionIfAvailable);
                 }
 
@@ -223,7 +222,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // If we're not in a transaction, retry the query if it's a deadlock.
                 if (MySqlErrorCodesToRetry.Contains(mySqlException.Number))
                 {
-                    Thread.Sleep(100);
+                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     return await ExecuteAsync(query, retryCount + 1, useWritingConnectionIfAvailable, cleanUp);
                 }
 
@@ -341,7 +340,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // If we're not in a transaction, retry the query if it's a deadlock.
                 if (MySqlErrorCodesToRetry.Contains(mySqlException.Number))
                 {
-                    Thread.Sleep(100);
+                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     return await InsertRecordAsync(query, retryCount + 1, useWritingConnectionIfAvailable);
                 }
 

@@ -4288,11 +4288,11 @@ WHERE id = ?saveDetailId";
                 {
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < MySqlDatabaseConnection.MaxRetriesAfterDeadlock)
+                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
-                        Thread.Sleep(200);
+                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     }
                     else
                     {
