@@ -50,30 +50,32 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             "configurator_step_template"
         };
 
-        private readonly List<(string prefix, string fieldName)> configuratorFields = new List<(string prefix, string fieldName)>
+        private readonly List<(string prefix, string fieldName)> configuratorFields = new()
         {
             ("", "name"), ("", "summary_template"), ("", "summary_mainstep_template"), ("", "summary_step_template"), ("", "progress_pre_template"), ("", "progress_pre_step_template"), ("", "progress_pre_substep_template"), ("", "progress_post_template"), ("", "progress_post_step_template"), ("", "progress_post_substep_template"), ("", "progress_template"), ("", "progress_step_template"),
             ("", "progress_substep_template"), ("configurator_", "free_content1"), ("configurator_", "free_content2"), ("configurator_", "free_content3"), ("configurator_", "free_content4"), ("configurator_", "free_content5"), ("", "template"), ("", "deliverytime_query"), ("", "custom_param_name"), ("", "custom_param_dependencies"), ("", "custom_param_query"), ("", "pre_render_steps_query"),
             ("configurator_", "step_template"), ("", "price_calculation_query")
         };
 
-        private readonly List<(string prefix, string fieldName)> mainStepFields = new List<(string prefix, string fieldName)>
+        private readonly List<(string prefix, string fieldName)> mainStepFields = new()
         {
             ("main", "step_template"), ("", "mainstepname"), ("mainsteps_", "values_template"), ("mainsteps_", "datasource"), ("mainsteps_", "custom_query"), ("mainsteps_", "own_data_values"), ("mainsteps_", "fixed_valuelist"), ("mainsteps_", "datasource_connectedtype"), ("mainsteps_", "datasource_connectedid"), ("mainsteps_", "isrequired"), ("mainsteps_", "check_connectedid"),
             ("mainstep_", "free_content1"), ("mainstep_", "free_content2"), ("mainstep_", "free_content3"), ("mainstep_", "free_content4"), ("mainstep_", "free_content5")
         };
 
-        private readonly List<(string prefix, string fieldName)> stepFields = new List<(string prefix, string fieldName)>
+        private readonly List<(string prefix, string fieldName)> stepFields = new()
         {
             ("", "step_template"), ("", "stepname"), ("", "values_template"), ("", "datasource"), ("", "custom_query"), ("", "own_data_values"), ("", "fixed_valuelist"), ("", "datasource_connectedtype"), ("", "variable_name"), ("", "datasource_connectedid"), ("", "isrequired"), ("", "check_connectedid"), ("step_", "free_content1"), ("step_", "free_content2"), ("step_", "free_content3"),
             ("step_", "free_content4"), ("step_", "free_content5")
         };
 
-        private readonly List<(string prefix, string fieldName)> subStepFields = new List<(string prefix, string fieldName)>
+        private readonly List<(string prefix, string fieldName)> subStepFields = new()
         {
             ("sub", "step_template"), ("", "substepname"), ("substep_", "values_template"), ("substep_", "datasource"), ("substep_", "custom_query"), ("substep_", "own_data_values"), ("substep_", "fixed_valuelist"), ("substep_", "datasource_connectedtype"), ("substep_", "variable_name"), ("substep_", "datasource_connectedid"), ("substep_", "isrequired"), ("substep_", "check_connectedid"),
             ("substep_", "free_content1"), ("substep_", "free_content2"), ("substep_", "free_content3"), ("substep_", "free_content4"), ("substep_", "free_content5")
         };
+
+        private readonly Regex DependencyValuesRegex = new(@"\((?<values>[^\)]+)\)", RegexOptions.Compiled);
 
         public ConfiguratorsService(ILogger<ConfiguratorsService> logger,
             IDatabaseConnection databaseConnection,
@@ -165,11 +167,11 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("gcl_languageCode", languageCode);
             dataTable = await databaseConnection.GetAsync(@$"
-                    SELECT item.id, IFNULL(namePart.`value`, item.title) AS title, item.entity_type, detail.`key`, CONCAT_WS('', detail.`value`, detail.long_value) AS `value`
-                    FROM {WiserTableNames.WiserItem} item
-                    JOIN {WiserTableNames.WiserItemDetail} detail ON detail.item_id = item.id
-                    LEFT JOIN {WiserTableNames.WiserItemDetail} namePart ON namePart.item_id = item.id AND namePart.key = 'title' AND namePart.language_code = ?gcl_languageCode
-                    WHERE item.id IN ({String.Join(",", idList)});");
+                SELECT item.id, IFNULL(namePart.`value`, item.title) AS title, item.entity_type, detail.`key`, CONCAT_WS('', detail.`value`, detail.long_value) AS `value`
+                FROM {WiserTableNames.WiserItem} item
+                JOIN {WiserTableNames.WiserItemDetail} detail ON detail.item_id = item.id
+                LEFT JOIN {WiserTableNames.WiserItemDetail} namePart ON namePart.item_id = item.id AND namePart.key = 'title' AND namePart.language_code = ?gcl_languageCode
+                WHERE item.id IN ({String.Join(",", idList)});");
 
             if (dataTable.Rows.Count == 0)
             {
@@ -219,7 +221,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     {
                         var items = returnDataTable.AsEnumerable().Where(x => Convert.ToUInt64(x["mainStepId"]) == idField);
 
-                        foreach (DataRow item in items)
+                        foreach (var item in items)
                         {
                             if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["mainstepname"].ToString()))
                             {
@@ -394,6 +396,130 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             }
 
             return returnDataTable;
+        }
+
+        /// <inheritdoc />
+        public async Task<VueConfiguratorDataModel> GetVueConfiguratorDataAsync(string name)
+        {
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("name", name);
+            var query = $@"SELECT
+    configuratorId,
+    stepId,
+    stepName,
+    dependencies,
+    CONCAT_WS('-', mainStepOrdering - 1, stepOrdering - 1, subStepOrdering - 1) AS position
+FROM (
+    SELECT
+        configurator.id AS configuratorId,
+        mainStep.id AS stepId,
+        variableName.`value` AS stepName,
+        dependencies.`value` AS dependencies,
+        mainStepLink.ordering AS mainStepOrdering,
+        NULL AS stepOrdering,
+        NULL AS subStepOrdering
+    FROM {WiserTableNames.WiserItem} configurator
+
+    JOIN {WiserTableNames.WiserItemLink} mainStepLink ON mainStepLink.destination_item_id = configurator.id
+    JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} variableName ON variableName.item_id = mainStep.id AND variableName.`key` = 'variable_name'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} dependencies ON dependencies.item_id = mainStep.id AND dependencies.`key` = 'datasource_connectedid'
+
+    WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
+
+    UNION
+
+    SELECT
+        configurator.id AS configuratorId,
+        step.id AS stepId,
+        variableName.`value` AS stepName,
+        dependencies.`value` AS dependencies,
+        mainStepLink.ordering AS mainStepOrdering,
+        stepLink.ordering AS stepOrdering,
+        NULL AS subStepOrdering
+    FROM {WiserTableNames.WiserItem} configurator
+
+    JOIN {WiserTableNames.WiserItemLink} mainStepLink ON mainStepLink.destination_item_id = configurator.id
+    JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
+
+    JOIN {WiserTableNames.WiserItemLink} stepLink ON stepLink.destination_item_id = mainStep.id
+    JOIN {WiserTableNames.WiserItem} step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
+
+    WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
+
+    UNION
+
+    SELECT
+        configurator.id AS configuratorId,
+        subStep.id AS stepId,
+        variableName.`value` AS stepName,
+        dependencies.`value` AS dependencies,
+        mainStepLink.ordering AS mainStepOrdering,
+        stepLink.ordering AS stepOrdering,
+        subStepLink.ordering AS subStepOrdering
+    FROM {WiserTableNames.WiserItem} configurator
+
+    JOIN {WiserTableNames.WiserItemLink} mainStepLink ON mainStepLink.destination_item_id = configurator.id
+    JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
+
+    JOIN {WiserTableNames.WiserItemLink} stepLink ON stepLink.destination_item_id = mainStep.id
+    JOIN {WiserTableNames.WiserItem} step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
+
+    JOIN {WiserTableNames.WiserItemLink} subStepLink ON subStepLink.destination_item_id = step.id
+    JOIN {WiserTableNames.WiserItem} subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = 'substap'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} variableName ON variableName.item_id = subStep.id AND variableName.`key` = 'variable_name'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} dependencies ON dependencies.item_id = subStep.id AND dependencies.`key` = 'datasource_connectedid'
+
+    WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
+) t
+ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+
+            var steps = new List<VueStepDataModel>();
+            foreach (var dataRow in dataTable.Rows.Cast<DataRow>())
+            {
+                // Create dependencies.
+                var dependencies = new List<VueStepDependencyModel>();
+                if (!String.IsNullOrWhiteSpace(dataRow.Field<string>("dependencies")))
+                {
+                    var dependencyArray = dataRow.Field<string>("dependencies").Split(';');
+                    foreach (var dependency in dependencyArray)
+                    {
+                        var dependencyStepName = dependency;
+
+                        // Check if the dependency should also check for the value of the dependency.
+                        List<string> dependencyValues = null;
+                        var dependencyValuesMatch = DependencyValuesRegex.Match(dependency);
+                        if (dependencyValuesMatch.Success)
+                        {
+                            dependencyValues = dependencyValuesMatch.Groups["values"].Captures.Select(c => c.Value).ToList();
+                            dependencyStepName = dependency.Replace(dependencyValuesMatch.Value, String.Empty);
+                        }
+
+                        dependencies.Add(new VueStepDependencyModel
+                        {
+                            StepName = dependencyStepName,
+                            Values = dependencyValues
+                        });
+                    }
+                }
+
+                var step = new VueStepDataModel
+                {
+                    Position = dataRow.Field<string>("position"),
+                    StepName = dataRow.Field<string>("stepName"),
+                    Options = null,
+                    Dependencies = dependencies
+                };
+            }
+
+            return new VueConfiguratorDataModel
+            {
+                StepsData = steps
+            };
         }
 
         /// <inheritdoc />

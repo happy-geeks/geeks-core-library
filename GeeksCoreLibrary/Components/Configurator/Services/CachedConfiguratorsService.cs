@@ -44,19 +44,45 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         /// <inheritdoc />
         public async Task<DataTable> GetConfiguratorDataAsync(string name)
         {
-            var hostName = "";
             var addHostNameToCache = String.Equals(await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_CacheDataByDomain"), "true", StringComparison.OrdinalIgnoreCase);
+
+            var cacheKeyName = new StringBuilder();
+            cacheKeyName.Append("GetConfiguratorDataAsync_");
             if (addHostNameToCache)
             {
                 var httpContext = httpContextAccessor?.HttpContext;
-                hostName = httpContext != null ? HttpContextHelpers.GetHostName(httpContext) : "";
+                var hostName = httpContext != null ? HttpContextHelpers.GetHostName(httpContext) : "";
+                cacheKeyName.Append($"{hostName}_");
             }
-            return await appCache.GetOrAddAsync($"GetConfiguratorDataAsync_{(!String.IsNullOrWhiteSpace(hostName) && addHostNameToCache ? $"{hostName}_" : "")}{name}",
-                                                async cacheEntry =>
-                                                {
-                                                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultConfiguratorsCacheDuration;
-                                                    return await configuratorsService.GetConfiguratorDataAsync(name);
-                                                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Configurators));
+            cacheKeyName.Append(name);
+            
+            return await appCache.GetOrAddAsync(cacheKeyName.ToString(), async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultConfiguratorsCacheDuration;
+                return await configuratorsService.GetConfiguratorDataAsync(name);
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Configurators));
+        }
+
+        /// <inheritdoc />
+        public async Task<VueConfiguratorDataModel> GetVueConfiguratorDataAsync(string name)
+        {
+            var addHostNameToCache = String.Equals(await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_CacheDataByDomain"), "true", StringComparison.OrdinalIgnoreCase);
+
+            var cacheKeyName = new StringBuilder();
+            cacheKeyName.Append("GetVueConfiguratorDataAsync_");
+            if (addHostNameToCache)
+            {
+                var httpContext = httpContextAccessor?.HttpContext;
+                var hostName = httpContext != null ? HttpContextHelpers.GetHostName(httpContext) : "";
+                cacheKeyName.Append($"{hostName}_");
+            }
+            cacheKeyName.Append(name);
+            
+            return await appCache.GetOrAddAsync(cacheKeyName.ToString(), async cacheEntry =>
+            {
+               cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultConfiguratorsCacheDuration;
+               return await configuratorsService.GetVueConfiguratorDataAsync(name);
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Configurators));
         }
 
         /// <inheritdoc />
