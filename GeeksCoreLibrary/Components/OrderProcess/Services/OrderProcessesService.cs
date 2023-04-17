@@ -1389,6 +1389,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 {
                     ApiKey = GetSecretKeyValue(dataRow, "mollieApiKey")
                 },
+                PaymentServiceProviders.PayNl => new PayNLSettingsModel()
+                {
+                    ApiCode = GetSecretKeyValue(dataRow, "payNlApiCode"),
+                    ApiKey = GetSecretKeyValue(dataRow, "payNlApiKey")
+                },
                 _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), paymentServiceProvider.ToString(), "Unsupported value used.")
             };
 
