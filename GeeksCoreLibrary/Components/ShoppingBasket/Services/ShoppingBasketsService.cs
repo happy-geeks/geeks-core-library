@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Enums;
@@ -16,6 +17,7 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -25,6 +27,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MySql.Data.MySqlClient;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 {
@@ -448,7 +451,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                             var userId = user.MainUserId;
                             if (userId == 0)
                             {
-                                userId = accountsService.GetRecentlyCreateAccountId();
+                                userId = accountsService.GetRecentlyCreatedAccountId();
                             }
 
                             if (userId > 0 && !settings.MultipleBasketsPossible && shoppingBasket.EntityType == Constants.BasketEntityType)
@@ -499,51 +502,79 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 newBasket = true;
             }
 
-            if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
-            try
+            var retries = 0;
+            var transactionCompleted = false;
+
+            while (!transactionCompleted)
             {
-                shoppingBasket = await wiserItemsService.SaveAsync(shoppingBasket, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false, skipPermissionsCheck: true);
-
-                var lineIds = new List<ulong>();
-
-                foreach (var line in basketLines)
+                try
                 {
-                    if (String.IsNullOrWhiteSpace(line.EntityType) || line.Id == 0UL)
+                    if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
+                    shoppingBasket = await wiserItemsService.SaveAsync(shoppingBasket, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false, skipPermissionsCheck: true);
+
+                    var lineIds = new List<ulong>();
+
+                    foreach (var line in basketLines)
                     {
-                        line.EntityType = Constants.BasketLineEntityType;
-                        line.AddedBy = "GCL";
+                        if (String.IsNullOrWhiteSpace(line.EntityType) || line.Id == 0UL)
+                        {
+                            line.EntityType = Constants.BasketLineEntityType;
+                            line.AddedBy = "GCL";
+                        }
+
+                        var lineSaveResult = await wiserItemsService.SaveAsync(line, shoppingBasket.Id, Constants.BasketLineToBasketLinkType, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false, skipPermissionsCheck: true);
+                        line.Id = lineSaveResult.Id;
+
+                        lineIds.Add(line.Id);
                     }
 
-                    var lineSaveResult = await wiserItemsService.SaveAsync(line, shoppingBasket.Id, Constants.BasketLineToBasketLinkType, alwaysSaveValues: true, saveHistory: false, createNewTransaction: false, skipPermissionsCheck: true);
-                    line.Id = lineSaveResult.Id;
+                    await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, Constants.BasketLineToBasketLinkType, lineIds, entityType: Constants.BasketLineEntityType, createNewTransaction: false, skipPermissionsCheck: true);
 
-                    lineIds.Add(line.Id);
-                }
-
-                await wiserItemsService.RemoveLinkedItemsAsync(shoppingBasket.Id, Constants.BasketLineToBasketLinkType, lineIds, entityType: Constants.BasketLineEntityType, createNewTransaction: false, skipPermissionsCheck: true);
-
-                if (newBasket)
-                {
-                    if (user is { MainUserId: > 0 })
+                    if (newBasket)
                     {
-                        await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, user.MainUserId, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
+                        if (user is {MainUserId: > 0})
+                        {
+                            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, user.MainUserId, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
+                        }
+                        else
+                        {
+                            var newlyCreatedAccount = accountsService.GetRecentlyCreatedAccountId();
+                            if (newlyCreatedAccount > 0)
+                            {
+                                await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, newlyCreatedAccount, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
+                            }
+                        }
+                    }
+
+                    if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
+                    transactionCompleted = true;
+                }
+                catch (MySqlException mySqlException)
+                {
+                    if (!createNewTransaction)
+                    {
+                        throw;
+                    }
+
+                    await databaseConnection.RollbackTransactionAsync(false);
+
+                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    {
+                        // Exception is a deadlock or something similar, retry the transaction.
+                        retries++;
+                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     }
                     else
                     {
-                        var newlyCreatedAccount = accountsService.GetRecentlyCreateAccountId();
-                        if (newlyCreatedAccount > 0)
-                        {
-                            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, newlyCreatedAccount, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
-                        }
+                        // Exception is not a deadlock, or we reached the maximum amount of retries, rethrow it.
+                        throw;
                     }
                 }
-
-                if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
-            }
-            catch
-            {
-                if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
-                throw;
+                catch
+                {
+                    if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
+                    throw;
+                }
             }
 
             // Write basket item ID to cookie.
@@ -591,7 +622,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
             if (userId == 0UL)
             {
-                userId = accountsService.GetRecentlyCreateAccountId();
+                userId = accountsService.GetRecentlyCreatedAccountId();
                 if (userId == 0UL)
                 {
                     userId = (await wiserItemsService.GetLinkedItemIdsAsync(shoppingBasket.Id, Constants.BasketToUserLinkType, reverse: true, skipPermissionsCheck: true)).FirstOrDefault();
@@ -772,36 +803,59 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         /// <inheritdoc />
         public async Task ConvertConceptOrderToOrderAsync(WiserItemModel conceptOrder, ShoppingBasketCmsSettingsModel settings)
         {
-            try
+            var retries = 0;
+            var transactionCompleted = false;
+
+            while (!transactionCompleted)
             {
-                await databaseConnection.BeginTransactionAsync();
-
-                await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.ConceptOrderEntityType, OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true, resetAddedOnDate: true);
-
-                // Check if there is a AfterCreateConceptOrder query in the templates module and execute this query if present.
-                var afterConvertToOrderQuery = (await templatesService.GetTemplateAsync(0, "AfterConvertToOrder", TemplateTypes.Query)).Content;
-                if (!String.IsNullOrWhiteSpace(afterConvertToOrderQuery))
+                try
                 {
-                    var query = stringReplacementsService.DoSessionReplacements(afterConvertToOrderQuery, true);
+                    await databaseConnection.BeginTransactionAsync();
 
-                    var replacementData = new Dictionary<string, object> { { "orderId", conceptOrder.Id } };
+                    await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.ConceptOrderEntityType, OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true, resetAddedOnDate: true);
 
-                    var orderLineToOrderLinkType = await wiserItemsService.GetLinkTypeAsync(OrderProcess.Models.Constants.OrderEntityType, OrderProcess.Models.Constants.OrderLineEntityType);
-                    var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, orderLineToOrderLinkType, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true);
+                    // Check if there is a AfterCreateConceptOrder query in the templates module and execute this query if present.
+                    var afterConvertToOrderQuery = (await templatesService.GetTemplateAsync(0, "AfterConvertToOrder", TemplateTypes.Query)).Content;
+                    if (!String.IsNullOrWhiteSpace(afterConvertToOrderQuery))
+                    {
+                        var query = stringReplacementsService.DoSessionReplacements(afterConvertToOrderQuery, true);
 
-                    query = stringReplacementsService.DoReplacements(query, replacementData, forQuery: true);
-                    query = await ReplaceBasketInTemplateAsync(conceptOrder, orderLines, settings, query, forQuery: true);
-                    query = stringReplacementsService.DoHttpRequestReplacements(query, true);
+                        var replacementData = new Dictionary<string, object> {{"orderId", conceptOrder.Id}};
 
-                    await databaseConnection.ExecuteAsync(query);
+                        var orderLineToOrderLinkType = await wiserItemsService.GetLinkTypeAsync(OrderProcess.Models.Constants.OrderEntityType, OrderProcess.Models.Constants.OrderLineEntityType);
+                        var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(conceptOrder.Id, orderLineToOrderLinkType, OrderProcess.Models.Constants.OrderLineEntityType, itemIdEntityType: OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true);
+
+                        query = stringReplacementsService.DoReplacements(query, replacementData, forQuery: true);
+                        query = await ReplaceBasketInTemplateAsync(conceptOrder, orderLines, settings, query, forQuery: true);
+                        query = stringReplacementsService.DoHttpRequestReplacements(query, true);
+
+                        await databaseConnection.ExecuteAsync(query);
+                    }
+
+                    await databaseConnection.CommitTransactionAsync();
+                    transactionCompleted = true;
                 }
+                catch (MySqlException mySqlException)
+                {
+                    await databaseConnection.RollbackTransactionAsync(false);
 
-                await databaseConnection.CommitTransactionAsync();
-            }
-            catch
-            {
-                await databaseConnection.RollbackTransactionAsync();
-                throw;
+                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    {
+                        // Exception is a deadlock or something similar, retry the transaction.
+                        retries++;
+                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                    }
+                    else
+                    {
+                        // Exception is not a deadlock, or we reached the maximum amount of retries, rethrow it.
+                        throw;
+                    }
+                }
+                catch
+                {
+                    await databaseConnection.RollbackTransactionAsync(false);
+                    throw;
+                }
             }
         }
 
@@ -1111,7 +1165,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                         }
                         else
                         {
-                            var userId = accountsService.GetRecentlyCreateAccountId();
+                            var userId = accountsService.GetRecentlyCreatedAccountId();
                             if (userId == 0)
                             {
                                 var userEntityType = await objectsService.FindSystemObjectByDomainNameAsync("userEntityType", "relatie");
@@ -1689,67 +1743,95 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         /// <inheritdoc />
         public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null, bool createNewTransaction = true)
         {
-            if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
-            try
+            var retries = 0;
+            var transactionCompleted = false;
+
+            while (!transactionCompleted)
             {
-                if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
+                try
                 {
-                    var sqlQuery = settings.SqlQuery;
-                    sqlQuery = await templatesService.HandleIncludesAsync(sqlQuery, false, null, false, true);
-                    sqlQuery = sqlQuery.Replace("{itemid}", itemId.ToString());
-                    sqlQuery = sqlQuery.Replace("{quantity}", quantity.ToString(CultureInfo.InvariantCulture));
-
-                    sqlQuery = await stringReplacementsService.DoAllReplacementsAsync(sqlQuery, null, true, true, false, true);
-
-                    var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
-                    if (getItemDetailsResult.Rows.Count > 0)
+                    if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
+                    if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
                     {
-                        var details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
+                        var sqlQuery = settings.SqlQuery;
+                        sqlQuery = await templatesService.HandleIncludesAsync(sqlQuery, false, null, false, true);
+                        sqlQuery = sqlQuery.Replace("{itemid}", itemId.ToString());
+                        sqlQuery = sqlQuery.Replace("{quantity}", quantity.ToString(CultureInfo.InvariantCulture));
 
-                        lineDetails ??= new Dictionary<string, string>();
-                        foreach (var (key, value) in details)
+                        sqlQuery = await stringReplacementsService.DoAllReplacementsAsync(sqlQuery, null, true, true, false, true);
+
+                        var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
+                        if (getItemDetailsResult.Rows.Count > 0)
                         {
-                            lineDetails[key] = value;
+                            var details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
+
+                            lineDetails ??= new Dictionary<string, string>();
+                            foreach (var (key, value) in details)
+                            {
+                                lineDetails[key] = value;
+                            }
                         }
                     }
-                }
 
-                var addItemLine = AddLineInternal(basketLines, settings, uniqueId, itemId, quantity, type, lineDetails);
+                    var addItemLine = AddLineInternal(basketLines, settings, uniqueId, itemId, quantity, type, lineDetails);
 
-                // Write changes to database.
-                await SaveAsync(shoppingBasket, basketLines, settings, false);
+                    // Write changes to database.
+                    await SaveAsync(shoppingBasket, basketLines, settings, false);
 
-                var alsoCreateItemLink = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_AlsoCreateItemLinkBetweenBasketLineAndProduct")).Equals("true", StringComparison.OrdinalIgnoreCase);
-                if (alsoCreateItemLink)
-                {
-                    if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_LinkTypeProductToOrderLine", Constants.ProductToOrderLineLinkType.ToString()), out var productToBasketLinkType))
+                    var alsoCreateItemLink = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_AlsoCreateItemLinkBetweenBasketLineAndProduct")).Equals("true", StringComparison.OrdinalIgnoreCase);
+                    if (alsoCreateItemLink)
                     {
-                        productToBasketLinkType = Constants.ProductToOrderLineLinkType;
+                        if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_LinkTypeProductToOrderLine", Constants.ProductToOrderLineLinkType.ToString()), out var productToBasketLinkType))
+                        {
+                            productToBasketLinkType = Constants.ProductToOrderLineLinkType;
+                        }
+
+                        var productId = addItemLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
+                        if (productId > 0)
+                        {
+                            await wiserItemsService.AddItemLinkAsync(productId, addItemLine.Id, productToBasketLinkType, skipPermissionsCheck: true);
+                        }
                     }
 
-                    var productId = addItemLine.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
-                    if (productId > 0)
+                    await ExecuteAddToBasketQuery(shoppingBasket, basketLines, settings);
+
+                    // Reload basket (for getting item details of added item).
+                    if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
                     {
-                        await wiserItemsService.AddItemLinkAsync(productId, addItemLine.Id, productToBasketLinkType, skipPermissionsCheck: true);
+                        (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id);
+                    }
+
+                    await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, type, false);
+
+                    if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
+                    transactionCompleted = true;
+                }
+                catch (MySqlException mySqlException)
+                {
+                    if (!createNewTransaction)
+                    {
+                        throw;
+                    }
+
+                    await databaseConnection.RollbackTransactionAsync(false);
+
+                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    {
+                        // Exception is a deadlock or something similar, retry the transaction.
+                        retries++;
+                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                    }
+                    else
+                    {
+                        // Exception is not a deadlock, or we reached the maximum amount of retries, rethrow it.
+                        throw;
                     }
                 }
-
-                await ExecuteAddToBasketQuery(shoppingBasket, basketLines, settings);
-
-                // Reload basket (for getting item details of added item).
-                if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
+                catch
                 {
-                    (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id);
+                    if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
+                    throw;
                 }
-
-                await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, type, false);
-
-                if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
-            }
-            catch
-            {
-                if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
-                throw;
             }
         }
 
@@ -1761,82 +1843,111 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 return;
             }
 
-            if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
-            try
+            var retries = 0;
+            var transactionCompleted = false;
+
+            while (!transactionCompleted)
             {
-                var createLinksFor = new List<WiserItemModel>();
-                foreach (var item in items)
+                try
                 {
-                    if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
+                    if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
+                    var createLinksFor = new List<WiserItemModel>();
+                    foreach (var item in items)
                     {
-                        var sqlQuery = settings.SqlQuery;
-                        sqlQuery = await templatesService.HandleIncludesAsync(sqlQuery, false, null, false, true);
-                        sqlQuery = sqlQuery.Replace("{itemid}", item.ItemId.ToString());
-                        sqlQuery = sqlQuery.Replace("{quantity}", item.Quantity.ToString(CultureInfo.InvariantCulture));
-
-                        sqlQuery = await stringReplacementsService.DoAllReplacementsAsync(sqlQuery, null, true, true, false, true);
-
-                        var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
-                        if (getItemDetailsResult.Rows.Count > 0)
+                        if (!String.IsNullOrWhiteSpace(settings.SqlQuery))
                         {
-                            var details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
+                            var sqlQuery = settings.SqlQuery;
+                            sqlQuery = await templatesService.HandleIncludesAsync(sqlQuery, false, null, false, true);
+                            sqlQuery = sqlQuery.Replace("{itemid}", item.ItemId.ToString());
+                            sqlQuery = sqlQuery.Replace("{quantity}", item.Quantity.ToString(CultureInfo.InvariantCulture));
 
-                            item.LineDetails ??= new Dictionary<string, string>();
-                            foreach (var (key, value) in details)
+                            sqlQuery = await stringReplacementsService.DoAllReplacementsAsync(sqlQuery, null, true, true, false, true);
+
+                            var getItemDetailsResult = await databaseConnection.GetAsync(sqlQuery, true);
+                            if (getItemDetailsResult.Rows.Count > 0)
                             {
-                                item.LineDetails[key] = value;
+                                var details = getItemDetailsResult.Columns.Cast<DataColumn>().Where(dataColumn => dataColumn.ColumnName != "id").ToDictionary(dataColumn => dataColumn.ColumnName, dataColumn => Convert.ToString(getItemDetailsResult.Rows[0][dataColumn]));
+
+                                item.LineDetails ??= new Dictionary<string, string>();
+                                foreach (var (key, value) in details)
+                                {
+                                    item.LineDetails[key] = value;
+                                }
+                            }
+                        }
+
+                        var addItemLine = AddLineInternal(basketLines, settings, item.UniqueId, item.ItemId, item.Quantity, item.Type, item.LineDetails);
+                        createLinksFor.Add(addItemLine);
+                    }
+
+                    // Write changes to database.
+                    await SaveAsync(shoppingBasket, basketLines, settings, false);
+
+                    if (createLinksFor.Count > 0)
+                    {
+                        var alsoCreateItemLink = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_AlsoCreateItemLinkBetweenBasketLineAndProduct")).Equals("true", StringComparison.OrdinalIgnoreCase);
+                        if (alsoCreateItemLink)
+                        {
+                            if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_LinkTypeProductToOrderLine", Constants.ProductToOrderLineLinkType.ToString()), out var productToBasketLinkType))
+                            {
+                                productToBasketLinkType = Constants.ProductToOrderLineLinkType;
+                            }
+
+                            foreach (var item in createLinksFor)
+                            {
+                                var productId = item.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
+                                if (productId <= 0)
+                                {
+                                    continue;
+                                }
+
+                                await wiserItemsService.AddItemLinkAsync(productId, item.Id, productToBasketLinkType, skipPermissionsCheck: true);
                             }
                         }
                     }
 
-                    var addItemLine = AddLineInternal(basketLines, settings, item.UniqueId, item.ItemId, item.Quantity, item.Type, item.LineDetails);
-                    createLinksFor.Add(addItemLine);
-                }
+                    await ExecuteAddToBasketQuery(shoppingBasket, basketLines, settings);
 
-                // Write changes to database.
-                await SaveAsync(shoppingBasket, basketLines, settings, false);
-
-                if (createLinksFor.Count > 0)
-                {
-                    var alsoCreateItemLink = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_AlsoCreateItemLinkBetweenBasketLineAndProduct")).Equals("true", StringComparison.OrdinalIgnoreCase);
-                    if (alsoCreateItemLink)
+                    if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
                     {
-                        if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_LinkTypeProductToOrderLine", Constants.ProductToOrderLineLinkType.ToString()), out var productToBasketLinkType))
-                        {
-                            productToBasketLinkType = Constants.ProductToOrderLineLinkType;
-                        }
+                        (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id);
+                    }
 
-                        foreach (var item in createLinksFor)
-                        {
-                            var productId = item.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
-                            if (productId <= 0)
-                            {
-                                continue;
-                            }
+                    // Recalculate shipping costs, coupons etc. after getting the extra fields (price can be selected with extra fields query).
+                    await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, items.First().Type, false);
 
-                            await wiserItemsService.AddItemLinkAsync(productId, item.Id, productToBasketLinkType, skipPermissionsCheck: true);
-                        }
+                    if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
+                    transactionCompleted = true;
+                }
+                catch (MySqlException mySqlException)
+                {
+                    if (!createNewTransaction)
+                    {
+                        throw;
+                    }
+
+                    await databaseConnection.RollbackTransactionAsync(false);
+
+                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    {
+                        // Exception is a deadlock or something similar, retry the transaction.
+                        retries++;
+                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                    }
+                    else
+                    {
+                        // Exception is not a deadlock, or we reached the maximum amount of retries, rethrow it.
+                        logger.LogError(mySqlException, "An error occured while trying to add one or more lines to the shopping basket.");
+                        throw;
                     }
                 }
-
-                await ExecuteAddToBasketQuery(shoppingBasket, basketLines, settings);
-
-                if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
+                catch (Exception exception)
                 {
-                    (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id);
+                    logger.LogError(exception, "An error occured while trying to add one or more lines to the shopping basket.");
+
+                    if (createNewTransaction) await databaseConnection.RollbackTransactionAsync(false);
+                    throw;
                 }
-
-                // Recalculate shipping costs, coupons etc. after getting the extra fields (price can be selected with extra fields query).
-                await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, items.First().Type, false);
-
-                if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
-            }
-            catch (Exception exception)
-            {
-                logger.LogError(exception, "An error occured while trying to add one or more lines to the shopping basket.");
-
-                if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
-                throw;
             }
         }
 

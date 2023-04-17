@@ -200,7 +200,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
-        public ulong GetRecentlyCreateAccountId()
+        public ulong GetRecentlyCreatedAccountId()
         {
             var httpContext = httpContextAccessor?.HttpContext;
             if (httpContext == null)
