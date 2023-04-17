@@ -143,7 +143,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // Also, if we've reached the maximum number of retries, don't retry anymore.
                 if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries)
                 {
-                    logger.LogError(mySqlException, $"Error trying to run this query: {query}", query);
+                    logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                     throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
@@ -155,7 +155,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
 
                 // For any other errors, just throw the exception.
-                logger.LogError(mySqlException, $"Error trying to run this query: {query}", query);
+                logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                 throw new GclQueryException("Error trying to run query", query, mySqlException);
             }
             finally
@@ -215,7 +215,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // Also, if we've reached the maximum number of retries, don't retry anymore.
                 if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries)
                 {
-                    logger.LogError(mySqlException, $"Error trying to run this query: {query}", query);
+                    logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                     throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
@@ -227,7 +227,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
 
                 // For any other errors, just throw the exception.
-                logger.LogError(mySqlException, $"Error trying to run this query: {query}", query);
+                logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                 throw new GclQueryException("Error trying to run query", query, mySqlException);
             }
             finally
@@ -333,7 +333,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // Also, if we've reached the maximum number of retries, don't retry anymore.
                 if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries)
                 {
-                    logger.LogError(mySqlException, $"Error trying to run this query: {query}", query);
+                    logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                     throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
@@ -345,7 +345,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
 
                 // For any other errors, just throw the exception.
-                logger.LogError(mySqlException, $"Error trying to run this query: {query}", query);
+                logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                 throw new GclQueryException("Error trying to run query", query, mySqlException);
             }
             finally

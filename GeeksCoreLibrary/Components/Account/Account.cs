@@ -796,7 +796,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 var userData = await AccountsService.GetUserDataFromCookieAsync();
-                var query = SetupAccountQuery(Settings.MainQuery, userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreateAccountId());
+                var query = SetupAccountQuery(Settings.MainQuery, userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreatedAccountId());
                 var accountDataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 var availableFields = new List<string>();
 
@@ -852,7 +852,7 @@ namespace GeeksCoreLibrary.Components.Account
                             try
                             {
                                 await DatabaseConnection.BeginTransactionAsync();
-                                createOrUpdateAccountResult = await CreateOrUpdateAccountAsync(userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreateAccountId(), availableFields, useTransaction: false);
+                                createOrUpdateAccountResult = await CreateOrUpdateAccountAsync(userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreatedAccountId(), availableFields, useTransaction: false);
 
                                 if (createOrUpdateAccountResult.UserId > 0 && userData.UserId == 0)
                                 {
