@@ -7,5 +7,5 @@ public class VueConfiguratorDataModel
     /// <summary>
     /// Gets or sets the steps data.
     /// </summary>
-    public IEnumerable<VueStepDataModel> StepsData { get; set; }
+    public IList<VueStepDataModel> StepsData { get; set; }
 }

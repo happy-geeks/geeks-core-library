@@ -34,6 +34,7 @@ namespace GeeksCoreLibrary.Components.Configurator
     public class Configurator : CmsComponent<ConfiguratorCmsSettingsModel, Configurator.LegacyComponentMode>
     {
         #region Enums
+
         /// <summary>
         /// Modes that the <see cref="Configurator"/> component can be in.
         /// </summary>
@@ -69,6 +70,7 @@ namespace GeeksCoreLibrary.Components.Configurator
         #endregion
 
         #region Constructor
+
         public static LegacyComponentMode ParseComponentMode(string dynamicContentName)
         {
             return dynamicContentName switch
@@ -91,9 +93,11 @@ namespace GeeksCoreLibrary.Components.Configurator
             Settings = new ConfiguratorCmsSettingsModel();
             TemplatesService = templatesService;
         }
+
         #endregion
 
         #region Handling settings
+
         /// <inheritdoc />
         public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
         {
@@ -1165,6 +1169,34 @@ namespace GeeksCoreLibrary.Components.Configurator
         }
 
         #endregion
+        
+        #region Data retrieval
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="stepName"></param>
+        /// <param name="stepQuery"></param>
+        /// <param name="configuration"></param>
+        /// <returns></returns>
+        public async Task<IList<IDictionary<string, object>>> GetVueStepOptionsAsync(string stepName, string stepQuery, ConfigurationsModel configuration = null)
+        {
+            var result = new List<IDictionary<string, object>>();
+
+            var query = stepQuery;
+            query =  await configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration, true);
+            query = await TemplatesService.HandleIncludesAsync(query, false, null, false, true);
+            query = await StringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
+
+            var dataTable = await DatabaseConnection.GetAsync(query);
+            if (dataTable is not { Rows.Count: > 0 }) return result;
+
+            result.AddRange(dataTable.Rows.Cast<DataRow>().Select(dataRow => dataTable.Columns.Cast<DataColumn>().ToDictionary(column => column.ColumnName, column => dataRow[column])));
+
+            return result;
+        }
+        
+        #endregion
 
         #region Web methods
 
@@ -1494,8 +1526,6 @@ namespace GeeksCoreLibrary.Components.Configurator
 
         private async Task<VueConfiguratorDataModel> GetConfiguratorData(List<string> steps, ConfigurationsModel configuration)
         {
-            var result = new VueConfiguratorDataModel();
-
             WriteToTrace("Start render steps");
 
             if (steps == null)
@@ -1506,17 +1536,29 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
-            var dataTable = await configuratorsService.GetConfiguratorDataAsync(configuration.Configurator);
-            if (dataTable == null || dataTable.Rows.Count == 0)
+            var result = await configuratorsService.GetVueConfiguratorDataAsync(configuration.Configurator);
+            if (result == null || result.StepsData.Count == 0)
             {
                 return result;
             }
 
-            var stepsData = new List<VueStepDataModel>();
-            
+            // Update options.
+            foreach (var step in steps)
+            {
+                var stepData = result.StepsData.FirstOrDefault(x => x.StepName == step);
+                if (stepData == null)
+                {
+                    continue;
+                }
 
-            // Set the final values.
-            result.StepsData = stepsData;
+                /*var stepOptions = await GetVueStepOptionsAsync(step, configuration);
+                if (stepOptions == null)
+                {
+                    continue;
+                }
+
+                stepData.Options = stepOptions;*/
+            }
 
             return result;
         }
