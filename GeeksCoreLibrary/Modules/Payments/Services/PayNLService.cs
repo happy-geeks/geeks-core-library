@@ -81,10 +81,55 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
         };
     }
 
-    public Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings,
+    public async Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings,
         PaymentMethodSettingsModel paymentMethodSettings)
     {
-        throw new System.NotImplementedException();
+        if (httpContextAccessor?.HttpContext == null)
+        {
+            return new StatusUpdateResult
+            {
+                Successful = false,
+                Status = "Error retrieving status: No HttpContext available."
+            };
+        }
+        
+        // The settings have been checked during transaction creation so we don't do so again
+        var payNlSettings = (PayNLSettingsModel)paymentMethodSettings.PaymentServiceProvider;
+        
+        var restClient = CreateRestClient(payNlSettings);
+        var payNlTransactionId = httpContextAccessor.HttpContext.Request.Form["id"];
+        var restRequest = new RestRequest($"/v2/transactions/{payNlTransactionId}");
+        var restResponse = await restClient.ExecuteAsync(restRequest);
+        if (restResponse.StatusCode != HttpStatusCode.OK)
+        {
+            return new StatusUpdateResult
+            {
+                Successful = false,
+                Status = "error"
+            };
+        }
+        var responseJson = JObject.Parse(restResponse.Content);
+        var status = responseJson["status"]?["action"]?.ToString();
+        
+        if (String.IsNullOrWhiteSpace(status))
+        {
+            await LogIncomingPaymentActionAsync(PaymentServiceProviders.PayNl, String.Empty, (int)restResponse.StatusCode, responseBody: restResponse.Content);
+            return new StatusUpdateResult
+            {
+                Successful = false,
+                Status = "error"
+            };
+        }
+        
+        var invoiceNumber = responseJson["orderId"]?.ToString();
+
+        await LogIncomingPaymentActionAsync(PaymentServiceProviders.PayNl, invoiceNumber, (int)restResponse.StatusCode, responseBody: restResponse.Content);
+
+        return new StatusUpdateResult
+        {
+            Successful = status.Equals("paid", StringComparison.OrdinalIgnoreCase),
+            Status = status
+        };
     }
 
     private static RestClient CreateRestClient(PayNLSettingsModel payNlSettings) =>
