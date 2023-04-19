@@ -33,7 +33,7 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
     private readonly GclSettings gclSettings;
     private readonly IShoppingBasketsService shoppingBasketsService;
 
-    protected PayNlService(
+    public PayNlService(
         IDatabaseHelpersService databaseHelpersService, 
         IDatabaseConnection databaseConnection, 
         ILogger<PaymentServiceProviderBaseService> logger, 
