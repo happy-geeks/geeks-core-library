@@ -26,8 +26,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services;
 public class PayNlService : PaymentServiceProviderBaseService, IPaymentServiceProviderService, IScopedService
 {
     private const string BaseUrl = "https://rest.pay.nl/";
-    private readonly IDatabaseHelpersService databaseHelpersService;
-    private readonly IDatabaseConnection databaseConnection;
     private readonly ILogger<PaymentServiceProviderBaseService> logger;
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly GclSettings gclSettings;
@@ -37,10 +35,10 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
         IDatabaseHelpersService databaseHelpersService, 
         IDatabaseConnection databaseConnection, 
         ILogger<PaymentServiceProviderBaseService> logger, 
-        IOptions<GclSettings> gclSettings, IShoppingBasketsService shoppingBasketsService, IHttpContextAccessor httpContextAccessor = null) : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
+        IOptions<GclSettings> gclSettings, 
+        IShoppingBasketsService shoppingBasketsService, 
+        IHttpContextAccessor httpContextAccessor = null) : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
     {
-        this.databaseHelpersService = databaseHelpersService;
-        this.databaseConnection = databaseConnection;
         this.logger = logger;
         this.shoppingBasketsService = shoppingBasketsService;
         this.gclSettings = gclSettings.Value;
@@ -51,7 +49,6 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
         PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
     {
         var payNlSettings = (PayNLSettingsModel)paymentMethodSettings.PaymentServiceProvider;
-
         var validationResult = ValidatePayNLSettings(payNlSettings);
         if (!validationResult.Valid)
         {
