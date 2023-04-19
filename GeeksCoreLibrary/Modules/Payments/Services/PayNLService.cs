@@ -6,6 +6,8 @@ using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
@@ -23,7 +25,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services;
 /// <inheritdoc cref="IPaymentServiceProviderService" />
 public class PayNlService : PaymentServiceProviderBaseService, IPaymentServiceProviderService, IScopedService
 {
-    private static readonly string BaseUrl = "https://rest.pay.nl/";
+    private const string BaseUrl = "https://rest.pay.nl/";
     private readonly IDatabaseHelpersService databaseHelpersService;
     private readonly IDatabaseConnection databaseConnection;
     private readonly ILogger<PaymentServiceProviderBaseService> logger;
@@ -48,34 +50,12 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
     public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, WiserItemModel userDetails,
         PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
     {
-        var basketSettings = await shoppingBasketsService.GetSettingsAsync();
-        
-        var totalPrice = 0M;
-        foreach (var (main, lines) in conceptOrders)
-        {
-            totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, ShoppingBasket.PriceTypes.PspPriceInVat);
-        }
-
         var payNlSettings = (PayNLSettingsModel)paymentMethodSettings.PaymentServiceProvider;
 
-        // Build and execute payment request.
-        var restClient = new RestClient(new RestClientOptions(BaseUrl)
+        var validationResult = ValidatePayNLSettings(payNlSettings);
+        if (!validationResult.Valid)
         {
-            Authenticator = new HttpBasicAuthenticator(payNlSettings.ApiCode, payNlSettings.ApiKey)
-        });
-        
-        var restRequest = new RestRequest("/v2/transactions", Method.Post);
-        
-        // PayNL expects the price in euro cents
-        restRequest.AddParameter("amount", (int)Math.Round(totalPrice * 100), ParameterType.GetOrPost);
-        
-        restRequest.AddParameter("description", payNlSettings.Title, ParameterType.GetOrPost);
-        restRequest.AddParameter("returnUrl", payNlSettings.ReturnUrl, ParameterType.GetOrPost);
-
-        var restResponse = await restClient.ExecuteAsync(restRequest);
-
-        if (restResponse.StatusCode != HttpStatusCode.Created)
-        {
+            logger.LogError(validationResult.Message);
             return new PaymentRequestResult
             {
                 Successful = false,
@@ -83,13 +63,21 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
                 ActionData = payNlSettings.FailUrl
             };
         }
-        
+
+        var totalPrice = await CalculatePriceAsync(conceptOrders);
+
+        // Build and execute payment request.
+        var restClient = CreateRestClient(payNlSettings);
+        var restRequest = CreateTransactionStartRequest(totalPrice, payNlSettings, invoiceNumber);
+        var restResponse = await restClient.ExecuteAsync(restRequest);
         var responseJson = JObject.Parse(restResponse.Content);
+        var responseSuccessful = restResponse.StatusCode == HttpStatusCode.Created;
+        
         return new PaymentRequestResult
         {
-            Successful = true,
+            Successful = responseSuccessful,
             Action = PaymentRequestActions.Redirect,
-            ActionData = responseJson["_links"]?["checkout"]?["href"]?.ToString()
+            ActionData = (responseSuccessful) ? responseJson["paymentUrl"]?.ToString() : payNlSettings.FailUrl
         };
     }
 
@@ -97,5 +85,63 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
         PaymentMethodSettingsModel paymentMethodSettings)
     {
         throw new System.NotImplementedException();
+    }
+
+    private static RestClient CreateRestClient(PayNLSettingsModel payNlSettings) =>
+        new RestClient(new RestClientOptions(BaseUrl)
+        {
+            Authenticator = new HttpBasicAuthenticator(payNlSettings.Username, payNlSettings.Password)
+        });
+
+    private async Task<decimal> CalculatePriceAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders)
+    {
+        var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+
+        var totalPrice = 0M;
+        foreach (var (main, lines) in conceptOrders)
+        {
+            totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, ShoppingBasket.PriceTypes.PspPriceInVat);
+        }
+
+        return totalPrice;
+    }
+
+    private (bool Valid, string Message) ValidatePayNLSettings(PayNLSettingsModel payNlSettings)
+    {
+        if (String.IsNullOrEmpty(payNlSettings.Username) || String.IsNullOrEmpty(payNlSettings.Password))
+        {
+            return (false, "PayNL misconfigured: No username or password set.");
+        }
+
+        if (payNlSettings.Username.StartsWith("AT-") && String.IsNullOrEmpty(payNlSettings.ServiceId))
+        {
+            return (false, "PayNL misconfigured: Username is an AT-code but no ServiceId is set.");
+        }
+
+        return (true, null);
+    }
+
+    private RestRequest CreateTransactionStartRequest(decimal totalPrice, PayNLSettingsModel payNlSettings, string invoiceNumber)
+    {
+        var restRequest = new RestRequest("/v2/transactions", Method.Post);
+
+        restRequest.AddJsonBody(new
+        {
+            serviceId = payNlSettings.ServiceId,
+            amount = new
+            {
+                value = (int)Math.Round(totalPrice * 100),
+                currency = payNlSettings.Currency
+            },
+            description = $"Order #{invoiceNumber}",
+            returnUrl = payNlSettings.ReturnUrl,
+            exchangeUrl = payNlSettings.WebhookUrl,
+            integration = new
+            {
+                testMode = gclSettings.Environment.InList(Environments.Test, Environments.Development)
+            }
+        });
+
+        return restRequest;
     }
 }
