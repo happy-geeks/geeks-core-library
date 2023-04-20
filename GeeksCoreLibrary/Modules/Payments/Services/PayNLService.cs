@@ -92,7 +92,6 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
                 Status = "Error retrieving status: No HttpContext available."
             };
         }
-        
         // The settings have been checked during transaction creation so we don't do so again
         var payNlSettings = (PayNLSettingsModel)paymentMethodSettings.PaymentServiceProvider;
         
