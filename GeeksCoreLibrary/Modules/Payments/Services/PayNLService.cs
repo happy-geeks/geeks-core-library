@@ -13,6 +13,7 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Models;
+using GeeksCoreLibrary.Modules.Payments.Models.PayNL;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -30,7 +31,7 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly GclSettings gclSettings;
     private readonly IShoppingBasketsService shoppingBasketsService;
-
+    
     public PayNlService(
         IDatabaseHelpersService databaseHelpersService, 
         IDatabaseConnection databaseConnection, 
@@ -45,6 +46,7 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
         this.httpContextAccessor = httpContextAccessor;
     }
 
+    /// <inheritdoc />
     public async Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, WiserItemModel userDetails,
         PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
     {
@@ -52,7 +54,7 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
         var validationResult = ValidatePayNLSettings(payNlSettings);
         if (!validationResult.Valid)
         {
-            logger.LogError(validationResult.Message);
+            logger.LogError("Validation in 'HandlePaymentRequestAsync' of 'PayNlService' failed because: {Message}", validationResult.Message);
             return new PaymentRequestResult
             {
                 Successful = false,
@@ -78,6 +80,7 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
         };
     }
 
+    /// <inheritdoc />
     public async Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings,
         PaymentMethodSettingsModel paymentMethodSettings)
     {
@@ -97,6 +100,7 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
         var payNlTransactionId = httpContextAccessor.HttpContext.Request.Form["id"];
         var restRequest = new RestRequest($"/v2/transactions/{payNlTransactionId}");
         var restResponse = await restClient.ExecuteAsync(restRequest);
+        
         if (restResponse.StatusCode != HttpStatusCode.OK)
         {
             return new StatusUpdateResult
@@ -129,11 +133,13 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
         };
     }
 
-    private static RestClient CreateRestClient(PayNLSettingsModel payNlSettings) =>
-        new RestClient(new RestClientOptions(BaseUrl)
+    private static RestClient CreateRestClient(PayNLSettingsModel payNlSettings)
+    {
+        return new RestClient(new RestClientOptions(BaseUrl)
         {
             Authenticator = new HttpBasicAuthenticator(payNlSettings.Username, payNlSettings.Password)
         });
+    }
 
     private async Task<decimal> CalculatePriceAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders)
     {
@@ -167,20 +173,20 @@ public class PayNlService : PaymentServiceProviderBaseService, IPaymentServicePr
     {
         var restRequest = new RestRequest("/v2/transactions", Method.Post);
 
-        restRequest.AddJsonBody(new
+        restRequest.AddJsonBody(new TransactionStartBody()
         {
-            serviceId = payNlSettings.ServiceId,
-            amount = new
+            ServiceId = payNlSettings.ServiceId,
+            Amount = new Amount()
             {
-                value = (int)Math.Round(totalPrice * 100),
-                currency = payNlSettings.Currency
+                Value = (int)Math.Round(totalPrice * 100),
+                Currency = payNlSettings.Currency
             },
-            description = $"Order #{invoiceNumber}",
-            returnUrl = payNlSettings.ReturnUrl,
-            exchangeUrl = payNlSettings.WebhookUrl,
-            integration = new
+            Description = $"Order #{invoiceNumber}",
+            ReturnUrl = payNlSettings.ReturnUrl,
+            ExchangeUrl = payNlSettings.WebhookUrl,
+            Integration = new Integration()
             {
-                testMode = gclSettings.Environment.InList(Environments.Test, Environments.Development)
+                TestMode = gclSettings.Environment.InList(Environments.Test, Environments.Development)
             }
         });
 
