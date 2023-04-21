@@ -1524,10 +1524,18 @@ namespace GeeksCoreLibrary.Components.Configurator
             return customParameter;
         }
 
-        private async Task<VueConfiguratorDataModel> GetConfiguratorData(List<string> steps, ConfigurationsModel configuration)
+        /// <summary>
+        /// Retrieve configurator data for the Vue configurator.
+        /// </summary>
+        /// <param name="steps">The names of the steps to update.</param>
+        /// <param name="configuration">The current configuration from the client-side.</param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"><paramref name="steps"/> or <paramref name="configuration"/> is null.</exception>
+        public async Task<VueConfiguratorDataModel> GetConfiguratorData(List<string> steps, ConfigurationsModel configuration)
         {
-            WriteToTrace("Start render steps");
+            WriteToTrace("Retrieving configurator data for Vue");
 
+            // Validate parameters.
             if (steps == null)
             {
                 throw new ArgumentNullException(nameof(steps));
@@ -1542,8 +1550,14 @@ namespace GeeksCoreLibrary.Components.Configurator
                 return result;
             }
 
+            var stepsToProcess = new List<string>();
+            if (steps.Count == 0)
+            {
+                stepsToProcess = result.StepsData.Select(stepDataModel => stepDataModel.StepName).ToList();
+            }
+
             // Update options.
-            foreach (var step in steps)
+            foreach (var step in stepsToProcess)
             {
                 var stepData = result.StepsData.FirstOrDefault(x => x.StepName == step);
                 if (stepData == null)
@@ -1551,13 +1565,35 @@ namespace GeeksCoreLibrary.Components.Configurator
                     continue;
                 }
 
-                /*var stepOptions = await GetVueStepOptionsAsync(step, configuration);
-                if (stepOptions == null)
+                var options = new List<Dictionary<string, object>>();
+
+                var dataQuery = stepData.DataQuery;
+                if (String.IsNullOrWhiteSpace(dataQuery))
                 {
+                    stepData.Options = options;
                     continue;
                 }
 
-                stepData.Options = stepOptions;*/
+                dataQuery = await configuratorsService.ReplaceConfiguratorItemsAsync(dataQuery, configuration, true);
+                dataQuery = await TemplatesService.HandleIncludesAsync(dataQuery, false, null, false, true);
+                dataQuery = await StringReplacementsService.DoAllReplacementsAsync(dataQuery, null, true, true, false, true);
+                var dataTable = await DatabaseConnection.GetAsync(dataQuery);
+                if (dataTable.Rows.Count == 0)
+                {
+                    stepData.Options = options;
+                    continue;
+                }
+
+                foreach (var dataRow in dataTable.Rows.Cast<DataRow>())
+                {
+                    options.Add(new Dictionary<string, object>(dataTable.Columns.Count));
+                    foreach (var dataColumn in dataTable.Columns.Cast<DataColumn>())
+                    {
+                        options.Last()[dataColumn.ColumnName] = dataRow[dataColumn];
+                    }
+                }
+
+                stepData.Options = options;
             }
 
             return result;

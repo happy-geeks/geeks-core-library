@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -44,7 +45,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             "progress_post_substep_template", "progress_template", "progress_step_template", "progress_substep_template", "name", "configurator_free_content1", "configurator_free_content2", "configurator_free_content3", "configurator_free_content4",
             "configurator_free_content5", "template", "price_calculation_query", "deliverytime_query", "custom_param_name", "custom_param_dependencies", "custom_param_query", "pre_render_steps_query", "mainstep_template", "mainstepname", "mainsteps_values_template", "mainsteps_datasource", "mainsteps_custom_query", "mainsteps_own_data_values", "mainsteps_fixed_valuelist",
             "mainsteps_datasource_connectedtype", "mainsteps_datasource_connectedid", "mainsteps_isrequired", "mainsteps_check_connectedid", "mainstep_free_content1", "mainstep_free_content2", "mainstep_free_content3",
-            "mainstep_free_content4", "mainstep_free_content5", "step_template", "stepname", "values_template", "datasource", "custom_query", "own_data_values", "fixed_valuelist", "datasource_connectedtype", "variable_name", "step_free_content1", "step_free_content2", "step_free_content3", "step_free_content4", "step_free_content5", "datasource_connectedid", "isrequired", "check_connectedid",
+            "mainstep_free_content4", "mainstep_free_content5", "mainstep_variable_name", "step_template", "stepname", "values_template", "datasource", "custom_query", "own_data_values", "fixed_valuelist", "datasource_connectedtype", "variable_name", "step_free_content1", "step_free_content2", "step_free_content3", "step_free_content4", "step_free_content5", "datasource_connectedid", "isrequired", "check_connectedid",
             "substepname", "substep_template", "substep_values_template", "substep_datasource",
             "substep_custom_query", "substep_own_data_values", "substep_fixed_valuelist", "substep_datasource_connectedtype", "substep_variable_name", "substep_datasource_connectedid", "substep_isrequired", "substep_check_connectedid", "substep_free_content1", "substep_free_content2", "substep_free_content3", "substep_free_content4", "substep_free_content5", "urlregex",
             "configurator_step_template"
@@ -59,7 +60,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 
         private readonly List<(string prefix, string fieldName)> mainStepFields = new()
         {
-            ("main", "step_template"), ("", "mainstepname"), ("mainsteps_", "values_template"), ("mainsteps_", "datasource"), ("mainsteps_", "custom_query"), ("mainsteps_", "own_data_values"), ("mainsteps_", "fixed_valuelist"), ("mainsteps_", "datasource_connectedtype"), ("mainsteps_", "datasource_connectedid"), ("mainsteps_", "isrequired"), ("mainsteps_", "check_connectedid"),
+            ("main", "step_template"), ("", "mainstepname"), ("mainsteps_", "values_template"), ("mainsteps_", "datasource"), ("mainsteps_", "custom_query"), ("mainsteps_", "own_data_values"), ("mainsteps_", "fixed_valuelist"), ("mainsteps_", "datasource_connectedtype"), ("mainstep_", "variable_name"), ("mainsteps_", "datasource_connectedid"), ("mainsteps_", "isrequired"), ("mainsteps_", "check_connectedid"),
             ("mainstep_", "free_content1"), ("mainstep_", "free_content2"), ("mainstep_", "free_content3"), ("mainstep_", "free_content4"), ("mainstep_", "free_content5")
         };
 
@@ -237,7 +238,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                             item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
 
                             // if variable name isn't set, fill it with title in mysql safe value.
-                            if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["variable_name"].ToString()))
+                            if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["mainstep_variable_name"].ToString()))
                             {
                                 item["mainstep_variable_name"] = titleField;
                             }
@@ -406,15 +407,19 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             var query = $@"SELECT
     configuratorId,
     stepId,
+    stepTitle,
     stepName,
     dependencies,
+    dataQuery,
     CONCAT_WS('-', mainStepOrdering - 1, stepOrdering - 1, subStepOrdering - 1) AS position
 FROM (
     SELECT
         configurator.id AS configuratorId,
         mainStep.id AS stepId,
+        mainStep.title AS stepTitle,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
         mainStepLink.ordering AS mainStepOrdering,
         NULL AS stepOrdering,
         NULL AS subStepOrdering
@@ -424,6 +429,7 @@ FROM (
     JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
     LEFT JOIN {WiserTableNames.WiserItemDetail} variableName ON variableName.item_id = mainStep.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} dependencies ON dependencies.item_id = mainStep.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} dataQuery ON dataQuery.item_id = mainStep.id AND dataQuery.`key` = 'custom_query'
 
     WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
 
@@ -432,8 +438,10 @@ FROM (
     SELECT
         configurator.id AS configuratorId,
         step.id AS stepId,
+        step.title AS stepTitle,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
         mainStepLink.ordering AS mainStepOrdering,
         stepLink.ordering AS stepOrdering,
         NULL AS subStepOrdering
@@ -446,6 +454,7 @@ FROM (
     JOIN {WiserTableNames.WiserItem} step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
     LEFT JOIN {WiserTableNames.WiserItemDetail} variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} dataQuery ON dataQuery.item_id = step.id AND dataQuery.`key` = 'custom_query'
 
     WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
 
@@ -454,8 +463,10 @@ FROM (
     SELECT
         configurator.id AS configuratorId,
         subStep.id AS stepId,
+        subStep.title AS stepTitle,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
         mainStepLink.ordering AS mainStepOrdering,
         stepLink.ordering AS stepOrdering,
         subStepLink.ordering AS subStepOrdering
@@ -471,6 +482,7 @@ FROM (
     JOIN {WiserTableNames.WiserItem} subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = 'substap'
     LEFT JOIN {WiserTableNames.WiserItemDetail} variableName ON variableName.item_id = subStep.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} dependencies ON dependencies.item_id = subStep.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} dataQuery ON dataQuery.item_id = subStep.id AND dataQuery.`key` = 'custom_query'
 
     WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
 ) t
@@ -502,18 +514,26 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                         dependencies.Add(new VueStepDependencyModel
                         {
                             StepName = dependencyStepName,
-                            Values = dependencyValues
+                            Values = dependencyValues ?? new List<string>()
                         });
                     }
+                }
+
+                var stepName = dataRow.Field<string>("stepName");
+                if (String.IsNullOrEmpty(stepName))
+                {
+                    stepName = dataRow.Field<string>("stepTitle").ConvertToSeo();
                 }
 
                 var step = new VueStepDataModel
                 {
                     Position = dataRow.Field<string>("position"),
-                    StepName = dataRow.Field<string>("stepName"),
-                    Options = null,
-                    Dependencies = dependencies
+                    StepName = stepName,
+                    Dependencies = dependencies,
+                    DataQuery = dataRow.Field<string>("dataQuery")
                 };
+
+                steps.Add(step);
             }
 
             return new VueConfiguratorDataModel
