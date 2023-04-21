@@ -1389,6 +1389,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 {
                     ApiKey = GetSecretKeyValue(dataRow, "mollieApiKey")
                 },
+                PaymentServiceProviders.PayNl => new PayNLSettingsModel()
+                {
+                    Username = GetSecretKeyValue(dataRow, "payNlUsername"),
+                    Password = GetSecretKeyValue(dataRow, "payNlPassword"),
+                    ServiceId = GetSecretKeyValue(dataRow, "payNlServiceId"),
+                },
                 _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), paymentServiceProvider.ToString(), "Unsupported value used.")
             };
 
@@ -1559,6 +1565,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 PaymentServiceProviders.MultiSafepay => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "transactionid"),
                 PaymentServiceProviders.RaboOmniKassa => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "order_id"),
                 PaymentServiceProviders.Mollie => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "invoice_number"),
+                PaymentServiceProviders.PayNl => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "orderId"),
                 _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), $"Payment service provider '{paymentServiceProvider:G}' is not yet supported.")
             };
         }
