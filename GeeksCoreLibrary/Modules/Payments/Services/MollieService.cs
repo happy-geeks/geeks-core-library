@@ -84,6 +84,15 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             var mollieSettings = (MollieSettingsModel)paymentMethodSettings.PaymentServiceProvider;
             mollieSettings.Locale = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_locale");
 
+            // Locale is required for the mollie Orders api so if we couldn't find the locale
+            // we set it using the request headers send by the browser
+            // if that is not set we use EN-us as the default
+            if (String.IsNullOrWhiteSpace(mollieSettings.Locale))
+            {
+                mollieSettings.Locale = httpContextAccessor?.HttpContext.Request.Headers.AcceptLanguage.First();
+                mollieSettings.Locale = mollieSettings.Locale?.Split(',').First() ?? "EN-us";
+            }
+            
             var mollieClient = new OrderClient(mollieSettings.ApiKey);
             var orderRequestBuilder = new OrderRequestBuilder(
                 shoppingBasketsService, 
@@ -99,6 +108,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
             catch (MollieApiException ex)
             {
+                logger.LogError("MollieAPIException in {MollieService}: {stacktrace}", nameof(MollieService), ex.StackTrace);
                 // Payment request failed.
                 return new PaymentRequestResult
                 {
@@ -151,7 +161,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                     Status = "Error retrieving status: No HttpContext available."
                 };
             }
-            
+
             var mollieSettings = (MollieSettingsModel)paymentMethodSettings.PaymentServiceProvider;
             var mollieClient = new OrderClient(mollieSettings.ApiKey);
             

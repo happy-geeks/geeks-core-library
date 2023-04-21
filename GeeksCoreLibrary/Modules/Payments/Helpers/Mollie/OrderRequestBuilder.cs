@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
+using BuckarooSdk.DataTypes.ParameterGroups.CreditManagement3;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
@@ -13,9 +15,12 @@ using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Payments.Models.Mollie;
+using ISO3166;
+using ISO3166NL;
 using Mollie.Api.Models;
 using Mollie.Api.Models.Order;
 using Mollie.Api.Models.Order.Request.PaymentSpecificParameters;
+using PhoneNumbers;
 
 namespace GeeksCoreLibrary.Modules.Payments.Helpers.Mollie;
 
@@ -53,8 +58,7 @@ public class OrderRequestBuilder
             Method = paymentMethodSettings.ExternalName,
             Lines = await ConvertShoppingBasketsToOrderLinesAsync(shoppingBaskets),
             BillingAddress = CreateBillingAddress(userDetails),
-            ShippingAddress = CreateAddress(userDetails, "shipping_"),
-            Testmode = gclSettings.Environment.InList(Environments.Test, Environments.Development)
+            ShippingAddress = CreateAddress(userDetails, "shipping_")
         };
 
         if (String.Equals(paymentMethodSettings?.ExternalName, "ideal", StringComparison.OrdinalIgnoreCase))
@@ -102,8 +106,8 @@ public class OrderRequestBuilder
             StreetAndNumber =
                 $"{userDetails.GetDetailValue($"{detailKeyPrefix}street")} {userDetails.GetDetailValue($"{detailKeyPrefix}housenumber")}{userDetails.GetDetailValue($"{detailKeyPrefix}housenumber_suffix")}",
             PostalCode = userDetails.GetDetailValue($"{detailKeyPrefix}zipcode"),
-            City = userDetails.GetDetailValue($"{detailKeyPrefix}_city"),
-            Country = userDetails.GetDetailValue($"{detailKeyPrefix}_country"),
+            City = userDetails.GetDetailValue($"{detailKeyPrefix}city"),
+            Country = ToIso3166(userDetails.GetDetailValue($"{detailKeyPrefix}country")),
         };
     }
 
@@ -115,6 +119,15 @@ public class OrderRequestBuilder
         address.FamilyName = userDetails.GetDetailValue("lastname");
         address.Email = userDetails.GetDetailValue("email");
         address.Phone = userDetails.GetDetailValue("phone");
+
+        if (String.IsNullOrWhiteSpace(address.Phone))
+        {
+            return address;
+        }
+        var phoneNumberUtil = PhoneNumberUtil.GetInstance();
+        var phoneObject = phoneNumberUtil.Parse(address.Phone, address.Country);
+        address.Phone = phoneNumberUtil.Format(phoneObject, PhoneNumberFormat.E164);
+
         return address;
     }
     
@@ -128,27 +141,36 @@ public class OrderRequestBuilder
                 foreach (var basketLine in basket.Lines)
                 {
                     OrderLineRequest orderLineRequest =
-                        await ConvertOrderLineFromBasketLineAsync(
+                        await ConvertBasketLineToOrderLineAsync(
                             basket.Main, 
                             basketLine,
                             basketSettings);
                     orderRequests.Add(orderLineRequest);
                 }
             }
-
             return orderRequests;
         }
 
-        private async Task<OrderLineRequest> ConvertOrderLineFromBasketLineAsync(
+        private async Task<OrderLineRequest> ConvertBasketLineToOrderLineAsync(
             WiserItemModel basket,
             WiserItemModel basketLine,
             ShoppingBasketCmsSettingsModel basketSettings)
         {
+            var name = basketLine.GetDetailValue("title");
+            
+            // Non-products like shipping cost might not have a name
+            // For those we use the type as name
+            // This can be further improved by using localisation
+            if (String.IsNullOrEmpty(name))
+            {
+                name = basketLine.GetDetailValue("type");
+            }
+            
+            // get prices using the shoppingbasketService
             var linePrice = await shoppingBasketsService.GetLinePriceAsync(
                 basket,
                 basketLine,
-                basketSettings,
-                ShoppingBasket.PriceTypes.PspPriceInVat
+                basketSettings
             );
             var linePriceVatOnly = await shoppingBasketsService.GetLinePriceAsync(
                 basket,
@@ -156,36 +178,44 @@ public class OrderRequestBuilder
                 basketSettings,
                 ShoppingBasket.PriceTypes.VatOnly
             );
-            var lineProductQuantity = Convert.ToInt32(basketLine.GetDetailValue(basketSettings.QuantityPropertyName));
+            var discountAmount = await shoppingBasketsService.GetLinePriceAsync(
+                basket,
+                basketLine,
+                basketSettings,
+                ShoppingBasket.PriceTypes.DiscountInVat
+            );
+
+            var quantityDetail = basketLine.GetDetailValue(basketSettings.QuantityPropertyName);
+            var parseSucceeded =  Int32.TryParse(quantityDetail, out var lineProductQuantity);
+            // Some types of order lines do not have quantities
+            // we set 1 for those
+            if (!parseSucceeded)
+                lineProductQuantity = 1;
+
+            var vatRate = Convert.ToInt32(Math.Round(100 / linePrice * linePriceVatOnly));
+            var vatFactor = await shoppingBasketsService.GetVatFactorByRateAsync(basket, basketSettings, vatRate) * 100;
 
             return new OrderLineRequest()
             {
-                Name = basketLine.GetDetailValue("title"),
-                UnitPrice = new Amount()
-                {
-                    Value = (linePrice / lineProductQuantity).ToString("F2", CultureInfo.InvariantCulture),
-                    Currency = mollieSettings.Currency
-                },
-                TotalAmount = new Amount()
-                {
-                    Value = linePrice.ToString("F2", CultureInfo.InvariantCulture),
-                    Currency = mollieSettings.Currency
-                },
-                DiscountAmount = new Amount()
-                {
-                    Value = basketLine.GetDetailValue(basketSettings.DiscountPropertyName),
-                    Currency = mollieSettings.Currency
-                },
-                VatAmount = new Amount()
-                {
-                    Value = linePriceVatOnly.ToString("F2", CultureInfo.InvariantCulture),
-                    Currency = mollieSettings.Currency
-                },
+                Name = name,
+                UnitPrice = CreateAmountModel(linePrice / lineProductQuantity),
+                TotalAmount = CreateAmountModel(linePrice),
+                DiscountAmount = CreateAmountModel(discountAmount),
+                VatAmount = CreateAmountModel(linePriceVatOnly),
                 Quantity = lineProductQuantity,
-                VatRate = basketLine.GetDetailValue(basketSettings.VatRatePropertyName),
+                VatRate = vatFactor.ToString("F2", CultureInfo.InvariantCulture),
             };
         }
-        
+
+        private Amount CreateAmountModel(decimal price)
+        {
+            return new Amount
+            {
+                Value = price.ToString("F2", CultureInfo.InvariantCulture),
+                Currency = mollieSettings.Currency
+            };
+        }
+
         private string BuildUrl(string webhookUrl, string invoiceNumber)
         {
             // TODO: Refactor this method so that we can use it for all PSPs.
@@ -196,5 +226,23 @@ public class OrderRequestBuilder
             webhookUrlBuilder.Query = queryString.ToString() ?? String.Empty;
 
             return webhookUrlBuilder.ToString();
+        }
+
+        private static string ToIso3166(string country)
+        {
+            var isoCode = (from countryItem in Country.List
+                where countryItem.TwoLetterCode == country || countryItem.Name == country ||
+                      countryItem.ThreeLetterCode == country
+                select countryItem.TwoLetterCode).FirstOrDefault();
+
+            if (isoCode is null)
+            {
+                isoCode = (from countryItem in Land.List
+                    where countryItem.TweeLetterCode == country || countryItem.Naam == country ||
+                          countryItem.DrieLetterCode == country
+                    select countryItem.TweeLetterCode).FirstOrDefault();
+            }
+
+            return isoCode;
         }
 }
