@@ -545,18 +545,13 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
         /// <inheritdoc />
         public async Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration, bool isQuery)
         {
-            if ((configuration == null) || (!templateOrQuery.Contains("{")))
+            if (configuration == null || !templateOrQuery.Contains('{'))
             {
                 return templateOrQuery;
             }
 
-            foreach (var queryStringItem in configuration.QueryStringItems)
+            foreach (var queryStringItem in configuration.QueryStringItems.Where(queryStringItem => templateOrQuery.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase)))
             {
-                if (!templateOrQuery.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
                 if (!isQuery)
                 {
                     templateOrQuery = templateOrQuery.Replace($"{{{queryStringItem.Key}}}", queryStringItem.Value);
@@ -620,6 +615,81 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
             }
 
             return templateOrQuery;
+        }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceConfiguratorItemsAsync(string template, VueConfigurationsModel configuration, bool isDataQuery)
+        {
+            if (configuration == null || !template.Contains('{'))
+            {
+                return template;
+            }
+
+            foreach (var queryStringItem in configuration.QueryStringItems.Where(queryStringItem => template.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!isDataQuery)
+                {
+                    template = template.Replace($"{{{queryStringItem.Key}}}", queryStringItem.Value);
+                }
+                else
+                {
+                    var parameterName = DatabaseHelpers.CreateValidParameterName(queryStringItem.Key);
+                    databaseConnection.AddParameter(parameterName, queryStringItem.Value);
+                    template = template.Replace($"'{{{queryStringItem.Key}}}'", $"?{parameterName}").Replace($"{{{queryStringItem.Key}}}", $"?{parameterName}");
+                }
+            }
+
+            foreach (var key in configuration.Items.Keys)
+            {
+                if (!template.Contains($"{{{configuration.Items[key].StepName}}}", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var parameterName = DatabaseHelpers.CreateValidParameterName(configuration.Items[key].StepName);
+                var valuesCanContainDashes = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_ValuesCanContainDashes");
+                if (!String.IsNullOrWhiteSpace(valuesCanContainDashes) && valuesCanContainDashes.Equals("true", StringComparison.OrdinalIgnoreCase) && configuration.Items[key].CurrentValue.Contains("-"))
+                {
+                    var value = configuration.Items[key].CurrentValue.Split('-')[1];
+                    if (!isDataQuery)
+                    {
+                        template = template.Replace($"{{{configuration.Items[key].StepName}}}", value);
+                    }
+                    else
+                    {
+                        databaseConnection.AddParameter(parameterName, value);
+                        template = template.Replace($"'{{{configuration.Items[key].StepName}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].StepName}}}", $"?{parameterName}");
+                    }
+                }
+                else if (configuration.Items[key].CurrentValue == "-1")
+                {
+                    var value = configuration.Items[key].CurrentValue.Split('-')[1];
+                    if (!isDataQuery)
+                    {
+                        template = template.Replace($"{{{configuration.Items[key].StepName}}}", value);
+                    }
+                    else
+                    {
+                        databaseConnection.AddParameter(parameterName, value);
+                        template = template.Replace($"'{{{configuration.Items[key].StepName}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].StepName}}}", $"?{parameterName}");
+                    }
+                }
+                else
+                {
+                    var value = configuration.Items[key].CurrentValue;
+                    if (!isDataQuery)
+                    {
+                        template = template.Replace($"{{{configuration.Items[key].StepName}}}", value);
+                    }
+                    else
+                    {
+                        databaseConnection.AddParameter(parameterName, value);
+                        template = template.Replace($"'{{{configuration.Items[key].StepName}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].StepName}}}", $"?{parameterName}");
+                    }
+                }
+            }
+
+            return template;
         }
 
         /// <inheritdoc />

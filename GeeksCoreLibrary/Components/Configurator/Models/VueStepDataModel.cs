@@ -30,6 +30,18 @@ public class VueStepDataModel
     public IEnumerable<VueStepDependencyModel> Dependencies { get; set; }
 
     /// <summary>
+    /// Gets or sets the current value of the step.
+    /// </summary>
+    [JsonProperty("value")]
+    public string CurrentValue { get; set; }
+
+    /// <summary>
+    /// Gets or sets the display name of the value of the step.
+    /// </summary>
+    [JsonProperty("valueDisplayName")]
+    public string CurrentValueDisplayName { get; set; }
+
+    /// <summary>
     /// Gets or sets the query that retrieves the step data and step options data.
     /// </summary>
     /// <remarks>

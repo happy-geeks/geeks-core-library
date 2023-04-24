@@ -104,6 +104,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
+        public Task<string> ReplaceConfiguratorItemsAsync(string template, VueConfigurationsModel configuration, bool isDataQuery)
+        {
+            return configuratorsService.ReplaceConfiguratorItemsAsync(template, configuration, isDataQuery);
+        }
+
+        /// <inheritdoc />
         public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
         {
             return await configuratorsService.CalculatePriceAsync(input);

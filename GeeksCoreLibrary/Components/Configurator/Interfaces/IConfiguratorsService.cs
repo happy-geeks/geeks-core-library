@@ -37,13 +37,22 @@ public interface IConfiguratorsService
     Task<(string deliveryTime, string deliveryExtra)> GetDeliveryTimeAsync(ConfigurationsModel configuration);
 
     /// <summary>
-    /// replace configurator items in template or query
+    /// Replace configurator items in a template or query.
     /// </summary>
-    /// <param name="templateOrQuery"></param>
-    /// <param name="configuration"></param>
-    /// <param name="isQuery"></param>
-    /// <returns></returns>
+    /// <param name="templateOrQuery">The template that will be updated.</param>
+    /// <param name="configuration">A <see cref="ConfigurationsModel"/> object.</param>
+    /// <param name="isQuery">Whether the </param>
+    /// <returns>The <paramref name="templateOrQuery"/> with any items from the configuration replaced.</returns>
     Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration, bool isQuery);
+
+    /// <summary>
+    /// Replace configurator items in a template. This method is meant for the Vue version of the configurator.
+    /// </summary>
+    /// <param name="template">The template that will be updated.</param>
+    /// <param name="configuration">A <see cref="VueConfigurationsModel"/> object.</param>
+    /// <param name="isDataQuery">Whether the <paramref name="template"/> is a data query.</param>
+    /// <returns>The <paramref name="template"/> with any items from the configuration replaced.</returns>
+    Task<string> ReplaceConfiguratorItemsAsync(string template, VueConfigurationsModel configuration, bool isDataQuery);
 
     /// <summary>
     /// <para>Calculates the price and purchase price of a product.</para>

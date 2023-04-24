@@ -1531,7 +1531,7 @@ namespace GeeksCoreLibrary.Components.Configurator
         /// <param name="configuration">The current configuration from the client-side.</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException"><paramref name="steps"/> or <paramref name="configuration"/> is null.</exception>
-        public async Task<VueConfiguratorDataModel> GetConfiguratorData(List<string> steps, ConfigurationsModel configuration)
+        public async Task<VueConfiguratorDataModel> GetConfiguratorData(List<string> steps, VueConfigurationsModel configuration)
         {
             WriteToTrace("Retrieving configurator data for Vue");
 
@@ -1544,7 +1544,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
-            var result = await configuratorsService.GetVueConfiguratorDataAsync(configuration.Configurator);
+            var result = await configuratorsService.GetVueConfiguratorDataAsync(configuration.ConfiguratorName);
             if (result == null || result.StepsData.Count == 0)
             {
                 return result;
