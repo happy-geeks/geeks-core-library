@@ -166,6 +166,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             var currentMainStepName = "";
             var currentStepName = "";
 
+            var currentMainStepVariableName = "";
             var stepVariableName = "";
 
             // String builders for building the output HTML.
@@ -273,6 +274,11 @@ namespace GeeksCoreLibrary.Components.Configurator
                             currentStepHtml.Clear();
                         }
 
+                        if (Settings.ComponentMode == ComponentModes.Vue)
+                        {
+                            var mainStepVariableName = firstRow.Field<string>("mainstep_variable_name");
+                            allStepsHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{mainStepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{mainStepVariableName}')\" :enabled=\"stepEnabled('{mainStepVariableName}')\">");
+                        }
                         allStepsHtml.Append(Settings.MainStepHtml
                             .ReplaceCaseInsensitive("{componentId}", ComponentId.ToString())
                             .ReplaceCaseInsensitive("{contentId}", ComponentId.ToString())
@@ -281,6 +287,10 @@ namespace GeeksCoreLibrary.Components.Configurator
                             .ReplaceCaseInsensitive("{mainStepContent}", currentMainStepHtml.ToString()
                                 .Replace("{steps}", currentStepsHtml.ToString())
                                 .Replace("{progress}", progressHtml)));
+                        if (Settings.ComponentMode == ComponentModes.Vue)
+                        {
+                            currentMainStepHtml.Append("</step>");
+                        }
 
                         mainStepCount += 1;
                     }
@@ -288,6 +298,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     // Create the new step template and clear variables.
                     stepCount = Settings.ComponentMode == ComponentModes.Vue ? 0 : 1;
                     currentMainStepName = row.Field<string>("mainstepname");
+                    currentMainStepVariableName = row.Field<string>("mainstep_variable_name");
 
                     WriteToTrace($"Starting HTML for new main step. Main step #{mainStepCount}, name: {currentMainStepName}");
                     var currentMainStepTemplate = row.Field<string>("mainstep_template");
@@ -299,17 +310,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         currentMainStepTemplate = await StringReplacementsService.DoAllReplacementsAsync(currentMainStepTemplate, row, removeUnknownVariables: false);
 
                         currentMainStepHtml.Clear();
-
-                        if (Settings.ComponentMode == ComponentModes.Vue)
-                        {
-                            var mainStepVariableName = row.Field<string>("mainstep_variable_name");
-                            currentMainStepHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{mainStepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{mainStepCount}')\" :enabled=\"stepEnabled('{mainStepCount}')\">");
-                        }
                         currentMainStepHtml.Append(currentMainStepTemplate);
-                        if (Settings.ComponentMode == ComponentModes.Vue)
-                        {
-                            currentMainStepHtml.Append("</step>");
-                        }
                     }
 
                     currentStepsHtml.Clear();
@@ -370,11 +371,9 @@ namespace GeeksCoreLibrary.Components.Configurator
                     {
                         stepVariableName = row.Field<string>("variable_name");
                         var position = $"{mainStepCount}-{stepCount}";
-                        currentStepHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{position}')\" :enabled=\"stepEnabled('{position}')\">");
+                        currentStepHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{stepVariableName}')\" :enabled=\"stepEnabled('{stepVariableName}')\">");
                     }
-
                     currentStepHtml.Append(await RenderStepAsync(currentConfiguratorName, row, mainStepCount, stepCount));
-
                     if (Settings.ComponentMode == ComponentModes.Vue)
                     {
                         currentStepHtml.Append("</step>");
@@ -416,11 +415,6 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 var regexMatches = subStepsRegex.Matches(currentStepHtml.ToString()).ToList();
 
-                if (Settings.ComponentMode == ComponentModes.Vue)
-                {
-                    var position = $"{mainStepCount}-{stepCount}";
-                    currentStepsHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{position}')\" :enabled=\"stepEnabled('{position}')\">");
-                }
                 if (regexMatches.Count > 0)
                 {
                     foreach (var match in regexMatches)
@@ -439,16 +433,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                                 if (subStep == null) continue;
 
-                                if (Settings.ComponentMode == ComponentModes.Vue)
-                                {
-                                    var position = $"{mainStepCount}-{stepCount}-{subStep.Index}";
-                                    currentStepsHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{position}')\" :enabled=\"stepEnabled('{position}')\">");
-                                }
                                 currentSubStepsHtml.Append(subStep.Html);
-                                if (Settings.ComponentMode == ComponentModes.Vue)
-                                {
-                                    currentStepsHtml.Append("</step>");
-                                }
                             }
 
                             currentStepsHtml.Append(currentStepHtml.Replace(match.Value, currentSubStepsHtml.ToString()));
@@ -465,14 +450,14 @@ namespace GeeksCoreLibrary.Components.Configurator
                     // The HTML doesn't contain any "{substeps}" variables.
                     currentStepsHtml.Append(currentStepHtml);
                 }
-                if (Settings.ComponentMode == ComponentModes.Vue)
-                {
-                    currentStepsHtml.Append("</step>");
-                }
 
                 currentStepHtml.Clear();
             }
 
+            if (Settings.ComponentMode == ComponentModes.Vue)
+            {
+                allStepsHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{currentMainStepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{currentMainStepVariableName}')\" :enabled=\"stepEnabled('{currentMainStepVariableName}')\">");
+            }
             allStepsHtml.Append(Settings.MainStepHtml
                 .ReplaceCaseInsensitive("{mainStepCount}", mainStepCount.ToString())
                 .ReplaceCaseInsensitive("{currentMainStepName}", currentMainStepName)
@@ -480,6 +465,10 @@ namespace GeeksCoreLibrary.Components.Configurator
                     .ReplaceCaseInsensitive("{steps}", currentStepsHtml.ToString())
                     .ReplaceCaseInsensitive("{progress}", progressHtml)
                     .ReplaceCaseInsensitive("{summary}", renderedFinalSummaryHtml)));
+            if (Settings.ComponentMode == ComponentModes.Vue)
+            {
+                currentMainStepHtml.Append("</step>");
+            }
 
             var renderedMobilePreProgressHtml = Settings.MobilePreProgressHtml
                 .ReplaceCaseInsensitive("{progress_pre_template}", firstRow.Field<string>("progress_pre_template"))
@@ -798,6 +787,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             template = await TemplatesService.HandleIncludesAsync(template, false, null, false);
 
             WriteToTrace("End HandleIncludesAsync (mainstep)");
+
             return template;
         }
 
@@ -880,11 +870,27 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             WriteToTrace($"RenderSubStep {row.Field<string>("substepname")} - connected to: {datasourceConnectedIdName} - mainstepnumber: {mainStepNumber} - stepnumber: {stepNumber} - substepnumber: {subStepNumber} - dependentvalue: {dependentValue} - datasource connectedid: {connectedId}");
 
-            var template = Settings.SubStepHtml
+            var templateBuilder = new StringBuilder();
+
+            if (Settings.ComponentMode == ComponentModes.Vue)
+            {
+                var position = $"{mainStepNumber}-{stepNumber}-{subStepNumber}";
+                var subStepName = row.Field<string>("substep_variable_name");
+                templateBuilder.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{subStepName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{subStepName}')\" :enabled=\"stepEnabled('{subStepName}')\">");
+            }
+
+            templateBuilder.Append(Settings.SubStepHtml
                 .ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString())
                 .ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString())
-                .ReplaceCaseInsensitive("{subStepNumber}", subStepNumber.ToString());
+                .ReplaceCaseInsensitive("{subStepNumber}", subStepNumber.ToString()));
 
+            if (Settings.ComponentMode == ComponentModes.Vue)
+            {
+                templateBuilder.Append("</step>");
+            }
+
+            var template = templateBuilder.ToString();
+            
             if (!stepNumbers.ContainsKey(currentConfiguratorName))
             {
                 await LoadStepNumbersAsync(currentConfiguratorName);
@@ -1536,10 +1542,6 @@ namespace GeeksCoreLibrary.Components.Configurator
             WriteToTrace("Retrieving configurator data for Vue");
 
             // Validate parameters.
-            if (steps == null)
-            {
-                throw new ArgumentNullException(nameof(steps));
-            }
             if (configuration == null)
             {
                 throw new ArgumentNullException(nameof(configuration));
@@ -1550,10 +1552,14 @@ namespace GeeksCoreLibrary.Components.Configurator
                 return result;
             }
 
-            var stepsToProcess = new List<string>();
-            if (steps.Count == 0)
+            List<string> stepsToProcess;
+            if (steps == null || steps.Count == 0)
             {
                 stepsToProcess = result.StepsData.Select(stepDataModel => stepDataModel.StepName).ToList();
+            }
+            else
+            {
+                stepsToProcess = steps;
             }
 
             // Update options.
@@ -1567,6 +1573,31 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                 var options = new List<Dictionary<string, object>>();
 
+                // Validate dependencies.
+                var loadOptions = true;
+                foreach (var dependency in stepData.Dependencies)
+                {
+                    var item = configuration.Items.SingleOrDefault(item => item.Key == dependency.StepName);
+                    if (String.IsNullOrEmpty(item.Key))
+                    {
+                        loadOptions = false;
+                        break;
+                    }
+
+                    if (dependency.Values != null && dependency.Values.Any() && dependency.Values.All(value => value != item.Value.CurrentValue))
+                    {
+                        loadOptions = false;
+                        break;
+                    }
+                }
+
+                if (!loadOptions)
+                {
+                    stepData.Options = options;
+                    continue;
+                }
+
+                // Dependencies are valid, load options.
                 var dataQuery = stepData.DataQuery;
                 if (String.IsNullOrWhiteSpace(dataQuery))
                 {
@@ -1596,6 +1627,10 @@ namespace GeeksCoreLibrary.Components.Configurator
                 stepData.Options = options;
             }
 
+            if (steps == null) return result;
+
+            var filteredSteps = result.StepsData.Where(s => steps.Contains(s.StepName, StringComparer.OrdinalIgnoreCase)).ToList();
+            result.StepsData = filteredSteps;
             return result;
         }
 
