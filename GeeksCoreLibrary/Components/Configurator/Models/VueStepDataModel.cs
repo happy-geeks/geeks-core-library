@@ -30,6 +30,12 @@ public class VueStepDataModel
     public IEnumerable<VueStepDependencyModel> Dependencies { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the step is required.
+    /// </summary>
+    [JsonProperty("isRequired")]
+    public bool IsRequired { get; set; }
+
+    /// <summary>
     /// Gets or sets the current value of the step.
     /// </summary>
     [JsonProperty("value")]

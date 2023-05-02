@@ -410,6 +410,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
     stepTitle,
     stepName,
     dependencies,
+    isRequired,
     dataQuery,
     CONCAT_WS('-', mainStepOrdering - 1, stepOrdering - 1, subStepOrdering - 1) AS position
 FROM (
@@ -419,17 +420,19 @@ FROM (
         mainStep.title AS stepTitle,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
         CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
         mainStepLink.ordering AS mainStepOrdering,
         NULL AS stepOrdering,
         NULL AS subStepOrdering
-    FROM {WiserTableNames.WiserItem} configurator
+    FROM {WiserTableNames.WiserItem} AS configurator
 
-    JOIN {WiserTableNames.WiserItemLink} mainStepLink ON mainStepLink.destination_item_id = configurator.id
-    JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} variableName ON variableName.item_id = mainStep.id AND variableName.`key` = 'variable_name'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} dependencies ON dependencies.item_id = mainStep.id AND dependencies.`key` = 'datasource_connectedid'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} dataQuery ON dataQuery.item_id = mainStep.id AND dataQuery.`key` = 'custom_query'
+    JOIN {WiserTableNames.WiserItemLink} AS mainStepLink ON mainStepLink.destination_item_id = configurator.id
+    JOIN {WiserTableNames.WiserItem} AS mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = mainStep.id AND variableName.`key` = 'variable_name'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = mainStep.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = mainStep.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = mainStep.id AND dataQuery.`key` = 'custom_query'
 
     WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
 
@@ -441,20 +444,22 @@ FROM (
         step.title AS stepTitle,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
         CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
         mainStepLink.ordering AS mainStepOrdering,
         stepLink.ordering AS stepOrdering,
         NULL AS subStepOrdering
-    FROM {WiserTableNames.WiserItem} configurator
+    FROM {WiserTableNames.WiserItem} AS configurator
 
-    JOIN {WiserTableNames.WiserItemLink} mainStepLink ON mainStepLink.destination_item_id = configurator.id
-    JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
+    JOIN {WiserTableNames.WiserItemLink} AS mainStepLink ON mainStepLink.destination_item_id = configurator.id
+    JOIN {WiserTableNames.WiserItem} AS mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
 
-    JOIN {WiserTableNames.WiserItemLink} stepLink ON stepLink.destination_item_id = mainStep.id
-    JOIN {WiserTableNames.WiserItem} step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} dataQuery ON dataQuery.item_id = step.id AND dataQuery.`key` = 'custom_query'
+    JOIN {WiserTableNames.WiserItemLink} AS stepLink ON stepLink.destination_item_id = mainStep.id
+    JOIN {WiserTableNames.WiserItem} AS step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = step.id AND dataQuery.`key` = 'custom_query'
 
     WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
 
@@ -466,23 +471,25 @@ FROM (
         subStep.title AS stepTitle,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
         CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
         mainStepLink.ordering AS mainStepOrdering,
         stepLink.ordering AS stepOrdering,
         subStepLink.ordering AS subStepOrdering
-    FROM {WiserTableNames.WiserItem} configurator
+    FROM {WiserTableNames.WiserItem} AS configurator
 
-    JOIN {WiserTableNames.WiserItemLink} mainStepLink ON mainStepLink.destination_item_id = configurator.id
-    JOIN {WiserTableNames.WiserItem} mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
+    JOIN {WiserTableNames.WiserItemLink} AS mainStepLink ON mainStepLink.destination_item_id = configurator.id
+    JOIN {WiserTableNames.WiserItem} AS mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
 
-    JOIN {WiserTableNames.WiserItemLink} stepLink ON stepLink.destination_item_id = mainStep.id
-    JOIN {WiserTableNames.WiserItem} step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
+    JOIN {WiserTableNames.WiserItemLink} AS stepLink ON stepLink.destination_item_id = mainStep.id
+    JOIN {WiserTableNames.WiserItem} AS step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
 
-    JOIN {WiserTableNames.WiserItemLink} subStepLink ON subStepLink.destination_item_id = step.id
-    JOIN {WiserTableNames.WiserItem} subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = 'substap'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} variableName ON variableName.item_id = subStep.id AND variableName.`key` = 'variable_name'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} dependencies ON dependencies.item_id = subStep.id AND dependencies.`key` = 'datasource_connectedid'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} dataQuery ON dataQuery.item_id = subStep.id AND dataQuery.`key` = 'custom_query'
+    JOIN {WiserTableNames.WiserItemLink} AS subStepLink ON subStepLink.destination_item_id = step.id
+    JOIN {WiserTableNames.WiserItem} AS subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = 'substap'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = subStep.id AND variableName.`key` = 'variable_name'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = subStep.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = subStep.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = subStep.id AND dataQuery.`key` = 'custom_query'
 
     WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
 ) t
@@ -530,6 +537,7 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                     Position = dataRow.Field<string>("position"),
                     StepName = stepName,
                     Dependencies = dependencies,
+                    IsRequired = Convert.ToBoolean(dataRow["isRequired"]),
                     DataQuery = dataRow.Field<string>("dataQuery")
                 };
 

@@ -169,6 +169,8 @@ namespace GeeksCoreLibrary.Components.Configurator
             var currentMainStepVariableName = "";
             var stepVariableName = "";
 
+            var currentMainStepRequired = false;
+
             // String builders for building the output HTML.
             var allStepsHtml = new StringBuilder();
             var currentMainStepHtml = new StringBuilder();
@@ -277,7 +279,8 @@ namespace GeeksCoreLibrary.Components.Configurator
                         if (Settings.ComponentMode == ComponentModes.Vue)
                         {
                             var mainStepVariableName = firstRow.Field<string>("mainstep_variable_name");
-                            allStepsHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{mainStepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{mainStepVariableName}')\" :enabled=\"stepEnabled('{mainStepVariableName}')\">");
+                            var isRequired = Convert.ToBoolean(firstRow["mainsteps_isrequired"]) ? "true" : "false";
+                            allStepsHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{mainStepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{mainStepVariableName}')\" :enabled=\"stepEnabled('{mainStepVariableName}')\" :is-required=\"{isRequired}\">");
                         }
                         allStepsHtml.Append(Settings.MainStepHtml
                             .ReplaceCaseInsensitive("{componentId}", ComponentId.ToString())
@@ -299,6 +302,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     stepCount = Settings.ComponentMode == ComponentModes.Vue ? 0 : 1;
                     currentMainStepName = row.Field<string>("mainstepname");
                     currentMainStepVariableName = row.Field<string>("mainstep_variable_name");
+                    currentMainStepRequired = Convert.ToBoolean(row["mainsteps_isrequired"]);
 
                     WriteToTrace($"Starting HTML for new main step. Main step #{mainStepCount}, name: {currentMainStepName}");
                     var currentMainStepTemplate = row.Field<string>("mainstep_template");
@@ -371,7 +375,8 @@ namespace GeeksCoreLibrary.Components.Configurator
                     {
                         stepVariableName = row.Field<string>("variable_name");
                         var position = $"{mainStepCount}-{stepCount}";
-                        currentStepHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{stepVariableName}')\" :enabled=\"stepEnabled('{stepVariableName}')\">");
+                        var isRequired = Convert.ToBoolean(row["isrequired"]) ? "true" : "false";
+                        currentStepHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{stepVariableName}')\" :enabled=\"stepEnabled('{stepVariableName}')\" :is-required=\"{isRequired}\">");
                     }
                     currentStepHtml.Append(await RenderStepAsync(currentConfiguratorName, row, mainStepCount, stepCount));
                     if (Settings.ComponentMode == ComponentModes.Vue)
@@ -456,7 +461,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             if (Settings.ComponentMode == ComponentModes.Vue)
             {
-                allStepsHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{currentMainStepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{currentMainStepVariableName}')\" :enabled=\"stepEnabled('{currentMainStepVariableName}')\">");
+                allStepsHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{currentMainStepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{currentMainStepVariableName}')\" :enabled=\"stepEnabled('{currentMainStepVariableName}')\" :is-required=\"{currentMainStepRequired}\">");
             }
             allStepsHtml.Append(Settings.MainStepHtml
                 .ReplaceCaseInsensitive("{mainStepCount}", mainStepCount.ToString())
@@ -876,7 +881,8 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 var position = $"{mainStepNumber}-{stepNumber}-{subStepNumber}";
                 var subStepName = row.Field<string>("substep_variable_name");
-                templateBuilder.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{subStepName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{subStepName}')\" :enabled=\"stepEnabled('{subStepName}')\">");
+                var isRequired = Convert.ToBoolean(row["substep_isrequired"]) ? "true" : "false";
+                templateBuilder.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{subStepName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{subStepName}')\" :enabled=\"stepEnabled('{subStepName}')\" :is-required=\"{isRequired}\">");
             }
 
             templateBuilder.Append(Settings.SubStepHtml
