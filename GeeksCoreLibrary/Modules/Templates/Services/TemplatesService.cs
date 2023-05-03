@@ -848,9 +848,34 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 databaseConnection.AddParameter("filename", imageItemIdOrFilename);
                 databaseConnection.AddParameter("propertyName", propertyName);
 
-                var queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
+                string queryWherePart;
+                string itemIdColumn;
+                if (!String.IsNullOrWhiteSpace(fileType))
+                {
+                    switch (fileType.ToUpperInvariant())
+                    {
+                        case "ITEMLINK":
+                            queryWherePart = "itemlink_id = ?itemId";
+                            itemIdColumn = "itemlink_id";
+                            break;
+                        case "DIRECT":
+                            queryWherePart = "id = ?itemId";
+                            itemIdColumn = "id";
+                            break;
+                        default:
+                            queryWherePart = "item_id = ?itemId";
+                            itemIdColumn = "item_id";
+                            break;
+                    }
+                }
+                else
+                {
+                    queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
+                    itemIdColumn = "item_id";
+                }
+
                 var dataTable = await databaseConnection.GetAsync(@$"SELECT
-    item_id,
+    `{itemIdColumn}` AS item_id,
     file_name,
     property_name
 FROM `{WiserTableNames.WiserItemFile}`
