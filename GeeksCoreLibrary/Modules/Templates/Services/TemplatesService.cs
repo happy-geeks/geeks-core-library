@@ -752,9 +752,9 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
         }
 
         /// <inheritdoc />
-        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
+        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "")
         {
-            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser2/<item_id>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
+            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser/<item_id>/<filetype>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
 
             imageUrlTemplate = imageUrlTemplate.Replace("<item_id>", itemId);
             imageUrlTemplate = imageUrlTemplate.Replace("<filename>", filename);
@@ -762,18 +762,25 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             imageUrlTemplate = imageUrlTemplate.Replace("<width>", width);
             imageUrlTemplate = imageUrlTemplate.Replace("<height>", height);
 
-            // Remove if not specified
+            // Remove file type if not specified.
+            if (String.IsNullOrWhiteSpace(fileType))
+            {
+                imageUrlTemplate = imageUrlTemplate.Replace("<filetype>/", "");
+            }
+
+            // Remove number if not specified.
             if (number == 0)
             {
                 imageUrlTemplate = imageUrlTemplate.Replace("<number>/", "");
             }
 
-            // Remove if not specified
+            // Remove resize mode if not specified.
             if (String.IsNullOrWhiteSpace(resizeMode))
             {
                 imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>/", "");
             }
 
+            imageUrlTemplate = imageUrlTemplate.Replace("<filetype>", fileType);
             imageUrlTemplate = imageUrlTemplate.Replace("<number>", number.ToString());
             imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>", resizeMode);
 
@@ -797,6 +804,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 var resizeMode = "";
                 var propertyName = "";
                 var imageAltTag = "";
+                var fileType = "";
                 var fallbackImageExtension = "jpg";
                 var parameters = replacementParameters[0].Split(",");
                 var imageItemIdOrFilename = parameters[0];
@@ -828,6 +836,11 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                     imageAltTag = parameters[5].Trim();
                 }
 
+                if (parameters.Length > 6)
+                {
+                    fileType = parameters[6].Trim();
+                }
+
                 imageIndex = imageIndex == 0 ? 1 : imageIndex;
 
                 // Get the image from the database
@@ -835,9 +848,34 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 databaseConnection.AddParameter("filename", imageItemIdOrFilename);
                 databaseConnection.AddParameter("propertyName", propertyName);
 
-                var queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
+                string queryWherePart;
+                string itemIdColumn;
+                if (!String.IsNullOrWhiteSpace(fileType))
+                {
+                    switch (fileType.ToUpperInvariant())
+                    {
+                        case "ITEMLINK":
+                            queryWherePart = "itemlink_id = ?itemId";
+                            itemIdColumn = "itemlink_id";
+                            break;
+                        case "DIRECT":
+                            queryWherePart = "id = ?itemId";
+                            itemIdColumn = "id";
+                            break;
+                        default:
+                            queryWherePart = "item_id = ?itemId";
+                            itemIdColumn = "item_id";
+                            break;
+                    }
+                }
+                else
+                {
+                    queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
+                    itemIdColumn = "item_id";
+                }
+
                 var dataTable = await databaseConnection.GetAsync(@$"SELECT
-    item_id,
+    `{itemIdColumn}` AS item_id,
     file_name,
     property_name
 FROM `{WiserTableNames.WiserItemFile}`
@@ -897,10 +935,10 @@ ORDER BY id ASC");
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-alt-2x} 2x, {image-url-alt}"" type=""{image-type-alt}"" />");
 
-                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode));
-                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode, fileType));
                     outputBuilder.Replace("{image-type-alt}", FileSystemHelpers.GetMediaTypeByExtension(fallbackImageExtension));
                     outputBuilder.Replace("{min-width}", imageViewportParameter);
 
@@ -908,7 +946,7 @@ ORDER BY id ASC");
                     if (index == totalItems)
                     {
                         outputBuilder.Append("<img width=\"{image_width}\" height=\"{image_height}\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
-                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
                         outputBuilder.Replace("{image_width}", imageWidth.ToString());
                         outputBuilder.Replace("{image_height}", imageHeight.ToString());
                     }

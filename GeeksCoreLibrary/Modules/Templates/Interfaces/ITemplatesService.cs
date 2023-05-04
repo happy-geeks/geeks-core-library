@@ -187,7 +187,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         
         Task<string> HandleImageTemplating(string input);
 
-        Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "");
+        Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "");
 
         /// <summary>
         /// Gets the data for dynamic content, from easy_dynamiccontent.
