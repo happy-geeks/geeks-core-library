@@ -276,9 +276,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
         
         /// <inheritdoc />
-        public Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
+        public Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "")
         {
-            return templatesService.GenerateImageUrl(itemId, type, number, filename, width, height);
+            return templatesService.GenerateImageUrl(itemId, type, number, filename, width, height, resizeMode, fileType);
         }
 
         /// <inheritdoc />

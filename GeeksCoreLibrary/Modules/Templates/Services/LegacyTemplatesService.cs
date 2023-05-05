@@ -710,9 +710,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
+        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "")
         {
-            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser2/<item_id>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
+            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser/<item_id>/<filetype>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
 
             imageUrlTemplate = imageUrlTemplate.Replace("<item_id>", itemId);
             imageUrlTemplate = imageUrlTemplate.Replace("<filename>", filename);
@@ -720,18 +720,25 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             imageUrlTemplate = imageUrlTemplate.Replace("<width>", width);
             imageUrlTemplate = imageUrlTemplate.Replace("<height>", height);
 
-            // Remove if not specified
+            // Remove file type if not specified.
+            if (String.IsNullOrWhiteSpace(fileType))
+            {
+                imageUrlTemplate = imageUrlTemplate.Replace("<filetype>/", "");
+            }
+
+            // Remove number if not specified.
             if (number == 0)
             {
                 imageUrlTemplate = imageUrlTemplate.Replace("<number>/", "");
             }
 
-            // Remove if not specified
-            if (string.IsNullOrWhiteSpace(resizeMode))
+            // Remove resize mode if not specified.
+            if (String.IsNullOrWhiteSpace(resizeMode))
             {
                 imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>/", "");
             }
 
+            imageUrlTemplate = imageUrlTemplate.Replace("<filetype>", fileType);
             imageUrlTemplate = imageUrlTemplate.Replace("<number>", number.ToString());
             imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>", resizeMode);
 
@@ -755,6 +762,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var resizeMode = "";
                 var propertyName = "";
                 var imageAltTag = "";
+                var fileType = "";
                 var fallbackImageExtension = "jpg";
                 var parameters = replacementParameters[0].Split(",");
                 var imageItemIdOrFilename = parameters[0];
@@ -784,6 +792,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 if (parameters.Length > 5)
                 {
                     imageAltTag = parameters[5].Trim();
+                }
+
+                if (parameters.Length > 6)
+                {
+                    fileType = parameters[6].Trim();
                 }
 
                 imageIndex = imageIndex == 0 ? 1 : imageIndex;
@@ -847,10 +860,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-alt-2x} 2x, {image-url-alt}"" type=""{image-type-alt}"" />");
 
-                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode));
-                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode, fileType));
                     outputBuilder.Replace("{image-type-alt}", FileSystemHelpers.GetMediaTypeByExtension(fallbackImageExtension));
                     outputBuilder.Replace("{min-width}", imageViewportParameter);
 
@@ -858,7 +871,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     if (index == totalItems)
                     {
                         outputBuilder.Append("<img width=\"{image_width}\" height=\"{image_height}\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
-                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
                         outputBuilder.Replace("{image_width}", imageWidth.ToString());
                         outputBuilder.Replace("{image_height}", imageHeight.ToString());
                     }
