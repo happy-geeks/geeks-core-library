@@ -1,18 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using System.Web;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
-using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Core.Enums;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -21,16 +15,13 @@ using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Helpers.Mollie;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Models;
-using GeeksCoreLibrary.Modules.Payments.Models.Mollie;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Mollie.Api.Client;
-using Mollie.Api.Models;
-using Newtonsoft.Json.Linq;
 using Mollie.Api.Models.Order;
-using Mollie.Api.Models.Order.Request.PaymentSpecificParameters;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
@@ -41,15 +32,15 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IObjectsService objectsService;
         private readonly IShoppingBasketsService shoppingBasketsService;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly GclSettings gclSettings;
-        
-        public MollieService(ILogger<MollieService> logger,
+        private readonly IOrderRequestBuilder requestBuilder;
+
+        public MollieService(
+            ILogger<MollieService> logger,
             IObjectsService objectsService,
             IShoppingBasketsService shoppingBasketsService,
             IDatabaseConnection databaseConnection,
-            IDatabaseHelpersService databaseHelpersService, 
-            IOptions<GclSettings> gclSettings, 
+            IDatabaseHelpersService databaseHelpersService,
+            IOrderRequestBuilder requestBuilder, 
             IHttpContextAccessor httpContextAccessor = null) 
             : base(databaseHelpersService, databaseConnection, logger, httpContextAccessor)
         {
@@ -57,8 +48,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             this.httpContextAccessor = httpContextAccessor;
             this.objectsService = objectsService;
             this.shoppingBasketsService = shoppingBasketsService;
-            this.databaseConnection = databaseConnection;
-            this.gclSettings = gclSettings.Value;
+            this.requestBuilder = requestBuilder;
         }
 
         /// <inheritdoc />
@@ -78,8 +68,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 };
             }
 
-            var totalPrice = await CalculatePriceAsync(shoppingBaskets);
-
             // Retrieve the API key. A development-specific one can be set for testing on development environments.
             var mollieSettings = (MollieSettingsModel)paymentMethodSettings.PaymentServiceProvider;
             mollieSettings.Locale = await objectsService.FindSystemObjectByDomainNameAsync("MOLLIE_locale");
@@ -94,12 +82,12 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
             
             var mollieClient = new OrderClient(mollieSettings.ApiKey);
-            var orderRequestBuilder = new OrderRequestBuilder(
-                shoppingBasketsService, 
+            var orderRequest = await requestBuilder.CreateOrderRequestAsync(
+                invoiceNumber, 
+                shoppingBaskets, 
+                userDetails, 
                 mollieSettings, 
-                gclSettings, 
                 paymentMethodSettings);
-            var orderRequest = await orderRequestBuilder.CreateOrderRequestAsync(totalPrice, invoiceNumber, shoppingBaskets, userDetails);
 
             OrderResponse orderResponse;
             try
@@ -108,7 +96,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
             catch (MollieApiException ex)
             {
-                logger.LogError("MollieAPIException in {MollieService}: {stacktrace}", nameof(MollieService), ex.StackTrace);
+                logger.LogError(ex, "An error occurred while trying to create an order via the Mollie Order API.");
                 // Payment request failed.
                 return new PaymentRequestResult
                 {
@@ -135,16 +123,16 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         {
             foreach (var (main, lines) in shoppingBaskets)
             {
-                var history = new StringBuilder(main.GetDetailValue(Components.OrderProcess.Models.Constants.PaymentHistoryProperty));
+                var history = new StringBuilder(main.GetDetailValue(Constants.PaymentHistoryProperty));
                 if (history.Length > 0)
                 {
                     history.Append(", ");
                 }
                 history.Append(status);
 
-                main.SetDetail(Components.OrderProcess.Models.Constants.PaymentProviderTransactionId, paymentId);
-                main.SetDetail(Components.OrderProcess.Models.Constants.PaymentProviderTransactionStatus, status);
-                main.SetDetail(Components.OrderProcess.Models.Constants.PaymentHistoryProperty, history.ToString());
+                main.SetDetail(Constants.PaymentProviderTransactionId, paymentId);
+                main.SetDetail(Constants.PaymentProviderTransactionStatus, status);
+                main.SetDetail(Constants.PaymentHistoryProperty, history.ToString());
 
                 await shoppingBasketsService.SaveAsync(main, lines, await shoppingBasketsService.GetSettingsAsync());
             }
@@ -215,7 +203,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             // The Mollie payment ID is saved in all baskets, so just use the one from the first basket.
-            var mollieOrderId = baskets.First().Order.GetDetailValue(Components.OrderProcess.Models.Constants.PaymentProviderTransactionId);
+            var mollieOrderId = baskets.First().Order.GetDetailValue(Constants.PaymentProviderTransactionId);
 
             var mollieOrderClient = new OrderClient(mollieSettings.ApiKey);
             
@@ -270,19 +258,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             return "Unknown error";
-        }
-
-        private async Task<decimal> CalculatePriceAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets)
-        {
-            var basketSettings = await shoppingBasketsService.GetSettingsAsync();
-
-            var totalPrice = 0M;
-            foreach (var (main, lines) in shoppingBaskets)
-            {
-                totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings, ShoppingBasket.PriceTypes.PspPriceInVat);
-            }
-
-            return totalPrice;
         }
     }
 }
