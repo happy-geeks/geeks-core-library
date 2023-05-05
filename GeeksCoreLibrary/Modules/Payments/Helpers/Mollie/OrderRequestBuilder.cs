@@ -52,7 +52,7 @@ public class OrderRequestBuilder : IOrderRequestBuilder, ITransientService
             ShippingAddress = CreateAddress(userDetails, "shipping_")
         };
 
-        if (String.Equals(paymentMethodSettingsModel?.ExternalName, "ideal", StringComparison.OrdinalIgnoreCase))
+        if (String.Equals(paymentMethodSettingsModel.ExternalName, "ideal", StringComparison.OrdinalIgnoreCase))
         {
             var issuerValue = shoppingBaskets.First().Main.GetDetailValue(Constants.PaymentMethodIssuerProperty);
             var issuerName = GetIssuerName(issuerValue);
