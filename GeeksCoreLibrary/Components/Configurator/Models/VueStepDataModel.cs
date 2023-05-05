@@ -30,10 +30,40 @@ public class VueStepDataModel
     public IEnumerable<VueStepDependencyModel> Dependencies { get; set; }
 
     /// <summary>
+    /// Gets or sets the minimum value for the step. This is used for validation.
+    /// </summary>
+    /// <remarks>
+    /// This is only used for steps that have a numeric value.
+    /// </remarks>
+    [JsonProperty("minimumValue")]
+    public string MinimumValue { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum value for the step. This is used for validation.
+    /// </summary>
+    /// <remarks>
+    /// This is only used for steps that have a numeric value.
+    /// </remarks>
+    [JsonProperty("maximumValue")]
+    public string MaximumValue { get; set; }
+
+    /// <summary>
+    /// Gets or sets the validation regex for the step. This is used for validation.
+    /// </summary>
+    [JsonProperty("validationRegex")]
+    public string ValidationRegex { get; set; }
+    
+    /// <summary>
     /// Gets or sets whether the step is required.
     /// </summary>
     [JsonProperty("isRequired")]
     public bool IsRequired { get; set; }
+
+    /// <summary>
+    /// Gets or sets the conditions that must be met in order for the step to be required.
+    /// </summary>
+    [JsonProperty("requiredConditions")]
+    public IEnumerable<VueStepDependencyModel> RequiredConditions { get; set; }
 
     /// <summary>
     /// Gets or sets the current value of the step.
@@ -47,6 +77,26 @@ public class VueStepDataModel
     [JsonProperty("valueDisplayName")]
     public string CurrentValueDisplayName { get; set; }
 
+    #region Server-side only properties
+
+    /// <summary>
+    /// Gets or sets the HTML template for the step.
+    /// </summary>
+    /// <remarks>
+    /// This property is not serialized to JSON because it's not needed in the client-side.
+    /// </remarks>
+    [JsonIgnore]
+    public string StepTemplate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the HTML template for a step option.
+    /// </summary>
+    /// <remarks>
+    /// This property is not serialized to JSON because it's not needed in the client-side.
+    /// </remarks>
+    [JsonIgnore]
+    public string StepOptionTemplate { get; set; }
+    
     /// <summary>
     /// Gets or sets the query that retrieves the step data and step options data.
     /// </summary>
@@ -55,4 +105,6 @@ public class VueStepDataModel
     /// </remarks>
     [JsonIgnore]
     public string DataQuery { get; set; }
+
+    #endregion
 }

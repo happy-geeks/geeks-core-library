@@ -23,7 +23,7 @@ using RestSharp;
 
 namespace GeeksCoreLibrary.Components.Configurator.Services
 {
-    public class ConfiguratorsService : IConfiguratorsService, IScopedService
+    public partial class ConfiguratorsService : IConfiguratorsService, IScopedService
     {
         private readonly ILogger<ConfiguratorsService> logger;
         private readonly IDatabaseConnection databaseConnection;
@@ -76,7 +76,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             ("substep_", "free_content1"), ("substep_", "free_content2"), ("substep_", "free_content3"), ("substep_", "free_content4"), ("substep_", "free_content5")
         };
 
-        private readonly Regex DependencyValuesRegex = new(@"\((?<values>[^\)]+)\)", RegexOptions.Compiled);
+        private readonly Regex dependencyValuesRegex = new(@"\((?<values>[^\)]+)\)", RegexOptions.Compiled);
 
         public ConfiguratorsService(ILogger<ConfiguratorsService> logger,
             IDatabaseConnection databaseConnection,
@@ -410,7 +410,11 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
     stepTitle,
     stepName,
     dependencies,
+    minimumValue,
+    maximumValue,
+    validationRegex,
     isRequired,
+    requiredConditions,
     dataQuery,
     CONCAT_WS('-', mainStepOrdering - 1, stepOrdering - 1, subStepOrdering - 1) AS position
 FROM (
@@ -420,7 +424,11 @@ FROM (
         mainStep.title AS stepTitle,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        minimumValue.`value` AS minimumValue,
+        maximumValue.`value` AS maximumValue,
+        validationRegex.`value` AS validationRegex,
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
+        requiredConditions.`value` AS requiredConditions,
         CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
         mainStepLink.ordering AS mainStepOrdering,
         NULL AS stepOrdering,
@@ -431,7 +439,11 @@ FROM (
     JOIN {WiserTableNames.WiserItem} AS mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = mainStep.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = mainStep.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = mainStep.id AND minimumValue.`key` = 'min_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValue ON maximumValue.item_id = mainStep.id AND maximumValue.`key` = 'max_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegex ON validationRegex.item_id = mainStep.id AND validationRegex.`key` = 'validation_regex'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = mainStep.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = mainStep.id AND requiredConditions.`key` = 'required_conditions'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = mainStep.id AND dataQuery.`key` = 'custom_query'
 
     WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
@@ -444,7 +456,11 @@ FROM (
         step.title AS stepTitle,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        minimumValue.`value` AS minimumValue,
+        maximumValue.`value` AS maximumValue,
+        validationRegex.`value` AS validationRegex,
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
+        requiredConditions.`value` AS requiredConditions,
         CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
         mainStepLink.ordering AS mainStepOrdering,
         stepLink.ordering AS stepOrdering,
@@ -458,7 +474,11 @@ FROM (
     JOIN {WiserTableNames.WiserItem} AS step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = step.id AND minimumValue.`key` = 'min_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValue ON maximumValue.item_id = step.id AND maximumValue.`key` = 'max_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegex ON validationRegex.item_id = step.id AND validationRegex.`key` = 'validation_regex'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = step.id AND dataQuery.`key` = 'custom_query'
 
     WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
@@ -471,7 +491,11 @@ FROM (
         subStep.title AS stepTitle,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        minimumValue.`value` AS minimumValue,
+        maximumValue.`value` AS maximumValue,
+        validationRegex.`value` AS validationRegex,
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
+        requiredConditions.`value` AS requiredConditions,
         CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
         mainStepLink.ordering AS mainStepOrdering,
         stepLink.ordering AS stepOrdering,
@@ -488,7 +512,11 @@ FROM (
     JOIN {WiserTableNames.WiserItem} AS subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = 'substap'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = subStep.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = subStep.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = subStep.id AND minimumValue.`key` = 'min_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValue ON maximumValue.item_id = subStep.id AND maximumValue.`key` = 'max_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegex ON validationRegex.item_id = subStep.id AND validationRegex.`key` = 'validation_regex'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = subStep.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = subStep.id AND requiredConditions.`key` = 'required_conditions'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = subStep.id AND dataQuery.`key` = 'custom_query'
 
     WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
@@ -511,7 +539,7 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
 
                         // Check if the dependency should also check for the value of the dependency.
                         List<string> dependencyValues = null;
-                        var dependencyValuesMatch = DependencyValuesRegex.Match(dependency);
+                        var dependencyValuesMatch = dependencyValuesRegex.Match(dependency);
                         if (dependencyValuesMatch.Success)
                         {
                             dependencyValues = dependencyValuesMatch.Groups["values"].Captures.Select(c => c.Value).ToList();
@@ -522,6 +550,28 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                         {
                             StepName = dependencyStepName,
                             Values = dependencyValues ?? new List<string>()
+                        });
+                    }
+                }
+
+                // Create required conditions.
+                var requiredConditions = new List<VueStepDependencyModel>();
+                if (!String.IsNullOrWhiteSpace(dataRow.Field<string>("requiredConditions")))
+                {
+                    var requiredConditionsArray = dataRow.Field<string>("requiredConditions").Split(';');
+                    foreach (var requiredCondition in requiredConditionsArray)
+                    {
+                        // Check if the dependency should also check for the value of the dependency.
+                        var requiredConditionValuesMatch = dependencyValuesRegex.Match(requiredCondition);
+                        if (!requiredConditionValuesMatch.Success) continue;
+                        
+                        var requiredConditionValues = requiredConditionValuesMatch.Groups["values"].Captures.Select(c => c.Value).ToList();
+                        var requiredConditionStepName = requiredCondition.Replace(requiredConditionValuesMatch.Value, String.Empty);
+
+                        requiredConditions.Add(new VueStepDependencyModel
+                        {
+                            StepName = requiredConditionStepName,
+                            Values = requiredConditionValues
                         });
                     }
                 }
@@ -537,7 +587,11 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                     Position = dataRow.Field<string>("position"),
                     StepName = stepName,
                     Dependencies = dependencies,
+                    MinimumValue = dataRow.Field<string>("minimumValue"),
+                    MaximumValue = dataRow.Field<string>("maximumValue"),
+                    ValidationRegex = dataRow.Field<string>("validationRegex"),
                     IsRequired = Convert.ToBoolean(dataRow["isRequired"]),
+                    RequiredConditions = requiredConditions,
                     DataQuery = dataRow.Field<string>("dataQuery")
                 };
 

@@ -280,7 +280,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         {
                             var mainStepVariableName = firstRow.Field<string>("mainstep_variable_name");
                             var isRequired = Convert.ToBoolean(firstRow["mainsteps_isrequired"]) ? "true" : "false";
-                            allStepsHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{mainStepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{mainStepVariableName}')\" :enabled=\"stepEnabled('{mainStepVariableName}')\" :is-required=\"{isRequired}\">");
+                            allStepsHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{mainStepVariableName}\" v-slot=\"{{ step }}\" :visible=\"stepVisible('{mainStepVariableName}')\" :enabled=\"stepEnabled('{mainStepVariableName}')\" :is-required=\"{isRequired}\">");
                         }
                         allStepsHtml.Append(Settings.MainStepHtml
                             .ReplaceCaseInsensitive("{componentId}", ComponentId.ToString())
@@ -376,7 +376,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         stepVariableName = row.Field<string>("variable_name");
                         var position = $"{mainStepCount}-{stepCount}";
                         var isRequired = Convert.ToBoolean(row["isrequired"]) ? "true" : "false";
-                        currentStepHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{stepVariableName}')\" :enabled=\"stepEnabled('{stepVariableName}')\" :is-required=\"{isRequired}\">");
+                        currentStepHtml.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{stepVariableName}\" v-slot=\"{{ step }}\" :visible=\"stepVisible('{stepVariableName}')\" :enabled=\"stepEnabled('{stepVariableName}')\" :is-required=\"{isRequired}\">");
                     }
                     currentStepHtml.Append(await RenderStepAsync(currentConfiguratorName, row, mainStepCount, stepCount));
                     if (Settings.ComponentMode == ComponentModes.Vue)
@@ -461,7 +461,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             if (Settings.ComponentMode == ComponentModes.Vue)
             {
-                allStepsHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{currentMainStepVariableName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{currentMainStepVariableName}')\" :enabled=\"stepEnabled('{currentMainStepVariableName}')\" :is-required=\"{currentMainStepRequired}\">");
+                allStepsHtml.Append($"<step ref=\"step-{mainStepCount}\" position=\"{mainStepCount}\" step-name=\"{currentMainStepVariableName}\" v-slot=\"{{ step }}\" :visible=\"stepVisible('{currentMainStepVariableName}')\" :enabled=\"stepEnabled('{currentMainStepVariableName}')\" :is-required=\"{currentMainStepRequired}\">");
             }
             allStepsHtml.Append(Settings.MainStepHtml
                 .ReplaceCaseInsensitive("{mainStepCount}", mainStepCount.ToString())
@@ -635,7 +635,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 WriteToTrace("RenderStep - Create StepOptions component start");
                 var stepOptionHtmlBuilder = new StringBuilder();
-                stepOptionHtmlBuilder.Append("<step-option v-for=\"option in slotProps.options\" :key=\"option.id\" :step-name=\"slotProps.stepName\">");
+                stepOptionHtmlBuilder.Append("<step-option v-for=\"option in step.options\" :key=\"option.id\">");
                 stepOptionHtmlBuilder.Append(row.Field<string>("values_template"));
                 stepOptionHtmlBuilder.Append("</step-option>");
 
@@ -847,7 +847,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             if (Settings.ComponentMode == ComponentModes.Vue)
             {
                 var stepOptionHtmlBuilder = new StringBuilder();
-                stepOptionHtmlBuilder.Append("<step-option v-for=\"option in slotProps.options\" :key=\"option.id\" :step-name=\"slotProps.stepName\">");
+                stepOptionHtmlBuilder.Append("<step-option v-for=\"option in step.options\" :key=\"option.id\">");
                 stepOptionHtmlBuilder.Append(row.Field<string>("substep_values_template"));
                 stepOptionHtmlBuilder.Append("</step-option>");
 
@@ -882,7 +882,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                 var position = $"{mainStepNumber}-{stepNumber}-{subStepNumber}";
                 var subStepName = row.Field<string>("substep_variable_name");
                 var isRequired = Convert.ToBoolean(row["substep_isrequired"]) ? "true" : "false";
-                templateBuilder.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{subStepName}\" v-slot=\"slotProps\" :visible=\"stepVisible('{subStepName}')\" :enabled=\"stepEnabled('{subStepName}')\" :is-required=\"{isRequired}\">");
+                templateBuilder.Append($"<step ref=\"step-{position}\" position=\"{position}\" step-name=\"{subStepName}\" v-slot=\"{{ step }}\" :visible=\"stepVisible('{subStepName}')\" :enabled=\"stepEnabled('{subStepName}')\" :is-required=\"{isRequired}\">");
             }
 
             templateBuilder.Append(Settings.SubStepHtml
@@ -1584,13 +1584,15 @@ namespace GeeksCoreLibrary.Components.Configurator
                 foreach (var dependency in stepData.Dependencies)
                 {
                     var item = configuration.Items.SingleOrDefault(item => item.Key == dependency.StepName);
-                    if (String.IsNullOrEmpty(item.Key))
+                    var queryStringItem = configuration.QueryStringItems.SingleOrDefault(queryStringItem => queryStringItem.Key == dependency.StepName);
+                    if (String.IsNullOrEmpty(item.Key) && String.IsNullOrEmpty(queryStringItem.Key))
                     {
                         loadOptions = false;
                         break;
                     }
 
-                    if (dependency.Values != null && dependency.Values.Any() && dependency.Values.All(value => value != item.Value.CurrentValue))
+                    var itemValue = item.Key != null ? item.Value.CurrentValue : queryStringItem.Value;
+                    if (dependency.Values != null && dependency.Values.Any() && dependency.Values.All(value => value != itemValue))
                     {
                         loadOptions = false;
                         break;
