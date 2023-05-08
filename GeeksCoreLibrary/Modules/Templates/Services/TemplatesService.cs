@@ -66,16 +66,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
             IStringReplacementsService stringReplacementsService,
-            IHttpContextAccessor httpContextAccessor,
-            IViewComponentHelper viewComponentHelper,
-            ITempDataProvider tempDataProvider,
-            IActionContextAccessor actionContextAccessor,
-            IWebHostEnvironment webHostEnvironment,
             IFiltersService filtersService,
             IObjectsService objectsService,
             ILanguagesService languagesService,
             IAccountsService accountsService,
-            IDatabaseHelpersService databaseHelpersService)
+            IDatabaseHelpersService databaseHelpersService,
+            IHttpContextAccessor httpContextAccessor = null,
+            IActionContextAccessor actionContextAccessor = null,
+            IViewComponentHelper viewComponentHelper = null,
+            IWebHostEnvironment webHostEnvironment = null,
+            ITempDataProvider tempDataProvider = null)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -227,7 +227,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 LoginRoles = result.LoginRoles
             };
 
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 // No context available; return empty template without doing a login check.
                 return emptyTemplate;
@@ -551,7 +551,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
 
             var reader = await databaseConnection.GetReaderAsync(query);
             try
@@ -595,7 +595,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
             var templates = await templatesService.GetTemplatesAsync(templateIds, true);
 
             foreach (var template in templates.Where(t => t.Type == templateType))
@@ -627,9 +627,11 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 return;
             }
 
-            if (!String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex))
+            if (!template.Type.InList(TemplateTypes.Css, TemplateTypes.Scss, TemplateTypes.Js) && !String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
             {
                 // Skip this template if it has an URL regex and that regex does not match the current URL.
+                // This is skipped for CSS, SCSS and JS templates, otherwise they might exclude themselves when the
+                // request URL is for the CSS/JS templates (e.g.: "/css/gclcss_123.css").
                 return;
             }
 
@@ -660,6 +662,11 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             if (fileNames == null)
             {
                 throw new ArgumentNullException(nameof(fileNames));
+            }
+
+            if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
+            {
+                return "";
             }
 
             var enumerable = fileNames.ToList();
@@ -713,7 +720,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             }
 
             // Start with special template replacements for the pre load query that you can set in HTML templates in the templates module in Wiser.
-            if (httpContextAccessor != null && httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
+            if (httpContextAccessor?.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
             {
                 input = stringReplacementsService.DoReplacements(input, (DataRow)httpContextAccessor.HttpContext.Items[Constants.TemplatePreLoadQueryResultKey], forQuery, prefix: "{template.");
             }
@@ -745,9 +752,9 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
         }
 
         /// <inheritdoc />
-        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
+        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "")
         {
-            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser2/<item_id>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
+            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser/<item_id>/<filetype>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
 
             imageUrlTemplate = imageUrlTemplate.Replace("<item_id>", itemId);
             imageUrlTemplate = imageUrlTemplate.Replace("<filename>", filename);
@@ -755,18 +762,25 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             imageUrlTemplate = imageUrlTemplate.Replace("<width>", width);
             imageUrlTemplate = imageUrlTemplate.Replace("<height>", height);
 
-            // Remove if not specified
+            // Remove file type if not specified.
+            if (String.IsNullOrWhiteSpace(fileType))
+            {
+                imageUrlTemplate = imageUrlTemplate.Replace("<filetype>/", "");
+            }
+
+            // Remove number if not specified.
             if (number == 0)
             {
                 imageUrlTemplate = imageUrlTemplate.Replace("<number>/", "");
             }
 
-            // Remove if not specified
+            // Remove resize mode if not specified.
             if (String.IsNullOrWhiteSpace(resizeMode))
             {
                 imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>/", "");
             }
 
+            imageUrlTemplate = imageUrlTemplate.Replace("<filetype>", fileType);
             imageUrlTemplate = imageUrlTemplate.Replace("<number>", number.ToString());
             imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>", resizeMode);
 
@@ -781,7 +795,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 return input;
             }
 
-            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]");
+            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             foreach (Match m in imageTemplatingRegex.Matches(input))
             {
                 var replacementParameters = m.Groups[1].Value.Split(":");
@@ -790,6 +804,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 var resizeMode = "";
                 var propertyName = "";
                 var imageAltTag = "";
+                var fileType = "";
                 var fallbackImageExtension = "jpg";
                 var parameters = replacementParameters[0].Split(",");
                 var imageItemIdOrFilename = parameters[0];
@@ -821,6 +836,11 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                     imageAltTag = parameters[5].Trim();
                 }
 
+                if (parameters.Length > 6)
+                {
+                    fileType = parameters[6].Trim();
+                }
+
                 imageIndex = imageIndex == 0 ? 1 : imageIndex;
 
                 // Get the image from the database
@@ -828,9 +848,34 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 databaseConnection.AddParameter("filename", imageItemIdOrFilename);
                 databaseConnection.AddParameter("propertyName", propertyName);
 
-                var queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
+                string queryWherePart;
+                string itemIdColumn;
+                if (!String.IsNullOrWhiteSpace(fileType))
+                {
+                    switch (fileType.ToUpperInvariant())
+                    {
+                        case "ITEMLINK":
+                            queryWherePart = "itemlink_id = ?itemId";
+                            itemIdColumn = "itemlink_id";
+                            break;
+                        case "DIRECT":
+                            queryWherePart = "id = ?itemId";
+                            itemIdColumn = "id";
+                            break;
+                        default:
+                            queryWherePart = "item_id = ?itemId";
+                            itemIdColumn = "item_id";
+                            break;
+                    }
+                }
+                else
+                {
+                    queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
+                    itemIdColumn = "item_id";
+                }
+
                 var dataTable = await databaseConnection.GetAsync(@$"SELECT
-    item_id,
+    `{itemIdColumn}` AS item_id,
     file_name,
     property_name
 FROM `{WiserTableNames.WiserItemFile}`
@@ -856,7 +901,7 @@ ORDER BY id ASC");
                 var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
                 var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
-                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)");
+                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
                 var totalItems = items.Count;
                 var index = 1;
@@ -890,10 +935,10 @@ ORDER BY id ASC");
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-alt-2x} 2x, {image-url-alt}"" type=""{image-type-alt}"" />");
 
-                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode));
-                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode, fileType));
                     outputBuilder.Replace("{image-type-alt}", FileSystemHelpers.GetMediaTypeByExtension(fallbackImageExtension));
                     outputBuilder.Replace("{min-width}", imageViewportParameter);
 
@@ -901,7 +946,7 @@ ORDER BY id ASC");
                     if (index == totalItems)
                     {
                         outputBuilder.Append("<img width=\"{image_width}\" height=\"{image_height}\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
-                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
                         outputBuilder.Replace("{image_width}", imageWidth.ToString());
                         outputBuilder.Replace("{image_height}", imageHeight.ToString());
                     }
@@ -942,7 +987,7 @@ ORDER BY id ASC");
             while (counter < max && (input.Contains("<[", StringComparison.Ordinal) || input.Contains("[include", StringComparison.Ordinal)))
             {
                 counter += 1;
-                var inclusionsRegex = new Regex(@"<\[(.*?)\]>");
+                var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -979,7 +1024,7 @@ ORDER BY id ASC");
                     }
                 }
 
-                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]");
+                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -1085,6 +1130,11 @@ ORDER BY id ASC");
             if (String.IsNullOrWhiteSpace(dynamicContent?.Name) || String.IsNullOrWhiteSpace(dynamicContent?.SettingsJson))
             {
                 return "";
+            }
+
+            if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+            {
+                throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
             }
 
             var logRenderingOfComponent = await ComponentRenderingShouldBeLoggedAsync(dynamicContent.Id);
@@ -1205,7 +1255,7 @@ ORDER BY id ASC");
         }
 
         /// <inheritdoc />
-        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false)
+        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false, bool childItemsMustHaveId = false)
         {
             var query = queryTemplate?.Content;
             if (String.IsNullOrWhiteSpace(query))
@@ -1220,7 +1270,7 @@ ORDER BY id ASC");
                 query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
             }
 
-            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled);
+            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
             var pusherMatches = pusherRegex.Matches(query);
             foreach (Match match in pusherMatches)
             {
@@ -1233,7 +1283,7 @@ ORDER BY id ASC");
             }
 
             var dataTable = await databaseConnection.GetAsync(query);
-            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive);
+            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
 
             if (pusherMatches.Any())
             {
@@ -1275,6 +1325,7 @@ ORDER BY ORDINAL_POSITION ASC";
         public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             var template = await templatesService.GetTemplateAsync(id, name, TemplateTypes.Html, parentId, parentName);
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
 
             var cssStringBuilder = new StringBuilder();
             var jsStringBuilder = new StringBuilder();
@@ -1283,8 +1334,15 @@ ORDER BY ORDINAL_POSITION ASC";
             foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
             {
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
-                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
-                (linkedTemplate.Type == TemplateTypes.Css ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
+
+                // Validate the template regex, if it has one.
+                if (!String.IsNullOrWhiteSpace(linkedTemplate.UrlRegex) && !String.IsNullOrWhiteSpace(currentUrl) && !Regex.IsMatch(currentUrl, linkedTemplate.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
+                {
+                    continue;
+                }
+
+                (linkedTemplate.Type.InList(TemplateTypes.Css, TemplateTypes.Scss) ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+                (linkedTemplate.Type.InList(TemplateTypes.Css, TemplateTypes.Scss) ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
             }
 
             return new TemplateDataModel
@@ -1306,7 +1364,7 @@ ORDER BY ORDINAL_POSITION ASC";
         /// <inheritdoc />
         public async Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
         {
-            if (httpContextAccessor.HttpContext == null || String.IsNullOrWhiteSpace(template?.PreLoadQuery))
+            if (httpContextAccessor?.HttpContext == null || String.IsNullOrWhiteSpace(template?.PreLoadQuery))
             {
                 return true;
             }
@@ -1325,7 +1383,7 @@ ORDER BY ORDINAL_POSITION ASC";
         /// <inheritdoc />
         public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
-            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
             switch (contentTemplate.CachingMode)
             {
@@ -1348,7 +1406,7 @@ ORDER BY ORDINAL_POSITION ASC";
 
                     try
                     {
-                        var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                        var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
                         var match = regex.Match(originalUri.PathAndQuery);
                         if (!match.Success)
                         {
@@ -1366,7 +1424,7 @@ ORDER BY ORDINAL_POSITION ASC";
 
                             // Strip invalid characters that can't be in a file name.
                             var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
-                            
+
                             // Add the group value to the file name.
                             cacheFileName.Append($"{Uri.EscapeDataString(value)}_");
                         }
@@ -1389,7 +1447,7 @@ ORDER BY ORDINAL_POSITION ASC";
             var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (cookieCacheDeviation.Length > 0)
             {
-                var requestCookies = httpContextAccessor.HttpContext?.Request.Cookies;
+                var requestCookies = httpContextAccessor?.HttpContext?.Request.Cookies;
                 foreach (var cookieName in cookieCacheDeviation)
                 {
                     if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
@@ -1400,6 +1458,13 @@ ORDER BY ORDINAL_POSITION ASC";
                     var combinedCookiePart = $"{cookieName}:{cookieValue}";
                     cacheFileName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
                 }
+            }
+
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
             }
 
             // And finally add the language code to the file name.
@@ -1435,10 +1500,21 @@ ORDER BY ORDINAL_POSITION ASC";
 	template.url_regex
 FROM {WiserTableNames.WiserTemplate} AS template
 LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = template.template_id AND otherVersion.version > template.version
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 WHERE otherVersion.id IS NULL
 AND template.template_type IN ({(int)TemplateTypes.Html}, {(int)TemplateTypes.Query}, {(int)TemplateTypes.Routine})
 AND template.url_regex IS NOT NULL
-AND template.url_regex <> ''";
+AND template.url_regex <> ''
+ORDER BY parent5.ordering ASC, 
+    parent4.ordering ASC, 
+    parent3.ordering ASC, 
+    parent2.ordering ASC, 
+    parent1.ordering ASC, 
+    template.ordering ASC";
             }
             else
             {
@@ -1448,10 +1524,21 @@ SELECT
 	template.template_type,
 	template.url_regex
 FROM {WiserTableNames.WiserTemplate} AS template
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 WHERE (template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}
 AND template.template_type IN ({(int)TemplateTypes.Html}, {(int)TemplateTypes.Query}, {(int)TemplateTypes.Routine})
 AND template.url_regex IS NOT NULL
-AND template.url_regex <> ''";
+AND template.url_regex <> ''
+ORDER BY parent5.ordering ASC, 
+    parent4.ordering ASC, 
+    parent3.ordering ASC, 
+    parent2.ordering ASC, 
+    parent1.ordering ASC, 
+    template.ordering ASC";
             }
 
             var dataTable = await databaseConnection.GetAsync(query);
@@ -1471,6 +1558,101 @@ AND template.url_regex <> ''";
         }
 
         /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            var results = new List<PageWidgetModel>();
+            var globalWidgetsQuery = $@"SELECT
+	widget.id,
+	widget.title,
+	IF(languageSpecificHtml.id IS NULL, CONCAT_WS('', genericHtml.`value`, genericHtml.long_value), CONCAT_WS('', languageSpecificHtml.`value`, languageSpecificHtml.long_value)) AS html,
+	IFNULL(location.value, '{(int) Constants.PageWidgetDefaultLocation}') AS widget_location
+FROM {WiserTableNames.WiserItem} AS widget
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS genericHtml ON genericHtml.item_id = widget.id AND genericHtml.`key` = '{Constants.PageWidgetHtmlPropertyName}'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS languageSpecificHtml ON languageSpecificHtml.item_id = widget.id AND languageSpecificHtml.`key` = '{Constants.PageWidgetHtmlPropertyName}' AND languageSpecificHtml.language_code = '{languagesService.CurrentLanguageCode}'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS location ON location.item_id = widget.id AND location.`key` = '{Constants.PageWidgetLocationPropertyName}'
+LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToParent ON linkToParent.item_id = widget.id AND linkToParent.type = {Constants.PageWidgetParentLinkType}
+WHERE widget.entity_type = '{Constants.PageWidgetEntityType}'
+ORDER BY IFNULL(linkToParent.destination_item_id, 0) ASC, IFNULL(linkToParent.ordering, widget.ordering) ASC";
+
+            var dataTable = await databaseConnection.GetAsync(globalWidgetsQuery);
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                var html = dataRow.Field<string>("html");
+                if (String.IsNullOrWhiteSpace(html))
+                {
+                    // No point in adding empty widgets to the page.
+                    continue;
+                }
+
+                results.Add(new PageWidgetModel
+                {
+                    Location = (PageWidgetLocations) Convert.ToInt32(dataRow["widget_location"]),
+                    Html = html
+                });
+            }
+
+            return results;
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            return await GetPageWidgetsAsync(this, templateId, includeGlobalSnippets);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
+        {
+            var results = includeGlobalSnippets ? await templatesService.GetGlobalPageWidgetsAsync() : new List<PageWidgetModel>();
+
+            if (templateId <= 0)
+            {
+                return results;
+            }
+
+            var joinPart = "";
+            var whereClause = new List<string> { "template.template_id = ?id", "template.removed = 0" };
+            if (gclSettings.Environment == Environments.Development)
+            {
+                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+            }
+            else
+            {
+                whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
+            }
+
+            databaseConnection.AddParameter("id", templateId);
+            var query = $@"SELECT
+    template.widget_content,
+    template.widget_location
+FROM {WiserTableNames.WiserTemplate} AS template
+{joinPart}
+
+WHERE {String.Join(" AND ", whereClause)}
+LIMIT 1";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count == 0)
+            {
+                return results;
+            }
+
+            var html = dataTable.Rows[0].Field<string>("widget_content");
+            if (String.IsNullOrWhiteSpace(html))
+            {
+                return results;
+            }
+
+            results.Add(new PageWidgetModel
+            {
+                Html = html,
+                Location = (PageWidgetLocations) Convert.ToInt32(dataTable.Rows[0]["widget_location"])
+            });
+
+            return results;
+        }
+
+        /// <inheritdoc />
         public async Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
         {
             var logRenderingOfComponentsSetting = await objectsService.FindSystemObjectByDomainNameAsync($"log_rendering_of_components_{gclSettings.Environment}");
@@ -1482,7 +1664,7 @@ AND template.url_regex <> ''";
                     return false;
                 }
             }
-            
+
             if (String.Equals("all", logRenderingOfComponentsSetting, StringComparison.OrdinalIgnoreCase) || String.Equals("true", logRenderingOfComponentsSetting, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
@@ -1504,7 +1686,7 @@ AND template.url_regex <> ''";
                     return false;
                 }
             }
-            
+
             if (String.Equals("all", logRenderingOfTemplatesSetting, StringComparison.OrdinalIgnoreCase) || String.Equals("true", logRenderingOfTemplatesSetting, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
@@ -1520,13 +1702,13 @@ AND template.url_regex <> ''";
             try
             {
                 var userData = await accountsService.GetUserDataFromCookieAsync();
-                
+
                 var tableName = componentId > 0 ? WiserTableNames.WiserDynamicContentRenderLog : WiserTableNames.WiserTemplateRenderLog;
                 await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {tableName});
                 databaseConnection.AddParameter("rendering_content_id", componentId);
                 databaseConnection.AddParameter("rendering_template_id", templateId);
                 databaseConnection.AddParameter("rendering_version", version);
-                databaseConnection.AddParameter("rendering_url", HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext));
+                databaseConnection.AddParameter("rendering_url", HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext));
                 databaseConnection.AddParameter("rendering_environment", gclSettings.Environment.ToString());
                 databaseConnection.AddParameter("rendering_start", startTime);
                 databaseConnection.AddParameter("rendering_end", endTime);
@@ -1543,8 +1725,8 @@ VALUES (?{idParameter}, ?rendering_version, ?rendering_url, ?rendering_environme
             }
             catch (Exception exception)
             {
-                logger.LogError(exception, templateId > 0 
-                    ? $"Error while trying to log the render time of template #{templateId}" 
+                logger.LogError(exception, templateId > 0
+                    ? $"Error while trying to log the render time of template #{templateId}"
                     : $"Error while trying to log the render time of component #{componentId}");
             }
         }

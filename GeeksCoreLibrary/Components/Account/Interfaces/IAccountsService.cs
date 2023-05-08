@@ -1,3 +1,4 @@
+﻿using System;
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Models;
@@ -19,7 +20,7 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// So we still create an account for the user, but without a password. We then save this ID encrypted in a cookie to be used later. This function gets and decrypts that ID.
         /// </summary>
         /// <returns>The decrypted user ID if a user was recently created in this session. Otherwise it returns 0.</returns>
-        ulong GetRecentlyCreateAccountId();
+        ulong GetRecentlyCreatedAccountId();
 
         /// <summary>
         /// Generates a new cookie for a logged in user.
@@ -31,18 +32,36 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <param name="userEntityType">The entity type for sub accounts.</param>
         /// <returns>The value that should be saved in the cookie.</returns>
         Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account");
-        
+
         /// <summary>
         /// Deletes a cookie token from the database, so that the user cannot login with it anymore, even if it still has a cookie with that token.
         /// </summary>
         /// <param name="selector">The selector of the token.</param>
         Task RemoveCookieTokenAsync(string selector);
-        
+
+        /// <summary>
+        /// Saves the 2FA key from the user in the database
+        /// </summary>
+        /// <param name="userId">The User ID of the user</param>
+        /// <param name="user2FactorAuthenticationKey">A random generated string used for authentication</param>
+        /// <param name="entityType">The entity type of the user account in wiser_item.</param>
+        /// <returns></returns>
+        Task Save2FactorAuthenticationKeyAsync(ulong userId, string user2FactorAuthenticationKey, string entityType = Constants.DefaultEntityType);
+
+        /// <summary>
+        /// Gets the 2FA key from the user in the database
+        /// </summary>
+        /// <param name="userId">The ID of the user</param>
+        /// <param name="entityType">The entity type of the user account in wiser_item.</param>
+        /// <returns></returns>
+        Task<string> Get2FactorAuthenticationKeyAsync(ulong userId, string entityType = Constants.DefaultEntityType);
+
         /// <summary>
         /// Attempts to log off the user. This will delete the user's cookie from their browser and our database.
         /// </summary>
         /// <param name="settings">The settings of the account component.</param>
-        Task LogoutUserAsync(AccountCmsSettingsModel settings);
+        /// <param name="isAutoLogout">Optional: Whether this is an automatic logout via code or not.</param>
+        Task LogoutUserAsync(AccountCmsSettingsModel settings, bool isAutoLogout = false);
 
         /// <summary>
         /// Do all replacements for the account component on a string.

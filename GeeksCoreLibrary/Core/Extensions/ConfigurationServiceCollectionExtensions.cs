@@ -11,7 +11,6 @@ using GeeksCoreLibrary.Core.Services;
 using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
 using GeeksCoreLibrary.Modules.ItemFiles.Services;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
-using GeeksCoreLibrary.Modules.Languages.Middlewares;
 using GeeksCoreLibrary.Modules.Languages.Services;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Services;
@@ -48,6 +47,7 @@ using GeeksCoreLibrary.Components.ShoppingBasket.Services;
 using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Databases.Middlewares;
 using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.ItemFiles;
 using JetBrains.Annotations;
@@ -88,9 +88,9 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             builder.UseSession();
 
-            builder.UseMiddleware<ClearCacheMiddleware>();
+            builder.UseMiddleware<CreateAndUpdateTablesMiddleware>();
 
-            builder.UseMiddleware<LanguagesMiddleware>();
+            builder.UseMiddleware<ClearCacheMiddleware>();
 
             builder.UseMiddleware<RedirectMiddleWare>();
 
@@ -132,19 +132,22 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <param name="useCaching"></param>
         /// <param name="isApi">Set this to true if you're using the GCL in an API, so that no XSRF protection will be added.</param>
         /// <returns></returns>
-        public static IServiceCollection AddGclServices(this IServiceCollection services, IConfiguration configuration, bool useCaching = true, bool isApi = false)
+        public static IServiceCollection AddGclServices(this IServiceCollection services, IConfiguration configuration, bool useCaching = true, bool isApi = false, bool isWeb = true)
         {
             // MVC looks in the directory "Areas" by default, but we use the directory "Modules", so we have to tell MC that.
-            services.Configure<RazorViewEngineOptions>(options =>
+            if (isWeb)
             {
-                options.AreaViewLocationFormats.Add("/Modules/{2}/Views/{1}/{0}" + RazorViewEngine.ViewExtension);
-                options.AreaViewLocationFormats.Add("/Modules/{2}/Views/Shared/{0}" + RazorViewEngine.ViewExtension);
-                options.AreaViewLocationFormats.Add("/Core/Views/{1}/{0}" + RazorViewEngine.ViewExtension);
-                options.AreaViewLocationFormats.Add("/Core/Views/Shared/{0}" + RazorViewEngine.ViewExtension);
+                services.Configure<RazorViewEngineOptions>(options =>
+                {
+                    options.AreaViewLocationFormats.Add("/Modules/{2}/Views/{1}/{0}" + RazorViewEngine.ViewExtension);
+                    options.AreaViewLocationFormats.Add("/Modules/{2}/Views/Shared/{0}" + RazorViewEngine.ViewExtension);
+                    options.AreaViewLocationFormats.Add("/Core/Views/{1}/{0}" + RazorViewEngine.ViewExtension);
+                    options.AreaViewLocationFormats.Add("/Core/Views/Shared/{0}" + RazorViewEngine.ViewExtension);
 
-                options.ViewLocationFormats.Add("/Core/Views/{1}/{0}" + RazorViewEngine.ViewExtension);
-                options.ViewLocationFormats.Add("/Core/Views/Shared/{0}" + RazorViewEngine.ViewExtension);
-            });
+                    options.ViewLocationFormats.Add("/Core/Views/{1}/{0}" + RazorViewEngine.ViewExtension);
+                    options.ViewLocationFormats.Add("/Core/Views/Shared/{0}" + RazorViewEngine.ViewExtension);
+                });
+            }
 
             // Use the options pattern for all GCL settings in appSettings.json.
             var configurationSection = configuration.GetSection("GCL");
@@ -152,58 +155,63 @@ namespace GeeksCoreLibrary.Core.Extensions
             var gclSettings = configurationSection.Get<GclSettings>();
 
             // Add MySql health checks.
-            services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, "MySqlRead");
-            if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
+            if (isWeb)
             {
-                services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, "MySqlWrite");
-            }
-
-            // Set default settings for JSON.NET.
-            JsonConvert.DefaultSettings = () => new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
-
-            // Default MVC controllers and tell them to use JSON.NET instead of the default dotnet Core JSON.
-            // Also add a global filter to validate anti forgery tokens, to protect against CSRF attacks.
-            if (!isApi && !gclSettings.DisableXsrfProtection)
-            {
-                services.AddControllersWithViews(options => options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute())).AddNewtonsoftJson();
-                services.AddAntiforgery(options =>
+                services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, "MySqlRead");
+                if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
                 {
-                    options.HeaderName = "X-CSRF-TOKEN";
-                    options.Cookie.Name = "CSRF-TOKEN";
-                });
-            }
-            else
-            {
-                services.AddControllersWithViews().AddNewtonsoftJson();
-            }
+                    services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, "MySqlWrite");
+                }
 
-            // Let MVC know about the GCL controllers.
-            services.AddMvc().AddApplicationPart(typeof(TemplatesController).GetTypeInfo().Assembly);
 
-            // Enable HTML output minifier.
-            services.AddWebMarkupMin(
-                    options =>
+                // Set default settings for JSON.NET.
+                JsonConvert.DefaultSettings = () => new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
+
+                // Default MVC controllers and tell them to use JSON.NET instead of the default dotnet Core JSON.
+                // Also add a global filter to validate anti forgery tokens, to protect against CSRF attacks.
+                if (!isApi && !gclSettings.DisableXsrfProtection)
+                {
+                    services.AddControllersWithViews(options => options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute())).AddNewtonsoftJson();
+                    services.AddAntiforgery(options =>
                     {
-                        options.AllowMinificationInDevelopmentEnvironment = false;
-                        options.AllowCompressionInDevelopmentEnvironment = false;
-                    })
-                .AddHtmlMinification(
-                    options =>
-                    {
-                        options.MinificationSettings.RemoveRedundantAttributes = true;
-                        options.MinificationSettings.MinifyInlineCssCode = true;
-                        options.MinificationSettings.MinifyInlineJsCode = true;
-                        options.MinificationSettings.PreservableAttributeCollection.Add(new HtmlAttributeExpression("input", "type", "text"));
-                    })
-                .AddHttpCompression();
+                        options.HeaderName = "X-CSRF-TOKEN";
+                        options.Cookie.Name = "CSRF-TOKEN";
+                    });
+                }
+                else
+                {
+                    services.AddControllersWithViews().AddNewtonsoftJson();
+                }
+
+                // Let MVC know about the GCL controllers.
+                services.AddMvc().AddApplicationPart(typeof(TemplatesController).GetTypeInfo().Assembly);
+
+                // Enable HTML output minifier.
+                services.AddWebMarkupMin(
+                        options =>
+                        {
+                            options.AllowMinificationInDevelopmentEnvironment = false;
+                            options.AllowCompressionInDevelopmentEnvironment = false;
+                        })
+                    .AddHtmlMinification(
+                        options =>
+                        {
+                            options.MinificationSettings.RemoveRedundantAttributes = true;
+                            options.MinificationSettings.MinifyInlineCssCode = true;
+                            options.MinificationSettings.MinifyInlineJsCode = true;
+                            options.MinificationSettings.PreservableAttributeCollection.Add(new HtmlAttributeExpression("input", "type", "text"));
+                        })
+                    .AddHttpCompression();
+            }
 
             // Enable caching.
             services.AddLazyCache();
             
             // Enable session.
-            services.AddSession(options => {
-                options.IdleTimeout = TimeSpan.FromMinutes(30);
-            });
+            if (isWeb)
+            {
+                services.AddSession(options => { options.IdleTimeout = TimeSpan.FromMinutes(30); });
+            }
 
             // Manual additions.
             services.AddHttpContextAccessor();

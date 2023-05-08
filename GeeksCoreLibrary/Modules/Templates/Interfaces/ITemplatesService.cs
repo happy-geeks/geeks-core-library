@@ -187,7 +187,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         
         Task<string> HandleImageTemplating(string input);
 
-        Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "");
+        Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "");
 
         /// <summary>
         /// Gets the data for dynamic content, from easy_dynamiccontent.
@@ -221,8 +221,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="skipNullValues">Optional: Whether to skip values that are <see langword="null"/> and not add them to the JSON. Default value is <see langword="false"/>.</param>
         /// <param name="allowValueDecryption">Optional: Set to <see langword="true"/> to allow values to be decrypted (for columns that contain the _decrypt suffix for example), otherwise values will be added in the <see cref="JObject"/> as is. Default value is <see langword="false"/>.</param>
         /// <param name="recursive">TODO</param>
+        /// <param name="childItemsMustHaveId">Optional: Forces child items in an object to have a non-null value in the <c>id</c> column. This is for data selectors that have optional child items.</param>
         /// <returns>A <see cref="JArray"/> with the results of the query.</returns>
-        Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false);
+        Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false, bool childItemsMustHaveId = false);
 
         /// <summary>
         /// Executes a query and converts the results into an JSON object.
@@ -311,5 +312,31 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="timeTaken">The amount of time, in milliseconds, that it took to render the component or template.</param>
         /// <param name="error">Optional: If an error occurred, put that error here.</param>
         Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "");
+
+        /// <summary>
+        /// Gets all custom HTML snippets that should be loaded on all pages.
+        /// This will return all HTML snippets in the order that they should be loaded.
+        /// </summary>
+        /// <returns>A list of HTML snippets for the given template, in the order that they should be added to the page.</returns>
+        Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync();
+
+        /// <summary>
+        /// Gets all custom HTML snippets for a template. By default this will also include snippets that are added globally, to load on all pages.
+        /// This will return all HTML snippets in the order that they should be loaded. Global widgets will always be added first, then template specific widgets.
+        /// </summary>
+        /// <param name="templateId">The ID of the template to load the snippets for.</param>
+        /// <param name="includeGlobalSnippets">Optional: Whether to include global snippets that are added for all pages. Default is <see langword="true"/>.</param>
+        /// <returns>A list of HTML snippets for the given template, in the order that they should be added to the page.</returns>
+        Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true);
+
+        /// <summary>
+        /// Gets all custom HTML snippets for a template. By default this will also include snippets that are added globally, to load on all pages.
+        /// This will return all HTML snippets in the order that they should be loaded. Global widgets will always be added first, then template specific widgets.
+        /// </summary>
+        /// <param name="templatesService">The <see cref="ITemplatesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetGlobalPageWidgetsAsync() in this method.</param>
+        /// <param name="templateId">The ID of the template to load the snippets for.</param>
+        /// <param name="includeGlobalSnippets">Optional: Whether to include global snippets that are added for all pages. Default is <see langword="true"/>.</param>
+        /// <returns>A list of HTML snippets for the given template, in the order that they should be added to the page.</returns>
+        Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true);
     }
 }

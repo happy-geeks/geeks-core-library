@@ -21,6 +21,8 @@ namespace GeeksCoreLibrary.Core.Middlewares
 
         public async Task Invoke(HttpContext context, IAntiforgery antiForgery)
         {
+            logger.LogDebug("Invoked AddAntiForgeryMiddleware");
+            
             this.antiForgery = antiForgery;
 
             // Remember the original body.

@@ -56,7 +56,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             var logRenderingOfTemplate = false;
             var templateId = 0;
             var templateVersion = 0;
-            
+
             try
             {
                 var context = HttpContext;
@@ -189,7 +189,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(context, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
                 if (removeSvgUrlsFromIcons)
                 {
-                    var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>");
+                    var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                     foreach (Match match in regex.Matches(newBodyHtml))
                     {
                         newBodyHtml = newBodyHtml.Replace(match.Groups[1].Value, "");
@@ -201,7 +201,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     return Content(newBodyHtml, "text/html");
                 }
 
-                var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml);
+                var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml, templateId);
 
                 // If a component set the status code to a 4xx status code, then return that actual status code
                 // here too, so the StatusCodePagesWithReExecute middleware can handle the showing of custom error pages.

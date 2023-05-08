@@ -311,7 +311,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             {
                 throw new Exception("DecryptWithAes: No AES secret key set.");
             }
-            
+
             string output;
 
             if (useSlowerButMoreSecureMethod)
@@ -441,7 +441,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 {
                     rngCsp.GetNonZeroBytes(saltBytes);
                 }
-            
+
                 var keyBytes = KeyDerivation.Pbkdf2(encryptionKey, saltBytes, KeyDerivationPrf.HMACSHA512, 100000, 256 / 8);
                 var encryptedBytes = CryptographyHelpers.Encrypt(keyBytes, inputBytes);
                 var outputBytes = new byte[encryptedBytes.Length + saltBytes.Length];
@@ -558,7 +558,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 aes.Key = keyBytes;
                 // Perform the decryption.
                 var decryptedBytes = aes.DecryptCbc(inputBytes, ivBytes);
-                
+
                 // Turn the decrypted bytes into a string. It is assumed here that the string was encrypted with UTF-8.
                 output = Encoding.UTF8.GetString(decryptedBytes);
             }
@@ -750,7 +750,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             var parameterList = new Dictionary<string, string>();
             var counter = 0;
 
-            // Breek de string af en zet deze in een sortedList       
+            // Breek de string af en zet deze in een sortedList
             informationHolder.AddRange(input.Split(rowSplitter));
             foreach (var item in informationHolder)
             {
@@ -777,7 +777,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                     parameterList.Add(key, item.Split(columnSplitter)[1]);
                 }
             }
-            
+
             return parameterList;
         }
 
@@ -804,7 +804,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         public static string StripIllegalFilenameCharacters(this string input)
         {
             var regexSearch = Path.GetInvalidFileNameChars().ToString();
-            var regex = new Regex($"[{Regex.Escape(regexSearch!)}]");
+            var regex = new Regex($"[{Regex.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             var output = regex.Replace(input, "");
             return output.Replace("&", "_").Replace("+", "_");
         }
@@ -817,7 +817,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         public static string StripIllegalPathCharacters(this string input)
         {
             var regexSearch = Path.GetInvalidPathChars().ToString();
-            var regex = new Regex($"[{Regex.Escape(regexSearch!)}]");
+            var regex = new Regex($"[{Regex.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             var output = regex.Replace(input, "");
             return output.Replace("&", "_").Replace("+", "_");
         }

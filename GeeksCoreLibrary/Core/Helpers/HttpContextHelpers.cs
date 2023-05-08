@@ -26,22 +26,44 @@ namespace GeeksCoreLibrary.Core.Helpers
         };
 
         /// <summary>
-        /// Get the hostname, for example:
-        /// www.[testdomain] returns testdomain
-        /// domain.nl returns domain.nl
-        /// www.domain.nl returns domain.nl
-        /// domain.[testdomain] returns domain
-        /// domain.nl.[testdomain] returns domain.nl
+        /// Get the hostname from the current request. Some examples:
+        /// <list type="table">
+        ///     <listheader>
+        ///         <term>Domain</term>
+        ///         <description>Result</description>
+        ///     </listheader>
+        ///     <item>
+        ///         <term>www.[testdomain]</term>
+        ///         <description>testdomain</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>domain.nl</term>
+        ///         <description>domain.nl</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>www.domain.nl</term>
+        ///         <description>domain.nl</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>domain.[testdomain]</term>
+        ///         <description>domain</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>domain.nl.[testdomain]</term>
+        ///         <description>domain.nl</description>
+        ///     </item>
+        /// </list>
         /// </summary>
-        /// <param name="httpContext"></param>
-        /// <param name="testDomains"></param>
-        /// <param name="includingTestWww"></param>
-        /// <returns></returns>
-        public static string GetHostName(HttpContext httpContext, List<string> testDomains = null, bool includingTestWww = false)
+        /// <param name="httpContext">The <see cref="HttpContext"/> object whose request should be handled.</param>
+        /// <param name="testDomains">Optional: Which domains should be considered as test domains. These domain names will be stripped from the hostname.</param>
+        /// <param name="includingTestWww">Optional: Whether "www." and "test." should be added to the result.</param>
+        /// <param name="includePort">Optional: Whether to also return the port number in the URL (but only if it's a custom port, not with 80 and 443). Default is true.</param>
+        /// <returns>The hostname as a string.</returns>
+        public static string GetHostName(HttpContext httpContext, List<string> testDomains = null, bool includingTestWww = false, bool includePort = true)
         {
             if (httpContext == null)
             {
-                return null;
+                return String.Empty;
             }
 
             testDomains ??= GclSettings.Current.TestDomains?.ToList() ?? new List<string>();
@@ -76,7 +98,10 @@ namespace GeeksCoreLibrary.Core.Helpers
                 return hostname.Remove(0, 4);
             }
 
-            return hostname;
+            // Will only return a port if the request URL contains a port (e.g.: "site.com:1234").
+            var port = httpContext.Request.Host.Port;
+
+            return port.HasValue && includePort ? $"{hostname}:{port}" : hostname;
         }
 
         /// <summary>

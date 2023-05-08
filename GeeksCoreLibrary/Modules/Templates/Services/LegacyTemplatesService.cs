@@ -64,15 +64,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
             IStringReplacementsService stringReplacementsService,
-            IHttpContextAccessor httpContextAccessor,
-            IViewComponentHelper viewComponentHelper,
-            ITempDataProvider tempDataProvider,
-            IActionContextAccessor actionContextAccessor,
-            IWebHostEnvironment webHostEnvironment,
             IFiltersService filtersService,
             IObjectsService objectsService,
             ILanguagesService languagesService,
-            IAccountsService accountsService)
+            IAccountsService accountsService,
+            IHttpContextAccessor httpContextAccessor = null,
+            IActionContextAccessor actionContextAccessor = null,
+            IWebHostEnvironment webHostEnvironment = null,
+            IViewComponentHelper viewComponentHelper = null,
+            ITempDataProvider tempDataProvider = null)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
@@ -225,7 +225,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 LoginRedirectUrl = await objectsService.FindSystemObjectByDomainNameAsync("defaultloginurl", "/")
             };
 
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 // No context available; return empty template without doing a login check.
                 return emptyTemplate;
@@ -434,7 +434,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
 
             var reader = await databaseConnection.GetReaderAsync(query);
             try
@@ -559,7 +559,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
             var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString();
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
             var templates = await templatesService.GetTemplatesAsync(templateIds, true);
 
             foreach (var template in templates.Where(t => t.Type == templateType))
@@ -591,9 +591,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return;
             }
 
-            if (!String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex))
+            if (!template.Type.InList(TemplateTypes.Css, TemplateTypes.Scss, TemplateTypes.Js) && !String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
             {
                 // Skip this template if it has an URL regex and that regex does not match the current URL.
+                // This is skipped for CSS, SCSS and JS templates, otherwise they might exclude themselves when the
+                // request URL is for the CSS/JS templates (e.g.: "/css/gclcss_123.css").
                 return;
             }
 
@@ -624,6 +626,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             if (fileNames == null)
             {
                 throw new ArgumentNullException(nameof(fileNames));
+            }
+
+            if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
+            {
+                return "";
             }
 
             var enumerable = fileNames.ToList();
@@ -703,9 +710,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
+        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "")
         {
-            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser2/<item_id>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
+            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser/<item_id>/<filetype>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
 
             imageUrlTemplate = imageUrlTemplate.Replace("<item_id>", itemId);
             imageUrlTemplate = imageUrlTemplate.Replace("<filename>", filename);
@@ -713,18 +720,25 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             imageUrlTemplate = imageUrlTemplate.Replace("<width>", width);
             imageUrlTemplate = imageUrlTemplate.Replace("<height>", height);
 
-            // Remove if not specified
+            // Remove file type if not specified.
+            if (String.IsNullOrWhiteSpace(fileType))
+            {
+                imageUrlTemplate = imageUrlTemplate.Replace("<filetype>/", "");
+            }
+
+            // Remove number if not specified.
             if (number == 0)
             {
                 imageUrlTemplate = imageUrlTemplate.Replace("<number>/", "");
             }
 
-            // Remove if not specified
-            if (string.IsNullOrWhiteSpace(resizeMode))
+            // Remove resize mode if not specified.
+            if (String.IsNullOrWhiteSpace(resizeMode))
             {
                 imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>/", "");
             }
 
+            imageUrlTemplate = imageUrlTemplate.Replace("<filetype>", fileType);
             imageUrlTemplate = imageUrlTemplate.Replace("<number>", number.ToString());
             imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>", resizeMode);
 
@@ -739,7 +753,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return input;
             }
 
-            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]");
+            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             foreach (Match m in imageTemplatingRegex.Matches(input))
             {
                 var replacementParameters = m.Groups[1].Value.Split(":");
@@ -748,6 +762,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var resizeMode = "";
                 var propertyName = "";
                 var imageAltTag = "";
+                var fileType = "";
                 var fallbackImageExtension = "jpg";
                 var parameters = replacementParameters[0].Split(",");
                 var imageItemIdOrFilename = parameters[0];
@@ -779,6 +794,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     imageAltTag = parameters[5].Trim();
                 }
 
+                if (parameters.Length > 6)
+                {
+                    fileType = parameters[6].Trim();
+                }
+
                 imageIndex = imageIndex == 0 ? 1 : imageIndex;
 
                 // Get the image from the database
@@ -806,7 +826,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
                 var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
-                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)");
+                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
                 var totalItems = items.Count;
                 var index = 1;
@@ -840,10 +860,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-alt-2x} 2x, {image-url-alt}"" type=""{image-type-alt}"" />");
 
-                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode));
-                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode, fileType));
                     outputBuilder.Replace("{image-type-alt}", FileSystemHelpers.GetMediaTypeByExtension(fallbackImageExtension));
                     outputBuilder.Replace("{min-width}", imageViewportParameter);
 
@@ -851,7 +871,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     if (index == totalItems)
                     {
                         outputBuilder.Append("<img width=\"{image_width}\" height=\"{image_height}\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
-                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
                         outputBuilder.Replace("{image_width}", imageWidth.ToString());
                         outputBuilder.Replace("{image_height}", imageHeight.ToString());
                     }
@@ -892,7 +912,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             while (counter < max && (input.Contains("<[", StringComparison.Ordinal) || input.Contains("[include", StringComparison.Ordinal)))
             {
                 counter += 1;
-                var inclusionsRegex = new Regex(@"<\[(.*?)\]>");
+                var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -929,7 +949,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                 }
 
-                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]");
+                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 foreach (Match m in inclusionsRegex.Matches(input))
                 {
                     var templateName = m.Groups[1].Value;
@@ -1057,6 +1077,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             if (String.IsNullOrWhiteSpace(dynamicContent?.Name) || String.IsNullOrWhiteSpace(dynamicContent?.SettingsJson))
             {
                 return "";
+            }
+
+            if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+            {
+                throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
             }
 
             string viewComponentName;
@@ -1203,7 +1228,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false)
+        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false, bool childItemsMustHaveId = false)
         {
             var query = queryTemplate?.Content;
             if (String.IsNullOrWhiteSpace(query))
@@ -1218,7 +1243,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
             }
 
-            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled);
+            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             var pusherMatches = pusherRegex.Matches(query);
             foreach (Match match in pusherMatches)
             {
@@ -1231,7 +1256,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             var dataTable = await databaseConnection.GetAsync(query);
-            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive);
+            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
 
             if (pusherMatches.Any())
             {
@@ -1257,6 +1282,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             var template = await templatesService.GetTemplateAsync(id, name, TemplateTypes.Html, parentId, parentName);
+            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
 
             var cssStringBuilder = new StringBuilder();
             var jsStringBuilder = new StringBuilder();
@@ -1265,6 +1291,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
             {
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
+
+                // Validate the template regex, if it has one.
+                if (!String.IsNullOrWhiteSpace(linkedTemplate.UrlRegex) && !String.IsNullOrWhiteSpace(currentUrl) && !Regex.IsMatch(currentUrl, linkedTemplate.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
+                {
+                    continue;
+                }
+
                 (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
                 (linkedTemplate.Type == TemplateTypes.Css ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
             }
@@ -1296,7 +1329,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
-            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
             switch (contentTemplate.CachingMode)
             {
@@ -1321,7 +1354,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (cookieCacheDeviation.Length > 0)
             {
-                var requestCookies = httpContextAccessor.HttpContext?.Request.Cookies;
+                var requestCookies = httpContextAccessor?.HttpContext?.Request.Cookies;
                 foreach (var cookieName in cookieCacheDeviation)
                 {
                     if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
@@ -1332,6 +1365,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     var combinedCookiePart = $"{cookieName}:{cookieValue}";
                     cacheFileName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
                 }
+            }
+
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
             }
 
             // And finally add the language code to the file name.
@@ -1381,6 +1421,27 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             // Return an empty result here. This functionality is not made for legacy templates.
             return Task.CompletedTask;
+        }
+
+        /// <inheritdoc />
+        public Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<PageWidgetModel>());
+        }
+
+        /// <inheritdoc />
+        public Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<PageWidgetModel>());
+        }
+
+        /// <inheritdoc />
+        public Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
+        {
+            // Return an empty result here. This functionality is not made for legacy templates.
+            return Task.FromResult(new List<PageWidgetModel>());
         }
 
         /// <summary>

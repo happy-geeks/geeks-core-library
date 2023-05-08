@@ -24,7 +24,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 {
     public class ConfiguratorsService : IConfiguratorsService, IScopedService
     {
-        private readonly ILogger<Configurator> logger;
+        private readonly ILogger<ConfiguratorsService> logger;
         private readonly IDatabaseConnection databaseConnection;
         private readonly IObjectsService objectsService;
         private readonly IWiserItemsService wiserItemsService;
@@ -75,7 +75,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             ("substep_", "free_content1"), ("substep_", "free_content2"), ("substep_", "free_content3"), ("substep_", "free_content4"), ("substep_", "free_content5")
         };
 
-        public ConfiguratorsService(ILogger<Configurator> logger,
+        public ConfiguratorsService(ILogger<ConfiguratorsService> logger,
             IDatabaseConnection databaseConnection,
             IObjectsService objectsService,
             IWiserItemsService wiserItemsService,
@@ -184,13 +184,13 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 var keyField = dr.Field<string>("key");
                 var valueField = dr.Field<string>("value");
 
-                // skip field 
+                // skip field
                 if (String.IsNullOrWhiteSpace(entityType) || String.IsNullOrWhiteSpace(valueField))
                 {
                     continue;
                 }
 
-                // fill properties 
+                // fill properties
                 switch (entityType.ToLowerInvariant())
                 {
                     case "configurator":
@@ -510,7 +510,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
         {
             (decimal purchasePrice, decimal customerPrice, decimal fromPrice) result = (0, 0, 0);
-            
+
             var dataTable = await GetConfiguratorDataAsync(input.Configurator);
 
             if (dataTable == null || dataTable.Rows.Count == 0)
@@ -530,11 +530,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             catch (ArgumentException e)
             {
                 // ArgumentException is thrown when the response of the API was not successful.
+                logger.LogError(e, "Error while trying to get price from an API.");
                 return result;
             }
             catch (Exception e)
             {
-                logger.LogError(e.ToString());
+                logger.LogError(e, "Error while trying to get price from an API.");
                 return result;
             }
 
@@ -625,7 +626,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
                     requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
-                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                     requestJson = regex.Replace(requestJson, "null");
 
                     // If there is no request JSON it is useless to do an API call.
@@ -639,30 +640,15 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     var restClient = new RestClient();
                     var restRequest = new RestRequest(endpoint, requestMethod);
 
-                    var authenticationType = priceApi.GetDetailValue<int>("authentication_type");
-
-                    switch (authenticationType)
-                    {
-                        case 1: // Oauth 2.0
-                            // TODO handle OAuth 2
-                            restRequest.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
-                            throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
-                        case 2: // Token
-                            var token = priceApi.GetDetailValue("token");
-                            token = await stringReplacementsService.DoAllReplacementsAsync(token);
-                            restRequest.AddHeader("Authorization", $"Token {token}");
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
-                    }
-
+                    await AddAuthenticationToApiCall(restRequest, priceApi);
+                    await AddAcceptLanguageToApiCall(restRequest);
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
                     var restResponse = await restClient.ExecuteAsync(restRequest);
                     if (!restResponse.IsSuccessful || restResponse.Content == null)
                     {
-                        logger.LogWarning($"Error while trying to get price from an API. The API response HTTP code was '{restResponse.StatusCode}' and the result was: {restResponse.Content}");
+                        logger.LogWarning("Error while trying to get price from an API ({priceApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}",  priceApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
                         continue;
                     }
 
@@ -691,7 +677,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         {
             var keyParts = new List<string>(key.Split('.'));
             var currentObject = responseData;
-            
+
             // Step into the object till only 1 key part is left.
             while (keyParts.Count > 1)
             {
@@ -711,7 +697,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             // Return if price of configuration is 0 and configurations with zero price must not be saved
             if (!saveZeroPriceConfigurations && prices.customerPrice <= 0)
             {
-                logger.LogInformation($"Saving configuration skipped because of zero price.");
+                logger.LogInformation("Saving configuration skipped because of zero price.");
                 return 0;
             }
 
@@ -722,12 +708,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 ModuleId = 854
             };
             var deliveryTime = await GetDeliveryTimeAsync(input);
-            
-            // add optional 
+
+            // add optional
             var saveConfigQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationQuery");
             await AddItemDetailsFromQueryToWiserItemModelAsync(saveConfigQuery, configuration, input.QueryStringItems);
 
-            // set up details 
+            // set up details
             configuration.Details.AddRange(new List<WiserItemDetailModel>
             {
                 new() { Key = "quantity", Value = input.Quantity },
@@ -743,7 +729,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             configuration.Details.AddRange(input.QueryStringItems.Select(x => new WiserItemDetailModel { Key = x.Key, Value = x.Value }));
 
             // save main item
-            await wiserItemsService.SaveAsync(configuration, parentId, skipPermissionsCheck: true);
+            await wiserItemsService.SaveAsync(configuration, parentId, skipPermissionsCheck: true, saveHistory: false);
 
             // save configuration line query, we run this query to get all the other variables that need to be added to the configuration line like ean, purchaseprice etc.
             var saveConfigLineQuery = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_SaveConfigurationLineQuery");
@@ -787,7 +773,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 }
 
                 // save configuration line
-                await wiserItemsService.SaveAsync(configurationItem, skipPermissionsCheck: true);
+                await wiserItemsService.SaveAsync(configurationItem, skipPermissionsCheck: true, saveHistory: false);
             }
 
             var dataTable = await GetConfiguratorDataAsync(input.Configurator);
@@ -839,7 +825,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     requestJson = await ReplaceConfiguratorItemsAsync(requestJson, input, false);
                     requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
-                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?");
+                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                     requestJson = regex.Replace(requestJson, "null");
 
                     // If there is no request JSON it is useless to do an API call.
@@ -854,6 +840,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     var restRequest = new RestRequest(endpoint, requestMethod);
 
                     await AddAuthenticationToApiCall(restRequest, saveApi);
+                    await AddAcceptLanguageToApiCall(restRequest);
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
@@ -863,26 +850,32 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         Value = requestJson,
                         GroupName = saveApi.Title
                     });
-                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
-                    
+
                     var restResponse = await restClient.ExecuteAsync(restRequest);
-                    
+
                     configuration.Details.Add(new WiserItemDetailModel()
                     {
                         Key = "gcl_response",
                         Value = restResponse.Content,
                         GroupName = saveApi.Title
                     });
-                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
-                    
+
                     if (!restResponse.IsSuccessful || restResponse.Content == null)
                     {
-                        throw new ArgumentException();
+                        // Save the configuration so the response is logged.
+                        await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
+
+                        // Log the error and throw an exception.
+                        var messageResponsePart = String.IsNullOrWhiteSpace(restResponse.Content) ? "<empty>" : restResponse.Content;
+
+                        logger.LogError("Error while trying to execute Save API '{saveApiTitle}' - Status code: '{restResponseStatusCode}' - Response from API: {restResponseContent}", saveApi.Title, restResponse.StatusCode.ToString("D"), messageResponsePart);
+                        throw new Exception($"Error while trying to execute Save API '{saveApi.Title}' - Status code: '{restResponse.StatusCode:D}' - Response from API: {messageResponsePart}");
                     }
 
                     // If the call only needed to be made and no supplier ID needs to be retrieved the last part can be skipped.
                     if (String.IsNullOrWhiteSpace(supplierIdKey))
                     {
+                        await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
                         continue;
                     }
 
@@ -905,19 +898,19 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         Value = supplierId,
                         GroupName = saveApi.Title
                     });
-                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
+                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
                 }
                 catch (Exception e)
                 {
-                    logger.LogError($"Error thrown during the saving of a configuration at an external API.{Environment.NewLine}{e}");
-                    
-                    configuration.Details.Add(new WiserItemDetailModel()
+                    logger.LogError(e, "Error thrown during the saving of a configuration at an external API.");
+
+                    configuration.Details.Add(new WiserItemDetailModel
                     {
                         Key = "gcl_save_configuration_exception",
                         Value = e.ToString(),
                         GroupName = saveApi.Title
                     });
-                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true);
+                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
                 }
             }
 
@@ -938,14 +931,14 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             {
                 return;
             }
-            
+
             // replace system objects in query
             query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables:false, forQuery:true);
-            
+
             if (parameters is {Count: > 0})
             {
                 query = stringReplacementsService.DoReplacements(query, parameters, forQuery: true);
-                
+
                 foreach (var parameter in parameters)
                 {
                     databaseConnection.AddParameter(parameter.Key, parameter.Value);
@@ -993,6 +986,19 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Token type '{authenticationType}' is not yet implemented.");
+            }
+        }
+
+        /// <summary>
+        /// Add the correct Accept-Language header to the API request if one is provided as system object.
+        /// </summary>
+        /// <param name="request">The request to add the Accept-Language header to.</param>
+        private async Task AddAcceptLanguageToApiCall(RestRequest request)
+        {
+            var languageCode = await objectsService.FindSystemObjectByDomainNameAsync("configurator_api_language_code");
+            if (!String.IsNullOrWhiteSpace(languageCode))
+            {
+                request.AddHeader("Accept-Language", languageCode);
             }
         }
     }

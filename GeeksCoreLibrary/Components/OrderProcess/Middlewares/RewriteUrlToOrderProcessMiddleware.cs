@@ -27,6 +27,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
         /// </summary>
         public async Task Invoke(HttpContext context, IOrderProcessesService orderProcessesService)
         {
+            logger.LogDebug("Invoked RewriteUrlToOrderProcessMiddleware");
+
             this.orderProcessesService = orderProcessesService;
 
             if (HttpContextHelpers.IsGclMiddleWarePage(context))
@@ -68,19 +70,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
         private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
         {
             // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
-            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (regEx.IsMatch(currentUrl.ToString()))
             {
                 return;
             }
-            
+
             var orderProcess = await orderProcessesService.GetOrderProcessViaFixedUrlAsync(path);
             if (orderProcess == null || orderProcess.Id == 0)
             {
                 return;
             }
-            
+
             logger.LogInformation($"Found order process with id '{orderProcess.Id}' and name '{orderProcess.Title}' for current URL '{currentUrl}'.");
             queryStringFromUrl = queryStringFromUrl.Add(Models.Constants.OrderProcessIdRequestKey, orderProcess.Id.ToString());
 

@@ -147,6 +147,18 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserCommitDynamicContent = "wiser_commit_dynamic_content";
         /// <summary>
+        /// This table is used to store reviews about commits. So that people can request and do code reviews for commits from the template module.
+        /// </summary>
+        public const string WiserCommitReviews = "wiser_commit_reviews";
+        /// <summary>
+        /// This table is for saving the user IDs of the users that are requested to do a code review.
+        /// </summary>
+        public const string WiserCommitReviewRequests = "wiser_commit_review_requests";
+        /// <summary>
+        /// This table is used to store comments that are placed in a code review for the template module.
+        /// </summary>
+        public const string WiserCommitReviewComments = "wiser_commit_review_comments";
+        /// <summary>
         /// This table is used by the WTS to write logs to.
         /// </summary>
         public const string WtsLogs = "wts_logs";

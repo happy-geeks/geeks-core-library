@@ -55,7 +55,15 @@ namespace GeeksCoreLibrary.Components.Filter
 
         #region Constructor
 
-        public Filter(ILogger<Filter> logger, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, IFiltersService filterService, ILanguagesService languageService)
+        public Filter(ILogger<Filter> logger,
+            IStringReplacementsService stringReplacementsService,
+            IDatabaseConnection databaseConnection,
+            ITemplatesService templatesService,
+            IAccountsService accountsService,
+            IObjectsService objectsService,
+            IFiltersService filterService,
+            ILanguagesService languageService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.httpContextAccessor = httpContextAccessor;
             this.objectsService = objectsService;
@@ -143,7 +151,7 @@ namespace GeeksCoreLibrary.Components.Filter
         /// <returns></returns>
         private async Task<string> GenerateFiltersAsync()
         {
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
             if (httpContext == null)
             {
                 throw new Exception("HttpContext is null.");
@@ -160,7 +168,7 @@ namespace GeeksCoreLibrary.Components.Filter
             Dictionary<string, List<string>> currentFiltersMulti = null;
             Dictionary<string, string> currentFiltersSingle = null;
 
-            if ((!String.IsNullOrEmpty(filterParameter)) && await objectsService.FindSystemObjectByDomainNameAsync("filterenforcealphabeticalorder") == "true")
+            if (!String.IsNullOrEmpty(filterParameter) && await objectsService.FindSystemObjectByDomainNameAsync("filterenforcealphabeticalorder") == "true")
             {
                 var set404 = false;
                 List<string> filterList;
@@ -279,7 +287,7 @@ namespace GeeksCoreLibrary.Components.Filter
 
                     foreach (var f in currentFiltersSingle)
                     {
-                        if (f.Key.ToLower() == filterGroup.Key.ToLower())
+                        if (String.Equals(f.Key, filterGroup.Key, StringComparison.CurrentCultureIgnoreCase))
                         {
                             if (!String.IsNullOrEmpty(f.Value))
                             {
@@ -312,7 +320,7 @@ namespace GeeksCoreLibrary.Components.Filter
                 // Multiple words in the search term are treated as one search term.
                 // Functionality can be expanded in the future with more search options / functionalities.
                 var searchPart = new StringBuilder();
-                if (!string.IsNullOrEmpty(Settings.SearchQuerystring) && !string.IsNullOrEmpty(Settings.SearchKeys) && !string.IsNullOrEmpty(HttpContext.Request.Query[Settings.SearchQuerystring].ToString()))
+                if (!String.IsNullOrEmpty(Settings.SearchQuerystring) && !String.IsNullOrEmpty(Settings.SearchKeys) && !String.IsNullOrEmpty(HttpContext.Request.Query[Settings.SearchQuerystring].ToString()))
                 {
                     if (Settings.SearchKeys.Contains(',')) // Multiple keys for search provided
                     {
@@ -343,8 +351,7 @@ namespace GeeksCoreLibrary.Components.Filter
                                 filterItemsQueryNew += " UNION ALL ";
                             }
 
-                            filterItemsQueryNew +=
-                                $"({filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart.ToString()).Replace("{filterGroup}", $"AND f.filtergroup='{filterGroup.Value.GetParamKey().ToMySqlSafeValue(false)}'")})";
+                            filterItemsQueryNew += $"({filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart).Replace("{filterGroup}", $"AND f.filtergroup='{filterGroup.Value.GetParamKey().ToMySqlSafeValue(false)}'")})";
                         }
                         else
                         {
@@ -359,7 +366,7 @@ namespace GeeksCoreLibrary.Components.Filter
                     else if (!String.IsNullOrEmpty(notActiveFilters)) //Active and no active filters combined
                     {
                         var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
-                        filterItemsQueryNew += $" UNION ALL ({filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart.ToString()).Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
+                        filterItemsQueryNew += $" UNION ALL ({filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart).Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
                     }
                     
                     filterItemsQuery = filterItemsQueryNew;
@@ -368,7 +375,7 @@ namespace GeeksCoreLibrary.Components.Filter
                 {
                     var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
 
-                    filterItemsQuery = filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart.ToString());
+                    filterItemsQuery = filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart);
                     filterItemsQuery = filterItemsQuery.Replace("{filtersWhere}", queryPart.WherePart);
                     filterItemsQuery = filterItemsQuery.Replace("{filtersSelectStart}", queryPart.SelectPartStart);
                     filterItemsQuery = filterItemsQuery.Replace("{filtersSelectEnd}", queryPart.SelectPartEnd);
@@ -645,7 +652,7 @@ namespace GeeksCoreLibrary.Components.Filter
             try
             {
                 var parameterList = new SortedList<string, string>();
-                const string ValueSplit = ",";
+                const string valueSplit = ",";
 
                 foreach (var f in filterGroups.Values.Where(group => group.SelectedValueString != ""))
                 {
@@ -673,8 +680,8 @@ namespace GeeksCoreLibrary.Components.Filter
                         }
                         else
                         {
-                            WriteToTrace($"2 - adding item to parameter list, key = {groupName.ToLower()}, value = {f.SelectedValueString}{ValueSplit}{filter.ToLower()}");
-                            parameterList.Add(groupName.ToLower(), f.SelectedValueString + ValueSplit + filter.ToLower());
+                            WriteToTrace($"2 - adding item to parameter list, key = {groupName.ToLower()}, value = {f.SelectedValueString}{valueSplit}{filter.ToLower()}");
+                            parameterList.Add(groupName.ToLower(), f.SelectedValueString + valueSplit + filter.ToLower());
                         }
                     }
                     else
@@ -805,7 +812,8 @@ namespace GeeksCoreLibrary.Components.Filter
                                     { "name_cf", tempValue.CapitalizeFirst() },
                                     { "name", tempValue },
                                     { "count", filterGroup.Items[k].Count.ToString() },
-                                    { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value, true) }
+                                    { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value, true) },
+                                    { "querystring", filterGroup.QueryString }
                                 };
 
                                 if (filterGroup.Items[k].ItemDetails != null)
@@ -831,7 +839,8 @@ namespace GeeksCoreLibrary.Components.Filter
                                     { "name_cf", tempValue.CapitalizeFirst() },
                                     { "name", tempValue },
                                     { "count", filterGroup.Items[k].Count.ToString() },
-                                    { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value, true) }
+                                    { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value, true) },
+                                    { "querystring", filterGroup.QueryString }
                                 };
 
                                 if (filterGroup.Items[k].ItemDetails != null)
@@ -880,7 +889,8 @@ namespace GeeksCoreLibrary.Components.Filter
                                     { "name_cf", tempValue.CapitalizeFirst() },
                                     { "name", tempValue },
                                     { "count", filterGroup.Items[k].Count.ToString() },
-                                    { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value) }
+                                    { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value) },
+                                    { "querystring", filterGroup.QueryString }
                                 };
 
                                 if (filterGroup.Items[k].ItemDetails != null)
@@ -907,7 +917,8 @@ namespace GeeksCoreLibrary.Components.Filter
                                     { "name", tempValue },
                                     { "count", filterGroup.Items[k].Count.ToString() },
                                     { "group", filterGroup.NameSeo },
-                                    { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value) }
+                                    { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value) },
+                                    { "querystring", filterGroup.QueryString }
                                 };
 
                                 if (filterGroup.Items[k].ItemDetails != null)
@@ -954,9 +965,9 @@ namespace GeeksCoreLibrary.Components.Filter
                             requestParameter = filterGroup.SelectedValues[0];
                         }
 
-                        if (!string.IsNullOrEmpty(requestParameter))
+                        if (!String.IsNullOrEmpty(requestParameter))
                         {
-                            if (requestParameter.Contains("-"))
+                            if (requestParameter.Contains('-'))
                             {
                                 selectedMinValue = Decimal.Parse(requestParameter.Split("-")[0].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
                                 selectedMaxValue = Decimal.Parse(requestParameter.Split("-")[1].Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
@@ -969,14 +980,22 @@ namespace GeeksCoreLibrary.Components.Filter
 
                             WriteToTrace("Set selected slider values: " + filterGroup.SelectedValueString);
                         }
-                            
+
+                        replaceData = new Dictionary<string, string>
+                        {
+                            { "minValue", filterGroup.MinValue.ToString(CultureInfo.InvariantCulture) },
+                            { "maxValue", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture) },
+                            { "selectedMin", selectedMinValue.ToString(CultureInfo.InvariantCulture) },
+                            { "selectedMax", selectedMaxValue.ToString(CultureInfo.InvariantCulture) },
+                            { "filterName", filterGroup.Name },
+                            { "filterNameSeo", filterGroup.NameSeo },
+                            { "querystring", filterGroup.QueryString }
+                        };
+
                         var tempTemplate = !String.IsNullOrEmpty(filterGroup.ItemTemplate) ? filterGroup.ItemTemplate : Settings.TemplateSlider;
-                        filterHtml.Append(tempTemplate.Replace("{minValue}", filterGroup.MinValue.ToString(CultureInfo.InvariantCulture))
-                                              .Replace("{maxValue}", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture))
-                                              .Replace("{selectedMin}", selectedMinValue.ToString(CultureInfo.InvariantCulture))
-                                              .Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture))
-                                              .Replace("{filterName}", filterGroup.Name)
-                                              .Replace("{filterNameSeo}", filterGroup.NameSeo));
+                        tempTemplate = StringReplacementsService.DoReplacements(tempTemplate, replaceData);
+
+                        filterHtml.Append(tempTemplate);
                     }
 
                     break;

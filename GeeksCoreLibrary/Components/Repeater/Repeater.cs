@@ -75,7 +75,15 @@ namespace GeeksCoreLibrary.Components.Repeater
 
         #region Constructor
 
-        public Repeater(ILogger<Repeater> logger, IRepeatersService repeatersService, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IFiltersService filtersService, IHttpContextAccessor httpContextAccessor, IPagesService pagesService)
+        public Repeater(ILogger<Repeater> logger,
+            IRepeatersService repeatersService,
+            IStringReplacementsService stringReplacementsService,
+            IDatabaseConnection databaseConnection,
+            ITemplatesService templatesService,
+            IAccountsService accountsService,
+            IFiltersService filtersService,
+            IPagesService pagesService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.repeatersService = repeatersService;
             this.filtersService = filtersService;
@@ -210,7 +218,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                 // If we have no data, show the no data template or set 404
                 if (Settings.Return404OnNoData)
                 {
-                    HttpContextHelpers.Return404(httpContextAccessor.HttpContext);
+                    HttpContextHelpers.Return404(httpContextAccessor?.HttpContext);
                 }
                 else
                 {
@@ -308,7 +316,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                         }
                         else
                         {
-                            if (httpContextAccessor.HttpContext == null || !Int32.TryParse(httpContextAccessor.HttpContext.Request.Query["pagenr"].ToString(), out var pageNumber))
+                            if (httpContextAccessor?.HttpContext == null || !Int32.TryParse(httpContextAccessor.HttpContext.Request.Query["pagenr"].ToString(), out var pageNumber))
                             {
                                 pageNumber = 1;
                             }
@@ -332,7 +340,7 @@ namespace GeeksCoreLibrary.Components.Repeater
 
                             // Check if the property must be overruled
                             var loadUpToPageNumberOverrule = Settings.LoadItemsUpToPageNumber;
-                            if (Boolean.TryParse(httpContextAccessor.HttpContext?.Request.Query["loadUptoPageNumberOverrule"].ToString(), out var tempUpToPageNumberOverrule))
+                            if (Boolean.TryParse(httpContextAccessor?.HttpContext?.Request.Query["loadUptoPageNumberOverrule"].ToString(), out var tempUpToPageNumberOverrule))
                             {
                                 loadUpToPageNumberOverrule = tempUpToPageNumberOverrule;
                             }
@@ -384,7 +392,7 @@ namespace GeeksCoreLibrary.Components.Repeater
             var bannersPlaced = 0;
             var blocksPlaced = 0;
             var totalBlocks = data.Rows.Count;
-            if (httpContextAccessor.HttpContext == null || !Int32.TryParse(httpContextAccessor.HttpContext.Request.Query["pagenr"].ToString(), out var pageNumber))
+            if (httpContextAccessor?.HttpContext == null || !Int32.TryParse(httpContextAccessor.HttpContext.Request.Query["pagenr"].ToString(), out var pageNumber))
             {
                 pageNumber = 1;
             }

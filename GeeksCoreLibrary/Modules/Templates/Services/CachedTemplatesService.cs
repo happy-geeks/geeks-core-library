@@ -43,7 +43,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IObjectsService objectsService;
         private readonly ILanguagesService languagesService;
 
-        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger, ITemplatesService templatesService, IAppCache cache, IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, ICacheService cacheService, IWebHostEnvironment webHostEnvironment, IObjectsService objectsService, ILanguagesService languagesService)
+        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger,
+            ITemplatesService templatesService,
+            IAppCache cache,
+            IOptions<GclSettings> gclSettings,
+            IDatabaseConnection databaseConnection,
+            ICacheService cacheService,
+            IObjectsService objectsService,
+            ILanguagesService languagesService,
+            IHttpContextAccessor httpContextAccessor = null,
+            IWebHostEnvironment webHostEnvironment = null)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -146,6 +155,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 }
             }
 
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             // Cache the template settings in memory.
             var cacheKey = $"Template_{languagesService.CurrentLanguageCode ?? ""}_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}";
             var template = await cache.GetOrAddAsync(cacheKey,
@@ -206,7 +222,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cacheKey = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
                 },
@@ -219,7 +235,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cacheKey = $"GetTemplateIdFromName_{name}_{type}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateIdFromNameAsync(name, type);
                 },
@@ -229,10 +245,17 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             var cacheKey = $"GeneralTemplateLastChangedDate_{languagesService.CurrentLanguageCode ?? ""}_{templateType}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetGeneralTemplateLastChangedDateAsync(templateType);
                 },
@@ -242,6 +265,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             var cacheKey = $"GeneralTemplateValue_{languagesService.CurrentLanguageCode ?? ""}_{templateType}_{byInsertMode:G}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
@@ -311,20 +341,27 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             return templatesService.HandleIncludesAsync(service, input, handleStringReplacements, dataRow, handleRequest, forQuery, templateType);
         }
-        
+
         /// <inheritdoc />
-        public Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
+        public Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "")
         {
-            return templatesService.GenerateImageUrl(itemId, type, number, filename, width, height);
+            return templatesService.GenerateImageUrl(itemId, type, number, filename, width, height, resizeMode, fileType);
         }
 
         /// <inheritdoc />
         public async Task<string> HandleImageTemplating(string input)
         {
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             var cacheKey = $"image_template_{languagesService.CurrentLanguageCode ?? ""}_{input.ToSha512Simple()}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.HandleImageTemplating(input);
                 },
@@ -380,7 +417,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         Title = dataRow.Field<string>("title")
                     });
             }
-                        
+
             cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
 
             return dynamicContent;
@@ -440,7 +477,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
             }
 
-            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext);
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheKey = new StringBuilder($"dynamicContent_{languagesService.CurrentLanguageCode ?? ""}_{dynamicContent.Id}_");
             switch (settings.CachingMode)
             {
@@ -463,7 +507,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                     try
                     {
-                        var regex = new Regex(settings.CacheRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                        var regex = new Regex(settings.CacheRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
                         var match = regex.Match(originalUri.PathAndQuery);
                         if (!match.Success)
                         {
@@ -481,7 +525,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                             // Strip invalid characters that can't be in a file name.
                             var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
-                            
+
                             // Add the group value to the file name.
                             cacheKey.Append($"{Uri.EscapeDataString(value)}_");
                         }
@@ -508,7 +552,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 }
             }
 
-            string html;
+            string html = null;
             var addedToCache = false;
             switch (settings.CachingLocation)
             {
@@ -525,33 +569,41 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     break;
                 case TemplateCachingLocations.OnDisk:
                 {
-                    var fileName = $"{cacheKey}.html";
                     var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
-                    var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
-
-                    // Check if a cache file already exists and if it hasn't expired yet.
-                    var fileInfo = new FileInfo(fullCachePath);
-                    if (fileInfo.Directory is { Exists: false })
+                    if (String.IsNullOrWhiteSpace(cacheFolder))
                     {
-                        fileInfo.Directory.Create();
+                        logger.LogWarning($"Content cache enabled for component '{dynamicContent.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website (on Windows / IIS, this is the user 'IIS_IUSRS' bij default).");
                     }
-                    else if (fileInfo.Exists)
+                    else
                     {
-                        if (fileInfo.LastWriteTimeUtc.AddMinutes(settings.CacheMinutes) > DateTime.UtcNow)
+                        var fileName = $"{cacheKey}.html";
+                        var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
+
+                        // Check if a cache file already exists and if it hasn't expired yet.
+                        var fileInfo = new FileInfo(fullCachePath);
+                        if (fileInfo.Directory is {Exists: false})
                         {
-                            using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
-                            var fileContents = await fileReader.ReadToEndAsync();
-                            html = $"<!-- START DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->{fileContents}<!-- END DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->";
-                            return html;
+                            fileInfo.Directory.Create();
+                        }
+                        else if (fileInfo.Exists)
+                        {
+                            if (fileInfo.LastWriteTimeUtc.AddMinutes(settings.CacheMinutes) > DateTime.UtcNow)
+                            {
+                                using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
+                                var fileContents = await fileReader.ReadToEndAsync();
+                                html = $"<!-- START DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->{fileContents}<!-- END DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->";
+                                return html;
+                            }
+
+                            // Cleanup the old cache file if it has expired.
+                            fileInfo.Delete();
                         }
 
-                        // Cleanup the old cache file if it has expired.
-                        fileInfo.Delete();
+                        html = (string) await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                        addedToCache = true;
+                        await File.WriteAllTextAsync(fullCachePath, html);
                     }
 
-                    html = (string)await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-                    addedToCache = true;
-                    await File.WriteAllTextAsync(fullCachePath, html);
                     break;
                 }
                 default:
@@ -559,7 +611,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Cache page SEO data,
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return html;
             }
@@ -595,9 +647,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false)
+        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false, bool childItemsMustHaveId = false)
         {
-            return await templatesService.GetJsonResponseFromQueryAsync(queryTemplate, encryptionKey, skipNullValues, allowValueDecryption, recursive);
+            return await templatesService.GetJsonResponseFromQueryAsync(queryTemplate, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
         }
 
         /// <inheritdoc />
@@ -642,7 +694,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var cacheKey = $"template_urls_{databaseConnection.GetDatabaseNameForCaching()}";
             return await cache.GetOrAddAsync(cacheKey,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                     return await templatesService.GetTemplateUrlsAsync();
                 },
@@ -665,6 +717,38 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "")
         {
             await templatesService.AddTemplateOrComponentRenderingLogAsync(componentId, templateId, version, startTime, endTime, timeTaken, error);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        {
+            var cacheKey = $"page_widgets_{databaseConnection.GetDatabaseNameForCaching()}_global";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetGlobalPageWidgetsAsync();
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+        {
+            return await GetPageWidgetsAsync(this, templateId, includeGlobalSnippets);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService service, int templateId, bool includeGlobalSnippets = true)
+        {
+            var cacheKey = $"page_widgets_{databaseConnection.GetDatabaseNameForCaching()}_{templateId}_{includeGlobalSnippets}";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetPageWidgetsAsync(service, templateId, includeGlobalSnippets);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
     }
 }

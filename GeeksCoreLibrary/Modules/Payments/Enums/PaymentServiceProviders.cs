@@ -9,6 +9,7 @@
         CM,
         RaboOmniKassa,
         AfterPay,
-        Mollie
+        Mollie,
+        PayNl
     }
 }

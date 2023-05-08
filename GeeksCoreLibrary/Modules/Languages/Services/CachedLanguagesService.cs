@@ -35,7 +35,14 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         /// <summary>
         /// Creates a new instance of <see cref="CachedLanguagesService"/>.
         /// </summary>
-        public CachedLanguagesService(ILogger<CachedLanguagesService> logger, ILanguagesService languagesService, IObjectsService objectsService, IAppCache cache, IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, ICacheService cacheService)
+        public CachedLanguagesService(ILogger<CachedLanguagesService> logger,
+            ILanguagesService languagesService,
+            IObjectsService objectsService,
+            IAppCache cache,
+            IDatabaseConnection databaseConnection,
+            IOptions<GclSettings> gclSettings,
+            ICacheService cacheService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.logger = logger;
             this.languagesService = languagesService;
@@ -57,7 +64,8 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         /// <inheritdoc />
         public async Task<string> GetTranslationAsync(string original, string languageItemCode = null, string defaultValue = null)
         {
-            var cachedLanguages = await CacheLanguageAsync(!String.IsNullOrWhiteSpace(languageItemCode) ? languageItemCode : CurrentLanguageCode);
+            var languageCode = !String.IsNullOrWhiteSpace(languageItemCode) ? languageItemCode : (CurrentLanguageCode ?? await GetLanguageCodeAsync());
+            var cachedLanguages = await CacheLanguageAsync(languageCode);
             return cachedLanguages.ContainsKey(original) && !String.IsNullOrEmpty(cachedLanguages[original]?.ToString()) ? cachedLanguages[original]?.ToString() : (defaultValue ?? original);
         }
 
@@ -65,7 +73,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         public async Task<string> GetLanguageCodeAsync()
         {
             // Check if it should be overriden through a query string.
-            if (httpContextAccessor.HttpContext != null && httpContextAccessor.HttpContext.Request.Query.ContainsKey(Constants.LanguageCodeQueryStringKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey]))
+            if (httpContextAccessor?.HttpContext != null && httpContextAccessor.HttpContext.Request.Query.ContainsKey(Constants.LanguageCodeQueryStringKey) && !String.IsNullOrWhiteSpace(httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey]))
             {
                 CurrentLanguageCode = httpContextAccessor.HttpContext.Request.Query[Constants.LanguageCodeQueryStringKey];
                 logger.LogDebug($"LanguageCode determined through query string: {CurrentLanguageCode}");
@@ -75,11 +83,11 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             var cacheName = new StringBuilder(Constants.LanguageCodeCacheKey);
             
             // Add hostname to cache key, because websites often have a different hostname per language.
-            cacheName.Append('_').Append(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext));
+            cacheName.Append('_').Append(HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext));
 
             if (gclSettings.MultiLanguageBasedOnUrlSegments)
             {
-                cacheName.Append('_').Append(HttpContextHelpers.GetUrlPrefix(httpContextAccessor.HttpContext));
+                cacheName.Append('_').Append(HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext));
             }
 
             var currentLanguageCode = await cache.GetOrAddAsync(cacheName.ToString(),

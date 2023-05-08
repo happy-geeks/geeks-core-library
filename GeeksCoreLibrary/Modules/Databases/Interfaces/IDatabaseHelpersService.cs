@@ -181,5 +181,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="currentTableName">The current / old name of the table.</param>
         /// <param name="newTableName">The new name of the table.</param>
         Task RenameTableAsync(string currentTableName, string newTableName);
+
+        /// <summary>
+        /// Optimize one or more tables.
+        /// </summary>
+        /// <param name="tableNames">The name(s) of the table(s) to optimize.</param>
+        /// <returns></returns>
+        Task OptimizeTablesAsync(params string[] tableNames);
     }
 }

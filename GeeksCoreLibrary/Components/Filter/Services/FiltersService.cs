@@ -29,7 +29,12 @@ namespace GeeksCoreLibrary.Components.Filter.Services
         private readonly ILogger<FiltersService> logger;
         private readonly ILanguagesService languagesService;
 
-        public FiltersService(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor, IObjectsService objectsService, ILogger<FiltersService> logger, IOptions<GclSettings> gclSettings, ILanguagesService languagesService)
+        public FiltersService(IDatabaseConnection databaseConnection,
+            IObjectsService objectsService,
+            ILogger<FiltersService> logger,
+            IOptions<GclSettings> gclSettings,
+            ILanguagesService languagesService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
             this.httpContextAccessor = httpContextAccessor;
@@ -42,7 +47,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
         /// <inheritdoc />
         public async Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart = "", string forActiveFilter = "")
         {
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = httpContextAccessor?.HttpContext;
 
             if (httpContext == null)
             {
@@ -60,6 +65,13 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2", defaultResult: "0")).Equals("1");
                 var filterParametersToExclude = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude", defaultResult: "templateid,pagenr,gclid,_ga");
 
+                // Make sure that the language code is filled.
+                if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+                {
+                    // This function fills the property "CurrentLanguageCode".
+                    await languagesService.GetLanguageCodeAsync();
+                }
+
                 // Get a list of filters from the URL
                 if (!String.IsNullOrEmpty(filterParameter))
                 {
@@ -68,6 +80,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                         filters.Add(item.Key, item.Value);
                     }
                 }
+                
                 if (String.IsNullOrEmpty(filterParameter) | filterParameterMixedMode)
                 {
                     foreach (var key in httpContext.Request.Query.Keys)
@@ -467,7 +480,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
         public Dictionary<string, string> GetFiltersByParameter(string filterParameter)
         {
             var filters = new Dictionary<string, string>();
-            var filterParameterRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, filterParameter);
+            var filterParameterRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, filterParameter);
 
             if (String.IsNullOrEmpty(filterParameterRequest))
             {
@@ -628,7 +641,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 }
 
                 // If URL not matches with regex, then skip this filter
-                if (dataTable.Columns.Contains("urlregex") && !String.IsNullOrEmpty(row["urlregex"].ToString()) && !System.Text.RegularExpressions.Regex.IsMatch(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).ToString(), row["urlregex"].ToString()))
+                if (dataTable.Columns.Contains("urlregex") && !String.IsNullOrEmpty(row["urlregex"].ToString()) && !System.Text.RegularExpressions.Regex.IsMatch(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString(), row["urlregex"].ToString()))
                 {
                     continue;
                 }

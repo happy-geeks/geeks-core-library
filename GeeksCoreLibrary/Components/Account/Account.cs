@@ -6,6 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using GeeksCoreLibrary.Components.Account.Interfaces;
@@ -18,10 +19,12 @@ using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
+using Google.Authenticator;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Html;
@@ -31,6 +34,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
+using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.Account.Models.Constants;
 
@@ -365,24 +369,32 @@ namespace GeeksCoreLibrary.Components.Account
         /// <param name="template">The HTML template that is going to be shown to the user.</param>
         /// <param name="stepNumber">The current step number. Note: This is a ref parameter and the function will change the value based on whether the user already has 2FA setup or not.</param>
         /// <returns></returns>
-        private string RenderGoogleAuthenticator(string template, ref int stepNumber)
+        private async Task<(string Template, int StepNumber)> RenderGoogleAuthenticatorAsync(string template, int stepNumber)
         {
             if (!Settings.EnableGoogleAuthenticator)
             {
-                return template;
+                return (template, stepNumber);
             }
 
             var sessionUserId = HttpContext?.Session.GetString($"{Constants.UserIdSessionKey}_{ComponentId}");
             var username = HttpContext?.Session.GetString($"{Constants.LoginValueSessionKey}_{ComponentId}");
             if (String.IsNullOrWhiteSpace(sessionUserId) || sessionUserId == "0" || String.IsNullOrWhiteSpace(username))
             {
-                return template;
+                return (template, stepNumber);
             }
 
-            return $"<!-- Google Authenticator not implemented yet. --> {template}";
-            /*var googleAuthenticator = new GoogleAuthenticator(GoogleAuthenticatorSiteId, sessionUserId, username, "");
-            stepNumber = googleAuthenticator.HasAuthEnabled() ? LoginSteps.LoginWithTwoFactorAuthentication : LoginSteps.SetupTwoFactorAuthentication;
-            return template.ReplaceCaseInsensitive("{googleAuthenticationQrImageUrl}", googleAuthenticator.GetQrCodeUrl()).ReplaceCaseInsensitive("{googleAuthenticationVerificationId}", googleAuthenticator.GetVerificationId());*/
+            var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId));
+
+            if (String.IsNullOrEmpty(googleAuthenticationKey))
+            {
+                googleAuthenticationKey = Guid.NewGuid().ToString().Replace("-", "");
+                TwoFactorAuthenticator twoFactorAuthenticator = new TwoFactorAuthenticator();
+                SetupCode setupInfo = twoFactorAuthenticator.GenerateSetupCode(Settings.GoogleAuthenticatorSiteId, username, googleAuthenticationKey, false, 3);
+                await AccountsService.Save2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId), googleAuthenticationKey);
+                return (template.ReplaceCaseInsensitive("{googleAuthenticationQrImageUrl}", setupInfo.QrCodeSetupImageUrl), stepNumber);
+            }
+
+            return (template, stepNumber);
         }
 
         #endregion
@@ -412,6 +424,11 @@ namespace GeeksCoreLibrary.Components.Account
                 var ociPassword = HttpContextHelpers.GetRequestValue(httpContext, Settings.OciPasswordKey);
                 var encryptedWiserUserId = HttpContextHelpers.GetRequestValue(httpContext, Settings.WiserLoginUserIdKey);
 
+                if (Settings.EnableOciLogin && !String.IsNullOrWhiteSpace(ociUsername) && !String.IsNullOrWhiteSpace(ociPassword))
+                {
+                    await AccountsService.LogoutUserAsync(Settings, true);
+                }
+
                 if (Settings.EnableOciLogin && !String.IsNullOrWhiteSpace(ociHookUrl))
                 {
                     HttpContextHelpers.WriteCookie(httpContext, Constants.OciHookUrlCookieName, ociHookUrl);
@@ -419,7 +436,6 @@ namespace GeeksCoreLibrary.Components.Account
 
                 if (Settings.EnableOciLogin && !String.IsNullOrWhiteSpace(ociUsername) && !String.IsNullOrWhiteSpace(ociPassword))
                 {
-                    await AccountsService.LogoutUserAsync(Settings);
                     var loginResult = await LoginUserAsync(stepNumber, ociUsername, ociPassword, (int)ComponentModes.LoginSingleStep);
                     userId = loginResult.UserId;
 
@@ -440,14 +456,16 @@ namespace GeeksCoreLibrary.Components.Account
                         default:
                         {
                             // There was an error, show that error to the user.
-                            resultHtml = RenderGoogleAuthenticator(Settings.Template, ref stepNumber).ReplaceCaseInsensitive("{error}", Settings.TemplateError.ReplaceCaseInsensitive("{errorType}", loginResult.Result.ToString()));
+                            var (template, newStepNumber) = await RenderGoogleAuthenticatorAsync(Settings.Template, stepNumber);
+                            stepNumber = newStepNumber;
+                            resultHtml = template.ReplaceCaseInsensitive("{error}", Settings.TemplateError.ReplaceCaseInsensitive("{errorType}", loginResult.Result.ToString()));
                             break;
                         }
                     }
                 }
                 else if (Settings.EnableWiserLogin && !String.IsNullOrWhiteSpace(encryptedWiserUserId))
                 {
-                    await AccountsService.LogoutUserAsync(Settings);
+                    await AccountsService.LogoutUserAsync(Settings, true);
                     var loginResult = await LoginUserAsync(stepNumber, overrideComponentMode: (int)ComponentModes.LoginSingleStep, encryptedUserId: encryptedWiserUserId);
                     userId = loginResult.UserId;
 
@@ -573,7 +591,9 @@ namespace GeeksCoreLibrary.Components.Account
 
                         case LoginResults.TwoFactorAuthenticationRequired:
                         {
-                            resultHtml = RenderGoogleAuthenticator(Settings.Template, ref stepNumber).ReplaceCaseInsensitive("{error}", "");
+                            var (template, newStepNumber) = await RenderGoogleAuthenticatorAsync(Settings.Template, stepNumber);
+                            stepNumber = newStepNumber;
+                            resultHtml = template.ReplaceCaseInsensitive("{error}", "");
                             break;
                         }
 
@@ -595,7 +615,9 @@ namespace GeeksCoreLibrary.Components.Account
                         default:
                         {
                             // There was an error, show that error to the user.
-                            resultHtml = RenderGoogleAuthenticator(Settings.Template, ref stepNumber).ReplaceCaseInsensitive("{error}", Settings.TemplateError.ReplaceCaseInsensitive("{errorType}", loginResult.Result.ToString()));
+                            var (template, newStepNumber) = await RenderGoogleAuthenticatorAsync(Settings.Template, stepNumber);
+                            stepNumber = newStepNumber;
+                            resultHtml = template.ReplaceCaseInsensitive("{error}", Settings.TemplateError.ReplaceCaseInsensitive("{errorType}", loginResult.Result.ToString()));
                             break;
                         }
                     }
@@ -774,7 +796,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 var userData = await AccountsService.GetUserDataFromCookieAsync();
-                var query = SetupAccountQuery(Settings.MainQuery, userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreateAccountId());
+                var query = SetupAccountQuery(Settings.MainQuery, userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreatedAccountId());
                 var accountDataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 var availableFields = new List<string>();
 
@@ -822,22 +844,48 @@ namespace GeeksCoreLibrary.Components.Account
 
                     if (changePasswordResult == ResetOrChangePasswordResults.Success)
                     {
-                        await DatabaseConnection.BeginTransactionAsync();
-                        createOrUpdateAccountResult = await CreateOrUpdateAccountAsync(userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreateAccountId(), availableFields, useTransaction: false);
+                        var retries = 0;
+                        var transactionCompleted = false;
 
-                        if (createOrUpdateAccountResult.UserId > 0 && userData.UserId == 0)
+                        while (!transactionCompleted)
                         {
-                            // If we just created an account, save the password now, otherwise the password was already changed.
-                            changePasswordResult = await ChangePasswordAsync(createOrUpdateAccountResult.UserId, true);
-                            if (changePasswordResult != ResetOrChangePasswordResults.Success)
+                            try
                             {
-                                createOrUpdateAccountResult.ErrorTemplate = Settings.TemplateError;
-                                createOrUpdateAccountResult.SuccessTemplate = "";
-                                await DatabaseConnection.RollbackTransactionAsync();
+                                await DatabaseConnection.BeginTransactionAsync();
+                                createOrUpdateAccountResult = await CreateOrUpdateAccountAsync(userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreatedAccountId(), availableFields, useTransaction: false);
+
+                                if (createOrUpdateAccountResult.UserId > 0 && userData.UserId == 0)
+                                {
+                                    // If we just created an account, save the password now, otherwise the password was already changed.
+                                    changePasswordResult = await ChangePasswordAsync(createOrUpdateAccountResult.UserId, true);
+                                    if (changePasswordResult != ResetOrChangePasswordResults.Success)
+                                    {
+                                        createOrUpdateAccountResult.ErrorTemplate = Settings.TemplateError;
+                                        createOrUpdateAccountResult.SuccessTemplate = "";
+                                        await DatabaseConnection.RollbackTransactionAsync();
+                                    }
+                                }
+
+                                await DatabaseConnection.CommitTransactionAsync(false);
+                                transactionCompleted = true;
+                            }
+                            catch (MySqlException mySqlException)
+                            {
+                                await DatabaseConnection.RollbackTransactionAsync(false);
+
+                                if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                                {
+                                    // Exception is a deadlock or something similar, retry the transaction.
+                                    retries++;
+                                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                                }
+                                else
+                                {
+                                    // Exception is not a deadlock, or we reached the maximum amount of retries, rethrow it.
+                                    throw;
+                                }
                             }
                         }
-
-                        await DatabaseConnection.CommitTransactionAsync(false);
                     }
 
                     if (createOrUpdateAccountResult.Result == CreateOrUpdateAccountResults.Success
@@ -1153,7 +1201,7 @@ namespace GeeksCoreLibrary.Components.Account
             var password = HttpContextHelpers.GetRequestValue(httpContext, Settings.OciPasswordKey);
             if (String.IsNullOrWhiteSpace(hookUrl))
             {
-                //hookUrl = 
+                //hookUrl =
             }*/
         }
 
@@ -1191,7 +1239,7 @@ namespace GeeksCoreLibrary.Components.Account
             var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
             var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType);
             await SaveGoogleClientIdAsync(userId);
-            
+
             var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
             HttpContextHelpers.WriteCookie(HttpContext, Constants.CookieName, cookieValue, offset, isEssential: true);
 
@@ -1215,214 +1263,246 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             var request = httpContext.Request;
+            var retries = 0;
+            var transactionCompleted = false;
+            string userRole = null;
 
-            try
+            while (!transactionCompleted)
             {
-
-                if (useTransaction)
+                try
                 {
-                    await DatabaseConnection.BeginTransactionAsync();
-                }
-
-                var result = CreateOrUpdateAccountResults.Success;
-                var createdNewAccount = false;
-
-                // If we have no available fields from the main query, just add everything. The developer has been warned in the documentation about this.
-                if (!availableFields.Any())
-                {
-                    foreach (var formKey in request.Form.Keys.Where(k => !k.StartsWith("_")))
+                    if (useTransaction)
                     {
-                        availableFields.Add(formKey);
-                    }
-                }
-
-                var passwordFields = new List<string> { Settings.PasswordFieldName, Settings.NewPasswordFieldName, Settings.NewPasswordConfirmationFieldName };
-                availableFields = availableFields.Where(f => !passwordFields.Contains(f)).ToList();
-
-                // Check if the user already exists.
-                var emailAddress = request.Form[Settings.EmailAddressFieldName];
-                var loginValue = request.Form[Settings.LoginFieldName];
-                var userRole = request.Form[Settings.RoleFieldName];
-                var query = SetupAccountQuery(Settings.CheckIfAccountExistsQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue);
-                foreach (var field in availableFields)
-                {
-                    var formValue = GetFormValue(field);
-                    if (formValue == null)
-                    {
-                        continue;
+                        await DatabaseConnection.BeginTransactionAsync();
                     }
 
-                    var parameterName = DatabaseHelpers.CreateValidParameterName(field);
-                    DatabaseConnection.AddParameter(parameterName, formValue);
-                    query = query.ReplaceCaseInsensitive($"'{{{parameterName}}}'", $"?{parameterName}").ReplaceCaseInsensitive($"{{{parameterName}}}", $"?{parameterName}");
-                }
+                    var result = CreateOrUpdateAccountResults.Success;
+                    var createdNewAccount = false;
 
-                var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
-
-                if (dataTable.Rows.Count > 0)
-                {
-                    result = CreateOrUpdateAccountResults.UserAlreadyExists;
-                    var errorTemplate = await StringReplacementsService.DoAllReplacementsAsync(Settings.TemplateError, dataTable.Rows[0], Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables);
-                    return (result, errorTemplate, SuccessTemplate: "", UserId: 0, SubAccountId: 0, Role: "");
-                }
-
-                if ((Settings.ComponentMode == ComponentModes.SubAccountsManagement && subAccountId > 0) || (Settings.ComponentMode != ComponentModes.SubAccountsManagement && userId > 0))
-                {
-                    query = SetupAccountQuery(Settings.UpdateAccountQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
-                }
-                else
-                {
-                    query = SetupAccountQuery(Settings.CreateAccountQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
-                }
-
-                // Add fields to main query, for creating or updating an account.
-                foreach (var field in availableFields)
-                {
-                    var formValue = GetFormValue(field);
-                    if (formValue == null)
+                    // If we have no available fields from the main query, just add everything. The developer has been warned in the documentation about this.
+                    if (!availableFields.Any())
                     {
-                        continue;
+                        foreach (var formKey in request.Form.Keys.Where(k => !k.StartsWith("_")))
+                        {
+                            availableFields.Add(formKey);
+                        }
                     }
 
-                    var parameterName = DatabaseHelpers.CreateValidParameterName(field);
-                    DatabaseConnection.AddParameter(parameterName, formValue);
-                    query = query.ReplaceCaseInsensitive($"'{{{parameterName}}}'", $"?{parameterName}").ReplaceCaseInsensitive($"{{{parameterName}}}", $"?{parameterName}");
-                }
+                    var passwordFields = new List<string> {Settings.PasswordFieldName, Settings.NewPasswordFieldName, Settings.NewPasswordConfirmationFieldName};
+                    availableFields = availableFields.Where(f => !passwordFields.Contains(f)).ToList();
 
-                // Add / update the account.
-                dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
-
-                // Get the user ID, if a new account was created. This will throw an exception if the CreateAccountQuery did not return a new ID, so that the changes will be rolled back and it's a developer mistake, not a user mistake.
-                if (userId <= 0)
-                {
-                    if (Settings.ComponentMode == ComponentModes.SubAccountsManagement)
-                    {
-                        throw new Exception("Trying to update or create a sub account, but we have no valid user Id!");
-                    }
-
-                    if (dataTable.Rows.Count == 0 || dataTable.Rows[0].IsNull(Constants.UserIdColumn))
-                    {
-                        throw new Exception("Account was created, but query did not return a valid user ID, rolling back changes...");
-                    }
-
-                    userId = Convert.ToUInt64(dataTable.Rows[0][Constants.UserIdColumn]);
-                    createdNewAccount = true;
-                    if (userId <= 0)
-                    {
-                        throw new Exception("Account was created, but query did not return a valid user ID, rolling back changes...");
-                    }
-                }
-
-                if (Settings.ComponentMode == ComponentModes.SubAccountsManagement && subAccountId <= 0)
-                {
-                    if (dataTable.Rows.Count == 0 || dataTable.Rows[0].IsNull(Constants.UserIdColumn))
-                    {
-                        throw new Exception("Sub account was created, but query did not return a valid user ID, rolling back changes...");
-                    }
-
-                    subAccountId = Convert.ToUInt64(dataTable.Rows[0][Constants.UserIdColumn]);
-                    if (subAccountId <= 0)
-                    {
-                        throw new Exception("Sub account was created, but query did not return a valid user ID, rolling back changes...");
-                    }
-                }
-
-                // Save the fields / entity properties, if a query is entered for that.
-                if (!String.IsNullOrWhiteSpace(Settings.SetValueInWiserEntityPropertyQuery))
-                {
-                    DatabaseConnection.AddParameter("userId", userId);
-                    DatabaseConnection.AddParameter("subAccountId", subAccountId);
-                    query = Settings.SetValueInWiserEntityPropertyQuery.ReplaceCaseInsensitive("'{name}'", "?name").ReplaceCaseInsensitive("{name}", "?name").ReplaceCaseInsensitive("'{value}'", "?value").ReplaceCaseInsensitive("{value}", "?value");
-
+                    // Check if the user already exists.
+                    var emailAddress = request.Form[Settings.EmailAddressFieldName];
+                    var loginValue = request.Form[Settings.LoginFieldName];
+                    userRole = request.Form[Settings.RoleFieldName];
+                    var query = SetupAccountQuery(Settings.CheckIfAccountExistsQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue);
                     foreach (var field in availableFields)
                     {
                         var formValue = GetFormValue(field);
-                        if (Settings.IgnoreEmptyValues && String.IsNullOrWhiteSpace(formValue))
+                        if (formValue == null)
                         {
                             continue;
                         }
 
-                        DatabaseConnection.AddParameter("name", field);
-                        DatabaseConnection.AddParameter("value", formValue);
-                        await RenderAndExecuteQueryAsync(query, skipCache: true);
+                        var parameterName = DatabaseHelpers.CreateValidParameterName(field);
+                        DatabaseConnection.AddParameter(parameterName, formValue);
+                        query = query.ReplaceCaseInsensitive($"'{{{parameterName}}}'", $"?{parameterName}").ReplaceCaseInsensitive($"{{{parameterName}}}", $"?{parameterName}");
                     }
-                }
 
-                // Update roles for the user.
-                if (!String.IsNullOrWhiteSpace(Settings.AccountRolesQuery))
-                {
-                    DatabaseConnection.AddParameter("userId", userId);
-                    DatabaseConnection.AddParameter("subAccountId", subAccountId);
-                    query = Settings.AccountRolesQuery;
+                    var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
-                    var rolesDataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
-                    if (rolesDataTable.Columns.Contains(Constants.RoleIdColumn))
+                    if (dataTable.Rows.Count > 0)
                     {
-                        if (rolesDataTable.Rows.Count == 0)
+                        result = CreateOrUpdateAccountResults.UserAlreadyExists;
+                        var errorTemplate = await StringReplacementsService.DoAllReplacementsAsync(Settings.TemplateError, dataTable.Rows[0], Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables);
+                        return (result, errorTemplate, SuccessTemplate: "", UserId: 0, SubAccountId: 0, Role: "");
+                    }
+
+                    if ((Settings.ComponentMode == ComponentModes.SubAccountsManagement && subAccountId > 0) || (Settings.ComponentMode != ComponentModes.SubAccountsManagement && userId > 0))
+                    {
+                        query = SetupAccountQuery(Settings.UpdateAccountQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
+                    }
+                    else
+                    {
+                        query = SetupAccountQuery(Settings.CreateAccountQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
+                    }
+
+                    // Add fields to main query, for creating or updating an account.
+                    foreach (var field in availableFields)
+                    {
+                        var formValue = GetFormValue(field);
+                        if (formValue == null)
                         {
-                            // No roles for this user; remove all roles.
-                            await DatabaseConnection.ExecuteAsync($"DELETE FROM `{WiserTableNames.WiserUserRoles}` WHERE user_id = ?userId");
+                            continue;
                         }
-                        else
+
+                        var parameterName = DatabaseHelpers.CreateValidParameterName(field);
+                        DatabaseConnection.AddParameter(parameterName, formValue);
+                        query = query.ReplaceCaseInsensitive($"'{{{parameterName}}}'", $"?{parameterName}").ReplaceCaseInsensitive($"{{{parameterName}}}", $"?{parameterName}");
+                    }
+
+                    // Add / update the account.
+                    dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
+
+                    // Get the user ID, if a new account was created. This will throw an exception if the CreateAccountQuery did not return a new ID, so that the changes will be rolled back and it's a developer mistake, not a user mistake.
+                    if (userId <= 0)
+                    {
+                        if (Settings.ComponentMode == ComponentModes.SubAccountsManagement)
                         {
-                            var newRoleIds = rolesDataTable.Rows.Cast<DataRow>().Select(dr => Convert.ToInt32(dr[Constants.RoleIdColumn])).ToArray();
+                            throw new Exception("Trying to update or create a sub account, but we have no valid user Id!");
+                        }
 
-                            // First determine which roles the user currently has.
-                            var currentRoleIds = (await AccountsService.GetUserRolesAsync(userId)).Select(role => role.Id).ToArray();
+                        if (dataTable.Rows.Count == 0 || dataTable.Rows[0].IsNull(Constants.UserIdColumn))
+                        {
+                            throw new Exception("Account was created, but query did not return a valid user ID, rolling back changes...");
+                        }
 
-                            // Roles to remove should be the roles that the user currently has, but are not present in the roles the user is supposed to have.
-                            var rolesToRemove = currentRoleIds.Except(newRoleIds).ToArray();
-                            // Roles to add should only be roles that the user doesn't already have.
-                            var rolesToAdd = newRoleIds.Except(currentRoleIds).ToArray();
+                        userId = Convert.ToUInt64(dataTable.Rows[0][Constants.UserIdColumn]);
+                        createdNewAccount = true;
+                        if (userId <= 0)
+                        {
+                            throw new Exception("Account was created, but query did not return a valid user ID, rolling back changes...");
+                        }
+                    }
 
-                            // Execute query to remove roles the user isn't supposed to have anymore.
-                            if (rolesToRemove.Length > 0)
+                    if (Settings.ComponentMode == ComponentModes.SubAccountsManagement && subAccountId <= 0)
+                    {
+                        if (dataTable.Rows.Count == 0 || dataTable.Rows[0].IsNull(Constants.UserIdColumn))
+                        {
+                            throw new Exception("Sub account was created, but query did not return a valid user ID, rolling back changes...");
+                        }
+
+                        subAccountId = Convert.ToUInt64(dataTable.Rows[0][Constants.UserIdColumn]);
+                        if (subAccountId <= 0)
+                        {
+                            throw new Exception("Sub account was created, but query did not return a valid user ID, rolling back changes...");
+                        }
+                    }
+
+                    // Save the fields / entity properties, if a query is entered for that.
+                    if (!String.IsNullOrWhiteSpace(Settings.SetValueInWiserEntityPropertyQuery))
+                    {
+                        DatabaseConnection.AddParameter("userId", userId);
+                        DatabaseConnection.AddParameter("subAccountId", subAccountId);
+                        query = Settings.SetValueInWiserEntityPropertyQuery.ReplaceCaseInsensitive("'{name}'", "?name").ReplaceCaseInsensitive("{name}", "?name").ReplaceCaseInsensitive("'{value}'", "?value").ReplaceCaseInsensitive("{value}", "?value");
+
+                        foreach (var field in availableFields)
+                        {
+                            var formValue = GetFormValue(field);
+                            if (Settings.IgnoreEmptyValues && String.IsNullOrWhiteSpace(formValue))
                             {
-                                var inStatement = new List<string>();
-                                for (var i = 0; i < rolesToRemove.Length; i++)
-                                {
-                                    DatabaseConnection.AddParameter($"removeRoleId{i}", rolesToRemove[i]);
-                                    inStatement.Add($"?removeRoleId{i}");
-                                }
-                                await DatabaseConnection.ExecuteAsync($"DELETE FROM `{WiserTableNames.WiserUserRoles}` WHERE user_id = ?userId AND role_id IN ({String.Join(",", inStatement)})");
+                                continue;
                             }
 
-                            // Execute query to add new roles to the user.
-                            if (rolesToAdd.Length > 0)
+                            DatabaseConnection.AddParameter("name", field);
+                            DatabaseConnection.AddParameter("value", formValue);
+                            await RenderAndExecuteQueryAsync(query, skipCache: true);
+                        }
+                    }
+
+                    // Update roles for the user.
+                    if (!String.IsNullOrWhiteSpace(Settings.AccountRolesQuery))
+                    {
+                        DatabaseConnection.AddParameter("userId", userId);
+                        DatabaseConnection.AddParameter("subAccountId", subAccountId);
+                        query = Settings.AccountRolesQuery;
+
+                        var rolesDataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
+                        if (rolesDataTable.Columns.Contains(Constants.RoleIdColumn))
+                        {
+                            if (rolesDataTable.Rows.Count == 0)
                             {
-                                var values = new List<string>();
-                                for (var i = 0; i < rolesToAdd.Length; i++)
+                                // No roles for this user; remove all roles.
+                                await DatabaseConnection.ExecuteAsync($"DELETE FROM `{WiserTableNames.WiserUserRoles}` WHERE user_id = ?userId");
+                            }
+                            else
+                            {
+                                var newRoleIds = rolesDataTable.Rows.Cast<DataRow>().Select(dr => Convert.ToInt32(dr[Constants.RoleIdColumn])).ToArray();
+
+                                // First determine which roles the user currently has.
+                                var currentRoleIds = (await AccountsService.GetUserRolesAsync(userId)).Select(role => role.Id).ToArray();
+
+                                // Roles to remove should be the roles that the user currently has, but are not present in the roles the user is supposed to have.
+                                var rolesToRemove = currentRoleIds.Except(newRoleIds).ToArray();
+                                // Roles to add should only be roles that the user doesn't already have.
+                                var rolesToAdd = newRoleIds.Except(currentRoleIds).ToArray();
+
+                                // Execute query to remove roles the user isn't supposed to have anymore.
+                                if (rolesToRemove.Length > 0)
                                 {
-                                    DatabaseConnection.AddParameter($"addRoleId{i}", rolesToAdd[i]);
-                                    values.Add($"(?userId, ?addRoleId{i})");
+                                    var inStatement = new List<string>();
+                                    for (var i = 0; i < rolesToRemove.Length; i++)
+                                    {
+                                        DatabaseConnection.AddParameter($"removeRoleId{i}", rolesToRemove[i]);
+                                        inStatement.Add($"?removeRoleId{i}");
+                                    }
+
+                                    await DatabaseConnection.ExecuteAsync($"DELETE FROM `{WiserTableNames.WiserUserRoles}` WHERE user_id = ?userId AND role_id IN ({String.Join(",", inStatement)})");
                                 }
-                                await DatabaseConnection.ExecuteAsync($@"INSERT IGNORE INTO `{WiserTableNames.WiserUserRoles}` (user_id, role_id) VALUES {String.Join(",", values)}");
+
+                                // Execute query to add new roles to the user.
+                                if (rolesToAdd.Length > 0)
+                                {
+                                    var values = new List<string>();
+                                    for (var i = 0; i < rolesToAdd.Length; i++)
+                                    {
+                                        DatabaseConnection.AddParameter($"addRoleId{i}", rolesToAdd[i]);
+                                        values.Add($"(?userId, ?addRoleId{i})");
+                                    }
+
+                                    await DatabaseConnection.ExecuteAsync($@"INSERT IGNORE INTO `{WiserTableNames.WiserUserRoles}` (user_id, role_id) VALUES {String.Join(",", values)}");
+                                }
                             }
                         }
                     }
-                }
 
-                if (createdNewAccount && Settings.SendNotificationsForNewAccounts)
+                    if (createdNewAccount && Settings.SendNotificationsForNewAccounts)
+                    {
+                        await SendNewAccountNotificationAsync(userId);
+                    }
+
+                    // Save the Google Analytics client ID. Make sure to always save it, even if the required settings don't contain a value.
+                    await SaveGoogleClientIdAsync(createdNewAccount ? userId : (await AccountsService.GetUserDataFromCookieAsync()).UserId);
+
+                    if (useTransaction)
+                    {
+                        // Everything succeeded, commit transaction and return the result
+                        await DatabaseConnection.CommitTransactionAsync();
+                    }
+
+                    transactionCompleted = true;
+                    return (result, ErrorTemplate: "", SuccessTemplate: Settings.TemplateSuccess, userId, subAccountId, Role: userRole);
+                }
+                catch (MySqlException mySqlException)
                 {
-                    await SendNewAccountNotificationAsync(userId);
+                    if (!useTransaction)
+                    {
+                        // We're not using transactions, rethrow the exception.
+                        throw;
+                    }
+
+                    await DatabaseConnection.RollbackTransactionAsync(false);
+
+                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    {
+                        // Exception is a deadlock or something similar, retry the transaction.
+                        retries++;
+                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                    }
+                    else
+                    {
+                        // Exception is not a deadlock, or we reached the maximum amount of retries, rethrow it.
+                        throw;
+                    }
                 }
-
-                // Save the Google Analytics client ID. Make sure to always save it, even if the required settings don't contain a value.
-                await SaveGoogleClientIdAsync(createdNewAccount ? userId : (await AccountsService.GetUserDataFromCookieAsync()).UserId);
-
-                if (useTransaction)
+                catch
                 {
-                    // Everything succeeded, commit transaction and return the result
-                    await DatabaseConnection.CommitTransactionAsync();
+                    await DatabaseConnection.RollbackTransactionAsync(false);
+                    throw;
                 }
+            }
 
-                return (result, ErrorTemplate: "", SuccessTemplate: Settings.TemplateSuccess, userId, subAccountId, Role: userRole);
-            }
-            catch
-            {
-                await DatabaseConnection.RollbackTransactionAsync(false);
-                throw;
-            }
+            return (CreateOrUpdateAccountResults.Success, ErrorTemplate: "", SuccessTemplate: Settings.TemplateSuccess, userId, subAccountId, Role: userRole);
         }
 
         /// <summary>
@@ -1668,12 +1748,6 @@ namespace GeeksCoreLibrary.Components.Account
                 usingGoogleAuthentication = Settings.EnableGoogleAuthenticator && !String.IsNullOrWhiteSpace(googleAuthenticationVerificationId);
             }
 
-            if (usingGoogleAuthentication && String.IsNullOrWhiteSpace(googleAuthenticatorPin))
-            {
-                WriteToTrace("No googleAuthenticationPin or googleAuthenticationVerificationId given.");
-                return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
-            }
-
             // Save the login value in the session, so that we can remember it during the rest of the steps if the mode is LoginMultipleSteps.
             if (!String.IsNullOrWhiteSpace(loginValue))
             {
@@ -1752,17 +1826,20 @@ namespace GeeksCoreLibrary.Components.Account
                 // Verify 2 factor authentication, if enabled.
                 if (usingGoogleAuthentication)
                 {
-                    var sessionUserId = session.GetString($"{Constants.UserIdSessionKey}_{ComponentId}");
-                    throw new NotImplementedException("Google authenticator not yet implemented!");
-                    /* TODO:
-                    Dim googleAuthenticator = New GoogleAuthenticator(GoogleAuthenticatorSiteId, sessionUserId, loginValue, "")
-                    If Not googleAuthenticator.Verify(googleAuthenticationVerificationId, googleAuthenticationPin) Then
-                        SaveLoginAttempt(connection, False, loggedInUserId)
-                        Return (Result:=LoginResults.InvalidTwoFactorAuthentication, 0, EmailAddress:=userEmail)
-                    End If
+                    if (String.IsNullOrWhiteSpace(googleAuthenticatorPin))
+                    {
+                        WriteToTrace("No googleAuthenticationPin or googleAuthenticationVerificationId given.");
+                        return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
+                    }
 
-                    googleAuthenticator.SaveAndEnable(googleAuthenticationVerificationId)
-                    */
+                    var twoFactorAuthenticator = new TwoFactorAuthenticator();
+                    var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(loggedInUserId);
+                    bool result = twoFactorAuthenticator.ValidateTwoFactorPIN(googleAuthenticationKey, googleAuthenticatorPin);
+                    if (!result)
+                    {
+                        WriteToTrace("Authentication failed, codes do not match");
+                        return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
+                    }
                 }
                 else if (Settings.EnableGoogleAuthenticator)
                 {
@@ -2040,7 +2117,7 @@ namespace GeeksCoreLibrary.Components.Account
             // Validate the password with a regex, if we have one.
             if (!String.IsNullOrWhiteSpace(newPassword) && !String.IsNullOrWhiteSpace(Settings.PasswordValidationRegex))
             {
-                var regex = new Regex(Settings.PasswordValidationRegex);
+                var regex = new Regex(Settings.PasswordValidationRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 if (!regex.IsMatch(newPassword))
                 {
                     return ResetOrChangePasswordResults.PasswordNotSecure;

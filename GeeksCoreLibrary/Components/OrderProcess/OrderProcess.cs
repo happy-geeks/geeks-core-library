@@ -21,6 +21,8 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Databases.Services;
+using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
@@ -28,6 +30,8 @@ using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using MySql.Data.MySqlClient;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.OrderProcess
@@ -35,6 +39,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
     [ViewComponent(Name = "OrderProcess")]
     public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProcess.ComponentModes>
     {
+        private readonly GclSettings gclSettings;
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IOrderProcessesService orderProcessesService;
@@ -62,7 +67,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             /// For handling web hooks from PSPs and updating orders with the correct status based on what the PSP sends us.
             /// </summary>
             PaymentIn,
-            
+
             /// <summary>
             /// For PSPs that always send the user to the same page, no matter the result of their payment.
             /// From this page, we can then send the user to the correct page based on the result of the payment.
@@ -74,18 +79,20 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
         #region Constructor
 
-        public OrderProcess(ILogger<OrderProcess> logger,
+        public OrderProcess(IOptions<GclSettings> gclSettings,
+            ILogger<OrderProcess> logger,
             IStringReplacementsService stringReplacementsService,
             ILanguagesService languagesService,
             IDatabaseConnection databaseConnection,
             ITemplatesService templatesService,
             IAccountsService accountsService,
-            IHttpContextAccessor httpContextAccessor,
             IOrderProcessesService orderProcessesService,
             IShoppingBasketsService shoppingBasketsService,
             IWiserItemsService wiserItemsService,
-            IMeasurementProtocolService measurementProtocolService)
+            IMeasurementProtocolService measurementProtocolService,
+            IHttpContextAccessor httpContextAccessor = null)
         {
+            this.gclSettings = gclSettings.Value;
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
             this.orderProcessesService = orderProcessesService;
@@ -103,9 +110,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         }
 
         #endregion
-        
+
         #region Handling settings
-        
+
         /// <inheritdoc />
         public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
         {
@@ -117,7 +124,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
             HandleDefaultSettingsFromComponentMode();
         }
-        
+
         /// <inheritdoc />
         public override string GetSettingsJson()
         {
@@ -125,7 +132,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         }
 
         #endregion
-        
+
         #region Rendering
 
         /// <inheritdoc />
@@ -154,7 +161,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             }
 
             // Get the active step.
-            var activeStepValue = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.ActiveStepRequestKey);
+            var activeStepValue = HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, Constants.ActiveStepRequestKey);
             Int32.TryParse(activeStepValue, out var parsedActiveStep);
             ActiveStep = parsedActiveStep > 0 ? parsedActiveStep : 1;
 
@@ -178,14 +185,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 ComponentModes.PaymentReturn => await HandlePaymentReturnModeAsync(),
                 _ => throw new ArgumentOutOfRangeException(nameof(Settings.ComponentMode), Settings.ComponentMode.ToString())
             };
-            
+
             return new HtmlString(html);
         }
 
         #endregion
 
         #region Handling different component modes
-        
+
         /// <summary>
         /// Handles the checkout component mode and outputs the HTML for this mode.
         /// </summary>
@@ -209,10 +216,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // If we have an invalid active step, return a 404.
                 if (ActiveStep <= 0 || ActiveStep > steps.Count)
                 {
-                    HttpContextHelpers.Return404(httpContextAccessor.HttpContext);
+                    HttpContextHelpers.Return404(httpContextAccessor?.HttpContext);
                     return "";
                 }
-                
+
                 // If we have no confirmation page and/or no payment methods, then the order process has not been fully configured and we want to throw an error.
                 if (steps.All(step => step.Type != OrderProcessStepTypes.OrderConfirmation))
                 {
@@ -233,7 +240,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 WiserItemModel userData;
                 if (loggedInUser.UserId > 0)
                 {
-                    userData = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId, entityType: Account.Models.Constants.DefaultEntityType, skipPermissionsCheck: true);
+                    userData = await wiserItemsService.GetItemDetailsAsync(loggedInUser.UserId, entityType: loggedInUser.EntityType, skipPermissionsCheck: true);
                 }
                 else
                 {
@@ -254,7 +261,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             .Select(item => (linkTypeSettings, item)));
                     }
 
-                    if (userData.Id > 0 && String.Equals(linkTypeSettings.DestinationEntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase))
+                    if (userData.Id > 0 && String.Equals(linkTypeSettings.DestinationEntityType, userData.EntityType, StringComparison.OrdinalIgnoreCase))
                     {
                         currentItems.AddRange((await wiserItemsService.GetLinkedItemDetailsAsync(userData.Id, linkTypeSettings.Type, linkTypeSettings.SourceEntityType, userId: userData.Id, skipPermissionsCheck: true)).Select(item => (linkTypeSettings, item)));
                     }
@@ -276,14 +283,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
                     await measurementProtocolService.BeginCheckoutEventAsync(orderProcessSettings, shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
                 }
-                
+
                 // Generate the URL for the next step, we'll need this for a few things.
                 var nextStep = ActiveStep + 1;
                 UriBuilder nextStepUri;
                 if (nextStep <= steps.Count && steps[ActiveStep].Type != OrderProcessStepTypes.OrderConfirmation && steps[ActiveStep].Type != OrderProcessStepTypes.OrderPending)
                 {
                     // If we still have a next step and that step is not for the order confirmation, then go to the next step.
-                    nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                    nextStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor?.HttpContext);
                     var nextStepQueryString = HttpUtility.ParseQueryString(nextStepUri.Query);
                     nextStepQueryString[Constants.ActiveStepRequestKey] = nextStep.ToString();
                     nextStepQueryString.Remove(Constants.ErrorFromPaymentOutRequestKey);
@@ -305,39 +312,70 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
                 if (isPostBack)
                 {
-                    await DatabaseConnection.BeginTransactionAsync();
+                    var retries = 0;
+                    var transactionCompleted = false;
 
-                    // If we have no user ID yet, create it here because the ValidatePostBackAndSaveValuesAsync method will need a user ID to link items that might be created there. 
-                    if (userData.Id == 0)
+                    while (!transactionCompleted)
                     {
-                        userData = await wiserItemsService.CreateAsync(userData, createNewTransaction: false, skipPermissionsCheck: true);
-                    }
-
-                    fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(orderProcessSettings, step, loggedInUser, request, shoppingBasket, shoppingBasketLines, shoppingBasketSettings, paymentMethods, currentItems);
-
-                    // Save values to database if all validation succeeded.
-                    if (!fieldErrorsOccurred)
-                    {
-                        // Save basket to database.
-                        shoppingBasket = await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings, createNewTransaction: false);
-                        
-                        // Save all other items to database.
-                        foreach (var item in currentItems)
+                        try
                         {
-                            await wiserItemsService.SaveAsync(item.Item, userId: userData.Id, createNewTransaction: false, skipPermissionsCheck: true);
+                            await DatabaseConnection.BeginTransactionAsync();
+
+                            // If we have no user ID yet, create it here because the ValidatePostBackAndSaveValuesAsync method will need a user ID to link items that might be created there.
+                            if (userData.Id == 0)
+                            {
+                                userData = await wiserItemsService.CreateAsync(userData, createNewTransaction: false, skipPermissionsCheck: true);
+                            }
+
+                            fieldErrorsOccurred = await ValidatePostBackAndSaveValuesAsync(orderProcessSettings, step, loggedInUser, request, shoppingBasket, shoppingBasketLines, shoppingBasketSettings, paymentMethods, currentItems);
+
+                            // Save values to database if all validation succeeded.
+                            if (fieldErrorsOccurred)
+                            {
+                                await DatabaseConnection.RollbackTransactionAsync();
+                            }
+                            else
+                            {
+                                // Save basket to database.
+                                shoppingBasket = await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings, createNewTransaction: false);
+
+                                // Save all other items to database.
+                                foreach (var item in currentItems)
+                                {
+                                    await wiserItemsService.SaveAsync(item.Item, userId: userData.Id, createNewTransaction: false, skipPermissionsCheck: true);
+                                }
+
+                                // Link basket to active user, if it's not linked to someone else yet.
+                                await shoppingBasketsService.LinkBasketToUserAsync(shoppingBasketSettings, userData.Id, shoppingBasket);
+
+                                await DatabaseConnection.CommitTransactionAsync();
+
+                                response.Redirect(nextStepUri.ToString());
+
+                                return null;
+                            }
+
+                            transactionCompleted = true;
                         }
-                        
-                        // Link basket to active user, if it's not linked to someone else yet.
-                        await shoppingBasketsService.LinkBasketToUserAsync(shoppingBasketSettings, userData.Id, shoppingBasket);
+                        catch (MySqlException mySqlException)
+                        {
+                            await DatabaseConnection.RollbackTransactionAsync(false);
 
-                        await DatabaseConnection.CommitTransactionAsync();
-
-                        response.Redirect(nextStepUri.ToString());
-
-                        return null;
+                            if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                            {
+                                // Exception is a deadlock or something similar, retry the transaction.
+                                retries++;
+                                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                            }
+                            else
+                            {
+                                // Exception is not a deadlock, or we reached the maximum amount of retries, rethrow it.
+                                throw;
+                            }
+                        }
                     }
                 }
-                
+
                 // Redirect the user if needed.
                 if (!String.IsNullOrWhiteSpace(step.StepRedirectUrl) && response != null)
                 {
@@ -351,7 +389,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 }
 
                 // Generate URI for previous step.
-                var previousStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor.HttpContext);
+                var previousStepUri = HttpContextHelpers.GetOriginalRequestUriBuilder(httpContextAccessor?.HttpContext);
                 var previousStep = ActiveStep - 1;
                 var previousStepQueryString = HttpUtility.ParseQueryString(previousStepUri.Query);
                 previousStepQueryString.Remove(Constants.ErrorFromPaymentOutRequestKey);
@@ -365,7 +403,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 }
 
                 previousStepUri.Query = previousStepQueryString.ToString() ?? String.Empty;
-                
+
                 // Build the steps HTML.
                 var replaceData = new Dictionary<string, object>
                 {
@@ -418,7 +456,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                                 continue;
                             }
-                            
+
                             var groupHtml = await RenderGroupAsync(group, loggedInUser, shoppingBasket, currentItems, paymentMethods, fieldErrorsOccurred);
                             if (groupHtml == null)
                             {
@@ -434,7 +472,38 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         break;
                     case OrderProcessStepTypes.OrderConfirmation:
                     case OrderProcessStepTypes.OrderPending:
-                        var confirmationHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, step, steps, paymentMethods);
+                        var order = new WiserItemModel();
+                        var errorMessage = "";
+                        if (httpContextAccessor?.HttpContext == null || !httpContextAccessor.HttpContext.Request.Query.ContainsKey("order"))
+                        {
+                            errorMessage = "Order not found, please contact us";
+                            Logger.LogError("Failed to get the order by ID during the confirmation step in the order process because query string was not set.");
+                        }
+                        else
+                        {
+                            var encryptedOrderId = httpContextAccessor.HttpContext.Request.Query["order"].ToString();
+                            if (String.IsNullOrWhiteSpace(encryptedOrderId))
+                            {
+                                errorMessage = "Order not found, please contact us";
+                                Logger.LogError("Failed to get the order by ID during the confirmation step in the order process because no order ID was given.");
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    var orderId = Convert.ToUInt64(encryptedOrderId.Decrypt());
+                                    order = await wiserItemsService.GetItemDetailsAsync(orderId, entityType: Constants.OrderEntityType, skipPermissionsCheck: true);
+                                }
+                                catch (Exception exception)
+                                {
+                                    errorMessage = "Order not found, please contact us";
+                                    Logger.LogError($"Failed to get the order by ID during the confirmation step in the order process due to exception while processing encrypted ID '{encryptedOrderId}': {exception}");
+                                }
+                            }
+                        }
+
+                        var confirmationHtml = ReplaceEntityDataInTemplate(order, currentItems, step, steps, paymentMethods);
+                        confirmationHtml = confirmationHtml.Replace("{loadOrderError}", await languagesService.GetTranslationAsync(errorMessage));
                         groupsBuilder.AppendLine(confirmationHtml);
 
                         // Empty the shopping basket.
@@ -578,7 +647,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     {
                         value = field.Values[value];
                     }
-                
+
                     replaceData.Add($"{item.EntityType}.{itemDetail.Key}_{linkSettings.Type}", value);
                     replaceData[$"{item.EntityType}.{itemDetail.Key}"] = value;
                 }
@@ -593,11 +662,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns>The output HTML of the component.</returns>
         private async Task<string> HandlePaymentOutModeAsync()
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return "HttpContext not available.";
             }
-            
+
             var paymentRequestResult = await orderProcessesService.HandlePaymentRequestAsync(Settings.OrderProcessId);
 
             switch (paymentRequestResult.Action)
@@ -618,7 +687,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns>The output HTML of the component.</returns>
         private async Task<string> HandlePaymentInModeAsync()
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return "HttpContext not available.";
             }
@@ -644,17 +713,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         /// <returns>The output HTML of the component.</returns>
         private async Task<string> HandlePaymentReturnModeAsync()
         {
-            if (httpContextAccessor.HttpContext == null)
+            if (httpContextAccessor?.HttpContext == null)
             {
                 return "HttpContext not available.";
             }
-            
+
             var paymentMethodFromRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.SelectedPaymentMethodRequestKey);
             if (!UInt64.TryParse(paymentMethodFromRequest, out var paymentMethodId) || paymentMethodId == 0)
             {
                 throw new Exception($"Invalid payment method ID: {paymentMethodFromRequest}");
             }
-            
+
             var result = await orderProcessesService.HandlePaymentReturnAsync(Settings.OrderProcessId, paymentMethodId);
 
             switch (result.Action)
@@ -811,6 +880,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         private async Task<string> RenderFieldAsync(OrderProcessFieldModel field, WiserItemModel shoppingBasket, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems)
         {
             var fieldValue = field.Value;
+            var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
             if (String.IsNullOrEmpty(fieldValue) && field.InputFieldType != OrderProcessInputTypes.Password)
             {
                 if (!field.SaveTo.Any())
@@ -818,7 +888,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
                     if (String.IsNullOrWhiteSpace(fieldValue))
                     {
-                        var account = currentItems.FirstOrDefault(item => String.Equals(item.Item.EntityType, Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase));
+                        var account = currentItems.FirstOrDefault(item => String.Equals(item.Item.EntityType, loggedInUser.UserId > 0 ? loggedInUser.EntityType : Account.Models.Constants.DefaultEntityType, StringComparison.OrdinalIgnoreCase));
                         if (account.Item != null)
                         {
                             fieldValue = account.Item.GetDetailValue(field.FieldId);
@@ -845,7 +915,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                 }
                             }
                         }
-                        
+
                         if (!String.IsNullOrWhiteSpace(fieldValue))
                         {
                             break;
@@ -1065,7 +1135,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                             var userData = currentItems.Single(item => item.Item.EntityType == Account.Models.Constants.DefaultEntityType).Item;
                                             var userId = userData.Id;
                                             var parentId = userId;
-                                            var linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(saveLocation.LinkType, saveLocation.EntityType, Account.Models.Constants.DefaultEntityType);
+                                            var linkSettings = await wiserItemsService.GetLinkTypeSettingsAsync(saveLocation.LinkType, saveLocation.EntityType, userId > 0 ? userData.EntityType : Account.Models.Constants.DefaultEntityType);
                                             if (linkSettings == null || linkSettings.Id == 0)
                                             {
                                                 parentId = shoppingBasket.Id;
@@ -1095,7 +1165,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                                 passwordFields.First().IsValid = false;
                                 passwordFields.Last().IsValid = false;
                                 fieldErrorsOccurred = true;
-                                
+
                                 var errorMessage = await languagesService.GetTranslationAsync("orderProcess_passwords_not_the_same_errorMessage", defaultValue: "");
                                 if (!String.IsNullOrEmpty(errorMessage))
                                 {
@@ -1160,7 +1230,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 };
             }).ToList();
         }
-        
+
         /// <summary>
         /// Method to add an error to the result.
         /// If a variable '{error}' exists in the result HTML, then that variable will be replaced with the error.

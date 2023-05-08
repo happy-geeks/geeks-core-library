@@ -252,6 +252,13 @@ namespace GeeksCoreLibrary.Components.WebForm
                 }
             }
 
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             if (Settings.EmailTemplateItemId > 0)
             {
                 var wiserItem = await wiserItemsService.GetItemDetailsAsync(Settings.EmailTemplateItemId, languageCode: languagesService.CurrentLanguageCode, skipPermissionsCheck: true);

@@ -10,18 +10,33 @@ namespace GeeksCoreLibrary.Core.Helpers
     {
         public static string GetContentFilesFolderPath(IWebHostEnvironment webHostEnvironment)
         {
+            if (webHostEnvironment == null)
+            {
+                return null;
+            }
+
             var result = Path.Combine(webHostEnvironment.WebRootPath, Modules.ItemFiles.Models.Constants.DefaultFilesDirectory);
             return !Directory.Exists(result) ? null : result;
         }
 
         public static string GetContentCacheFolderPath(IWebHostEnvironment webHostEnvironment)
         {
+            if (webHostEnvironment == null)
+            {
+                return null;
+            }
+
             var result = Path.Combine(webHostEnvironment.WebRootPath, "contentcache");
             return !Directory.Exists(result) ? null : result;
         }
 
         public static string SaveFileToContentFilesFolder(IWebHostEnvironment webHostEnvironment, string filename, byte[] fileBytes)
         {
+            if (webHostEnvironment == null)
+            {
+                return null;
+            }
+
             var path = Path.Combine(GetContentFilesFolderPath(webHostEnvironment), Path.GetFileName(filename));
             File.WriteAllBytes(Path.Combine(GetContentFilesFolderPath(webHostEnvironment), Path.GetFileName(filename)), fileBytes);
             return path;

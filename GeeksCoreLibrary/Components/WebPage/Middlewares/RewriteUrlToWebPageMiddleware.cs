@@ -35,9 +35,11 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
         /// <returns></returns>
         public async Task Invoke(HttpContext context, IObjectsService objectsService, IWebPagesService webPagesService)
         {
+            logger.LogDebug("Invoked RewriteUrlToWebPageMiddleware");
+
             this.objectsService = objectsService;
             this.webPagesService = webPagesService;
-            
+
             if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
                 // If this happens, it means that another middleware has already found something and we don't need to do this again.
@@ -77,7 +79,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
         private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
         {
             // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
-            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex);
+            var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (regEx.IsMatch(currentUrl.ToString()))
             {
@@ -95,7 +97,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
             {
                 return;
             }
-            
+
             var rewriteTo = "";
             var fixedUrlParentIds = (await objectsService.FindSystemObjectByDomainNameAsync("cms_fixedurl_parentids", "0")).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(UInt64.Parse).ToList();
             var fixedUrlPageMethod = new Dictionary<ulong, string>();
@@ -103,7 +105,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
 
             foreach (var entry in (await objectsService.FindSystemObjectByDomainNameAsync("cms_fixedurl_page_method", "0")).Split(';', StringSplitOptions.RemoveEmptyEntries))
             {
-                var regex = new Regex(@"^\d+\|");
+                var regex = new Regex(@"^\d+\|", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 if (!entry.Contains("|", StringComparison.Ordinal) || !regex.IsMatch(entry))
                 {
                     continue;
