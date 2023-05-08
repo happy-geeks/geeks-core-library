@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
@@ -112,7 +113,7 @@ namespace GeeksCoreLibrary.Modules.Exports.Services
         /// </summary>
         /// <param name="columnIndex">THe index of the column.</param>
         /// <returns></returns>
-        public string GetColumnNameFromIndex(int columnIndex)
+        private string GetColumnNameFromIndex(int columnIndex)
         {
             string columnName;
 
@@ -128,6 +129,28 @@ namespace GeeksCoreLibrary.Modules.Exports.Services
             }
 
             return columnName;
+        }
+
+        /// <summary>
+        /// Get the index of a column based on its name.
+        /// </summary>
+        /// <param name="columnName">The name of the column, eg. A, B, AZ.</param>
+        /// <returns></returns>
+        private int GetColumnIndexFromName(object columnName)
+        {
+            var columnIndex = 0;
+
+            if (columnName is string columnNameString)
+            {
+                var columnNameCharArray = columnNameString.ToCharArray();
+
+                for (var i = 0; i < columnNameCharArray.Length; i++)
+                {
+                    columnIndex += (columnNameCharArray[i] - 64) * (int)Math.Pow(26, columnNameCharArray.Length - i - 1);
+                }
+            }
+
+            return columnIndex;
         }
 
         /// <summary>
@@ -248,7 +271,7 @@ namespace GeeksCoreLibrary.Modules.Exports.Services
         }
 
         /// <inheritdoc />
-        public List<List<string>> GetLines(string filePath, bool skipFirstLine = false)
+        public List<List<string>> GetLines(string filePath, int numberOfColumns, bool skipFirstLine = false, bool firstColumnAreIds = false)
         {
             var result = new List<List<string>>();
 
@@ -274,16 +297,34 @@ namespace GeeksCoreLibrary.Modules.Exports.Services
 
                     var columns = new List<string>();
                     
-                    foreach (Cell cell in row.Elements<Cell>())
+                    // Create an entry for each column to ensure the correct number of columns in the row. Cells are only returned if they have a value.
+                    for (var i = 0; i < numberOfColumns; i++)
                     {
-                        if (cell.DataType != null && cell.DataType == CellValues.SharedString)
+                        // If the first column are ids, the first column is always 0. When the import overrides existing items the value will be overwritten when reading the cells.
+                        if (i == 0 && firstColumnAreIds)
                         {
-                            int index = int.Parse(cell.CellValue.Text);
-                            columns.Add(sharedStringTable.ChildElements[index].InnerText);
+                            columns.Add("0");
                         }
-                        else if (cell.CellValue != null)
+                        else
                         {
                             columns.Add("");
+                        }
+                    }
+                    
+                    foreach (Cell cell in row.Elements<Cell>())
+                    {
+                        // Get the column index of the cell based on its name (e.g. A1).
+                        var columnName = Regex.Replace(cell.CellReference.Value, @"[\d-]", string.Empty);
+                        var columnIndex = GetColumnIndexFromName(columnName);
+                        
+                        if (cell.DataType != null && cell.DataType == CellValues.SharedString)
+                        {
+                            var index = int.Parse(cell.CellValue.Text);
+                            columns[columnIndex - 1] = sharedStringTable.ChildElements[index].InnerText;
+                        }
+                        else
+                        {
+                            columns[columnIndex - 1] = cell.CellValue?.Text;
                         }
                     }
 

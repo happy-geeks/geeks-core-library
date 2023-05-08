@@ -31,8 +31,10 @@ namespace GeeksCoreLibrary.Modules.Exports.Interfaces
         /// Get the lines from the Excel file.
         /// </summary>
         /// <param name="filePath">The path to the Excel file to read from.</param>
+        /// <param name="numberOfColumns">The number of columns that need to be retrieved for each row.</param>
         /// <param name="skipFirstLine">Optional: If set to true the first line will not be included in the results.</param>
+        /// <param name="firstColumnAreIds">If the first column are for IDs of Wiser Item the default value will be set on "0" to indicate a new item instead of an empty string.</param>
         /// <returns></returns>
-        List<List<string>> GetLines(string filePath, bool skipFirstLine = false);
+        List<List<string>> GetLines(string filePath, int numberOfColumns, bool skipFirstLine = false, bool firstColumnAreIds = false);
     }
 }
