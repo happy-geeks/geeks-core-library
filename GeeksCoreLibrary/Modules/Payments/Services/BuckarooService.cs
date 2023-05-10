@@ -304,14 +304,13 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             var statusCode = httpContextAccessor.HttpContext.Request.Form["brq_statuscode"].ToString();
 
-            // TODO: Validate signature.
             // Get all form values that begin with "brq_", "add_" or "cust_", except "brq_signature".
             var formValues = httpContextAccessor.HttpContext.Request.Form.Where(kvp => !kvp.Key.Equals("brq_signature") && (kvp.Key.StartsWith("brq_") || kvp.Key.StartsWith("add_") || kvp.Key.StartsWith("cust_"))).ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToString());
             var buckarooSignature = httpContextAccessor.HttpContext.Request.Form["brq_signature"].ToString();
 
             // Sort the formValues dictionary alphabetically by key.
             formValues = formValues.OrderBy(kvp => kvp.Key).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            
+
             var signatureBuilder = new StringBuilder();
             foreach (var formValue in formValues)
             {
@@ -344,7 +343,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 Status = "Signature was incorrect.",
                 Successful = false
             };
-
         }
         
         #region Helper functions
