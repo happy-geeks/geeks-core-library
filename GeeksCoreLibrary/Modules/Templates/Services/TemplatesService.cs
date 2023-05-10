@@ -883,34 +883,35 @@ WHERE {queryWherePart}
 AND IF(?propertyName = '', 1=1, property_name = ?propertyName)
 AND content_type LIKE 'image%'
 ORDER BY id ASC");
-
-                if (dataTable.Rows.Count == 0)
-                {
-                    input = input.ReplaceCaseInsensitive(m.Value, $"<img src=\"/img/noimg.png\" />");
-                    continue;
-                }
-
-                if (imageIndex > dataTable.Rows.Count)
-                {
-                    input = input.ReplaceCaseInsensitive(m.Value, "specified image index out of bound");
-                    continue;
-                }
-
-                // Get various values from the table
-                var imageItemId = Convert.ToString(dataTable.Rows[imageIndex - 1]["item_id"]);
-                var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
-                var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
-                var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
+                
                 var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
                 var totalItems = items.Count;
                 var index = 1;
+                
+                var imageItemId = "";
+                var imageFilename = ""; 
+                var imagePropertyType = "";
 
-                if (items.Count == 0)
+                // Get various values from the table
+                if (imageIndex < dataTable.Rows.Count && dataTable.Rows.Count > 0)
                 {
-                    input = input.ReplaceCaseInsensitive(m.Value, "no image set(s) specified, you must at least specify one set");
-                    continue;
+                    imageItemId = Convert.ToString(dataTable.Rows[imageIndex - 1]["item_id"]);
+                    imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name"); 
+                    imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 }
+                else
+                {
+                    // if we were not able to retrieve the image attempt to fill in a filename and proceed 
+                    // no-image handling is already done by the image handler 
+                    if (m.Groups.Count > 1)
+                    {
+                        // if we can't find the image fill in filename anyway to assist with debugging       
+                        imageFilename = m.Groups[1].Value.Split(":")[1].Split("(")[0];
+                    }
+                }
+                
+                var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
 
                 foreach (Match s in items)
                 {
