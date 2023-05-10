@@ -23,6 +23,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
@@ -198,9 +199,22 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
                 };
             }
 
-            var invoiceNumber = httpContextAccessor.HttpContext.Request.Query["brq_invoicenumber"].ToString();
+            // Try to get the invoice number from the form.
+            var invoiceNumber = "";
+            if (httpContextAccessor.HttpContext.Request.HasFormContentType)
+            {
+                invoiceNumber = httpContextAccessor.HttpContext.Request.Form["brq_invoicenumber"].ToString();
+            }
+
+            // If the invoice number is still empty, try to get it from the query string.
+            if (String.IsNullOrEmpty(invoiceNumber))
+            {
+                invoiceNumber = httpContextAccessor.HttpContext.Request.Query["brq_invoicenumber"].ToString();
+            }
+
             if (String.IsNullOrWhiteSpace(invoiceNumber))
             {
+                // No invoice number found, so we can't process the status update.
                 return new StatusUpdateResult
                 {
                     Status = "No invoice number in request found; unable to process status update.",
@@ -209,17 +223,36 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             var buckarooSettings = (BuckarooSettingsModel)paymentMethodSettings.PaymentServiceProvider;
-            var buckarooClient = new BuckarooSdk.SdkClient();
 
             // Read the entire body, which should be a JSON body from Buckaroo.
             using var reader = new StreamReader(httpContextAccessor.HttpContext.Request.Body);
             var bodyJson = await reader.ReadToEndAsync();
+
+            if (!String.IsNullOrEmpty(bodyJson))
+            {
+                return await HandleJsonStatusUpdate(buckarooSettings, invoiceNumber, bodyJson);
+            }
+
+            // No JSON body found, so we'll try to handle it as a form.
+            return await HandleFormStatusUpdate(buckarooSettings, invoiceNumber);
+        }
+
+        /// <summary>
+        /// Handles the status update using the JSON body.
+        /// </summary>
+        /// <param name="buckarooSettings">The settings for Buckaroo.</param>
+        /// <param name="invoiceNumber">The payment's invoice number.</param>
+        /// <param name="bodyJson">The request body as a string, in JSON format.</param>
+        /// <returns>A <see cref="StatusUpdateResult"/> object.</returns>
+        private async Task<StatusUpdateResult> HandleJsonStatusUpdate(BuckarooSettingsModel buckarooSettings, string invoiceNumber, string bodyJson)
+        {
             var bodyAsBytes = Encoding.UTF8.GetBytes(bodyJson);
 
             // Create nonce.
             var timeSpan = DateTime.UtcNow - DateTime.UnixEpoch;
             var requestTimeStamp = Convert.ToUInt64(timeSpan.TotalSeconds).ToString();
 
+            var buckarooClient = new BuckarooSdk.SdkClient();
             var pushSignature = buckarooClient.GetSignatureCalculationService().CalculateSignature(bodyAsBytes, HttpMethods.Post, requestTimeStamp, Guid.NewGuid().ToString("N"), buckarooSettings.WebhookUrl, buckarooSettings.WebsiteKey, buckarooSettings.SecretKey);
             var authHeader = $"hmac {pushSignature}";
 
@@ -252,6 +285,68 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             };
         }
 
+        /// <summary>
+        /// Handles the status update using form values.
+        /// </summary>
+        /// <param name="buckarooSettings">The settings for Buckaroo.</param>
+        /// <param name="invoiceNumber">The payment's invoice number.</param>
+        /// <returns>A <see cref="StatusUpdateResult"/> object.</returns>
+        private async Task<StatusUpdateResult> HandleFormStatusUpdate(BuckarooSettingsModel buckarooSettings, string invoiceNumber)
+        {
+            if (httpContextAccessor.HttpContext == null)
+            {
+                return new StatusUpdateResult
+                {
+                    Status = "No HTTP context available; unable to process status update.",
+                    Successful = false
+                };
+            }
+
+            var statusCode = httpContextAccessor.HttpContext.Request.Form["brq_statuscode"].ToString();
+
+            // TODO: Validate signature.
+            // Get all form values that begin with "brq_", "add_" or "cust_", except "brq_signature".
+            var formValues = httpContextAccessor.HttpContext.Request.Form.Where(kvp => !kvp.Key.Equals("brq_signature") && (kvp.Key.StartsWith("brq_") || kvp.Key.StartsWith("add_") || kvp.Key.StartsWith("cust_"))).ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToString());
+            var buckarooSignature = httpContextAccessor.HttpContext.Request.Form["brq_signature"].ToString();
+
+            // Sort the formValues dictionary alphabetically by key.
+            formValues = formValues.OrderBy(kvp => kvp.Key).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            
+            var signatureBuilder = new StringBuilder();
+            foreach (var formValue in formValues)
+            {
+                signatureBuilder.Append($"{formValue.Key}={formValue.Value}");
+            }
+
+            if (!String.IsNullOrWhiteSpace(buckarooSettings.SecretKey))
+            {
+                signatureBuilder.Append(buckarooSettings.SecretKey);
+            }
+
+            // Hash the signature builder with SHA1.
+            var hash = SHA1.HashData(Encoding.UTF8.GetBytes(signatureBuilder.ToString()));
+            var signatureHash = BitConverter.ToString(hash).Replace("-", "").ToLower();
+
+            // Compare hashes.
+            if (String.Equals(buckarooSignature, signatureHash, StringComparison.OrdinalIgnoreCase))
+            {
+                return new StatusUpdateResult
+                {
+                    Status = httpContextAccessor.HttpContext.Request.Form["brq_statusmessage"].ToString(),
+                    Successful = statusCode.InList("190", "790")
+                };
+            }
+
+            await LogIncomingPaymentActionAsync(PaymentServiceProviders.Buckaroo, invoiceNumber, Int32.TryParse(statusCode, out var status) ? status : 0, signatureBuilder.ToString());
+
+            return new StatusUpdateResult
+            {
+                Status = "Signature was incorrect.",
+                Successful = false
+            };
+
+        }
+        
         #region Helper functions
 
         private string GetIssuerName(string issuerValue)
