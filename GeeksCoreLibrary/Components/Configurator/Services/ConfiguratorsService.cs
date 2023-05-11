@@ -851,6 +851,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         GroupName = saveApi.Title
                     });
 
+                    var retrySettings = await GetConfiguratorApiRetrySettingsAsync();
+
                     var restResponse = await restClient.ExecuteAsync(restRequest);
 
                     configuration.Details.Add(new WiserItemDetailModel()
@@ -1000,6 +1002,23 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             {
                 request.AddHeader("Accept-Language", languageCode);
             }
+        }
+        
+        private async Task<(int retryCount, int retryDelay, IReadOnlyList<int> statusCodes)> GetConfiguratorApiRetrySettingsAsync()
+        {
+            var retryCount = await objectsService.GetSystemObjectValueAsync("configurator_api_retry_count");
+            Int32.TryParse(retryCount, out var retryCountValue);
+            var retryDelay = await objectsService.GetSystemObjectValueAsync("configurator_api_retry_delay");
+            Int32.TryParse(retryDelay, out var retryDelayValue);
+            var retryStatusCodes = (await objectsService.GetSystemObjectValueAsync("configurator_api_retry_status_codes")).Split(",");
+            var retryStatusCodesList = new List<int>();
+            foreach(var statusCode in retryStatusCodes)
+            {
+                Int32.TryParse(statusCode, out var statusCodeValue);
+                retryStatusCodesList.Add(statusCodeValue);
+            }
+            
+            return (retryCountValue, retryDelayValue, retryStatusCodesList);
         }
     }
 }
