@@ -1623,6 +1623,16 @@ namespace GeeksCoreLibrary.Components.Configurator
                     continue;
                 }
 
+                // If the data table contains a column named "minimumValue" or "maximumValue", then we need to add these values to the step data.
+                if (dataTable.Columns.Contains("minimumValue"))
+                {
+                    stepData.MinimumValue = Convert.ToString(dataTable.Rows[0]["minimumValue"]);
+                }
+                if (dataTable.Columns.Contains("maximumValue"))
+                {
+                    stepData.MaximumValue = Convert.ToString(dataTable.Rows[0]["maximumValue"]);
+                }
+
                 foreach (var dataRow in dataTable.Rows.Cast<DataRow>())
                 {
                     options.Add(new Dictionary<string, object>(dataTable.Columns.Count));

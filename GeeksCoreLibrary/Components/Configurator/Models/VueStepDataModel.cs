@@ -50,9 +50,36 @@ public class VueStepDataModel
     /// <summary>
     /// Gets or sets the validation regex for the step. This is used for validation.
     /// </summary>
+    /// <remarks>
+    /// This is only used for steps that have a custom input value.
+    /// </remarks>
     [JsonProperty("validationRegex")]
     public string ValidationRegex { get; set; }
-    
+
+    /// <summary>
+    /// Gets or sets the error message to display when the step is required and the user has not selected an option.
+    /// </summary>
+    [JsonProperty("requiredErrorMessage")]
+    public string RequiredErrorMessage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the error message to display when the step's value is less than the minimum value.
+    /// </summary>
+    [JsonProperty("minimumValueErrorMessage")]
+    public string MinimumValueErrorMessage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the error message to display when the step's value is greater than the maximum value.
+    /// </summary>
+    [JsonProperty("maximumValueErrorMessage")]
+    public string MaximumValueErrorMessage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the error message to display when the step's value does not match the validation regex.
+    /// </summary>
+    [JsonProperty("validationRegexErrorMessage")]
+    public string ValidationRegexErrorMessage { get; set; }
+
     /// <summary>
     /// Gets or sets whether the step is required.
     /// </summary>
