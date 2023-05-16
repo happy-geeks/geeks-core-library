@@ -12,6 +12,9 @@ using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Routing.Template;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 
@@ -35,7 +38,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         /// Invoke the middleware.
         /// IObjectsService, IDatabaseConnection and templatesService are here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
         /// </summary>
-        public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService)
+        public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IActionDescriptorCollectionProvider actionDescriptorCollectionProvider)
         {
             logger.LogDebug("Invoked RewriteUrlToTemplateMiddleware");
 
@@ -50,14 +53,43 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 return;
             }
 
-            var path = context.Request.Path.ToUriComponent();
-            if (path.StartsWith("/api/", StringComparison.InvariantCultureIgnoreCase))
+            var endpoint = context.GetEndpoint();
+            if (endpoint != null)
             {
-                // An API URL is called, no need to find a template.
+                // If this happens, it means that another controller would already handle this and we don't need to do this again.
                 await this.next.Invoke(context);
                 return;
             }
 
+            var routeValues = context.Request.RouteValues;
+            var currentController = routeValues["controller"]?.ToString();
+            var currentAction = routeValues["action"]?.ToString();
+            var actionDescriptor = actionDescriptorCollectionProvider.ActionDescriptors.Items.FirstOrDefault(ad =>
+            {
+                if (ad is not ControllerActionDescriptor controllerActionDescriptor)
+                {
+                    return false;
+                }
+
+                if (controllerActionDescriptor.AttributeRouteInfo?.Template != null)
+                {
+                    var matcher = new TemplateMatcher(TemplateParser.Parse(controllerActionDescriptor.AttributeRouteInfo.Template), routeValues);
+                    return matcher.TryMatch(context.Request.Path, routeValues);
+                }
+
+                return currentController != null && currentAction != null
+                       && controllerActionDescriptor.ControllerName == currentController
+                       && controllerActionDescriptor.ActionName == currentAction;
+            });
+
+            if (actionDescriptor != null)
+            {
+                // If this happens, it means that another controller would already handle this and we don't need to do this again.
+                await next.Invoke(context);
+                return;
+            }
+
+            var path = context.Request.Path.ToUriComponent();
             var queryString = context.Request.QueryString;
             if (!context.Items.ContainsKey(Constants.OriginalPathKey))
             {
