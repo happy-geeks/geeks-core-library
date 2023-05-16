@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Net.Mime;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
@@ -645,7 +646,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
-                    var restResponse = await restClient.ExecuteAsync(restRequest);
+                    var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
                     if (!restResponse.IsSuccessful || restResponse.Content == null)
                     {
                         logger.LogWarning("Error while trying to get price from an API ({priceApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}",  priceApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
@@ -851,10 +852,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                         GroupName = saveApi.Title
                     });
 
-                    var retrySettings = await GetConfiguratorApiRetrySettingsAsync();
-
-                    var restResponse = await restClient.ExecuteAsync(restRequest);
-
+                    var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
+                    
                     configuration.Details.Add(new WiserItemDetailModel()
                     {
                         Key = "gcl_response",
@@ -1003,7 +1002,46 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                 request.AddHeader("Accept-Language", languageCode);
             }
         }
+
+        /// <summary>
+        /// Execute the API call and return the response.
+        /// If the retry settings are set they will be applied.
+        /// </summary>
+        /// <param name="client">The client to use to make the request.</param>
+        /// <param name="request">The request to send to the external API.</param>
+        /// <returns>The response of the request.</returns>
+        private async Task<RestResponse> DoExternalConfiguratorApiCallAsync(RestClient client, RestRequest request)
+        {
+            var retrySettings = await GetConfiguratorApiRetrySettingsAsync();
+            var retryCount = 0;
+
+            RestResponse response;
+            
+            do
+            {
+                response = await client.ExecuteAsync(request);
+
+                // If there is no retry enabled or the response code does not need to be retried directly return the response.
+                if (retrySettings.retryCount == 0 || !retrySettings.statusCodes.Contains((int)response.StatusCode))
+                {
+                    return response;
+                }
+
+                if (retryCount++ >= retrySettings.retryCount)
+                {
+                    return response;
+                }
+                
+                Thread.Sleep(retrySettings.retryDelay);    
+            } while (retryCount <= retrySettings.retryCount);
+
+            return response;
+        }
         
+        /// <summary>
+        /// Get the settings for the configurator API retry from the database if they are set.
+        /// </summary>
+        /// <returns>Returns the retry count, delay and the status codes to retry.</returns>
         private async Task<(int retryCount, int retryDelay, IReadOnlyList<int> statusCodes)> GetConfiguratorApiRetrySettingsAsync()
         {
             var retryCount = await objectsService.GetSystemObjectValueAsync("configurator_api_retry_count");
@@ -1014,6 +1052,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             var retryStatusCodesList = new List<int>();
             foreach(var statusCode in retryStatusCodes)
             {
+                if (String.IsNullOrWhiteSpace(statusCode)) continue;
+                
                 Int32.TryParse(statusCode, out var statusCodeValue);
                 retryStatusCodesList.Add(statusCodeValue);
             }
