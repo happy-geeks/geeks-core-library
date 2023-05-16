@@ -67,15 +67,15 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
+        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false)
         {
-            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck);
+            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, isNewlyCreatedItem);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService service, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
+        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService service, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false,  bool isNewlyCreatedItem = false)
         {
-            return await wiserItemsService.UpdateAsync(service, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck);
+            return await wiserItemsService.UpdateAsync(service, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, isNewlyCreatedItem);
         }
 
         /// <inheritdoc />
