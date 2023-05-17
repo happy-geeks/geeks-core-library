@@ -894,7 +894,7 @@ ORDER BY id ASC");
                 var imagePropertyType = "";
 
                 // Get various values from the table
-                if (imageIndex < dataTable.Rows.Count && dataTable.Rows.Count > 0)
+                if (imageIndex - 1 < dataTable.Rows.Count && dataTable.Rows.Count > 0)
                 {
                     imageItemId = Convert.ToString(dataTable.Rows[imageIndex - 1]["item_id"]);
                     imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name"); 

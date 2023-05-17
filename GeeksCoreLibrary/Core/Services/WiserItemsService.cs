@@ -91,17 +91,19 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "",             bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
+        public async Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
             var retries = 0;
             var transactionCompleted = false;
+
+            var isNewlycreated = wiserItem.Id == 0;
 
             while (!transactionCompleted)
             {
                 try
                 {
                     if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
-                    if (wiserItem.Id == 0)
+                    if (isNewlycreated)
                     {
                         wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck);
 
@@ -109,7 +111,7 @@ namespace GeeksCoreLibrary.Core.Services
                         alwaysSaveValues = true;
                     }
 
-                    var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck);
+                    var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlycreated);
 
                     if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
@@ -539,13 +541,13 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
+        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false)
         {
-            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck);
+            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, isNewlyCreatedItem);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
+        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false)
         {
             if (itemId <= 0)
             {
@@ -625,9 +627,37 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
 
                     wiserItem.Changed = originalChangedValue;
 
-                    var insertAndUpdateQueryBuilder = new List<string>();
-                    var updateQueryBuilder = new List<string>(); // For details that are updated via ID.
+                    var insertQueryBuilder = new List<string>();
+                    var updateQueryBuilder = new List<string>();
                     var deleteQueryBuilder = new List<string>();
+                    
+                    // Local function for adding the query to update or insert a wiserItem so the correct list.
+                    void AddItemDetailInsertOrUpdateQuery(string parameterSuffix)
+                    {
+                        var isNewDetail = true;
+                        if (!isNewlyCreatedItem)
+                        {
+                            var addItemInsertOrUpdateQuery = $@"SELECT id 
+FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
+WHERE item_id = ?itemId 
+AND `key` = ?key{parameterSuffix} 
+AND language_code = ?languageCode{parameterSuffix}
+LIMIT 1";
+                            var data = databaseConnection.GetAsync(addItemInsertOrUpdateQuery);
+                            
+                            if (data.Result.Rows.Count > 0)
+                            {
+                                isNewDetail = false;
+                                databaseConnection.AddParameter($"detailId{parameterSuffix}", data.Result.Rows[0]["id"]);
+                                updateQueryBuilder.Add($"UPDATE {tablePrefix}{WiserTableNames.WiserItemDetail} SET `value` = ?value{parameterSuffix}, `long_value` = ?longValue{parameterSuffix}, `groupname` = ?groupName{parameterSuffix}, language_code = ?languageCode{parameterSuffix} WHERE id = ?detailId{parameterSuffix};");
+                            }
+                        }
+
+                        if (isNewDetail)
+                        {
+                            insertQueryBuilder.Add($"(?languageCode{parameterSuffix}, ?itemId, ?groupName{parameterSuffix}, ?key{parameterSuffix}, ?value{parameterSuffix}, ?longValue{parameterSuffix})");
+                        }
+                    }
 
                     // Get options from fields. Some fields need to be saved differently based on what options are set.
                     var fieldOptions = entityTypeSettings.FieldOptions;
@@ -660,7 +690,7 @@ GROUP BY ep.property_name";
                             databaseConnection.AddParameter($"value{AutoIncrementPropertySuffix}{fieldCounter}", previousValue + 1);
                             databaseConnection.AddParameter($"longValue{AutoIncrementPropertySuffix}{fieldCounter}", "");
 
-                            insertAndUpdateQueryBuilder.Add($"(?languageCode{AutoIncrementPropertySuffix}{fieldCounter}, ?itemId, ?groupName{AutoIncrementPropertySuffix}{fieldCounter}, ?key{AutoIncrementPropertySuffix}{fieldCounter}, ?value{AutoIncrementPropertySuffix}{fieldCounter}, ?longValue{AutoIncrementPropertySuffix}{fieldCounter})");
+                            AddItemDetailInsertOrUpdateQuery($"{AutoIncrementPropertySuffix}{fieldCounter}");
 
                             var itemDetail = wiserItem.Details.FirstOrDefault(d => d.Key.Equals(propertyName, StringComparison.OrdinalIgnoreCase));
                             if (itemDetail == null)
@@ -756,13 +786,13 @@ UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET {String.Join(",", updateQuer
                             databaseConnection.AddParameter("key_title", CoreConstants.SeoTitlePropertyName);
                             databaseConnection.AddParameter("value_title", useLongValueColumn ? "" : seoTitle);
                             databaseConnection.AddParameter("longValue_title", !useLongValueColumn ? "" : seoTitle);
-                            insertAndUpdateQueryBuilder.Add("(?languageCode_title, ?itemId, ?groupName_title, ?key_title, ?value_title, ?longValue_title)");
+                            AddItemDetailInsertOrUpdateQuery("_title");
                         }
 
                         wiserItem.Changed = false;
                     }
 
-                    if ((wiserItem.Details == null || !wiserItem.Details.Any()) && !insertAndUpdateQueryBuilder.Any())
+                    if ((wiserItem.Details == null || !wiserItem.Details.Any()) && !insertQueryBuilder.Any() && !updateQueryBuilder.Any())
                     {
                         if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
                         return wiserItem;
@@ -771,7 +801,7 @@ UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET {String.Join(",", updateQuer
                     // Check previous values, so that we can skip fields that haven't changed.
                     // This is only for Wiser. If you save items via custom code or the JCL, then the Changed property of ItemModel and ItemDetailModel will be used.
                     var previousItemDetails = new List<WiserItemDetailModel>();
-                    if (!alwaysSaveValues)
+                    if (!alwaysSaveValues && !isNewlyCreatedItem)
                     {
                         var previousValuesQuery = $@"SELECT 
     d.id,
@@ -967,12 +997,16 @@ WHERE item.id = ?itemId");
                                     continue;
                             }
                         }
-
+                        
+                        databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
                         databaseConnection.AddParameter($"languageCode{counter}", itemDetail.LanguageCode ?? "");
                         databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
                         databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
+                        databaseConnection.AddParameter($"key{SeoPropertySuffix}{counter}", $"{itemDetail.Key}{SeoPropertySuffix}");
 
-                        var (_, valueChanged, deleteValue, alsoSaveSeoValue) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues);
+                        var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
+                        databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
+
                         if (!valueChanged && !alwaysSaveValues)
                         {
                             continue;
@@ -982,8 +1016,7 @@ WHERE item.id = ?itemId");
                         {
                             if (itemDetail.Id > 0)
                             {
-                                databaseConnection.AddParameter($"itemId{counter}", itemDetail.Id);
-                                deleteQueryBuilder.Add($"id = ?itemId{counter}");
+                                deleteQueryBuilder.Add($"id = ?itemDetailId{counter}");
                             }
                             else
                             {
@@ -992,24 +1025,26 @@ WHERE item.id = ?itemId");
                         }
                         else if (itemDetail.Id > 0)
                         {
-                            databaseConnection.AddParameter($"itemId{counter}", itemDetail.Id);
-                            updateQueryBuilder.Add($"UPDATE {tablePrefix}{WiserTableNames.WiserItemDetail} SET `key` = ?key{counter}, `value` = ?value{counter}, `long_value` = ?longValue{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemId{counter};");
+                            updateQueryBuilder.Add($"UPDATE {tablePrefix}{WiserTableNames.WiserItemDetail} SET `key` = ?key{counter}, `value` = ?value{counter}, `long_value` = ?longValue{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemDetailId{counter};");
                         }
                         else
                         {
-                            insertAndUpdateQueryBuilder.Add($"(?languageCode{counter}, ?itemId, ?groupName{counter}, ?key{counter}, ?value{counter}, ?longValue{counter})");
+                            insertQueryBuilder.Add($"(?languageCode{counter}, ?itemId, ?groupName{counter}, ?key{counter}, ?value{counter}, ?longValue{counter})");
                         }
 
                         if (alsoSaveSeoValue)
                         {
-                            databaseConnection.AddParameter($"key{SeoPropertySuffix}{counter}", itemDetail.Key + SeoPropertySuffix);
                             if (deleteValue)
                             {
                                 deleteQueryBuilder.Add($"(`key` = ?key{SeoPropertySuffix}{counter} AND language_code = ?languageCode{counter})");
                             }
+                            else if (seoValueItemDetailId == 0)
+                            {
+                                insertQueryBuilder.Add($"(?languageCode{counter}, ?itemId, ?groupName{counter}, ?key{SeoPropertySuffix}{counter}, ?value{SeoPropertySuffix}{counter}, ?longValue{SeoPropertySuffix}{counter})");
+                            }
                             else
                             {
-                                insertAndUpdateQueryBuilder.Add($"(?languageCode{counter}, ?itemId, ?groupName{counter}, ?key{SeoPropertySuffix}{counter}, ?value{SeoPropertySuffix}{counter}, ?longValue{SeoPropertySuffix}{counter})");
+                                updateQueryBuilder.Add($"UPDATE {tablePrefix}{WiserTableNames.WiserItemDetail} SET `key` = ?key{SeoPropertySuffix}{counter}, `value` = ?value{SeoPropertySuffix}{counter}, `long_value` = ?longValue{SeoPropertySuffix}{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemDetailId{counter};");
                             }
                         }
 
@@ -1026,16 +1061,15 @@ DELETE FROM {tablePrefix}{WiserTableNames.WiserItemDetail} WHERE item_id = ?item
                         deleteQueryBuilder.Clear();
                     }
 
-                    if (insertAndUpdateQueryBuilder.Any())
+                    if (insertQueryBuilder.Any())
                     {
                         var query = $@"SET @_username = ?username;
 SET @_userId = ?userId;
 SET @saveHistory = ?saveHistoryGcl;
 INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (`language_code`, `item_id`, `groupname`, `key`, `value`, `long_value`)
-VALUES {String.Join(", ", insertAndUpdateQueryBuilder)}
-ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `long_value` = VALUES(`long_value`), `groupname` = VALUES(`groupname`);";
+VALUES {String.Join(", ", insertQueryBuilder)}";
                         await databaseConnection.ExecuteAsync(query);
-                        insertAndUpdateQueryBuilder.Clear();
+                        insertQueryBuilder.Clear();
                     }
 
                     if (updateQueryBuilder.Any())
@@ -1100,12 +1134,15 @@ SET @saveHistory = ?saveHistoryGcl;
                                 continue;
                             }
 
+                            databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
                             databaseConnection.AddParameter($"languageCode{counter}", itemDetail.LanguageCode ?? "");
                             databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
                             databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
                             databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
 
-                            var (_, valueChanged, deleteValue, alsoSaveSeoValue) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues);
+                            var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
+                            databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
+                            
                             if (!valueChanged && !alwaysSaveValues)
                             {
                                 continue;
@@ -1115,21 +1152,25 @@ SET @saveHistory = ?saveHistoryGcl;
                             {
                                 deleteQueryBuilder.Add($"(itemlink_id = ?itemLinkId{counter} AND `key` = ?key{counter} AND language_code = ?languageCode{counter})");
                             }
+                            else if (itemDetail.Id == 0)
+                            {
+                                insertQueryBuilder.Add($"(?languageCode{counter}, ?itemLinkId{counter}, ?groupName{counter}, ?key{counter}, ?value{counter}, ?longValue{counter})");
+                            }
                             else
                             {
-                                insertAndUpdateQueryBuilder.Add($"(?languageCode{counter}, ?itemLinkId{counter}, ?groupName{counter}, ?key{counter}, ?value{counter}, ?longValue{counter})");
+                                updateQueryBuilder.Add($"UPDATE {WiserTableNames.WiserItemLinkDetail} SET `key` = ?key{counter}, `value` = ?value{counter}, `long_value` = ?longValue{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemDetailId{counter};");
                             }
 
                             if (alsoSaveSeoValue)
                             {
-                                databaseConnection.AddParameter($"key{SeoPropertySuffix}{counter}", itemDetail.Key + SeoPropertySuffix);
+                                databaseConnection.AddParameter($"key{SeoPropertySuffix}{counter}", $"{itemDetail.Key}{SeoPropertySuffix}");
                                 if (deleteValue)
                                 {
                                     deleteQueryBuilder.Add($"(itemlink_id = ?itemLinkId{counter} AND `key` = ?key{SeoPropertySuffix}{counter} AND language_code = ?languageCode{counter})");
                                 }
                                 else
                                 {
-                                    insertAndUpdateQueryBuilder.Add($"(?languageCode{counter}, ?itemLinkId{counter}, ?groupName{counter}, ?key{SeoPropertySuffix}{counter}, ?value{SeoPropertySuffix}{counter}, ?longValue{SeoPropertySuffix}{counter})");
+                                    updateQueryBuilder.Add($"UPDATE {WiserTableNames.WiserItemLinkDetail} SET `key` = ?key{SeoPropertySuffix}{counter}, `value` = ?value{SeoPropertySuffix}{counter}, `long_value` = ?longValue{SeoPropertySuffix}{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemIDetailId{counter};");
                                 }
                             }
 
@@ -1146,17 +1187,27 @@ DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} WHERE {String
                             deleteQueryBuilder.Clear();
                         }
 
-                        if (insertAndUpdateQueryBuilder.Any())
+                        if (insertQueryBuilder.Any())
                         {
                             var query = $@"SET @_username = ?username;
 SET @_userId = ?userId;
 SET @saveHistory = ?saveHistoryGcl;
 INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} (`language_code`, `itemlink_id`, `groupname`, `key`, `value`, `long_value`)
-VALUES {String.Join(", ", insertAndUpdateQueryBuilder)}
-ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `long_value` = VALUES(`long_value`), `groupName` = VALUES(`groupName`)";
+VALUES {String.Join(", ", insertQueryBuilder)}";
                             await databaseConnection.ExecuteAsync(query);
-                            insertAndUpdateQueryBuilder.Clear();
+                            insertQueryBuilder.Clear();
                         }
+                    }
+                    
+                    if (updateQueryBuilder.Any())
+                    {
+                        var query = $@"SET @_username = ?username;
+SET @_userId = ?userId;
+SET @saveHistory = ?saveHistoryJcl;
+{String.Join(Environment.NewLine, updateQueryBuilder)}";
+                        
+                        await databaseConnection.ExecuteAsync(query);
+                        updateQueryBuilder.Clear();
                     }
 
                     // Add or update item in aggregation table(s) when needed.
@@ -1191,7 +1242,7 @@ ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `long_value` = VALUES(`long_v
                         throw;
                     }
                 }
-                catch
+                catch(Exception exp)
                 {
                     if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
                     throw;
@@ -3027,7 +3078,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
             var query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
                         SET @saveHistory = ?saveHistoryJcl;
-                        INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix}
+                        INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix}
                         (
                             id,
                             item_id,
@@ -3044,8 +3095,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                             type,
                             added_on
                         FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} AS itemLink
-                        WHERE itemLink.id IN({String.Join(",", ids)})
-                        ON DUPLICATE KEY UPDATE added_on = itemLink.added_on";
+                        WHERE itemLink.id IN({String.Join(",", ids)})";
             await databaseConnection.ExecuteAsync(query);
 
             // Copy the item links details to the archive.
@@ -4128,7 +4178,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                 {
                     continue;
                 }
-
+                
                 if (setting.LinkType <= 0)
                 {
                     databaseConnection.AddParameter("id", wiserItem.Id);
@@ -4157,7 +4207,9 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
 
                 columnsForQuery[setting.TableName].Add($"`{setting.ColumnName.ToMySqlSafeValue(false)}`");
 
-                var (useLongValueColumn, _, deleteValue, alsoSaveSeoValue) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, true);
+                databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
+                var (useLongValueColumn, _, deleteValue, alsoSaveSeoValue, _) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, true, true, "");
+                databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
                 parametersForQuery[setting.TableName].Add(deleteValue ? "NULL" : $"?{(useLongValueColumn ? "longValue" : "value")}{counter}");
 
                 if (alsoSaveSeoValue)
@@ -4600,13 +4652,17 @@ WHERE id = ?saveDetailId";
         /// <param name="fieldOptions">The Wiser 2.0 options for the field that is being used.</param>
         /// <param name="previousItemDetails">A list of details as the item originally was, before updating it.</param>
         /// <param name="encryptionKey">The encryption key used for encrypting values for secure-input fields.</param>
+        /// <param name="alwaysSaveValues">This function gets the current values in the database and only saves values that have been changed. Set this parameter to true to disable that functionality and force the function to always save all values (except read only fields).</param>
+        /// <param name="isNewlyCreatedItem">Whether this item has just been created in code and contains no details yet. If this is set to true, then this function will just insert all the details without checking if they already exist.</param>
+        /// <param name="tablePrefix">If the entity uses dedicated tables, then enter the prefix for those tables here. Enter empty string is not.</param>
         /// <returns></returns>
-        private async Task<(bool useLongValueColumn, bool valueChanged, bool deleteValue, bool alsoSaveSeoValue)> AddValueParameterToConnectionAsync(int counter, WiserItemDetailModel wiserItemDetail, IReadOnlyDictionary<string, Dictionary<string, object>> fieldOptions, IEnumerable<WiserItemDetailModel> previousItemDetails, string encryptionKey, bool alwaysSaveValues)
+        private async Task<(bool useLongValueColumn, bool valueChanged, bool deleteValue, bool alsoSaveSeoValue, ulong seoValueItemDetailId)> AddValueParameterToConnectionAsync(int counter, WiserItemDetailModel wiserItemDetail, IReadOnlyDictionary<string, Dictionary<string, object>> fieldOptions, IEnumerable<WiserItemDetailModel> previousItemDetails, string encryptionKey, bool alwaysSaveValues, bool isNewlyCreatedItem, string tablePrefix)
         {
             var useLongValueColumn = false;
             var deleteValue = false;
             bool valueChanged;
             var alsoSaveSeoValue = false;
+            ulong seoValueItemDetailId = 0;
             var options = new Dictionary<string, object>();
             var key = $"{wiserItemDetail.Key}_{wiserItemDetail.LanguageCode}";
             if (fieldOptions != null && fieldOptions.ContainsKey(key))
@@ -4661,6 +4717,40 @@ WHERE id = ?saveDetailId";
                     wiserItemDetail.Id = previousField.Id;
                 }
             }
+            
+            if (previousField != null && wiserItemDetail.Id == 0)
+            {
+                wiserItemDetail.Id = previousField.Id;
+            }
+            
+            if (!isNewlyCreatedItem && !previousItemDetails.Any())
+            {
+                DataTable queryResult;
+                
+                if (wiserItemDetail.IsLinkProperty && wiserItemDetail.ItemLinkId > 0)
+                {
+                    queryResult = await databaseConnection.GetAsync($@"SELECT id 
+                                                        FROM {WiserTableNames.WiserItemLinkDetail} 
+                                                        WHERE itemlink_id = ?itemLinkId{counter} 
+                                                        AND `key` = ?key{counter} 
+                                                        AND language_code = ?languageCode{counter}
+                                                        LIMIT 1");
+                }
+                else
+                {
+                    queryResult = await databaseConnection.GetAsync($@"SELECT id 
+                                                        FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
+                                                        WHERE item_id = ?itemId 
+                                                        AND `key` = ?key{counter} 
+                                                        AND language_code = ?languageCode{counter}
+                                                        LIMIT 1");
+                }
+
+                if (queryResult.Rows.Count > 0)
+                {
+                    wiserItemDetail.Id = queryResult.Rows[0].Field<ulong>("id");
+                }
+            }      
 
             switch (wiserItemDetail.Value)
             {
@@ -4829,8 +4919,37 @@ WHERE id = ?saveDetailId";
                                || !String.Equals(previousField.GroupName, wiserItemDetail.GroupName, StringComparison.OrdinalIgnoreCase)
                                || !String.Equals(previousField.LanguageCode, wiserItemDetail.LanguageCode, StringComparison.OrdinalIgnoreCase);
             }
+            
+            if (alsoSaveSeoValue)
+            {
+                DataTable queryResult;
 
-            return (useLongValueColumn, valueChanged, deleteValue, alsoSaveSeoValue);
+                if (wiserItemDetail.IsLinkProperty && wiserItemDetail.ItemLinkId > 0)
+                {
+                    queryResult = await databaseConnection.GetAsync($@"SELECT id 
+FROM {WiserTableNames.WiserItemLinkDetail} 
+WHERE itemlink_id = ?itemLinkId{counter} 
+AND `key` = ?key{SeoPropertySuffix}{counter}
+AND language_code = ?languageCode{counter}
+LIMIT 1");
+                }
+                else
+                {
+                    queryResult = await databaseConnection.GetAsync($@"SELECT id 
+FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
+WHERE item_id = ?itemId 
+AND `key` = ?key{SeoPropertySuffix}{counter}
+AND language_code = ?languageCode{counter}
+LIMIT 1");
+                }
+
+                if (queryResult.Rows.Count > 0)
+                {
+                    seoValueItemDetailId = Convert.ToUInt32(queryResult.Rows[0].Field<ulong>("id"));
+                }
+            }
+            
+            return (useLongValueColumn, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId);
         }
 
         /// <summary>
