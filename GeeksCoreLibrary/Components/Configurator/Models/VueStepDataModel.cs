@@ -30,6 +30,12 @@ public class VueStepDataModel
     public IEnumerable<VueStepDependencyModel> Dependencies { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the step is required.
+    /// </summary>
+    [JsonProperty("isRequired")]
+    public bool IsRequired { get; set; }
+
+    /// <summary>
     /// Gets or sets the minimum value for the step. This is used for validation.
     /// </summary>
     /// <remarks>
@@ -79,12 +85,6 @@ public class VueStepDataModel
     /// </summary>
     [JsonProperty("validationRegexErrorMessage")]
     public string ValidationRegexErrorMessage { get; set; }
-
-    /// <summary>
-    /// Gets or sets whether the step is required.
-    /// </summary>
-    [JsonProperty("isRequired")]
-    public bool IsRequired { get; set; }
 
     /// <summary>
     /// Gets or sets the conditions that must be met in order for the step to be required.
