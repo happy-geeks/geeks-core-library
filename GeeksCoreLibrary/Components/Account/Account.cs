@@ -1897,12 +1897,14 @@ namespace GeeksCoreLibrary.Components.Account
             var googleClientId = String.Join(".", clientIdSplit.Skip(2));
 
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Settings.EntityType);
+            
+            var detail = new WiserItemDetailModel()
+            {
+                Key = String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? Constants.DefaultGoogleCidFieldName : Settings.GoogleClientIdFieldName,
+                Value = googleClientId
+            };
 
-            DatabaseConnection.AddParameter("userId", userIdForGoogleCid);
-            DatabaseConnection.AddParameter("name", String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? Constants.DefaultGoogleCidFieldName : Settings.GoogleClientIdFieldName);
-            DatabaseConnection.AddParameter("value", googleClientId);
-
-            await RenderAndExecuteQueryAsync($"INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (item_id, `key`, value) VALUES (?userId, ?name, ?value) ON DUPLICATE KEY UPDATE value = VALUES(value)", skipCache: true);
+            await wiserItemsService.SaveItemDetailAsync(detail, userIdForGoogleCid, 0, Settings.EntityType);
         }
 
         /// <summary>
