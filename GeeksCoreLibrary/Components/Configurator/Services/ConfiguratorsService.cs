@@ -853,7 +853,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     });
 
                     var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
-                    
+
                     configuration.Details.Add(new WiserItemDetailModel()
                     {
                         Key = "gcl_response",
@@ -1046,10 +1046,14 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         {
             var retryCount = await objectsService.GetSystemObjectValueAsync("configurator_api_retry_count");
             Int32.TryParse(retryCount, out var retryCountValue);
+
             var retryDelay = await objectsService.GetSystemObjectValueAsync("configurator_api_retry_delay");
             Int32.TryParse(retryDelay, out var retryDelayValue);
+
+            // Get the status codes that need to be retried.
             var retryStatusCodes = (await objectsService.GetSystemObjectValueAsync("configurator_api_retry_status_codes")).Split(",");
             var retryStatusCodesList = new List<int>();
+
             foreach(var statusCode in retryStatusCodes)
             {
                 if (String.IsNullOrWhiteSpace(statusCode)) continue;
