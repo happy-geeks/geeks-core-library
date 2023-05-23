@@ -190,15 +190,24 @@ namespace GeeksCoreLibrary.Components.Configurator
             var configuratorData = await configuratorsService.GetConfiguratorDataAsync(currentConfiguratorName);
             var firstRow = configuratorData.Rows[0];
 
-            // Basic templates.jjl_summary_template
-            var progressHtml = Settings.SummaryHtml
-                .ReplaceCaseInsensitive("{progress_template}", firstRow.Field<string>("progress_template"))
-                .ReplaceCaseInsensitive("{progress_step_template}", firstRow.Field<string>("progress_step_template"))
-                .ReplaceCaseInsensitive("{progress_substep_template}", firstRow.Field<string>("progress_substep_template"));
-            var renderedFinalSummaryHtml = Settings.FinalSummaryHtml
-                .ReplaceCaseInsensitive("{summary_template}", firstRow.Field<string>("summary_template"))
-                .ReplaceCaseInsensitive("{summary_mainstep_template}", firstRow.Field<string>("summary_mainstep_template"))
-                .ReplaceCaseInsensitive("{summary_step_template}", firstRow.Field<string>("summary_step_template"));
+            var progressHtml = "";
+            string renderedFinalSummaryHtml;
+            if (Settings.ComponentMode == ComponentModes.Vue)
+            {
+                renderedFinalSummaryHtml = Settings.FinalSummaryHtml;
+            }
+            else
+            {
+                // Basic templates.jjl_summary_template
+                progressHtml = Settings.SummaryHtml
+                    .ReplaceCaseInsensitive("{progress_template}", firstRow.Field<string>("progress_template"))
+                    .ReplaceCaseInsensitive("{progress_step_template}", firstRow.Field<string>("progress_step_template"))
+                    .ReplaceCaseInsensitive("{progress_substep_template}", firstRow.Field<string>("progress_substep_template"));
+                renderedFinalSummaryHtml = Settings.FinalSummaryHtml
+                    .ReplaceCaseInsensitive("{summary_template}", firstRow.Field<string>("summary_template"))
+                    .ReplaceCaseInsensitive("{summary_mainstep_template}", firstRow.Field<string>("summary_mainstep_template"))
+                    .ReplaceCaseInsensitive("{summary_step_template}", firstRow.Field<string>("summary_step_template"));
+            }
 
             // First add all step numbers to the "_stepNumbers" dictionary, so that we have information about all steps before we start generating HTML.
             // If we don't do this, we can't make a step dependent on a future step.
