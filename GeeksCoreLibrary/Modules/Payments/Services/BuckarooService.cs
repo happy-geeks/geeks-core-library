@@ -122,7 +122,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
             var response = await serviceTransaction.ExecuteAsync();
 
-            var successStatusCodes = new List<int> {190, 790};
+            var successStatusCodes = new List<int> {190, 790, 791};
             if (response?.Status?.Code?.Code == null || !successStatusCodes.Contains(response.Status.Code.Code) || String.IsNullOrWhiteSpace(response.RequiredAction?.RedirectURL))
             {
                 return new PaymentRequestResult
