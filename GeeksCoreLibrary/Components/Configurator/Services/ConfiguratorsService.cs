@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -22,7 +23,7 @@ using RestSharp;
 
 namespace GeeksCoreLibrary.Components.Configurator.Services
 {
-    public class ConfiguratorsService : IConfiguratorsService, IScopedService
+    public partial class ConfiguratorsService : IConfiguratorsService, IScopedService
     {
         private readonly ILogger<ConfiguratorsService> logger;
         private readonly IDatabaseConnection databaseConnection;
@@ -44,36 +45,38 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             "progress_post_substep_template", "progress_template", "progress_step_template", "progress_substep_template", "name", "configurator_free_content1", "configurator_free_content2", "configurator_free_content3", "configurator_free_content4",
             "configurator_free_content5", "template", "price_calculation_query", "deliverytime_query", "custom_param_name", "custom_param_dependencies", "custom_param_query", "pre_render_steps_query", "mainstep_template", "mainstepname", "mainsteps_values_template", "mainsteps_datasource", "mainsteps_custom_query", "mainsteps_own_data_values", "mainsteps_fixed_valuelist",
             "mainsteps_datasource_connectedtype", "mainsteps_datasource_connectedid", "mainsteps_isrequired", "mainsteps_check_connectedid", "mainstep_free_content1", "mainstep_free_content2", "mainstep_free_content3",
-            "mainstep_free_content4", "mainstep_free_content5", "step_template", "stepname", "values_template", "datasource", "custom_query", "own_data_values", "fixed_valuelist", "datasource_connectedtype", "variable_name", "step_free_content1", "step_free_content2", "step_free_content3", "step_free_content4", "step_free_content5", "datasource_connectedid", "isrequired", "check_connectedid",
+            "mainstep_free_content4", "mainstep_free_content5", "mainstep_variable_name", "step_template", "stepname", "values_template", "datasource", "custom_query", "own_data_values", "fixed_valuelist", "datasource_connectedtype", "variable_name", "step_free_content1", "step_free_content2", "step_free_content3", "step_free_content4", "step_free_content5", "datasource_connectedid", "isrequired", "check_connectedid",
             "substepname", "substep_template", "substep_values_template", "substep_datasource",
             "substep_custom_query", "substep_own_data_values", "substep_fixed_valuelist", "substep_datasource_connectedtype", "substep_variable_name", "substep_datasource_connectedid", "substep_isrequired", "substep_check_connectedid", "substep_free_content1", "substep_free_content2", "substep_free_content3", "substep_free_content4", "substep_free_content5", "urlregex",
             "configurator_step_template"
         };
 
-        private readonly List<(string prefix, string fieldName)> configuratorFields = new List<(string prefix, string fieldName)>
+        private readonly List<(string prefix, string fieldName)> configuratorFields = new()
         {
             ("", "name"), ("", "summary_template"), ("", "summary_mainstep_template"), ("", "summary_step_template"), ("", "progress_pre_template"), ("", "progress_pre_step_template"), ("", "progress_pre_substep_template"), ("", "progress_post_template"), ("", "progress_post_step_template"), ("", "progress_post_substep_template"), ("", "progress_template"), ("", "progress_step_template"),
             ("", "progress_substep_template"), ("configurator_", "free_content1"), ("configurator_", "free_content2"), ("configurator_", "free_content3"), ("configurator_", "free_content4"), ("configurator_", "free_content5"), ("", "template"), ("", "deliverytime_query"), ("", "custom_param_name"), ("", "custom_param_dependencies"), ("", "custom_param_query"), ("", "pre_render_steps_query"),
             ("configurator_", "step_template"), ("", "price_calculation_query")
         };
 
-        private readonly List<(string prefix, string fieldName)> mainStepFields = new List<(string prefix, string fieldName)>
+        private readonly List<(string prefix, string fieldName)> mainStepFields = new()
         {
-            ("main", "step_template"), ("", "mainstepname"), ("mainsteps_", "values_template"), ("mainsteps_", "datasource"), ("mainsteps_", "custom_query"), ("mainsteps_", "own_data_values"), ("mainsteps_", "fixed_valuelist"), ("mainsteps_", "datasource_connectedtype"), ("mainsteps_", "datasource_connectedid"), ("mainsteps_", "isrequired"), ("mainsteps_", "check_connectedid"),
+            ("main", "step_template"), ("", "mainstepname"), ("mainsteps_", "values_template"), ("mainsteps_", "datasource"), ("mainsteps_", "custom_query"), ("mainsteps_", "own_data_values"), ("mainsteps_", "fixed_valuelist"), ("mainsteps_", "datasource_connectedtype"), ("mainstep_", "variable_name"), ("mainsteps_", "datasource_connectedid"), ("mainsteps_", "isrequired"), ("mainsteps_", "check_connectedid"),
             ("mainstep_", "free_content1"), ("mainstep_", "free_content2"), ("mainstep_", "free_content3"), ("mainstep_", "free_content4"), ("mainstep_", "free_content5")
         };
 
-        private readonly List<(string prefix, string fieldName)> stepFields = new List<(string prefix, string fieldName)>
+        private readonly List<(string prefix, string fieldName)> stepFields = new()
         {
             ("", "step_template"), ("", "stepname"), ("", "values_template"), ("", "datasource"), ("", "custom_query"), ("", "own_data_values"), ("", "fixed_valuelist"), ("", "datasource_connectedtype"), ("", "variable_name"), ("", "datasource_connectedid"), ("", "isrequired"), ("", "check_connectedid"), ("step_", "free_content1"), ("step_", "free_content2"), ("step_", "free_content3"),
             ("step_", "free_content4"), ("step_", "free_content5")
         };
 
-        private readonly List<(string prefix, string fieldName)> subStepFields = new List<(string prefix, string fieldName)>
+        private readonly List<(string prefix, string fieldName)> subStepFields = new()
         {
             ("sub", "step_template"), ("", "substepname"), ("substep_", "values_template"), ("substep_", "datasource"), ("substep_", "custom_query"), ("substep_", "own_data_values"), ("substep_", "fixed_valuelist"), ("substep_", "datasource_connectedtype"), ("substep_", "variable_name"), ("substep_", "datasource_connectedid"), ("substep_", "isrequired"), ("substep_", "check_connectedid"),
             ("substep_", "free_content1"), ("substep_", "free_content2"), ("substep_", "free_content3"), ("substep_", "free_content4"), ("substep_", "free_content5")
         };
+
+        private readonly Regex dependencyValuesRegex = new(@"\((?<values>[^\)]+)\)", RegexOptions.Compiled);
 
         public ConfiguratorsService(ILogger<ConfiguratorsService> logger,
             IDatabaseConnection databaseConnection,
@@ -165,11 +168,11 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("gcl_languageCode", languageCode);
             dataTable = await databaseConnection.GetAsync(@$"
-                    SELECT item.id, IFNULL(namePart.`value`, item.title) AS title, item.entity_type, detail.`key`, CONCAT_WS('', detail.`value`, detail.long_value) AS `value`
-                    FROM {WiserTableNames.WiserItem} item
-                    JOIN {WiserTableNames.WiserItemDetail} detail ON detail.item_id = item.id
-                    LEFT JOIN {WiserTableNames.WiserItemDetail} namePart ON namePart.item_id = item.id AND namePart.key = 'title' AND namePart.language_code = ?gcl_languageCode
-                    WHERE item.id IN ({String.Join(",", idList)});");
+                SELECT item.id, IFNULL(namePart.`value`, item.title) AS title, item.entity_type, detail.`key`, CONCAT_WS('', detail.`value`, detail.long_value) AS `value`
+                FROM {WiserTableNames.WiserItem} item
+                JOIN {WiserTableNames.WiserItemDetail} detail ON detail.item_id = item.id
+                LEFT JOIN {WiserTableNames.WiserItemDetail} namePart ON namePart.item_id = item.id AND namePart.key = 'title' AND namePart.language_code = ?gcl_languageCode
+                WHERE item.id IN ({String.Join(",", idList)});");
 
             if (dataTable.Rows.Count == 0)
             {
@@ -219,7 +222,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                     {
                         var items = returnDataTable.AsEnumerable().Where(x => Convert.ToUInt64(x["mainStepId"]) == idField);
 
-                        foreach (DataRow item in items)
+                        foreach (var item in items)
                         {
                             if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["mainstepname"].ToString()))
                             {
@@ -233,6 +236,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                             }
 
                             item[$"{foundField.prefix}{foundField.fieldName}"] = valueField;
+
+                            // if variable name isn't set, fill it with title in mysql safe value.
+                            if (!String.IsNullOrWhiteSpace(titleField) && String.IsNullOrWhiteSpace(item["mainstep_variable_name"].ToString()))
+                            {
+                                item["mainstep_variable_name"] = titleField;
+                            }
                         }
 
                         break;
@@ -391,20 +400,264 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
+        public async Task<VueConfiguratorDataModel> GetVueConfiguratorDataAsync(string name)
+        {
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("name", name);
+            var query = $@"SELECT
+    configuratorId,
+    stepId,
+    stepTitle,
+    stepName,
+    dependencies,
+    isRequired,
+    requiredConditions,
+    minimumValue,
+    maximumValue,
+    validationRegex,
+    requiredErrorMessage,
+    minimumValueErrorMessage,
+    maximumValueErrorMessage,
+    validationRegexErrorMessage,
+    dataQuery,
+    CONCAT_WS('-', mainStepOrdering - 1, stepOrdering - 1, subStepOrdering - 1) AS position
+FROM (
+    SELECT
+        configurator.id AS configuratorId,
+        mainStep.id AS stepId,
+        mainStep.title AS stepTitle,
+        variableName.`value` AS stepName,
+        dependencies.`value` AS dependencies,
+        IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
+        requiredConditions.`value` AS requiredConditions,
+        minimumValue.`value` AS minimumValue,
+        maximumValue.`value` AS maximumValue,
+        validationRegex.`value` AS validationRegex,
+        requiredErrorMessage.`value` AS requiredErrorMessage,
+        minimumValueErrorMessage.`value` AS minimumValueErrorMessage,
+        maximumValueErrorMessage.`value` AS maximumValueErrorMessage,
+        validationRegexErrorMessage.`value` AS validationRegexErrorMessage,
+        CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
+        mainStepLink.ordering AS mainStepOrdering,
+        NULL AS stepOrdering,
+        NULL AS subStepOrdering
+    FROM {WiserTableNames.WiserItem} AS configurator
+
+    JOIN {WiserTableNames.WiserItemLink} AS mainStepLink ON mainStepLink.destination_item_id = configurator.id
+    JOIN {WiserTableNames.WiserItem} AS mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = mainStep.id AND variableName.`key` = 'variable_name'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = mainStep.id AND dependencies.`key` = 'datasource_connectedid'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = mainStep.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = mainStep.id AND requiredConditions.`key` = 'required_conditions'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = mainStep.id AND minimumValue.`key` = 'min_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValue ON maximumValue.item_id = mainStep.id AND maximumValue.`key` = 'max_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegex ON validationRegex.item_id = mainStep.id AND validationRegex.`key` = 'validation_regex'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredErrorMessage ON requiredErrorMessage.item_id = mainStep.id AND requiredErrorMessage.`key` = 'required_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValueErrorMessage ON minimumValueErrorMessage.item_id = mainStep.id AND minimumValueErrorMessage.`key` = 'min_value_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValueErrorMessage ON maximumValueErrorMessage.item_id = mainStep.id AND maximumValueErrorMessage.`key` = 'max_value_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegexErrorMessage ON validationRegexErrorMessage.item_id = mainStep.id AND validationRegexErrorMessage.`key` = 'validation_regex_error_message'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = mainStep.id AND dataQuery.`key` = 'custom_query'
+
+    WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
+
+    UNION
+
+    SELECT
+        configurator.id AS configuratorId,
+        step.id AS stepId,
+        step.title AS stepTitle,
+        variableName.`value` AS stepName,
+        dependencies.`value` AS dependencies,
+        IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
+        requiredConditions.`value` AS requiredConditions,
+        minimumValue.`value` AS minimumValue,
+        maximumValue.`value` AS maximumValue,
+        validationRegex.`value` AS validationRegex,
+        requiredErrorMessage.`value` AS requiredErrorMessage,
+        minimumValueErrorMessage.`value` AS minimumValueErrorMessage,
+        maximumValueErrorMessage.`value` AS maximumValueErrorMessage,
+        validationRegexErrorMessage.`value` AS validationRegexErrorMessage,
+        CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
+        mainStepLink.ordering AS mainStepOrdering,
+        stepLink.ordering AS stepOrdering,
+        NULL AS subStepOrdering
+    FROM {WiserTableNames.WiserItem} AS configurator
+
+    JOIN {WiserTableNames.WiserItemLink} AS mainStepLink ON mainStepLink.destination_item_id = configurator.id
+    JOIN {WiserTableNames.WiserItem} AS mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
+
+    JOIN {WiserTableNames.WiserItemLink} AS stepLink ON stepLink.destination_item_id = mainStep.id
+    JOIN {WiserTableNames.WiserItem} AS step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = step.id AND minimumValue.`key` = 'min_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValue ON maximumValue.item_id = step.id AND maximumValue.`key` = 'max_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegex ON validationRegex.item_id = step.id AND validationRegex.`key` = 'validation_regex'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredErrorMessage ON requiredErrorMessage.item_id = step.id AND requiredErrorMessage.`key` = 'required_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValueErrorMessage ON minimumValueErrorMessage.item_id = step.id AND minimumValueErrorMessage.`key` = 'min_value_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValueErrorMessage ON maximumValueErrorMessage.item_id = step.id AND maximumValueErrorMessage.`key` = 'max_value_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegexErrorMessage ON validationRegexErrorMessage.item_id = step.id AND validationRegexErrorMessage.`key` = 'validation_regex_error_message'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = step.id AND dataQuery.`key` = 'custom_query'
+
+    WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
+
+    UNION
+
+    SELECT
+        configurator.id AS configuratorId,
+        subStep.id AS stepId,
+        subStep.title AS stepTitle,
+        variableName.`value` AS stepName,
+        dependencies.`value` AS dependencies,
+        IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
+        requiredConditions.`value` AS requiredConditions,
+        minimumValue.`value` AS minimumValue,
+        maximumValue.`value` AS maximumValue,
+        validationRegex.`value` AS validationRegex,
+        requiredErrorMessage.`value` AS requiredErrorMessage,
+        minimumValueErrorMessage.`value` AS minimumValueErrorMessage,
+        maximumValueErrorMessage.`value` AS maximumValueErrorMessage,
+        validationRegexErrorMessage.`value` AS validationRegexErrorMessage,
+        CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
+        mainStepLink.ordering AS mainStepOrdering,
+        stepLink.ordering AS stepOrdering,
+        subStepLink.ordering AS subStepOrdering
+    FROM {WiserTableNames.WiserItem} AS configurator
+
+    JOIN {WiserTableNames.WiserItemLink} AS mainStepLink ON mainStepLink.destination_item_id = configurator.id
+    JOIN {WiserTableNames.WiserItem} AS mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
+
+    JOIN {WiserTableNames.WiserItemLink} AS stepLink ON stepLink.destination_item_id = mainStep.id
+    JOIN {WiserTableNames.WiserItem} AS step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
+
+    JOIN {WiserTableNames.WiserItemLink} AS subStepLink ON subStepLink.destination_item_id = step.id
+    JOIN {WiserTableNames.WiserItem} AS subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = 'substap'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = subStep.id AND variableName.`key` = 'variable_name'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = subStep.id AND dependencies.`key` = 'datasource_connectedid'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = subStep.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = subStep.id AND requiredConditions.`key` = 'required_conditions'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = subStep.id AND minimumValue.`key` = 'min_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValue ON maximumValue.item_id = subStep.id AND maximumValue.`key` = 'max_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegex ON validationRegex.item_id = subStep.id AND validationRegex.`key` = 'validation_regex'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredErrorMessage ON requiredErrorMessage.item_id = subStep.id AND requiredErrorMessage.`key` = 'required_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValueErrorMessage ON minimumValueErrorMessage.item_id = subStep.id AND minimumValueErrorMessage.`key` = 'min_value_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValueErrorMessage ON maximumValueErrorMessage.item_id = subStep.id AND maximumValueErrorMessage.`key` = 'max_value_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegexErrorMessage ON validationRegexErrorMessage.item_id = subStep.id AND validationRegexErrorMessage.`key` = 'validation_regex_error_message'
+
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = subStep.id AND dataQuery.`key` = 'custom_query'
+
+    WHERE configurator.moduleid = {ConfiguratorModuleId} AND configurator.entity_type = '{ConfiguratorEntity}' AND configurator.title = ?name
+) t
+ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+
+            var steps = new List<VueStepDataModel>();
+            foreach (var dataRow in dataTable.Rows.Cast<DataRow>())
+            {
+                // Create dependencies.
+                var dependencies = new List<VueStepDependencyModel>();
+                if (!String.IsNullOrWhiteSpace(dataRow.Field<string>("dependencies")))
+                {
+                    var dependencyArray = dataRow.Field<string>("dependencies").Split(';');
+                    foreach (var dependency in dependencyArray)
+                    {
+                        var dependencyStepName = dependency;
+
+                        // Check if the dependency should also check for the value of the dependency.
+                        List<string> dependencyValues = null;
+                        var dependencyValuesMatch = dependencyValuesRegex.Match(dependency);
+                        if (dependencyValuesMatch.Success)
+                        {
+                            dependencyValues = dependencyValuesMatch.Groups["values"].Captures.Select(c => c.Value).ToList();
+                            dependencyStepName = dependency.Replace(dependencyValuesMatch.Value, String.Empty);
+                        }
+
+                        dependencies.Add(new VueStepDependencyModel
+                        {
+                            StepName = dependencyStepName,
+                            Values = dependencyValues ?? new List<string>()
+                        });
+                    }
+                }
+
+                // Create required conditions.
+                var requiredConditions = new List<VueStepDependencyModel>();
+                if (!String.IsNullOrWhiteSpace(dataRow.Field<string>("requiredConditions")))
+                {
+                    var requiredConditionsArray = dataRow.Field<string>("requiredConditions").Split(';');
+                    foreach (var requiredCondition in requiredConditionsArray)
+                    {
+                        // Check if the dependency should also check for the value of the dependency.
+                        var requiredConditionValuesMatch = dependencyValuesRegex.Match(requiredCondition);
+                        if (!requiredConditionValuesMatch.Success) continue;
+                        
+                        var requiredConditionValues = requiredConditionValuesMatch.Groups["values"].Captures.Select(c => c.Value).ToList();
+                        var requiredConditionStepName = requiredCondition.Replace(requiredConditionValuesMatch.Value, String.Empty);
+
+                        requiredConditions.Add(new VueStepDependencyModel
+                        {
+                            StepName = requiredConditionStepName,
+                            Values = requiredConditionValues
+                        });
+                    }
+                }
+
+                var stepName = dataRow.Field<string>("stepName");
+                if (String.IsNullOrEmpty(stepName))
+                {
+                    stepName = dataRow.Field<string>("stepTitle").ConvertToSeo();
+                }
+
+                var step = new VueStepDataModel
+                {
+                    Position = dataRow.Field<string>("position"),
+                    StepName = stepName,
+                    Dependencies = dependencies,
+                    MinimumValue = dataRow.Field<string>("minimumValue"),
+                    MaximumValue = dataRow.Field<string>("maximumValue"),
+                    ValidationRegex = dataRow.Field<string>("validationRegex"),
+                    RequiredErrorMessage = dataRow.Field<string>("requiredErrorMessage"),
+                    MinimumValueErrorMessage = dataRow.Field<string>("minimumValueErrorMessage"),
+                    MaximumValueErrorMessage = dataRow.Field<string>("maximumValueErrorMessage"),
+                    ValidationRegexErrorMessage = dataRow.Field<string>("validationRegexErrorMessage"),
+                    IsRequired = Convert.ToBoolean(dataRow["isRequired"]),
+                    RequiredConditions = requiredConditions,
+                    DataQuery = dataRow.Field<string>("dataQuery")
+                };
+
+                steps.Add(step);
+            }
+
+            return new VueConfiguratorDataModel
+            {
+                StepsData = steps
+            };
+        }
+
+        /// <inheritdoc />
         public async Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration, bool isQuery)
         {
-            if ((configuration == null) || (!templateOrQuery.Contains("{")))
+            if (configuration == null || !templateOrQuery.Contains('{'))
             {
                 return templateOrQuery;
             }
 
-            foreach (var queryStringItem in configuration.QueryStringItems)
+            foreach (var queryStringItem in configuration.QueryStringItems.Where(queryStringItem => templateOrQuery.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase)))
             {
-                if (!templateOrQuery.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
                 if (!isQuery)
                 {
                     templateOrQuery = templateOrQuery.Replace($"{{{queryStringItem.Key}}}", queryStringItem.Value);
@@ -468,6 +721,81 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
             }
 
             return templateOrQuery;
+        }
+
+        /// <inheritdoc />
+        public async Task<string> ReplaceConfiguratorItemsAsync(string template, VueConfigurationsModel configuration, bool isDataQuery)
+        {
+            if (configuration == null || !template.Contains('{'))
+            {
+                return template;
+            }
+
+            foreach (var queryStringItem in configuration.QueryStringItems.Where(queryStringItem => template.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!isDataQuery)
+                {
+                    template = template.Replace($"{{{queryStringItem.Key}}}", queryStringItem.Value);
+                }
+                else
+                {
+                    var parameterName = DatabaseHelpers.CreateValidParameterName(queryStringItem.Key);
+                    databaseConnection.AddParameter(parameterName, queryStringItem.Value);
+                    template = template.Replace($"'{{{queryStringItem.Key}}}'", $"?{parameterName}").Replace($"{{{queryStringItem.Key}}}", $"?{parameterName}");
+                }
+            }
+
+            foreach (var key in configuration.Items.Keys)
+            {
+                if (!template.Contains($"{{{configuration.Items[key].StepName}}}", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var parameterName = DatabaseHelpers.CreateValidParameterName(configuration.Items[key].StepName);
+                var valuesCanContainDashes = await objectsService.GetSystemObjectValueAsync("CONFIGURATOR_ValuesCanContainDashes");
+                if (!String.IsNullOrWhiteSpace(valuesCanContainDashes) && valuesCanContainDashes.Equals("true", StringComparison.OrdinalIgnoreCase) && configuration.Items[key].CurrentValue.Contains("-"))
+                {
+                    var value = configuration.Items[key].CurrentValue.Split('-')[1];
+                    if (!isDataQuery)
+                    {
+                        template = template.Replace($"{{{configuration.Items[key].StepName}}}", value);
+                    }
+                    else
+                    {
+                        databaseConnection.AddParameter(parameterName, value);
+                        template = template.Replace($"'{{{configuration.Items[key].StepName}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].StepName}}}", $"?{parameterName}");
+                    }
+                }
+                else if (configuration.Items[key].CurrentValue == "-1")
+                {
+                    var value = configuration.Items[key].CurrentValue.Split('-')[1];
+                    if (!isDataQuery)
+                    {
+                        template = template.Replace($"{{{configuration.Items[key].StepName}}}", value);
+                    }
+                    else
+                    {
+                        databaseConnection.AddParameter(parameterName, value);
+                        template = template.Replace($"'{{{configuration.Items[key].StepName}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].StepName}}}", $"?{parameterName}");
+                    }
+                }
+                else
+                {
+                    var value = configuration.Items[key].CurrentValue;
+                    if (!isDataQuery)
+                    {
+                        template = template.Replace($"{{{configuration.Items[key].StepName}}}", value);
+                    }
+                    else
+                    {
+                        databaseConnection.AddParameter(parameterName, value);
+                        template = template.Replace($"'{{{configuration.Items[key].StepName}}}'", $"?{parameterName}").Replace($"{{{configuration.Items[key].StepName}}}", $"?{parameterName}");
+                    }
+                }
+            }
+
+            return template;
         }
 
         /// <inheritdoc />
