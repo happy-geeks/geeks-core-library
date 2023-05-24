@@ -314,7 +314,7 @@ namespace GeeksCoreLibrary.Modules.Exports.Services
                     foreach (Cell cell in row.Elements<Cell>())
                     {
                         // Get the column index of the cell based on its name (e.g. A1).
-                        var columnName = Regex.Replace(cell.CellReference.Value, @"[\d-]", string.Empty);
+                        var columnName = Regex.Replace(cell.CellReference.Value, @"[\d-]", string.Empty, RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
                         var columnIndex = GetColumnIndexFromName(columnName);
                         
                         if (cell.DataType != null && cell.DataType == CellValues.SharedString)
