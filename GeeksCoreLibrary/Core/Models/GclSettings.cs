@@ -114,12 +114,12 @@ namespace GeeksCoreLibrary.Core.Models
         public string AccountUserIdEncryptionKey { get; set; }
 
         /// <summary>
-        /// The amount of hours an encrypted value is valid when it was encrypted with a date and time.
+        /// The encryption key that will be used for encrypting values with an expiry date.
         /// </summary>
         public string ExpiringEncryptionKey { get; set; }
 
         /// <summary>
-        /// The encryption key that will be used for encrypting values with an expiry date.
+        /// The amount of hours an encrypted value is valid when it was encrypted with a date and time.
         /// </summary>
         public int TemporaryEncryptionHoursValid { get; set; } = 24;
 
