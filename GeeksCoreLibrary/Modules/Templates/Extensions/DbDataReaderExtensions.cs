@@ -26,11 +26,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 insertMode = ResourceInsertModes.Standard;
             }
 
-            if (!Enum.TryParse(typeof(TemplateCachingModes), reader.GetStringHandleNull("use_cache"), true, out var cachingMode))
-            {
-                cachingMode = TemplateCachingModes.NoCaching;
-            }
-
             var isQuery = type is TemplateTypes.Query || templateType is TemplateTypes.Query;
             var isRoutine = type is TemplateTypes.Routine || templateType is TemplateTypes.Routine;
             var isTrigger = type is TemplateTypes.Trigger || templateType is TemplateTypes.Trigger;
@@ -46,7 +41,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.ParentSortOrder = await reader.IsDBNullAsync("parent_ordering") ? 0 : await reader.GetFieldValueAsync<int>("parent_ordering");
             template.LoadAlways = Convert.ToBoolean(reader.GetValue("load_always"));
             template.UrlRegex = reader.GetStringHandleNull("url_regex");
-            template.CachingMode = (TemplateCachingModes)(cachingMode ?? TemplateCachingModes.NoCaching);
+            template.UseCache = Convert.ToBoolean(reader.GetValue("use_cache"));
+            template.CachePerUrl = Convert.ToBoolean(reader.GetValue("cache_per_url"));
+            template.CachePerQueryString = Convert.ToBoolean(reader.GetValue("cache_per_querystring"));
+            template.CachePerHostName = Convert.ToBoolean(reader.GetValue("cache_per_hostname"));
+            template.CacheUsingRegex = Convert.ToBoolean(reader.GetValue("cache_using_regex"));
             template.CachingMinutes = await reader.IsDBNullAsync("cache_minutes") ? 0 : await reader.GetFieldValueAsync<int>("cache_minutes");
             template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations)await reader.GetFieldValueAsync<int>("caching_location");
             template.CachingRegex = reader.GetStringHandleNull("cache_regex");
