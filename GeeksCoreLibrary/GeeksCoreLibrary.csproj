@@ -5,11 +5,11 @@
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>3.0.6</Version>
+    <Version>3.0.12</Version>
     <Company>Happy Geeks B.V.</Company>
     <Description>Our base/core library that we use for most of our other projects.</Description>
-    <AssemblyVersion>3.0.6.0</AssemblyVersion>
-    <FileVersion>3.0.6.0</FileVersion>
+    <AssemblyVersion>3.0.12.0</AssemblyVersion>
+    <FileVersion>3.0.12.0</FileVersion>
     <PackageDescription>Geeks Core Library</PackageDescription>
     <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
@@ -41,8 +41,11 @@
     <PackageReference Include="FluentFTP" Version="46.0.2" />
     <PackageReference Include="GoogleAuthenticator" Version="3.0.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
+    <PackageReference Include="ISO3166" Version="1.0.4" />
+    <PackageReference Include="ISO3166NL" Version="1.0.1" />
     <PackageReference Include="JetBrains.Annotations" Version="2022.3.1" />
     <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
+    <PackageReference Include="libphonenumber-csharp" Version="8.13.10" />
     <PackageReference Include="Magick.NET-Q8-x64" Version="13.0.1" />
     <PackageReference Include="MailKit" Version="3.6.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="7.0.4" />
@@ -50,8 +53,10 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
+    <PackageReference Include="Mollie.Api" Version="2.2.0.4" />
     <PackageReference Include="MultiSafepay" Version="0.8.7" />
     <PackageReference Include="MySql.Data" Version="8.0.32.1" />
+    <PackageReference Include="OmniKassa_Rabobank" Version="1.4.0" />
     <PackageReference Include="RestSharp" Version="109.0.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="109.0.1" />
@@ -71,16 +76,6 @@
     <PackageReference Include="WebMarkupMin.AspNetCore3" Version="2.13.8" />
     <PackageReference Include="ZXing.Net" Version="0.16.9" />
     <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.13" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="OmniKassa">
-      <HintPath>OmniKassa.dll</HintPath>
-    </Reference>
-    <Content Include="lib\OmniKassa.dll">
-      <Pack>true</Pack>
-      <PackagePath>lib\net7.0\</PackagePath>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>

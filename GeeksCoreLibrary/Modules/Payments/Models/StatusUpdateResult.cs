@@ -11,5 +11,10 @@
         /// Gets or sets the status text or number that the PSP gave us.
         /// </summary>
         public string Status { get; set; }
+
+        /// <summary>
+        /// Gets or sets the status code that the PSP gave us.
+        /// </summary>
+        public int StatusCode { get; set; }
     }
 }
