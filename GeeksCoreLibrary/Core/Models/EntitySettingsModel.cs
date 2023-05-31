@@ -173,5 +173,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// Gets or sets whether statistics of this entity type should be shown in the dashboard module in Wiser.
         /// </summary>
         public bool ShowInDashboard { get; set; }
+
+        /// <summary>
+        /// Gets or Sets the where item details of this entity type get stored.
+        /// </summary>
+        public StorageLocation StorageLocation { get; set; } = StorageLocation.Table;
     }
 }

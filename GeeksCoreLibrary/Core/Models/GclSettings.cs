@@ -2,6 +2,7 @@
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
+using JetBrains.Annotations;
 
 namespace GeeksCoreLibrary.Core.Models
 {
@@ -23,6 +24,12 @@ namespace GeeksCoreLibrary.Core.Models
         /// The default connection string for the current website. This will be used for queries that write data.
         /// </summary>
         public string ConnectionStringForWriting { get; set; }
+        
+        /// <summary>
+        /// The default connection string for the document store.
+        /// </summary>
+        [CanBeNull]
+        public string ConnectionStringDocumentStore { get; set; }
 
         /// <summary>
         /// This will be used to set the correct timezone for the database before executing any query, so that all times will be shown in the requested timezone.

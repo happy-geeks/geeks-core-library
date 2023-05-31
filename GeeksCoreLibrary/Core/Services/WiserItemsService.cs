@@ -34,6 +34,8 @@ namespace GeeksCoreLibrary.Core.Services
         #region Privates
 
         private readonly IDatabaseConnection databaseConnection;
+
+        private readonly IDocumentStorageService documentStorageService;
         private readonly IObjectsService objectsService;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IDataSelectorsService dataSelectorsService;
@@ -49,7 +51,7 @@ namespace GeeksCoreLibrary.Core.Services
         /// <summary>
         /// Creates a new instance of <see cref="WiserItemsService"/>.
         /// </summary>
-        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService, IOptions<GclSettings> gclSettings, ILogger<WiserItemsService> logger)
+        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService, IOptions<GclSettings> gclSettings, ILogger<WiserItemsService> logger, IDocumentStorageService documentStorageService)
         {
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
@@ -57,6 +59,7 @@ namespace GeeksCoreLibrary.Core.Services
             this.dataSelectorsService = dataSelectorsService;
             this.databaseHelpersService = databaseHelpersService;
             this.logger = logger;
+            this.documentStorageService = documentStorageService;
             this.gclSettings = gclSettings.Value;
         }
 
@@ -96,7 +99,14 @@ namespace GeeksCoreLibrary.Core.Services
             var retries = 0;
             var transactionCompleted = false;
 
+            var entitySettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
+
             var isNewlycreated = wiserItem.Id == 0;
+            
+            if (entitySettings.StorageLocation == StorageLocation.DocumentStore)
+            {
+                return await documentStorageService.StoreDocumentAsync(wiserItem);
+            }
 
             while (!transactionCompleted)
             {
@@ -187,6 +197,11 @@ namespace GeeksCoreLibrary.Core.Services
             var retries = 0;
             var transactionCompleted = false;
 
+            if (entityTypeSettings?.StorageLocation == StorageLocation.DocumentStore)
+            {
+                return await documentStorageService.StoreDocumentAsync(wiserItem);
+            }
+            
             while (!transactionCompleted)
             {
                 try
@@ -2797,6 +2812,13 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                             "hide" => EntityDeletionTypes.Hide,
                             "disallow" => EntityDeletionTypes.Disallow,
                             _ => throw new ArgumentOutOfRangeException("delete_action", dataRow.Field<string>("delete_action"))
+                        },
+                        StorageLocation = dataRow.Field<string>("storage_location")?.ToLowerInvariant() switch
+                        {
+                            null => StorageLocation.Table,
+                            "table" => StorageLocation.Table,
+                            "document-store" => StorageLocation.DocumentStore,
+                            _ => throw new ArgumentOutOfRangeException("storage_location", dataRow.Field<string>("storage_location"))
                         }
                     };
 

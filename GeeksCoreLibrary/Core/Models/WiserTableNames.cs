@@ -35,6 +35,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserEntity = "wiser_entity";
         /// <summary>
+        /// The name of the document store used to store wiser items
+        /// </summary>
+        public const string WiserItemStore = "wiser_item_store"; 
+        /// <summary>
         /// This table contains all fields per entity type. These are the fields that are shown in Wiser when you open an item there.
         /// </summary>
         public const string WiserEntityProperty = "wiser_entityproperty";
