@@ -630,7 +630,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                     var insertQueryBuilder = new List<string>();
                     var updateQueryBuilder = new List<string>();
                     var deleteQueryBuilder = new List<string>();
-                    
+
                     // Local function for adding the query to update or insert a wiserItem so the correct list.
                     void AddItemDetailInsertOrUpdateQuery(string parameterSuffix)
                     {
@@ -644,7 +644,7 @@ AND `key` = ?key{parameterSuffix}
 AND language_code = ?languageCode{parameterSuffix}
 LIMIT 1";
                             var data = databaseConnection.GetAsync(addItemInsertOrUpdateQuery);
-                            
+
                             if (data.Result.Rows.Count > 0)
                             {
                                 isNewDetail = false;
@@ -997,7 +997,7 @@ WHERE item.id = ?itemId");
                                     continue;
                             }
                         }
-                        
+
                         databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
                         databaseConnection.AddParameter($"languageCode{counter}", itemDetail.LanguageCode ?? "");
                         databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
@@ -1142,7 +1142,7 @@ SET @saveHistory = ?saveHistoryGcl;
 
                             var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
                             databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
-                            
+
                             if (!valueChanged && !alwaysSaveValues)
                             {
                                 continue;
@@ -1198,14 +1198,14 @@ VALUES {String.Join(", ", insertQueryBuilder)}";
                             insertQueryBuilder.Clear();
                         }
                     }
-                    
+
                     if (updateQueryBuilder.Any())
                     {
                         var query = $@"SET @_username = ?username;
 SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryJcl;
+SET @saveHistory = ?saveHistoryGcl;
 {String.Join(Environment.NewLine, updateQueryBuilder)}";
-                        
+
                         await databaseConnection.ExecuteAsync(query);
                         updateQueryBuilder.Clear();
                     }
@@ -3072,12 +3072,12 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
 
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
-            databaseConnection.AddParameter("saveHistoryJcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
 
             // Copy the item links to the archive.
             var query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryJcl;
+                        SET @saveHistory = ?saveHistoryGcl;
                         INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix}
                         (
                             id,
@@ -3101,7 +3101,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
             // Copy the item links details to the archive.
             query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryJcl;
+                        SET @saveHistory = ?saveHistoryGcl;
                         INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix}
                         (
                             id,
@@ -3126,7 +3126,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
 
             query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryJcl;
+                        SET @saveHistory = ?saveHistoryGcl;
                         DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} WHERE itemlink_id IN({String.Join(",", ids)});
                         DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE id IN({String.Join(",", ids)})";
             await databaseConnection.ExecuteAsync(query);
@@ -3160,12 +3160,12 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
 
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
-            databaseConnection.AddParameter("saveHistoryJcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
 
             // Save the change to the history.
             var query = $@"SET @_username = ?username;
                         SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryJcl;
+                        SET @saveHistory = ?saveHistoryGcl;
                         INSERT INTO {WiserTableNames.WiserHistory} (action, tablename, item_id, changed_by, field, oldvalue, newvalue)
                         SELECT 'REMOVE_LINK', '{sourceTablePrefix}{WiserTableNames.WiserItem}', id, @_username, 'parent_item_id', 0, parent_item_id
 			            FROM {sourceTablePrefix}{WiserTableNames.WiserItem}
@@ -3174,7 +3174,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
 
             query = $@"SET @_username = ?username;
                     SET @_userId = ?userId;
-                    SET @saveHistory = ?saveHistoryJcl;
+                    SET @saveHistory = ?saveHistoryGcl;
                     UPDATE {sourceTablePrefix}{WiserTableNames.WiserItem}
                     SET parent_item_id = 0
                     WHERE id IN({String.Join(",", ids)})";
@@ -4178,7 +4178,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                 {
                     continue;
                 }
-                
+
                 if (setting.LinkType <= 0)
                 {
                     databaseConnection.AddParameter("id", wiserItem.Id);
@@ -4717,16 +4717,16 @@ WHERE id = ?saveDetailId";
                     wiserItemDetail.Id = previousField.Id;
                 }
             }
-            
+
             if (previousField != null && wiserItemDetail.Id == 0)
             {
                 wiserItemDetail.Id = previousField.Id;
             }
-            
+
             if (!isNewlyCreatedItem && !previousItemDetails.Any())
             {
                 DataTable queryResult;
-                
+
                 if (wiserItemDetail.IsLinkProperty && wiserItemDetail.ItemLinkId > 0)
                 {
                     queryResult = await databaseConnection.GetAsync($@"SELECT id 
@@ -4750,7 +4750,7 @@ WHERE id = ?saveDetailId";
                 {
                     wiserItemDetail.Id = queryResult.Rows[0].Field<ulong>("id");
                 }
-            }      
+            }
 
             switch (wiserItemDetail.Value)
             {
@@ -4919,7 +4919,7 @@ WHERE id = ?saveDetailId";
                                || !String.Equals(previousField.GroupName, wiserItemDetail.GroupName, StringComparison.OrdinalIgnoreCase)
                                || !String.Equals(previousField.LanguageCode, wiserItemDetail.LanguageCode, StringComparison.OrdinalIgnoreCase);
             }
-            
+
             if (alsoSaveSeoValue)
             {
                 DataTable queryResult;
@@ -4948,7 +4948,7 @@ LIMIT 1");
                     seoValueItemDetailId = Convert.ToUInt32(queryResult.Rows[0].Field<ulong>("id"));
                 }
             }
-            
+
             return (useLongValueColumn, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId);
         }
 
