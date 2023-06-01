@@ -1151,13 +1151,6 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                     endpoint = await ReplaceConfiguratorItemsAsync(endpoint, input, false);
                     endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
 
-                    configuration.Details.Add(new WiserItemDetailModel
-                    {
-                        Key = "gcl_endpoint",
-                        Value = endpoint,
-                        GroupName = saveApi.Title
-                    });
-
                     requestJson = await ReplaceConfiguratorItemsAsync(requestJson, input, false);
                     requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
@@ -1169,6 +1162,13 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                     {
                         continue;
                     }
+
+                    configuration.Details.Add(new WiserItemDetailModel
+                    {
+                        Key = "gcl_endpoint",
+                        Value = endpoint,
+                        GroupName = saveApi.Title
+                    });
 
                     var requestMethod = (Method) saveApi.GetDetailValue<int>("request_type");
 
@@ -1234,6 +1234,8 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                         Value = supplierId,
                         GroupName = saveApi.Title
                     });
+                    
+                    await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
                 }
                 catch (Exception e)
                 {
@@ -1245,9 +1247,7 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                         Value = e.ToString(),
                         GroupName = saveApi.Title
                     });
-                }
-                finally
-                {
+                    
                     await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
                 }
             }
