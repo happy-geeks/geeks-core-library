@@ -310,7 +310,11 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 Id = dataTable.Rows[0].Field<int>("template_id"),
                 Name = dataTable.Rows[0].Field<string>("template_name"),
                 CachingMinutes = dataTable.Rows[0].Field<int>("cache_minutes"),
-                CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache"),
+                UseCache = Convert.ToBoolean(dataTable.Rows[0]["use_cache"]),
+                CachePerUrl = Convert.ToBoolean(dataTable.Rows[0]["cache_per_url"]),
+                CachePerQueryString = Convert.ToBoolean(dataTable.Rows[0]["cache_per_querystring"]),
+                CachePerHostName = Convert.ToBoolean(dataTable.Rows[0]["cache_per_hostname"]),
+                CacheUsingRegex = Convert.ToBoolean(dataTable.Rows[0]["cache_using_regex"]),
                 CachingLocation = dataTable.Rows[0].Field<TemplateCachingLocations>("cache_location"),
                 CachingRegex = dataTable.Rows[0].Field<string>("cache_regex"),
                 Type = dataTable.Rows[0].Field<TemplateTypes>("template_type")
@@ -1386,62 +1390,81 @@ ORDER BY ORDINAL_POSITION ASC";
         {
             var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
-            switch (contentTemplate.CachingMode)
+
+            if (!contentTemplate.UseCache)
             {
-                case TemplateCachingModes.ServerSideCaching:
-                    break;
-                case TemplateCachingModes.ServerSideCachingPerUrl:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
-                    break;
-                case TemplateCachingModes.ServerSideCachingPerUrlAndQueryString:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
-                    break;
-                case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
-                    break;
-                case TemplateCachingModes.ServerSideCachingBasedOnUrlRegex:
-                    if (String.IsNullOrWhiteSpace(contentTemplate.CachingRegex))
+                return "";
+            }
+
+            if (contentTemplate.CacheUsingRegex)
+            {
+                if (String.IsNullOrWhiteSpace(contentTemplate.CachingRegex))
+                {
+                    throw new Exception($"Caching for template {contentTemplate.Id} is set to use regex, but no regex has been entered.");
+                }
+                
+                StringBuilder regexInput = new StringBuilder();
+                if (contentTemplate.CachePerHostName)
+                {
+                    regexInput.Append(originalUri.Host);
+                }
+
+                if (contentTemplate.CachePerUrl)
+                {
+                    regexInput.Append(originalUri.AbsolutePath);
+                }
+
+                if (contentTemplate.CachePerQueryString)
+                {
+                    regexInput.Append(originalUri.Query);
+                }
+
+                try
+                {
+                    var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
+                    var match = regex.Match(regexInput.ToString());
+                    if (!match.Success)
                     {
-                        throw new Exception($"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but no regex has been entered.");
+                        return "";
                     }
 
-                    try
+                    // Add all values of named groups to the cache key.
+                    foreach (Group group in match.Groups)
                     {
-                        var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
-                        var match = regex.Match(originalUri.PathAndQuery);
-                        if (!match.Success)
+                        if (String.IsNullOrWhiteSpace(group.Name) || Int32.TryParse(group.Name, out _))
                         {
-                            return "";
+                            // Ignore groups without a name (when you have no name given in the regex, the group name will be a number).
+                            continue;
                         }
 
-                        // Add all values of named groups to the cache key.
-                        foreach (Group group in match.Groups)
-                        {
-                            if (String.IsNullOrWhiteSpace(group.Name) || Int32.TryParse(group.Name, out _))
-                            {
-                                // Ignore groups without a name (when you have no name given in the regex, the group name will be a number).
-                                continue;
-                            }
+                        // Strip invalid characters that can't be in a file name.
+                        var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
 
-                            // Strip invalid characters that can't be in a file name.
-                            var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
-
-                            // Add the group value to the file name.
-                            cacheFileName.Append($"{Uri.EscapeDataString(value)}_");
-                        }
+                        // Add the group value to the file name.
+                        cacheFileName.Append($"{Uri.EscapeDataString(value)}_");
                     }
-                    catch (ArgumentException argumentException)
-                    {
-                        // ArgumentException will be thrown if the regex is not valid.
-                        logger.LogWarning(argumentException, $"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered.");
-                        throw new Exception($"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered. The exact error was: {argumentException.Message}");
-                    }
+                }
+                catch (ArgumentException argumentException)
+                {
+                    // ArgumentException will be thrown if the regex is not valid.
+                    logger.LogWarning(argumentException, $"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered.");
+                    throw new Exception($"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered. The exact error was: {argumentException.Message}");
+                }
+            }
 
-                    break;
-                case TemplateCachingModes.NoCaching:
-                    return "";
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingMode), contentTemplate.CachingMode.ToString());
+            if (contentTemplate.CachePerHostName)
+            {
+                cacheFileName.Append(Uri.EscapeDataString(originalUri.Host.ToSha512Simple()));
+            }
+
+            if (contentTemplate.CachePerUrl)
+            {
+                cacheFileName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
+            }
+            
+            if (contentTemplate.CachePerQueryString)
+            {
+                cacheFileName.Append(Uri.EscapeDataString(originalUri.Query.ToSha512Simple()));
             }
 
             // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
