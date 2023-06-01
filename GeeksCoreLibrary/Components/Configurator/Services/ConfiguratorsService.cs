@@ -1163,6 +1163,13 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                         continue;
                     }
 
+                    configuration.Details.Add(new WiserItemDetailModel
+                    {
+                        Key = "gcl_endpoint",
+                        Value = endpoint,
+                        GroupName = saveApi.Title
+                    });
+
                     var requestMethod = (Method) saveApi.GetDetailValue<int>("request_type");
 
                     var restClient = new RestClient();
@@ -1227,6 +1234,7 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                         Value = supplierId,
                         GroupName = saveApi.Title
                     });
+                    
                     await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
                 }
                 catch (Exception e)
@@ -1239,6 +1247,7 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                         Value = e.ToString(),
                         GroupName = saveApi.Title
                     });
+                    
                     await wiserItemsService.SaveAsync(configuration, skipPermissionsCheck: true, saveHistory: false);
                 }
             }
