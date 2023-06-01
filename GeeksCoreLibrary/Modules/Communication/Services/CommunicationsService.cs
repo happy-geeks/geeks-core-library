@@ -271,7 +271,7 @@ WHERE id = ?id";
         }
 
         /// <inheritdoc />
-        public async Task SendEmailAsync(string receiver, string subject, string body, string receiverName = null, string cc = null, string bcc = null, string replyTo = null, string replyToName = null, string sender = null, string senderName = null, DateTime? sendDate = null, List<ulong> attachments = null)
+        public async Task<int> SendEmailAsync(string receiver, string subject, string body, string receiverName = null, string cc = null, string bcc = null, string replyTo = null, string replyToName = null, string sender = null, string senderName = null, DateTime? sendDate = null, List<ulong> attachments = null)
         {
             var receivers = new List<CommunicationReceiverModel>();
             var receiverAddresses = receiver.Split(';');
@@ -299,13 +299,13 @@ WHERE id = ?id";
                 ccAddresses.AddRange(cc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries));
             }
 
-            await SendEmailAsync(receivers, subject, body, ccAddresses, bccAddresses, replyTo, replyToName, sender, senderName, sendDate, attachments);
+            return await SendEmailAsync(receivers, subject, body, ccAddresses, bccAddresses, replyTo, replyToName, sender, senderName, sendDate, attachments);
         }
 
         /// <inheritdoc />
-        public async Task SendEmailAsync(IEnumerable<CommunicationReceiverModel> receivers, string subject, string body, IEnumerable<string> cc = null, IEnumerable<string> bcc = null, string replyTo = null, string replyToName = null, string sender = null, string senderName = null, DateTime? sendDate = null, List<ulong> attachments = null)
+        public async Task<int> SendEmailAsync(IEnumerable<CommunicationReceiverModel> receivers, string subject, string body, IEnumerable<string> cc = null, IEnumerable<string> bcc = null, string replyTo = null, string replyToName = null, string sender = null, string senderName = null, DateTime? sendDate = null, List<ulong> attachments = null)
         {
-            await SendEmailAsync(new SingleCommunicationModel
+            return await SendEmailAsync(new SingleCommunicationModel
             {
                 Receivers = receivers,
                 Subject = subject,
@@ -598,7 +598,7 @@ WHERE id = ?id";
         }
 
         /// <inheritdoc />
-        public async Task SendSmsAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null)
+        public async Task<int> SendSmsAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null)
         {
             var receivers = new List<CommunicationReceiverModel>();
             var receiverAddresses = receiver.Split(';');
@@ -608,13 +608,13 @@ WHERE id = ?id";
                 receivers.Add(receiverModel);
             }
 
-            await SendSmsAsync(receivers, body, sender, senderName, sendDate);
+            return await SendSmsAsync(receivers, body, sender, senderName, sendDate);
         }
 
         /// <inheritdoc />
-        public async Task SendSmsAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null)
+        public async Task<int> SendSmsAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null)
         {
-            await SendSmsAsync(new SingleCommunicationModel()
+            return await SendSmsAsync(new SingleCommunicationModel()
             {
                 Receivers = receivers,
                 Content = body,
@@ -625,12 +625,12 @@ WHERE id = ?id";
         }
 
         /// <inheritdoc />
-        public async Task SendSmsAsync(SingleCommunicationModel communication)
+        public async Task<int> SendSmsAsync(SingleCommunicationModel communication)
         {
             communication.Id = 0;
             communication.Type = CommunicationTypes.Sms;
             communication.Subject ??= "";
-            await AddOrUpdateSingleCommunicationAsync(communication);
+            return await AddOrUpdateSingleCommunicationAsync(communication);
         }
 
         /// <inheritdoc />
@@ -741,7 +741,7 @@ WHERE id = ?id";
         }
 
         /// <inheritdoc />
-        public async Task SendWhatsAppAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
+        public async Task<int> SendWhatsAppAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
         {
             var receivers = new List<CommunicationReceiverModel>();
             var receiverAddresses = receiver.Split(';');
@@ -751,13 +751,13 @@ WHERE id = ?id";
                 receivers.Add(receiverModel);
             }
 
-            await SendWhatsAppAsync(receivers, body, sender, senderName, sendDate, attachments);
+            return await SendWhatsAppAsync(receivers, body, sender, senderName, sendDate, attachments);
         }
 
         /// <inheritdoc />
-        public async Task SendWhatsAppAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
+        public async Task<int> SendWhatsAppAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
         {
-            await SendWhatsAppAsync(new SingleCommunicationModel()
+            return await SendWhatsAppAsync(new SingleCommunicationModel()
             {
                 Receivers = receivers,
                 Content = body,
@@ -770,12 +770,12 @@ WHERE id = ?id";
         }
 
         /// <inheritdoc />
-        public async Task SendWhatsAppAsync(SingleCommunicationModel communication)
+        public async Task<int> SendWhatsAppAsync(SingleCommunicationModel communication)
         {
             communication.Id = 0;
             communication.Type = CommunicationTypes.WhatsApp;
             communication.Subject ??= "";
-            await AddOrUpdateSingleCommunicationAsync(communication);
+            return await AddOrUpdateSingleCommunicationAsync(communication);
         }
 
         /// <inheritdoc />

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
@@ -112,7 +113,7 @@ namespace GeeksCoreLibrary.Modules.Exports.Services
         /// </summary>
         /// <param name="columnIndex">THe index of the column.</param>
         /// <returns></returns>
-        public string GetColumnNameFromIndex(int columnIndex)
+        private string GetColumnNameFromIndex(int columnIndex)
         {
             string columnName;
 
@@ -128,6 +129,28 @@ namespace GeeksCoreLibrary.Modules.Exports.Services
             }
 
             return columnName;
+        }
+
+        /// <summary>
+        /// Get the index of a column based on its name.
+        /// </summary>
+        /// <param name="columnName">The name of the column, eg. A, B, AZ.</param>
+        /// <returns></returns>
+        private int GetColumnIndexFromName(object columnName)
+        {
+            var columnIndex = 0;
+
+            if (columnName is string columnNameString)
+            {
+                var columnNameCharArray = columnNameString.ToCharArray();
+
+                for (var i = 0; i < columnNameCharArray.Length; i++)
+                {
+                    columnIndex += (columnNameCharArray[i] - 64) * (int)Math.Pow(26, columnNameCharArray.Length - i - 1);
+                }
+            }
+
+            return columnIndex;
         }
 
         /// <summary>
@@ -199,6 +222,118 @@ namespace GeeksCoreLibrary.Modules.Exports.Services
 
                 spreadsheetDocumentReferences.SheetData.Append(row);
             }
+        }
+
+        /// <inheritdoc />
+        public List<string> GetColumnNames(string filePath)
+        {
+            var columnNames = new List<string>();
+            
+            using (var document = SpreadsheetDocument.Open(filePath, false))
+            {
+                var workbookPart = document.WorkbookPart;
+                var sharedStringTablePart = workbookPart.GetPartsOfType<SharedStringTablePart>().First();
+                var sharedStringTable = sharedStringTablePart.SharedStringTable;
+
+                var worksheetPart = workbookPart.WorksheetParts.First();
+                var sheet = worksheetPart.Worksheet;
+
+                var row = sheet.Descendants<Row>().First();
+                
+                 foreach (Cell cell in row.Elements<Cell>())
+                 {
+                     if (cell.DataType != null && cell.DataType == CellValues.SharedString)
+                     {
+                         int index = int.Parse(cell.CellValue.Text);
+                         columnNames.Add(sharedStringTable.ChildElements[index].InnerText);
+                     }
+                     else if (cell.CellValue != null)
+                     {
+                         columnNames.Add("");
+                     }
+                 }
+            }
+            
+            return columnNames;
+        }
+
+        /// <inheritdoc />
+        public int GetRowCount(string filePath)
+        {
+            using (var document = SpreadsheetDocument.Open(filePath, false))
+            {
+                var workbookPart = document.WorkbookPart;
+                var worksheetPart = workbookPart.WorksheetParts.First();
+                var sheet = worksheetPart.Worksheet;
+
+                return sheet.Descendants<Row>().Count();
+            }
+        }
+
+        /// <inheritdoc />
+        public List<List<string>> GetLines(string filePath, int numberOfColumns, bool skipFirstLine = false, bool firstColumnAreIds = false)
+        {
+            var result = new List<List<string>>();
+
+            using (var document = SpreadsheetDocument.Open(filePath, false))
+            {
+                var workbookPart = document.WorkbookPart;
+                var sharedStringTablePart = workbookPart.GetPartsOfType<SharedStringTablePart>().First();
+                var sharedStringTable = sharedStringTablePart.SharedStringTable;
+
+                var worksheetPart = workbookPart.WorksheetParts.First();
+                var sheet = worksheetPart.Worksheet;
+
+                var rows = sheet.Descendants<Row>();
+                var firstRow = true;
+
+                foreach (var row in rows)
+                {
+                    if (firstRow && skipFirstLine)
+                    {
+                        firstRow = false;
+                        continue;
+                    }
+
+                    var columns = new List<string>();
+                    
+                    // Create an entry for each column to ensure the correct number of columns in the row. Cells are only returned if they have a value.
+                    for (var i = 0; i < numberOfColumns; i++)
+                    {
+                        // If the first column are ids, the first column is always 0. When the import overrides existing items the value will be overwritten when reading the cells.
+                        if (i == 0 && firstColumnAreIds)
+                        {
+                            columns.Add("0");
+                        }
+                        else
+                        {
+                            columns.Add("");
+                        }
+                    }
+                    
+                    foreach (Cell cell in row.Elements<Cell>())
+                    {
+                        // Get the column index of the cell based on its name (e.g. A1).
+                        var columnName = Regex.Replace(cell.CellReference.Value, @"[\d-]", string.Empty, RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
+                        var columnIndex = GetColumnIndexFromName(columnName);
+                        
+                        if (cell.DataType != null && cell.DataType == CellValues.SharedString)
+                        {
+                            var index = int.Parse(cell.CellValue.Text);
+                            columns[columnIndex - 1] = sharedStringTable.ChildElements[index].InnerText;
+                        }
+                        else
+                        {
+                            columns[columnIndex - 1] = cell.CellValue?.Text;
+                        }
+                    }
+
+                    result.Add(columns);
+                    firstRow = false;
+                }
+            }
+            
+            return result;
         }
     }
 }

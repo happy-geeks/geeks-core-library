@@ -190,10 +190,11 @@ namespace GeeksCoreLibrary.Components.Configurator
             var configuratorData = await configuratorsService.GetConfiguratorDataAsync(currentConfiguratorName);
             var firstRow = configuratorData.Rows[0];
 
-            var progressHtml = "";
+            string progressHtml;
             string renderedFinalSummaryHtml;
             if (Settings.ComponentMode == ComponentModes.Vue)
             {
+                progressHtml = Settings.SummaryHtml;
                 renderedFinalSummaryHtml = Settings.FinalSummaryHtml;
             }
             else
@@ -284,14 +285,13 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                         if (Settings.ComponentMode == ComponentModes.Vue)
                         {
-                            var mainStepVariableName = firstRow.Field<string>("mainstep_variable_name");
                             allStepsHtml.Append("<step");
                             allStepsHtml.Append($" ref=\"step-{mainStepCount}\"");
                             allStepsHtml.Append($" position=\"{mainStepCount}\"");
-                            allStepsHtml.Append($" step-name=\"{mainStepVariableName}\"");
+                            allStepsHtml.Append($" step-name=\"{currentMainStepVariableName}\"");
                             allStepsHtml.Append(" v-slot=\"{ step }\"");
-                            allStepsHtml.Append($" :visible=\"stepVisible('{mainStepVariableName}')\"");
-                            allStepsHtml.Append($" :enabled=\"stepEnabled('{mainStepVariableName}')\"");
+                            allStepsHtml.Append($" :visible=\"stepVisible('{currentMainStepVariableName}')\"");
+                            allStepsHtml.Append($" :enabled=\"stepEnabled('{currentMainStepVariableName}')\"");
                             allStepsHtml.Append('>');
                         }
                         allStepsHtml.Append(Settings.MainStepHtml
