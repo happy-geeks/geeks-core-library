@@ -161,10 +161,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.external_files,
     {(includeContent ? "template.template_data_minified, template.template_data," : "")}
     template.url_regex,
-    template.use_cache,
     template.cache_minutes,
     template.cache_location,
     template.cache_regex,
+    template.cache_per_url,
+    template.cache_per_querystring,
+    template.cache_per_hostname,
+    template.cache_using_regex,
     0 AS use_obfuscate,
     template.insert_mode,
     template.grouping_create_object_instead_of_array,
@@ -292,9 +295,12 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var query = $@"SELECT
                             template.template_name,
                             template.template_id,
-                            template.use_cache,
                             template.cache_minutes,
                             template.cache_location, 
+                            template.cache_per_url,
+                            template.cache_per_querystring,
+                            template.cache_per_hostname,
+                            template.cache_using_regex,
                             template.cache_regex,
                             template.template_type
                         FROM {WiserTableNames.WiserTemplate} AS template
@@ -310,7 +316,6 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 Id = dataTable.Rows[0].Field<int>("template_id"),
                 Name = dataTable.Rows[0].Field<string>("template_name"),
                 CachingMinutes = dataTable.Rows[0].Field<int>("cache_minutes"),
-                UseCache = Convert.ToBoolean(dataTable.Rows[0]["use_cache"]),
                 CachePerUrl = Convert.ToBoolean(dataTable.Rows[0]["cache_per_url"]),
                 CachePerQueryString = Convert.ToBoolean(dataTable.Rows[0]["cache_per_querystring"]),
                 CachePerHostName = Convert.ToBoolean(dataTable.Rows[0]["cache_per_hostname"]),
@@ -438,7 +443,10 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                             template.external_files,
                             {(includeContent ? "template.template_data_minified, template.template_data," : "")}
                             template.url_regex,
-                            template.use_cache,
+                            template.cache_per_url,
+                            template.cache_per_querystring,
+                            template.cache_per_hostname,
+                            template.cache_using_regex,
                             template.cache_minutes,
                             template.cache_location,
                             template.cache_regex,
@@ -525,7 +533,10 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                             template.template_data_minified,
                             template.template_data,
                             template.url_regex,
-                            template.use_cache,
+                            template.cache_per_url,
+                            template.cache_per_querystring,
+                            template.cache_per_hostname,
+                            template.cache_using_regex,
                             template.cache_minutes,
                             template.cache_location,
                             template.cache_regex,
@@ -887,34 +898,34 @@ WHERE {queryWherePart}
 AND IF(?propertyName = '', 1=1, property_name = ?propertyName)
 AND content_type LIKE 'image%'
 ORDER BY id ASC");
-                
+
                 var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
                 var totalItems = items.Count;
                 var index = 1;
-                
+
                 var imageItemId = "";
-                var imageFilename = ""; 
+                var imageFilename = "";
                 var imagePropertyType = "";
 
                 // Get various values from the table
                 if (imageIndex - 1 < dataTable.Rows.Count && dataTable.Rows.Count > 0)
                 {
                     imageItemId = Convert.ToString(dataTable.Rows[imageIndex - 1]["item_id"]);
-                    imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name"); 
+                    imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
                     imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 }
                 else
                 {
-                    // if we were not able to retrieve the image attempt to fill in a filename and proceed 
-                    // no-image handling is already done by the image handler 
+                    // if we were not able to retrieve the image attempt to fill in a filename and proceed
+                    // no-image handling is already done by the image handler
                     if (m.Groups.Count > 1)
                     {
-                        // if we can't find the image fill in filename anyway to assist with debugging       
+                        // if we can't find the image fill in filename anyway to assist with debugging
                         imageFilename = m.Groups[1].Value.Split(":")[1].Split("(")[0];
                     }
                 }
-                
+
                 var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
 
                 foreach (Match s in items)
@@ -1388,13 +1399,13 @@ ORDER BY ORDINAL_POSITION ASC";
         /// <inheritdoc />
         public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
-            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
-            var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
-
-            if (!contentTemplate.UseCache)
+            if (contentTemplate == null || contentTemplate.CachingMinutes < 0)
             {
                 return "";
             }
+
+            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
+            var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
 
             if (contentTemplate.CacheUsingRegex)
             {
@@ -1402,8 +1413,8 @@ ORDER BY ORDINAL_POSITION ASC";
                 {
                     throw new Exception($"Caching for template {contentTemplate.Id} is set to use regex, but no regex has been entered.");
                 }
-                
-                StringBuilder regexInput = new StringBuilder();
+
+                var regexInput = new StringBuilder();
                 if (contentTemplate.CachePerHostName)
                 {
                     regexInput.Append(originalUri.Host);
@@ -1452,20 +1463,23 @@ ORDER BY ORDINAL_POSITION ASC";
                 }
             }
 
+            var cacheUrl = new StringBuilder();
             if (contentTemplate.CachePerHostName)
             {
-                cacheFileName.Append(Uri.EscapeDataString(originalUri.Host.ToSha512Simple()));
+                cacheUrl.Append(originalUri.Host.ToLowerInvariant());
             }
 
             if (contentTemplate.CachePerUrl)
             {
-                cacheFileName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
+                cacheUrl.Append(originalUri.AbsolutePath.ToLowerInvariant());
             }
-            
+
             if (contentTemplate.CachePerQueryString)
             {
-                cacheFileName.Append(Uri.EscapeDataString(originalUri.Query.ToSha512Simple()));
+                cacheUrl.Append(originalUri.Query.ToLowerInvariant());
             }
+
+            cacheFileName.Append(Uri.EscapeDataString(cacheUrl.ToString().ToSha512Simple()));
 
             // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
             var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

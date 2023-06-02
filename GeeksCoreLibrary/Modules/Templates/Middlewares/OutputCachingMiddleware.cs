@@ -90,7 +90,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             var contentTemplate = await templatesService.GetTemplateCacheSettingsAsync(templateId, templateName);
 
             // Check if caching is enabled for this template.
-            if (!contentTemplate.UseCache || contentTemplate.CachingMinutes < 0)
+            if (contentTemplate.CachingMinutes < 0)
             {
                 logger.LogDebug($"Content cache disabled for page '{HttpContextHelpers.GetOriginalRequestUri(context)}', because it's disabled in the template settings ({contentTemplate.Id}).");
                 await next.Invoke(context);
@@ -148,7 +148,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                     }
                     else if (fileInfo.Exists)
                     {
-                        if (fileInfo.LastWriteTimeUtc.AddMinutes(contentTemplate.CachingMinutes) > DateTime.UtcNow)
+                        if (fileInfo.LastWriteTimeUtc.AddMinutes(templateCachingMinutes) > DateTime.UtcNow)
                         {
                             using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
                             pageHtml = $"{await fileReader.ReadToEndAsync()}<!-- TEMPLATE FROM CACHE ({contentTemplate.Id}) -->";
@@ -217,7 +217,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 switch (contentTemplate.CachingLocation)
                 {
                     case TemplateCachingLocations.InMemory:
-                        cache.Add(cacheKey, pageHtml, DateTimeOffset.UtcNow.AddMinutes(contentTemplate.CachingMinutes));
+                        cache.Add(cacheKey, pageHtml, DateTimeOffset.UtcNow.AddMinutes(templateCachingMinutes));
                         break;
                     case TemplateCachingLocations.OnDisk:
                         // Write the HTML to the cache file.

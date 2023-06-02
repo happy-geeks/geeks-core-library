@@ -78,7 +78,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var templateContent = "";
             var foundInOutputCache = false;
             string fullCachePath = null;
-            var cacheSettings = !includeContent ? new Template { UseCache = false } : await GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
+            var cacheSettings = !includeContent ? new Template() : await GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
             string contentCacheKey = null;
 
             // Check if cache should be skipped:
@@ -94,7 +94,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     break;
             }
 
-            if (!skipCache && includeContent && cacheSettings.UseCache && cacheSettings.CachingMinutes > 0)
+            if (!skipCache && includeContent && cacheSettings.CachingMinutes > 0)
             {
                 // Get folder and file name.
                 var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
@@ -465,7 +465,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             var settings = JsonConvert.DeserializeObject<CmsSettings>(dynamicContent.SettingsJson);
-            if (settings == null)
+            if (settings == null || settings.CacheMinutes < 0)
             {
                 return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
             }
