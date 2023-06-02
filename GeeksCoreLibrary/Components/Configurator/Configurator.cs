@@ -31,7 +31,7 @@ namespace GeeksCoreLibrary.Components.Configurator
         PrettyName = "Configurator",
         Description = "Component for generating a configurator based on settings from the configurator module"
     )]
-    public class Configurator : CmsComponent<ConfiguratorCmsSettingsModel, Configurator.LegacyComponentMode>
+    public class Configurator : CmsComponent<ConfiguratorCmsSettingsModel, Configurator.ComponentModes>
     {
         #region Enums
 
@@ -50,12 +50,6 @@ namespace GeeksCoreLibrary.Components.Configurator
             Vue = 2
         }
 
-        public enum LegacyComponentMode
-        {
-            NonLegacy,
-            Default
-        }
-
         #endregion
 
         #region Private fields
@@ -71,27 +65,19 @@ namespace GeeksCoreLibrary.Components.Configurator
 
         #region Constructor
 
-        public static LegacyComponentMode ParseComponentMode(string dynamicContentName)
-        {
-            return dynamicContentName switch
-            {
-                "Configurator" => LegacyComponentMode.NonLegacy,
-                "JuiceControlLibrary.Configurator" => LegacyComponentMode.Default,
-                _ => throw new ArgumentOutOfRangeException(nameof(dynamicContentName)),
-            };
-        }
-
         public Configurator(ILogger<Configurator> logger, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, IConfiguratorsService configuratorsService, IDataSelectorsService dataSelectorsService, ITemplatesService templatesService, IObjectsService objectsService, IWiserItemsService wiserItemsService)
         {
             this.configuratorsService = configuratorsService;
             this.dataSelectorsService = dataSelectorsService;
             this.objectsService = objectsService;
             this.wiserItemsService = wiserItemsService;
+
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
             DatabaseConnection = databaseConnection;
-            Settings = new ConfiguratorCmsSettingsModel();
             TemplatesService = templatesService;
+
+            Settings = new ConfiguratorCmsSettingsModel();
         }
 
         #endregion
@@ -101,14 +87,8 @@ namespace GeeksCoreLibrary.Components.Configurator
         /// <inheritdoc />
         public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
         {
-            Settings = LegacyMode switch
-            {
-                LegacyComponentMode.NonLegacy => JsonConvert.DeserializeObject<ConfiguratorCmsSettingsModel>(settingsJson),
-                LegacyComponentMode.Default => JsonConvert.DeserializeObject<ConfiguratorLegacySettingsModel>(settingsJson)?.ToSettingsModel(),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-
-            if (Settings != null && forcedComponentMode.HasValue)
+            Settings = JsonConvert.DeserializeObject<ConfiguratorCmsSettingsModel>(settingsJson) ?? new ConfiguratorCmsSettingsModel();
+            if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
             }
@@ -117,12 +97,7 @@ namespace GeeksCoreLibrary.Components.Configurator
         /// <inheritdoc />
         public override string GetSettingsJson()
         {
-            return LegacyMode switch
-            {
-                LegacyComponentMode.NonLegacy => JsonConvert.SerializeObject(Settings),
-                LegacyComponentMode.Default => JsonConvert.SerializeObject(new ConfiguratorLegacySettingsModel().FromSettingModel(Settings)),
-                _ => throw new ArgumentOutOfRangeException()
-            };
+            return JsonConvert.SerializeObject(Settings);
         }
 
         #endregion
@@ -133,13 +108,15 @@ namespace GeeksCoreLibrary.Components.Configurator
         public override async Task<HtmlString> InvokeAsync(DynamicContent dynamicContent, string callMethod, int? forcedComponentMode, Dictionary<string, string> extraData)
         {
             ComponentId = dynamicContent.Id;
-            LegacyMode = ParseComponentMode(dynamicContent.Name);
             ExtraDataForReplacements = extraData;
             ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
-
             if (forcedComponentMode.HasValue)
             {
                 Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            }
+            else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
+            {
+                Settings.ComponentMode = Enum.Parse<ComponentModes>(dynamicContent.ComponentMode);
             }
 
             HandleDefaultSettingsFromComponentMode();
@@ -159,6 +136,26 @@ namespace GeeksCoreLibrary.Components.Configurator
                 return new HtmlString("");
             }
 
+            Logger.LogDebug("Configurator - Mode set to: {ComponentMode}", Settings.ComponentMode);
+
+            var resultHtml = new StringBuilder();
+            switch (Settings.ComponentMode)
+            {
+                case ComponentModes.Default:
+                case ComponentModes.Vue:
+                    resultHtml.Append(await HandleDefaultModeAsync());
+                    break;
+                default:
+                    throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'InvokeAsync'.");
+            }
+
+            Logger.LogDebug("Configurator - End generating HTML");
+
+            return new HtmlString(resultHtml.ToString());
+        }
+
+        private async Task<string> HandleDefaultModeAsync()
+        {
             var mainStepCount = Settings.ComponentMode == ComponentModes.Vue ? 0 : 1;
             var stepCount = 0;
             var subStepCount = 0;
@@ -184,7 +181,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             if (String.IsNullOrWhiteSpace(currentConfiguratorName))
             {
                 WriteToTrace("No configuration name found, so not rendering anything!", true);
-                return new HtmlString("");
+                return String.Empty;
             }
 
             var configuratorData = await configuratorsService.GetConfiguratorDataAsync(currentConfiguratorName);
@@ -201,13 +198,13 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 // Basic templates.jjl_summary_template
                 progressHtml = Settings.SummaryHtml
-                    .ReplaceCaseInsensitive("{progress_template}", firstRow.Field<string>("progress_template"))
-                    .ReplaceCaseInsensitive("{progress_step_template}", firstRow.Field<string>("progress_step_template"))
-                    .ReplaceCaseInsensitive("{progress_substep_template}", firstRow.Field<string>("progress_substep_template"));
+                    .Replace("{progress_template}", firstRow.Field<string>("progress_template"), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{progress_step_template}", firstRow.Field<string>("progress_step_template"), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{progress_substep_template}", firstRow.Field<string>("progress_substep_template"), StringComparison.OrdinalIgnoreCase);
                 renderedFinalSummaryHtml = Settings.FinalSummaryHtml
-                    .ReplaceCaseInsensitive("{summary_template}", firstRow.Field<string>("summary_template"))
-                    .ReplaceCaseInsensitive("{summary_mainstep_template}", firstRow.Field<string>("summary_mainstep_template"))
-                    .ReplaceCaseInsensitive("{summary_step_template}", firstRow.Field<string>("summary_step_template"));
+                    .Replace("{summary_template}", firstRow.Field<string>("summary_template"), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{summary_mainstep_template}", firstRow.Field<string>("summary_mainstep_template"), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{summary_step_template}", firstRow.Field<string>("summary_step_template"), StringComparison.OrdinalIgnoreCase);
             }
 
             // First add all step numbers to the "_stepNumbers" dictionary, so that we have information about all steps before we start generating HTML.
@@ -295,13 +292,13 @@ namespace GeeksCoreLibrary.Components.Configurator
                             allStepsHtml.Append('>');
                         }
                         allStepsHtml.Append(Settings.MainStepHtml
-                            .ReplaceCaseInsensitive("{componentId}", ComponentId.ToString())
-                            .ReplaceCaseInsensitive("{contentId}", ComponentId.ToString())
-                            .ReplaceCaseInsensitive("{mainStepCount}", mainStepCount.ToString())
-                            .ReplaceCaseInsensitive("{currentMainStepName}", currentMainStepName)
-                            .ReplaceCaseInsensitive("{mainStepContent}", currentMainStepHtml.ToString()
+                            .Replace("{componentId}", ComponentId.ToString(), StringComparison.OrdinalIgnoreCase)
+                            .Replace("{contentId}", ComponentId.ToString(), StringComparison.OrdinalIgnoreCase)
+                            .Replace("{mainStepCount}", mainStepCount.ToString(), StringComparison.OrdinalIgnoreCase)
+                            .Replace("{currentMainStepName}", currentMainStepName, StringComparison.OrdinalIgnoreCase)
+                            .Replace("{mainStepContent}", currentMainStepHtml.ToString()
                                 .Replace("{steps}", currentStepsHtml.ToString())
-                                .Replace("{progress}", progressHtml)));
+                                .Replace("{progress}", progressHtml), StringComparison.OrdinalIgnoreCase));
                         if (Settings.ComponentMode == ComponentModes.Vue)
                         {
                             currentMainStepHtml.Append("</step>");
@@ -489,46 +486,53 @@ namespace GeeksCoreLibrary.Components.Configurator
                 allStepsHtml.Append('>');
             }
             allStepsHtml.Append(Settings.MainStepHtml
-                .ReplaceCaseInsensitive("{mainStepCount}", mainStepCount.ToString())
-                .ReplaceCaseInsensitive("{currentMainStepName}", currentMainStepName)
-                .ReplaceCaseInsensitive("{mainStepContent}", currentMainStepHtml.ToString()
-                    .ReplaceCaseInsensitive("{steps}", currentStepsHtml.ToString())
-                    .ReplaceCaseInsensitive("{progress}", progressHtml)
-                    .ReplaceCaseInsensitive("{summary}", renderedFinalSummaryHtml)));
+                .Replace("{mainStepCount}", mainStepCount.ToString(), StringComparison.OrdinalIgnoreCase)
+                .Replace("{currentMainStepName}", currentMainStepName, StringComparison.OrdinalIgnoreCase)
+                .Replace("{mainStepContent}", currentMainStepHtml.ToString()
+                    .Replace("{steps}", currentStepsHtml.ToString(), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{progress}", progressHtml, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{summary}", renderedFinalSummaryHtml, StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase));
             if (Settings.ComponentMode == ComponentModes.Vue)
             {
                 currentMainStepHtml.Append("</step>");
             }
 
             var renderedMobilePreProgressHtml = Settings.MobilePreProgressHtml
-                .ReplaceCaseInsensitive("{progress_pre_template}", firstRow.Field<string>("progress_pre_template"))
-                .ReplaceCaseInsensitive("{progress_pre_step_template}", firstRow.Field<string>("progress_pre_step_template"))
-                .ReplaceCaseInsensitive("{progress_pre_substep_template}", firstRow.Field<string>("progress_pre_substep_template"));
+                .Replace("{progress_pre_template}", firstRow.Field<string>("progress_pre_template"), StringComparison.OrdinalIgnoreCase)
+                .Replace("{progress_pre_step_template}", firstRow.Field<string>("progress_pre_step_template"), StringComparison.OrdinalIgnoreCase)
+                .Replace("{progress_pre_substep_template}", firstRow.Field<string>("progress_pre_substep_template"), StringComparison.OrdinalIgnoreCase);
 
             var renderedMobilePostProgressHtml = Settings.MobilePostProgressHtml
-                .ReplaceCaseInsensitive("{progress_post_template}", firstRow.Field<string>("progress_post_template"))
-                .ReplaceCaseInsensitive("{progress_post_step_template}", firstRow.Field<string>("progress_post_step_template"))
-                .ReplaceCaseInsensitive("{progress_post_substep_template}", firstRow.Field<string>("progress_post_substep_template"));
+                .Replace("{progress_post_template}", firstRow.Field<string>("progress_post_template"), StringComparison.OrdinalIgnoreCase)
+                .Replace("{progress_post_step_template}", firstRow.Field<string>("progress_post_step_template"), StringComparison.OrdinalIgnoreCase)
+                .Replace("{progress_post_substep_template}", firstRow.Field<string>("progress_post_substep_template"), StringComparison.OrdinalIgnoreCase);
 
             allStepsHtml.Replace("{progress_pre}", renderedMobilePreProgressHtml);
             allStepsHtml.Replace("{progress_post}", renderedMobilePostProgressHtml);
 
             var resultHtml = new StringBuilder();
-            resultHtml.Append("<div id=\"configurator\" data-customParameter=\"{customParam}|{customParamDependencies}\">"
-                .Replace("{customParam}", firstRow.Field<string>("custom_param_name"))
-                .Replace("{customParamDependencies}", firstRow.Field<string>("custom_param_dependencies")));
+            if (Settings.ComponentMode == ComponentModes.Vue)
+            {
+                resultHtml.Append("<div id=\"configurator\" v-cloak>");
+            }
+            else
+            {
+                resultHtml.Append("<div id=\"configurator\" data-customParameter=\"{customParam}|{customParamDependencies}\">"
+                    .Replace("{customParam}", firstRow.Field<string>("custom_param_name"))
+                    .Replace("{customParamDependencies}", firstRow.Field<string>("custom_param_dependencies")));
+            }
 
             resultHtml.Append(await StringReplacementsService.DoAllReplacementsAsync(firstRow.Field<string>("template")
-                .ReplaceCaseInsensitive("{mainsteps}", allStepsHtml.ToString())
-                .ReplaceCaseInsensitive("{progress}", progressHtml)
-                .ReplaceCaseInsensitive("{summary}", renderedFinalSummaryHtml)
-                .ReplaceCaseInsensitive("{totalsteps}", mainStepCount.ToString())
-                .ReplaceCaseInsensitive("{progress_post}", renderedMobilePostProgressHtml)
-                .ReplaceCaseInsensitive("{progress_pre}", renderedMobilePreProgressHtml), removeUnknownVariables: false));
+                .Replace("{mainsteps}", allStepsHtml.ToString(), StringComparison.OrdinalIgnoreCase)
+                .Replace("{progress}", progressHtml, StringComparison.OrdinalIgnoreCase)
+                .Replace("{summary}", renderedFinalSummaryHtml, StringComparison.OrdinalIgnoreCase)
+                .Replace("{totalsteps}", mainStepCount.ToString(), StringComparison.OrdinalIgnoreCase)
+                .Replace("{progress_post}", renderedMobilePostProgressHtml, StringComparison.OrdinalIgnoreCase)
+                .Replace("{progress_pre}", renderedMobilePreProgressHtml, StringComparison.OrdinalIgnoreCase), removeUnknownVariables: false));
 
             resultHtml.Append("</div>");
-            WriteToTrace("End generating HTML");
-            return new HtmlString(await TemplatesService.DoReplacesAsync(resultHtml.ToString(), false, removeUnknownVariables: false));
+
+            return await TemplatesService.DoReplacesAsync(resultHtml.ToString(), false, removeUnknownVariables: false);
         }
 
         /// <summary>
@@ -691,9 +695,9 @@ namespace GeeksCoreLibrary.Components.Configurator
             var stepInlineCss = stepOptionsHtml == "" ? "display:none;" : "";
 
             var template = Settings.StepHtml
-                .ReplaceCaseInsensitive("{style}", stepInlineCss)
-                .ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString())
-                .ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString());
+                .Replace("{style}", stepInlineCss, StringComparison.OrdinalIgnoreCase)
+                .Replace("{mainStepNumber}", mainStepNumber.ToString(), StringComparison.OrdinalIgnoreCase)
+                .Replace("{stepNumber}", stepNumber.ToString(), StringComparison.OrdinalIgnoreCase);
 
             if (!stepNumbers.ContainsKey(currentConfiguratorName))
             {
@@ -724,7 +728,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     dependsOnString = String.Join(";", dependsOnValues);
                 }
 
-                template = template.ReplaceCaseInsensitive("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'");
+                template = template.Replace("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'", StringComparison.OrdinalIgnoreCase);
             }
 
             var stepContentBuilder = new StringBuilder();
@@ -733,8 +737,8 @@ namespace GeeksCoreLibrary.Components.Configurator
             if (stepOptionsHtml != "")
             {
                 var stepContent = row.Field<string>("step_template")
-                    .ReplaceCaseInsensitive("{datasource_values}", stepOptionsHtml)
-                    .ReplaceCaseInsensitive("{datasource_count}", stepOptionsCount.ToString());
+                    .Replace("{datasource_values}", stepOptionsHtml, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{datasource_count}", stepOptionsCount.ToString(), StringComparison.OrdinalIgnoreCase);
 
                 var regexMatches = subStepsRegex.Matches(stepContent).ToList();
                 if (regexMatches.Count > 0)
@@ -773,7 +777,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                                 }
                             }
 
-                            stepContent = stepContent.ReplaceCaseInsensitive(match.Value, subStepContents.ToString());
+                            stepContent = stepContent.Replace(match.Value, subStepContents.ToString(), StringComparison.OrdinalIgnoreCase);
                         }
                     }
                 }
@@ -783,8 +787,8 @@ namespace GeeksCoreLibrary.Components.Configurator
                 }
 
                 stepContent = stepContent
-                    .ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString())
-                    .ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString());
+                    .Replace("{mainStepNumber}", mainStepNumber.ToString(), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{stepNumber}", stepNumber.ToString(), StringComparison.OrdinalIgnoreCase);
 
                 stepContentBuilder.Append(stepContent);
             }
@@ -802,9 +806,9 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             WriteToTrace("End building stepContent");
 
-            template = template.ReplaceCaseInsensitive("{stepContent}", stepContentBuilder.ToString());
+            template = template.Replace("{stepContent}", stepContentBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
 
-            WriteToTrace("End ReplaceCaseInsensitive stepContent");
+            WriteToTrace("End Replace stepContent");
 
             template = await this.configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator, false);
 
@@ -918,9 +922,9 @@ namespace GeeksCoreLibrary.Components.Configurator
             }
 
             templateBuilder.Append(Settings.SubStepHtml
-                .ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString())
-                .ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString())
-                .ReplaceCaseInsensitive("{subStepNumber}", subStepNumber.ToString()));
+                .Replace("{mainStepNumber}", mainStepNumber.ToString(), StringComparison.OrdinalIgnoreCase)
+                .Replace("{stepNumber}", stepNumber.ToString(), StringComparison.OrdinalIgnoreCase)
+                .Replace("{subStepNumber}", subStepNumber.ToString(), StringComparison.OrdinalIgnoreCase));
 
             if (Settings.ComponentMode == ComponentModes.Vue)
             {
@@ -979,7 +983,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     dependsOnString = String.Join(";", dependsOnValues);
                 }
 
-                template = template.ReplaceCaseInsensitive("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'");
+                template = template.Replace("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'", StringComparison.OrdinalIgnoreCase);
             }
 
             var subStepContent = $"<!-- datasource: {row.Field<string>("substep_datasource")} - connectedId: {connectedId} {connectedIdNumber} -->";
@@ -987,14 +991,14 @@ namespace GeeksCoreLibrary.Components.Configurator
             if (stepOptionsHtml != "")
             {
                 subStepContent += row.Field<string>("substep_template")
-                    .ReplaceCaseInsensitive("{datasource_values}", stepOptionsHtml)
-                    .ReplaceCaseInsensitive("{datasource_count}", stepOptionsCount.ToString())
-                    .ReplaceCaseInsensitive("{mainStepNumber}", mainStepNumber.ToString())
-                    .ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString())
-                    .ReplaceCaseInsensitive("{subStepNumber}", subStepNumber.ToString());
+                    .Replace("{datasource_values}", stepOptionsHtml, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{datasource_count}", stepOptionsCount.ToString(), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{mainStepNumber}", mainStepNumber.ToString(), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{stepNumber}", stepNumber.ToString(), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{subStepNumber}", subStepNumber.ToString(), StringComparison.OrdinalIgnoreCase);
             }
 
-            template = template.ReplaceCaseInsensitive("{subStepContent}", subStepContent);
+            template = template.Replace("{subStepContent}", subStepContent, StringComparison.OrdinalIgnoreCase);
             template = await configuratorsService.ReplaceConfiguratorItemsAsync(template, configurator, false);
             template = await StringReplacementsService.DoAllReplacementsAsync(template, row, removeUnknownVariables: false);
             template = await TemplatesService.HandleIncludesAsync(template, false, null, false);
@@ -1088,10 +1092,10 @@ namespace GeeksCoreLibrary.Components.Configurator
                             if (connectedId != "-1" || !customQuery.Contains("{connectedid}"))
                             {
                                 DatabaseConnection.AddParameter("connectedId", connectedId);
-                                query = customQuery.ReplaceCaseInsensitive("'{connectedId}'", "?connectedId");
+                                query = customQuery.Replace("'{connectedId}'", "?connectedId", StringComparison.OrdinalIgnoreCase);
                                 query = await configuratorsService.ReplaceConfiguratorItemsAsync(query, configuration, true);
                                 query = await TemplatesService.HandleIncludesAsync(query, false, null, false, true);
-                                query = query.ReplaceCaseInsensitive("{connectedId}", "?connectedId");
+                                query = query.Replace("{connectedId}", "?connectedId", StringComparison.OrdinalIgnoreCase);
                                 query = await StringReplacementsService.DoAllReplacementsAsync(query, null, true, true, false, true);
                             }
                             break;
@@ -1571,9 +1575,9 @@ namespace GeeksCoreLibrary.Components.Configurator
         /// <summary>
         /// Retrieve configurator data for the Vue configurator.
         /// </summary>
-        /// <param name="steps">The names of the steps to update.</param>
+        /// <param name="steps">The names of the steps to retrieve. If null or empty, all steps are retrieved.</param>
         /// <param name="configuration">The current configuration from the client-side.</param>
-        /// <returns></returns>
+        /// <returns>A <see cref="VueConfiguratorDataModel"/> object containing the steps data for the <see cref="VueConfigurationsModel.ConfiguratorName"/> set in the <paramref name="configuration"/> parameter.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="steps"/> or <paramref name="configuration"/> is null.</exception>
         public async Task<VueConfiguratorDataModel> GetConfiguratorData(List<string> steps, VueConfigurationsModel configuration)
         {
@@ -1584,6 +1588,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
+
             var result = await configuratorsService.GetVueConfiguratorDataAsync(configuration.ConfiguratorName);
             if (result == null || result.StepsData.Count == 0)
             {
@@ -1600,6 +1605,8 @@ namespace GeeksCoreLibrary.Components.Configurator
                 stepsToProcess = steps;
             }
 
+            var stepsToRemove = new List<string>();
+
             // Update options.
             foreach (var step in stepsToProcess)
             {
@@ -1607,6 +1614,17 @@ namespace GeeksCoreLibrary.Components.Configurator
                 if (stepData == null)
                 {
                     continue;
+                }
+
+                // Check if the regex matches the current URL and if not, remove the step.
+                if (!String.IsNullOrWhiteSpace(stepData.UrlRegex))
+                {
+                    var currentUrl = HttpContextHelpers.GetBaseUri(HttpContext).AbsoluteUri;
+                    if (!Regex.IsMatch(currentUrl, stepData.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
+                    {
+                        stepsToRemove.Add(step);
+                        continue;
+                    }
                 }
 
                 var options = new List<Dictionary<string, object>>();
@@ -1681,10 +1699,12 @@ namespace GeeksCoreLibrary.Components.Configurator
                 stepData.Options = options;
             }
 
-            if (steps == null) return result;
+            // Remove the steps listed in stepsToRemove from the result.
+            if (stepsToRemove.Count > 0)
+            {
+                result.StepsData.RemoveAll(x => stepsToRemove.Contains(x.StepName, StringComparer.OrdinalIgnoreCase));
+            }
 
-            var filteredSteps = result.StepsData.Where(s => steps.Contains(s.StepName, StringComparer.OrdinalIgnoreCase)).ToList();
-            result.StepsData = filteredSteps;
             return result;
         }
 

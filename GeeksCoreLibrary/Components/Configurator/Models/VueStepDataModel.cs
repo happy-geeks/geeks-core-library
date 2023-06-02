@@ -6,6 +6,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Models;
 public class VueStepDataModel
 {
     /// <summary>
+    /// Gets or sets the display name of the step.
+    /// </summary>
+    [JsonProperty("displayName")]
+    public string DisplayName { get; set; }
+
+    /// <summary>
     /// Gets or sets the position of the step as a dash separated string.
     /// </summary>
     [JsonProperty("position")]
@@ -132,6 +138,15 @@ public class VueStepDataModel
     /// </remarks>
     [JsonIgnore]
     public string DataQuery { get; set; }
+
+    /// <summary>
+    /// Gets or sets the regular expression that is used to determine whether the step is visible based on the current URL.
+    /// </summary>
+    /// <remarks>
+    /// This property is not serialized to JSON because it's not needed in the client-side.
+    /// </remarks>
+    [JsonIgnore]
+    public string UrlRegex { get; set; }
 
     #endregion
 }

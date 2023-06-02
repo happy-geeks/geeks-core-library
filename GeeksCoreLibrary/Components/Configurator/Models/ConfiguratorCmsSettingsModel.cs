@@ -6,16 +6,20 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
 {
     public class ConfiguratorCmsSettingsModel : CmsSettings
     {
-        #region Tab Behavior properties
+        #region Properties hidden in CMS
         
         /// <summary>
         /// <para>The mode this component should be in:</para>
         /// <para><see cref="Configurator.ComponentModes.Default"/>: A default configurator with main steps, steps, substeps and a summary.</para>
+        /// <para><see cref="Configurator.ComponentModes.Vue"/>: A configurator running on the Vue configurator library.</para>
         /// </summary>
-        [CmsProperty(Description = @"The mode this component should be in: 
-            <ul>
-                <li><strong>Default:</strong> A default configurator with main steps, steps, substeps and a summary.</li>
-            </ul>")]
+        [CmsProperty(
+            PrettyName = "Component mode",
+            Description = "The component mode the component should run in",
+            DisplayOrder = 10,
+            HideInCms = true,
+            ReadOnlyInCms = true
+        )]
         public Configurator.ComponentModes ComponentMode { get; set; } = Configurator.ComponentModes.Default;
 
         #endregion
@@ -32,9 +36,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
         public string ConfiguratorName { get; set; }
 
         /// <summary>
-
         /// The name of the configurator to render.
-
         /// </summary>
         [CmsProperty(PrettyName = "Values can contain dashes",
                      Description = "By default all values will be split by '-'. Enable this option if you don't want that.",
@@ -44,20 +46,6 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
                      DisplayOrder = 20
         )]
         public bool ValuesCanContainDashes { get; set; }
-
-        /// <summary>
-        /// The query that retreived the basic data for the configurator, such as the templates for all steps.
-        /// If you want to customise this, make sure that your query uses the same column names and parameter names.
-        /// </summary>
-        [CmsProperty(PrettyName = "Main Configurator Data Query",
-                     Description = "The query that retreives the basic data for the configurator, such as the templates for all steps.",
-                     DeveloperRemarks = "If you want to customise this, make sure that your query uses the same column names and parameter names.",
-                     TabName = CmsAttributes.CmsTabName.DataSource,
-                     GroupName = CmsAttributes.CmsGroupName.CustomSql,
-                     TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
-                     DisplayOrder = 10
-        )]
-        public string MainConfiguratorDataQuery { get; set; }
 
         /// <summary>
         /// The query that retreives the data from product categories.
@@ -193,8 +181,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
         #region Tab Layout properties
         
         /// <summary>
-        ///  The HTML for a main step.
-        ///  </summary>
+        /// The HTML for a main step.
+        /// </summary>
         [CmsProperty(PrettyName = "Main Step HTML",
                      Description = "The HTML for a main step.",
                      DeveloperRemarks = @"You can use the custom variables '{mainStepContent}', '{mainStepCount}', '{currentMainStepName}' and '{contentId}' here.<br />
@@ -207,8 +195,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
         public string MainStepHtml { get; set; }
 
         /// <summary>
-        ///  The HTML for a step.
-        ///  </summary>
+        /// The HTML for a step.
+        /// </summary>
         [CmsProperty(PrettyName = "Step HTML",
                      Description = "The HTML for a step.",
                      DeveloperRemarks = "You can use the custom variables '{stepContent}', '{style}', '{isrequired}', '{stepname}', '{mainStepNumber}', '{stepNumer}' and '{dependsOn}' here.",
@@ -220,8 +208,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
         public string StepHtml { get; set; }
 
         /// <summary>
-        ///  The HTML for a step.
-        ///  </summary>
+        /// The HTML for a step.
+        /// </summary>
         [CmsProperty(PrettyName = "Sub Step HTML",
                      Description = "The HTML for a sub step.",
                      DeveloperRemarks = "You can use the custom variables '{subStepContent}', '{style}', '{isrequired}', '{stepname}', '{mainStepNumber}', '{stepNumer}', '{subStepNumber}' and '{dependsOn}' here.",
@@ -233,8 +221,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
         public string SubStepHtml { get; set; }
 
         /// <summary>
-        ///  The HTML for the summary of the configurator.
-        ///  </summary>
+        /// The HTML for the summary of the configurator.
+        /// </summary>
         [CmsProperty(PrettyName = "Summary HTML",
                      Description = "The HTML for the summary of the configurator.",
                      DeveloperRemarks = "",
@@ -243,12 +231,11 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
                      TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
                      DisplayOrder = 40
         )]
-
         public string SummaryHtml { get; set; }
 
         /// <summary>
-        ///  The HTML for the final summary of the configurator, shown on the overview page at the end.
-        ///  </summary>
+        /// The HTML for the final summary of the configurator, shown on the overview page at the end.
+        /// </summary>
         [CmsProperty(PrettyName = "Final Summary HTML",
                      Description = "The HTML for the final summary of the configurator, shown on the overview page at the end.",
                      DeveloperRemarks = "",
@@ -260,8 +247,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
         public string FinalSummaryHtml { get; set; }
 
         /// <summary>
-        ///  The first part of HTML for showing the progress on mobile devices.
-        ///  </summary>
+        /// The first part of HTML for showing the progress on mobile devices.
+        /// </summary>
         [CmsProperty(PrettyName = "Mobile Pre Progress HTML",
                      Description = "The first part of HTML for showing the progress on mobile devices.",
                      DeveloperRemarks = "",
@@ -273,8 +260,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Models
         public string MobilePreProgressHtml { get; set; }
 
         /// <summary>
-        ///  The last part of HTML for showing the progress on mobile devices.
-        ///  </summary>
+        /// The last part of HTML for showing the progress on mobile devices.
+        /// </summary>
         [CmsProperty(PrettyName = "Mobile Post Progress HTML",
                      Description = "The last part of HTML for showing the progress on mobile devices.",
                      DeveloperRemarks = "",
