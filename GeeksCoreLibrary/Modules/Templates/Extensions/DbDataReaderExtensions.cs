@@ -41,7 +41,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.ParentSortOrder = await reader.IsDBNullAsync("parent_ordering") ? 0 : await reader.GetFieldValueAsync<int>("parent_ordering");
             template.LoadAlways = Convert.ToBoolean(reader.GetValue("load_always"));
             template.UrlRegex = reader.GetStringHandleNull("url_regex");
-            template.UseCache = Convert.ToBoolean(reader.GetValue("use_cache"));
             template.CachePerUrl = Convert.ToBoolean(reader.GetValue("cache_per_url"));
             template.CachePerQueryString = Convert.ToBoolean(reader.GetValue("cache_per_querystring"));
             template.CachePerHostName = Convert.ToBoolean(reader.GetValue("cache_per_hostname"));
@@ -164,7 +163,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                     GroupingValueColumnName = reader.GetStringHandleNull("grouping_value_column_name"),
                     GroupingKeyColumnName = reader.GetStringHandleNull("grouping_key_column_name")
                 };
-                
+
                 return queryTemplate;
             }
 
@@ -174,7 +173,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 routineTemplate.RoutineType = (RoutineTypes) await reader.GetFieldValueAsync<int>("routine_type");
                 routineTemplate.RoutineParameters = reader.GetStringHandleNull("routine_parameters");
                 routineTemplate.RoutineReturnType = reader.GetStringHandleNull("routine_return_type");
-                
+
                 return routineTemplate;
             }
 

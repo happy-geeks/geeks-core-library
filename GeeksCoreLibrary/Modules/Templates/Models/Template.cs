@@ -97,17 +97,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets the list of extra files that need to be loaded from the Wiser CDN.
         /// </summary>
         public List<string> WiserCdnFiles { get; set; } = new();
-        
+
         /// <summary>
         /// Gets or sets if and how the template will be cached. Legacy.
         /// </summary>
-        [Obsolete("This property exists for backwards compatibility only. Use the booleans UseCache, CachePerUrl, CachePerQueryString, CachePerHostName and CacheUsingRegex instead.")]
+        [Obsolete("This property exists for backwards compatibility only. Use the booleans CachePerUrl, CachePerQueryString, CachePerHostName and CacheUsingRegex instead.")]
         public TemplateCachingModes CachingMode { get; set; } = TemplateCachingModes.NoCaching;
-
-        /// <summary>
-        /// Gets or sets the cache mode to use.
-        /// </summary>
-        public bool UseCache { get; set; }
 
         /// <summary>
         /// Gets or sets whether the caching is seperated by SEO url
@@ -189,7 +184,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets if this template is only a partial.
         /// </summary>
         public bool IsPartial { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the version of the template that was loaded.
         /// </summary>
