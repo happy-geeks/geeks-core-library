@@ -1256,8 +1256,8 @@ ORDER BY id ASC");
                 }
                 catch (Exception exception)
                 {
-                    logger.LogError($"An error while generating component with id '{contentId}': {exception}");
-                    var errorOnPage = $"An error occurred while generating component with id '{contentId}'";
+                    logger.LogError($"{Constants.DynamicComponentRenderingError} '{contentId}': {exception}");
+                    var errorOnPage = $"{Constants.DynamicComponentRenderingError} '{contentId}'";
                     if (gclSettings.Environment is Environments.Development or Environments.Test)
                     {
                         errorOnPage += $": {exception.Message}";

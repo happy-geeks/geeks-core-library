@@ -14,13 +14,16 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Interfaces;
+using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
 {
@@ -34,8 +37,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         private readonly IWiserItemsService wiserItemsService;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IObjectsService objectsService;
+        private readonly GclSettings gclSettings;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService)
+        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IOptions<GclSettings> gclSettings)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -44,6 +48,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             this.wiserItemsService = wiserItemsService;
             this.stringReplacementsService = stringReplacementsService;
             this.objectsService = objectsService;
+            this.gclSettings = gclSettings.Value;
         }
 
         [Route("template.gcl")]
@@ -220,7 +225,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
             catch (Exception exception)
             {
+                logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
                 error = exception.ToString();
+
+                if (gclSettings.Environment == Environments.Live)
+                {
+                    // When in production, don't show the exception to the user, but show a generic error message.
+                    return StatusCode(StatusCodes.Status500InternalServerError);
+                }
+
                 return new ContentResult
                 {
                     StatusCode = StatusCodes.Status500InternalServerError,
@@ -288,7 +301,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
             catch (Exception exception)
             {
+                logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
                 error = exception.ToString();
+
+                if (gclSettings.Environment == Environments.Live)
+                {
+                    // When in production, don't show the exception to the user, but show a generic error message.
+                    return StatusCode(StatusCodes.Status500InternalServerError);
+                }
+
                 return StatusCode(StatusCodes.Status500InternalServerError, exception);
             }
             finally
@@ -350,7 +371,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
             catch (Exception exception)
             {
+                logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
                 error = exception.ToString();
+
+                if (gclSettings.Environment == Environments.Live)
+                {
+                    // When in production, don't show the exception to the user, but show a generic error message.
+                    return StatusCode(StatusCodes.Status500InternalServerError);
+                }
+
                 return StatusCode(StatusCodes.Status500InternalServerError, exception);
             }
             finally
@@ -370,9 +399,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         [HttpPost, HttpGet]
         public async Task<IActionResult> Component(string type, int? componentMode = null, string callMethod = null)
         {
+            var componentId = 0;
             try
             {
-                if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, $"__{type}"), out var componentId) || componentId <= 0)
+                if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, $"__{type}"), out componentId) || componentId <= 0)
                 {
                     if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, "componentId"), out componentId) || componentId <= 0)
                     {
@@ -395,6 +425,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
             catch (Exception exception)
             {
+                logger.LogCritical(exception, $"{Constants.DynamicComponentRenderingError} '{componentId}'");
+
+                if (gclSettings.Environment == Environments.Live)
+                {
+                    // When in production, don't show the exception to the user, but show a generic error message.
+                    return StatusCode(StatusCodes.Status500InternalServerError);
+                }
+
                 return new ContentResult
                 {
                     StatusCode = StatusCodes.Status500InternalServerError,
@@ -460,7 +498,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
             catch (Exception exception)
             {
+                logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
                 error = exception.ToString();
+
+                if (gclSettings.Environment == Environments.Live)
+                {
+                    // When in production, don't show the exception to the user, but show a generic error message.
+                    return StatusCode(StatusCodes.Status500InternalServerError);
+                }
+
                 return new ContentResult
                 {
                     StatusCode = StatusCodes.Status500InternalServerError,
