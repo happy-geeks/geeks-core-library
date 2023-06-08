@@ -155,6 +155,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                             continue;
                         }
 
+                        // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as translation.
+                        var replacementVariables = GetReplacementVariables($"{{{value}}}");
+                        foreach (var variable in replacementVariables)
+                        {
+                            if (variable.Formatters.All(f => GetFormatterMethod(f) != null))
+                            {
+                                value = variable.VariableName;
+                            }
+                        }
+
                         dataDictionary.Add(value, await languagesService.GetTranslationAsync(value));
                     }
 
@@ -180,6 +190,16 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         if (dataDictionary.ContainsKey(value))
                         {
                             continue;
+                        }
+
+                        // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as object name.
+                        var replacementVariables = GetReplacementVariables($"{{{value}}}");
+                        foreach (var variable in replacementVariables)
+                        {
+                            if (variable.Formatters.All(f => GetFormatterMethod(f) != null))
+                            {
+                                value = variable.VariableName;
+                            }
                         }
 
                         dataDictionary.Add(value, await objectsService.GetObjectValueAsync(value, objectsTypeNumber));
