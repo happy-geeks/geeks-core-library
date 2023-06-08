@@ -214,8 +214,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 // Copy the new body to the original body.
                 await newStream.CopyToAsync(originalBody);
 
-                // Check if response status code is a 500 error.
-                if (context.Response.StatusCode == 500 || pageHtml.Contains(Models.Constants.DynamicComponentRenderingError, StringComparison.OrdinalIgnoreCase) || pageHtml.Contains(Models.Constants.TemplateRenderingError, StringComparison.OrdinalIgnoreCase))
+                // Check if response contains an error.
+                if (context.Response.StatusCode >= 300 || pageHtml.Contains(Models.Constants.DynamicComponentRenderingError, StringComparison.OrdinalIgnoreCase) || pageHtml.Contains(Models.Constants.TemplateRenderingError, StringComparison.OrdinalIgnoreCase))
                 {
                     logger.LogWarning($"OutputCachingMiddleware - Prevented caching of the current page, because it contains an error. Template name: '{templateName}', template id: '{contentTemplate.Id}'");
                     return;
