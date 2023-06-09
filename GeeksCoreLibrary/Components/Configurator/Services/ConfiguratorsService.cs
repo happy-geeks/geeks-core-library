@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -402,9 +401,17 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
 
             var configuratorSettings = await databaseConnection.GetAsync($@"SELECT
     configurator.id AS configuratorId,
+    CONCAT_WS('', mainTemplate.`value`, mainTemplate.long_value) AS mainTemplate,
+    CONCAT_WS('', progressBarTemplate.`value`, progressBarTemplate.long_value) AS progressBarTemplate,
+    CONCAT_WS('', progressBarStepTemplate.`value`, progressBarStepTemplate.long_value) AS progressBarStepTemplate,
+    CONCAT_WS('', summaryTemplate.`value`, summaryTemplate.long_value) AS summaryTemplate,
     priceCalculationQuery.`value` AS priceCalculationQuery,
     deliveryTimeCalculationQuery.`value` AS deliveryTimeCalculationQuery
 FROM {WiserTableNames.WiserItem} AS configurator
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS mainTemplate ON mainTemplate.item_id = configurator.id AND mainTemplate.`key` = 'template'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarTemplate ON progressBarTemplate.item_id = configurator.id AND progressBarTemplate.`key` = 'progress_bar_template'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarStepTemplate ON progressBarStepTemplate.item_id = configurator.id AND progressBarStepTemplate.`key` = 'progress_bar_step_template'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryTemplate ON summaryTemplate.item_id = configurator.id AND summaryTemplate.`key` = 'summary_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS priceCalculationQuery ON priceCalculationQuery.item_id = configurator.id AND priceCalculationQuery.`key` = 'price_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS deliveryTimeCalculationQuery ON deliveryTimeCalculationQuery.item_id = configurator.id AND deliveryTimeCalculationQuery.`key` = 'delivery_time_calculation_query'
 WHERE configurator.moduleid = {Constants.ConfiguratorModuleId} AND configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.title = ?name");
@@ -415,14 +422,15 @@ WHERE configurator.moduleid = {Constants.ConfiguratorModuleId} AND configurator.
             }
 
             var configuratorId = Convert.ToUInt64(configuratorSettings.Rows[0]["configuratorId"]);
-            var priceCalculationQuery = configuratorSettings.Rows.Count > 0 ? configuratorSettings.Rows[0].Field<string>("priceCalculationQuery") : String.Empty;
-            var deliveryTimeCalculationQuery = configuratorSettings.Rows.Count > 0 ? configuratorSettings.Rows[0].Field<string>("deliveryTimeCalculationQuery") : String.Empty;
-
             var returnValue = new VueConfiguratorDataModel
             {
                 ConfiguratorId = configuratorId,
-                PriceCalculationQuery = priceCalculationQuery,
-                DeliveryTimeCalculationQuery = deliveryTimeCalculationQuery
+                MainTemplate = configuratorSettings.Rows[0].Field<string>("mainTemplate"),
+                ProgressBarTemplate = configuratorSettings.Rows[0].Field<string>("progressBarTemplate"),
+                ProgressBarStepTemplate = configuratorSettings.Rows[0].Field<string>("progressBarStepTemplate"),
+                SummaryTemplate = configuratorSettings.Rows[0].Field<string>("summaryTemplate"),
+                PriceCalculationQuery = configuratorSettings.Rows[0].Field<string>("priceCalculationQuery"),
+                DeliveryTimeCalculationQuery = configuratorSettings.Rows[0].Field<string>("deliveryTimeCalculationQuery")
             };
 
             if (!includeStepsData)
@@ -433,75 +441,10 @@ WHERE configurator.moduleid = {Constants.ConfiguratorModuleId} AND configurator.
 
             #region Query
 
-            var query = $@"SELECT
-    configuratorId,
-    stepId,
-    displayName,
-    stepName,
-    dependencies,
-    isRequired,
-    requiredConditions,
-    minimumValue,
-    maximumValue,
-    validationRegex,
-    requiredErrorMessage,
-    minimumValueErrorMessage,
-    maximumValueErrorMessage,
-    validationRegexErrorMessage,
-    dataQuery,
-    urlRegex,
-    CONCAT_WS('-', mainStepOrdering - 1, stepOrdering - 1, subStepOrdering - 1) AS position
-FROM (
+            var query = $@"WITH RECURSIVE cte AS (
     SELECT
-        configurator.id AS configuratorId,
-        mainStep.id AS stepId,
-        IFNULL(title.`value`, mainStep.title) AS displayName,
-        variableName.`value` AS stepName,
-        dependencies.`value` AS dependencies,
-        IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
-        requiredConditions.`value` AS requiredConditions,
-        minimumValue.`value` AS minimumValue,
-        maximumValue.`value` AS maximumValue,
-        validationRegex.`value` AS validationRegex,
-        requiredErrorMessage.`value` AS requiredErrorMessage,
-        minimumValueErrorMessage.`value` AS minimumValueErrorMessage,
-        maximumValueErrorMessage.`value` AS maximumValueErrorMessage,
-        validationRegexErrorMessage.`value` AS validationRegexErrorMessage,
-        CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
-        urlRegex.`value` AS urlRegex,
-        mainStepLink.ordering AS mainStepOrdering,
-        NULL AS stepOrdering,
-        NULL AS subStepOrdering
-    FROM {WiserTableNames.WiserItem} AS configurator
-
-    JOIN {WiserTableNames.WiserItemLink} AS mainStepLink ON mainStepLink.destination_item_id = configurator.id
-    JOIN {WiserTableNames.WiserItem} AS mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS title ON title.item_id = mainStep.id AND title.`key` = 'title' AND title.language_code = ?languageCode
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = mainStep.id AND variableName.`key` = 'variable_name'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = mainStep.id AND dependencies.`key` = 'datasource_connectedid'
-
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = mainStep.id AND isRequired.`key` = 'isrequired'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = mainStep.id AND requiredConditions.`key` = 'required_conditions'
-
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = mainStep.id AND minimumValue.`key` = 'min_value'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValue ON maximumValue.item_id = mainStep.id AND maximumValue.`key` = 'max_value'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegex ON validationRegex.item_id = mainStep.id AND validationRegex.`key` = 'validation_regex'
-
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredErrorMessage ON requiredErrorMessage.item_id = mainStep.id AND requiredErrorMessage.`key` = 'required_error_message'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValueErrorMessage ON minimumValueErrorMessage.item_id = mainStep.id AND minimumValueErrorMessage.`key` = 'min_value_error_message'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValueErrorMessage ON maximumValueErrorMessage.item_id = mainStep.id AND maximumValueErrorMessage.`key` = 'max_value_error_message'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegexErrorMessage ON validationRegexErrorMessage.item_id = mainStep.id AND validationRegexErrorMessage.`key` = 'validation_regex_error_message'
-
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = mainStep.id AND dataQuery.`key` = 'custom_query'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = mainStep.id AND urlRegex.`key` = 'urlregex'
-
-    WHERE configurator.moduleid = {Constants.ConfiguratorModuleId} AND configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.title = ?name
-
-    UNION
-
-    SELECT
-        configurator.id AS configuratorId,
         step.id AS stepId,
+        0 AS parentStepId,
         IFNULL(title.`value`, step.title) AS displayName,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
@@ -514,18 +457,25 @@ FROM (
         minimumValueErrorMessage.`value` AS minimumValueErrorMessage,
         maximumValueErrorMessage.`value` AS maximumValueErrorMessage,
         validationRegexErrorMessage.`value` AS validationRegexErrorMessage,
-        CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
+        IF(
+            templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = templatesFromStepId.`value` AND `key` = 'step_template'),
+            CONCAT_WS('', stepTemplate.`value`, stepTemplate.long_value)
+        ) AS stepTemplate,
+        IF(
+            templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = templatesFromStepId.`value` AND `key` = 'values_template'),
+            CONCAT_WS('', stepOptionTemplate.`value`, stepOptionTemplate.long_value)
+        ) AS stepOptionTemplate,
+        CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
+        CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
-        mainStepLink.ordering AS mainStepOrdering,
-        stepLink.ordering AS stepOrdering,
-        NULL AS subStepOrdering
+
+        stepLink.ordering
     FROM {WiserTableNames.WiserItem} AS configurator
 
-    JOIN {WiserTableNames.WiserItemLink} AS mainStepLink ON mainStepLink.destination_item_id = configurator.id
-    JOIN {WiserTableNames.WiserItem} AS mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
-
-    JOIN {WiserTableNames.WiserItemLink} AS stepLink ON stepLink.destination_item_id = mainStep.id
-    JOIN {WiserTableNames.WiserItem} AS step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
+    JOIN {WiserTableNames.WiserItemLink} AS stepLink ON stepLink.destination_item_id = configurator.id
+    JOIN {WiserTableNames.WiserItem} AS step ON step.id = stepLink.item_id AND step.entity_type IN ('hoofdstap', 'stap', 'substap')
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS title ON title.item_id = step.id AND title.`key` = 'title' AND title.language_code = ?languageCode
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
@@ -542,19 +492,25 @@ FROM (
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValueErrorMessage ON maximumValueErrorMessage.item_id = step.id AND maximumValueErrorMessage.`key` = 'max_value_error_message'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegexErrorMessage ON validationRegexErrorMessage.item_id = step.id AND validationRegexErrorMessage.`key` = 'validation_regex_error_message'
 
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = step.id AND dataQuery.`key` = 'custom_query'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS templatesFromStepId ON templatesFromStepId.item_id = step.id AND templatesFromStepId.`key` = 'duplicatelayoutfrom'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepTemplate ON stepTemplate.item_id = step.id AND stepTemplate.`key` = 'step_template'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionTemplate ON stepOptionTemplate.item_id = step.id AND stepOptionTemplate.`key` = 'values_template'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionsQuery ON stepOptionsQuery.item_id = step.id AND stepOptionsQuery.`key` = 'custom_query'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS extraDataQuery ON extraDataQuery.item_id = step.id AND extraDataQuery.`key` = 'extra_data_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = step.id AND urlRegex.`key` = 'urlregex'
 
-    WHERE configurator.moduleid = {Constants.ConfiguratorModuleId} AND configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.title = ?name
+    WHERE configurator.moduleid = {Constants.ConfiguratorModuleId} AND configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.id = ?configuratorId
 
     UNION
 
     SELECT
-        configurator.id AS configuratorId,
-        subStep.id AS stepId,
-        IFNULL(title.`value`, subStep.title) AS displayName,
+        step.id AS stepId,
+        parentStep.id AS parentStepId,
+        IFNULL(title.`value`, step.title) AS displayName,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+
+        # Validation properties.
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
         requiredConditions.`value` AS requiredConditions,
         minimumValue.`value` AS minimumValue,
@@ -564,43 +520,76 @@ FROM (
         minimumValueErrorMessage.`value` AS minimumValueErrorMessage,
         maximumValueErrorMessage.`value` AS maximumValueErrorMessage,
         validationRegexErrorMessage.`value` AS validationRegexErrorMessage,
-        CONCAT_WS('', dataQuery.`value`, dataQuery.long_value) AS dataQuery,
+
+        # Layout properties.
+        IF(
+            templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = templatesFromStepId.`value` AND `key` = 'step_template'),
+            CONCAT_WS('', stepTemplate.`value`, stepTemplate.long_value)
+        ) AS stepTemplate,
+        IF(
+            templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = templatesFromStepId.`value` AND `key` = 'values_template'),
+            CONCAT_WS('', stepOptionTemplate.`value`, stepOptionTemplate.long_value)
+        ) AS stepOptionTemplate,
+        CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
+        CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
-        mainStepLink.ordering AS mainStepOrdering,
-        stepLink.ordering AS stepOrdering,
-        subStepLink.ordering AS subStepOrdering
-    FROM {WiserTableNames.WiserItem} AS configurator
 
-    JOIN {WiserTableNames.WiserItemLink} AS mainStepLink ON mainStepLink.destination_item_id = configurator.id
-    JOIN {WiserTableNames.WiserItem} AS mainStep ON mainStep.id = mainStepLink.item_id AND mainStep.entity_type = 'hoofdstap'
+        stepLink.ordering
+    FROM {WiserTableNames.WiserItem} AS parentStep
+    JOIN cte ON parentStep.id = cte.stepId
 
-    JOIN {WiserTableNames.WiserItemLink} AS stepLink ON stepLink.destination_item_id = mainStep.id
-    JOIN {WiserTableNames.WiserItem} AS step ON step.id = stepLink.item_id AND step.entity_type = 'stap'
+    JOIN {WiserTableNames.WiserItemLink} AS stepLink ON stepLink.destination_item_id = parentStep.id
+    JOIN {WiserTableNames.WiserItem} AS step ON step.id = stepLink.item_id AND step.entity_type IN ('hoofdstap', 'stap', 'substap')
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS title ON title.item_id = step.id AND title.`key` = 'title' AND title.language_code = ?languageCode
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
 
-    JOIN {WiserTableNames.WiserItemLink} AS subStepLink ON subStepLink.destination_item_id = step.id
-    JOIN {WiserTableNames.WiserItem} AS subStep ON subStep.id = subStepLink.item_id AND subStep.entity_type = 'substap'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS title ON title.item_id = subStep.id AND title.`key` = 'title' AND title.language_code = ?languageCode
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = subStep.id AND variableName.`key` = 'variable_name'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = subStep.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
 
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = subStep.id AND isRequired.`key` = 'isrequired'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = subStep.id AND requiredConditions.`key` = 'required_conditions'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = step.id AND minimumValue.`key` = 'min_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValue ON maximumValue.item_id = step.id AND maximumValue.`key` = 'max_value'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegex ON validationRegex.item_id = step.id AND validationRegex.`key` = 'validation_regex'
 
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = subStep.id AND minimumValue.`key` = 'min_value'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValue ON maximumValue.item_id = subStep.id AND maximumValue.`key` = 'max_value'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegex ON validationRegex.item_id = subStep.id AND validationRegex.`key` = 'validation_regex'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredErrorMessage ON requiredErrorMessage.item_id = step.id AND requiredErrorMessage.`key` = 'required_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValueErrorMessage ON minimumValueErrorMessage.item_id = step.id AND minimumValueErrorMessage.`key` = 'min_value_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValueErrorMessage ON maximumValueErrorMessage.item_id = step.id AND maximumValueErrorMessage.`key` = 'max_value_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegexErrorMessage ON validationRegexErrorMessage.item_id = step.id AND validationRegexErrorMessage.`key` = 'validation_regex_error_message'
 
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredErrorMessage ON requiredErrorMessage.item_id = subStep.id AND requiredErrorMessage.`key` = 'required_error_message'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValueErrorMessage ON minimumValueErrorMessage.item_id = subStep.id AND minimumValueErrorMessage.`key` = 'min_value_error_message'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS maximumValueErrorMessage ON maximumValueErrorMessage.item_id = subStep.id AND maximumValueErrorMessage.`key` = 'max_value_error_message'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS validationRegexErrorMessage ON validationRegexErrorMessage.item_id = subStep.id AND validationRegexErrorMessage.`key` = 'validation_regex_error_message'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS templatesFromStepId ON templatesFromStepId.item_id = step.id AND templatesFromStepId.`key` = 'duplicatelayoutfrom'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepTemplate ON stepTemplate.item_id = step.id AND stepTemplate.`key` = 'step_template'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionTemplate ON stepOptionTemplate.item_id = step.id AND stepOptionTemplate.`key` = 'values_template'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionsQuery ON stepOptionsQuery.item_id = step.id AND stepOptionsQuery.`key` = 'custom_query'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS extraDataQuery ON extraDataQuery.item_id = step.id AND extraDataQuery.`key` = 'extra_data_query'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = step.id AND urlRegex.`key` = 'urlregex'
 
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS dataQuery ON dataQuery.item_id = subStep.id AND dataQuery.`key` = 'custom_query'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = subStep.id AND urlRegex.`key` = 'urlregex'
-
-    WHERE configurator.moduleid = {Constants.ConfiguratorModuleId} AND configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.id = ?configuratorId
-) t
-ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
+    WHERE parentStep.entity_type IN ('hoofdstap', 'stap', 'substap')
+)
+SELECT
+    stepId,
+    parentStepId,
+    displayName,
+    stepName,
+    dependencies,
+    isRequired,
+    requiredConditions,
+    minimumValue,
+    maximumValue,
+    validationRegex,
+    requiredErrorMessage,
+    minimumValueErrorMessage,
+    maximumValueErrorMessage,
+    validationRegexErrorMessage,
+    stepTemplate,
+    stepOptionTemplate,
+    stepOptionsQuery,
+    extraDataQuery,
+    urlRegex,
+    ordering
+FROM cte
+ORDER BY parentStepId, ordering";
 
             #endregion
 
@@ -617,7 +606,8 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
             var dataTable = await databaseConnection.GetAsync(query);
 
             var stepsData = new List<VueStepDataModel>(dataTable.Rows.Count);
-            foreach (var dataRow in dataTable.Rows.Cast<DataRow>())
+            var dataRows = dataTable.Rows.Cast<DataRow>().ToArray();
+            foreach (var dataRow in dataRows)
             {
                 // Create dependencies.
                 var dependencies = new List<VueStepDependencyModel>();
@@ -674,8 +664,9 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
 
                 var step = new VueStepDataModel
                 {
+                    StepId = Convert.ToUInt64(dataRow["stepId"]),
+                    ParentStepId = Convert.ToUInt64(dataRow["parentStepId"]),
                     DisplayName = dataRow.Field<string>("displayName"),
-                    Position = dataRow.Field<string>("position"),
                     StepName = dataRow.Field<string>("stepName"),
                     Dependencies = dependencies,
                     MinimumValue = dataRow.Field<string>("minimumValue"),
@@ -687,15 +678,47 @@ ORDER BY mainStepOrdering, stepOrdering, subStepOrdering";
                     ValidationRegexErrorMessage = validationRegexErrorMessage,
                     IsRequired = Convert.ToBoolean(dataRow["isRequired"]),
                     RequiredConditions = requiredConditions,
-                    DataQuery = dataRow.Field<string>("dataQuery"),
+                    StepTemplate = dataRow.Field<string>("stepTemplate"),
+                    StepOptionTemplate = dataRow.Field<string>("stepOptionTemplate"),
+                    StepOptionsQuery = dataRow.Field<string>("stepOptionsQuery"),
+                    ExtraDataQuery = dataRow.Field<string>("extraDataQuery"),
                     UrlRegex = dataRow.Field<string>("urlRegex")
                 };
 
                 stepsData.Add(step);
             }
 
+            foreach (var dataRow in dataRows)
+            {
+                var pos = GetStepPosition(dataRows, dataRow, new List<int>());
+                stepsData.First(s => s.StepId == Convert.ToUInt64(dataRow["stepId"])).Position = String.Join("-", pos);
+            }
+
             returnValue.StepsData = stepsData;
             return returnValue;
+        }
+
+        /// <summary>
+        /// Determines the position of the step in the configurator.
+        /// </summary>
+        /// <param name="allSteps">Data rows containing the data of all steps.</param>
+        /// <param name="stepData">Data row containing the data of the step whose position needs to be determined.</param>
+        /// <param name="current">The current position value.</param>
+        /// <returns>A list containing the positions of every level.</returns>
+        private List<int> GetStepPosition(DataRow[] allSteps, DataRow stepData, List<int> current)
+        {
+            current ??= new List<int>();
+
+            var pos = Convert.ToInt32(Convert.ToInt32(stepData["ordering"])) - 1;
+            current.Insert(0, pos);
+
+            var parentStepId = Convert.ToUInt64(stepData["parentStepId"]);
+            if (parentStepId > 0)
+            {
+                current = GetStepPosition(allSteps, allSteps.First(dr => Convert.ToUInt64(dr["stepId"]) == parentStepId), current);
+            }
+
+            return current;
         }
 
         /// <inheritdoc />

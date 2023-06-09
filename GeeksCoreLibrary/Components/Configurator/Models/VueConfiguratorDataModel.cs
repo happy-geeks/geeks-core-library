@@ -17,15 +17,61 @@ public class VueConfiguratorDataModel
     [JsonProperty("stepsData")]
     public List<VueStepDataModel> StepsData { get; set; }
 
+    #region Server-side only properties
+
+    /// <summary>
+    /// Gets or sets the main HTML template.
+    /// </summary>
+    /// <remarks>
+    /// This property is not serialized to JSON because it's not needed in the client-side.
+    /// </remarks>
+    [JsonIgnore]
+    public string MainTemplate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the progress HTML template.
+    /// </summary>
+    /// <remarks>
+    /// This property is not serialized to JSON because it's not needed in the client-side.
+    /// </remarks>
+    [JsonIgnore]
+    public string ProgressBarTemplate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the progress step HTML template.
+    /// </summary>
+    /// <remarks>
+    /// This property is not serialized to JSON because it's not needed in the client-side.
+    /// </remarks>
+    [JsonIgnore]
+    public string ProgressBarStepTemplate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the summary HTML template.
+    /// </summary>
+    /// <remarks>
+    /// This property is not serialized to JSON because it's not needed in the client-side.
+    /// </remarks>
+    [JsonIgnore]
+    public string SummaryTemplate { get; set; }
+
     /// <summary>
     /// Gets or sets the price calculation query.
     /// </summary>
+    /// <remarks>
+    /// This property is not serialized to JSON because it's not needed in the client-side.
+    /// </remarks>
     [JsonIgnore]
     public string PriceCalculationQuery { get; set; }
 
     /// <summary>
     /// Gets or sets the delivery time calculation query.
     /// </summary>
+    /// <remarks>
+    /// This property is not serialized to JSON because it's not needed in the client-side.
+    /// </remarks>
     [JsonIgnore]
     public string DeliveryTimeCalculationQuery { get; set; }
+
+    #endregion
 }

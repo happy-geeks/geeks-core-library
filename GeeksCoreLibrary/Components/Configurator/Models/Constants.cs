@@ -11,6 +11,8 @@ public static class Constants
 
     public const string DuplicateLayoutProperty = "duplicatelayoutfrom";
 
+    public const string StepExtraDataPropertyName = "extra_data";
+
     #endregion
 
     #region Entity types
