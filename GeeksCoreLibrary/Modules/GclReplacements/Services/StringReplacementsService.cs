@@ -634,7 +634,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             {
                 var array = (JArray)input;
 
-                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(30));
+                var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.IgnoreCase | RegexOptions.Singleline, TimeSpan.FromSeconds(30));
                 var m = reg.Match(inputString);
 
                 if (m.Success)
@@ -688,7 +688,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 var repeaterName = repeater.Groups[1].Value;
 
                 // Find the repeats and duplicate the sub-templates as much as needed, the variables will be automatically numbered, example {orderlines(0).description}.
-                foreach (Match m in Regex.Matches(inputString, $"{{repeat:{repeaterName}}}(.*?){{/repeat:{repeaterName}}}", RegexOptions.Singleline))
+                foreach (Match m in Regex.Matches(inputString, $"{{repeat:{repeaterName}}}(.*?){{/repeat:{repeaterName}}}", RegexOptions.Singleline, TimeSpan.FromSeconds(30)))
                 {
                     // Then loop through each repeater.
                     var subTemplate = m.Groups[1].Value;
@@ -740,7 +740,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     var innerRepeaterName = innerRepeater.Groups[1].Value;
 
                     // Then loop through each inner repeater
-                    foreach (Match m in Regex.Matches(inputString, $"{{repeat:{repeaterName}\\(([0-9]+?)\\)\\.{innerRepeaterName}}}(.*?){{/repeat:{repeaterName}\\([0-9]+?\\)\\.{innerRepeaterName}}}", RegexOptions.Singleline))
+                    foreach (Match m in Regex.Matches(inputString, $"{{repeat:{repeaterName}\\(([0-9]+?)\\)\\.{innerRepeaterName}}}(.*?){{/repeat:{repeaterName}\\([0-9]+?\\)\\.{innerRepeaterName}}}", RegexOptions.Singleline, TimeSpan.FromSeconds(30)))
                     {
                         var index = Convert.ToInt32(m.Groups[1].Value);
                         var template = m.Value.Replace($"{repeaterName}({index}).", "");

@@ -90,7 +90,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             var contentTemplate = await templatesService.GetTemplateCacheSettingsAsync(templateId, templateName);
 
             // Check if caching is enabled for this template.
-            if (contentTemplate.CachingMode == TemplateCachingModes.NoCaching || contentTemplate.CachingMinutes < 0)
+            if (contentTemplate.CachingMinutes < 0)
             {
                 logger.LogDebug($"Content cache disabled for page '{HttpContextHelpers.GetOriginalRequestUri(context)}', because it's disabled in the template settings ({contentTemplate.Id}).");
                 await next.Invoke(context);
