@@ -177,6 +177,6 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// Gets or Sets the where item details of this entity type get stored.
         /// </summary>
-        public StorageLocation StorageLocation { get; set; } = StorageLocation.Table;
+        public StoreType StoreType { get; set; } = StoreType.Table;
     }
 }

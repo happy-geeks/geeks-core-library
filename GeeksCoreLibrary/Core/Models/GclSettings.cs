@@ -28,8 +28,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// The default connection string for the document store.
         /// </summary>
-        [CanBeNull]
-        public string ConnectionStringDocumentStore { get; set; }
+        public string DocumentStoreConnectionString { get; set; }
 
         /// <summary>
         /// This will be used to set the correct timezone for the database before executing any query, so that all times will be shown in the requested timezone.

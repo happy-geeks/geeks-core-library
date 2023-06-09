@@ -131,7 +131,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("default_ordering", MySqlDbType.Enum, notNull: true, defaultValue: "link_ordering", enumValues: new List<string> {"link_ordering", "item_title"}),
                     new("template_query", MySqlDbType.MediumText),
                     new("template_html", MySqlDbType.MediumText),
-                    new("storage_location", MySqlDbType.Enum, notNull: true, defaultValue: "table", enumValues: new List<string>{"table", "document-store"}),
+                    new("store_type", MySqlDbType.Enum, notNull: true, defaultValue: "table", enumValues: new List<string>{"table", "document_store", "hybrid"}),
                     new("enable_multiple_environments", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("icon_expanded", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
                     new("dedicated_table_prefix", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),

@@ -1,42 +1,102 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
-using MySqlX;
-using MySqlX.XDevAPI;
+using GeeksCoreLibrary.Modules.Databases.Models;
 
 namespace GeeksCoreLibrary.Modules.Databases.Services;
 
-
+/// <inheritdoc />
 public class MySqlDocumentStorageService : IDocumentStorageService, IScopedService
 {
-    private readonly GclSettings gclSettings;
+    private readonly IDocumentStoreConnection documentStorageConnection;
 
-    public MySqlDocumentStorageService(IOptions<GclSettings> gclSettings)
+    public MySqlDocumentStorageService(IDocumentStoreConnection documentStorageConnection)
     {
-        this.gclSettings = gclSettings.Value;
+        this.documentStorageConnection = documentStorageConnection;
     }
-    
-    public async Task<WiserItemModel> StoreDocumentAsync(WiserItemModel wiserItem, EntitySettingsModel entitySettingsModel)
-    {
-        var session = MySQLX.GetSession(gclSettings.ConnectionStringDocumentStore);
-        var schema = session.GetCurrentSchema();
-        
-        var collection = schema.GetCollection($"{entitySettingsModel.DedicatedTablePrefix}wiser_item_store");
 
-        if (wiserItem.Id != 0)
+    /// <inheritdoc />
+    public async Task CreateCollection(string prefix = "")
+    {
+        List<(string name, DocumentStoreIndexModel index)> indices = new()
         {
-            await collection.Modify("Id = ?id").Bind("?id", wiserItem.Id).Patch(wiserItem).ExecuteAsync();
-        }
-        else
-        {
-            var result = await collection.Add(wiserItem).ExecuteAsync();
-            wiserItem.Id = result.AutoIncrementValue;
-        }
+            ("idx_id", new DocumentStoreIndexModel
+            {
+                Fields =
+                {
+                    new DocumentStoreIndexFieldModel
+                    {
+                        Field = "id",
+                        Required = true,
+                        Type = "BIGINT UNSIGNED"
+                    }
+                }
+            }),
+            ("idx_title", new DocumentStoreIndexModel
+            {
+                Fields =
+                {
+                    new DocumentStoreIndexFieldModel
+                    {
+                        Field = "title",
+                        Required = true,
+                        Type = "VARCHAR(255)"
+                    }
+                }
+            }),
+            ("idx_changedOn", new DocumentStoreIndexModel
+            {
+                Fields =
+                {
+                    new DocumentStoreIndexFieldModel
+                    {
+                        Field = "changedOn",
+                        Required = true,
+                        Type = "DATETIME"
+                    }
+                }
+            })
+        };
+        await documentStorageConnection.CreateCollectionAsync($"{prefix}{WiserTableNames.WiserItemStore}", indices);
+    }
+
+    /// <inheritdoc />
+    public async Task<WiserItemModel> StoreItemAsync(WiserItemModel wiserItem, EntitySettingsModel entitySettings = null)
+    {
+        var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
+        
+        wiserItem.ChangedOn = DateTime.Now;
+        
+        var id = await documentStorageConnection.InsertOrUpdateDocumentAsync($"{prefix}{WiserTableNames.WiserItemStore}", wiserItem, wiserItem.Id);
 
         return wiserItem;
+    }
+    
+    /// <inheritdoc />
+    public async Task<IReadOnlyCollection<WiserItemModel>> GetItemsChangedAfter(DateTime dateTime, EntitySettingsModel entitySettings = null)
+    {
+        var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
+        documentStorageConnection.AddParameter(":changedOn", dateTime);
+
+        var array = await documentStorageConnection.GetDocumentsAsync($"{prefix}{WiserTableNames.WiserItemStore}", "changedOn > :changedOn");
+
+        return array.ToObject<List<WiserItemModel>>().AsReadOnly();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyCollection<WiserItemModel>> GetItems(string condition, Dictionary<string, object> parameters, EntitySettingsModel entitySettings = null)
+    {
+        var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
+        foreach (var parameter in parameters)
+        {
+            documentStorageConnection.AddParameter(parameter.Key, parameter.Value);   
+        }
+
+        var array = await documentStorageConnection.GetDocumentsAsync($"{prefix}wiser_item_store", condition);
+
+        return array.ToObject<List<WiserItemModel>>().AsReadOnly();
     }
 }

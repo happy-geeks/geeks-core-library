@@ -88,26 +88,28 @@ namespace GeeksCoreLibrary.Core.Services
         #region Implemented methods from interface
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null)
         {
-            return await SaveAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck);
+            return await SaveAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, storeTypeOverride);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
+        public async Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null)
         {
             var retries = 0;
             var transactionCompleted = false;
 
+            var storeType = storeTypeOverride;
             var entitySettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
+            storeType ??= entitySettings.StoreType;
 
+            if (storeType is StoreType.DocumentStore or StoreType.Hybrid)
+            {
+                return await documentStorageService.StoreItemAsync(wiserItem, entitySettings);
+            }
+            
             var isNewlycreated = wiserItem.Id == 0;
             
-            if (entitySettings.StorageLocation == StorageLocation.DocumentStore)
-            {
-                return await documentStorageService.StoreDocumentAsync(wiserItem);
-            }
-
             while (!transactionCompleted)
             {
                 try
@@ -188,6 +190,12 @@ namespace GeeksCoreLibrary.Core.Services
             }
 
             var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
+            
+            if (entityTypeSettings?.StoreType is StoreType.DocumentStore or StoreType.Hybrid)
+            {
+                return await documentStorageService.StoreItemAsync(wiserItem, entityTypeSettings);
+            }
+            
             var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
             if (wiserItem.ModuleId <= 0 && entityTypeSettings != null)
             {
@@ -197,11 +205,6 @@ namespace GeeksCoreLibrary.Core.Services
             var retries = 0;
             var transactionCompleted = false;
 
-            if (entityTypeSettings?.StorageLocation == StorageLocation.DocumentStore)
-            {
-                return await documentStorageService.StoreDocumentAsync(wiserItem);
-            }
-            
             while (!transactionCompleted)
             {
                 try
@@ -2813,15 +2816,16 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                             "disallow" => EntityDeletionTypes.Disallow,
                             _ => throw new ArgumentOutOfRangeException("delete_action", dataRow.Field<string>("delete_action"))
                         },
-                        StorageLocation = dataRow.Field<string>("storage_location")?.ToLowerInvariant() switch
+                        StoreType = dataRow.Field<string>("store_type")?.ToLowerInvariant() switch
                         {
-                            null => StorageLocation.Table,
-                            "table" => StorageLocation.Table,
-                            "document-store" => StorageLocation.DocumentStore,
-                            _ => throw new ArgumentOutOfRangeException("storage_location", dataRow.Field<string>("storage_location"))
+                            null => StoreType.Table,
+                            "normal" => StoreType.Table,
+                            "document_store" => StoreType.DocumentStore,
+                            "hybrid" => StoreType.Hybrid,
+                            _ => throw new ArgumentOutOfRangeException("store_type", dataRow.Field<string>("store_type"))
                         }
                     };
-
+                    
                     allEntityTypeSettings.Add(settings);
                 }
 
