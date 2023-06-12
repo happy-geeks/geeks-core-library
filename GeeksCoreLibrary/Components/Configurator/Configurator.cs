@@ -510,7 +510,8 @@ namespace GeeksCoreLibrary.Components.Configurator
             progressBarHtml = progressBarHtml.Replace("{steps}", progressBarStepsHtmlBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
 
             // Build summary HTML.
-            var summaryHtml = await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false);
+            var summaryHtml = Settings.FinalSummaryHtml;
+            summaryHtml = summaryHtml.Replace("{summary_template}", await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false));
 
             // Build the main HTML.
             var mainHtml = await TemplatesService.DoReplacesAsync(configuratorData.MainTemplate, removeUnknownVariables: false);
