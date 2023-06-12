@@ -1,41 +1,17 @@
 ﻿using System.Collections.Generic;
 using System.Data;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
 
-namespace GeeksCoreLibrary.Modules.GclReplacements.Interfaces
+namespace GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
+
+/// <summary>
+/// This is an intermediary service for some replacement functions that need to be called via multiple services.
+/// This is made to prevent circular dependencies.
+/// </summary>
+public interface IReplacementMediator
 {
-    public interface IStringReplacementsService
-    {
-        /// <summary>
-        /// Performs all replacements based on several default functions, such as query, form and cookies.
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="dataRow"></param>
-        /// <param name="handleRequest"></param>
-        /// <param name="evaluateLogicSnippets"></param>
-        /// <param name="removeUnknownVariables"></param>
-        /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
-        /// <returns></returns>
-        Task<string> DoAllReplacementsAsync(string input, DataRow dataRow = null, bool handleRequest = true, bool evaluateLogicSnippets = true, bool removeUnknownVariables = true, bool forQuery = false);
-
-        /// <summary>
-        /// Performs replacements based on data available in the HTTP request, such as query and form values.
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
-        /// <returns></returns>
-        string DoHttpRequestReplacements(string input, bool forQuery = false);
-
-        /// <summary>
-        /// Performs replacements based on data available in the session.
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
-        /// <returns></returns>
-        string DoSessionReplacements(string input, bool forQuery = false);
     /// <summary>
     /// Performs all replacements on a string using all data from a <see cref="DataSet"/>.
     /// This will return an IEnumerable of IEnumerable of strings. So you will have a string for each row in each table, where the replacements have been done.
@@ -161,26 +137,4 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Interfaces
     /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be removed. Default value is "}".</param>
     /// <returns>The original string without variables.</returns>
     string RemoveTemplateVariables(string input, string prefix = "{", string suffix = "}");
-
-        /// <summary>
-        /// Replace variables in a string based on JSON data.
-        /// Example: {customer.address.streetline1} or {orderid}.
-        /// </summary>
-        /// <param name="input">The <see cref="JToken"/> instance to be used for the data.</param>
-        /// <param name="inputString">The template.</param>
-        /// <param name="evaluateTemplate">Whether logic snippets should be evaluated.</param>
-        /// <param name="repeatVariableName">The name of the basic repeater variable. Defaults to 'repeat'.</param>
-        /// <returns>The template with all JSON data replaced.</returns>
-        string FillStringByClassList(JToken input, string inputString, bool evaluateTemplate = false, string repeatVariableName = "repeat");
-
-        /// <summary>
-        /// Replace variables in a string based on JSON data.
-        /// Example: {customer.address.streetline1} or {orderid}.
-        /// </summary>
-        /// <param name="input">The <see cref="JToken"/> instance to be used for the data.</param>
-        /// <param name="inputString">The template.</param>
-        /// <param name="evaluateTemplate">Whether logic snippets should be evaluated.</param>
-        /// <returns>The template with all JSON data replaced.</returns>
-        string FillStringByClass(JToken input, string inputString, bool evaluateTemplate = false);
-    }
 }

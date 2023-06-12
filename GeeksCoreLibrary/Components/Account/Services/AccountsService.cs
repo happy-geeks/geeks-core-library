@@ -32,15 +32,17 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly IDatabaseHelpersService databaseHelpersService;
         private readonly IRolesService rolesService;
         private readonly IServiceProvider serviceProvider;
+        private readonly IReplacementMediator replacementMediator;
 
         public AccountsService(IOptions<GclSettings> gclSettings,
-            IDatabaseConnection databaseConnection,
-            IObjectsService objectsService,
-            ILogger<AccountsService> logger,
-            IDatabaseHelpersService databaseHelpersService,
-            IRolesService rolesService,
-            IServiceProvider serviceProvider,
-            IHttpContextAccessor httpContextAccessor = null)
+                               IDatabaseConnection databaseConnection,
+                               IObjectsService objectsService,
+                               ILogger<AccountsService> logger,
+                               IDatabaseHelpersService databaseHelpersService,
+                               IRolesService rolesService,
+                               IServiceProvider serviceProvider,
+                               IReplacementMediator replacementMediator,
+                               IHttpContextAccessor httpContextAccessor = null)
         {
             this.gclSettings = gclSettings.Value;
             this.databaseConnection = databaseConnection;
@@ -50,6 +52,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             this.databaseHelpersService = databaseHelpersService;
             this.rolesService = rolesService;
             this.serviceProvider = serviceProvider;
+            this.replacementMediator = replacementMediator;
         }
 
         /// <inheritdoc />
@@ -410,10 +413,8 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 }
             }
 
-            await using var scope = serviceProvider.CreateAsyncScope();
-            var stringReplacementsService = scope.ServiceProvider.GetRequiredService<IStringReplacementsService>();
-            input = stringReplacementsService.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{Account_");
-            input = stringReplacementsService.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{AccountWiser2_");
+            input = replacementMediator.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{Account_");
+            input = replacementMediator.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{AccountWiser2_");
 
             return input;
         }
