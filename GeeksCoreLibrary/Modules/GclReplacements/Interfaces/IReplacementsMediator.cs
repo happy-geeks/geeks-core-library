@@ -10,7 +10,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 /// This is an intermediary service for some replacement functions that need to be called via multiple services.
 /// This is made to prevent circular dependencies.
 /// </summary>
-public interface IReplacementMediator
+public interface IReplacementsMediator
 {
     /// <summary>
     /// Performs all replacements on a string using all data from a <see cref="DataSet"/>.

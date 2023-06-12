@@ -31,13 +31,13 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         private readonly ILanguagesService languagesService;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IAccountsService accountsService;
-        private readonly IReplacementMediator replacementMediator;
+        private readonly IReplacementsMediator replacementsMediator;
 
         public StringReplacementsService(IOptions<GclSettings> gclSettings,
                                          IObjectsService objectsService,
                                          ILanguagesService languagesService,
                                          IAccountsService accountsService,
-                                         IReplacementMediator replacementMediator,
+                                         IReplacementsMediator replacementsMediator,
                                          IHttpContextAccessor httpContextAccessor = null)
         {
             this.gclSettings = gclSettings.Value;
@@ -45,7 +45,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             this.languagesService = languagesService;
             this.httpContextAccessor = httpContextAccessor;
             this.accountsService = accountsService;
-            this.replacementMediator = replacementMediator;
+            this.replacementsMediator = replacementsMediator;
         }
 
         /// <inheritdoc />
@@ -80,7 +80,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             dataDictionary.Add("MlJclLanguageCode", languagesService.CurrentLanguageCode); // Legacy key for old library support.
             dataDictionary.Add("Hostname", HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext));
             dataDictionary.Add("Environment", (int)gclSettings.Environment);
-            input = replacementMediator.DoReplacements(input, dataDictionary, forQuery: forQuery);
+            input = replacementsMediator.DoReplacements(input, dataDictionary, forQuery: forQuery);
 
             // System object replaces.
             if (input.Contains("[SO{"))
@@ -99,7 +99,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     dataDictionary.Add(value, await objectsService.FindSystemObjectByDomainNameAsync(value.Replace("\\:", ":")));
                 }
 
-                input = replacementMediator.DoReplacements(input, dataDictionary, "[SO{", "}]", forQuery: forQuery);
+                input = replacementsMediator.DoReplacements(input, dataDictionary, "[SO{", "}]", forQuery: forQuery);
             }
 
             input = await accountsService.DoAccountReplacementsAsync(input, forQuery);
@@ -113,7 +113,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 // DataRow replacements.
                 if (dataRow != null)
                 {
-                    input = replacementMediator.DoReplacements(input, dataRow, forQuery);
+                    input = replacementsMediator.DoReplacements(input, dataRow, forQuery);
                 }
 
                 // Request replacements.
@@ -140,7 +140,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         dataDictionary.Add(value, await languagesService.GetTranslationAsync(value));
                     }
 
-                    input = replacementMediator.DoReplacements(input, dataDictionary, "[T{", "}]", forQuery: forQuery);
+                    input = replacementsMediator.DoReplacements(input, dataDictionary, "[T{", "}]", forQuery: forQuery);
                 }
 
                 // CMS objects.
@@ -167,7 +167,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         dataDictionary.Add(value, await objectsService.GetObjectValueAsync(value, objectsTypeNumber));
                     }
 
-                    input = replacementMediator.DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
+                    input = replacementsMediator.DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
                 }
             }
 
@@ -200,24 +200,24 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             // GET variables.
             if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
             {
-                input = replacementMediator.DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery);
+                input = replacementsMediator.DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery);
             }
             else
             {
-                input = replacementMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery);
+                input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery);
             }
 
             // POST variables.
             if (httpContextAccessor.HttpContext.Request.HasFormContentType)
             {
-                input = replacementMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery);
+                input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery);
             }
 
             // Cookies.
-            input = replacementMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery);
+            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery);
 
             // Request cache.
-            input = replacementMediator.DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery);
+            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery);
 
             return input;
         }
@@ -230,73 +230,73 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 return input;
             }
 
-            return replacementMediator.DoReplacements(input, httpContextAccessor.HttpContext.Session, forQuery);
+            return replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Session, forQuery);
         }
 
         /// <inheritdoc />
         public IEnumerable<IEnumerable<string>> DoReplacements(string input, DataSet replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
         {
-            return replacementMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
         }
 
         /// <inheritdoc />
         public IEnumerable<string> DoReplacements(string input, DataTable replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
         {
-            return replacementMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
         }
 
         /// <inheritdoc />
         public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
         {
-            return replacementMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
         }
 
         /// <inheritdoc />
         public string DoReplacements(string input, IEnumerable<KeyValuePair<string, string>> replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
         {
-            return replacementMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
         }
 
         /// <inheritdoc />
         public string DoReplacements(string input, IEnumerable<KeyValuePair<string, StringValues>> replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
         {
-            return replacementMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
         }
 
         /// <inheritdoc />
         public string DoReplacements(string input, ISession replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
         {
-            return replacementMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
         }
 
         /// <inheritdoc />
         public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
         {
-            return replacementMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
         }
 
         /// <inheritdoc />
         public string DoReplacements(string input, IDictionary<string, object> replaceData, string prefix = "{", string suffix = "}", bool forQuery = false)
         {
-            return replacementMediator.DoReplacements(input, replaceData, prefix, suffix, forQuery);
+            return replacementsMediator.DoReplacements(input, replaceData, prefix, suffix, forQuery);
         }
 
         /// <inheritdoc />
         public string EvaluateTemplate(string input)
         {
-            return replacementMediator.EvaluateTemplate(input);
+            return replacementsMediator.EvaluateTemplate(input);
         }
 
         /// <inheritdoc />
         public string HandleVariablesDefaultValues(string input, string prefix = "{", string suffix = "}")
         {
-            return replacementMediator.HandleVariablesDefaultValues(input, prefix, suffix);
+            return replacementsMediator.HandleVariablesDefaultValues(input, prefix, suffix);
         }
 
         /// <inheritdoc />
         public string RemoveTemplateVariables(string input, string prefix = "{", string suffix = "}")
         {
-            return replacementMediator.RemoveTemplateVariables(input, prefix, suffix);
+            return replacementsMediator.RemoveTemplateVariables(input, prefix, suffix);
         }
 
         /// <inheritdoc />
@@ -462,7 +462,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     }
                 };
 
-                inputString = replacementMediator.DoReplacements(inputString, replacementData, caseSensitive: false);
+                inputString = replacementsMediator.DoReplacements(inputString, replacementData, caseSensitive: false);
             }
 
             // Evaluate template, working with if...else...then statements

@@ -32,7 +32,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly IDatabaseHelpersService databaseHelpersService;
         private readonly IRolesService rolesService;
         private readonly IServiceProvider serviceProvider;
-        private readonly IReplacementMediator replacementMediator;
+        private readonly IReplacementsMediator replacementsMediator;
 
         public AccountsService(IOptions<GclSettings> gclSettings,
                                IDatabaseConnection databaseConnection,
@@ -41,7 +41,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                                IDatabaseHelpersService databaseHelpersService,
                                IRolesService rolesService,
                                IServiceProvider serviceProvider,
-                               IReplacementMediator replacementMediator,
+                               IReplacementsMediator replacementsMediator,
                                IHttpContextAccessor httpContextAccessor = null)
         {
             this.gclSettings = gclSettings.Value;
@@ -52,7 +52,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             this.databaseHelpersService = databaseHelpersService;
             this.rolesService = rolesService;
             this.serviceProvider = serviceProvider;
-            this.replacementMediator = replacementMediator;
+            this.replacementsMediator = replacementsMediator;
         }
 
         /// <inheritdoc />
@@ -413,8 +413,8 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 }
             }
 
-            input = replacementMediator.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{Account_");
-            input = replacementMediator.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{AccountWiser2_");
+            input = replacementsMediator.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{Account_");
+            input = replacementsMediator.DoReplacements(input, replaceData, forQuery: forQuery, prefix: "{AccountWiser2_");
 
             return input;
         }

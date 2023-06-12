@@ -19,8 +19,8 @@ using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Services;
 
-/// <inheritdoc cref="IReplacementMediator" />
-public class ReplacementMediator : IReplacementMediator, IScopedService
+/// <inheritdoc cref="IReplacementsMediator" />
+public class ReplacementsMediator : IReplacementsMediator, IScopedService
 {
     private readonly IDatabaseConnection databaseConnection;
     private readonly Regex logicSnippetRegex;
@@ -31,9 +31,9 @@ public class ReplacementMediator : IReplacementMediator, IScopedService
     private const string RawFormatterName = "Raw";
 
     /// <summary>
-    /// Creates a new instance of <see cref="ReplacementMediator"/>.
+    /// Creates a new instance of <see cref="ReplacementsMediator"/>.
     /// </summary>
-    public ReplacementMediator(IDatabaseConnection databaseConnection)
+    public ReplacementsMediator(IDatabaseConnection databaseConnection)
     {
         this.databaseConnection = databaseConnection;
 
