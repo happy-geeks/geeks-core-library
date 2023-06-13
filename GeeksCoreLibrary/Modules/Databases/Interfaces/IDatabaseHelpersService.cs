@@ -17,14 +17,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="columnName">The name of the column.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         Task<bool> ColumnExistsAsync(string tableName, string columnName, string databaseName = null);
-        
+
         /// <summary>
         /// Gets a list of all column names in a table.
         /// </summary>
         /// <param name="tableName">The name of the table.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         Task<List<string>> GetColumnNamesAsync(string tableName, string databaseName = null);
-        
+
         /// <summary>
         /// Add a new column to the table, if it doesn't exist yet.
         /// </summary>
@@ -33,7 +33,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="throwExceptionIfColumnAlreadyExists">Optional: Whether or not to throw an exception if the column already exists, default is <see langword="true"/>.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         Task AddColumnToTableAsync(string tableName, ColumnSettingsModel settings, bool throwExceptionIfColumnAlreadyExists = true, string databaseName = null);
-        
+
         /// <summary>
         /// Add a new column to the table, if it doesn't exist yet.
         /// </summary>
@@ -43,7 +43,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="throwExceptionIfColumnAlreadyExists">Optional: Whether or not to throw an exception if the column already exists, default is <see langword="true"/>.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         Task AddColumnToTableAsync(IDatabaseHelpersService databaseHelpersService, string tableName, ColumnSettingsModel settings, bool throwExceptionIfColumnAlreadyExists = true, string databaseName = null);
-        
+
         /// <summary>
         /// Delete a column from a table.
         /// </summary>
@@ -51,7 +51,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="columnName">The name of the column.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         Task DropColumnAsync(string tableName, string columnName, string databaseName = null);
-        
+
         /// <summary>
         /// Creates a new table, if it doesn't exist yet.
         /// </summary>
@@ -61,7 +61,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="collation">Optional: The default collation for the table. Default value is 'utf8mb4_general_ci'.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         Task CreateTableAsync(string tableName, IList<ColumnSettingsModel> primaryKeys, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", string databaseName = null);
-        
+
         /// <summary>
         /// Creates a new table, or update is if it already exists.
         /// </summary>
@@ -71,7 +71,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="collation">Optional: The default collation for the table. Default value is 'utf8mb4_general_ci'.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         Task CreateOrUpdateTableAsync(string tableName, IList<ColumnSettingsModel> columns, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", string databaseName = null);
-        
+
         /// <summary>
         /// Creates a new table, or update is if it already exists.
         /// </summary>
@@ -82,20 +82,20 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="collation">Optional: The default collation for the table. Default value is 'utf8mb4_general_ci'.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
         Task CreateOrUpdateTableAsync(IDatabaseHelpersService databaseHelpersService, string tableName, IList<ColumnSettingsModel> columns, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", string databaseName = null);
-        
+
         /// <summary>
         /// Checks whether or not a table exists.
         /// </summary>
         /// <param name="tableName">The name of the table.</param>
         /// <param name="databaseName">Optional: The name of the database. Default value is the database from the connection string.</param>
         Task<bool> TableExistsAsync(string tableName, string databaseName = null);
-        
+
         /// <summary>
         /// Checks whether a database schema exists.
         /// </summary>
         /// <param name="databaseName">The name of the database.</param>
         Task<bool> DatabaseExistsAsync(string databaseName);
-        
+
         /// <summary>
         /// Delete a table from the database.
         /// </summary>
@@ -154,18 +154,22 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
 
         /// <summary>
         /// Check if certain Wiser tables are up-to-date and update them if they're not.
+        /// Returns a boolean to indicate whether any changes have been made to any table.
         /// </summary>
         /// <param name="tablesToUpdate">A list of one or more tables to check and update when needed.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
-        Task CheckAndUpdateTablesAsync(List<string> tablesToUpdate, string databaseName = null);
+        /// <returns>A boolean, indicating whether any changes have been made.</returns>
+        Task<bool> CheckAndUpdateTablesAsync(List<string> tablesToUpdate, string databaseName = null);
 
         /// <summary>
         /// Check if certain Wiser tables are up-to-date and update them if they're not.
+        /// Returns a boolean to indicate whether any changes have been made to any table.
         /// </summary>
         /// <param name="databaseHelpersService">The <see cref="IDatabaseHelpersService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods of the same service.</param>
         /// <param name="tablesToUpdate">A list of one or more tables to check and update when needed.</param>
         /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
-        Task CheckAndUpdateTablesAsync(IDatabaseHelpersService databaseHelpersService, List<string> tablesToUpdate, string databaseName = null);
+        /// <returns>A boolean, indicating whether any changes have been made.</returns>
+        Task<bool> CheckAndUpdateTablesAsync(IDatabaseHelpersService databaseHelpersService, List<string> tablesToUpdate, string databaseName = null);
 
         /// <summary>
         /// Retrieves the names of all tables within the current database, or in the database specified by <paramref name="databaseName"/>.

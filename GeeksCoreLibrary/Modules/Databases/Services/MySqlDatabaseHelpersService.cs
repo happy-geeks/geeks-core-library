@@ -41,11 +41,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             databaseConnection.AddParameter("columnName", columnName);
-            
+
             var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` LIKE ?columnName");
             return dataTable.Rows.Count > 0;
         }
-        
+
         /// <inheritdoc />
         public async Task<List<string>> GetColumnNamesAsync(string tableName, string databaseName = null)
         {
@@ -71,16 +71,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 throw new ArgumentException("No column name given.");
             }
-            
+
             if (String.IsNullOrWhiteSpace(databaseName))
             {
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
-            
+
             databaseConnection.AddParameter("columnName", settings.Name);
             databaseConnection.AddParameter("defaultValue", settings.DefaultValue);
-            
+
             if (await databaseHelpersService.ColumnExistsAsync(tableName, settings.Name, databaseName))
             {
                 if (throwExceptionIfColumnAlreadyExists)
@@ -90,7 +90,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
                 return;
             }
-            
+
             var queryBuilder = new StringBuilder($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` ADD COLUMN ");
             queryBuilder.Append(GenerateColumnQueryPart(tableName, settings));
             queryBuilder.Append("; ");
@@ -160,7 +160,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             await databaseConnection.ExecuteAsync(queryBuilder.ToString());
         }
-        
+
         /// <inheritdoc />
         public async Task CreateOrUpdateTableAsync(string tableName, IList<ColumnSettingsModel> columns, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", string databaseName = null)
         {
@@ -199,7 +199,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // If it's a new table, we already added the primary keys.
                 return;
             }
-            
+
             if (String.IsNullOrWhiteSpace(databaseName))
             {
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
@@ -235,14 +235,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var dataTable = await databaseConnection.GetAsync($"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = ?tableName {databaseClause}");
             return dataTable.Rows.Count > 0;
         }
-        
+
         /// <inheritdoc />
         public async Task<bool> DatabaseExistsAsync(string databaseName)
         {
             var dataTable = await databaseConnection.GetAsync($"SELECT NULL FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = {databaseName.ToMySqlSafeValue(true)}");
             return dataTable.Rows.Count > 0;
         }
-        
+
         /// <inheritdoc />
         public async Task DropTableAsync(string tableName, bool isTemporaryTable = false, string databaseName = null)
         {
@@ -258,7 +258,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public async Task DuplicateTableAsync(string tableToDuplicate, string newTableName, bool includeData = true, string sourceDatabaseName = null, string destinationDatabaseName = null)
         {
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
-            
+
             if (String.IsNullOrWhiteSpace(sourceDatabaseName))
             {
                 sourceDatabaseName = databaseConnection.ConnectedDatabase;
@@ -290,11 +290,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             var oldIndexes = new Dictionary<string, List<(string Name, List<string> Columns)>>();
-            
+
             foreach (var index in indexes.Where(index => !String.IsNullOrWhiteSpace(index.Name) && index.Fields != null && index.Fields.Any()))
             {
                 var createIndexQuery = $"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue(false)}` (`{String.Join("`,`", index.Fields.Select(f => f.ToMySqlSafeValue(false)))}`)";
-                
+
                 databaseConnection.AddParameter("indexName", index.Name);
 
                 if (!oldIndexes.ContainsKey(index.TableName))
@@ -342,7 +342,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 throw new ArgumentNullException(nameof(databaseName));
             }
-            
+
             databaseConnection.AddParameter("characterSet", characterSet);
             databaseConnection.AddParameter("collation", collation);
             await databaseConnection.ExecuteAsync($"CREATE DATABASE IF NOT EXISTS `{databaseName.ToMySqlSafeValue(false)}` DEFAULT CHARACTER SET = ?characterSet DEFAULT COLLATE = ?collation");
@@ -355,7 +355,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 throw new ArgumentNullException(nameof(databaseName));
             }
-            
+
             await databaseConnection.ExecuteAsync($"DROP DATABASE IF EXISTS `{databaseName.ToMySqlSafeValue(false)}`");
         }
 
@@ -389,7 +389,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                                                                              Type = MySqlDbType.DateTime,
                                                                              NotNull = true
                                                                          }
-                                                                     }, 
+                                                                     },
                                                                      databaseName: databaseName);
 
                 return result;
@@ -421,16 +421,17 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public async Task CheckAndUpdateTablesAsync(List<string> tablesToUpdate, string databaseName = null)
+        public async Task<bool> CheckAndUpdateTablesAsync(List<string> tablesToUpdate, string databaseName = null)
         {
-            await CheckAndUpdateTablesAsync(this, tablesToUpdate, databaseName);
+            return await CheckAndUpdateTablesAsync(this, tablesToUpdate, databaseName);
         }
 
         /// <inheritdoc />
-        public async Task CheckAndUpdateTablesAsync(IDatabaseHelpersService databaseHelpersService, List<string> tablesToUpdate, string databaseName = null)
+        public async Task<bool> CheckAndUpdateTablesAsync(IDatabaseHelpersService databaseHelpersService, List<string> tablesToUpdate, string databaseName = null)
         {
+            var changesMade = false;
             var tableChanges = await databaseHelpersService.GetLastTableUpdatesAsync(databaseName);
-            
+
             if (String.IsNullOrWhiteSpace(databaseName))
             {
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
@@ -442,7 +443,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 var tableDefinition = WiserTableDefinitions.TablesToUpdate.FirstOrDefault(t => String.Equals(t.Name, tableName, StringComparison.OrdinalIgnoreCase));
                 if (tableDefinition == null)
                 {
-                    // If we don't know 
                     logger.LogWarning($"Called CheckAndUpdateTablesAsync with a table that doesn't exist ('{tableName}').");
                     continue;
                 }
@@ -471,7 +471,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         tableDefinition.Indexes.ForEach(index => index.TableName = tableName);
                     }
                 }
-                
+
                 // Update dedicated entity tables.
                 if (WiserTableNames.TablesThatCanHaveEntityPrefix.Contains(tableName))
                 {
@@ -484,7 +484,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         {
                             tablePrefix += "_";
                         }
-                        
+
                         // Normal tables.
                         await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
                         if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
@@ -504,7 +504,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         }
                     }
                 }
-                
+
                 // Update dedicated link tables.
                 if (WiserTableNames.TablesThatCanHaveLinkPrefix.Contains(tableName))
                 {
@@ -513,7 +513,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     foreach (DataRow dataRow in dataTable.Rows)
                     {
                         var tablePrefix = $"{dataRow["type"]}_";
-                        
+
                         // Normal tables.
                         await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
                         if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
@@ -538,9 +538,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 databaseConnection.AddParameter("tableName", tableName);
                 databaseConnection.AddParameter("lastUpdate", DateTime.Now);
                 await databaseConnection.ExecuteAsync($@"INSERT INTO `{databaseName.ToMySqlSafeValue(false)}`.`{WiserTableNames.WiserTableChanges}` (name, last_update) 
-                                                            VALUES (?tableName, ?lastUpdate) 
-                                                            ON DUPLICATE KEY UPDATE last_update = VALUES(last_update)");
+VALUES (?tableName, ?lastUpdate) 
+ON DUPLICATE KEY UPDATE last_update = VALUES(last_update)");
+                changesMade = true;
             }
+
+            return changesMade;
         }
 
         /// <inheritdoc />
@@ -755,7 +758,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             return (mysqlType, unsigned);
         }
-        
+
         /// <inheritdoc />
         public async Task OptimizeTablesAsync(params string[] tableNames)
         {
