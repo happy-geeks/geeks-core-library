@@ -58,6 +58,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IFiltersService filtersService;
         private readonly IAccountsService accountsService;
         private readonly IDatabaseHelpersService databaseHelpersService;
+        private readonly IReplacementsMediator replacementsMediator;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
@@ -71,6 +72,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             ILanguagesService languagesService,
             IAccountsService accountsService,
             IDatabaseHelpersService databaseHelpersService,
+            IReplacementsMediator replacementsMediator,
             IHttpContextAccessor httpContextAccessor = null,
             IActionContextAccessor actionContextAccessor = null,
             IViewComponentHelper viewComponentHelper = null,
@@ -91,6 +93,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.languagesService = languagesService;
             this.accountsService = accountsService;
             this.databaseHelpersService = databaseHelpersService;
+            this.replacementsMediator = replacementsMediator;
         }
 
         /// <inheritdoc />
@@ -737,7 +740,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             // Start with special template replacements for the pre load query that you can set in HTML templates in the templates module in Wiser.
             if (httpContextAccessor?.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
             {
-                input = stringReplacementsService.DoReplacements(input, (DataRow)httpContextAccessor.HttpContext.Items[Constants.TemplatePreLoadQueryResultKey], forQuery, prefix: "{template.");
+                input = replacementsMediator.DoReplacements(input, (DataRow)httpContextAccessor.HttpContext.Items[Constants.TemplatePreLoadQueryResultKey], forQuery, prefix: "{template.");
             }
 
             // Then do the normal string replacements, because includes can contain variables in a query string, which need to be replaced first.
@@ -760,7 +763,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
 
             if (evaluateLogicSnippets)
             {
-                input = stringReplacementsService.EvaluateTemplate(input);
+                input = replacementsMediator.EvaluateTemplate(input);
             }
 
             return input;
@@ -1058,7 +1061,7 @@ ORDER BY id ASC");
                         var split = templateName.Split('\\');
                         var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
-                        var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
+                        var content = replacementsMediator.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
                         {
                             content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery);
@@ -1075,7 +1078,7 @@ ORDER BY id ASC");
                     {
                         var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
-                        var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
+                        var content = replacementsMediator.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
                         {
                             content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery);
