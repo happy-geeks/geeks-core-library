@@ -414,7 +414,7 @@ LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarStepTemplate ON progre
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryTemplate ON summaryTemplate.item_id = configurator.id AND summaryTemplate.`key` = 'summary_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS priceCalculationQuery ON priceCalculationQuery.item_id = configurator.id AND priceCalculationQuery.`key` = 'price_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS deliveryTimeCalculationQuery ON deliveryTimeCalculationQuery.item_id = configurator.id AND deliveryTimeCalculationQuery.`key` = 'delivery_time_calculation_query'
-WHERE configurator.moduleid = {Constants.ConfiguratorModuleId} AND configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.title = ?name");
+WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.title = ?name");
 
             if (configuratorSettings.Rows.Count == 0)
             {
@@ -499,7 +499,7 @@ WHERE configurator.moduleid = {Constants.ConfiguratorModuleId} AND configurator.
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS extraDataQuery ON extraDataQuery.item_id = step.id AND extraDataQuery.`key` = 'extra_data_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = step.id AND urlRegex.`key` = 'urlregex'
 
-    WHERE configurator.moduleid = {Constants.ConfiguratorModuleId} AND configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.id = ?configuratorId
+    WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.id = ?configuratorId
 
     UNION
 
@@ -929,12 +929,6 @@ ORDER BY parentStepId, ordering";
                 result.fromPrice += priceFromApi.fromPrice;
             }
             // If an exception is thrown during the retrieval of the price from an API consider the full price to be invalid.
-            catch (ArgumentException e)
-            {
-                // ArgumentException is thrown when the response of the API was not successful.
-                logger.LogError(e, "Error while trying to get price from an API.");
-                return result;
-            }
             catch (Exception e)
             {
                 logger.LogError(e, "Error while trying to get price from an API.");
@@ -998,12 +992,6 @@ ORDER BY parentStepId, ordering";
                 result.fromPrice += priceFromApi.fromPrice;
             }
             // If an exception is thrown during the retrieval of the price from an API consider the full price to be invalid.
-            catch (ArgumentException e)
-            {
-                // ArgumentException is thrown when the response of the API was not successful.
-                logger.LogError(e, "Error while trying to get price from an API.");
-                return result;
-            }
             catch (Exception e)
             {
                 logger.LogError(e, "Error while trying to get price from an API.");
@@ -1047,6 +1035,13 @@ ORDER BY parentStepId, ordering";
             return result;
         }
 
+        /// <summary>
+        /// Retrieve the price from an external API. It's not necessary to pass both configuration and vueConfiguration, only one of them is required.
+        /// </summary>
+        /// <param name="configuratorId">The Wiser ID of the configurator settings.</param>
+        /// <param name="configuration">The configuration of a legacy configurator.</param>
+        /// <param name="vueConfiguration">The configuration of a configurator running in "Vue" mode.</param>
+        /// <returns>The purchase price, customer price and from price as a <see cref="ValueTuple{T1,T2,T3}"/>.</returns>
         private async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> GetPriceFromApiAsync(ulong configuratorId, ConfigurationsModel configuration = null, VueConfigurationsModel vueConfiguration = null)
         {
             (decimal purchasePrice, decimal customerPrice, decimal fromPrice) result = (0, 0, 0);

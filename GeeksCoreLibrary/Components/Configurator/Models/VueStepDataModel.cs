@@ -128,7 +128,7 @@ public class VueStepDataModel
     /// Gets or sets extra data which are retrieved from the database.
     /// </summary>
     [JsonProperty("extraData")]
-    public IDictionary<string, JToken> ExtraData = new ConcurrentDictionary<string, JToken>();
+    public IDictionary<string, JToken> ExtraData = new Dictionary<string, JToken>();
 
     #region Server-side only properties
 

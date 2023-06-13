@@ -143,13 +143,13 @@ namespace GeeksCoreLibrary.Components.Configurator
             switch (Settings.ComponentMode)
             {
                 case ComponentModes.Default:
-                    resultHtml.Append(await HandleDefaultModeAsync());
+                    resultHtml.Append(await HandleLegacyModeAsync());
                     break;
                 case ComponentModes.Vue:
                     resultHtml.Append(await HandleVueModeAsync());
                     break;
                 default:
-                    throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'InvokeAsync'.");
+                    throw new ArgumentOutOfRangeException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'InvokeAsync'.");
             }
 
             Logger.LogDebug("Configurator - End generating HTML");
@@ -157,7 +157,139 @@ namespace GeeksCoreLibrary.Components.Configurator
             return new HtmlString(resultHtml.ToString());
         }
 
-        private async Task<string> HandleDefaultModeAsync()
+        /// <summary>
+        /// Renders the HTML of the configurator in Vue mode.
+        /// </summary>
+        /// <returns>The rendered HTML.</returns>
+        private async Task<string> HandleVueModeAsync()
+        {
+            var currentConfiguratorName = StringReplacementsService.DoHttpRequestReplacements(Settings.ConfiguratorName).ToLowerInvariant();
+            currentConfiguratorName = StringReplacementsService.RemoveTemplateVariables(currentConfiguratorName);
+            if (String.IsNullOrWhiteSpace(currentConfiguratorName))
+            {
+                Logger.LogWarning("No configurator name found; skipping rendering.");
+                return String.Empty;
+            }
+
+            var configuratorData = await configuratorsService.GetVueConfiguratorDataAsync(currentConfiguratorName);
+            if (configuratorData == null)
+            {
+                Logger.LogWarning("No configurator data found for configurator '{currentConfiguratorName}'; skipping rendering.", currentConfiguratorName);
+                return String.Empty;
+            }
+
+            // Render the steps.
+            var stepsHtmlBuilder = new StringBuilder();
+            foreach (var stepData in configuratorData.StepsData.Where(sd => sd.ParentStepId == 0))
+            {
+                stepsHtmlBuilder.Append(await RenderVueStepAsync(configuratorData, stepData.StepId));
+            }
+
+            var stepsHtml = stepsHtmlBuilder.ToString();
+
+            // Build progress bar HTML.
+            var progressBarHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarTemplate, removeUnknownVariables: false);
+            var progressBarStepsHtmlBuilder = new StringBuilder();
+            progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\">");
+            progressBarStepsHtmlBuilder.Append(await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarStepTemplate, removeUnknownVariables: false));
+            progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
+
+            progressBarHtml = progressBarHtml.Replace("{steps}", progressBarStepsHtmlBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
+
+            // Build summary HTML.
+            var summaryHtml = Settings.FinalSummaryHtml;
+            summaryHtml = summaryHtml.Replace("{summary_template}", await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false));
+
+            // Build the main HTML.
+            var mainHtml = await TemplatesService.DoReplacesAsync(configuratorData.MainTemplate, removeUnknownVariables: false);
+            mainHtml = mainHtml.Replace("{mainsteps}", stepsHtml, StringComparison.OrdinalIgnoreCase)
+                .Replace("{steps}", stepsHtml, StringComparison.OrdinalIgnoreCase)
+                .Replace("{substeps}", stepsHtml, StringComparison.OrdinalIgnoreCase);
+
+            mainHtml = mainHtml.Replace("{progressbar}", progressBarHtml, StringComparison.OrdinalIgnoreCase)
+                .Replace("{progress}", progressBarHtml, StringComparison.OrdinalIgnoreCase);
+
+            mainHtml = mainHtml.Replace("{summary}", summaryHtml, StringComparison.OrdinalIgnoreCase);
+
+            var resultHtml = new StringBuilder();
+            resultHtml.Append("<div id=\"configurator\" v-cloak>");
+            resultHtml.Append(mainHtml);
+            resultHtml.Append("</div>");
+
+            return resultHtml.ToString();
+        }
+
+        /// <summary>
+        /// Renders the HTML of a step in Vue mode.
+        /// </summary>
+        /// <param name="configuratorData">The full configurator data.</param>
+        /// <param name="stepId">The ID of the step to render.</param>
+        /// <returns>The rendered HTML of a step of a configurator running in "Vue" mode.</returns>
+        /// <exception cref="Exception">If a step with the given <paramref name="stepId"/> is not found.</exception>
+        private async Task<string> RenderVueStepAsync(VueConfiguratorDataModel configuratorData, ulong stepId)
+        {
+            var stepData = configuratorData.StepsData.SingleOrDefault(s => s.StepId == stepId);
+            if (stepData == null)
+            {
+                throw new Exception($"Step with ID {stepId} not found.");
+            }
+
+            var template = stepData.StepTemplate;
+            template = await TemplatesService.DoReplacesAsync(template, removeUnknownVariables: false);
+
+            // Render step options.
+            if (template.Contains("{options}") || template.Contains("{datasource_values}"))
+            {
+                // Render step option template HTML.
+                var stepOptionHtmlBuilder = new StringBuilder();
+                stepOptionHtmlBuilder.Append("<step-option v-for=\"option in step.options\" :key=\"option.id\">");
+                stepOptionHtmlBuilder.Append(await TemplatesService.DoReplacesAsync(stepData.StepOptionTemplate, removeUnknownVariables: false));
+                stepOptionHtmlBuilder.Append("</step-option>");
+                var stepOptionHtml = stepOptionHtmlBuilder.ToString();
+
+                template = template.Replace("{options}", stepOptionHtml)
+                    .Replace("{datasource_values}", stepOptionHtml, StringComparison.OrdinalIgnoreCase);
+            }
+
+            // Render sub steps.
+            if (template.Contains("{steps}") || template.Contains("{substeps}"))
+            {
+                // Render sub-steps.
+                var subStepsHtmlBuilder = new StringBuilder();
+                var subSteps = configuratorData.StepsData.Where(s => s.ParentStepId == stepId).ToList();
+                if (subSteps.Count > 0)
+                {
+                    foreach (var subStep in subSteps)
+                    {
+                        subStepsHtmlBuilder.Append(await RenderVueStepAsync(configuratorData, subStep.StepId));
+                    }
+                }
+
+                var subStepsHtml = subStepsHtmlBuilder.ToString();
+                template = template.Replace("{steps}", subStepsHtml, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{substeps}", subStepsHtml, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var stepHtml = new StringBuilder();
+            stepHtml.Append("<step");
+            stepHtml.Append($" ref=\"step-{stepData.Position}\"");
+            stepHtml.Append($" position=\"{stepData.Position}\"");
+            stepHtml.Append($" step-name=\"{stepData.StepName}\"");
+            stepHtml.Append(" v-slot=\"{ step }\"");
+            stepHtml.Append($" :visible=\"stepVisible('{stepData.StepName}')\"");
+            stepHtml.Append($" :enabled=\"stepEnabled('{stepData.StepName}')\"");
+            stepHtml.Append('>');
+            stepHtml.Append(Settings.StepHtml.Replace("{stepContent}", template));
+            stepHtml.Append("</step>");
+
+            return stepHtml.ToString();
+        }
+
+        /// <summary>
+        /// Renders the HTML of the configurator in legacy mode.
+        /// </summary>
+        /// <returns>The rendered HTML.</returns>
+        private async Task<string> HandleLegacyModeAsync()
         {
             var mainStepCount = 1;
             var stepCount = 0;
@@ -471,136 +603,10 @@ namespace GeeksCoreLibrary.Components.Configurator
         }
 
         /// <summary>
-        /// Renders the HTML of the configurator in Vue mode.
+        /// First add all step numbers to the "_stepNumbers" dictionary, so that we have information about all steps before we start generating HTML.
+        /// If we don't do this, we can't make a step dependent on a future step.
         /// </summary>
-        /// <returns>The rendered HTML.</returns>
-        private async Task<string> HandleVueModeAsync()
-        {
-            var currentConfiguratorName = StringReplacementsService.DoHttpRequestReplacements(Settings.ConfiguratorName).ToLowerInvariant();
-            currentConfiguratorName = StringReplacementsService.RemoveTemplateVariables(currentConfiguratorName);
-            if (String.IsNullOrWhiteSpace(currentConfiguratorName))
-            {
-                Logger.LogWarning("No configurator name found; skipping rendering.");
-                return String.Empty;
-            }
-
-            var configuratorData = await configuratorsService.GetVueConfiguratorDataAsync(currentConfiguratorName);
-            if (configuratorData == null)
-            {
-                Logger.LogWarning("No configurator data found for configurator '{currentConfiguratorName}'; skipping rendering.", currentConfiguratorName);
-                return String.Empty;
-            }
-
-            // Render the steps.
-            var stepsHtmlBuilder = new StringBuilder();
-            foreach (var stepData in configuratorData.StepsData.Where(sd => sd.ParentStepId == 0))
-            {
-                stepsHtmlBuilder.Append(await RenderVueStepAsync(configuratorData, stepData.StepId));
-            }
-
-            var stepsHtml = stepsHtmlBuilder.ToString();
-
-            // Build progress bar HTML.
-            var progressBarHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarTemplate, removeUnknownVariables: false);
-            var progressBarStepsHtmlBuilder = new StringBuilder();
-            progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\">");
-            progressBarStepsHtmlBuilder.Append(await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarStepTemplate, removeUnknownVariables: false));
-            progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
-
-            progressBarHtml = progressBarHtml.Replace("{steps}", progressBarStepsHtmlBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
-
-            // Build summary HTML.
-            var summaryHtml = Settings.FinalSummaryHtml;
-            summaryHtml = summaryHtml.Replace("{summary_template}", await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false));
-
-            // Build the main HTML.
-            var mainHtml = await TemplatesService.DoReplacesAsync(configuratorData.MainTemplate, removeUnknownVariables: false);
-            mainHtml = mainHtml.Replace("{mainsteps}", stepsHtml, StringComparison.OrdinalIgnoreCase)
-                .Replace("{steps}", stepsHtml, StringComparison.OrdinalIgnoreCase)
-                .Replace("{substeps}", stepsHtml, StringComparison.OrdinalIgnoreCase);
-
-            mainHtml = mainHtml.Replace("{progressbar}", progressBarHtml, StringComparison.OrdinalIgnoreCase)
-                .Replace("{progress}", progressBarHtml, StringComparison.OrdinalIgnoreCase);
-
-            mainHtml = mainHtml.Replace("{summary}", summaryHtml, StringComparison.OrdinalIgnoreCase);
-
-            var resultHtml = new StringBuilder();
-            resultHtml.Append("<div id=\"configurator\" v-cloak>");
-            resultHtml.Append(mainHtml);
-            resultHtml.Append("</div>");
-
-            return resultHtml.ToString();
-        }
-
-        /// <summary>
-        /// Renders the HTML of a step in Vue mode.
-        /// </summary>
-        /// <param name="configuratorData">The full configurator data.</param>
-        /// <param name="stepId">The ID of the step to render.</param>
-        /// <returns>The rendered HTML of a step in Vue mode.</returns>
-        /// <exception cref="Exception">If a step with the given <paramref name="stepId"/> is not found.</exception>
-        private async Task<string> RenderVueStepAsync(VueConfiguratorDataModel configuratorData, ulong stepId)
-        {
-            var stepData = configuratorData.StepsData.SingleOrDefault(s => s.StepId == stepId);
-            if (stepData == null)
-            {
-                throw new Exception($"Step with ID {stepId} not found.");
-            }
-
-            var template = stepData.StepTemplate;
-            template = await TemplatesService.DoReplacesAsync(template, removeUnknownVariables: false);
-
-            // Render sub steps.
-            if (template.Contains("{options}") || template.Contains("{datasource_values}"))
-            {
-                // Render step option template HTML.
-                var stepOptionHtmlBuilder = new StringBuilder();
-                stepOptionHtmlBuilder.Append("<step-option v-for=\"option in step.options\" :key=\"option.id\">");
-                stepOptionHtmlBuilder.Append(await TemplatesService.DoReplacesAsync(stepData.StepOptionTemplate, removeUnknownVariables: false));
-                stepOptionHtmlBuilder.Append("</step-option>");
-                var stepOptionHtml = stepOptionHtmlBuilder.ToString();
-
-                template = template.Replace("{options}", stepOptionHtml)
-                    .Replace("{datasource_values}", stepOptionHtml, StringComparison.OrdinalIgnoreCase);
-            }
-            if (template.Contains("{steps}") || template.Contains("{substeps}"))
-            {
-                // Render sub-steps.
-                var subStepsHtmlBuilder = new StringBuilder();
-                var subSteps = configuratorData.StepsData.Where(s => s.ParentStepId == stepId).ToList();
-                if (subSteps.Count > 0)
-                {
-                    foreach (var subStep in subSteps)
-                    {
-                        subStepsHtmlBuilder.Append(await RenderVueStepAsync(configuratorData, subStep.StepId));
-                    }
-                }
-
-                var subStepsHtml = subStepsHtmlBuilder.ToString();
-                template = template.Replace("{steps}", subStepsHtml, StringComparison.OrdinalIgnoreCase)
-                    .Replace("{substeps}", subStepsHtml, StringComparison.OrdinalIgnoreCase);
-            }
-
-            var stepHtml = new StringBuilder();
-            stepHtml.Append("<step");
-            stepHtml.Append($" ref=\"step-{stepData.Position}\"");
-            stepHtml.Append($" position=\"{stepData.Position}\"");
-            stepHtml.Append($" step-name=\"{stepData.StepName}\"");
-            stepHtml.Append(" v-slot=\"{ step }\"");
-            stepHtml.Append($" :visible=\"stepVisible('{stepData.StepName}')\"");
-            stepHtml.Append($" :enabled=\"stepEnabled('{stepData.StepName}')\"");
-            stepHtml.Append('>');
-            stepHtml.Append(Settings.StepHtml.Replace("{stepContent}", template));
-            stepHtml.Append("</step>");
-
-            return stepHtml.ToString();
-        }
-
-        /// <summary>
-        /// First add all step numbers to the "_stepNumbers" dictionary, so that we have information about all steps before we start generating HTML. If we don't do this, we can't make a step dependent on a future step.
-        /// </summary>
-        /// <param name="configuratorName"></param>
-        /// <returns></returns>
+        /// <param name="configuratorName">The name of the configurator item in Wiser.</param>
         private async Task LoadStepNumbersAsync(string configuratorName)
         {
             WriteToTrace("LoadStepNumbers");
@@ -674,16 +680,16 @@ namespace GeeksCoreLibrary.Components.Configurator
         }
 
         /// <summary>
-        /// render step
+        /// Renders a step, including all sub steps. This is for configurators that run in legacy mode.
         /// </summary>
-        /// <param name="currentConfiguratorName"></param>
-        /// <param name="row"></param>
-        /// <param name="mainStepNumber"></param>
-        /// <param name="stepNumber"></param>
-        /// <param name="dependentValue"></param>
-        /// <param name="configurator"></param>
-        /// <param name="subSteps"></param>
-        /// <returns></returns>
+        /// <param name="currentConfiguratorName">The name of the configurator item in Wiser.</param>
+        /// <param name="row">The <see cref="DataRow"/> containing the information for the step.</param>
+        /// <param name="mainStepNumber">The 1-based number of the main step.</param>
+        /// <param name="stepNumber">The 1-based number of the step.</param>
+        /// <param name="dependentValue">The value of the step that the step being rendered depends on.</param>
+        /// <param name="configurator">The current configuration that was sent with the request.</param>
+        /// <param name="subSteps">A <see cref="List{T}"/> of <see cref="DataRow"/> objects that represent the sub-steps.</param>
+        /// <returns>The rendered HTML of the step in legacy mode.</returns>
         private async Task<string> RenderStepAsync(string currentConfiguratorName, DataRow row, int mainStepNumber, int stepNumber, string dependentValue = "-1", ConfigurationsModel configurator = null, List<DataRow> subSteps = null)
         {
             var connectedId = row.Field<string>("datasource_connectedid");
@@ -872,16 +878,16 @@ namespace GeeksCoreLibrary.Components.Configurator
         }
 
         /// <summary>
-        /// Render sub step.
+        /// Render a sub step. This is for configurators that run in legacy mode.
         /// </summary>
-        /// <param name="currentConfiguratorName"></param>
-        /// <param name="row"></param>
-        /// <param name="mainStepNumber"></param>
-        /// <param name="stepNumber"></param>
-        /// <param name="subStepNumber"></param>
-        /// <param name="dependentValue"></param>
-        /// <param name="configurator"></param>
-        /// <returns></returns>
+        /// <param name="currentConfiguratorName">The name of the configurator item in Wiser.</param>
+        /// <param name="row">The <see cref="DataRow"/> containing the information for the sub step.</param>
+        /// <param name="mainStepNumber">The 1-based number of the main step.</param>
+        /// <param name="stepNumber">The 1-based number of the step.</param>
+        /// <param name="subStepNumber">The 1-based number of the sub step.</param>
+        /// <param name="dependentValue">The value of the step that the sub step being rendered depends on.</param>
+        /// <param name="configurator">The current configuration that was sent with the request.</param>
+        /// <returns>The rendered HTML of the sub step in legacy mode.</returns>
         private async Task<string> DoRenderingOfSubStepAsync(string currentConfiguratorName, DataRow row, int mainStepNumber, int stepNumber, int subStepNumber, string dependentValue = "-1", ConfigurationsModel configurator = null)
         {
             var connectedId = row.Field<string>("substep_datasource_connectedid");
@@ -1014,19 +1020,19 @@ namespace GeeksCoreLibrary.Components.Configurator
         }
 
         /// <summary>
-        /// render values based on datasource
+        /// Render a step's values based on datasource. This is for configurators that run in legacy mode.
         /// </summary>
-        /// <param name="template"></param>
-        /// <param name="variableName"></param>
-        /// <param name="dataSource"></param>
+        /// <param name="template">The template of a step value.</param>
+        /// <param name="variableName">The variable name for the step.</param>
+        /// <param name="dataSource">The type of the data source.</param>
         /// <param name="connectedId"></param>
-        /// <param name="connectedType"></param>
+        /// <param name="connectedType">A value that's added as a parameter named "connectedType" to the database connection.</param>
         /// <param name="fixedValueList"></param>
-        /// <param name="customQuery"></param>
+        /// <param name="customQuery">The SQL query that's needed if <paramref name="dataSource"/> is set to "customquery".</param>
         /// <param name="checkConnectedId"></param>
         /// <param name="ownDataValues"></param>
-        /// <param name="configuration"></param>
-        /// <param name="dataSelectorId"></param>
+        /// <param name="configuration">The current configuration that was sent with the request.</param>
+        /// <param name="dataSelectorId">The ID of a data selector that's needed if if <paramref name="dataSource"/> is set to "dataselector".</param>
         /// <returns></returns>
         private async Task<(int Count, string RenderedValues)> RenderValuesAsync(string template, string variableName, string dataSource, string connectedId, string connectedType, string fixedValueList = "", string customQuery = "", string checkConnectedId = "", string ownDataValues = "", ConfigurationsModel configuration = null, int dataSelectorId = 0)
         {
