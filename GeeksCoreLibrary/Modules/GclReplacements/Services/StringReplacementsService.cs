@@ -138,10 +138,10 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         }
 
                         // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as translation.
-                        var replacementVariables = GetReplacementVariables($"{{{value}}}");
+                        var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}");
                         foreach (var variable in replacementVariables)
                         {
-                            if (variable.Formatters.All(f => GetFormatterMethod(f) != null))
+                            if (variable.Formatters.All(f => replacementsMediator.GetFormatterMethod(f) != null))
                             {
                                 value = variable.VariableName;
                             }
@@ -175,10 +175,10 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         }
 
                         // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as object name.
-                        var replacementVariables = GetReplacementVariables($"{{{value}}}");
+                        var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}");
                         foreach (var variable in replacementVariables)
                         {
-                            if (variable.Formatters.All(f => GetFormatterMethod(f) != null))
+                            if (variable.Formatters.All(f => replacementsMediator.GetFormatterMethod(f) != null))
                             {
                                 value = variable.VariableName;
                             }
