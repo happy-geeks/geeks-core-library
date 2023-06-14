@@ -97,111 +97,84 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns></returns>
         private static JArray MergeJsonObjectsByKey(JArray array, string key)
         {
+            // If the array contains only one item, or less, there is nothing to merge.
             if (array.Count <= 1)
             {
                 return array;
             }
 
-            var tempList = new Dictionary<string, JObject>();
             var jsonMergeSettings = new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Union };
-
+            var newList = new JArray();
             foreach (var token in array)
             {
-                if (token.Type != JTokenType.Object)
+                // This function is to merge objects based on property values of those objects, so if the token is not an object, there is nothing to merge.
+                if (token is not JObject item)
                 {
                     continue;
                 }
 
-                var item = (JObject)token;
-
+                // If the object doesn't contain the key, there is nothing to merge.
                 if (!item.ContainsKey(key))
                 {
                     continue;
                 }
 
+                // If the value of the key is null, there is nothing to merge.
                 var keyValue = item[key]?.ToString();
                 if (String.IsNullOrWhiteSpace(keyValue))
                 {
                     continue;
                 }
 
-                // Ignore if the item doesn't have a value.
-                if (String.IsNullOrWhiteSpace(keyValue))
+                // If the new list doesn't contain an item with the same key value, add the item to the list.
+                var existingItem = (JObject)newList.FirstOrDefault(i => i[key]?.ToString() == keyValue);
+                if (existingItem == null)
+                {
+                    newList.Add(item);
+                    continue;
+                }
+
+                // Merge the properties of the current item into the existing item.
+                foreach (var property in item.Properties().ToList())
+                {
+                    if (!existingItem.ContainsKey(property.Name))
+                    {
+                        // If the existing item doesn't contain the property, add it.
+                        existingItem.Add(property.Name, property.Value);
+                    }
+                    else if (existingItem[property.Name] != null && existingItem[property.Name] is JArray existingPropertyAsArray && property.Value is JArray currentPropertyAsArray)
+                    {
+                        // If the existing item contains the property, and both the existing property and the current property are arrays, merge the arrays.
+                        existingPropertyAsArray.Merge(currentPropertyAsArray, jsonMergeSettings);
+                    }
+                    else
+                    {
+                        // If the existing item contains the property, and either the existing property or the current property is not an array, overwrite the existing property with the current property.
+                        existingItem[property.Name] = property.Value;
+                    }
+                }
+            }
+
+            // Recursively merge any other sub arrays in the new list.
+            foreach (var token in newList)
+            {
+                if (token is not JObject item)
                 {
                     continue;
                 }
 
-                if (tempList.ContainsKey(keyValue))
+                foreach (var property in item.Properties().ToList())
                 {
-                    item.Properties().ToList().ForEach(delegate (JProperty property)
-                    {
-                        if (tempList[keyValue].ContainsKey(property.Name))
-                        {
-                            if (tempList[keyValue][property.Name] != null && tempList[keyValue][property.Name].Type == JTokenType.Array)
-                            {
-                                // Merge arrays.
-                                ((JArray)tempList[keyValue][property.Name]).Merge(property.Value, jsonMergeSettings);
-                            }
-                            else
-                            {
-                                // Overwrite value.
-                                tempList[keyValue][property.Name] = property.Value;
-                            }
-                        }
-                        else
-                        {
-                            // Add property.
-                            tempList[keyValue].Add(property.Name, property.Value);
-                        }
-                    });
-                }
-                else
-                {
-                    // Add the key to the dictionary.
-                    tempList.Add(keyValue, item);
-                }
-            }
-
-            if (tempList.Count == 0)
-            {
-                return array;
-            }
-
-            // Create new array.
-            var output = new JArray();
-
-            foreach (var item in tempList)
-            {
-                output.Add(item.Value);
-            }
-
-            foreach (var jToken in output)
-            {
-                var item = (JObject)jToken;
-
-                var newObject = new JObject();
-
-                // Merge arrays.
-                foreach (var property in item.Properties())
-                {
-                    if (property.Value.Type != JTokenType.Array)
+                    if (property.Value is not JArray currentPropertyAsArray)
                     {
                         continue;
                     }
 
-                    // Arrays are merged by recursively calling this function.
-                    var val = (JArray)property.Value;
-                    MergeJsonObjectsByKey(val, key);
-                    newObject.Add(property.Name, val);
-                }
-
-                foreach (var property in newObject.Properties())
-                {
-                    item[property.Name] = property.Value;
+                    property.Value = MergeJsonObjectsByKey(currentPropertyAsArray, key);
                 }
             }
 
-            return output;
+            return newList;
         }
 
         /// <summary>
