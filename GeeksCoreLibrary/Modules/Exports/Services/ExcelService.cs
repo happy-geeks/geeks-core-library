@@ -201,7 +201,7 @@ namespace GeeksCoreLibrary.Modules.Exports.Services
                     case "system.sbyte":
                     case "integer":
                     case "float":
-                        cell.CellValue = new CellValue(rowColumnValues[0]?.ToString()?.Replace(",", ".") ?? "");
+                        cell.CellValue = new CellValue(rowColumnValues[i]?.ToString()?.Replace(",", ".") ?? "");
                         cell.DataType = CellValues.Number;
                         break;
 
