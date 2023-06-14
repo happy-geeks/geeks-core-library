@@ -41,7 +41,7 @@ public class VueStepDataModel
     /// Gets or sets the step's options. While it can contain any number of properties, the following are required: "id", "value", "name".
     /// </summary>
     [JsonProperty("options")]
-    public IEnumerable<Dictionary<string, object>> Options { get; set; }
+    public IEnumerable<VueStepOptionDataModel> Options { get; set; }
 
     /// <summary>
     /// Gets or sets the step's dependencies. The dependencies determine the step's visibility.

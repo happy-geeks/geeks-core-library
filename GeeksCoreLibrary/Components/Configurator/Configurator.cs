@@ -10,6 +10,7 @@ using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -1660,7 +1661,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     }
                 }
 
-                var options = new List<Dictionary<string, object>>();
+                var options = new List<VueStepOptionDataModel>();
 
                 if (!loadOptions)
                 {
@@ -1781,11 +1782,41 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
 
                 foreach (var dataRow in stepOptionsDataTable.Rows.Cast<DataRow>())
                 {
-                    options.Add(new Dictionary<string, object>(stepOptionsDataTable.Columns.Count));
+                    var stepOption = new VueStepOptionDataModel
+                    {
+                        AdditionalData = new Dictionary<string, object>()
+                    };
+
                     foreach (var dataColumn in stepOptionsDataTable.Columns.Cast<DataColumn>())
                     {
-                        options.Last()[dataColumn.ColumnName] = dataRow[dataColumn];
+                        switch (dataColumn.ColumnName)
+                        {
+                            case "id":
+                                stepOption.Id = Convert.ToString(dataRow[dataColumn]);
+                                break;
+                            case "value":
+                                stepOption.Value = Convert.ToString(dataRow[dataColumn]);
+                                break;
+                            case "name":
+                                stepOption.Name = Convert.ToString(dataRow[dataColumn]);
+                                break;
+                            case "isDefaultOption":
+                            {
+                                var value = dataRow[dataColumn];
+                                if (value is string stringValue)
+                                {
+                                    stepOption.IsDefaultOption = stringValue.InList("1", "true");
+                                }
+                                stepOption.IsDefaultOption = Convert.ToBoolean(dataRow[dataColumn]);
+                                break;
+                            }
+                            default:
+                                stepOption.AdditionalData.Add(dataColumn.ColumnName, dataRow[dataColumn]);
+                                break;
+                        }
                     }
+
+                    options.Add(stepOption);
                 }
 
                 stepData.Options = options;
