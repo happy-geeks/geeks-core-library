@@ -9,9 +9,9 @@ public class JsonHelpers
     /// <summary>
     /// If you have a JSON array with objects and those objects have sub objects, this function will merge the sub objects into the parent object.
     /// </summary>
-    /// <param name="input"></param>
-    /// <returns></returns>
-    public static JArray FlattenJsonArray(JArray input, string prefix = "")
+    /// <param name="input">The JArray to flatten.</param>
+    /// <returns>The flattened JArray.</returns>
+    public static JArray FlattenJsonArray(JArray input)
     {
         if (input == null || !input.Any())
         {
@@ -56,7 +56,7 @@ public class JsonHelpers
 
                 foreach (var property in arrayProperties)
                 {
-                    var array = FlattenJsonArray((JArray) property.Value, $"{property.Name}_");
+                    var array = FlattenJsonArray((JArray) property.Value);
 
                     if (!array.Any())
                     {
@@ -92,7 +92,7 @@ public class JsonHelpers
                             // Add the properties from the current array item to the flattened object.
                             foreach (var arrayProperty in subItemAsObject.Properties())
                             {
-                                flattenedObject.Add($"{prefix}{property.Name}_{arrayProperty.Name}", arrayProperty.Value);
+                                flattenedObject.Add($"{property.Name}_{arrayProperty.Name}", arrayProperty.Value);
                             }
 
                             output.Add(flattenedObject);
