@@ -13,11 +13,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         public const string TemplateCacheRootDirectoryName = "Templates";
         public const string ComponentsCacheRootDirectoryName = "Components";
         public const string PageCacheRootDirectoryName = "Pages";
-        
+
         public const string PageWidgetEntityType = "page-widget";
         public const int PageWidgetParentLinkType = 1;
         public const string PageWidgetLocationPropertyName = "location";
         public const string PageWidgetHtmlPropertyName = "html";
         public const PageWidgetLocations PageWidgetDefaultLocation = PageWidgetLocations.HeaderBottom;
+
+        public const string DynamicComponentRenderingError = "An error occurred while generating component with id";
+        public const string TemplateRenderingError = "An error occurred while rendering template with id";
     }
 }
