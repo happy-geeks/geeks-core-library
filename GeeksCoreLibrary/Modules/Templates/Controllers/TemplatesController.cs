@@ -16,6 +16,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Interfaces;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -34,8 +35,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         private readonly IWiserItemsService wiserItemsService;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IObjectsService objectsService;
+        private readonly IBranchesService branchesService;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService)
+        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IBranchesService branchesService)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -44,6 +46,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             this.wiserItemsService = wiserItemsService;
             this.stringReplacementsService = stringReplacementsService;
             this.objectsService = objectsService;
+            this.branchesService = branchesService;
         }
 
         [Route("template.gcl")]
@@ -214,6 +217,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 if (String.IsNullOrWhiteSpace(viewModel.MetaData.PageTitle))
                 {
                     viewModel.MetaData.PageTitle = contentTemplate.Name;
+                }
+
+                var branchDatabase = branchesService.GetDatabaseNameFromCookie();
+                if (!String.IsNullOrWhiteSpace(branchDatabase))
+                {
+                    viewModel.MetaData.PageTitle = $"BRANCH {branchDatabase} - {viewModel.MetaData.PageTitle}";
                 }
 
                 return View(viewModel);
