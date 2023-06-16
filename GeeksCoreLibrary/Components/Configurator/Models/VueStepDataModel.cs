@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -123,6 +122,24 @@ public class VueStepDataModel
     /// </summary>
     [JsonProperty("valueDisplayName")]
     public string CurrentValueDisplayName { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the step's options should open a modal when selected.
+    /// </summary>
+    [JsonProperty("optionsOpenModal")]
+    public bool OptionsOpenModal { get; set; }
+
+    /// <summary>
+    /// Gets or sets the content (HTML) of the modal.
+    /// </summary>
+    [JsonProperty("modalContent")]
+    public string ModalContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the query selector for the modal container.
+    /// </summary>
+    [JsonProperty("modalContainerSelector")]
+    public string ModalContainerSelector { get; set; }
 
     /// <summary>
     /// Gets or sets extra data which are retrieved from the database.

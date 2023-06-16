@@ -459,17 +459,21 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         validationRegexErrorMessage.`value` AS validationRegexErrorMessage,
         IF(
             templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
-            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = templatesFromStepId.`value` AND `key` = 'step_template'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'step_template'),
             CONCAT_WS('', stepTemplate.`value`, stepTemplate.long_value)
         ) AS stepTemplate,
         IF(
             templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
-            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = templatesFromStepId.`value` AND `key` = 'values_template'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'values_template'),
             CONCAT_WS('', stepOptionTemplate.`value`, stepOptionTemplate.long_value)
         ) AS stepOptionTemplate,
         CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
         CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
+
+        IFNULL(optionsOpenModal.`value`, '0') = '1' AS optionsOpenModal,
+        CONCAT_WS('', modalTemplate.`value`, stepOptionsQuery.long_value) AS modalTemplate,
+        modalContainerSelector.`value` AS modalContainerSelector,
 
         stepLink.ordering
     FROM {WiserTableNames.WiserItem} AS configurator
@@ -499,6 +503,10 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS extraDataQuery ON extraDataQuery.item_id = step.id AND extraDataQuery.`key` = 'extra_data_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = step.id AND urlRegex.`key` = 'urlregex'
 
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS optionsOpenModal ON optionsOpenModal.item_id = step.id AND optionsOpenModal.`key` = 'options_open_modal'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS modalTemplate ON modalTemplate.item_id = step.id AND modalTemplate.`key` = 'modal_template'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS modalContainerSelector ON modalContainerSelector.item_id = step.id AND modalContainerSelector.`key` = 'modal_container_selector'
+
     WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.id = ?configuratorId
 
     UNION
@@ -524,17 +532,21 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         # Layout properties.
         IF(
             templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
-            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = templatesFromStepId.`value` AND `key` = 'step_template'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'step_template'),
             CONCAT_WS('', stepTemplate.`value`, stepTemplate.long_value)
         ) AS stepTemplate,
         IF(
             templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
-            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = templatesFromStepId.`value` AND `key` = 'values_template'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'values_template'),
             CONCAT_WS('', stepOptionTemplate.`value`, stepOptionTemplate.long_value)
         ) AS stepOptionTemplate,
         CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
         CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
+
+        IFNULL(optionsOpenModal.`value`, '0') = '1' AS optionsOpenModal,
+        CONCAT_WS('', modalTemplate.`value`, stepOptionsQuery.long_value) AS modalTemplate,
+        modalContainerSelector.`value` AS modalContainerSelector,
 
         stepLink.ordering
     FROM {WiserTableNames.WiserItem} AS parentStep
@@ -565,6 +577,10 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS extraDataQuery ON extraDataQuery.item_id = step.id AND extraDataQuery.`key` = 'extra_data_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = step.id AND urlRegex.`key` = 'urlregex'
 
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS optionsOpenModal ON optionsOpenModal.item_id = step.id AND optionsOpenModal.`key` = 'options_open_modal'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS modalTemplate ON modalTemplate.item_id = step.id AND modalTemplate.`key` = 'modal_template'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS modalContainerSelector ON modalContainerSelector.item_id = step.id AND modalContainerSelector.`key` = 'modal_container_selector'
+
     WHERE parentStep.entity_type IN ('hoofdstap', 'stap', 'substap')
 )
 SELECT
@@ -587,6 +603,9 @@ SELECT
     stepOptionsQuery,
     extraDataQuery,
     urlRegex,
+    optionsOpenModal,
+    modalTemplate,
+    modalContainerSelector,
     ordering
 FROM cte
 ORDER BY parentStepId, ordering";
@@ -682,7 +701,10 @@ ORDER BY parentStepId, ordering";
                     StepOptionTemplate = dataRow.Field<string>("stepOptionTemplate"),
                     StepOptionsQuery = dataRow.Field<string>("stepOptionsQuery"),
                     ExtraDataQuery = dataRow.Field<string>("extraDataQuery"),
-                    UrlRegex = dataRow.Field<string>("urlRegex")
+                    UrlRegex = dataRow.Field<string>("urlRegex"),
+                    OptionsOpenModal = Convert.ToBoolean(dataRow["optionsOpenModal"]),
+                    ModalContent = dataRow.Field<string>("modalTemplate"),
+                    ModalContainerSelector = dataRow.Field<string>("modalContainerSelector")
                 };
 
                 stepsData.Add(step);

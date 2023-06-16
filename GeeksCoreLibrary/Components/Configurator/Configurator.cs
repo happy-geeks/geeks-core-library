@@ -1603,11 +1603,15 @@ namespace GeeksCoreLibrary.Components.Configurator
                 throw new ArgumentNullException(nameof(configuration));
             }
 
-            var result = await configuratorsService.GetVueConfiguratorDataAsync(configuration.ConfiguratorName);
-            if (result == null || result.StepsData.Count == 0)
+            var configurator = await configuratorsService.GetVueConfiguratorDataAsync(configuration.ConfiguratorName);
+
+            if (configurator == null || configurator.StepsData.Count == 0)
             {
-                return result;
+                return configurator;
             }
+
+            // Make a clone of the original so the cached version is not modified.
+            var result = ObjectCloner.ObjectCloner.DeepClone(configurator);
 
             List<string> stepsToProcess;
             var stepsToRemove = new List<string>();
@@ -1766,7 +1770,7 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
                     continue;
                 }
 
-                // Some values can be overriden through the data query.
+                // Some values of the step can be overriden through the step options query.
                 if (stepOptionsDataTable.Columns.Contains("minimumValue"))
                 {
                     stepData.MinimumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["minimumValue"]);
@@ -1780,6 +1784,8 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
                     stepData.ValidationRegex = Convert.ToString(stepOptionsDataTable.Rows[0]["validationRegex"]);
                 }
 
+                // Handle the data rows.
+                var stepOptionProperties = typeof(VueStepOptionDataModel).GetProperties();
                 foreach (var dataRow in stepOptionsDataTable.Rows.Cast<DataRow>())
                 {
                     var stepOption = new VueStepOptionDataModel
@@ -1789,30 +1795,37 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
 
                     foreach (var dataColumn in stepOptionsDataTable.Columns.Cast<DataColumn>())
                     {
-                        switch (dataColumn.ColumnName)
+                        var columnName = dataColumn.ColumnName;
+                        var columnValue = dataRow[dataColumn];
+                        var property = stepOptionProperties.FirstOrDefault(property => property.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+                        if (property != null)
                         {
-                            case "id":
-                                stepOption.Id = Convert.ToString(dataRow[dataColumn]);
-                                break;
-                            case "value":
-                                stepOption.Value = Convert.ToString(dataRow[dataColumn]);
-                                break;
-                            case "name":
-                                stepOption.Name = Convert.ToString(dataRow[dataColumn]);
-                                break;
-                            case "isDefaultOption":
+                            // Check if the property is a boolean and if so, convert the value to a boolean.
+                            if (property.PropertyType == typeof(bool))
                             {
-                                var value = dataRow[dataColumn];
-                                if (value is string stringValue)
+                                // String values are handled differently.
+                                if (columnValue is string stringValue)
                                 {
-                                    stepOption.IsDefaultOption = stringValue.InList("1", "true");
+                                    property.SetValue(stepOption, stringValue.InList(StringComparer.OrdinalIgnoreCase, "1", "true"));
                                 }
-                                stepOption.IsDefaultOption = Convert.ToBoolean(dataRow[dataColumn]);
-                                break;
+                                else
+                                {
+                                    property.SetValue(stepOption, Convert.ToBoolean(columnValue));
+                                }
                             }
-                            default:
-                                stepOption.AdditionalData.Add(dataColumn.ColumnName, dataRow[dataColumn]);
-                                break;
+                            else
+                            {
+                                var type = property.PropertyType;
+                                type = Nullable.GetUnderlyingType(type) ?? type;
+
+                                // All other data types are just added as-is.
+                                property.SetValue(stepOption, Convert.ChangeType(columnValue, type));
+                            }
+                        }
+                        else
+                        {
+                            // Add the value to the additional data dictionary.
+                            stepOption.AdditionalData.Add(columnName, columnValue);
                         }
                     }
 
