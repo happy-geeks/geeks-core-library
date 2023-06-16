@@ -492,6 +492,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 paymentMethodFee.`value` AS paymentMethodFee,
                                 paymentMethodVisibility.`value` AS paymentMethodVisibility,
                                 paymentMethodExternalName.`value` AS paymentMethodExternalName,
+                                paymentMethodMinimalAmount.`value` AS paymentMethodMinimalAmount,
+                                paymentMethodMaximumAmount.`value` AS paymentMethodMaximumAmount,
+                                IF(paymentMethodUseMinimalAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMinimalAmount,
+                                IF(paymentMethodUseMaximumAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMaximumAmount,
 
                                 paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
@@ -519,6 +523,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
 
                             # PSP
                             JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
@@ -556,12 +564,40 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             databaseConnection.AddParameter("id", orderProcessId);
             var dataTable = await databaseConnection.GetAsync(query);
             var results = dataTable.Rows.Cast<DataRow>().Select(DataRowToPaymentMethodSettingsModel).ToList();
-
+            
+            // get total amount of order
+            var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync();
+            var basketSettings = await shoppingBasketsService.GetSettingsAsync();
+            var totalPrice = 0M;
+            foreach (var (main, lines) in shoppingBaskets)
+            {
+                totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings);
+            }
+            
+            // check if paymentmethods are allowed for the price that the costumer should pay
+            results = results.Where(paymentMethod =>
+            {
+                // check if total price is below the minimal
+                if (paymentMethod.UseMinimalAmountCheck && totalPrice < paymentMethod.MinimalAmountCheck)
+                {
+                    return false;
+                }
+               
+                // check if total price is above the maximum 
+                if (paymentMethod.UseMaximumAmountCheck && totalPrice > paymentMethod.MaximumAmountCheck)
+                {
+                    return false;
+                }
+                
+                // amount is within range or checks are disabled 
+                return true;
+            }).ToList();
+            
             if (loggedInUser == null)
             {
                 return results;
             }
-
+            
             // Only get the payment methods that the user can see.
             results = results.Where(paymentMethod =>
             {
@@ -665,6 +701,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 paymentMethodFee.`value` AS paymentMethodFee,
                                 paymentMethodVisibility.`value` AS paymentMethodVisibility,
                                 paymentMethodExternalName.`value` AS paymentMethodExternalName,
+                                paymentMethodMinimalAmount.`value` AS paymentMethodMinimalAmount,
+                                paymentMethodMaximumAmount.`value` AS paymentMethodMaximumAmount,
+                                paymentMethodUseMinimalAmount.`value` AS paymentMethodUseMinimalAmount,
+                                paymentMethodUseMaximumAmount.`value` AS paymentMethodUseMaximumAmount,
 
                                 paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
@@ -688,6 +728,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
 
                             # PSP
                             JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
@@ -1365,13 +1409,20 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         {
             // Build the payment settings model.
             Decimal.TryParse(dataRow.Field<string>("paymentMethodFee")?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var fee);
+            Decimal.TryParse(dataRow.Field<string>(Constants.PaymentMethodMinimalAmountProperty)?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var MinimalAmountProperty);
+            Decimal.TryParse(dataRow.Field<string>(Constants.PaymentMethodMaximumAmountProperty)?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var MaximumAmountProperty);
+            
             var result = new PaymentMethodSettingsModel
             {
                 Id = dataRow.Field<ulong>("paymentMethodId"),
                 Title = dataRow.Field<string>("paymentMethodTitle"),
                 Fee = fee,
                 Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("paymentMethodVisibility") ?? "Always"),
-                ExternalName = dataRow.Field<string>("paymentMethodExternalName")
+                ExternalName = dataRow.Field<string>("paymentMethodExternalName"),
+                UseMinimalAmountCheck =  Convert.ToBoolean(dataRow[Constants.PaymentMethodUseMinimalAmountProperty]),
+                UseMaximumAmountCheck =  Convert.ToBoolean(dataRow[Constants.PaymentMethodUseMaximumAmountProperty]),
+                MinimalAmountCheck =  MinimalAmountProperty,
+                MaximumAmountCheck = MaximumAmountProperty
             };
 
             // Build the PSP settings model based on the type of PSP.
