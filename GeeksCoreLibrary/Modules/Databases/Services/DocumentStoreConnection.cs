@@ -122,7 +122,13 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
         
         var items = documents.FetchAll();
 
-        return JArray.Parse(items.ToString());
+        JArray array = new JArray();
+        foreach (var item in items)
+        {
+            array.Add(JToken.Parse(item.ToString()));
+        }
+
+        return array;
     }
 
     /// <inheritdoc />
@@ -206,6 +212,32 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     {
         var collection = GetCollection(collectionName);
         await collection.Modify("id = :docId").Patch(JsonConvert.SerializeObject(item, jsonSerializerSettings)).Bind("docId", id).ExecuteAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<ulong> RemoveDocumentsAsync(string collectionName, string condition = "")
+    {
+        EnsureOpenSession();
+        var collection = GetCollection(collectionName);
+        var removeStatement = collection.Remove(condition);
+        
+        // Bind the parameters.
+        foreach (var parameter in parameters)
+        {
+            removeStatement.Bind(parameter.Key, parameter.Value);
+        }
+
+        var result = await removeStatement.ExecuteAsync();
+
+        return result.AffectedItemsCount;
+    }
+    
+    /// <inheritdoc />
+    public async Task RemoveDocumentAsync(string collectionName, ulong id)
+    {
+        EnsureOpenSession();
+        var collection = GetCollection(collectionName);
+        await collection.Remove("id = :docId").Bind("docId", id).ExecuteAsync();
     }
 
     /// <inheritdoc />

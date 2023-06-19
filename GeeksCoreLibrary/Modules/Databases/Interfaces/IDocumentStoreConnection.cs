@@ -3,11 +3,10 @@ using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.Databases.Interfaces;
 
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Threading.Tasks;
-using GeeksCoreLibrary.Modules.Databases.Models;
+using Models;
 using MySqlX.XDevAPI;
 using MySqlX.XDevAPI.Common;
 using MySqlX.XDevAPI.CRUD;
@@ -30,16 +29,16 @@ using MySqlX.XDevAPI.CRUD;
     /// <summary>
     /// Retrieves documents from a collection, filtered by a condition.
     /// </summary>
-    /// <param name="collectionName"></param>
-    /// <param name="condition"></param>
+    /// <param name="collectionName">The name of the collection to insert the new item into.</param>
+    /// <param name="condition">The condition by which the documents will be retrieved</param>
     /// <returns></returns>
     Task<JArray> GetDocumentsAsync(string collectionName, string condition);
 
     /// <summary>
     /// Retrieves a single document from a collection by ID.
     /// </summary>
-    /// <param name="collectionName"></param>
-    /// <param name="id"></param>
+    /// <param name="collectionName">The name of the collection to insert the new item into.</param>
+    /// <param name="id">id of the document</param>
     /// <returns></returns>
     Task<JObject> GetItemByIdAsync(string collectionName, object id);
 
@@ -74,6 +73,22 @@ using MySqlX.XDevAPI.CRUD;
     Task ModifyDocumentByIdAsync(string collectionName, string id, object item);
 
     /// <summary>
+    /// Removes all documents from the collection
+    /// </summary>
+    /// <param name="collectionName">The name of the collection to insert the new item into.</param>
+    /// <param name="condition">The condition by which the documents will be retrieved</param>
+    /// <returns>Amount of documents that were deleted</returns>
+    Task<ulong> RemoveDocumentsAsync(string collectionName, string condition = "");
+    
+    /// <summary>
+    /// Removes the given document from the document store
+    /// </summary>
+    /// <param name="collectionName">The name of the collection to insert the new item into.</param>
+    /// <param name="id">The exact document ID.</param>
+    /// <returns></returns>
+    Task RemoveDocumentAsync(string collectionName, ulong id);
+
+    /// <summary>
     /// Attempts to start a transaction.
     /// </summary>
     void StartTransaction();
@@ -88,6 +103,10 @@ using MySqlX.XDevAPI.CRUD;
     /// </summary>
     void RollbackTransaction();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Checks whether the collection with the given name exists
+    /// </summary>
+    /// <param name="name">The name of the collection</param>
+    /// <returns>Boolean indicating whether the collection exists</returns>
     Task<bool> CollectionExists(string name);
 }

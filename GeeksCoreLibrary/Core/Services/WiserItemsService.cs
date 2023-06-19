@@ -117,7 +117,7 @@ namespace GeeksCoreLibrary.Core.Services
                     if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
                     if (isNewlycreated)
                     {
-                        wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck);
+                        wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck, storeTypeOverride);
 
                         // When a new item has been created the values always need to be saved. There is no use to check if they have been changed since they are all new.
                         alwaysSaveValues = true;
@@ -162,13 +162,13 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
+        public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null)
         {
-            return await CreateAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, skipPermissionsCheck);
+            return await CreateAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, skipPermissionsCheck, storeTypeOverride);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> CreateAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false)
+        public async Task<WiserItemModel> CreateAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null)
         {
             if (String.IsNullOrWhiteSpace(wiserItem?.EntityType))
             {
@@ -188,10 +188,11 @@ namespace GeeksCoreLibrary.Core.Services
                     };
                 }
             }
-
+            var storeType = storeTypeOverride;
             var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
-            
-            if (entityTypeSettings?.StoreType is StoreType.DocumentStore or StoreType.Hybrid)
+            storeType ??= entityTypeSettings.StoreType;
+
+            if (storeType is StoreType.DocumentStore or StoreType.Hybrid)
             {
                 return await documentStorageService.StoreItemAsync(wiserItem, entityTypeSettings);
             }
