@@ -470,6 +470,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
         CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
+        (SELECT JSON_OBJECTAGG(`key`, CONCAT_WS('', `value`, long_value)) FROM wiser_itemdetail WHERE item_id = step.id AND groupname = 'extra_data') AS extraData,
 
         IFNULL(optionsOpenModal.`value`, '0') = '1' AS optionsOpenModal,
         CONCAT_WS('', modalTemplate.`value`, stepOptionsQuery.long_value) AS modalTemplate,
@@ -509,7 +510,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
 
     WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.id = ?configuratorId
 
-    UNION
+    UNION ALL
 
     SELECT
         step.id AS stepId,
@@ -543,6 +544,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
         CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
+        (SELECT JSON_OBJECTAGG(`key`, CONCAT_WS('', `value`, long_value)) FROM wiser_itemdetail WHERE item_id = step.id AND groupname = 'extra_data') AS extraData,
 
         IFNULL(optionsOpenModal.`value`, '0') = '1' AS optionsOpenModal,
         CONCAT_WS('', modalTemplate.`value`, stepOptionsQuery.long_value) AS modalTemplate,
@@ -603,6 +605,7 @@ SELECT
     stepOptionsQuery,
     extraDataQuery,
     urlRegex,
+    extraData,
     optionsOpenModal,
     modalTemplate,
     modalContainerSelector,
@@ -681,6 +684,9 @@ ORDER BY parentStepId, ordering";
                 var maximumValueErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("maximumValueErrorMessage"));
                 var validationRegexErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("validationRegexErrorMessage"));
 
+                var extraDataJson = dataRow.Field<string>("extraData");
+                var extraData = !String.IsNullOrWhiteSpace(extraDataJson) ? Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, JToken>>(extraDataJson) : null;
+
                 var step = new VueStepDataModel
                 {
                     StepId = Convert.ToUInt64(dataRow["stepId"]),
@@ -704,7 +710,8 @@ ORDER BY parentStepId, ordering";
                     UrlRegex = dataRow.Field<string>("urlRegex"),
                     OptionsOpenModal = Convert.ToBoolean(dataRow["optionsOpenModal"]),
                     ModalContent = dataRow.Field<string>("modalTemplate"),
-                    ModalContainerSelector = dataRow.Field<string>("modalContainerSelector")
+                    ModalContainerSelector = dataRow.Field<string>("modalContainerSelector"),
+                    ExtraData = extraData
                 };
 
                 stepsData.Add(step);

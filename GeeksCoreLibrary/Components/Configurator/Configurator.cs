@@ -13,7 +13,6 @@ using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
-using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -25,7 +24,6 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
-using Constants = GeeksCoreLibrary.Components.Configurator.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.Configurator
 {
@@ -281,6 +279,17 @@ namespace GeeksCoreLibrary.Components.Configurator
             stepHtml.Append($" :enabled=\"stepEnabled('{stepData.StepName}')\"");
             stepHtml.Append('>');
             stepHtml.Append(Settings.StepHtml.Replace("{stepContent}", template));
+
+            // Add modal HTML if the step modal is enabled.
+            if (stepData.OptionsOpenModal)
+            {
+                stepHtml.Append("<teleport :to=\"step.modalContainerSelector ?? 'body'\">");
+                stepHtml.Append("<modal v-for=\"option in step.options\" :step-name=\"step.stepName\" :key=\"option.id\">");
+                stepHtml.Append(await TemplatesService.DoReplacesAsync(stepData.ModalContent, removeUnknownVariables: false));
+                stepHtml.Append("</modal>");
+                stepHtml.Append("</teleport>");
+            }
+
             stepHtml.Append("</step>");
 
             return stepHtml.ToString();
@@ -1674,32 +1683,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                 }
 
                 // Retrieve extra data from the step's item details.
-                var extraData = new Dictionary<string, JToken>();
-                DatabaseConnection.ClearParameters();
-                DatabaseConnection.AddParameter("stepId", stepData.StepId);
-                DatabaseConnection.AddParameter("groupName", Constants.StepExtraDataPropertyName);
-                var extraDataDataTable = await DatabaseConnection.GetAsync($@"
-SELECT `key`, CONCAT_WS('', `value`, long_value) AS `value`
-FROM {WiserTableNames.WiserItemDetail}
-WHERE item_id = ?stepId AND groupname = ?groupName");
-
-                if (extraDataDataTable.Rows.Count > 0)
-                {
-                    foreach (var dataRow in extraDataDataTable.Rows.Cast<DataRow>())
-                    {
-                        var key = dataRow.Field<string>("key");
-                        var value = dataRow.Field<string>("value");
-                        if (String.IsNullOrWhiteSpace(key) || String.IsNullOrWhiteSpace(value))
-                        {
-                            continue;
-                        }
-
-                        value = await configuratorsService.ReplaceConfiguratorItemsAsync(value, configuration, false);
-                        value = await StringReplacementsService.DoAllReplacementsAsync(value);
-
-                        extraData.Add(key, new JValue(value));
-                    }
-                }
+                var extraData = stepData.ExtraData ?? new Dictionary<string, JToken>();
 
                 // Run extra data query if one is available.
                 var extraDataQuery = stepData.ExtraDataQuery;
@@ -1707,7 +1691,7 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
                 {
                     extraDataQuery = await configuratorsService.ReplaceConfiguratorItemsAsync(stepData.ExtraDataQuery, configuration, true);
                     extraDataQuery = await TemplatesService.DoReplacesAsync(extraDataQuery, handleRequest: false, removeUnknownVariables: false, forQuery: true);
-                    extraDataDataTable = await DatabaseConnection.GetAsync(extraDataQuery);
+                    var extraDataDataTable = await DatabaseConnection.GetAsync(extraDataQuery);
 
                     // Handle first row and add it to the step's extra data.
                     if (extraDataDataTable.Rows.Count > 0)
