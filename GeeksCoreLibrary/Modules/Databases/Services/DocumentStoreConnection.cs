@@ -186,23 +186,15 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     {
         var collection = GetCollection(collectionName);
 
-        var jsonItem = JObject.FromObject(item, new JsonSerializer()
-        {
-            ContractResolver = new DefaultContractResolver
-            {
-                NamingStrategy = new CamelCaseNamingStrategy()
-            },
-            Formatting = Formatting.Indented
-        });
-        
+        var itemString = JsonConvert.SerializeObject(item, jsonSerializerSettings);
         if (id == 0UL)
         {
             // New item.
-            var result = await collection.Add(jsonItem).ExecuteAsync();
+            var result = await collection.Add(itemString).ExecuteAsync();
             return result.GeneratedIds[0];
         }
         
-        await collection.Modify("id = :docId").Patch(jsonItem).Bind("docId", $"%{id}").ExecuteAsync();
+        await collection.Modify("id = :itemId").Patch(itemString).Bind("itemId", $"{id}").ExecuteAsync();
 
         return null;
     }
@@ -231,13 +223,13 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
 
         return result.AffectedItemsCount;
     }
-    
+
     /// <inheritdoc />
-    public async Task RemoveDocumentAsync(string collectionName, ulong id)
+    public async Task RemoveDocumentAsync(string collectionName, string documentId)
     {
-        EnsureOpenSession();
-        var collection = GetCollection(collectionName);
-        await collection.Remove("id = :docId").Bind("docId", id).ExecuteAsync();
+        ClearParameters();
+        AddParameter("docId", documentId);
+        await RemoveDocumentsAsync(collectionName, "_id = :docId");
     }
 
     /// <inheritdoc />

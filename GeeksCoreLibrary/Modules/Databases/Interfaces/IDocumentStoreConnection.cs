@@ -79,14 +79,14 @@ using MySqlX.XDevAPI.CRUD;
     /// <param name="condition">The condition by which the documents will be retrieved</param>
     /// <returns>Amount of documents that were deleted</returns>
     Task<ulong> RemoveDocumentsAsync(string collectionName, string condition = "");
-    
+
     /// <summary>
     /// Removes the given document from the document store
     /// </summary>
     /// <param name="collectionName">The name of the collection to insert the new item into.</param>
-    /// <param name="id">The exact document ID.</param>
+    /// <param name="documentId">The exact document ID.</param>
     /// <returns></returns>
-    Task RemoveDocumentAsync(string collectionName, ulong id);
+    Task RemoveDocumentAsync(string collectionName, string documentId);
 
     /// <summary>
     /// Attempts to start a transaction.

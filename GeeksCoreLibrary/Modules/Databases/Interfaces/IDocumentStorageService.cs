@@ -15,17 +15,9 @@ public interface IDocumentStorageService
     /// </summary>
     /// <param name="wiserItem"></param>
     /// <param name="entitySettings"></param>
-    /// <returns>The retrieved wiser item</returns>
-    Task<WiserItemModel> StoreItemAsync(WiserItemModel wiserItem, EntitySettingsModel entitySettings = null);
-    
-    /// <summary>
-    /// Gets items that were changed after the given date
-    /// </summary>
-    /// <param name="dateTime">the date the items are compared by</param>
-    /// <param name="entitySettings">Optional: settings for the entityType</param>
-    /// <returns>Collection of retrieved wiser items</returns>
-    Task<IReadOnlyCollection<WiserItemModel>> GetItemsChangedAfter(DateTime dateTime, EntitySettingsModel entitySettings = null);
-    
+    /// <returns>Tuple of the retrieved wiser item and document id</returns>
+    Task<(WiserItemModel model, string documentId)> StoreItemAsync(WiserItemModel wiserItem, EntitySettingsModel entitySettings = null);
+
     /// <summary>
     /// Gets the items that
     /// </summary>
@@ -33,7 +25,7 @@ public interface IDocumentStorageService
     /// <param name="parameters"></param>
     /// <param name="entitySettings"></param>
     /// <returns></returns>
-    Task<IReadOnlyCollection<WiserItemModel>> GetItems(string condition, Dictionary<string, object> parameters, EntitySettingsModel entitySettings = null);
+    Task<IReadOnlyCollection<(WiserItemModel model, string documentId)>> GetItems(string condition, Dictionary<string, object> parameters, EntitySettingsModel entitySettings = null);
 
     /// <summary>
     /// Creates the collection the documents will be stored in
@@ -49,18 +41,11 @@ public interface IDocumentStorageService
     /// <returns></returns>
     public Task<ulong> EmptyItemCollectionAsync(EntitySettingsModel entitySettings = null);
 
-    /// <summary>
-    /// Delete all items older than the given date
-    /// </summary>
-    /// <param name="dateTime">The datetime used for the age comparison</param>
-    /// <param name="entitySettings">Optional: settings for the entityType</param>
-    /// <returns></returns>
-    public Task<ulong> DeleteItemOlderThanAsync(DateTime dateTime, EntitySettingsModel entitySettings = null);
 
     /// <summary>
     /// Delete the given item
     /// </summary>
-    /// <param name="wiserItem">The item that should be deleted</param>
+    /// <param name="documentId">The exact document id</param>
     /// <param name="entitySettings">Optional: settings for the entityType</param>
-    public Task DeleteItem(WiserItemModel wiserItem, EntitySettingsModel entitySettings = null);
+    Task DeleteItem(string documentId, EntitySettingsModel entitySettings = null);
 }

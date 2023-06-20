@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -65,7 +66,7 @@ public class MySqlDocumentStorageService : IDocumentStorageService, IScopedServi
     }
 
     /// <inheritdoc />
-    public async Task<WiserItemModel> StoreItemAsync(WiserItemModel wiserItem, EntitySettingsModel entitySettings = null)
+    public async Task<(WiserItemModel model, string documentId)> StoreItemAsync(WiserItemModel wiserItem, EntitySettingsModel entitySettings = null)
     {
         var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
         
@@ -73,7 +74,7 @@ public class MySqlDocumentStorageService : IDocumentStorageService, IScopedServi
         
         var id = await documentStorageConnection.InsertOrUpdateDocumentAsync($"{prefix}{WiserTableNames.WiserItemStore}", wiserItem, wiserItem.Id);
 
-        return wiserItem;
+        return (wiserItem, id);
     }
     
     /// <inheritdoc />
@@ -82,39 +83,17 @@ public class MySqlDocumentStorageService : IDocumentStorageService, IScopedServi
         var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
         return await documentStorageConnection.RemoveDocumentsAsync($"{prefix}wiser_item_store");
     }
-    
+
     /// <inheritdoc />
-    public async Task<ulong> DeleteItemOlderThanAsync(DateTime dateTime, EntitySettingsModel entitySettings = null)
-    {
-        var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
-        documentStorageConnection.ClearParameters();
-        documentStorageConnection.AddParameter("changedOn", dateTime.ToString(DateTimeFormatInfo.InvariantInfo));
-        
-        return await documentStorageConnection.RemoveDocumentsAsync($"{prefix}wiser_item_store", "changedOn > :changedOn");
-    }
-    
-    /// <inheritdoc />
-    public async Task DeleteItem(WiserItemModel wiserItem, EntitySettingsModel entitySettings = null)
+    public async Task DeleteItem(string documentId, EntitySettingsModel entitySettings = null)
     {
         var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
 
-        await documentStorageConnection.RemoveDocumentAsync($"{prefix}wiser_item_store", wiserItem.Id);
-    }
-    
-    /// <inheritdoc />
-    public async Task<IReadOnlyCollection<WiserItemModel>> GetItemsChangedAfter(DateTime dateTime, EntitySettingsModel entitySettings = null)
-    {
-        var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
-        documentStorageConnection.ClearParameters();
-        documentStorageConnection.AddParameter("changeDate", dateTime);
-
-        var array = await documentStorageConnection.GetDocumentsAsync($"{prefix}{WiserTableNames.WiserItemStore}", ":changeDate > changedOn");
-
-        return array.ToObject<List<WiserItemModel>>().AsReadOnly();
+        await documentStorageConnection.RemoveDocumentAsync($"{prefix}wiser_item_store", documentId);
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyCollection<WiserItemModel>> GetItems(string condition, Dictionary<string, object> parameters, EntitySettingsModel entitySettings = null)
+    public async Task<IReadOnlyCollection<(WiserItemModel model, string documentId)>> GetItems(string condition, Dictionary<string, object> parameters, EntitySettingsModel entitySettings = null)
     {
         var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
         documentStorageConnection.ClearParameters();
@@ -125,6 +104,10 @@ public class MySqlDocumentStorageService : IDocumentStorageService, IScopedServi
 
         var array = await documentStorageConnection.GetDocumentsAsync($"{prefix}wiser_item_store", condition);
 
-        return array.ToObject<List<WiserItemModel>>().AsReadOnly();
+        var collection = array.ToObject<List<WiserItemModel>>().AsReadOnly();
+
+        var ids = array.Select(t => t.Value<string>("_id"));
+
+        return collection.Zip(ids).ToList().AsReadOnly();
     }
 }

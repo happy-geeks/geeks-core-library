@@ -105,7 +105,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             if (storeType is StoreType.DocumentStore or StoreType.Hybrid)
             {
-                return await documentStorageService.StoreItemAsync(wiserItem, entitySettings);
+                return (await documentStorageService.StoreItemAsync(wiserItem, entitySettings)).model;
             }
             
             var isNewlycreated = wiserItem.Id == 0;
@@ -194,7 +194,7 @@ namespace GeeksCoreLibrary.Core.Services
 
             if (storeType is StoreType.DocumentStore or StoreType.Hybrid)
             {
-                return await documentStorageService.StoreItemAsync(wiserItem, entityTypeSettings);
+                return (await documentStorageService.StoreItemAsync(wiserItem, entityTypeSettings)).model;
             }
             
             var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
