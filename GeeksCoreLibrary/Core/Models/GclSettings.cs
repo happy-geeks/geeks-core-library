@@ -2,7 +2,6 @@
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
-using JetBrains.Annotations;
 
 namespace GeeksCoreLibrary.Core.Models
 {
