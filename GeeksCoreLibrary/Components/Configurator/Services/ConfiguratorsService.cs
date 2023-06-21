@@ -687,6 +687,19 @@ ORDER BY parentStepId, ordering";
                 var extraDataJson = dataRow.Field<string>("extraData");
                 var extraData = !String.IsNullOrWhiteSpace(extraDataJson) ? Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, JToken>>(extraDataJson) : null;
 
+                // Perform string replacements on the values of the extra data.
+                if (extraData is { Count: > 0 })
+                {
+                    foreach (var key in extraData.Keys)
+                    {
+                        // Make sure the value is a string.
+                        if (extraData[key] is JValue { Type: JTokenType.String } jValue)
+                        {
+                            jValue.Value = await stringReplacementsService.DoAllReplacementsAsync(jValue.Value<string>());
+                        }
+                    }
+                }
+
                 var step = new VueStepDataModel
                 {
                     StepId = Convert.ToUInt64(dataRow["stepId"]),

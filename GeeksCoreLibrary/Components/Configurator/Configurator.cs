@@ -1683,7 +1683,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                 }
 
                 // Retrieve extra data from the step's item details.
-                var extraData = stepData.ExtraData ?? new Dictionary<string, JToken>();
+                stepData.ExtraData ??= new Dictionary<string, JToken>();
 
                 // Run extra data query if one is available.
                 var extraDataQuery = stepData.ExtraDataQuery;
@@ -1713,11 +1713,11 @@ namespace GeeksCoreLibrary.Components.Configurator
                                 value = new JValue(extraDataDataTable.Rows[0].Field<object>(column));
                             }
 
-                            extraData.Add(column.ColumnName, value);
+                            stepData.ExtraData[column.ColumnName] = value;
                         }
 
                         // Check if a property named "available" exists and if so, parse it to a boolean.
-                        if (extraData.TryGetValue("available", out var availableValue))
+                        if (stepData.ExtraData.TryGetValue("available", out var availableValue))
                         {
                             bool stepAvailable;
                             var stringValue = availableValue.Value<string>();
@@ -1727,6 +1727,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                             }
                             else if (stringValue == "1" || !Boolean.TryParse(stringValue, out stepAvailable))
                             {
+                                // If the value cannot be parsed to a boolean, the value is also considered true (this is to prevent bad data from making the step unavailable).
                                 stepAvailable = true;
                             }
 
@@ -1734,8 +1735,6 @@ namespace GeeksCoreLibrary.Components.Configurator
                         }
                     }
                 }
-
-                stepData.ExtraData = extraData;
 
                 // Dependencies are valid, load options.
                 var stepOptionsQuery = stepData.StepOptionsQuery;
