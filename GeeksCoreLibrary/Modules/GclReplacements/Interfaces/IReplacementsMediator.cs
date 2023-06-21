@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Data;
+using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
+using GeeksCoreLibrary.Modules.GclReplacements.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
@@ -137,4 +139,21 @@ public interface IReplacementsMediator
     /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be removed. Default value is "}".</param>
     /// <returns>The original string without variables.</returns>
     string RemoveTemplateVariables(string input, string prefix = "{", string suffix = "}");
+
+    /// <summary>
+    /// Checks for any replacement variables in a string and returns an array of <see cref="StringReplacementVariable"/>.
+    /// </summary>
+    /// <param name="input">The input string to check.</param>
+    /// <param name="prefix">The prefix of replacement variables. The default is '{'.</param>
+    /// <param name="suffix">The suffix of replacement variables. The default is '}'.</param>
+    /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
+    /// <returns>An array of <see cref="StringReplacementVariable"/>.</returns>
+    StringReplacementVariable[] GetReplacementVariables(string input, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode");
+
+    /// <summary>
+    /// Attempts to find a formatter method (a method in <see cref="StringReplacementsExtensions"/>) to be used in a string replacement snippet.
+    /// </summary>
+    /// <param name="formatterString">The name of the formatter.</param>
+    /// <returns>A <see cref="StringReplacementMethod"/> object containing information about the method and variables.</returns>
+    StringReplacementMethod GetFormatterMethod(string formatterString);
 }

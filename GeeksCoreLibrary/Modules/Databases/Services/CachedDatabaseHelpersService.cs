@@ -111,7 +111,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                     return await databaseHelpersService.TableExistsAsync(tableName, databaseName);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
@@ -122,7 +122,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var cacheName = $"CachedDatabaseHelpersService_DatabaseExistsAsync_{databaseName}";
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                     return await databaseHelpersService.DatabaseExistsAsync(databaseName);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
@@ -176,29 +176,36 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             return await cache.GetOrAddAsync(cacheName,
                                            async cacheEntry =>
                                            {
-                                               cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;                    
+                                               cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                                                return await databaseHelpersService.GetLastTableUpdatesAsync(service, databaseName);
                                            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
 
         /// <inheritdoc />
-        public async Task CheckAndUpdateTablesAsync(List<string> tablesToUpdate, string databaseName = null)
+        public async Task<bool> CheckAndUpdateTablesAsync(List<string> tablesToUpdate, string databaseName = null)
         {
-            await CheckAndUpdateTablesAsync(this, tablesToUpdate, databaseName);
+            return await CheckAndUpdateTablesAsync(this, tablesToUpdate, databaseName);
         }
 
         /// <inheritdoc />
-        public async Task CheckAndUpdateTablesAsync(IDatabaseHelpersService service, List<string> tablesToUpdate, string databaseName = null)
+        public async Task<bool> CheckAndUpdateTablesAsync(IDatabaseHelpersService service, List<string> tablesToUpdate, string databaseName = null)
         {
-            await databaseHelpersService.CheckAndUpdateTablesAsync(service, tablesToUpdate, databaseName);
+            var changesMade = await databaseHelpersService.CheckAndUpdateTablesAsync(service, tablesToUpdate, databaseName);
 
-            // Remove the cache for last table updates, so that they will be retrieved from database next time.
+            if (!changesMade)
+            {
+                return false;
+            }
+
+            // Remove the cache for last table updates, so that they will be retrieved from database next time, but only if we have made any changes to any table.
             // Otherwise we will get problems that we try to do the same changes multiple times, because the cache will have old dates then.
             if (String.IsNullOrWhiteSpace(databaseName))
             {
                 databaseName = databaseConnection.ConnectedDatabase;
             }
             cache.Remove($"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}");
+
+            return true;
         }
 
         /// <inheritdoc />

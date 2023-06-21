@@ -27,7 +27,6 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     private readonly Regex formatterRegex;
     private readonly MethodInfo[] formatters;
 
-
     private const string RawFormatterName = "Raw";
 
     /// <summary>
@@ -435,15 +434,8 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         return regex.Replace(input, "");
     }
 
-    /// <summary>
-    /// Checks for any replacement variables in a string and returns an array of <see cref="StringReplacementVariable"/>.
-    /// </summary>
-    /// <param name="input">The input string to check.</param>
-    /// <param name="prefix">The prefix of replacement variables. The default is '{'.</param>
-    /// <param name="suffix">The suffix of replacement variables. The default is '}'.</param>
-    /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
-    /// <returns>An array of <see cref="StringReplacementVariable"/>.</returns>
-    private static StringReplacementVariable[] GetReplacementVariables(string input, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
+    /// <inheritdoc />
+    public StringReplacementVariable[] GetReplacementVariables(string input, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
     {
         if (String.IsNullOrWhiteSpace(input))
         {
@@ -460,7 +452,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         {
             var fieldName = match.Groups["field"].Value;
             var originalFieldName = fieldName;
-            var formatters = "";
+            var variableFormatters = "";
             var defaultValue = "";
 
             // Checks for default values.
@@ -484,7 +476,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             if (fieldName.Contains(':') && !fieldName.Trim().EndsWith(':'))
             {
                 var lastColonIndex = fieldName.LastIndexOf(":", StringComparison.Ordinal);
-                formatters = fieldName[lastColonIndex..].TrimStart(':');
+                variableFormatters = fieldName[lastColonIndex..].TrimStart(':');
                 fieldName = fieldName[..lastColonIndex];
             }
 
@@ -497,10 +489,10 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             };
 
             // Now replace "~~COLON~~" with an actual colon again.
-            formatters = formatters.Replace("~~COLON~~", ":");
+            variableFormatters = variableFormatters.Replace("~~COLON~~", ":");
 
             // Add the formatters to the list.
-            variable.Formatters.AddRange(formatters.Split('|', StringSplitOptions.RemoveEmptyEntries));
+            variable.Formatters.AddRange(variableFormatters.Split('|', StringSplitOptions.RemoveEmptyEntries));
 
             // Add the default formatter, unless the raw formatter has been used.
             if (!String.IsNullOrWhiteSpace(defaultFormatter)
@@ -517,12 +509,8 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         return result.ToArray();
     }
 
-    /// <summary>
-    /// Attempts to find a formatter method (a method in <see cref="StringReplacementsExtensions"/>) to be used in a string replacement snippet.
-    /// </summary>
-    /// <param name="formatterString"></param>
-    /// <returns></returns>
-    private StringReplacementMethod GetFormatterMethod(string formatterString)
+    /// <inheritdoc />
+    public StringReplacementMethod GetFormatterMethod(string formatterString)
     {
         var match = formatterRegex.Match(formatterString);
 

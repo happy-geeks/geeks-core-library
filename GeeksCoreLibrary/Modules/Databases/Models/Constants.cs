@@ -7,4 +7,6 @@ public class Constants
     /// This is meant for debugging when you are having problems with database connections that stay open too long.
     /// </summary>
     public const string DatabaseConnectionLogTableName = "gcl_database_connection_log";
+
+    public const string LogTableExistsCacheFileName = "MySqlDatabaseConnection-LogTableExistsAsync-{0}.txt";
 }
