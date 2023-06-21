@@ -18,6 +18,7 @@ using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -37,9 +38,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         private readonly IWiserItemsService wiserItemsService;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IObjectsService objectsService;
+        private readonly IBranchesService branchesService;
         private readonly GclSettings gclSettings;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IOptions<GclSettings> gclSettings)
+        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IBranchesService branchesService, IOptions<GclSettings> gclSettings)
         {
             this.logger = logger;
             this.templatesService = templatesService;
@@ -48,6 +50,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             this.wiserItemsService = wiserItemsService;
             this.stringReplacementsService = stringReplacementsService;
             this.objectsService = objectsService;
+            this.branchesService = branchesService;
             this.gclSettings = gclSettings.Value;
         }
 
@@ -219,6 +222,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 if (String.IsNullOrWhiteSpace(viewModel.MetaData.PageTitle))
                 {
                     viewModel.MetaData.PageTitle = contentTemplate.Name;
+                }
+
+                var branchDatabase = branchesService.GetDatabaseNameFromCookie();
+                if (!String.IsNullOrWhiteSpace(branchDatabase))
+                {
+                    viewModel.MetaData.PageTitle = $"BRANCH {branchDatabase} - {viewModel.MetaData.PageTitle}";
                 }
 
                 return View(viewModel);
