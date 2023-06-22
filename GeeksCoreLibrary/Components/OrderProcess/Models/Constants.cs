@@ -149,6 +149,10 @@
 
         public const string BuckarooSecretKeyTestProperty = "buckaroosecretkeytest";
 
+        public const string BuckarooPushContentTypeProperty = "buckaroopushcontenttype";
+
+        public const string BuckarooHashMethodProperty = "buckaroohashmethod";
+
         public const string MultiSafepayApiKeyLiveProperty = "multisafepayapikeylive";
 
         public const string MultiSafepayApiKeyTestProperty = "multisafepayapikeytest";

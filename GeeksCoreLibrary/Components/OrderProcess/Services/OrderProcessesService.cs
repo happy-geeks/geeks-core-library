@@ -28,6 +28,7 @@ using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
+using GeeksCoreLibrary.Modules.Payments.Enums.Buckaroo;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
@@ -482,32 +483,34 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 throw new ArgumentNullException(nameof(orderProcessId));
             }
 
-            var query = $@"SELECT 
-	                            paymentMethod.id AS paymentMethodId,
-	                            paymentMethod.title AS paymentMethodTitle,
-	                            paymentServiceProvider.id AS paymentServiceProviderId,
-	                            paymentServiceProvider.title AS paymentServiceProviderTitle,
-                                paymentServiceProviderType.value AS paymentServiceProviderType,
-	                            paymentMethodFee.value AS paymentMethodFee,
-	                            paymentMethodVisibility.value AS paymentMethodVisibility,
-	                            paymentMethodExternalName.value AS paymentMethodExternalName,
+            var query = $@"SELECT
+                                paymentMethod.id AS paymentMethodId,
+                                paymentMethod.title AS paymentMethodTitle,
+                                paymentServiceProvider.id AS paymentServiceProviderId,
+                                paymentServiceProvider.title AS paymentServiceProviderTitle,
+                                paymentServiceProviderType.`value` AS paymentServiceProviderType,
+                                paymentMethodFee.`value` AS paymentMethodFee,
+                                paymentMethodVisibility.`value` AS paymentMethodVisibility,
+                                paymentMethodExternalName.`value` AS paymentMethodExternalName,
 
-                                paymentServiceProviderLogAllRequests.value AS paymentServiceProviderLogAllRequests,
-                                paymentServiceProviderSetOrdersDirectlyToFinished.value AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.value AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
+                                paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
+                                paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
+                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
 
-                                mollieApiKeyLive.value AS mollieApiKeyLive,
-                                mollieApiKeyTest.value AS mollieApiKeyTest,
-                                buckarooWebsiteKeyLive.value AS buckarooWebsiteKeyLive,
-                                buckarooWebsiteKeyTest.value AS buckarooWebsiteKeyTest,
-                                buckarooSecretKeyLive.value AS buckarooSecretKeyLive,
-                                buckarooSecretKeyTest.value AS buckarooSecretKeyTest,
-                                multiSafepayApiKeyLive.value AS multiSafepayApiKeyLive,
-                                multiSafepayApiKeyTest.value AS multiSafepayApiKeyTest,
-                                raboOmniKassaRefreshTokenLive.value AS raboOmniKassaRefreshTokenLive,
-                                raboOmniKassaRefreshTokenTest.value AS raboOmniKassaRefreshTokenTest,
-                                raboOmniKassaSigningKeyLive.value AS raboOmniKassaSigningKeyLive,
-                                raboOmniKassaSigningKeyTest.value AS raboOmniKassaSigningKeyTest
+                                mollieApiKeyLive.`value` AS mollieApiKeyLive,
+                                mollieApiKeyTest.`value` AS mollieApiKeyTest,
+                                buckarooWebsiteKeyLive.`value` AS buckarooWebsiteKeyLive,
+                                buckarooWebsiteKeyTest.`value` AS buckarooWebsiteKeyTest,
+                                buckarooSecretKeyLive.`value` AS buckarooSecretKeyLive,
+                                buckarooSecretKeyTest.`value` AS buckarooSecretKeyTest,
+                                buckarooPushContentType.`value` AS buckarooPushContentType,
+                                buckarooHashMethod.`value` AS buckarooHashMethod,
+                                multiSafepayApiKeyLive.`value` AS multiSafepayApiKeyLive,
+                                multiSafepayApiKeyTest.`value` AS multiSafepayApiKeyTest,
+                                raboOmniKassaRefreshTokenLive.`value` AS raboOmniKassaRefreshTokenLive,
+                                raboOmniKassaRefreshTokenTest.`value` AS raboOmniKassaRefreshTokenTest,
+                                raboOmniKassaSigningKeyLive.`value` AS raboOmniKassaSigningKeyLive,
+                                raboOmniKassaSigningKeyTest.`value` AS raboOmniKassaSigningKeyTest
                             FROM {WiserTableNames.WiserItem} AS orderProcess
 
                             # Payment method
@@ -534,7 +537,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooWebsiteKeyTest ON buckarooWebsiteKeyTest.item_id = paymentServiceProvider.id AND buckarooWebsiteKeyTest.`key` = '{Constants.BuckarooWebsiteKeyTestProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooSecretKeyLive ON buckarooSecretKeyLive.item_id = paymentServiceProvider.id AND buckarooSecretKeyLive.`key` = '{Constants.BuckarooSecretKeyLiveProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooSecretKeyTest ON buckarooSecretKeyTest.item_id = paymentServiceProvider.id AND buckarooSecretKeyTest.`key` = '{Constants.BuckarooSecretKeyTestProperty}'
-                            
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooPushContentType ON buckarooPushContentType.item_id = paymentServiceProvider.id AND buckarooPushContentType.`key` = '{Constants.BuckarooPushContentTypeProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooHashMethod ON buckarooHashMethod.item_id = paymentServiceProvider.id AND buckarooHashMethod.`key` = '{Constants.BuckarooHashMethodProperty}'
+
                             # MultiSafepay
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS multiSafepayApiKeyLive ON multiSafepayApiKeyLive.item_id = paymentServiceProvider.id AND multiSafepayApiKeyLive.`key` = '{Constants.MultiSafepayApiKeyLiveProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS multiSafepayApiKeyTest ON multiSafepayApiKeyTest.item_id = paymentServiceProvider.id AND multiSafepayApiKeyTest.`key` = '{Constants.MultiSafepayApiKeyTestProperty}'
@@ -652,31 +657,33 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             }
 
             var query = $@"SELECT 
-	                            paymentMethod.id AS paymentMethodId,
-	                            paymentMethod.title AS paymentMethodTitle,
-	                            paymentServiceProvider.id AS paymentServiceProviderId,
-	                            paymentServiceProvider.title AS paymentServiceProviderTitle,
-                                paymentServiceProviderType.value AS paymentServiceProviderType,
-	                            paymentMethodFee.value AS paymentMethodFee,
-	                            paymentMethodVisibility.value AS paymentMethodVisibility,
-	                            paymentMethodExternalName.value AS paymentMethodExternalName,
+                                paymentMethod.id AS paymentMethodId,
+                                paymentMethod.title AS paymentMethodTitle,
+                                paymentServiceProvider.id AS paymentServiceProviderId,
+                                paymentServiceProvider.title AS paymentServiceProviderTitle,
+                                paymentServiceProviderType.`value` AS paymentServiceProviderType,
+                                paymentMethodFee.`value` AS paymentMethodFee,
+                                paymentMethodVisibility.`value` AS paymentMethodVisibility,
+                                paymentMethodExternalName.`value` AS paymentMethodExternalName,
 
-                                paymentServiceProviderLogAllRequests.value AS paymentServiceProviderLogAllRequests,
-                                paymentServiceProviderSetOrdersDirectlyToFinished.value AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.value AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
+                                paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
+                                paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
+                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
 
-                                mollieApiKeyLive.value AS mollieApiKeyLive,
-                                mollieApiKeyTest.value AS mollieApiKeyTest,
-                                buckarooWebsiteKeyLive.value AS buckarooWebsiteKeyLive,
-                                buckarooWebsiteKeyTest.value AS buckarooWebsiteKeyTest,
-                                buckarooSecretKeyLive.value AS buckarooSecretKeyLive,
-                                buckarooSecretKeyTest.value AS buckarooSecretKeyTest,
-                                multiSafepayApiKeyLive.value AS multiSafepayApiKeyLive,
-                                multiSafepayApiKeyTest.value AS multiSafepayApiKeyTest,
-                                raboOmniKassaRefreshTokenLive.value AS raboOmniKassaRefreshTokenLive,
-                                raboOmniKassaRefreshTokenTest.value AS raboOmniKassaRefreshTokenTest,
-                                raboOmniKassaSigningKeyLive.value AS raboOmniKassaSigningKeyLive,
-                                raboOmniKassaSigningKeyTest.value AS raboOmniKassaSigningKeyTest
+                                mollieApiKeyLive.`value` AS mollieApiKeyLive,
+                                mollieApiKeyTest.`value` AS mollieApiKeyTest,
+                                buckarooWebsiteKeyLive.`value` AS buckarooWebsiteKeyLive,
+                                buckarooWebsiteKeyTest.`value` AS buckarooWebsiteKeyTest,
+                                buckarooSecretKeyLive.`value` AS buckarooSecretKeyLive,
+                                buckarooSecretKeyTest.`value` AS buckarooSecretKeyTest,
+                                buckarooPushContentType.`value` AS buckarooPushContentType,
+                                buckarooHashMethod.`value` AS buckarooHashMethod,
+                                multiSafepayApiKeyLive.`value` AS multiSafepayApiKeyLive,
+                                multiSafepayApiKeyTest.`value` AS multiSafepayApiKeyTest,
+                                raboOmniKassaRefreshTokenLive.`value` AS raboOmniKassaRefreshTokenLive,
+                                raboOmniKassaRefreshTokenTest.`value` AS raboOmniKassaRefreshTokenTest,
+                                raboOmniKassaSigningKeyLive.`value` AS raboOmniKassaSigningKeyLive,
+                                raboOmniKassaSigningKeyTest.`value` AS raboOmniKassaSigningKeyTest
                             FROM {WiserTableNames.WiserItem} AS paymentMethod
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
@@ -699,7 +706,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooWebsiteKeyTest ON buckarooWebsiteKeyTest.item_id = paymentServiceProvider.id AND buckarooWebsiteKeyTest.`key` = '{Constants.BuckarooWebsiteKeyTestProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooSecretKeyLive ON buckarooSecretKeyLive.item_id = paymentServiceProvider.id AND buckarooSecretKeyLive.`key` = '{Constants.BuckarooSecretKeyLiveProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooSecretKeyTest ON buckarooSecretKeyTest.item_id = paymentServiceProvider.id AND buckarooSecretKeyTest.`key` = '{Constants.BuckarooSecretKeyTestProperty}'
-                            
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooPushContentType ON buckarooPushContentType.item_id = paymentServiceProvider.id AND buckarooPushContentType.`key` = '{Constants.BuckarooPushContentTypeProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooHashMethod ON buckarooHashMethod.item_id = paymentServiceProvider.id AND buckarooHashMethod.`key` = '{Constants.BuckarooHashMethodProperty}'
+
                             # MultiSafepay
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS multiSafepayApiKeyLive ON multiSafepayApiKeyLive.item_id = paymentServiceProvider.id AND multiSafepayApiKeyLive.`key` = '{Constants.MultiSafepayApiKeyLiveProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS multiSafepayApiKeyTest ON multiSafepayApiKeyTest.item_id = paymentServiceProvider.id AND multiSafepayApiKeyTest.`key` = '{Constants.MultiSafepayApiKeyTestProperty}'
@@ -1374,7 +1383,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 PaymentServiceProviders.Buckaroo => new BuckarooSettingsModel
                 {
                     WebsiteKey = GetSecretKeyValue(dataRow, "buckarooWebsiteKey"),
-                    SecretKey = GetSecretKeyValue(dataRow, "buckarooSecretKey")
+                    SecretKey = GetSecretKeyValue(dataRow, "buckarooSecretKey"),
+                    PushContentType = GetEnumValue<PushContentTypes>(dataRow, "buckarooPushContentType"),
+                    HashMethod = GetEnumValue<HashMethods>(dataRow, "buckarooHashMethod")
                 },
                 PaymentServiceProviders.MultiSafepay => new MultiSafepaySettingsModel
                 {
@@ -1388,6 +1399,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 PaymentServiceProviders.Mollie => new MollieSettingsModel
                 {
                     ApiKey = GetSecretKeyValue(dataRow, "mollieApiKey")
+                },
+                PaymentServiceProviders.PayNl => new PayNLSettingsModel
+                {
+                    Username = GetSecretKeyValue(dataRow, "payNlUsername"),
+                    Password = GetSecretKeyValue(dataRow, "payNlPassword"),
+                    ServiceId = GetSecretKeyValue(dataRow, "payNlServiceId"),
                 },
                 _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), paymentServiceProvider.ToString(), "Unsupported value used.")
             };
@@ -1424,6 +1441,23 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             }
 
             return result.DecryptWithAesWithSalt();
+        }
+
+        /// <summary>
+        /// Get and attempt to convert a value from a <see cref="DataRow"/> to an <see cref="Enum"/>.
+        /// </summary>
+        /// <param name="dataRow">The <see cref="DataRow"/> to get the enum value from.</param>
+        /// <param name="itemDetailKey">The name of the column that contains the enum value.</param>
+        /// <typeparam name="TEnum">An <see cref="Enum"/> type.</typeparam>
+        /// <returns>The value of the enum, or the default value of the enum if the value couldn't be parsed.</returns>
+        private TEnum GetEnumValue<TEnum>(DataRow dataRow, string itemDetailKey) where TEnum : struct, Enum
+        {
+            if (!Enum.TryParse(dataRow.Field<string>(itemDetailKey), out TEnum result))
+            {
+                result = default;
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -1559,6 +1593,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 PaymentServiceProviders.MultiSafepay => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "transactionid"),
                 PaymentServiceProviders.RaboOmniKassa => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "order_id"),
                 PaymentServiceProviders.Mollie => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "invoice_number"),
+                PaymentServiceProviders.PayNl => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "orderId"),
                 _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), $"Payment service provider '{paymentServiceProvider:G}' is not yet supported.")
             };
         }

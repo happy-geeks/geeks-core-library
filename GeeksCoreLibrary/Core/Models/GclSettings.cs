@@ -53,9 +53,18 @@ namespace GeeksCoreLibrary.Core.Models
         ///         <term>1040</term>
         ///         <description>Too many connections</description>
         ///     </item>
+        ///     <item>
+        ///         <term>1412</term>
+        ///         <description>Table definition changed.</description>
+        ///     </item>
         /// </list>
         /// </summary>
         public int MaximumRetryCountForQueries { get; set; } = 5;
+
+        /// <summary>
+        /// Gets or sets the amount of time to wait before retrying a query when a deadlock or similar exception occurs.
+        /// </summary>
+        public int TimeToWaitBeforeRetryingQueryInMilliseconds { get; set; } = 200;
 
         /// <summary>
         /// The current environment.
@@ -105,12 +114,12 @@ namespace GeeksCoreLibrary.Core.Models
         public string AccountUserIdEncryptionKey { get; set; }
 
         /// <summary>
-        /// The amount of hours an encrypted value is valid when it was encrypted with a date and time.
+        /// The encryption key that will be used for encrypting values with an expiry date.
         /// </summary>
         public string ExpiringEncryptionKey { get; set; }
 
         /// <summary>
-        /// The encryption key that will be used for encrypting values with an expiry date.
+        /// The amount of hours an encrypted value is valid when it was encrypted with a date and time.
         /// </summary>
         public int TemporaryEncryptionHoursValid { get; set; } = 24;
 
@@ -118,6 +127,11 @@ namespace GeeksCoreLibrary.Core.Models
         /// Whether or not this site uses URL segments to indicate the selected language. For example: https://example.com/fr/.
         /// </summary>
         public bool MultiLanguageBasedOnUrlSegments { get; set; }
+
+        /// <summary>
+        /// The index of the language part in the URL. For example: https://example.com/content/fr/. The index of the "fr" part is 1.
+        /// </summary>
+        public int IndexOfLanguagePartInUrl { get; set; }
 
         /// <summary>
         /// Gets or sets how long images are cached in hours.
@@ -209,11 +223,11 @@ namespace GeeksCoreLibrary.Core.Models
         /// A list of domain names that are considered to be test domains. E.g.: my-test-domain.com
         /// </summary>
         public string[] TestDomains { get; set; } = Array.Empty<string>();
-        
+
         /// <summary>
         /// Whether to log whenever a database connection gets opened and closed.
         /// These logs will be saved in the table "gcl_database_connection_log".
-        /// That table will be automatically created if it doesn't exist yet. 
+        /// That table will be automatically created if it doesn't exist yet.
         /// </summary>
         public bool LogOpeningAndClosingOfConnections { get; set; }
     }

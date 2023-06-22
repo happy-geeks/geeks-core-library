@@ -58,6 +58,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IFiltersService filtersService;
         private readonly IAccountsService accountsService;
         private readonly IDatabaseHelpersService databaseHelpersService;
+        private readonly IReplacementsMediator replacementsMediator;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
@@ -71,6 +72,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             ILanguagesService languagesService,
             IAccountsService accountsService,
             IDatabaseHelpersService databaseHelpersService,
+            IReplacementsMediator replacementsMediator,
             IHttpContextAccessor httpContextAccessor = null,
             IActionContextAccessor actionContextAccessor = null,
             IViewComponentHelper viewComponentHelper = null,
@@ -91,6 +93,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.languagesService = languagesService;
             this.accountsService = accountsService;
             this.databaseHelpersService = databaseHelpersService;
+            this.replacementsMediator = replacementsMediator;
         }
 
         /// <inheritdoc />
@@ -161,10 +164,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.external_files,
     {(includeContent ? "template.template_data_minified, template.template_data," : "")}
     template.url_regex,
-    template.use_cache,
     template.cache_minutes,
     template.cache_location,
     template.cache_regex,
+    template.cache_per_url,
+    template.cache_per_querystring,
+    template.cache_per_hostname,
+    template.cache_using_regex,
     0 AS use_obfuscate,
     template.insert_mode,
     template.grouping_create_object_instead_of_array,
@@ -292,9 +298,12 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var query = $@"SELECT
                             template.template_name,
                             template.template_id,
-                            template.use_cache,
                             template.cache_minutes,
                             template.cache_location, 
+                            template.cache_per_url,
+                            template.cache_per_querystring,
+                            template.cache_per_hostname,
+                            template.cache_using_regex,
                             template.cache_regex,
                             template.template_type
                         FROM {WiserTableNames.WiserTemplate} AS template
@@ -310,7 +319,10 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 Id = dataTable.Rows[0].Field<int>("template_id"),
                 Name = dataTable.Rows[0].Field<string>("template_name"),
                 CachingMinutes = dataTable.Rows[0].Field<int>("cache_minutes"),
-                CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache"),
+                CachePerUrl = Convert.ToBoolean(dataTable.Rows[0]["cache_per_url"]),
+                CachePerQueryString = Convert.ToBoolean(dataTable.Rows[0]["cache_per_querystring"]),
+                CachePerHostName = Convert.ToBoolean(dataTable.Rows[0]["cache_per_hostname"]),
+                CacheUsingRegex = Convert.ToBoolean(dataTable.Rows[0]["cache_using_regex"]),
                 CachingLocation = dataTable.Rows[0].Field<TemplateCachingLocations>("cache_location"),
                 CachingRegex = dataTable.Rows[0].Field<string>("cache_regex"),
                 Type = dataTable.Rows[0].Field<TemplateTypes>("template_type")
@@ -434,7 +446,10 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                             template.external_files,
                             {(includeContent ? "template.template_data_minified, template.template_data," : "")}
                             template.url_regex,
-                            template.use_cache,
+                            template.cache_per_url,
+                            template.cache_per_querystring,
+                            template.cache_per_hostname,
+                            template.cache_using_regex,
                             template.cache_minutes,
                             template.cache_location,
                             template.cache_regex,
@@ -521,7 +536,10 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                             template.template_data_minified,
                             template.template_data,
                             template.url_regex,
-                            template.use_cache,
+                            template.cache_per_url,
+                            template.cache_per_querystring,
+                            template.cache_per_hostname,
+                            template.cache_using_regex,
                             template.cache_minutes,
                             template.cache_location,
                             template.cache_regex,
@@ -722,7 +740,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             // Start with special template replacements for the pre load query that you can set in HTML templates in the templates module in Wiser.
             if (httpContextAccessor?.HttpContext != null && httpContextAccessor.HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
             {
-                input = stringReplacementsService.DoReplacements(input, (DataRow)httpContextAccessor.HttpContext.Items[Constants.TemplatePreLoadQueryResultKey], forQuery, prefix: "{template.");
+                input = replacementsMediator.DoReplacements(input, (DataRow)httpContextAccessor.HttpContext.Items[Constants.TemplatePreLoadQueryResultKey], forQuery, prefix: "{template.");
             }
 
             // Then do the normal string replacements, because includes can contain variables in a query string, which need to be replaced first.
@@ -745,16 +763,16 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
 
             if (evaluateLogicSnippets)
             {
-                input = stringReplacementsService.EvaluateTemplate(input);
+                input = replacementsMediator.EvaluateTemplate(input);
             }
 
             return input;
         }
 
         /// <inheritdoc />
-        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
+        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "")
         {
-            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser2/<item_id>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
+            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser/<item_id>/<filetype>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
 
             imageUrlTemplate = imageUrlTemplate.Replace("<item_id>", itemId);
             imageUrlTemplate = imageUrlTemplate.Replace("<filename>", filename);
@@ -762,18 +780,25 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             imageUrlTemplate = imageUrlTemplate.Replace("<width>", width);
             imageUrlTemplate = imageUrlTemplate.Replace("<height>", height);
 
-            // Remove if not specified
+            // Remove file type if not specified.
+            if (String.IsNullOrWhiteSpace(fileType))
+            {
+                imageUrlTemplate = imageUrlTemplate.Replace("<filetype>/", "");
+            }
+
+            // Remove number if not specified.
             if (number == 0)
             {
                 imageUrlTemplate = imageUrlTemplate.Replace("<number>/", "");
             }
 
-            // Remove if not specified
+            // Remove resize mode if not specified.
             if (String.IsNullOrWhiteSpace(resizeMode))
             {
                 imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>/", "");
             }
 
+            imageUrlTemplate = imageUrlTemplate.Replace("<filetype>", fileType);
             imageUrlTemplate = imageUrlTemplate.Replace("<number>", number.ToString());
             imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>", resizeMode);
 
@@ -797,6 +822,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 var resizeMode = "";
                 var propertyName = "";
                 var imageAltTag = "";
+                var fileType = "";
                 var fallbackImageExtension = "jpg";
                 var parameters = replacementParameters[0].Split(",");
                 var imageItemIdOrFilename = parameters[0];
@@ -828,6 +854,11 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                     imageAltTag = parameters[5].Trim();
                 }
 
+                if (parameters.Length > 6)
+                {
+                    fileType = parameters[6].Trim();
+                }
+
                 imageIndex = imageIndex == 0 ? 1 : imageIndex;
 
                 // Get the image from the database
@@ -835,9 +866,34 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 databaseConnection.AddParameter("filename", imageItemIdOrFilename);
                 databaseConnection.AddParameter("propertyName", propertyName);
 
-                var queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
+                string queryWherePart;
+                string itemIdColumn;
+                if (!String.IsNullOrWhiteSpace(fileType))
+                {
+                    switch (fileType.ToUpperInvariant())
+                    {
+                        case "ITEMLINK":
+                            queryWherePart = "itemlink_id = ?itemId";
+                            itemIdColumn = "itemlink_id";
+                            break;
+                        case "DIRECT":
+                            queryWherePart = "id = ?itemId";
+                            itemIdColumn = "id";
+                            break;
+                        default:
+                            queryWherePart = "item_id = ?itemId";
+                            itemIdColumn = "item_id";
+                            break;
+                    }
+                }
+                else
+                {
+                    queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
+                    itemIdColumn = "item_id";
+                }
+
                 var dataTable = await databaseConnection.GetAsync(@$"SELECT
-    item_id,
+    `{itemIdColumn}` AS item_id,
     file_name,
     property_name
 FROM `{WiserTableNames.WiserItemFile}`
@@ -846,33 +902,34 @@ AND IF(?propertyName = '', 1=1, property_name = ?propertyName)
 AND content_type LIKE 'image%'
 ORDER BY id ASC");
 
-                if (dataTable.Rows.Count == 0)
-                {
-                    input = input.ReplaceCaseInsensitive(m.Value, $"<img src=\"/img/noimg.png\" />");
-                    continue;
-                }
-
-                if (imageIndex > dataTable.Rows.Count)
-                {
-                    input = input.ReplaceCaseInsensitive(m.Value, "specified image index out of bound");
-                    continue;
-                }
-
-                // Get various values from the table
-                var imageItemId = Convert.ToString(dataTable.Rows[imageIndex - 1]["item_id"]);
-                var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
-                var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
-                var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
                 var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
                 var totalItems = items.Count;
                 var index = 1;
 
-                if (items.Count == 0)
+                var imageItemId = "";
+                var imageFilename = "";
+                var imagePropertyType = "";
+
+                // Get various values from the table
+                if (imageIndex - 1 < dataTable.Rows.Count && dataTable.Rows.Count > 0)
                 {
-                    input = input.ReplaceCaseInsensitive(m.Value, "no image set(s) specified, you must at least specify one set");
-                    continue;
+                    imageItemId = Convert.ToString(dataTable.Rows[imageIndex - 1]["item_id"]);
+                    imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
+                    imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
                 }
+                else
+                {
+                    // if we were not able to retrieve the image attempt to fill in a filename and proceed
+                    // no-image handling is already done by the image handler
+                    if (m.Groups.Count > 1)
+                    {
+                        // if we can't find the image fill in filename anyway to assist with debugging
+                        imageFilename = m.Groups[1].Value.Split(":")[1].Split("(")[0];
+                    }
+                }
+
+                var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
 
                 foreach (Match s in items)
                 {
@@ -897,10 +954,10 @@ ORDER BY id ASC");
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
                     outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-alt-2x} 2x, {image-url-alt}"" type=""{image-type-alt}"" />");
 
-                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
-                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode));
-                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode));
+                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode, fileType));
+                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode, fileType));
                     outputBuilder.Replace("{image-type-alt}", FileSystemHelpers.GetMediaTypeByExtension(fallbackImageExtension));
                     outputBuilder.Replace("{min-width}", imageViewportParameter);
 
@@ -908,7 +965,7 @@ ORDER BY id ASC");
                     if (index == totalItems)
                     {
                         outputBuilder.Append("<img width=\"{image_width}\" height=\"{image_height}\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
-                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode));
+                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
                         outputBuilder.Replace("{image_width}", imageWidth.ToString());
                         outputBuilder.Replace("{image_height}", imageHeight.ToString());
                     }
@@ -1004,7 +1061,7 @@ ORDER BY id ASC");
                         var split = templateName.Split('\\');
                         var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
-                        var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
+                        var content = replacementsMediator.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
                         {
                             content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery);
@@ -1021,7 +1078,7 @@ ORDER BY id ASC");
                     {
                         var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
-                        var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
+                        var content = replacementsMediator.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
                         {
                             content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery);
@@ -1202,8 +1259,8 @@ ORDER BY id ASC");
                 }
                 catch (Exception exception)
                 {
-                    logger.LogError($"An error while generating component with id '{contentId}': {exception}");
-                    var errorOnPage = $"An error occurred while generating component with id '{contentId}'";
+                    logger.LogError($"{Constants.DynamicComponentRenderingError} '{contentId}': {exception}");
+                    var errorOnPage = $"{Constants.DynamicComponentRenderingError} '{contentId}'";
                     if (gclSettings.Environment is Environments.Development or Environments.Test)
                     {
                         errorOnPage += $": {exception.Message}";
@@ -1345,65 +1402,87 @@ ORDER BY ORDINAL_POSITION ASC";
         /// <inheritdoc />
         public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
         {
+            if (contentTemplate == null || contentTemplate.CachingMinutes < 0)
+            {
+                return "";
+            }
+
             var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
-            switch (contentTemplate.CachingMode)
+
+            if (contentTemplate.CacheUsingRegex)
             {
-                case TemplateCachingModes.ServerSideCaching:
-                    break;
-                case TemplateCachingModes.ServerSideCachingPerUrl:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
-                    break;
-                case TemplateCachingModes.ServerSideCachingPerUrlAndQueryString:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
-                    break;
-                case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
-                    break;
-                case TemplateCachingModes.ServerSideCachingBasedOnUrlRegex:
-                    if (String.IsNullOrWhiteSpace(contentTemplate.CachingRegex))
+                if (String.IsNullOrWhiteSpace(contentTemplate.CachingRegex))
+                {
+                    throw new Exception($"Caching for template {contentTemplate.Id} is set to use regex, but no regex has been entered.");
+                }
+
+                var regexInput = new StringBuilder();
+                if (contentTemplate.CachePerHostName)
+                {
+                    regexInput.Append(originalUri.Host);
+                }
+
+                if (contentTemplate.CachePerUrl)
+                {
+                    regexInput.Append(originalUri.AbsolutePath);
+                }
+
+                if (contentTemplate.CachePerQueryString)
+                {
+                    regexInput.Append(originalUri.Query);
+                }
+
+                try
+                {
+                    var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
+                    var match = regex.Match(regexInput.ToString());
+                    if (!match.Success)
                     {
-                        throw new Exception($"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but no regex has been entered.");
+                        return "";
                     }
 
-                    try
+                    // Add all values of named groups to the cache key.
+                    foreach (Group group in match.Groups)
                     {
-                        var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
-                        var match = regex.Match(originalUri.PathAndQuery);
-                        if (!match.Success)
+                        if (String.IsNullOrWhiteSpace(group.Name) || Int32.TryParse(group.Name, out _))
                         {
-                            return "";
+                            // Ignore groups without a name (when you have no name given in the regex, the group name will be a number).
+                            continue;
                         }
 
-                        // Add all values of named groups to the cache key.
-                        foreach (Group group in match.Groups)
-                        {
-                            if (String.IsNullOrWhiteSpace(group.Name) || Int32.TryParse(group.Name, out _))
-                            {
-                                // Ignore groups without a name (when you have no name given in the regex, the group name will be a number).
-                                continue;
-                            }
+                        // Strip invalid characters that can't be in a file name.
+                        var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
 
-                            // Strip invalid characters that can't be in a file name.
-                            var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
-
-                            // Add the group value to the file name.
-                            cacheFileName.Append($"{Uri.EscapeDataString(value)}_");
-                        }
+                        // Add the group value to the file name.
+                        cacheFileName.Append($"{Uri.EscapeDataString(value)}_");
                     }
-                    catch (ArgumentException argumentException)
-                    {
-                        // ArgumentException will be thrown if the regex is not valid.
-                        logger.LogWarning(argumentException, $"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered.");
-                        throw new Exception($"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered. The exact error was: {argumentException.Message}");
-                    }
-
-                    break;
-                case TemplateCachingModes.NoCaching:
-                    return "";
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingMode), contentTemplate.CachingMode.ToString());
+                }
+                catch (ArgumentException argumentException)
+                {
+                    // ArgumentException will be thrown if the regex is not valid.
+                    logger.LogWarning(argumentException, $"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered.");
+                    throw new Exception($"Caching for template {contentTemplate.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but an invalid regex has been entered. The exact error was: {argumentException.Message}");
+                }
             }
+
+            var cacheUrl = new StringBuilder();
+            if (contentTemplate.CachePerHostName)
+            {
+                cacheUrl.Append(originalUri.Host.ToLowerInvariant());
+            }
+
+            if (contentTemplate.CachePerUrl)
+            {
+                cacheUrl.Append(originalUri.AbsolutePath.ToLowerInvariant());
+            }
+
+            if (contentTemplate.CachePerQueryString)
+            {
+                cacheUrl.Append(originalUri.Query.ToLowerInvariant());
+            }
+
+            cacheFileName.Append(Uri.EscapeDataString(cacheUrl.ToString().ToSha512Simple()));
 
             // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
             var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

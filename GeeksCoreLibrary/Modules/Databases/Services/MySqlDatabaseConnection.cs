@@ -3,17 +3,20 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -24,7 +27,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 {
     public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     {
-        public const int MaxRetriesAfterDeadlock = 5;
         public static readonly List<int> MySqlErrorCodesToRetry = new()
         {
             (int) MySqlErrorCode.LockDeadlock,
@@ -34,8 +36,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             (int) MySqlErrorCode.ConnectionCountError,
             (int) MySqlErrorCode.TableDefinitionChanged
         };
-        
+
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IWebHostEnvironment webHostEnvironment;
         private readonly ILogger<MySqlDatabaseConnection> logger;
         private readonly IBranchesService branchesService;
         private MySqlConnectionStringBuilder connectionStringForReading;
@@ -64,9 +67,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public MySqlDatabaseConnection(IOptions<GclSettings> gclSettings,
             ILogger<MySqlDatabaseConnection> logger,
             IBranchesService branchesService,
-            IHttpContextAccessor httpContextAccessor = null)
+            IHttpContextAccessor httpContextAccessor = null,
+            IWebHostEnvironment webHostEnvironment = null)
         {
             this.httpContextAccessor = httpContextAccessor;
+            this.webHostEnvironment = webHostEnvironment;
             this.logger = logger;
             this.branchesService = branchesService;
             this.gclSettings = gclSettings.Value;
@@ -138,32 +143,30 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             catch (MySqlException mySqlException)
             {
-                if (retryCount >= gclSettings.MaximumRetryCountForQueries)
+                // Never retry single queries if we're in a transaction, because transactions will get rolled back when a deadlock occurs,
+                // so retrying a single query in a transaction is not very useful on most/all cases.
+                // Also, if we've reached the maximum number of retries, don't retry anymore.
+                if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries)
                 {
                     logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                    throw;
+                    throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
-                switch (mySqlException.Number)
+                // If we're not in a transaction, retry the query if it's a deadlock.
+                if (MySqlErrorCodesToRetry.Contains(mySqlException.Number))
                 {
-                    case (int)MySqlErrorCode.LockDeadlock:
-                    case (int)MySqlErrorCode.LockWaitTimeout:
-                        Thread.Sleep(100);
-                        return await GetAsync(query, retryCount + 1);
-                    case (int)MySqlErrorCode.UnableToConnectToHost:
-                    case (int)MySqlErrorCode.TooManyUserConnections:
-                    case (int)MySqlErrorCode.ConnectionCountError:
-                        Thread.Sleep(1000);
-                        return await GetAsync(query, retryCount + 1);
-                    default:
-                        logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                        throw;
+                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                    return await GetAsync(query, retryCount + 1, cleanUp, useWritingConnectionIfAvailable);
                 }
+
+                // For any other errors, just throw the exception.
+                logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
+                throw new GclQueryException("Error trying to run query", query, mySqlException);
             }
             finally
             {
-                // If we're not using transactions, dispose everything here. Otherwise we will dispose it when the transaction gets committed or rollbacked.
-                if (transaction == null && cleanUp)
+                // If we're not using transactions, dispose everything here. Otherwise we will dispose it when the transaction gets committed or roll backed.
+                if (!HasActiveTransaction() && cleanUp)
                 {
                     await CleanUpAsync();
                 }
@@ -212,26 +215,25 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             catch (MySqlException mySqlException)
             {
-                if (retryCount >= gclSettings.MaximumRetryCountForQueries)
+                // Never retry single queries if we're in a transaction, because transactions will get rolled back when a deadlock occurs,
+                // so retrying a single query in a transaction is not very useful on most/all cases.
+                // Also, if we've reached the maximum number of retries, don't retry anymore.
+                if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries)
                 {
                     logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                    throw;
+                    throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
-                switch (mySqlException.Number)
+                // If we're not in a transaction, retry the query if it's a deadlock.
+                if (MySqlErrorCodesToRetry.Contains(mySqlException.Number))
                 {
-                    case (int)MySqlErrorCode.LockDeadlock:
-                    case (int)MySqlErrorCode.LockWaitTimeout:
-                        return await ExecuteAsync(query, retryCount + 1);
-                    case (int)MySqlErrorCode.UnableToConnectToHost:
-                    case (int)MySqlErrorCode.TooManyUserConnections:
-                    case (int)MySqlErrorCode.ConnectionCountError:
-                        Thread.Sleep(1000);
-                        return await ExecuteAsync(query, retryCount + 1);
-                    default:
-                        logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                        throw;
+                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                    return await ExecuteAsync(query, retryCount + 1, useWritingConnectionIfAvailable, cleanUp);
                 }
+
+                // For any other errors, just throw the exception.
+                logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
+                throw new GclQueryException("Error trying to run query", query, mySqlException);
             }
             finally
             {
@@ -262,7 +264,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 query.Append($"UPDATE {(ignoreErrors ? "IGNORE" : "")} `{tableName}` SET ");
             }
-            
+
             if (idIsDefaultValue)
             {
                 query.Append($"({String.Join(",", parameters.Select(p => $"`{(p.Key == "InsertOrUpdateRecord_Id" ? idColumnName : p.Key)}`"))}) VALUES ({String.Join(",", parameters.Select(p => $"?{p.Key}"))})");
@@ -331,24 +333,25 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             catch (MySqlException mySqlException)
             {
-                if (retryCount >= gclSettings.MaximumRetryCountForQueries)
+                // Never retry single queries if we're in a transaction, because transactions will get rolled back when a deadlock occurs,
+                // so retrying a single query in a transaction is not very useful on most/all cases.
+                // Also, if we've reached the maximum number of retries, don't retry anymore.
+                if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries)
                 {
-                    throw;
+                    logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
+                    throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
-                switch (mySqlException.Number)
+                // If we're not in a transaction, retry the query if it's a deadlock.
+                if (MySqlErrorCodesToRetry.Contains(mySqlException.Number))
                 {
-                    case (int)MySqlErrorCode.LockDeadlock:
-                    case (int)MySqlErrorCode.LockWaitTimeout:
-                        return await InsertRecordAsync(query, retryCount + 1);
-                    case (int)MySqlErrorCode.UnableToConnectToHost:
-                    case (int)MySqlErrorCode.TooManyUserConnections:
-                    case (int)MySqlErrorCode.ConnectionCountError:
-                        Thread.Sleep(1000);
-                        return await InsertRecordAsync(query, retryCount + 1);
-                    default:
-                        throw;
+                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                    return await InsertRecordAsync(query, retryCount + 1, useWritingConnectionIfAvailable);
                 }
+
+                // For any other errors, just throw the exception.
+                logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
+                throw new GclQueryException("Error trying to run query", query, mySqlException);
             }
             finally
             {
@@ -505,7 +508,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 CommandForReading = ConnectionForReading.CreateCommand();
                 createdNewConnection = true;
             }
-            
+
             CommandForReading ??= ConnectionForReading.CreateCommand();
 
             // Remember the database name that was connected to.
@@ -526,7 +529,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 return;
             }
-            
+
             await ConnectionForReading.OpenAsync();
 
             await SetTimezone(CommandForReading);
@@ -595,7 +598,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             connectionStringForReading ??= new MySqlConnectionStringBuilder();
             connectionStringForWriting ??= new MySqlConnectionStringBuilder();
-            
+
             connectionStringForReading.ConnectionString = newConnectionStringForReading;
             connectionStringForWriting.ConnectionString = String.IsNullOrWhiteSpace(newConnectionStringForWriting) ? newConnectionStringForReading : newConnectionStringForWriting;
             await CleanUpAsync();
@@ -610,7 +613,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await AddConnectionCloseLogAsync(true);
                 await ConnectionForWriting.CloseAsync();
             }
-            
+
             ConnectionForReading = null;
             ConnectionForWriting = null;
         }
@@ -622,7 +625,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 CommandForReading.CommandTimeout = value;
             }
-            
+
             if (CommandForWriting != null)
             {
                 CommandForWriting.CommandTimeout = value;
@@ -633,6 +636,62 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public bool HasActiveTransaction()
         {
             return transaction != null;
+        }
+
+        /// <summary>
+        /// Checks whether or not the log table (for logging the opening and closing of database connections) exists.
+        /// </summary>
+        /// <param name="command">The MySqlCommand to execute the query on to check if the table exists.</param>
+        /// <returns>A boolean indicating whether the log table exists or not.</returns>
+        private async Task<bool> LogTableExistsAsync(MySqlCommand command)
+        {
+            // Simple text file that indicates whether or not the log table exists, so that we don't have to execute an extra query every time.
+            var cacheDirectory = webHostEnvironment == null ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data") : FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+            var filePath = cacheDirectory == null ? null : Path.Combine(cacheDirectory, String.Format(Constants.LogTableExistsCacheFileName, (ConnectionForWriting ?? ConnectionForReading).Database));
+            if (filePath != null && File.Exists(filePath))
+            {
+                return true;
+            }
+
+            if (webHostEnvironment == null && cacheDirectory != null && !Directory.Exists(cacheDirectory))
+            {
+                try
+                {
+                    Directory.CreateDirectory(cacheDirectory);
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, $"An error occurred while trying to create the directory '{cacheDirectory}'.");
+                    filePath = null;
+                }
+            }
+
+            var dataTable = new DataTable();
+            command.CommandText = $"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = '{Constants.DatabaseConnectionLogTableName}' AND TABLE_SCHEMA = '{(ConnectionForWriting ?? ConnectionForReading).Database.ToMySqlSafeValue(false)}'";
+            using var dataAdapter = new MySqlDataAdapter(command);
+            await dataAdapter.FillAsync(dataTable);
+
+            if (dataTable.Rows.Count == 0)
+            {
+                return false;
+            }
+
+            if (filePath == null)
+            {
+                return true;
+            }
+
+            try
+            {
+                // Create the file to indicate that the table exists.
+                await File.WriteAllTextAsync(filePath, "");
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, $"An error occurred while trying to create the file '{filePath}'.");
+            }
+
+            return true;
         }
 
         private async Task SetTimezone(MySqlCommand command)
@@ -652,7 +711,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // Not setting timezones when they are not available should not be logged as en error.
                 if (mySqlException.Number == 1298)
                 {
-                    logger.LogInformation($"The time zone is not set to '{gclSettings.DatabaseTimeZone}'");
+                    logger.LogInformation($"The time zone is not set to '{gclSettings.DatabaseTimeZone}', because that timezone is not available in the database.");
                 }
                 else
                 {
@@ -677,17 +736,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 {
                     return;
                 }
-                
+
                 var commandToUse = isWriteConnection && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? CommandForWriting : CommandForReading;
 
-                if (!logTableExists.HasValue)
-                {
-                    var dataTable = new DataTable();
-                    commandToUse.CommandText = $"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = '{Constants.DatabaseConnectionLogTableName}' AND TABLE_SCHEMA = '{(ConnectionForWriting ?? ConnectionForReading).Database.ToMySqlSafeValue(false)}'";
-                    using var dataAdapter = new MySqlDataAdapter(commandToUse);
-                    await dataAdapter.FillAsync(dataTable);
-                    logTableExists = dataTable.Rows.Count > 0;
-                }
+                logTableExists ??= await LogTableExistsAsync(commandToUse);
 
                 if (!logTableExists.Value)
                 {
@@ -720,7 +772,7 @@ VALUES (?gclConnectionOpened, ?gclConnectionUrl, ?gclConnectionHttpMethod, ?gclC
 SELECT LAST_INSERT_ID();";
                 await using var reader = await commandToUse.ExecuteReaderAsync();
                 var id = !await reader.ReadAsync() ? 0 : (Int32.TryParse(Convert.ToString(reader.GetValue(0)), out var tempId) ? tempId : 0);
-                
+
                 if (isWriteConnection)
                 {
                     writeConnectionLogId = id;
@@ -744,7 +796,7 @@ SELECT LAST_INSERT_ID();";
         private async Task AddConnectionCloseLogAsync(bool isWriteConnection, bool disposeConnection = false)
         {
             var commandToUse = isWriteConnection && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? CommandForWriting : CommandForReading;
-            
+
             try
             {
                 if (!gclSettings.LogOpeningAndClosingOfConnections && ((isWriteConnection && writeConnectionLogId == 0) || (!isWriteConnection && readConnectionLogId == 0)))

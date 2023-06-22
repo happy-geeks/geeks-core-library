@@ -47,7 +47,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
 
             hostName = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false);
             hostNameIncludingTestWww = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true, includePort: false);
-            urlPrefix = HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext);
+            urlPrefix = HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.Value.IndexOfLanguagePartInUrl);
         }
 
         /// <summary>

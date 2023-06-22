@@ -20,7 +20,7 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// So we still create an account for the user, but without a password. We then save this ID encrypted in a cookie to be used later. This function gets and decrypts that ID.
         /// </summary>
         /// <returns>The decrypted user ID if a user was recently created in this session. Otherwise it returns 0.</returns>
-        ulong GetRecentlyCreateAccountId();
+        ulong GetRecentlyCreatedAccountId();
 
         /// <summary>
         /// Generates a new cookie for a logged in user.
@@ -32,7 +32,7 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <param name="userEntityType">The entity type for sub accounts.</param>
         /// <returns>The value that should be saved in the cookie.</returns>
         Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account");
-        
+
         /// <summary>
         /// Deletes a cookie token from the database, so that the user cannot login with it anymore, even if it still has a cookie with that token.
         /// </summary>
@@ -55,7 +55,7 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <param name="entityType">The entity type of the user account in wiser_item.</param>
         /// <returns></returns>
         Task<string> Get2FactorAuthenticationKeyAsync(ulong userId, string entityType = Constants.DefaultEntityType);
-        
+
         /// <summary>
         /// Attempts to log off the user. This will delete the user's cookie from their browser and our database.
         /// </summary>

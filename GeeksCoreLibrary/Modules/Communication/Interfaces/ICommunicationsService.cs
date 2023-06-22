@@ -63,7 +63,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Interfaces
         /// <param name="senderName">Optional: The sender name of the message. Leave empty or <see langword="null"/> to use the default sender name. Default is <see langowrd="null" />.</param>
         /// <param name="sendDate">Optional: The date and time that this e-mail should get sent. Leave null to send it right away.</param>
         /// <param name="attachments">Optional: A list of attachments to add to the e-mail. This should be IDs from the table "wiser_itemfile". Default is <see langowrd="null" />.</param>
-        Task SendEmailAsync(string receiver, string subject, string body, string receiverName = null, string cc = null, string bcc = null, string replyTo = null, string replyToName = null, string sender = null, string senderName = null, DateTime? sendDate = null, List<ulong> attachments = null);
+        Task<int> SendEmailAsync(string receiver, string subject, string body, string receiverName = null, string cc = null, string bcc = null, string replyTo = null, string replyToName = null, string sender = null, string senderName = null, DateTime? sendDate = null, List<ulong> attachments = null);
 
         /// <summary>
         /// Send an e-mail to someone.
@@ -79,7 +79,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Interfaces
         /// <param name="senderName">Optional: The sender name of the message. Leave empty or <see langword="null"/> to use the default sender name. Default is <see langowrd="null" />.</param>
         /// <param name="sendDate">Optional: The date and time that this e-mail should get sent. Leave null to send it right away.</param>
         /// <param name="attachments">Optional: A list of attachments to add to the e-mail. This should be IDs from the table "wiser_itemfile". Default is <see langowrd="null" />.</param>
-        Task SendEmailAsync(IEnumerable<CommunicationReceiverModel> receivers, string subject, string body, IEnumerable<string> cc, IEnumerable<string> bcc = null, string replyTo = null, string replyToName = null, string sender = null, string senderName = null, DateTime? sendDate = null, List<ulong> attachments = null);
+        Task<int> SendEmailAsync(IEnumerable<CommunicationReceiverModel> receivers, string subject, string body, IEnumerable<string> cc, IEnumerable<string> bcc = null, string replyTo = null, string replyToName = null, string sender = null, string senderName = null, DateTime? sendDate = null, List<ulong> attachments = null);
 
         /// <summary>
         /// Send an e-mail to someone.
@@ -119,7 +119,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Interfaces
         /// <param name="sender">Optional: The sender of the message. Leave empty or <see langword="null"/> to use the default sender. Default is <see langowrd="null" />.</param>
         /// <param name="senderName">Optional: The sender name of the message. Leave empty or <see langword="null"/> to use the default sender name. Default is <see langowrd="null" />.</param>
         /// <param name="sendDate">Optional: The date and time that this SMS should get sent. Leave null to send it right away.</param>
-        Task SendSmsAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null);
+        Task<int> SendSmsAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null);
         
         /// <summary>
         /// Send an SMS to someone.
@@ -129,13 +129,13 @@ namespace GeeksCoreLibrary.Modules.Communication.Interfaces
         /// <param name="sender">Optional: The sender of the message. Leave empty or <see langword="null"/> to use the default sender. Default is <see langowrd="null" />.</param>
         /// <param name="senderName">Optional: The sender name of the message. Leave empty or <see langword="null"/> to use the default sender name. Default is <see langowrd="null" />.</param>
         /// <param name="sendDate">Optional: The date and time that this SMS should get sent. Leave null to send it right away.</param>
-        Task SendSmsAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null);
+        Task<int> SendSmsAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null);
         
         /// <summary>
         /// Send an SMS to someone.
         /// </summary>
         /// <param name="communication">The <see cref="SingleCommunicationModel"/> with information for sending the SMS.</param>
-        Task SendSmsAsync(SingleCommunicationModel communication);
+        Task<int> SendSmsAsync(SingleCommunicationModel communication);
         
         /// <summary>
         /// Uses an SMS provider to send an SMS directly.
@@ -153,7 +153,7 @@ namespace GeeksCoreLibrary.Modules.Communication.Interfaces
         /// <param name="sender">Optional: The sender of the message. Leave empty or <see langword="null"/> to use the default sender. Default is <see langowrd="null" />.</param>
         /// <param name="senderName">Optional: The sender name of the message. Leave empty or <see langword="null"/> to use the default sender name. Default is <see langowrd="null" />.</param>
         /// <param name="sendDate">Optional: The date and time that this SMS should get sent. Leave null to send it right away.</param>
-        Task SendWhatsAppAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null);
+        Task<int> SendWhatsAppAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null);
 
         /// <summary>
         /// Send a message using WhatsApp to someone.
@@ -163,13 +163,13 @@ namespace GeeksCoreLibrary.Modules.Communication.Interfaces
         /// <param name="sender">Optional: The sender of the message. Leave empty or <see langword="null"/> to use the default sender. Default is <see langowrd="null" />.</param>
         /// <param name="senderName">Optional: The sender name of the message. Leave empty or <see langword="null"/> to use the default sender name. Default is <see langowrd="null" />.</param>
         /// <param name="sendDate">Optional: The date and time that this SMS should get sent. Leave null to send it right away.</param>
-        Task SendWhatsAppAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null);
+        Task<int> SendWhatsAppAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null);
 
         /// <summary>
         /// Send a message using WhatsApp to someone.
         /// </summary>
         /// <param name="communication">The <see cref="SingleCommunicationModel"/> with information for sending the SMS.</param>
-        Task SendWhatsAppAsync(SingleCommunicationModel communication);
+        Task<int> SendWhatsAppAsync(SingleCommunicationModel communication);
 
         /// <summary>
         /// Uses an WhatsApp provider to send message directly.

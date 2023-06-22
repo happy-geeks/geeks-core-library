@@ -78,7 +78,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             var templateContent = "";
             var foundInOutputCache = false;
             string fullCachePath = null;
-            var cacheSettings = !includeContent ? new Template { CachingMode = TemplateCachingModes.NoCaching } : await GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
+            var cacheSettings = !includeContent ? new Template() : await GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
             string contentCacheKey = null;
 
             // Check if cache should be skipped:
@@ -94,7 +94,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     break;
             }
 
-            if (!skipCache && includeContent && cacheSettings.CachingMode != TemplateCachingModes.NoCaching && cacheSettings.CachingMinutes > 0)
+            if (!skipCache && includeContent && cacheSettings.CachingMinutes > 0)
             {
                 // Get folder and file name.
                 var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
@@ -343,9 +343,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "")
+        public Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "")
         {
-            return templatesService.GenerateImageUrl(itemId, type, number, filename, width, height);
+            return templatesService.GenerateImageUrl(itemId, type, number, filename, width, height, resizeMode, fileType);
         }
 
         /// <inheritdoc />
@@ -465,7 +465,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             var settings = JsonConvert.DeserializeObject<CmsSettings>(dynamicContent.SettingsJson);
-            if (settings == null)
+            if (settings == null || settings.CacheMinutes < 0)
             {
                 return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
             }

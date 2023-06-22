@@ -212,12 +212,12 @@ namespace GeeksCoreLibrary.Core.Extensions
             }
             else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
             {
-                // Wiser 2.0 secret key for customer.
+                // Secret key for values that expire after a set time.
                 encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
             }
             else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
             {
-                // Custom secret key set in the app settings.
+                // Default secret key from app settings.
                 encryptionKey = GclSettings.Current.DefaultEncryptionKey;
             }
             else
@@ -299,12 +299,12 @@ namespace GeeksCoreLibrary.Core.Extensions
             }
             else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
             {
-                // Wiser 2.0 secret key for customer.
+                // Secret key for values that expire after a set time.
                 encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
             }
             else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
             {
-                // Custom secret key set in the app settings.
+                // Default secret key from app settings.
                 encryptionKey = GclSettings.Current.DefaultEncryptionKey;
             }
             else

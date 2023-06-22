@@ -212,7 +212,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2023, 1, 19),
+                LastUpdate = new DateTime(2023, 5, 26),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -226,8 +226,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("changed_on", MySqlDbType.DateTime, notNull: true),
                     new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
                     new("published_environment", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
-                    new("use_cache", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
-                    new("cache_minutes", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("cache_per_url", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
+                    new("cache_per_querystring", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
+                    new("cache_per_hostname", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
+                    new("cache_using_regex", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
+                    new("cache_minutes", MySqlDbType.Int32, notNull: true, defaultValue: "-1"),
                     new("cache_location", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("cache_regex", MySqlDbType.VarChar, 255),
                     new("login_required", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
@@ -277,7 +280,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserCommit,
-                LastUpdate = new DateTime(2022, 11, 4),
+                LastUpdate = new DateTime(2023, 4, 5),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -285,6 +288,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("external_id", MySqlDbType.VarChar, 255),
                     new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
                     new("added_by", MySqlDbType.VarChar, 255),
+                    new("deployed_to_development_on", MySqlDbType.DateTime),
+                    new("deployed_to_development_by", MySqlDbType.VarChar, 255),
+                    new("deployed_to_test_on", MySqlDbType.DateTime),
+                    new("deployed_to_test_by", MySqlDbType.VarChar, 255),
+                    new("deployed_to_acceptance_on", MySqlDbType.DateTime),
+                    new("deployed_to_acceptance_by", MySqlDbType.VarChar, 255),
+                    new("deployed_to_live_on", MySqlDbType.DateTime),
+                    new("deployed_to_live_by", MySqlDbType.VarChar, 255),
                     new("completed", MySqlDbType.Int16, notNull: true, defaultValue: "0")
                 }
             },

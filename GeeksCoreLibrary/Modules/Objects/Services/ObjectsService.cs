@@ -3,28 +3,29 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Services;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Objects.Services
 {
     public class ObjectsService : IObjectsService, IScopedService
     {
         private readonly IDatabaseConnection databaseConnection;
+        private readonly GclSettings gclSettings;
         private readonly IHttpContextAccessor httpContextAccessor;
 
         /// <summary>
         /// Initializes a new instance of <see cref="ObjectsService"/>.
         /// </summary>
-        /// <param name="databaseConnection"></param>
-        /// <param name="httpContextAccessor"></param>
-        public ObjectsService(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor = null)
+        public ObjectsService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
+            this.gclSettings = gclSettings.Value;
             this.httpContextAccessor = httpContextAccessor;
         }
 
@@ -72,7 +73,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                 }
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.IndexOfLanguagePartInUrl)}");
                 }
                 if (String.IsNullOrEmpty(finalResult))
                 {
@@ -84,7 +85,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                 finalResult = await GetSystemObjectValueAsync(objectKey);
                 if (String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.IndexOfLanguagePartInUrl)}");
                 }
                 if (String.IsNullOrEmpty(finalResult))
                 {
