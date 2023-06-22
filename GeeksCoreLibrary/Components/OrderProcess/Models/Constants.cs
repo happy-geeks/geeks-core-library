@@ -177,6 +177,14 @@
 
         public const string PaymentMethodExternalNameProperty = "paymentmethodexternalname";
 
+        public const string PaymentMethodMinimalAmountProperty = "paymentmethodminimalamount";
+        
+        public const string PaymentMethodMaximumAmountProperty = "paymentmethodmaximumamount";
+        
+        public const string PaymentMethodUseMinimalAmountProperty = "paymentmethoduseminimalamount";
+
+        public const string PaymentMethodUseMaximumAmountProperty = "paymentmethodusemaximumamount";
+
         public const string OrderProcessBasketToConceptOrderMethodProperty = "baskettoconceptordermethod";
 
         public const string MeasurementProtocolActiveProperty = "measurementprotocolactive";
