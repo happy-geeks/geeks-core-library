@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -15,6 +16,7 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -36,6 +38,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         };
 
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IWebHostEnvironment webHostEnvironment;
         private readonly ILogger<MySqlDatabaseConnection> logger;
         private readonly IBranchesService branchesService;
         private MySqlConnectionStringBuilder connectionStringForReading;
@@ -64,9 +67,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public MySqlDatabaseConnection(IOptions<GclSettings> gclSettings,
             ILogger<MySqlDatabaseConnection> logger,
             IBranchesService branchesService,
-            IHttpContextAccessor httpContextAccessor = null)
+            IHttpContextAccessor httpContextAccessor = null,
+            IWebHostEnvironment webHostEnvironment = null)
         {
             this.httpContextAccessor = httpContextAccessor;
+            this.webHostEnvironment = webHostEnvironment;
             this.logger = logger;
             this.branchesService = branchesService;
             this.gclSettings = gclSettings.Value;
@@ -633,6 +638,62 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             return transaction != null;
         }
 
+        /// <summary>
+        /// Checks whether or not the log table (for logging the opening and closing of database connections) exists.
+        /// </summary>
+        /// <param name="command">The MySqlCommand to execute the query on to check if the table exists.</param>
+        /// <returns>A boolean indicating whether the log table exists or not.</returns>
+        private async Task<bool> LogTableExistsAsync(MySqlCommand command)
+        {
+            // Simple text file that indicates whether or not the log table exists, so that we don't have to execute an extra query every time.
+            var cacheDirectory = webHostEnvironment == null ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data") : FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+            var filePath = cacheDirectory == null ? null : Path.Combine(cacheDirectory, String.Format(Constants.LogTableExistsCacheFileName, (ConnectionForWriting ?? ConnectionForReading).Database));
+            if (filePath != null && File.Exists(filePath))
+            {
+                return true;
+            }
+
+            if (webHostEnvironment == null && cacheDirectory != null && !Directory.Exists(cacheDirectory))
+            {
+                try
+                {
+                    Directory.CreateDirectory(cacheDirectory);
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, $"An error occurred while trying to create the directory '{cacheDirectory}'.");
+                    filePath = null;
+                }
+            }
+
+            var dataTable = new DataTable();
+            command.CommandText = $"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = '{Constants.DatabaseConnectionLogTableName}' AND TABLE_SCHEMA = '{(ConnectionForWriting ?? ConnectionForReading).Database.ToMySqlSafeValue(false)}'";
+            using var dataAdapter = new MySqlDataAdapter(command);
+            await dataAdapter.FillAsync(dataTable);
+
+            if (dataTable.Rows.Count == 0)
+            {
+                return false;
+            }
+
+            if (filePath == null)
+            {
+                return true;
+            }
+
+            try
+            {
+                // Create the file to indicate that the table exists.
+                await File.WriteAllTextAsync(filePath, "");
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, $"An error occurred while trying to create the file '{filePath}'.");
+            }
+
+            return true;
+        }
+
         private async Task SetTimezone(MySqlCommand command)
         {
             try
@@ -678,14 +739,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
                 var commandToUse = isWriteConnection && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? CommandForWriting : CommandForReading;
 
-                if (!logTableExists.HasValue)
-                {
-                    var dataTable = new DataTable();
-                    commandToUse.CommandText = $"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = '{Constants.DatabaseConnectionLogTableName}' AND TABLE_SCHEMA = '{(ConnectionForWriting ?? ConnectionForReading).Database.ToMySqlSafeValue(false)}'";
-                    using var dataAdapter = new MySqlDataAdapter(commandToUse);
-                    await dataAdapter.FillAsync(dataTable);
-                    logTableExists = dataTable.Rows.Count > 0;
-                }
+                logTableExists ??= await LogTableExistsAsync(commandToUse);
 
                 if (!logTableExists.Value)
                 {

@@ -129,6 +129,11 @@ namespace GeeksCoreLibrary.Core.Models
         public bool MultiLanguageBasedOnUrlSegments { get; set; }
 
         /// <summary>
+        /// The index of the language part in the URL. For example: https://example.com/content/fr/. The index of the "fr" part is 1.
+        /// </summary>
+        public int IndexOfLanguagePartInUrl { get; set; }
+
+        /// <summary>
         /// Gets or sets how long images are cached in hours.
         /// </summary>
         public TimeSpan DefaultItemFileCacheDuration { get; set; } = new(1, 0, 0);

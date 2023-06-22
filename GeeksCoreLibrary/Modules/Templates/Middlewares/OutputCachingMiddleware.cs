@@ -214,6 +214,20 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 // Copy the new body to the original body.
                 await newStream.CopyToAsync(originalBody);
 
+                // Don't cache if the response contains an error.
+                if (context.Response.StatusCode >= 300 || pageHtml.Contains(Models.Constants.DynamicComponentRenderingError, StringComparison.OrdinalIgnoreCase) || pageHtml.Contains(Models.Constants.TemplateRenderingError, StringComparison.OrdinalIgnoreCase))
+                {
+                    logger.LogWarning($"OutputCachingMiddleware - Prevented caching of the current page, because it contains an error. Template name: '{templateName}', template id: '{contentTemplate.Id}'");
+                    return;
+                }
+
+                // Don't cache if the response is empty. A response should never be empty on a web page, so this is probably an error.
+                if (String.IsNullOrWhiteSpace(pageHtml))
+                {
+                    logger.LogWarning($"OutputCachingMiddleware - Prevented caching of the current page, because the response is empty. Template name: '{templateName}', template id: '{contentTemplate.Id}'");
+                    return;
+                }
+
                 switch (contentTemplate.CachingLocation)
                 {
                     case TemplateCachingLocations.InMemory:

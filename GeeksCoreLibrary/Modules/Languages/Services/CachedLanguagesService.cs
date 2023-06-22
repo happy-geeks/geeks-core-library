@@ -53,7 +53,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             this.cache = cache;
             this.gclSettings = gclSettings.Value;
         }
-        
+
         /// <inheritdoc />
         public string CurrentLanguageCode
         {
@@ -79,15 +79,15 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                 logger.LogDebug($"LanguageCode determined through query string: {CurrentLanguageCode}");
                 return CurrentLanguageCode;
             }
-            
+
             var cacheName = new StringBuilder(Constants.LanguageCodeCacheKey);
-            
+
             // Add hostname to cache key, because websites often have a different hostname per language.
             cacheName.Append('_').Append(HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext));
 
             if (gclSettings.MultiLanguageBasedOnUrlSegments)
             {
-                cacheName.Append('_').Append(HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext));
+                cacheName.Append('_').Append(HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.IndexOfLanguagePartInUrl));
             }
 
             var currentLanguageCode = await cache.GetOrAddAsync(cacheName.ToString(),
@@ -164,7 +164,7 @@ AND language_code = ?gcl_languageCode");
                 {
                     logger.LogError($"Error loading translations. Error message: {exception}");
                 }
-                                
+
                 cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultLanguagesCacheDuration;
                 logger.LogDebug("Caching of translations completed");
 
