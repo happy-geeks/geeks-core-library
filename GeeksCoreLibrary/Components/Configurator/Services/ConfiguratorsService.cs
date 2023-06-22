@@ -1109,6 +1109,7 @@ ORDER BY parentStepId, ordering";
 
                     await AddAuthenticationToApiCall(restRequest, priceApi);
                     await AddAcceptLanguageToApiCall(restRequest);
+                    await AddCustomHeadersAsync(restRequest, priceApi, configuration, extraData);
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
@@ -1315,6 +1316,7 @@ ORDER BY parentStepId, ordering";
 
                     await AddAuthenticationToApiCall(restRequest, saveApi);
                     await AddAcceptLanguageToApiCall(restRequest);
+                    await AddCustomHeadersAsync(restRequest, saveApi, input, extraData);
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
@@ -1475,6 +1477,39 @@ ORDER BY parentStepId, ordering";
             if (!String.IsNullOrWhiteSpace(languageCode))
             {
                 request.AddHeader("Accept-Language", languageCode);
+            }
+        }
+        
+        /// <summary>
+        /// Add the custom headers to the request that are set in the <see cref="configuratorApi"/>.
+        /// </summary>
+        /// <param name="request">The request to add the headers to.</param>
+        /// <param name="configuratorApi">The configurator API settings to set the headers from.</param>
+        /// <param name="configuration">The configuration to use for configuration replacements in the header's value.</param>
+        /// <param name="extraData">Extra data to use for replacements in the header's value.</param>
+        private async Task AddCustomHeadersAsync(RestRequest request, WiserItemModel configuratorApi, ConfigurationsModel configuration = null, DataRow extraData = null)
+        {
+            foreach (var detail in configuratorApi.Details)
+            {
+                if (!detail.GroupName.Equals("headers") || String.IsNullOrWhiteSpace(detail.Key)) continue;
+
+                var value = detail.Value.ToString();
+                if (String.IsNullOrWhiteSpace(value)) continue;
+
+                if (configuration != null)
+                {
+                    value = await ReplaceConfiguratorItemsAsync(value, configuration, false);
+                }
+
+                if (extraData != null)
+                {
+                    value = await stringReplacementsService.DoAllReplacementsAsync(value, extraData, removeUnknownVariables: false);
+                }
+                
+                // Check if there is still a value after replacements.
+                if (String.IsNullOrWhiteSpace(value)) continue;
+
+                request.AddHeader(detail.Key, value);
             }
         }
 
