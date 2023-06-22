@@ -1211,6 +1211,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                 if (!String.IsNullOrWhiteSpace(userEmailAddress) && !String.IsNullOrWhiteSpace(emailContent))
                 {
+                    main.SetDetail("user_mail_body", emailContent);
+                    main.SetDetail("user_mail_subject", emailSubject);
                     mailsToSendToUser.Add(new SingleCommunicationModel
                     {
                         Content = emailContent,
