@@ -408,7 +408,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     if (!loadBasketFromUser)
                     {
                         // Retrieve the TempData object, but make sure it doesn't cause a NullReferenceException.
-                        var tempData = httpContextAccessor.HttpContext.Items;
+                        var tempData = httpContextAccessor.HttpContext?.Items;
                         var dataKey = $"ShoppingBasketQueriesExecuted_{settings.CookieName}";
                         var allowGeneralQueries = tempData == null || !tempData.ContainsKey(dataKey) || Convert.ToInt32(tempData[dataKey]) != 1;
 
@@ -2805,7 +2805,7 @@ WHERE coupon.entity_type = 'coupon'", true);
                 {
                     continue;
                 }
-                
+
                 await wiserItemsService.SaveAsync(shoppingBasket, skipPermissionsCheck: true);
             }
         }
