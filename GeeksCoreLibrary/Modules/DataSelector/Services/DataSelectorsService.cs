@@ -113,12 +113,6 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 await ProcessScopesAsync(itemsRequest, itemsRequest.Selector.Main.Scopes, "ilc1.id", "idv_");
             }
 
-            // Main fields.
-            if (itemsRequest.Selector?.Main?.Fields != null && itemsRequest.Selector.Main.Fields.Length > 0)
-            {
-                itemsRequest.FieldsInternal.AddRange(UpdateFieldsWithInternals("ilc1.id", "idv_", itemsRequest.Selector.Main.Fields));
-            }
-
             // Process the query addition (custom where).
             if (!String.IsNullOrWhiteSpace(itemsRequest.Selector?.QueryAddition))
             {
@@ -232,17 +226,24 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         continue;
                     }
 
+                    if (!String.IsNullOrWhiteSpace(tablePrefix) && !tablePrefix.EndsWith("_"))
+                    {
+                        tablePrefix = $"{tablePrefix}_";
+                    }
+
                     itemsRequest.DedicatedTables.Add(entityType, tablePrefix);
 
                     if (!String.IsNullOrWhiteSpace(itemsRequest.Selector?.Main?.EntityName) && itemsRequest.Selector.Main.EntityName.Equals(entityType, StringComparison.OrdinalIgnoreCase))
                     {
                         mainEntityTablePrefix = tablePrefix;
-                        if (!String.IsNullOrWhiteSpace(mainEntityTablePrefix) && !mainEntityTablePrefix.EndsWith("_"))
-                        {
-                            mainEntityTablePrefix = $"{mainEntityTablePrefix}_";
-                        }
                     }
                 }
+            }
+
+            // Main fields.
+            if (itemsRequest.Selector?.Main?.Fields is {Length: > 0})
+            {
+                itemsRequest.FieldsInternal.AddRange(UpdateFieldsWithInternals("ilc1.id", "idv_", itemsRequest.Selector.Main.Fields, dedicatedTablePrefix: mainEntityTablePrefix));
             }
 
             // Process connections recursive.
@@ -255,7 +256,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             // Process fields from fields (getting details if field is item id).
             foreach (var field in itemsRequest.FieldsInternal.Where(field => field.Fields is { Length: > 0 }))
             {
-                addFields.AddRange(UpdateFieldsWithInternals(field.TableAlias + ".`value`", $"{field.TableAlias}_", field.Fields, fieldsFromField: true));
+                addFields.AddRange(UpdateFieldsWithInternals(field.TableAlias + ".`value`", $"{field.TableAlias}_", field.Fields, fieldsFromField: true, dedicatedTablePrefix: mainEntityTablePrefix));
             }
 
             if (addFields.Count > 0)
@@ -650,11 +651,11 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         }
                         else if (item.FieldFromField && item.IsReservedFieldName)
                         {
-                            queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItem}` AS `{tableAlias}` ON `{tableAlias}`.id = {item.JoinOn}");
+                            queryBuilder.AppendLine($"LEFT JOIN `{item.DedicatedTablePrefix}{WiserTableNames.WiserItem}` AS `{tableAlias}` ON `{tableAlias}`.id = {item.JoinOn}");
                         }
                         else
                         {
-                            queryBuilder.AppendLine($"LEFT JOIN `{mainEntityTablePrefix}{WiserTableNames.WiserItemDetail}` AS `{tableAlias}` ON `{tableAlias}`.item_id = {item.JoinOn} AND `{tableAlias}`.`key` = {item.FieldName.ToMySqlSafeValue(true)} {languageCodePart}");
+                            queryBuilder.AppendLine($"LEFT JOIN `{item.DedicatedTablePrefix}{WiserTableNames.WiserItemDetail}` AS `{tableAlias}` ON `{tableAlias}`.item_id = {item.JoinOn} AND `{tableAlias}`.`key` = {item.FieldName.ToMySqlSafeValue(true)} {languageCodePart}");
                         }
                     }
                 }
@@ -1487,10 +1488,6 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     if (!String.IsNullOrWhiteSpace(connectionRow.EntityName) && itemsRequest.DedicatedTables.ContainsKey(connectionRow.EntityName))
                     {
                         tablePrefix = itemsRequest.DedicatedTables[connectionRow.EntityName];
-                        if (!String.IsNullOrWhiteSpace(tablePrefix) && !tablePrefix.EndsWith("_"))
-                        {
-                            tablePrefix = $"{tablePrefix}_";
-                        }
                     }
 
                     if (!connectionRow.Equals(connection.ConnectionRows[0]))
@@ -1544,16 +1541,18 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                         JoinOn = "",
                         FieldName = "id",
                         TableAliasPrefix = $"{tableName}_",
-                        SelectAliasPrefix = GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix)
+                        SelectAliasPrefix = GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix),
+                        DedicatedTablePrefix = tablePrefix
                     });
 
                     // The id of the connected row.
                     if (connectionRow.Fields is { Length: > 0 })
                     {
+                        itemsRequest.DedicatedTables.TryGetValue(connectionRow.EntityName, out var dedicatedTablePrefix);
                         itemsRequest.FieldsInternal.AddRange(
                             connectionRow.Modes.Contains("up")
-                                ? UpdateFieldsWithInternals(linkSettingsForUp is {UseParentItemId: true} ? $"`{previousLevelTableAlias}`.id" : $"`{tableName}`.destination_item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
-                                : UpdateFieldsWithInternals(linkSettingsForDown is {UseParentItemId: true} ? $"`{tableName}_item`.id" : $"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix))
+                                ? UpdateFieldsWithInternals(linkSettingsForUp is {UseParentItemId: true} ? $"`{previousLevelTableAlias}`.id" : $"`{tableName}`.destination_item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix), dedicatedTablePrefix: dedicatedTablePrefix)
+                                : UpdateFieldsWithInternals(linkSettingsForDown is {UseParentItemId: true} ? $"`{tableName}_item`.id" : $"`{tableName}`.item_id", $"idv_{tableName}_", connectionRow.Fields, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix), dedicatedTablePrefix: dedicatedTablePrefix)
                         );
                     }
 
@@ -1667,7 +1666,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             itemsRequest.WhereLink.Add(")");
         }
 
-        private static List<Field> UpdateFieldsWithInternals(string joinOn, string tableAliasPrefix, IEnumerable<Field> fields, string selectAliasPrefix = "", bool isLinkField = false, bool fieldsFromField = false)
+        private static List<Field> UpdateFieldsWithInternals(string joinOn, string tableAliasPrefix, IEnumerable<Field> fields, string selectAliasPrefix = "", bool isLinkField = false, bool fieldsFromField = false, string dedicatedTablePrefix = null)
         {
             var output = new List<Field>();
             foreach (var item in fields)
@@ -1677,6 +1676,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 item.JoinOn = joinOn;
                 item.TableAliasPrefix = tableAliasPrefix;
                 item.SelectAliasPrefix = selectAliasPrefix;
+                item.DedicatedTablePrefix = dedicatedTablePrefix;
                 output.Add(item);
             }
 
