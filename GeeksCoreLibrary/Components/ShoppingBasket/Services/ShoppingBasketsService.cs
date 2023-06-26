@@ -25,6 +25,7 @@ using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
@@ -407,7 +408,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     if (!loadBasketFromUser)
                     {
                         // Retrieve the TempData object, but make sure it doesn't cause a NullReferenceException.
-                        var tempData = tempDataDictionaryFactory?.GetTempData(httpContextAccessor?.HttpContext);
+                        var tempData = httpContextAccessor.HttpContext?.Items;
                         var dataKey = $"ShoppingBasketQueriesExecuted_{settings.CookieName}";
                         var allowGeneralQueries = tempData == null || !tempData.ContainsKey(dataKey) || Convert.ToInt32(tempData[dataKey]) != 1;
 
@@ -2770,12 +2771,14 @@ WHERE coupon.entity_type = 'coupon'", true);
                     }
                 }
 
+                var saveBasket = false;
                 if (containsKeyColumn && containsValueColumn)
                 {
                     var key = dataRow.Field<string>("key");
                     var value = dataRow.Field<string>("value");
 
                     shoppingBasket.SetDetail(key, value, readOnly: !containsReadOnlyColumn || Convert.ToBoolean(dataRow["readonly"]), markChangedAsFalse: true);
+                    saveBasket = true;
                 }
                 else
                 {
@@ -2788,7 +2791,8 @@ WHERE coupon.entity_type = 'coupon'", true);
 
                         if (dataColumn.ColumnName.EndsWith("_save"))
                         {
-                            shoppingBasket.SetDetail(dataColumn.ColumnName.Replace("_save", ""), Convert.ToString(dataRow[dataColumn]), markChangedAsFalse: true);
+                            shoppingBasket.SetDetail(dataColumn.ColumnName.Replace("_save", ""), Convert.ToString(dataRow[dataColumn]));
+                            saveBasket = true;
                         }
                         else
                         {
@@ -2796,6 +2800,13 @@ WHERE coupon.entity_type = 'coupon'", true);
                         }
                     }
                 }
+
+                if (!saveBasket)
+                {
+                    continue;
+                }
+
+                await wiserItemsService.SaveAsync(shoppingBasket, skipPermissionsCheck: true);
             }
         }
 
