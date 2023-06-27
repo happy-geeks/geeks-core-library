@@ -10,9 +10,9 @@ using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
-using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -24,7 +24,6 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
-using Constants = GeeksCoreLibrary.Components.Configurator.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.Configurator
 {
@@ -280,6 +279,17 @@ namespace GeeksCoreLibrary.Components.Configurator
             stepHtml.Append($" :enabled=\"stepEnabled('{stepData.StepName}')\"");
             stepHtml.Append('>');
             stepHtml.Append(Settings.StepHtml.Replace("{stepContent}", template));
+
+            // Add modal HTML if the step modal is enabled.
+            if (stepData.OptionsOpenModal)
+            {
+                stepHtml.Append("<teleport :to=\"step.modalContainerSelector ?? 'body'\">");
+                stepHtml.Append("<modal v-for=\"option in step.options\" :step-name=\"step.stepName\" :key=\"option.id\">");
+                stepHtml.Append(await TemplatesService.DoReplacesAsync(stepData.ModalContent, removeUnknownVariables: false));
+                stepHtml.Append("</modal>");
+                stepHtml.Append("</teleport>");
+            }
+
             stepHtml.Append("</step>");
 
             return stepHtml.ToString();
@@ -1602,11 +1612,15 @@ namespace GeeksCoreLibrary.Components.Configurator
                 throw new ArgumentNullException(nameof(configuration));
             }
 
-            var result = await configuratorsService.GetVueConfiguratorDataAsync(configuration.ConfiguratorName);
-            if (result == null || result.StepsData.Count == 0)
+            var configurator = await configuratorsService.GetVueConfiguratorDataAsync(configuration.ConfiguratorName);
+
+            if (configurator == null || configurator.StepsData.Count == 0)
             {
-                return result;
+                return configurator;
             }
+
+            // Make a clone of the original so the cached version is not modified.
+            var result = ObjectCloner.ObjectCloner.DeepClone(configurator);
 
             List<string> stepsToProcess;
             var stepsToRemove = new List<string>();
@@ -1660,7 +1674,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     }
                 }
 
-                var options = new List<Dictionary<string, object>>();
+                var options = new List<VueStepOptionDataModel>();
 
                 if (!loadOptions)
                 {
@@ -1669,32 +1683,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                 }
 
                 // Retrieve extra data from the step's item details.
-                var extraData = new Dictionary<string, JToken>();
-                DatabaseConnection.ClearParameters();
-                DatabaseConnection.AddParameter("stepId", stepData.StepId);
-                DatabaseConnection.AddParameter("groupName", Constants.StepExtraDataPropertyName);
-                var extraDataDataTable = await DatabaseConnection.GetAsync($@"
-SELECT `key`, CONCAT_WS('', `value`, long_value) AS `value`
-FROM {WiserTableNames.WiserItemDetail}
-WHERE item_id = ?stepId AND groupname = ?groupName");
-
-                if (extraDataDataTable.Rows.Count > 0)
-                {
-                    foreach (var dataRow in extraDataDataTable.Rows.Cast<DataRow>())
-                    {
-                        var key = dataRow.Field<string>("key");
-                        var value = dataRow.Field<string>("value");
-                        if (String.IsNullOrWhiteSpace(key) || String.IsNullOrWhiteSpace(value))
-                        {
-                            continue;
-                        }
-
-                        value = await configuratorsService.ReplaceConfiguratorItemsAsync(value, configuration, false);
-                        value = await StringReplacementsService.DoAllReplacementsAsync(value);
-
-                        extraData.Add(key, new JValue(value));
-                    }
-                }
+                stepData.ExtraData ??= new Dictionary<string, JToken>();
 
                 // Run extra data query if one is available.
                 var extraDataQuery = stepData.ExtraDataQuery;
@@ -1702,7 +1691,7 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
                 {
                     extraDataQuery = await configuratorsService.ReplaceConfiguratorItemsAsync(stepData.ExtraDataQuery, configuration, true);
                     extraDataQuery = await TemplatesService.DoReplacesAsync(extraDataQuery, handleRequest: false, removeUnknownVariables: false, forQuery: true);
-                    extraDataDataTable = await DatabaseConnection.GetAsync(extraDataQuery);
+                    var extraDataDataTable = await DatabaseConnection.GetAsync(extraDataQuery);
 
                     // Handle first row and add it to the step's extra data.
                     if (extraDataDataTable.Rows.Count > 0)
@@ -1724,11 +1713,11 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
                                 value = new JValue(extraDataDataTable.Rows[0].Field<object>(column));
                             }
 
-                            extraData.Add(column.ColumnName, value);
+                            stepData.ExtraData[column.ColumnName] = value;
                         }
 
                         // Check if a property named "available" exists and if so, parse it to a boolean.
-                        if (extraData.TryGetValue("available", out var availableValue))
+                        if (stepData.ExtraData.TryGetValue("available", out var availableValue))
                         {
                             bool stepAvailable;
                             var stringValue = availableValue.Value<string>();
@@ -1738,6 +1727,7 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
                             }
                             else if (stringValue == "1" || !Boolean.TryParse(stringValue, out stepAvailable))
                             {
+                                // If the value cannot be parsed to a boolean, the value is also considered true (this is to prevent bad data from making the step unavailable).
                                 stepAvailable = true;
                             }
 
@@ -1745,8 +1735,6 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
                         }
                     }
                 }
-
-                stepData.ExtraData = extraData;
 
                 // Dependencies are valid, load options.
                 var stepOptionsQuery = stepData.StepOptionsQuery;
@@ -1765,7 +1753,7 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
                     continue;
                 }
 
-                // Some values can be overriden through the data query.
+                // Some values of the step can be overriden through the step options query.
                 if (stepOptionsDataTable.Columns.Contains("minimumValue"))
                 {
                     stepData.MinimumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["minimumValue"]);
@@ -1779,13 +1767,52 @@ WHERE item_id = ?stepId AND groupname = ?groupName");
                     stepData.ValidationRegex = Convert.ToString(stepOptionsDataTable.Rows[0]["validationRegex"]);
                 }
 
+                // Handle the data rows.
+                var stepOptionProperties = typeof(VueStepOptionDataModel).GetProperties();
                 foreach (var dataRow in stepOptionsDataTable.Rows.Cast<DataRow>())
                 {
-                    options.Add(new Dictionary<string, object>(stepOptionsDataTable.Columns.Count));
+                    var stepOption = new VueStepOptionDataModel
+                    {
+                        AdditionalData = new Dictionary<string, object>()
+                    };
+
                     foreach (var dataColumn in stepOptionsDataTable.Columns.Cast<DataColumn>())
                     {
-                        options.Last()[dataColumn.ColumnName] = dataRow[dataColumn];
+                        var columnName = dataColumn.ColumnName;
+                        var columnValue = dataRow[dataColumn];
+                        var property = stepOptionProperties.FirstOrDefault(property => property.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+                        if (property != null)
+                        {
+                            // Check if the property is a boolean and if so, convert the value to a boolean.
+                            if (property.PropertyType == typeof(bool))
+                            {
+                                // String values are handled differently.
+                                if (columnValue is string stringValue)
+                                {
+                                    property.SetValue(stepOption, stringValue.InList(StringComparer.OrdinalIgnoreCase, "1", "true"));
+                                }
+                                else
+                                {
+                                    property.SetValue(stepOption, Convert.ToBoolean(columnValue));
+                                }
+                            }
+                            else
+                            {
+                                var type = property.PropertyType;
+                                type = Nullable.GetUnderlyingType(type) ?? type;
+
+                                // All other data types are just added as-is.
+                                property.SetValue(stepOption, Convert.ChangeType(columnValue, type));
+                            }
+                        }
+                        else
+                        {
+                            // Add the value to the additional data dictionary.
+                            stepOption.AdditionalData.Add(columnName, columnValue);
+                        }
                     }
+
+                    options.Add(stepOption);
                 }
 
                 stepData.Options = options;
