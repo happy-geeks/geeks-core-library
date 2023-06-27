@@ -459,18 +459,18 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         validationRegexErrorMessage.`value` AS validationRegexErrorMessage,
         IF(
             templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
-            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'step_template'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'step_template'),
             CONCAT_WS('', stepTemplate.`value`, stepTemplate.long_value)
         ) AS stepTemplate,
         IF(
             templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
-            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'values_template'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'values_template'),
             CONCAT_WS('', stepOptionTemplate.`value`, stepOptionTemplate.long_value)
         ) AS stepOptionTemplate,
         CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
         CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
-        (SELECT JSON_OBJECTAGG(`key`, CONCAT_WS('', `value`, long_value)) FROM wiser_itemdetail WHERE item_id = step.id AND groupname = 'extra_data') AS extraData,
+        (SELECT JSON_OBJECTAGG(`key`, CONCAT_WS('', `value`, long_value)) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = step.id AND groupname = 'extra_data') AS extraData,
 
         IFNULL(optionsOpenModal.`value`, '0') = '1' AS optionsOpenModal,
         CONCAT_WS('', modalTemplate.`value`, stepOptionsQuery.long_value) AS modalTemplate,
@@ -533,18 +533,18 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         # Layout properties.
         IF(
             templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
-            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'step_template'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'step_template'),
             CONCAT_WS('', stepTemplate.`value`, stepTemplate.long_value)
         ) AS stepTemplate,
         IF(
             templatesFromStepId.id IS NOT NULL AND templatesFromStepId.`value` NOT IN ('', '0'),
-            (SELECT CONCAT_WS('', `value`, long_value) FROM wiser_itemdetail WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'values_template'),
+            (SELECT CONCAT_WS('', `value`, long_value) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'values_template'),
             CONCAT_WS('', stepOptionTemplate.`value`, stepOptionTemplate.long_value)
         ) AS stepOptionTemplate,
         CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
         CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
-        (SELECT JSON_OBJECTAGG(`key`, CONCAT_WS('', `value`, long_value)) FROM wiser_itemdetail WHERE item_id = step.id AND groupname = 'extra_data') AS extraData,
+        (SELECT JSON_OBJECTAGG(`key`, CONCAT_WS('', `value`, long_value)) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = step.id AND groupname = 'extra_data') AS extraData,
 
         IFNULL(optionsOpenModal.`value`, '0') = '1' AS optionsOpenModal,
         CONCAT_WS('', modalTemplate.`value`, stepOptionsQuery.long_value) AS modalTemplate,
