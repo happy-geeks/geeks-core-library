@@ -703,8 +703,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 paymentMethodExternalName.`value` AS paymentMethodExternalName,
                                 paymentMethodMinimalAmount.`value` AS paymentMethodMinimalAmount,
                                 paymentMethodMaximumAmount.`value` AS paymentMethodMaximumAmount,
-                                paymentMethodUseMinimalAmount.`value` AS paymentMethodUseMinimalAmount,
-                                paymentMethodUseMaximumAmount.`value` AS paymentMethodUseMaximumAmount,
+                                CAST(IFNULL(paymentMethodUseMinimalAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMinimalAmount,
+                                CAST(IFNULL(paymentMethodUseMaximumAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMaximumAmount,
 
                                 paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
@@ -1411,8 +1411,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         {
             // Build the payment settings model.
             Decimal.TryParse(dataRow.Field<string>("paymentMethodFee")?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var fee);
-            Decimal.TryParse(dataRow.Field<string>(Constants.PaymentMethodMinimalAmountProperty)?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var MinimalAmountProperty);
-            Decimal.TryParse(dataRow.Field<string>(Constants.PaymentMethodMaximumAmountProperty)?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var MaximumAmountProperty);
+            Decimal.TryParse(dataRow.Field<string?>(Constants.PaymentMethodMinimalAmountProperty)?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var minimalAmountProperty );
+            Decimal.TryParse(dataRow.Field<string?>(Constants.PaymentMethodMaximumAmountProperty)?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var maximumAmountProperty);
             
             var result = new PaymentMethodSettingsModel
             {
@@ -1421,10 +1421,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 Fee = fee,
                 Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("paymentMethodVisibility") ?? "Always"),
                 ExternalName = dataRow.Field<string>("paymentMethodExternalName"),
-                UseMinimalAmountCheck =  Convert.ToBoolean(dataRow[Constants.PaymentMethodUseMinimalAmountProperty]),
-                UseMaximumAmountCheck =  Convert.ToBoolean(dataRow[Constants.PaymentMethodUseMaximumAmountProperty]),
-                MinimalAmountCheck =  MinimalAmountProperty,
-                MaximumAmountCheck = MaximumAmountProperty
+                UseMinimalAmountCheck =  Convert.ToBoolean(dataRow.Field<Int64>(Constants.PaymentMethodUseMinimalAmountProperty)),
+                UseMaximumAmountCheck =  Convert.ToBoolean(dataRow.Field<Int64>(Constants.PaymentMethodUseMaximumAmountProperty)),
+                MinimalAmountCheck =  minimalAmountProperty,
+                MaximumAmountCheck = maximumAmountProperty
             };
 
             // Build the PSP settings model based on the type of PSP.
