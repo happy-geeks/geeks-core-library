@@ -1006,6 +1006,7 @@ WHERE item.id = ?itemId");
 
                         var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
                         databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
+                        databaseConnection.AddParameter($"itemDetailId{SeoPropertySuffix}{counter}", seoValueItemDetailId);
 
                         if (!valueChanged && !alwaysSaveValues)
                         {
@@ -1044,7 +1045,7 @@ WHERE item.id = ?itemId");
                             }
                             else
                             {
-                                updateQueryBuilder.Add($"UPDATE {tablePrefix}{WiserTableNames.WiserItemDetail} SET `key` = ?key{SeoPropertySuffix}{counter}, `value` = ?value{SeoPropertySuffix}{counter}, `long_value` = ?longValue{SeoPropertySuffix}{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemDetailId{counter};");
+                                updateQueryBuilder.Add($"UPDATE {tablePrefix}{WiserTableNames.WiserItemDetail} SET `key` = ?key{SeoPropertySuffix}{counter}, `value` = ?value{SeoPropertySuffix}{counter}, `long_value` = ?longValue{SeoPropertySuffix}{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemDetailId{SeoPropertySuffix}{counter};");
                             }
                         }
 
@@ -1142,6 +1143,7 @@ SET @saveHistory = ?saveHistoryGcl;
 
                             var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
                             databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
+                            databaseConnection.AddParameter($"itemDetailId{SeoPropertySuffix}{counter}", seoValueItemDetailId);
 
                             if (!valueChanged && !alwaysSaveValues)
                             {
@@ -4208,8 +4210,9 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                 columnsForQuery[setting.TableName].Add($"`{setting.ColumnName.ToMySqlSafeValue(false)}`");
 
                 databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
-                var (useLongValueColumn, _, deleteValue, alsoSaveSeoValue, _) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, true, true, "");
+                var (useLongValueColumn, _, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, true, true, "");
                 databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
+                databaseConnection.AddParameter($"itemDetailId{SeoPropertySuffix}{counter}", seoValueItemDetailId);
                 parametersForQuery[setting.TableName].Add(deleteValue ? "NULL" : $"?{(useLongValueColumn ? "longValue" : "value")}{counter}");
 
                 if (alsoSaveSeoValue)
