@@ -66,9 +66,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
-                    new(WiserTableNames.WiserItem, "key_value", IndexTypes.Normal, new List<string> { "key", "value" }),
-                    new(WiserTableNames.WiserItem, "item_id_key_value", IndexTypes.Normal, new List<string> { "item_id", "key", "value" }),
-                    new(WiserTableNames.WiserItem, "item_id_group", IndexTypes.Normal, new List<string> { "item_id", "groupname", "key" })
+                    new(WiserTableNames.WiserItemDetail, "key_value", IndexTypes.Normal, new List<string> { "key", "value" }),
+                    new(WiserTableNames.WiserItemDetail, "item_id_key_value", IndexTypes.Normal, new List<string> { "item_id", "key", "value" }),
+                    new(WiserTableNames.WiserItemDetail, "item_id_group", IndexTypes.Normal, new List<string> { "item_id", "groupname", "key" })
                 }
             },
 
