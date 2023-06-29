@@ -320,14 +320,20 @@ namespace GeeksCoreLibrary.Components.Repeater
                             {
                                 pageNumber = 1;
                             }
+                            
+                            var itemsPerPage = Settings.ItemsPerPage;
+                            if (UInt32.TryParse(httpContextAccessor?.HttpContext?.Request.Query["itemsPerPage"].ToString(), out var itemsPerPageOverrule))
+                            {
+                                itemsPerPage = itemsPerPageOverrule;
+                            }
 
-                            var startIndex = (pageNumber - 1) * Settings.ItemsPerPage;
+                            var startIndex = (pageNumber - 1) * itemsPerPage;
                             var totalBanners = 0;
                             var bannersForCurrentPage = 0;
 
                             if (Settings.BannerUsesProductBlockSpace)
                             {
-                                for (var index = 0; index < pageNumber * Settings.ItemsPerPage; index++)
+                                for (var index = 0; index < pageNumber * itemsPerPage; index++)
                                 {
                                     var bannersCount = productBanners.Count(banner => (banner.Position == index + 1 + totalBanners && banner.Method == ProductBannerModel.PlacingMethods.Fixed) || ((index + 1 + totalBanners) % banner.Position == 0 && banner.Method == ProductBannerModel.PlacingMethods.Repeating));
                                     totalBanners += bannersCount;
@@ -346,8 +352,8 @@ namespace GeeksCoreLibrary.Components.Repeater
                             }
 
                             limitClause = loadUpToPageNumberOverrule
-                                ? $" LIMIT 0, {Settings.ItemsPerPage * pageNumber + bannersForCurrentPage}"
-                                : $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {Settings.ItemsPerPage - bannersForCurrentPage}";
+                                ? $" LIMIT 0, {itemsPerPage * pageNumber + bannersForCurrentPage}"
+                                : $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {itemsPerPage - bannersForCurrentPage}";
                         }
 
                         if (query.Contains("{page_limit}", StringComparison.OrdinalIgnoreCase))
