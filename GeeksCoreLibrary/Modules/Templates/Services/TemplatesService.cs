@@ -162,6 +162,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.load_always,
     template.changed_on,
     template.external_files,
+    IF(COUNT(externalFiles.external_file) = 0, NULL, JSON_ARRAYAGG(JSON_OBJECT('url', externalFiles.external_file, 'hash', externalFiles.hash))) AS external_files_json,
     {(includeContent ? "template.template_data_minified, template.template_data," : "")}
     template.url_regex,
     template.cache_minutes,
@@ -201,6 +202,7 @@ LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = pa
 
 LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
 LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN {WiserTableNames.WiserTemplateExternalFiles} AS externalFiles ON externalFiles.template_id = template.id
 
 WHERE {String.Join(" AND ", whereClause)}
 GROUP BY template.template_id
@@ -425,52 +427,54 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             }
 
             var query = $@"SELECT
-                            IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
-                            parent1.template_name AS parent_name, 
-                            template.parent_id,
-                            template.template_name,
-                            template.template_type,
-                            template.ordering,
-                            parent1.ordering AS parent_ordering,
-                            template.template_id,
-                            GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates, 
-                            GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
-                            template.load_always,
-                            template.changed_on,
-                            template.external_files,
-                            {(includeContent ? "template.template_data_minified, template.template_data," : "")}
-                            template.url_regex,
-                            template.cache_per_url,
-                            template.cache_per_querystring,
-                            template.cache_per_hostname,
-                            template.cache_using_regex,
-                            template.cache_minutes,
-                            template.cache_location,
-                            template.cache_regex,
-                            0 AS use_obfuscate,
-                            template.insert_mode,
-                            template.grouping_create_object_instead_of_array,
-                            template.grouping_key_column_name,
-                            template.grouping_value_column_name,
-                            template.grouping_key,
-                            template.grouping_prefix,
-                            template.pre_load_query,
-                            template.return_not_found_when_pre_load_query_has_no_data,
-                            template.version
-                        FROM {WiserTableNames.WiserTemplate} AS template
-                        {joinPart}
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
+    IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
+    parent1.template_name AS parent_name, 
+    template.parent_id,
+    template.template_name,
+    template.template_type,
+    template.ordering,
+    parent1.ordering AS parent_ordering,
+    template.template_id,
+    GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates, 
+    GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
+    template.load_always,
+    template.changed_on,
+    template.external_files,
+    IF(COUNT(externalFiles.external_file) = 0, NULL, JSON_ARRAYAGG(JSON_OBJECT('url', externalFiles.external_file, 'hash', externalFiles.hash))) AS external_files_json,
+    {(includeContent ? "template.template_data_minified, template.template_data," : "")}
+    template.url_regex,
+    template.cache_per_url,
+    template.cache_per_querystring,
+    template.cache_per_hostname,
+    template.cache_using_regex,
+    template.cache_minutes,
+    template.cache_location,
+    template.cache_regex,
+    0 AS use_obfuscate,
+    template.insert_mode,
+    template.grouping_create_object_instead_of_array,
+    template.grouping_key_column_name,
+    template.grouping_value_column_name,
+    template.grouping_key,
+    template.grouping_prefix,
+    template.pre_load_query,
+    template.return_not_found_when_pre_load_query_has_no_data,
+    template.version
+FROM {WiserTableNames.WiserTemplate} AS template
+{joinPart}
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
+LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN {WiserTableNames.WiserTemplateExternalFiles} AS externalFiles ON externalFiles.template_id = template.id
 
-                        WHERE {String.Join(" AND ", whereClause)}
-                        GROUP BY template.template_id
-                        ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
+WHERE {String.Join(" AND ", whereClause)}
+GROUP BY template.template_id
+ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
             await using var reader = await databaseConnection.GetReaderAsync(query);
             while (await reader.ReadAsync())
@@ -506,51 +510,53 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             whereClause.Add($"template.insert_mode = {(int)byInsertMode}");
 
             var query = $@"SELECT
-                            IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
-                            parent1.template_name AS parent_name, 
-                            template.parent_id,
-                            template.template_name,
-                            template.template_type,
-                            template.ordering,
-                            parent1.ordering AS parent_ordering,
-                            template.template_id,
-                            GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates, 
-                            GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
-                            template.load_always,
-                            template.changed_on,
-                            template.external_files,
-                            template.template_data_minified,
-                            template.template_data,
-                            template.url_regex,
-                            template.cache_per_url,
-                            template.cache_per_querystring,
-                            template.cache_per_hostname,
-                            template.cache_using_regex,
-                            template.cache_minutes,
-                            template.cache_location,
-                            template.cache_regex,
-                            0 AS use_obfuscate,
-                            template.insert_mode,
-                            template.grouping_create_object_instead_of_array,
-                            template.grouping_key_column_name,
-                            template.grouping_value_column_name,
-                            template.grouping_key,
-                            template.grouping_prefix,
-                            template.version
-                        FROM {WiserTableNames.WiserTemplate} AS template
-                        {joinPart}
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
+    IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
+    parent1.template_name AS parent_name, 
+    template.parent_id,
+    template.template_name,
+    template.template_type,
+    template.ordering,
+    parent1.ordering AS parent_ordering,
+    template.template_id,
+    GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates, 
+    GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
+    template.load_always,
+    template.changed_on,
+    template.external_files,
+    IF(COUNT(externalFiles.external_file) = 0, NULL, JSON_ARRAYAGG(JSON_OBJECT('url', externalFiles.external_file, 'hash', externalFiles.hash))) AS external_files_json,
+    template.template_data_minified,
+    template.template_data,
+    template.url_regex,
+    template.cache_per_url,
+    template.cache_per_querystring,
+    template.cache_per_hostname,
+    template.cache_using_regex,
+    template.cache_minutes,
+    template.cache_location,
+    template.cache_regex,
+    0 AS use_obfuscate,
+    template.insert_mode,
+    template.grouping_create_object_instead_of_array,
+    template.grouping_key_column_name,
+    template.grouping_value_column_name,
+    template.grouping_key,
+    template.grouping_prefix,
+    template.version
+FROM {WiserTableNames.WiserTemplate} AS template
+{joinPart}
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = parent2.parent_id AND parent3.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent2.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
-                        LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
+LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN {WiserTableNames.WiserTemplateExternalFiles} AS externalFiles ON externalFiles.template_id = template.id
 
-                        WHERE {String.Join(" AND ", whereClause)}
-                        GROUP BY template.template_id
-                        ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
+WHERE {String.Join(" AND ", whereClause)}
+GROUP BY template.template_id
+ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
             var result = new TemplateResponse();
             var resultBuilder = new StringBuilder();
@@ -1328,8 +1334,8 @@ ORDER BY ORDINAL_POSITION ASC";
 
             var cssStringBuilder = new StringBuilder();
             var jsStringBuilder = new StringBuilder();
-            var externalCssFilesList = new List<string>();
-            var externalJavaScriptFilesList = new List<string>();
+            var externalCssFilesList = new List<PageResource>();
+            var externalJavaScriptFilesList = new List<PageResource>();
             foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
             {
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);

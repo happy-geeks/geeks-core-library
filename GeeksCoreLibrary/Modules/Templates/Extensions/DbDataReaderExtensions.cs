@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Models;
+using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Modules.Templates.Extensions
 {
@@ -93,10 +95,30 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 template.JavascriptTemplates = javascriptTemplates.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(Int32.Parse).Where(id => id > 0).ToList();
             }
 
-            var externalFiles = reader.GetStringHandleNull("external_files");
-            if (!String.IsNullOrWhiteSpace(externalFiles))
+            if (reader.HasColumn("external_files_json"))
             {
-                template.ExternalFiles = externalFiles.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                var jsonString = reader.GetStringHandleNull("external_files_json");
+                if (!String.IsNullOrEmpty(jsonString))
+                {
+                    template.ExternalFiles = JsonConvert.DeserializeObject<List<PageResource>>(jsonString);
+                }
+            }
+
+            var externalFiles = reader.GetStringHandleNull("external_files").Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
+            if (externalFiles != null && externalFiles.Any())
+            {
+                foreach (var file in externalFiles)
+                {
+                    if (!Uri.TryCreate(file, UriKind.Absolute, out var uri))
+                    {
+                        continue;
+                    }
+
+                    template.ExternalFiles.Add(new PageResource
+                    {
+                        Uri = uri
+                    });
+                }
             }
 
             var cdnFiles = reader.HasColumn("wiser_cdn_files") ? reader.GetStringHandleNull("wiser_cdn_files") : null;

@@ -2,10 +2,8 @@
 
 namespace GeeksCoreLibrary.Modules.Templates.Models
 {
-    public class JavaScriptResource
+    public class JavaScriptResource : PageResource
     {
-        public Uri Uri { get; set; }
-
         public bool Async { get; set; }
 
         public bool Defer { get; set; } = true;

@@ -78,7 +78,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             {
                 return NotFound();
             }
-            
+
             var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentOut, orderProcessId);
             return Content(html, "text/html");
         }
@@ -94,7 +94,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             {
                 return NotFound();
             }
-            
+
             var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentIn, orderProcessId);
             return Content(html, "text/html");
         }
@@ -110,7 +110,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             {
                 return NotFound();
             }
-            
+
             var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentReturn, orderProcessId);
             return Content(html, "text/html");
         }
@@ -145,8 +145,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
 
             var javascriptTemplates = new List<int>();
             var cssTemplates = new List<int>();
-            var externalJavascript = new List<string>();
-            var externalCss = new List<string>();
+            var externalJavascript = new List<PageResource>();
+            var externalCss = new List<PageResource>();
             var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase);
 
             var contentToWrite = new StringBuilder();
@@ -207,7 +207,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             {
                 throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
             }
-            
+
             // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
             var viewContext = new ViewContext(
                 actionContextAccessor.ActionContext,

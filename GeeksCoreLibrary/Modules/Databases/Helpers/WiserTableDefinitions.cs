@@ -303,6 +303,20 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 }
             },
 
+            // wiser_template_external_files
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserTemplateExternalFiles,
+                LastUpdate = new DateTime(2023, 6, 29),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("template_id", MySqlDbType.Int32, notNull: true),
+                    new("external_file", MySqlDbType.VarChar, 1000, notNull: true),
+                    new("hash", MySqlDbType.VarChar, 32, notNull: true)
+                },
+            },
+
             // wiser_commit
             new WiserTableDefinitionModel
             {

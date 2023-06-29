@@ -123,6 +123,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserTemplate = "wiser_template";
         /// <summary>
+        /// This table is used to store external files for the templates module.
+        /// </summary>
+        public const string WiserTemplateExternalFiles = "wiser_template_external_files";
+        /// <summary>
         /// This table is used to store dynamic content components for the templates module.
         /// </summary>
         public const string WiserDynamicContent = "wiser_dynamic_content";
@@ -177,7 +181,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// This table is used by Wiser for the functionality of creating branches for customers and synchronising changes from another branch to the main/original branch,
         /// When a new item has been added in another branch and it gets synchronised to production, it will most likely get a different ID in the main branch.
-        /// We need this table to remember/map these IDs, so that we can also synchronise any other changes to the correct item. 
+        /// We need this table to remember/map these IDs, so that we can also synchronise any other changes to the correct item.
         /// </summary>
         public const string WiserIdMappings = "wiser_id_mappings";
         /// <summary>

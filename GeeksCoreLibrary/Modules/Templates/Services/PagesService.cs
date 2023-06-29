@@ -195,7 +195,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<PageViewModel> CreatePageViewModelAsync(List<string> externalCss, List<int> cssTemplates, List<string> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0)
+        public async Task<PageViewModel> CreatePageViewModelAsync(List<PageResource> externalCss, List<int> cssTemplates, List<PageResource> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0)
         {
             var viewModel = new PageViewModel();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
@@ -461,7 +461,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Check if some component is adding external JavaScript libraries to the page.
-            var externalScripts = externalJavascript.Select(ej => new JavaScriptResource { Uri = new Uri(ej, UriKind.RelativeOrAbsolute) }).ToList();
+            var externalScripts = externalJavascript.Select(ej => new JavaScriptResource { Uri = ej.Uri, Hash = ej.Hash }).ToList();
             foreach (var externalScript in externalScripts.Where(externalScript => !externalScript.Uri.IsAbsoluteUri))
             {
                 // Turn relative URI into absolute.

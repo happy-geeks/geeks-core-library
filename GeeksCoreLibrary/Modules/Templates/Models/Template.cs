@@ -79,7 +79,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets the list of external files. This is only applicable for templates of type <see cref="TemplateTypes.Css"/> and <see cref="TemplateTypes.Js"/>.
         /// These are external CSS or Javascript files that need to be loaded before the current CSS or Javascript file.
         /// </summary>
-        public List<string> ExternalFiles { get; set; } = new();
+        public List<PageResource> ExternalFiles { get; set; } = new();
 
         /// <summary>
         /// Gets or sets the list of CSS templates that should be used with the current template.

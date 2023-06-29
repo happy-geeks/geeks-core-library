@@ -15,7 +15,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="cssTemplates">A list of css templates. Any css templates that are linked to the header, will be added to this list.</param>
         /// <returns>The string with the entire header HTML.</returns>
         Task<string> GetGlobalHeader(string url, List<int> javascriptTemplates, List<int> cssTemplates);
-        
+
         /// <summary>
         /// Gets the footer template from Wiser that should be loaded on every page.
         /// </summary>
@@ -35,8 +35,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="bodyHtml">The complete HTML of the body of this page.</param>
         /// <param name="templateId">Optional: The ID of the template that is used for this page. Leave empty if you're creating a view model for something that is not a template from the Wiser template module.</param>
         /// <returns>The model for the view.</returns>
-        Task<PageViewModel> CreatePageViewModelAsync(List<string> externalCss, List<int> cssTemplates, List<string> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0);
-        
+        Task<PageViewModel> CreatePageViewModelAsync(List<PageResource> externalCss, List<int> cssTemplates, List<PageResource> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0);
+
         /// <summary>
         /// Sets the SEO meta data for the current page.
         /// </summary>

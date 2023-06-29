@@ -143,7 +143,15 @@ namespace GeeksCoreLibrary.Core.Extensions
                     await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {WiserTableNames.WiserEntity});
                     return;
                 }
-                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {Modules.Databases.Models.Constants.DatabaseConnectionLogTableName, WiserTableNames.WiserEntity});
+
+                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string>
+                {
+                    WiserTableNames.WiserTemplate,
+                    WiserTableNames.WiserDynamicContent,
+                    WiserTableNames.WiserTemplateDynamicContent,
+                    WiserTableNames.WiserTemplateExternalFiles,
+                    Modules.Databases.Models.Constants.DatabaseConnectionLogTableName
+                , WiserTableNames.WiserEntity});
             });
 
             return builder;
