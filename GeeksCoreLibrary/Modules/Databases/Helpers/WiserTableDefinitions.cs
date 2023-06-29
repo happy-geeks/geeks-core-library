@@ -49,6 +49,29 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 }
             },
 
+            // wiser_itemdetail
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserItemDetail,
+                LastUpdate = new DateTime(2021, 9, 1),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("language_code", MySqlDbType.VarChar, 5, notNull: true, defaultValue: ""),
+                    new("item_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                    new("groupname", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
+                    new("key", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
+                    new("value", MySqlDbType.VarChar, 1000, notNull: true, defaultValue: ""),
+                    new("long_value", MySqlDbType.MediumText)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserItemDetail, "key_value", IndexTypes.Normal, new List<string> { "key", "value" }),
+                    new(WiserTableNames.WiserItemDetail, "item_id_key_value", IndexTypes.Normal, new List<string> { "item_id", "key", "value" }),
+                    new(WiserTableNames.WiserItemDetail, "item_id_group", IndexTypes.Normal, new List<string> { "item_id", "groupname", "key" })
+                }
+            },
+
             // wiser_grant_store
             new WiserTableDefinitionModel
             {

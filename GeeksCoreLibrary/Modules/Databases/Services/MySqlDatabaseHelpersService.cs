@@ -300,7 +300,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 if (!oldIndexes.ContainsKey(index.TableName))
                 {
                     oldIndexes.Add(index.TableName, new List<(string Name, List<string> Columns)>());
-                    var dataTable = await databaseConnection.GetAsync($"SHOW INDEX FROM `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}`");
+                    var dataTable = await databaseConnection.GetAsync($"SHOW INDEX FROM `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}`", true);
                     foreach (var dataRow in dataTable.Rows.Cast<DataRow>().OrderBy(row => row.Field<string>("key_name")).ThenBy(row => Convert.ToInt32(row["seq_in_index"])))
                     {
                         var indexName = dataRow.Field<string>("key_name");

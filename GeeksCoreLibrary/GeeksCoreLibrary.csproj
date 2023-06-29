@@ -5,11 +5,11 @@
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>3.0.15</Version>
+    <Version>3.0.20</Version>
     <Company>Happy Geeks B.V.</Company>
     <Description>Our base/core library that we use for most of our other projects.</Description>
-    <AssemblyVersion>3.0.15.0</AssemblyVersion>
-    <FileVersion>3.0.15.0</FileVersion>
+    <AssemblyVersion>3.0.20.0</AssemblyVersion>
+    <FileVersion>3.0.20.0</FileVersion>
     <PackageDescription>Geeks Core Library</PackageDescription>
     <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
@@ -56,6 +56,7 @@
     <PackageReference Include="Mollie.Api" Version="2.3.0.1" />
     <PackageReference Include="MultiSafepay" Version="0.8.7" />
     <PackageReference Include="MySql.Data" Version="8.0.33" />
+    <PackageReference Include="ObjectCloner" Version="2.2.2" />
     <PackageReference Include="OmniKassa_Rabobank" Version="1.4.0" />
     <PackageReference Include="RestSharp" Version="110.2.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -73,7 +74,7 @@
     <PackageReference Include="System.Runtime.Extensions" Version="4.3.1" />
     <PackageReference Include="System.Threading" Version="4.3.0" />
     <PackageReference Include="Twilio" Version="6.8.0" />
-    <PackageReference Include="WebMarkupMin.AspNetCore3" Version="2.14.0" />
+    <PackageReference Include="WebMarkupMin.AspNetCore3" Version="2.14.1" />
     <PackageReference Include="ZXing.Net" Version="0.16.9" />
     <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.13" />
   </ItemGroup>
