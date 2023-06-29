@@ -10,6 +10,12 @@ public class VueConfiguratorDataModel
     /// </summary>
     [JsonProperty("configuratorId")]
     public ulong ConfiguratorId { get; set; }
+    
+    /// <summary>
+    /// Gets or sets if the configurator needs to start the configuration at an extern API when starting the configurator.
+    /// </summary>
+    [JsonProperty("startExternalConfigurationOnStart")]
+    public bool StartExternalConfigurationOnStart { get; set; }
 
     /// <summary>
     /// Gets or sets the steps data.

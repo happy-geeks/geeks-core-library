@@ -119,6 +119,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
+        public async Task<string> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration)
+        {
+            return await configuratorsService.StartConfigurationExternallyAsync(vueConfiguration);
+        }
+
+        /// <inheritdoc />
         public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
         {
             return await configuratorsService.CalculatePriceAsync(input);

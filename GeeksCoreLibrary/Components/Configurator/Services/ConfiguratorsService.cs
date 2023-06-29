@@ -406,7 +406,8 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
     CONCAT_WS('', progressBarStepTemplate.`value`, progressBarStepTemplate.long_value) AS progressBarStepTemplate,
     CONCAT_WS('', summaryTemplate.`value`, summaryTemplate.long_value) AS summaryTemplate,
     priceCalculationQuery.`value` AS priceCalculationQuery,
-    deliveryTimeCalculationQuery.`value` AS deliveryTimeCalculationQuery
+    deliveryTimeCalculationQuery.`value` AS deliveryTimeCalculationQuery,
+	apiStartConfiguration.`value` IS NOT NULL AND apiStartConfiguration.`value` <> '' AS startExternalConfigurationOnStart
 FROM {WiserTableNames.WiserItem} AS configurator
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS mainTemplate ON mainTemplate.item_id = configurator.id AND mainTemplate.`key` = 'template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarTemplate ON progressBarTemplate.item_id = configurator.id AND progressBarTemplate.`key` = 'progress_bar_template'
@@ -414,6 +415,7 @@ LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarStepTemplate ON progre
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryTemplate ON summaryTemplate.item_id = configurator.id AND summaryTemplate.`key` = 'summary_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS priceCalculationQuery ON priceCalculationQuery.item_id = configurator.id AND priceCalculationQuery.`key` = 'price_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS deliveryTimeCalculationQuery ON deliveryTimeCalculationQuery.item_id = configurator.id AND deliveryTimeCalculationQuery.`key` = 'delivery_time_calculation_query'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiStartConfiguration ON apiStartConfiguration.item_id = configurator.id AND apiStartConfiguration.`key` = 'start'
 WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.title = ?name");
 
             if (configuratorSettings.Rows.Count == 0)
@@ -430,7 +432,8 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
                 ProgressBarStepTemplate = configuratorSettings.Rows[0].Field<string>("progressBarStepTemplate"),
                 SummaryTemplate = configuratorSettings.Rows[0].Field<string>("summaryTemplate"),
                 PriceCalculationQuery = configuratorSettings.Rows[0].Field<string>("priceCalculationQuery"),
-                DeliveryTimeCalculationQuery = configuratorSettings.Rows[0].Field<string>("deliveryTimeCalculationQuery")
+                DeliveryTimeCalculationQuery = configuratorSettings.Rows[0].Field<string>("deliveryTimeCalculationQuery"),
+                StartExternalConfigurationOnStart = Convert.ToBoolean(configuratorSettings.Rows[0]["startExternalConfigurationOnStart"])
             };
 
             if (!includeStepsData)
@@ -950,6 +953,97 @@ ORDER BY parentStepId, ordering";
         }
 
         /// <inheritdoc />
+        public async Task<string> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration)
+        {
+            var query = $@"SELECT CAST(externalStartConfiguratorApi.`value` AS UNSIGNED) AS externalStartConfiguratorApi
+FROM {WiserTableNames.WiserItem} AS configurator
+JOIN {WiserTableNames.WiserItemDetail} AS externalStartConfiguratorApi ON externalStartConfiguratorApi.item_id = configurator.id AND externalStartConfiguratorApi.`key` = 'start'
+WHERE configurator.entity_type = 'configurator' AND configurator.title = ?configuratorName";
+            
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("configuratorName", vueConfiguration.ConfiguratorName);
+            var dataTable = await databaseConnection.GetAsync(query);
+            
+            if (dataTable.Rows.Count == 0)
+            {
+                return null;
+            }
+
+            var startApi = await wiserItemsService.GetItemDetailsAsync(dataTable.Rows[0].Field<UInt64>("externalStartConfiguratorApi"), entityType: "ConfiguratorApi", skipPermissionsCheck: true);
+            
+            var endpoint = startApi.GetDetailValue("endpoint");
+            var requestJson = startApi.GetDetailValue("request_json");
+            var externalConfigurationIdLey = startApi.GetDetailValue("external_configuration_id_key");
+            query = startApi.GetDetailValue("api_query");
+
+            if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(externalConfigurationIdLey))
+            {
+                return null;
+            }
+
+            DataRow extraData = null;
+
+            // If a query is set handle it to add extra information for the replacements in the JSON.
+            if (!String.IsNullOrWhiteSpace(query))
+            {
+                query = await ReplaceConfiguratorItemsAsync(query, vueConfiguration, true);
+                query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                var extraDataTable = await databaseConnection.GetAsync(query);
+
+                if (extraDataTable.Rows.Count > 0)
+                {
+                    extraData = extraDataTable.Rows[0];
+                }
+            }
+
+            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, vueConfiguration, true);
+            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, vueConfiguration, true);
+            endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
+
+            var requestMethod = (Method) startApi.GetDetailValue<int>("request_type");
+
+            var restClient = new RestClient();
+            var restRequest = new RestRequest(endpoint, requestMethod);
+
+            if (!String.IsNullOrWhiteSpace(requestJson))
+            {
+                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, vueConfiguration, false);
+                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, vueConfiguration, false);
+                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+
+                var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                requestJson = regex.Replace(requestJson, "null");
+
+                restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+            }
+
+            await AddAuthenticationToApiCall(restRequest, startApi);
+            await AddAcceptLanguageToApiCall(restRequest);
+            await AddCustomHeadersAsync(restRequest, startApi, vueConfiguration: vueConfiguration, extraData: extraData);
+
+            var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
+            if (!restResponse.IsSuccessful || restResponse.Content == null)
+            {
+                logger.LogWarning("Error while trying to start the configuration at an API ({startApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}",  startApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
+                return null;
+            }
+            
+            // Get the external configuration ID from the response.
+            var responseData = JObject.Parse(restResponse.Content);
+            var keyParts = new List<string>(externalConfigurationIdLey.Split('.'));
+            var currentObject = responseData;
+
+            // Step into the object till only 1 key part is left.
+            while (keyParts.Count > 1)
+            {
+                currentObject = (JObject) currentObject[keyParts[0]];
+                keyParts.RemoveAt(0);
+            }
+
+            return currentObject?[keyParts[0]]?.ToString();
+        }
+
+        /// <inheritdoc />
         public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
         {
             (decimal purchasePrice, decimal customerPrice, decimal fromPrice) result = (0, 0, 0);
@@ -1151,7 +1245,7 @@ ORDER BY parentStepId, ordering";
 
                     await AddAuthenticationToApiCall(restRequest, priceApi);
                     await AddAcceptLanguageToApiCall(restRequest);
-                    await AddCustomHeadersAsync(restRequest, priceApi, configuration, extraData);
+                    await AddCustomHeadersAsync(restRequest, priceApi, configuration, extraData: extraData);
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
@@ -1358,7 +1452,7 @@ ORDER BY parentStepId, ordering";
 
                     await AddAuthenticationToApiCall(restRequest, saveApi);
                     await AddAcceptLanguageToApiCall(restRequest);
-                    await AddCustomHeadersAsync(restRequest, saveApi, input, extraData);
+                    await AddCustomHeadersAsync(restRequest, saveApi, input, extraData: extraData);
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
@@ -1397,7 +1491,7 @@ ORDER BY parentStepId, ordering";
                         continue;
                     }
 
-                    // Get the three different prices from the response.
+                    // Get the supplier ID from the response.
                     var responseData = JObject.Parse(restResponse.Content);
                     var keyParts = new List<string>(supplierIdKey.Split('.'));
                     var currentObject = responseData;
@@ -1495,6 +1589,8 @@ ORDER BY parentStepId, ordering";
 
             switch (authenticationType)
             {
+                case 0: // When not set skip authentication.
+                    return;
                 case 1: // OAuth 2.0
                     // TODO handle OAuth 2
                     request.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
@@ -1528,8 +1624,9 @@ ORDER BY parentStepId, ordering";
         /// <param name="request">The request to add the headers to.</param>
         /// <param name="configuratorApi">The configurator API settings to set the headers from.</param>
         /// <param name="configuration">The configuration to use for configuration replacements in the header's value.</param>
+        /// <param name="vueConfiguration">The Vue configuration to use for configuration replacements in the header's value.</param>
         /// <param name="extraData">Extra data to use for replacements in the header's value.</param>
-        private async Task AddCustomHeadersAsync(RestRequest request, WiserItemModel configuratorApi, ConfigurationsModel configuration = null, DataRow extraData = null)
+        private async Task AddCustomHeadersAsync(RestRequest request, WiserItemModel configuratorApi, ConfigurationsModel configuration = null, VueConfigurationsModel vueConfiguration = null, DataRow extraData = null)
         {
             foreach (var detail in configuratorApi.Details)
             {
@@ -1541,6 +1638,11 @@ ORDER BY parentStepId, ordering";
                 if (configuration != null)
                 {
                     value = await ReplaceConfiguratorItemsAsync(value, configuration, false);
+                }
+
+                if (vueConfiguration != null)
+                {
+                    value = await ReplaceConfiguratorItemsAsync(value, vueConfiguration, false);
                 }
 
                 if (extraData != null)

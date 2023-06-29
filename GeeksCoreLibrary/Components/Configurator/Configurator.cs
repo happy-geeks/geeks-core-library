@@ -1827,6 +1827,11 @@ namespace GeeksCoreLibrary.Components.Configurator
             return result;
         }
 
+        public async Task<string> StartConfigurationExternally(VueConfigurationsModel configuration)
+        {
+            return await configuratorsService.StartConfigurationExternallyAsync(configuration);
+        }
+        
         #endregion
     }
 }

@@ -56,6 +56,13 @@ public interface IConfiguratorsService
     Task<string> ReplaceConfiguratorItemsAsync(string template, VueConfigurationsModel configuration, bool isDataQuery);
 
     /// <summary>
+    /// Start the configuration at an external API.
+    /// </summary>
+    /// <param name="vueConfiguration">TA <see cref="VueConfigurationsModel"/> object.</param>
+    /// <returns>The ID of the configuration in the external API.</returns>
+    Task<string> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration);
+    
+    /// <summary>
     /// <para>Calculates the price and purchase price of a product.</para>
     /// <para>Returns a <see cref="Tuple"/> where Item1 is the purchase price, Item2 is the customer price, and Item3 is the from price.</para>
     /// </summary>
