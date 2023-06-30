@@ -1737,85 +1737,15 @@ namespace GeeksCoreLibrary.Components.Configurator
                 }
 
                 // Dependencies are valid, load options.
-                var stepOptionsQuery = stepData.StepOptionsQuery;
-                if (String.IsNullOrWhiteSpace(stepOptionsQuery))
+                switch (stepData.Datasource)
                 {
-                    stepData.Options = options;
-                    continue;
+                    case "customquery":
+                        await configuratorsService.SetVueStepOptionsWithQueryAsync(stepData, options, configuration);
+                        break;
+                    case "api":
+                        await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration);
+                        break;
                 }
-
-                stepOptionsQuery = await configuratorsService.ReplaceConfiguratorItemsAsync(stepOptionsQuery, configuration, true);
-                stepOptionsQuery = await TemplatesService.DoReplacesAsync(stepOptionsQuery, handleRequest: false, removeUnknownVariables: false, forQuery: true);
-                var stepOptionsDataTable = await DatabaseConnection.GetAsync(stepOptionsQuery);
-                if (stepOptionsDataTable.Rows.Count == 0)
-                {
-                    stepData.Options = options;
-                    continue;
-                }
-
-                // Some values of the step can be overriden through the step options query.
-                if (stepOptionsDataTable.Columns.Contains("minimumValue"))
-                {
-                    stepData.MinimumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["minimumValue"]);
-                }
-                if (stepOptionsDataTable.Columns.Contains("maximumValue"))
-                {
-                    stepData.MaximumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["maximumValue"]);
-                }
-                if (stepOptionsDataTable.Columns.Contains("validationRegex"))
-                {
-                    stepData.ValidationRegex = Convert.ToString(stepOptionsDataTable.Rows[0]["validationRegex"]);
-                }
-
-                // Handle the data rows.
-                var stepOptionProperties = typeof(VueStepOptionDataModel).GetProperties();
-                foreach (var dataRow in stepOptionsDataTable.Rows.Cast<DataRow>())
-                {
-                    var stepOption = new VueStepOptionDataModel
-                    {
-                        AdditionalData = new Dictionary<string, object>()
-                    };
-
-                    foreach (var dataColumn in stepOptionsDataTable.Columns.Cast<DataColumn>())
-                    {
-                        var columnName = dataColumn.ColumnName;
-                        var columnValue = dataRow[dataColumn];
-                        var property = stepOptionProperties.FirstOrDefault(property => property.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
-                        if (property != null)
-                        {
-                            // Check if the property is a boolean and if so, convert the value to a boolean.
-                            if (property.PropertyType == typeof(bool))
-                            {
-                                // String values are handled differently.
-                                if (columnValue is string stringValue)
-                                {
-                                    property.SetValue(stepOption, stringValue.InList(StringComparer.OrdinalIgnoreCase, "1", "true"));
-                                }
-                                else
-                                {
-                                    property.SetValue(stepOption, Convert.ToBoolean(columnValue));
-                                }
-                            }
-                            else
-                            {
-                                var type = property.PropertyType;
-                                type = Nullable.GetUnderlyingType(type) ?? type;
-
-                                // All other data types are just added as-is.
-                                property.SetValue(stepOption, Convert.ChangeType(columnValue, type));
-                            }
-                        }
-                        else
-                        {
-                            // Add the value to the additional data dictionary.
-                            stepOption.AdditionalData.Add(columnName, columnValue);
-                        }
-                    }
-
-                    options.Add(stepOption);
-                }
-
-                stepData.Options = options;
             }
 
             // Remove the steps listed in stepsToRemove from the result.

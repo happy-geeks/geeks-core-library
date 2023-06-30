@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Text;
 using System.Threading.Tasks;
@@ -92,6 +93,18 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultConfiguratorsCacheDuration;
                return await configuratorsService.GetVueConfiguratorDataAsync(name, includeStepsData);
             }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Configurators));
+        }
+
+        /// <inheritdoc />
+        public async Task SetVueStepOptionsWithQueryAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration)
+        {
+            await configuratorsService.SetVueStepOptionsWithQueryAsync(stepData, options, configuration);
+        }
+
+        /// <inheritdoc />
+        public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration)
+        {
+            await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration);
         }
 
         /// <inheritdoc />

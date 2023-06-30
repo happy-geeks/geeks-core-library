@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Models;
@@ -21,6 +22,24 @@ public interface IConfiguratorsService
     /// <param name="includeStepsData">Optional: Whether the data for the steps should also be retrieved. Default value is true.</param>
     /// <returns>A <see cref="DataTable"/> object.</returns>
     Task<VueConfiguratorDataModel> GetVueConfiguratorDataAsync(string name, bool includeStepsData = true);
+
+    /// <summary>
+    /// Set the step options from a query.
+    /// </summary>
+    /// <param name="stepData"></param>
+    /// <param name="options"></param>
+    /// <param name="configuration"></param>
+    /// <returns></returns>
+    Task SetVueStepOptionsWithQueryAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration);
+
+    /// <summary>
+    /// Set the step options from an API.
+    /// </summary>
+    /// <param name="stepData"></param>
+    /// <param name="options"></param>
+    /// <param name="configuration"></param>
+    /// <returns></returns>
+    Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration);
 
     /// <summary>
     /// save configuration to database

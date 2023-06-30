@@ -177,13 +177,10 @@ public class VueStepDataModel
     public string StepOptionTemplate { get; set; }
 
     /// <summary>
-    /// Gets or sets the query that retrieves the step data and step options data.
+    /// The datasource being used for the step.
     /// </summary>
-    /// <remarks>
-    /// This property is not serialized to JSON because it is not needed in the client-side and because it would be a security risk.
-    /// </remarks>
     [JsonIgnore]
-    public string StepOptionsQuery { get; set; }
+    public string Datasource { get; set; }
 
     /// <summary>
     /// Gets or sets the query that retrieves the step's extension data.

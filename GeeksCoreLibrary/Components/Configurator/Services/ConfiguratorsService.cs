@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -451,6 +452,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         IFNULL(title.`value`, step.title) AS displayName,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        datasource.`value` AS datasource,
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
         requiredConditions.`value` AS requiredConditions,
         minimumValue.`value` AS minimumValue,
@@ -470,13 +472,12 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
             (SELECT CONCAT_WS('', `value`, long_value) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'values_template'),
             CONCAT_WS('', stepOptionTemplate.`value`, stepOptionTemplate.long_value)
         ) AS stepOptionTemplate,
-        CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
         CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
         (SELECT JSON_OBJECTAGG(`key`, CONCAT_WS('', `value`, long_value)) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = step.id AND groupname = 'extra_data') AS extraData,
 
         IFNULL(optionsOpenModal.`value`, '0') = '1' AS optionsOpenModal,
-        CONCAT_WS('', modalTemplate.`value`, stepOptionsQuery.long_value) AS modalTemplate,
+        CONCAT_WS('', modalTemplate.`value`, modalTemplate.long_value) AS modalTemplate,
         modalContainerSelector.`value` AS modalContainerSelector,
 
         stepLink.ordering
@@ -487,6 +488,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS title ON title.item_id = step.id AND title.`key` = 'title' AND title.language_code = ?languageCode
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS datasource ON datasource.item_id = step.id AND datasource.`key` = 'datasource'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
@@ -503,7 +505,6 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS templatesFromStepId ON templatesFromStepId.item_id = step.id AND templatesFromStepId.`key` = 'duplicatelayoutfrom'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepTemplate ON stepTemplate.item_id = step.id AND stepTemplate.`key` = 'step_template'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionTemplate ON stepOptionTemplate.item_id = step.id AND stepOptionTemplate.`key` = 'values_template'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionsQuery ON stepOptionsQuery.item_id = step.id AND stepOptionsQuery.`key` = 'custom_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS extraDataQuery ON extraDataQuery.item_id = step.id AND extraDataQuery.`key` = 'extra_data_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = step.id AND urlRegex.`key` = 'urlregex'
 
@@ -521,6 +522,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         IFNULL(title.`value`, step.title) AS displayName,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        datasource.`value` AS datasource,
 
         # Validation properties.
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
@@ -544,13 +546,12 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
             (SELECT CONCAT_WS('', `value`, long_value) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'values_template'),
             CONCAT_WS('', stepOptionTemplate.`value`, stepOptionTemplate.long_value)
         ) AS stepOptionTemplate,
-        CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
         CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
         (SELECT JSON_OBJECTAGG(`key`, CONCAT_WS('', `value`, long_value)) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = step.id AND groupname = 'extra_data') AS extraData,
 
         IFNULL(optionsOpenModal.`value`, '0') = '1' AS optionsOpenModal,
-        CONCAT_WS('', modalTemplate.`value`, stepOptionsQuery.long_value) AS modalTemplate,
+        CONCAT_WS('', modalTemplate.`value`, modalTemplate.long_value) AS modalTemplate,
         modalContainerSelector.`value` AS modalContainerSelector,
 
         stepLink.ordering
@@ -562,6 +563,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS title ON title.item_id = step.id AND title.`key` = 'title' AND title.language_code = ?languageCode
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS datasource ON datasource.item_id = step.id AND datasource.`key` = 'datasource'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
@@ -578,7 +580,6 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS templatesFromStepId ON templatesFromStepId.item_id = step.id AND templatesFromStepId.`key` = 'duplicatelayoutfrom'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepTemplate ON stepTemplate.item_id = step.id AND stepTemplate.`key` = 'step_template'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionTemplate ON stepOptionTemplate.item_id = step.id AND stepOptionTemplate.`key` = 'values_template'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionsQuery ON stepOptionsQuery.item_id = step.id AND stepOptionsQuery.`key` = 'custom_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS extraDataQuery ON extraDataQuery.item_id = step.id AND extraDataQuery.`key` = 'extra_data_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = step.id AND urlRegex.`key` = 'urlregex'
 
@@ -594,6 +595,7 @@ SELECT
     displayName,
     stepName,
     dependencies,
+    datasource,
     isRequired,
     requiredConditions,
     minimumValue,
@@ -605,7 +607,6 @@ SELECT
     validationRegexErrorMessage,
     stepTemplate,
     stepOptionTemplate,
-    stepOptionsQuery,
     extraDataQuery,
     urlRegex,
     extraData,
@@ -721,7 +722,7 @@ ORDER BY parentStepId, ordering";
                     RequiredConditions = requiredConditions,
                     StepTemplate = dataRow.Field<string>("stepTemplate"),
                     StepOptionTemplate = dataRow.Field<string>("stepOptionTemplate"),
-                    StepOptionsQuery = dataRow.Field<string>("stepOptionsQuery"),
+                    Datasource = dataRow.Field<string>("datasource"),
                     ExtraDataQuery = dataRow.Field<string>("extraDataQuery"),
                     UrlRegex = dataRow.Field<string>("urlRegex"),
                     OptionsOpenModal = Convert.ToBoolean(dataRow["optionsOpenModal"]),
@@ -766,6 +767,131 @@ ORDER BY parentStepId, ordering";
             return current;
         }
 
+        /// <inheritdoc />
+        public async Task SetVueStepOptionsWithQueryAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration)
+        {
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("stepId", stepData.StepId);
+            var dataTable = await databaseConnection.GetAsync($@"SELECT CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery
+FROM {WiserTableNames.WiserItemDetail} AS stepOptionsQuery
+WHERE stepOptionsQuery.item_id = ?stepId
+AND stepOptionsQuery.`key` = 'custom_query'");
+            
+            if (dataTable.Rows.Count == 0)
+            {
+                stepData.Options = options;
+                return;
+            }
+            
+            var stepOptionsQuery = dataTable.Rows[0].Field<string>("stepOptionsQuery");
+            if (String.IsNullOrWhiteSpace(stepOptionsQuery))
+            {
+                stepData.Options = options;
+                return;
+            }
+
+            stepOptionsQuery = await ReplaceConfiguratorItemsAsync(stepOptionsQuery, configuration, true);
+            stepOptionsQuery = await templatesService.DoReplacesAsync(stepOptionsQuery, handleRequest: false, removeUnknownVariables: false, forQuery: true);
+            var stepOptionsDataTable = await databaseConnection.GetAsync(stepOptionsQuery);
+            if (stepOptionsDataTable.Rows.Count == 0)
+            {
+                stepData.Options = options;
+                return;
+            }
+
+            // Some values of the step can be overriden through the step options query.
+            if (stepOptionsDataTable.Columns.Contains("minimumValue"))
+            {
+                stepData.MinimumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["minimumValue"]);
+            }
+            if (stepOptionsDataTable.Columns.Contains("maximumValue"))
+            {
+                stepData.MaximumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["maximumValue"]);
+            }
+            if (stepOptionsDataTable.Columns.Contains("validationRegex"))
+            {
+                stepData.ValidationRegex = Convert.ToString(stepOptionsDataTable.Rows[0]["validationRegex"]);
+            }
+
+            // Handle the data rows.
+            var stepOptionProperties = typeof(VueStepOptionDataModel).GetProperties();
+            foreach (var dataRow in stepOptionsDataTable.Rows.Cast<DataRow>())
+            {
+                var stepOption = new VueStepOptionDataModel
+                {
+                    AdditionalData = new Dictionary<string, object>()
+                };
+
+                foreach (var dataColumn in stepOptionsDataTable.Columns.Cast<DataColumn>())
+                {
+                    var columnName = dataColumn.ColumnName;
+                    var columnValue = dataRow[dataColumn];
+                    var property = stepOptionProperties.FirstOrDefault(property => property.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+                    if (property != null)
+                    {
+                        // Check if the property is a boolean and if so, convert the value to a boolean.
+                        if (property.PropertyType == typeof(bool))
+                        {
+                            // String values are handled differently.
+                            if (columnValue is string stringValue)
+                            {
+                                property.SetValue(stepOption, stringValue.InList(StringComparer.OrdinalIgnoreCase, "1", "true"));
+                            }
+                            else
+                            {
+                                property.SetValue(stepOption, Convert.ToBoolean(columnValue));
+                            }
+                        }
+                        else
+                        {
+                            var type = property.PropertyType;
+                            type = Nullable.GetUnderlyingType(type) ?? type;
+
+                            // All other data types are just added as-is.
+                            property.SetValue(stepOption, Convert.ChangeType(columnValue, type));
+                        }
+                    }
+                    else
+                    {
+                        // Add the value to the additional data dictionary.
+                        stepOption.AdditionalData.Add(columnName, columnValue);
+                    }
+                }
+
+                options.Add(stepOption);
+            }
+
+            stepData.Options = options;
+        }
+
+        /// <inheritdoc />
+        public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration)
+        {
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("stepId", stepData.StepId);
+            var dataTable = await databaseConnection.GetAsync($@"SELECT
+	CAST(questionConfiguratorApiId.`value` AS UNSIGNED) AS questionConfiguratorApiId,
+	apiExtraData.`key`,
+	apiExtraData.`value`
+FROM wiser_itemdetail AS questionConfiguratorApiId
+LEFT JOIN wiser_itemdetail AS apiExtraData ON apiExtraData.item_id = questionConfiguratorApiId.item_id AND apiExtraData.groupname = 'api_extra_data'
+WHERE questionConfiguratorApiId.item_id = ?stepId
+AND questionConfiguratorApiId.`key` = 'Vraag'");
+            
+            if (dataTable.Rows.Count == 0)
+            {
+                stepData.Options = options;
+                return;
+            }
+            
+            var questionApi = await wiserItemsService.GetItemDetailsAsync(dataTable.Rows[0].Field<UInt64>("questionConfiguratorApiId"), entityType: "ConfiguratorApi", skipPermissionsCheck: true);
+            if (questionApi == null)
+            {
+                stepData.Options = options;
+                return;
+            }
+        }
+        
         /// <inheritdoc />
         public async Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration, bool isQuery)
         {
@@ -1633,7 +1759,7 @@ WHERE configurator.entity_type = 'configurator' AND configurator.title = ?config
         {
             foreach (var detail in configuratorApi.Details)
             {
-                if (String.IsNullOrWhiteSpace(detail.GroupName) || !detail.GroupName.Equals("headers") || String.IsNullOrWhiteSpace(detail.Key)) continue;
+                if (String.IsNullOrWhiteSpace(detail.GroupName) || !detail.GroupName.Equals("headers", StringComparison.InvariantCultureIgnoreCase) || String.IsNullOrWhiteSpace(detail.Key)) continue;
 
                 var value = detail.Value.ToString();
                 if (String.IsNullOrWhiteSpace(value)) continue;
