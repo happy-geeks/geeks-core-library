@@ -119,7 +119,7 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration)
+        public async Task<ExternalConfigurationModel> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration)
         {
             return await configuratorsService.StartConfigurationExternallyAsync(vueConfiguration);
         }

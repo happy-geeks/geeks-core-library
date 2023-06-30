@@ -16,6 +16,12 @@ public class VueConfiguratorDataModel
     /// </summary>
     [JsonProperty("startExternalConfigurationOnStart")]
     public bool StartExternalConfigurationOnStart { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the external configuration information.
+    /// </summary>
+    [JsonProperty("externalConfiguration")]
+    public ExternalConfigurationModel ExternalConfiguration { get; set; }
 
     /// <summary>
     /// Gets or sets the steps data.

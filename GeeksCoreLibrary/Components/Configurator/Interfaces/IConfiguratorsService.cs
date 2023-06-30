@@ -60,7 +60,7 @@ public interface IConfiguratorsService
     /// </summary>
     /// <param name="vueConfiguration">TA <see cref="VueConfigurationsModel"/> object.</param>
     /// <returns>The ID of the configuration in the external API.</returns>
-    Task<string> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration);
+    Task<ExternalConfigurationModel> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration);
     
     /// <summary>
     /// <para>Calculates the price and purchase price of a product.</para>

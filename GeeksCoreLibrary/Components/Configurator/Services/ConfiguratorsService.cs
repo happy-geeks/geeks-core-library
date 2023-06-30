@@ -953,7 +953,7 @@ ORDER BY parentStepId, ordering";
         }
 
         /// <inheritdoc />
-        public async Task<string> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration)
+        public async Task<ExternalConfigurationModel> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration)
         {
             var query = $@"SELECT CAST(externalStartConfiguratorApi.`value` AS UNSIGNED) AS externalStartConfiguratorApi
 FROM {WiserTableNames.WiserItem} AS configurator
@@ -1040,7 +1040,10 @@ WHERE configurator.entity_type = 'configurator' AND configurator.title = ?config
                 keyParts.RemoveAt(0);
             }
 
-            return currentObject?[keyParts[0]]?.ToString();
+            return new ExternalConfigurationModel()
+            {
+                Id = currentObject?[keyParts[0]]?.ToString()
+            };
         }
 
         /// <inheritdoc />
@@ -1630,7 +1633,7 @@ WHERE configurator.entity_type = 'configurator' AND configurator.title = ?config
         {
             foreach (var detail in configuratorApi.Details)
             {
-                if (!detail.GroupName.Equals("headers") || String.IsNullOrWhiteSpace(detail.Key)) continue;
+                if (String.IsNullOrWhiteSpace(detail.GroupName) || !detail.GroupName.Equals("headers") || String.IsNullOrWhiteSpace(detail.Key)) continue;
 
                 var value = detail.Value.ToString();
                 if (String.IsNullOrWhiteSpace(value)) continue;
@@ -1645,10 +1648,7 @@ WHERE configurator.entity_type = 'configurator' AND configurator.title = ?config
                     value = await ReplaceConfiguratorItemsAsync(value, vueConfiguration, false);
                 }
 
-                if (extraData != null)
-                {
-                    value = await stringReplacementsService.DoAllReplacementsAsync(value, extraData, removeUnknownVariables: false);
-                }
+                value = await stringReplacementsService.DoAllReplacementsAsync(value, extraData, removeUnknownVariables: false);
                 
                 // Check if there is still a value after replacements.
                 if (String.IsNullOrWhiteSpace(value)) continue;
