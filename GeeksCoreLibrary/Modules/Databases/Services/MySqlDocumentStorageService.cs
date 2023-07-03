@@ -21,7 +21,7 @@ public class MySqlDocumentStorageService : IDocumentStorageService, IScopedServi
     }
 
     /// <inheritdoc />
-    public async Task CreateCollection(string prefix = "")
+    public async Task CreateCollectionAsync(string prefix = "")
     {
         List<(string name, DocumentStoreIndexModel index)> indices = new()
         {
@@ -85,7 +85,7 @@ public class MySqlDocumentStorageService : IDocumentStorageService, IScopedServi
     }
 
     /// <inheritdoc />
-    public async Task DeleteItem(string documentId, EntitySettingsModel entitySettings = null)
+    public async Task DeleteItemAsync(string documentId, EntitySettingsModel entitySettings = null)
     {
         var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
 
@@ -93,7 +93,7 @@ public class MySqlDocumentStorageService : IDocumentStorageService, IScopedServi
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyCollection<(WiserItemModel model, string documentId)>> GetItems(string condition, Dictionary<string, object> parameters, EntitySettingsModel entitySettings = null)
+    public async Task<IReadOnlyCollection<(WiserItemModel model, string documentId)>> GetItemsAsync(string condition, Dictionary<string, object> parameters, EntitySettingsModel entitySettings = null)
     {
         var prefix = entitySettings?.DedicatedTablePrefix ?? String.Empty;
         documentStorageConnection.ClearParameters();

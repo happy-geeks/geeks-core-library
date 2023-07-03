@@ -25,14 +25,14 @@ public interface IDocumentStorageService
     /// <param name="parameters"></param>
     /// <param name="entitySettings"></param>
     /// <returns></returns>
-    Task<IReadOnlyCollection<(WiserItemModel model, string documentId)>> GetItems(string condition, Dictionary<string, object> parameters, EntitySettingsModel entitySettings = null);
+    Task<IReadOnlyCollection<(WiserItemModel model, string documentId)>> GetItemsAsync(string condition, Dictionary<string, object> parameters, EntitySettingsModel entitySettings = null);
 
     /// <summary>
     /// Creates the collection the documents will be stored in
     /// </summary>
     /// <param name="prefix">Prefix of the collection name</param>
     /// <returns></returns>
-    Task CreateCollection(string prefix = "");
+    Task CreateCollectionAsync(string prefix = "");
 
     /// <summary>
     /// Empty the document store collection
@@ -47,5 +47,5 @@ public interface IDocumentStorageService
     /// </summary>
     /// <param name="documentId">The exact document id</param>
     /// <param name="entitySettings">Optional: settings for the entityType</param>
-    Task DeleteItem(string documentId, EntitySettingsModel entitySettings = null);
+    Task DeleteItemAsync(string documentId, EntitySettingsModel entitySettings = null);
 }
