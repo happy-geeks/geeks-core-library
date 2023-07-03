@@ -19,7 +19,7 @@ public interface IDocumentStorageService
     Task<(WiserItemModel model, string documentId)> StoreItemAsync(WiserItemModel wiserItem, EntitySettingsModel entitySettings = null);
 
     /// <summary>
-    /// Gets the items that
+    /// Gets a collection of items according to the provided condition
     /// </summary>
     /// <param name="condition"></param>
     /// <param name="parameters"></param>
