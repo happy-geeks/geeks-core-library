@@ -254,7 +254,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
-        logger.LogTrace($"Disposing instance of DocumentStoreConnection on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)}");
+        logger.LogTrace($"Disposing instance of DocumentStoreConnection");
         Session?.Dispose();
         GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
@@ -263,7 +263,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     /// <inheritdoc />
     public void Dispose()
     {
-        logger.LogTrace($"Disposing instance of DocumentStoreConnection on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext)}");
+        logger.LogTrace($"Disposing instance of DocumentStoreConnection");
         Session?.Dispose();
         GC.SuppressFinalize(this);
     }
