@@ -108,8 +108,9 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// /nl/ retuns nl / returns default document name
         /// </summary>
         /// <param name="httpContext"></param>
+        /// <param name="indexOfLanguagePartInUrl">Optional: The index of URL segments that contains </param>
         /// <returns></returns>
-        public static string GetUrlPrefix(HttpContext httpContext)
+        public static string GetUrlPrefix(HttpContext httpContext, int indexOfLanguagePartInUrl = 0)
         {
             if (httpContext == null)
             {
@@ -117,12 +118,17 @@ namespace GeeksCoreLibrary.Core.Helpers
             }
 
             var pathSegments = GetOriginalRequestUri(httpContext).Segments;
-            if (pathSegments.First().Equals("/") && pathSegments.Length > 1)
+            if (pathSegments.Length < indexOfLanguagePartInUrl)
             {
-                return pathSegments[1].Trim('/');
+                return String.Empty;
             }
 
-            return pathSegments.First().Trim('/');
+            if (pathSegments[indexOfLanguagePartInUrl].Equals("/") && pathSegments.Length > indexOfLanguagePartInUrl + 1)
+            {
+                return pathSegments[indexOfLanguagePartInUrl + 1].Trim('/');
+            }
+
+            return pathSegments[indexOfLanguagePartInUrl].Trim('/');
         }
 
         /// <summary>
@@ -258,11 +264,11 @@ namespace GeeksCoreLibrary.Core.Helpers
 
             if (currentUserConsent == "-1")
             {
-                // The user is not within a region that requires consent - all cookies are accepted 
+                // The user is not within a region that requires consent - all cookies are accepted
                 return true;
             }
 
-            // Read current user consent in encoded JavaScript format 
+            // Read current user consent in encoded JavaScript format
             dynamic cookieConsent = Newtonsoft.Json.JsonConvert.DeserializeObject(System.Web.HttpUtility.UrlDecode(currentUserConsent));
 
             switch (consentLevel)

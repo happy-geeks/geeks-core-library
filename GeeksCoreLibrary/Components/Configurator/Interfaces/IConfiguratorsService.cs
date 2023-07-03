@@ -18,8 +18,9 @@ public interface IConfiguratorsService
     /// Get configurator data as used for the Vue configurator.
     /// </summary>
     /// <param name="name">The name of the configurator.</param>
+    /// <param name="includeStepsData">Optional: Whether the data for the steps should also be retrieved. Default value is true.</param>
     /// <returns>A <see cref="DataTable"/> object.</returns>
-    Task<VueConfiguratorDataModel> GetVueConfiguratorDataAsync(string name);
+    Task<VueConfiguratorDataModel> GetVueConfiguratorDataAsync(string name, bool includeStepsData = true);
 
     /// <summary>
     /// save configuration to database
@@ -56,9 +57,17 @@ public interface IConfiguratorsService
 
     /// <summary>
     /// <para>Calculates the price and purchase price of a product.</para>
-    /// <para>Returns a <see cref="Tuple"/> where Item1 is the purchase price and Item2 is the customer price.</para>
+    /// <para>Returns a <see cref="Tuple"/> where Item1 is the purchase price, Item2 is the customer price, and Item3 is the from price.</para>
     /// </summary>
     /// <param name="input"></param>
-    /// <returns>A <see cref="Tuple"/> where Item1 is the purchase price and Item2 is the customer price.</returns>
+    /// <returns>A <see cref="Tuple"/> where Item1 is the purchase price, Item2 is the customer price, and Item3 is the from price.</returns>
     Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input);
+
+    /// <summary>
+    /// <para>Calculates the price and purchase price of a product.</para>
+    /// <para>Returns a <see cref="Tuple"/> where Item1 is the purchase price, Item2 is the customer price, and Item3 is the from price.</para>
+    /// </summary>
+    /// <param name="input"></param>
+    /// <returns>A <see cref="Tuple"/> where Item1 is the purchase price, Item2 is the customer price, and Item3 is the from price.</returns>
+    Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(VueConfigurationsModel input);
 }

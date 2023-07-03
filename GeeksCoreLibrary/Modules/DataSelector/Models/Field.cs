@@ -102,5 +102,10 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
         }
 
         public bool IsReservedFieldName => ReservedFieldNames.Contains(FieldName, StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Gets or sets the prefix for the dedicated table, if this fields is from an entity type that uses a dedicated table.
+        /// </summary>
+        public string DedicatedTablePrefix { get; set; }
     }
 }

@@ -49,6 +49,29 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 }
             },
 
+            // wiser_itemdetail
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserItemDetail,
+                LastUpdate = new DateTime(2021, 9, 1),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("language_code", MySqlDbType.VarChar, 5, notNull: true, defaultValue: ""),
+                    new("item_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                    new("groupname", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
+                    new("key", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
+                    new("value", MySqlDbType.VarChar, 1000, notNull: true, defaultValue: ""),
+                    new("long_value", MySqlDbType.MediumText)
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserItemDetail, "key_value", IndexTypes.Normal, new List<string> { "key", "value" }),
+                    new(WiserTableNames.WiserItemDetail, "item_id_key_value", IndexTypes.Normal, new List<string> { "item_id", "key", "value" }),
+                    new(WiserTableNames.WiserItemDetail, "item_id_group", IndexTypes.Normal, new List<string> { "item_id", "groupname", "key" })
+                }
+            },
+
             // wiser_grant_store
             new WiserTableDefinitionModel
             {
@@ -213,7 +236,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2023, 1, 19),
+                LastUpdate = new DateTime(2023, 5, 26),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -227,8 +250,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("changed_on", MySqlDbType.DateTime, notNull: true),
                     new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
                     new("published_environment", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
-                    new("use_cache", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
-                    new("cache_minutes", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("cache_per_url", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
+                    new("cache_per_querystring", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
+                    new("cache_per_hostname", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
+                    new("cache_using_regex", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
+                    new("cache_minutes", MySqlDbType.Int32, notNull: true, defaultValue: "-1"),
                     new("cache_location", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("cache_regex", MySqlDbType.VarChar, 255),
                     new("login_required", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),

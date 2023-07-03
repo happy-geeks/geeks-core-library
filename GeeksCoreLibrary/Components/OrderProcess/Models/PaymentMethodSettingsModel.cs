@@ -26,5 +26,25 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets when the field should be visible.
         /// </summary>
         public OrderProcessFieldVisibilityTypes Visibility { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the check for seeing if we need a minimal amount before this payment method is available.
+        /// </summary>
+        public bool UseMinimalAmountCheck { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the check for making this payment method unavailable if we go over a certain amount 
+        /// </summary>
+        public bool UseMaximumAmountCheck { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the amount for the minimal check.
+        /// </summary>
+        public decimal MinimalAmountCheck { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the amount for the maximum check. 
+        /// </summary>
+        public decimal MaximumAmountCheck { get; set; }
     }
 }

@@ -77,9 +77,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
             var cacheName = new StringBuilder($"GCL_QUERY_{currentUri.Host}");
 
-            if (gclSettings.MultiLanguageBasedOnUrlSegments)
+            if (gclSettings.MultiLanguageBasedOnUrlSegments && currentUri.Segments.Length > gclSettings.IndexOfLanguagePartInUrl)
             {
-                cacheName.Append(currentUri.Segments.First().Trim('/'));
+                cacheName.Append(currentUri.Segments[gclSettings.IndexOfLanguagePartInUrl].Trim('/'));
             }
 
             cacheName.Append(query.ToSha512Simple());
@@ -107,9 +107,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             var cacheName = new StringBuilder("GCL_QUERY_");
 
-            if (gclSettings.MultiLanguageBasedOnUrlSegments)
+            var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
+            if (gclSettings.MultiLanguageBasedOnUrlSegments && currentUri.Segments.Length > gclSettings.IndexOfLanguagePartInUrl)
             {
-                cacheName.Append(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).Segments.First().Trim('/'));
+                cacheName.Append(currentUri.Segments[gclSettings.IndexOfLanguagePartInUrl].Trim('/'));
             }
 
             cacheName.Append(query.ToSha512Simple());
@@ -166,7 +167,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public void AddParameter(string key, object value)
         {
             databaseConnection.AddParameter(key, value);
-            
+
             if (parameters.ContainsKey(key))
             {
                 parameters.TryRemove(key, out _);
@@ -187,13 +188,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             return databaseConnection.GetDatabaseNameForCaching(writeDatabase);
         }
-        
+
         /// <inheritdoc />
         public async Task EnsureOpenConnectionForReadingAsync()
         {
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
         }
-        
+
         /// <inheritdoc />
         public async Task EnsureOpenConnectionForWritingAsync()
         {

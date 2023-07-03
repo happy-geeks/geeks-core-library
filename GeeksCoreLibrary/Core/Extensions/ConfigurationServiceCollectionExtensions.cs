@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using GeeksCoreLibrary.Components.WebPage.Interfaces;
 using GeeksCoreLibrary.Components.WebPage.Middlewares;
@@ -47,10 +48,10 @@ using GeeksCoreLibrary.Components.ShoppingBasket.Services;
 using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.Databases.Middlewares;
 using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.ItemFiles;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Options;
 using WebMarkupMin.AspNetCore3;
 using WebMarkupMin.Core;
 
@@ -88,8 +89,6 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             builder.UseSession();
 
-            builder.UseMiddleware<CreateAndUpdateTablesMiddleware>();
-
             builder.UseMiddleware<ClearCacheMiddleware>();
 
             builder.UseMiddleware<RedirectMiddleWare>();
@@ -118,6 +117,34 @@ namespace GeeksCoreLibrary.Core.Extensions
                     Predicate = _ => true,
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 });
+            });
+
+            builder.HandleStartupFunctions();
+
+            return builder;
+        }
+
+        /// <summary>
+        /// Handle and execute some functions that are needed to be done during startup of the application.
+        /// Don't call this method if you're already calling UseGclMiddleware, because this is called inside that.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <returns></returns>
+        public static IApplicationBuilder HandleStartupFunctions(this IApplicationBuilder builder)
+        {
+            var applicationLifetime = builder.ApplicationServices.GetService<IHostApplicationLifetime>();
+            applicationLifetime.ApplicationStarted.Register(async () =>
+            {
+                // During startup, make sure that the log table exists, but only if the logging is enabled.
+                using var scope = builder.ApplicationServices.CreateScope();
+                var gclSettings = scope.ServiceProvider.GetRequiredService<IOptions<GclSettings>>();
+                if (!gclSettings.Value.LogOpeningAndClosingOfConnections)
+                {
+                    return;
+                }
+
+                var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
+                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {Modules.Databases.Models.Constants.DatabaseConnectionLogTableName});
             });
 
             return builder;
@@ -206,7 +233,7 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             // Enable caching.
             services.AddLazyCache();
-            
+
             // Enable session.
             if (isWeb)
             {
@@ -279,7 +306,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             services.Decorate<IOrderProcessesService, CachedOrderProcessesService>();
             services.Decorate<IRolesService, CachedRolesService>();
             services.Decorate<IBarcodesService, CachedBarcodesService>();
-            
+
             if (gclSettings.UseLegacyWiser1TemplateModule)
             {
                 services.Decorate<ITemplatesService, LegacyCachedTemplatesService>();
