@@ -235,7 +235,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2023, 5, 26),
+                LastUpdate = new DateTime(2023, 7, 4),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -287,7 +287,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("default_header_footer_regex", MySqlDbType.VarChar, 255),
                     new("is_partial", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("widget_content", MySqlDbType.MediumText),
-                    new("widget_location", MySqlDbType.Int16, 4, notNull: true, defaultValue: "1")
+                    new("widget_location", MySqlDbType.Int16, 4, notNull: true, defaultValue: "1"),
+                    new("is_dirty", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
@@ -417,7 +418,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserDynamicContent,
-                LastUpdate = new DateTime(2022, 5, 17),
+                LastUpdate = new DateTime(2023, 7, 4),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -430,7 +431,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("changed_on", MySqlDbType.DateTime, notNull: true),
                     new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
                     new("published_environment", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
-                    new("removed", MySqlDbType.Int16, notNull: true, defaultValue: "0")
+                    new("removed", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
+                    new("is_dirty", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
