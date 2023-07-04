@@ -78,7 +78,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     whereClause.Add($"(template.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}");
                 }
 
-                whereClause.Add("template.template_type = 1");
+                whereClause.Add($"template.template_type = {(int)TemplateTypes.Html}");
                 whereClause.Add("template.removed = 0");
                 whereClause.Add("template.is_default_header = 1");
 
@@ -146,7 +146,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     whereClause.Add($"(template.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}");
                 }
 
-                whereClause.Add("template.template_type = 1");
+                whereClause.Add($"template.template_type = {(int)TemplateTypes.Html}");
                 whereClause.Add("template.removed = 0");
                 whereClause.Add("template.is_default_footer = 1");
 
