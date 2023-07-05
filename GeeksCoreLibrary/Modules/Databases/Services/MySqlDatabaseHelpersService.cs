@@ -22,14 +22,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
     {
         private readonly IDatabaseConnection databaseConnection;
         private readonly ILogger<MySqlDatabaseHelpersService> logger;
+        private readonly IDocumentStoreConnection documentStoreConnection;
 
         /// <summary>
         /// Creates a new instance of <see cref="MySqlDatabaseHelpersService"/>.
         /// </summary>
-        public MySqlDatabaseHelpersService(IDatabaseConnection databaseConnection, ILogger<MySqlDatabaseHelpersService> logger)
+        public MySqlDatabaseHelpersService(IDatabaseConnection databaseConnection, ILogger<MySqlDatabaseHelpersService> logger, IDocumentStoreConnection documentStoreConnection)
         {
             this.databaseConnection = databaseConnection;
             this.logger = logger;
+            this.documentStoreConnection = documentStoreConnection;
         }
 
         /// <inheritdoc />

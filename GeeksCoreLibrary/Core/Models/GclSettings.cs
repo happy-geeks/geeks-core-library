@@ -23,6 +23,11 @@ namespace GeeksCoreLibrary.Core.Models
         /// The default connection string for the current website. This will be used for queries that write data.
         /// </summary>
         public string ConnectionStringForWriting { get; set; }
+        
+        /// <summary>
+        /// The default connection string for the document store.
+        /// </summary>
+        public string DocumentStoreConnectionString { get; set; }
 
         /// <summary>
         /// This will be used to set the correct timezone for the database before executing any query, so that all times will be shown in the requested timezone.
