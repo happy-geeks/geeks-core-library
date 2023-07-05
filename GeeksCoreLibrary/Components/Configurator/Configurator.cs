@@ -188,12 +188,20 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             // Build progress bar HTML.
             var progressBarHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarTemplate, removeUnknownVariables: false);
+            var progressBarStepHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarStepTemplate, removeUnknownVariables: false);
             var progressBarStepsHtmlBuilder = new StringBuilder();
             progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\">");
-            progressBarStepsHtmlBuilder.Append(await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarStepTemplate, removeUnknownVariables: false));
+            progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
+            progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
+            progressBarStepsHtmlBuilder.Append("<progress-bar-step :is-summary-step=\"true\">");
+            progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
             progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
 
             progressBarHtml = progressBarHtml.Replace("{steps}", progressBarStepsHtmlBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
+
+            // Build progress HTML.
+            var progressHtml = Settings.SummaryHtml;
+            progressHtml = progressHtml.Replace("{progress_template}", await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false));
 
             // Build summary HTML.
             var summaryHtml = Settings.FinalSummaryHtml;
@@ -205,9 +213,9 @@ namespace GeeksCoreLibrary.Components.Configurator
                 .Replace("{steps}", stepsHtml, StringComparison.OrdinalIgnoreCase)
                 .Replace("{substeps}", stepsHtml, StringComparison.OrdinalIgnoreCase);
 
-            mainHtml = mainHtml.Replace("{progressbar}", progressBarHtml, StringComparison.OrdinalIgnoreCase)
-                .Replace("{progress}", progressBarHtml, StringComparison.OrdinalIgnoreCase);
-
+            // Replace the progress bar, progress and summary HTML variables.
+            mainHtml = mainHtml.Replace("{progressbar}", progressBarHtml, StringComparison.OrdinalIgnoreCase);
+            mainHtml = mainHtml.Replace("{progress}", progressHtml, StringComparison.OrdinalIgnoreCase);
             mainHtml = mainHtml.Replace("{summary}", summaryHtml, StringComparison.OrdinalIgnoreCase);
 
             var resultHtml = new StringBuilder();
