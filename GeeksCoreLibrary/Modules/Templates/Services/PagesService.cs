@@ -461,12 +461,20 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Check if some component is adding external JavaScript libraries to the page.
-            var externalScripts = externalJavascript.Select(ej => new JavaScriptResource { Uri = new Uri(ej) }).ToList();
+            var externalScripts = externalJavascript.Select(ej => new JavaScriptResource { Uri = new Uri(ej, UriKind.RelativeOrAbsolute) }).ToList();
             if (httpContextAccessor?.HttpContext?.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] is List<JavaScriptResource> componentExternalJavaScriptLibraries)
             {
-                foreach (var externalLibrary in componentExternalJavaScriptLibraries.Where(externalLibrary => !externalScripts.Any(l => l.Uri.AbsoluteUri.Equals(externalLibrary.Uri.AbsoluteUri, StringComparison.OrdinalIgnoreCase))))
+                foreach (var externalLibrary in componentExternalJavaScriptLibraries)
                 {
-                    externalScripts.Add(externalLibrary);
+                    switch (externalLibrary.Uri.IsAbsoluteUri)
+                    {
+                        case true when componentExternalJavaScriptLibraries.Any(l => l.Uri.AbsoluteUri.Equals(externalLibrary.Uri.AbsoluteUri, StringComparison.OrdinalIgnoreCase)):
+                        case false when componentExternalJavaScriptLibraries.Any(l => l.Uri.OriginalString.Equals(externalLibrary.Uri.OriginalString, StringComparison.OrdinalIgnoreCase)):
+                            continue;
+                        default:
+                            externalScripts.Add(externalLibrary);
+                            break;
+                    }
                 }
             }
 
