@@ -1195,6 +1195,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 }
 
                 main.SetDetail(Constants.PaymentHistoryProperty, $"{DateTime.Now:yyyyMMddHHmmss} - {newStatus}", true);
+                main.SetDetail("user_mail_body", emailContent);
+                main.SetDetail("user_mail_subject", emailSubject);
+                await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
 
                 // If order is not finished yet and the payment was successful.
                 if (!hasAlreadyBeenConvertedToOrderBefore && isSuccessfulStatus && convertConceptOrderToOrder)
@@ -1211,8 +1214,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                 if (!String.IsNullOrWhiteSpace(userEmailAddress) && !String.IsNullOrWhiteSpace(emailContent))
                 {
-                    main.SetDetail("user_mail_body", emailContent);
-                    main.SetDetail("user_mail_subject", emailSubject);
                     mailsToSendToUser.Add(new SingleCommunicationModel
                     {
                         Content = emailContent,
