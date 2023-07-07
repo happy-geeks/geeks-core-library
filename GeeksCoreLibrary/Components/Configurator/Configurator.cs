@@ -1760,13 +1760,12 @@ namespace GeeksCoreLibrary.Components.Configurator
         /// <summary>
         /// Start the configuration at an external API.
         /// </summary>
-        /// <param name="vueConfiguration">TA <see cref="VueConfigurationsModel"/> object.</param>
+        /// <param name="configuration">A <see cref="VueConfigurationsModel"/> object.</param>
         /// <returns>The <see cref="VueConfiguratorDataModel"/> including a <see cref="ExternalConfigurationModel"/> containing the information for the configuration at an external API.</returns>
         public async Task<VueConfiguratorDataModel> StartConfigurationExternally(VueConfigurationsModel configuration)
         {
-            var configuratorData = await GetConfiguratorData(null, configuration);
-            configuratorData.ExternalConfiguration = await configuratorsService.StartConfigurationExternallyAsync(configuration);
-            return configuratorData;
+            configuration.ExternalConfiguration = await configuratorsService.StartConfigurationExternallyAsync(configuration);
+            return await GetConfiguratorData(null, configuration);
         }
         
         #endregion
