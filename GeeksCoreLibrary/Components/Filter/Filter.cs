@@ -782,6 +782,9 @@ namespace GeeksCoreLibrary.Components.Filter
         {
             string tempValue;
             string tempValueSeo;
+            
+            var selectedMinValue = filterGroup.SelectedMinValue;
+            var selectedMaxValue = filterGroup.SelectedMaxValue;
 
             var filterHtml = new StringBuilder();
             Dictionary<string, string> replaceData;
@@ -952,8 +955,8 @@ namespace GeeksCoreLibrary.Components.Filter
                     {
                         WriteToTrace($"2 - BuildFilterGroupHtml Slider({filterGroup.NameSeo})");
 
-                        var selectedMinValue = filterGroup.MinValue;
-                        var selectedMaxValue = filterGroup.MaxValue;
+                        selectedMinValue = filterGroup.MinValue;
+                        selectedMaxValue = filterGroup.MaxValue;
                         var requestParameter = "";
 
                         if (!String.IsNullOrEmpty(HttpContext.Request.Query[filterGroup.GetParamKey()]))
@@ -1055,7 +1058,14 @@ namespace GeeksCoreLibrary.Components.Filter
             }
 
             // Replace selected count
-            htmlBuilder.Replace("{selectedcount}", filterGroup.SelectedValues.Count.ToString());
+            htmlBuilder.Replace("{selectedcount}", filterGroup.SelectedValues.Count.ToString(CultureInfo.InvariantCulture));
+
+            if (filterGroup.FilterType == FilterGroup.FilterGroupType.Slider)
+            {
+                // Replace min and max value for sliders
+                htmlBuilder.Replace("{selectedMin}", selectedMinValue.ToString(CultureInfo.InvariantCulture));
+                htmlBuilder.Replace("{selectedMax}", selectedMaxValue.ToString(CultureInfo.InvariantCulture));
+            }
 
             // Replace all instances of group name within the generated HTML
             htmlBuilder.Replace("{groupname}", filterGroupName);

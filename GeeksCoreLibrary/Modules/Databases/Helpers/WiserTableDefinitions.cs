@@ -126,7 +126,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserEntity,
-                LastUpdate = new DateTime(2022, 11, 10),
+                LastUpdate = new DateTime(2023, 6, 20),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -154,6 +154,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("default_ordering", MySqlDbType.Enum, notNull: true, defaultValue: "link_ordering", enumValues: new List<string> {"link_ordering", "item_title"}),
                     new("template_query", MySqlDbType.MediumText),
                     new("template_html", MySqlDbType.MediumText),
+                    new("store_type", MySqlDbType.Enum, notNull: true, defaultValue: "table", enumValues: new List<string>{"table", "document_store", "hybrid"}),
                     new("enable_multiple_environments", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("icon_expanded", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
                     new("dedicated_table_prefix", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
@@ -235,7 +236,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2023, 5, 26),
+                LastUpdate = new DateTime(2023, 7, 4),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -287,7 +288,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("default_header_footer_regex", MySqlDbType.VarChar, 255),
                     new("is_partial", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                     new("widget_content", MySqlDbType.MediumText),
-                    new("widget_location", MySqlDbType.Int16, 4, notNull: true, defaultValue: "1")
+                    new("widget_location", MySqlDbType.Int16, 4, notNull: true, defaultValue: "1"),
+                    new("is_dirty", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
@@ -417,7 +419,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserDynamicContent,
-                LastUpdate = new DateTime(2022, 5, 17),
+                LastUpdate = new DateTime(2023, 7, 4),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -430,7 +432,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("changed_on", MySqlDbType.DateTime, notNull: true),
                     new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
                     new("published_environment", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
-                    new("removed", MySqlDbType.Int16, notNull: true, defaultValue: "0")
+                    new("removed", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
+                    new("is_dirty", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
