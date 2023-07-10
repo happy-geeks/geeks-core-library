@@ -1160,7 +1160,7 @@ SET @saveHistory = ?saveHistoryGcl;
                             databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
                             databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
 
-                            var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
+                            var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
                             databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
                             databaseConnection.AddParameter($"itemDetailId{SeoPropertySuffix}{counter}", seoValueItemDetailId);
 

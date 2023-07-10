@@ -84,6 +84,6 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Interfaces
         /// <param name="encryptedItemId"></param>
         /// <param name="entityType">Optional: If there is a separate wiser_itemfile table for the specified item, then enter the entity type here so that we can find it.</param>
         /// <returns></returns>
-        Task<(byte[] FileBytes, DateTime LastModified)>     GetWiserDirectFileAsync(ulong itemId, string filename, string encryptedItemId = null, string entityType = null);
+        Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectFileAsync(ulong itemId, string filename, string encryptedItemId = null, string entityType = null);
     }
 }
