@@ -280,7 +280,6 @@ namespace GeeksCoreLibrary.Components.Configurator
             var stepHtml = new StringBuilder();
             stepHtml.Append("<step");
             stepHtml.Append($" ref=\"step-{stepData.Position}\"");
-            stepHtml.Append($" position=\"{stepData.Position}\"");
             stepHtml.Append($" step-name=\"{stepData.StepName}\"");
             stepHtml.Append(" v-slot=\"{ step }\"");
             stepHtml.Append($" :visible=\"stepVisible('{stepData.StepName}')\"");
