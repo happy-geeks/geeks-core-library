@@ -107,15 +107,15 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 return (await documentStorageService.StoreItemAsync(wiserItem, entitySettings)).model;
             }
-            
-            var isNewlycreated = wiserItem.Id == 0;
-            
+
+            var isNewlyCreated = wiserItem.Id == 0;
+
             while (!transactionCompleted)
             {
                 try
                 {
                     if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
-                    if (isNewlycreated)
+                    if (isNewlyCreated)
                     {
                         wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck, storeTypeOverride);
 
@@ -123,7 +123,7 @@ namespace GeeksCoreLibrary.Core.Services
                         alwaysSaveValues = true;
                     }
 
-                    var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlycreated);
+                    var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated);
 
                     if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
@@ -196,7 +196,7 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 return (await documentStorageService.StoreItemAsync(wiserItem, entityTypeSettings)).model;
             }
-            
+
             var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
             if (wiserItem.ModuleId <= 0 && entityTypeSettings != null)
             {
@@ -1160,7 +1160,7 @@ SET @saveHistory = ?saveHistoryGcl;
                             databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
                             databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
 
-                            var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
+                            var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
                             databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
                             databaseConnection.AddParameter($"itemDetailId{SeoPropertySuffix}{counter}", seoValueItemDetailId);
 
@@ -2826,13 +2826,13 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                         StoreType = dataRow.Field<string>("store_type")?.ToLowerInvariant() switch
                         {
                             null => StoreType.Table,
-                            "normal" => StoreType.Table,
+                            "table" => StoreType.Table,
                             "document_store" => StoreType.DocumentStore,
                             "hybrid" => StoreType.Hybrid,
                             _ => throw new ArgumentOutOfRangeException("store_type", dataRow.Field<string>("store_type"))
                         }
                     };
-                    
+
                     allEntityTypeSettings.Add(settings);
                 }
 
