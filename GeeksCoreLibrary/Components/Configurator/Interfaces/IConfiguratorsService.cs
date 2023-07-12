@@ -77,9 +77,17 @@ public interface IConfiguratorsService
     /// <summary>
     /// Start the configuration at an external API.
     /// </summary>
-    /// <param name="vueConfiguration">TA <see cref="VueConfigurationsModel"/> object.</param>
+    /// <param name="vueConfiguration">A <see cref="VueConfigurationsModel"/> object.</param>
     /// <returns>The ID of the configuration in the external API.</returns>
     Task<ExternalConfigurationModel> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration);
+
+    /// <summary>
+    /// Send an answer to an external API.
+    /// </summary>
+    /// <param name="configuration">>A <see cref="VueConfigurationsModel"/> object.</param>
+    /// <param name="stepId">The ID of the step that the answer to for.</param>
+    /// <returns></returns>
+    Task<bool> SendAnswerToExternalApiAsync(VueConfigurationsModel configuration, int stepId);
     
     /// <summary>
     /// <para>Calculates the price and purchase price of a product.</para>

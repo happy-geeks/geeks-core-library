@@ -142,10 +142,16 @@ public class VueStepDataModel
     public string ModalContainerSelector { get; set; }
 
     /// <summary>
-    /// The datasource being used for the step.
+    /// Gets or sets the datasource type being used for the step.
     /// </summary>
     [JsonProperty("datasource")]
     public string Datasource { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether the step needs to send its answer to an API.
+    /// </summary>
+    [JsonProperty("isApiAnswer")]
+    public bool IsApiAnswer { get; set; }
 
     /// <summary>
     /// Gets or sets extra data which are retrieved from the database.

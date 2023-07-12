@@ -138,6 +138,12 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
+        public async Task<bool> SendAnswerToExternalApiAsync(VueConfigurationsModel configuration, int stepId)
+        {
+            return await configuratorsService.SendAnswerToExternalApiAsync(configuration, stepId);
+        }
+
+        /// <inheritdoc />
         public async Task<(decimal purchasePrice, decimal customerPrice, decimal fromPrice)> CalculatePriceAsync(ConfigurationsModel input)
         {
             return await configuratorsService.CalculatePriceAsync(input);

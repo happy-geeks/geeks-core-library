@@ -1770,6 +1770,17 @@ namespace GeeksCoreLibrary.Components.Configurator
             return await GetConfiguratorData(steps, configuration);
         }
         
+        /// <summary>
+        /// Send an answer to an external API.
+        /// </summary>
+        /// <param name="configuration">>A <see cref="VueConfigurationsModel"/> object.</param>
+        /// <param name="stepId">The ID of the step that the answer to for.</param>
+        /// <returns></returns>
+        public async Task<bool> SendAnswerToExternalApi(VueConfigurationsModel configuration, int stepId)
+        {
+            return await configuratorsService.SendAnswerToExternalApiAsync(configuration, stepId);
+        }
+        
         #endregion
     }
 }

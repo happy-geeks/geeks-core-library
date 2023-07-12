@@ -453,6 +453,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
         datasource.`value` AS datasource,
+        IF(apiAnswer.id IS NULL OR apiAnswer.`value` = '', 'false', 'true') AS isApiAnswer,
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
         requiredConditions.`value` AS requiredConditions,
         minimumValue.`value` AS minimumValue,
@@ -489,6 +490,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS datasource ON datasource.item_id = step.id AND datasource.`key` = 'datasource'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiAnswer ON apiAnswer.item_id = step.id AND apiAnswer.`key` = 'api_answer'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
@@ -523,6 +525,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
         datasource.`value` AS datasource,
+        IF(apiAnswer.id IS NULL OR apiAnswer.`value` = '', 'false', 'true') AS isApiAnswer,
 
         # Validation properties.
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
@@ -564,6 +567,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS datasource ON datasource.item_id = step.id AND datasource.`key` = 'datasource'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiAnswer ON apiAnswer.item_id = step.id AND apiAnswer.`key` = 'api_answer'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
@@ -596,6 +600,7 @@ SELECT
     stepName,
     dependencies,
     datasource,
+    isApiAnswer,
     isRequired,
     requiredConditions,
     minimumValue,
@@ -723,6 +728,7 @@ ORDER BY parentStepId, ordering";
                     StepTemplate = dataRow.Field<string>("stepTemplate"),
                     StepOptionTemplate = dataRow.Field<string>("stepOptionTemplate"),
                     Datasource = dataRow.Field<string>("datasource"),
+                    IsApiAnswer = Convert.ToBoolean(dataRow["isApiAnswer"]),
                     ExtraDataQuery = dataRow.Field<string>("extraDataQuery"),
                     UrlRegex = dataRow.Field<string>("urlRegex"),
                     OptionsOpenModal = Convert.ToBoolean(dataRow["optionsOpenModal"]),
@@ -874,8 +880,8 @@ AND stepOptionsQuery.`key` = 'custom_query'");
 	CAST(questionConfiguratorApiId.`value` AS UNSIGNED) AS questionConfiguratorApiId,
 	apiExtraData.`key`,
 	apiExtraData.`value`
-FROM wiser_itemdetail AS questionConfiguratorApiId
-LEFT JOIN wiser_itemdetail AS apiExtraData ON apiExtraData.item_id = questionConfiguratorApiId.item_id AND apiExtraData.groupname = 'api_extra_data'
+FROM {WiserTableNames.WiserItemDetail} AS questionConfiguratorApiId
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiExtraData ON apiExtraData.item_id = questionConfiguratorApiId.item_id AND apiExtraData.groupname = 'api_extra_data'
 WHERE questionConfiguratorApiId.item_id = ?stepId
 AND questionConfiguratorApiId.`key` = 'Vraag'");
             
@@ -1324,8 +1330,7 @@ WHERE configurator.entity_type = 'configurator' AND configurator.title = ?config
                 }
             }
 
-            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, vueConfiguration, true);
-            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, vueConfiguration, true);
+            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, vueConfiguration, false);
             endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
 
             var requestMethod = (Method) startApi.GetDetailValue<int>("request_type");
@@ -1335,7 +1340,6 @@ WHERE configurator.entity_type = 'configurator' AND configurator.title = ?config
 
             if (!String.IsNullOrWhiteSpace(requestJson))
             {
-                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, vueConfiguration, false);
                 requestJson = await ReplaceConfiguratorItemsAsync(requestJson, vueConfiguration, false);
                 requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
@@ -1372,6 +1376,96 @@ WHERE configurator.entity_type = 'configurator' AND configurator.title = ?config
             {
                 Id = currentObject?[keyParts[0]]?.ToString()
             };
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> SendAnswerToExternalApiAsync(VueConfigurationsModel configuration, int stepId)
+        {
+            var query = $@"SELECT
+	CAST(externalAnswerConfiguratorApi.`value` AS UNSIGNED) AS externalAnswerConfiguratorApi,
+	apiExtraData.`key`,
+	apiExtraData.`value`
+FROM {WiserTableNames.WiserItemDetail} AS externalAnswerConfiguratorApi
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiExtraData ON apiExtraData.item_id = externalAnswerConfiguratorApi.item_id AND apiExtraData.groupname = 'api_extra_data'
+WHERE externalAnswerConfiguratorApi.item_id = ?stepId
+AND externalAnswerConfiguratorApi.`key` = 'api_answer'";
+            
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("stepId", stepId);
+            var dataTable = await databaseConnection.GetAsync(query);
+            
+            if (dataTable.Rows.Count == 0)
+            {
+                return false;
+            }
+
+            var answerApi = await wiserItemsService.GetItemDetailsAsync(dataTable.Rows[0].Field<UInt64>("externalAnswerConfiguratorApi"), entityType: "ConfiguratorApi", skipPermissionsCheck: true);
+            
+            var endpoint = answerApi.GetDetailValue("endpoint");
+            var requestJson = answerApi.GetDetailValue("request_json");
+            query = answerApi.GetDetailValue("api_query");
+
+            if (String.IsNullOrWhiteSpace(endpoint))
+            {
+                return false;
+            }
+            
+            // Get the the extra data for the API based on the group name of the details that are set in Wiser.
+            var apiExtraData = new Dictionary<string, string>();
+            foreach (DataRow row in dataTable.Rows)
+            {
+                apiExtraData.Add(row.Field<string>("key"), row.Field<string>("value"));
+            }
+
+            DataRow extraData = null;
+
+            // If a query is set handle it to add extra information for the replacements in the JSON.
+            if (!String.IsNullOrWhiteSpace(query))
+            {
+                query = stringReplacementsService.DoReplacements(query, apiExtraData, forQuery: true);
+                query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
+                query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                var extraDataTable = await databaseConnection.GetAsync(query);
+
+                if (extraDataTable.Rows.Count > 0)
+                {
+                    extraData = extraDataTable.Rows[0];
+                }
+            }
+            
+            endpoint = stringReplacementsService.DoReplacements(endpoint, apiExtraData);
+            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+            endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
+
+            var requestMethod = (Method) answerApi.GetDetailValue<int>("request_type");
+
+            var restClient = new RestClient();
+            var restRequest = new RestRequest(endpoint, requestMethod);
+
+            if (!String.IsNullOrWhiteSpace(requestJson))
+            {
+                requestJson = stringReplacementsService.DoReplacements(requestJson, apiExtraData);
+                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+
+                var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                requestJson = regex.Replace(requestJson, "null");
+
+                restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+            }
+
+            await AddAuthenticationToApiCall(restRequest, answerApi);
+            await AddAcceptLanguageToApiCall(restRequest);
+            await AddCustomHeadersAsync(restRequest, answerApi, vueConfiguration: configuration, extraData: extraData);
+
+            var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
+            if (!restResponse.IsSuccessful || restResponse.Content == null)
+            {
+                logger.LogWarning("Error while trying to send the answer to an API ({answerApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}",  answerApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
+                return false;
+            }
+
+            return true;
         }
 
         /// <inheritdoc />
