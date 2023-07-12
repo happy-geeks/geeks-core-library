@@ -2822,6 +2822,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                         StoreType = dataRow.Field<string>("store_type")?.ToLowerInvariant() switch
                         {
                             null => StoreType.Table,
+                            "" => StoreType.Table,
                             "table" => StoreType.Table,
                             "document_store" => StoreType.DocumentStore,
                             "hybrid" => StoreType.Hybrid,
