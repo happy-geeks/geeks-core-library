@@ -683,9 +683,9 @@ ORDER BY parentStepId, ordering";
                     }
                 }
 
-                var requiredErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("requiredErrorMessage"));
-                var minimumValueErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("minimumValueErrorMessage"));
-                var maximumValueErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("maximumValueErrorMessage"));
+                var requiredErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("requiredErrorMessage"), removeUnknownVariables: false);
+                var minimumValueErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("minimumValueErrorMessage"), removeUnknownVariables: false);
+                var maximumValueErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("maximumValueErrorMessage"), removeUnknownVariables: false);
                 var validationRegexErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("validationRegexErrorMessage"));
 
                 var extraDataJson = dataRow.Field<string>("extraData");
@@ -867,7 +867,7 @@ AND stepOptionsQuery.`key` = 'custom_query'");
         /// <inheritdoc />
         public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration)
         {
-            // Get the correct Confgiurator API entity.
+            // Get the correct Configurator API entity.
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("stepId", stepData.StepId);
             var dataTable = await databaseConnection.GetAsync($@"SELECT
@@ -980,12 +980,12 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
             var keyParts = new List<string>(questionKey.Split('.'));
             JToken currentObject = responseData;
 
-            // Step into the object till only 1 key part is left.
+            // Step into the object till the final object is reached.
             while (keyParts.Count > 0)
             {
-                if (keyParts[0].StartsWith("Body["))
+                if (keyParts[0].StartsWith("["))
                 {
-                    var selector = keyParts[0].Substring(5, keyParts[0].Length - 6);
+                    var selector = keyParts[0].Substring(1, keyParts[0].Length - 2);
                     var selectorParts = selector.Split('=');
 
                     foreach (JToken jToken in currentObject)

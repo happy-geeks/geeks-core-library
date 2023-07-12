@@ -1621,6 +1621,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             // Make a clone of the original so the cached version is not modified.
             var result = ObjectCloner.ObjectCloner.DeepClone(configurator);
+            result.ExternalConfiguration = configuration.ExternalConfiguration;
 
             List<string> stepsToProcess;
             var stepsToRemove = new List<string>();
@@ -1760,12 +1761,13 @@ namespace GeeksCoreLibrary.Components.Configurator
         /// <summary>
         /// Start the configuration at an external API.
         /// </summary>
+        /// <param name="steps">A list of steps that are dependant on an API.</param>
         /// <param name="configuration">A <see cref="VueConfigurationsModel"/> object.</param>
         /// <returns>The <see cref="VueConfiguratorDataModel"/> including a <see cref="ExternalConfigurationModel"/> containing the information for the configuration at an external API.</returns>
-        public async Task<VueConfiguratorDataModel> StartConfigurationExternally(VueConfigurationsModel configuration)
+        public async Task<VueConfiguratorDataModel> StartConfigurationExternally(List<string> steps, VueConfigurationsModel configuration)
         {
             configuration.ExternalConfiguration = await configuratorsService.StartConfigurationExternallyAsync(configuration);
-            return await GetConfiguratorData(null, configuration);
+            return await GetConfiguratorData(steps, configuration);
         }
         
         #endregion

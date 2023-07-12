@@ -142,6 +142,12 @@ public class VueStepDataModel
     public string ModalContainerSelector { get; set; }
 
     /// <summary>
+    /// The datasource being used for the step.
+    /// </summary>
+    [JsonProperty("datasource")]
+    public string Datasource { get; set; }
+
+    /// <summary>
     /// Gets or sets extra data which are retrieved from the database.
     /// </summary>
     [JsonProperty("extraData")]
@@ -175,12 +181,6 @@ public class VueStepDataModel
     /// </remarks>
     [JsonIgnore]
     public string StepOptionTemplate { get; set; }
-
-    /// <summary>
-    /// The datasource being used for the step.
-    /// </summary>
-    [JsonIgnore]
-    public string Datasource { get; set; }
 
     /// <summary>
     /// Gets or sets the query that retrieves the step's extension data.
