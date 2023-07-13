@@ -293,6 +293,13 @@ namespace GeeksCoreLibrary.Core.Cms
         {
             var javaScriptLibraries = HttpContext.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] as List<JavaScriptResource> ?? new List<JavaScriptResource>();
 
+            // Turn the URL into an absolute URL if it isn't already.
+            var uri = new Uri(url, UriKind.RelativeOrAbsolute);
+            if (!uri.IsAbsoluteUri)
+            {
+                url = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}{HttpContext.Request.PathBase}{url}";
+            }
+
             // Check if the URL isn't already in the list.
             var item = javaScriptLibraries.FirstOrDefault(l => l.Uri.AbsoluteUri.Equals(url, StringComparison.OrdinalIgnoreCase));
             if (item != null)
@@ -304,7 +311,7 @@ namespace GeeksCoreLibrary.Core.Cms
             {
                 javaScriptLibraries.Add(new JavaScriptResource
                 {
-                    Uri = new Uri(url, UriKind.RelativeOrAbsolute),
+                    Uri = new Uri(url),
                     Async = async,
                     Defer = defer
                 });
