@@ -1025,6 +1025,17 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
                 stepData.MaximumValue = currentObject.SelectToken(stepData.MaximumValue.Substring(5)).Value<string>();
             }
             
+            // Get properties from question as extra data if it is not an object or array.
+            foreach (var property in (JObject)currentObject)
+            {
+                if (property.Value.Type == JTokenType.Object || property.Value.Type == JTokenType.Array)
+                {
+                    continue;
+                }
+                
+                stepData.ExtraData.Add(property);
+            }
+            
             // Setup mapping
             var mappings = new Dictionary<string, string>();
             foreach (var detail in questionApi.Details)
