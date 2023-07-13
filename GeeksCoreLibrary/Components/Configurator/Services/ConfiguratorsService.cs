@@ -994,6 +994,8 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
                     var selector = keyParts[0].Substring(1, keyParts[0].Length - 2);
                     var selectorParts = selector.Split('=');
 
+                    var matchFound = false;
+
                     foreach (JToken jToken in currentObject)
                     {
                         if (jToken.Type != JTokenType.Object)
@@ -1004,25 +1006,53 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
                         if (jToken[selectorParts[0]].Value<string>().Equals(selectorParts[1], StringComparison.InvariantCultureIgnoreCase))
                         {
                             currentObject = jToken;
+                            matchFound = true;
                             break;
                         }
                     }
                     
-                    keyParts.RemoveAt(0);
-                    continue;
+                    // If no match is found set the current object to null so the question is not found and will not have answers.
+                    if (!matchFound)
+                    {
+                        currentObject = null;
+                    }
+                }
+                else
+                {
+                    currentObject = currentObject[keyParts[0]];
                 }
                 
-                currentObject = currentObject[keyParts[0]];
                 keyParts.RemoveAt(0);
+                
+                // If the current object is null, the question is not found and will not have answers.
+                if (currentObject == null)
+                {
+                    stepData.Options = options;
+                    return;
+                }
             }
 
             if (!String.IsNullOrWhiteSpace(stepData.MinimumValue) && stepData.MinimumValue.StartsWith("JSON:", StringComparison.InvariantCultureIgnoreCase))
             {
                 stepData.MinimumValue = currentObject.SelectToken(stepData.MinimumValue.Substring(5)).Value<string>();
+                
+                // If the property could not be found while being expected the question is not complete and will not have answers.
+                if (stepData.MinimumValue == null)
+                {
+                    stepData.Options = options;
+                    return;
+                }
             }
             if (!String.IsNullOrWhiteSpace(stepData.MaximumValue) && stepData.MaximumValue.StartsWith("JSON:", StringComparison.InvariantCultureIgnoreCase))
             {
                 stepData.MaximumValue = currentObject.SelectToken(stepData.MaximumValue.Substring(5)).Value<string>();
+                
+                // If the property could not be found while being expected the question is not complete and will not have answers.
+                if (stepData.MaximumValue == null)
+                {
+                    stepData.Options = options;
+                    return;
+                }
             }
             
             // Get properties from question as extra data if it is not an object or array.
