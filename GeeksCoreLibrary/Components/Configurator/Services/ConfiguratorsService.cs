@@ -1012,19 +1012,31 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
                     continue;
                 }
                 
-                currentObject = (JObject) currentObject[keyParts[0]];
+                currentObject = currentObject[keyParts[0]];
                 keyParts.RemoveAt(0);
             }
 
-            if (stepData.MinimumValue.StartsWith("JSON:", StringComparison.InvariantCultureIgnoreCase))
+            if (!String.IsNullOrWhiteSpace(stepData.MinimumValue) && stepData.MinimumValue.StartsWith("JSON:", StringComparison.InvariantCultureIgnoreCase))
             {
                 stepData.MinimumValue = currentObject.SelectToken(stepData.MinimumValue.Substring(5)).Value<string>();
             }
-            if (stepData.MaximumValue.StartsWith("JSON:", StringComparison.InvariantCultureIgnoreCase))
+            if (!String.IsNullOrWhiteSpace(stepData.MaximumValue) && stepData.MaximumValue.StartsWith("JSON:", StringComparison.InvariantCultureIgnoreCase))
             {
                 stepData.MaximumValue = currentObject.SelectToken(stepData.MaximumValue.Substring(5)).Value<string>();
             }
             
+            // Setup mapping
+            var mappings = new Dictionary<string, string>();
+            foreach (var detail in questionApi.Details)
+            {
+                if (String.IsNullOrWhiteSpace(detail.GroupName) || !detail.GroupName.Equals("mapping", StringComparison.InvariantCultureIgnoreCase) || String.IsNullOrWhiteSpace(detail.Key))
+                {
+                    continue;
+                }
+
+                mappings.Add(detail.Key, detail.Value.ToString());
+            }
+
             keyParts = new List<string>(answersKey.Split('.'));
 
             // Step into the object till only 1 key part is left.
@@ -1036,53 +1048,76 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
             
             var stepOptions = new List<VueStepOptionDataModel>();
 
+            // Select the answers from the response.
+            JObject[] answers = null;
             if (currentObject.Type == JTokenType.Object)
+            {
+                answers = new[] { (JObject)currentObject };
+            }
+            else if (currentObject.Type == JTokenType.Array)
+            {
+                answers = currentObject.Select(x => (JObject)x).ToArray();
+            }
+
+            if (answers == null || !answers.Any())
+            {
+                stepData.Options = options;
+                return;
+            }
+            
+            // Add each answer to the step options.
+            var optionId = 1;
+            foreach (var jObject in answers)
             {
                 var stepOption = new VueStepOptionDataModel
                 {
-                    Id = "1",
-                    Value = "1",
-                    Name = "Answer 1",
+                    Id = optionId.ToString(),
+                    Value = optionId.ToString(),
+                    Name = $"Answer {optionId}",
                     AdditionalData = new Dictionary<string, object>()
                 };
-                    
-                foreach (var property in (JObject)currentObject)
+                
+                foreach (var property in jObject)
                 {
+                    var propertyIsMapped = false;
+                
+                    foreach (var mapping in mappings)
+                    {
+                        if (!property.Key.Equals(mapping.Value, StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        switch (mapping.Key)
+                        {
+                            case "id":
+                                stepOption.Id = property.Value.Value<string>();
+                                propertyIsMapped = true;
+                                break;
+                            case "value":
+                                stepOption.Value = property.Value.Value<string>();
+                                propertyIsMapped = true;
+                                break;
+                            case "name":
+                                stepOption.Name = property.Value.Value<string>();
+                                propertyIsMapped = true;
+                                break;
+                        }
+                    }
+                
+                    if (propertyIsMapped)
+                    {
+                        continue;
+                    }
+                    
                     stepOption.AdditionalData.Add(property.Key, property.Value);
                 }
 
                 stepOptions.Add(stepOption);
-                stepData.Options = stepOptions;
-                return;
+                optionId++;
             }
-            
-            if (currentObject.Type == JTokenType.Array)
-            {
-                var optionId = 1;
-                foreach (JObject jObject in currentObject)
-                {
-                    var stepOption = new VueStepOptionDataModel
-                    {
-                        Id = optionId.ToString(),
-                        Value = optionId.ToString(),
-                        Name = $"Answer {optionId}",
-                        AdditionalData = new Dictionary<string, object>()
-                    };
-                    
-                    foreach (var property in jObject)
-                    {
-                        stepOption.AdditionalData.Add(property.Key, property.Value);
-                    }
 
-                    stepOptions.Add(stepOption);
-                    optionId++;
-                }
-
-                stepData.Options = stepOptions;
-                return;
-            }
-            
-            stepData.Options = options;
+            stepData.Options = stepOptions;
         }
         
         /// <inheritdoc />
