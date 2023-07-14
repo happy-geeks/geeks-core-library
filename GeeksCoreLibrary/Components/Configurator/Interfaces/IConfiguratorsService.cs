@@ -26,18 +26,18 @@ public interface IConfiguratorsService
     /// <summary>
     /// Set the step options from a query.
     /// </summary>
-    /// <param name="stepData"></param>
-    /// <param name="options"></param>
-    /// <param name="configuration"></param>
+    /// <param name="stepData">The <see cref="VueStepDataModel"/> containing the information of the step to set the values for.</param>
+    /// <param name="options">The options to use when no results are provided.</param>
+    /// <param name="configuration">The <see cref="VueConfigurationsModel"/> to use for replacements.</param>
     /// <returns></returns>
     Task SetVueStepOptionsWithQueryAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration);
 
     /// <summary>
     /// Set the step options from an API.
     /// </summary>
-    /// <param name="stepData"></param>
-    /// <param name="options"></param>
-    /// <param name="configuration"></param>
+    /// <param name="stepData">The <see cref="VueStepDataModel"/> containing the information of the step to set the values for.</param>
+    /// <param name="options">The options to use when no results are provided.</param>
+    /// <param name="configuration">The <see cref="VueConfigurationsModel"/> to use for replacements.</param>
     /// <returns></returns>
     Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration);
 
@@ -86,7 +86,7 @@ public interface IConfiguratorsService
     /// </summary>
     /// <param name="configuration">>A <see cref="VueConfigurationsModel"/> object.</param>
     /// <param name="stepId">The ID of the step that the answer to for.</param>
-    /// <returns></returns>
+    /// <returns>Returns true if the answer was correctly set at the external API.</returns>
     Task<bool> SendAnswerToExternalApiAsync(VueConfigurationsModel configuration, int stepId);
     
     /// <summary>

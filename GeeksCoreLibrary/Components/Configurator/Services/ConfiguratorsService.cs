@@ -416,7 +416,7 @@ LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarStepTemplate ON progre
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryTemplate ON summaryTemplate.item_id = configurator.id AND summaryTemplate.`key` = 'summary_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS priceCalculationQuery ON priceCalculationQuery.item_id = configurator.id AND priceCalculationQuery.`key` = 'price_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS deliveryTimeCalculationQuery ON deliveryTimeCalculationQuery.item_id = configurator.id AND deliveryTimeCalculationQuery.`key` = 'delivery_time_calculation_query'
-LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiStartConfiguration ON apiStartConfiguration.item_id = configurator.id AND apiStartConfiguration.`key` = 'start'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiStartConfiguration ON apiStartConfiguration.item_id = configurator.id AND apiStartConfiguration.`key` = 'api_start'
 WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.title = ?name");
 
             if (configuratorSettings.Rows.Count == 0)
@@ -883,7 +883,7 @@ AND stepOptionsQuery.`key` = 'custom_query'");
 FROM {WiserTableNames.WiserItemDetail} AS questionConfiguratorApiId
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiExtraData ON apiExtraData.item_id = questionConfiguratorApiId.item_id AND apiExtraData.groupname = 'api_extra_data'
 WHERE questionConfiguratorApiId.item_id = ?stepId
-AND questionConfiguratorApiId.`key` = 'Vraag'");
+AND questionConfiguratorApiId.`key` = 'api_question'");
             
             if (dataTable.Rows.Count == 0)
             {
@@ -986,7 +986,7 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
             var keyParts = new List<string>(questionKey.Split('.'));
             JToken currentObject = responseData;
 
-            // Step into the object till the final object is reached.
+            // Step into the object till the correct object is found or the path leads to an invalid object.
             while (keyParts.Count > 0)
             {
                 if (keyParts[0].StartsWith("["))
@@ -998,17 +998,14 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
 
                     foreach (JToken jToken in currentObject)
                     {
-                        if (jToken.Type != JTokenType.Object)
+                        if (jToken.Type != JTokenType.Object || !jToken[selectorParts[0]].Value<string>().Equals(selectorParts[1], StringComparison.InvariantCultureIgnoreCase))
                         {
                             continue;
                         }
 
-                        if (jToken[selectorParts[0]].Value<string>().Equals(selectorParts[1], StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            currentObject = jToken;
-                            matchFound = true;
-                            break;
-                        }
+                        currentObject = jToken;
+                        matchFound = true;
+                        break;
                     }
                     
                     // If no match is found set the current object to null so the question is not found and will not have answers.
@@ -1066,7 +1063,7 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
                 stepData.ExtraData.Add(property);
             }
             
-            // Setup mapping
+            // Setup mapping  for option ID, value and name.
             var mappings = new Dictionary<string, string>();
             foreach (var detail in questionApi.Details)
             {
@@ -1080,11 +1077,18 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
 
             keyParts = new List<string>(answersKey.Split('.'));
 
-            // Step into the object till only 1 key part is left.
+            // Step into the object till the correct object is found or the path leads to an invalid object.
             while (keyParts.Count > 0)
             {
                 currentObject = currentObject[keyParts[0]];
                 keyParts.RemoveAt(0);
+                
+                // If the current object is null, the answers are not found.
+                if (currentObject == null)
+                {
+                    stepData.Options = options;
+                    return;
+                }
             }
             
             var stepOptions = new List<VueStepOptionDataModel>();
@@ -1244,7 +1248,7 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
                 return template;
             }
             
-            // Replace external configurator id if one is provided.
+            // Replace external configurator ID if one is provided.
             if (configuration.ExternalConfiguration != null && !String.IsNullOrWhiteSpace(configuration.ExternalConfiguration.Id))
             {
                 if (!isDataQuery)
@@ -1367,7 +1371,7 @@ AND questionConfiguratorApiId.`key` = 'Vraag'");
         {
             var query = $@"SELECT CAST(externalStartConfiguratorApi.`value` AS UNSIGNED) AS externalStartConfiguratorApi
 FROM {WiserTableNames.WiserItem} AS configurator
-JOIN {WiserTableNames.WiserItemDetail} AS externalStartConfiguratorApi ON externalStartConfiguratorApi.item_id = configurator.id AND externalStartConfiguratorApi.`key` = 'start'
+JOIN {WiserTableNames.WiserItemDetail} AS externalStartConfiguratorApi ON externalStartConfiguratorApi.item_id = configurator.id AND externalStartConfiguratorApi.`key` = 'api_start'
 WHERE configurator.entity_type = 'configurator' AND configurator.title = ?configuratorName";
             
             databaseConnection.ClearParameters();
@@ -1414,6 +1418,7 @@ WHERE configurator.entity_type = 'configurator' AND configurator.title = ?config
             var restClient = new RestClient();
             var restRequest = new RestRequest(endpoint, requestMethod);
 
+            // If a body is provided perform replacements and add it to the request.
             if (!String.IsNullOrWhiteSpace(requestJson))
             {
                 requestJson = await ReplaceConfiguratorItemsAsync(requestJson, vueConfiguration, false);
@@ -1446,6 +1451,12 @@ WHERE configurator.entity_type = 'configurator' AND configurator.title = ?config
             {
                 currentObject = (JObject) currentObject[keyParts[0]];
                 keyParts.RemoveAt(0);
+                
+                // If the current object is null, the key is not found.
+                if (currentObject == null)
+                {
+                    return null;
+                }
             }
 
             return new ExternalConfigurationModel()
@@ -1518,6 +1529,7 @@ AND externalAnswerConfiguratorApi.`key` = 'api_answer'";
             var restClient = new RestClient();
             var restRequest = new RestRequest(endpoint, requestMethod);
 
+            // If a body is provided perform replacements and add it to the request.
             if (!String.IsNullOrWhiteSpace(requestJson))
             {
                 requestJson = stringReplacementsService.DoReplacements(requestJson, apiExtraData);
@@ -2090,7 +2102,7 @@ AND externalAnswerConfiguratorApi.`key` = 'api_answer'";
 
             switch (authenticationType)
             {
-                case 0: // When not set skip authentication.
+                case 0: // When not set skip authentication. Either no authentication is needed or done by custom header.
                     return;
                 case 1: // OAuth 2.0
                     // TODO handle OAuth 2
