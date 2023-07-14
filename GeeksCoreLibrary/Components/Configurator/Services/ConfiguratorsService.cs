@@ -453,7 +453,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
         datasource.`value` AS datasource,
-        IF(apiAnswer.id IS NULL OR apiAnswer.`value` = '', 'false', 'true') AS isApiAnswer,
+        IF(apiAnswer.id IS NULL OR apiAnswer.`value` = '', FALSE, TRUE) AS isApiAnswer,
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
         requiredConditions.`value` AS requiredConditions,
         minimumValue.`value` AS minimumValue,
@@ -525,7 +525,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
         datasource.`value` AS datasource,
-        IF(apiAnswer.id IS NULL OR apiAnswer.`value` = '', 'false', 'true') AS isApiAnswer,
+        IF(apiAnswer.id IS NULL OR apiAnswer.`value` = '', FALSE, TRUE) AS isApiAnswer,
 
         # Validation properties.
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
@@ -919,7 +919,7 @@ AND questionConfiguratorApiId.`key` = 'api_question'");
             
             DataRow extraData = null;
 
-            // If a query is set handle it to add extra information for the replacements in the JSON.
+            // If a query is set, execute it and use the results for the replacements in the JSON.
             if (!String.IsNullOrWhiteSpace(query))
             {
                 query = stringReplacementsService.DoReplacements(query, apiExtraData, forQuery: true);
@@ -937,6 +937,8 @@ AND questionConfiguratorApiId.`key` = 'api_question'");
             endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
             endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, removeUnknownVariables: false);
 
+            // If not all replacements have been replaced the endpoint is not valid. Calling it will not give a result.
+            // This can happen for example if the endpoint has an external ID and the external configuration has not yet started.
             if (endpoint.Contains("{"))
             {
                 stepData.Options = options;
@@ -963,6 +965,7 @@ AND questionConfiguratorApiId.`key` = 'api_question'");
                 requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
                 requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
 
+                // Replace all not replaced values with null to prevent invalid JSON.
                 var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 requestJson = regex.Replace(requestJson, "null");
 
@@ -982,20 +985,28 @@ AND questionConfiguratorApiId.`key` = 'api_question'");
             }
             
             // Get the question from the response.
-            JToken responseData = restResponse.Content.StartsWith("{") ? JObject.Parse(restResponse.Content) : JArray.Parse(restResponse.Content);
+            var responseData = JToken.Parse(restResponse.Content);
             var keyParts = new List<string>(questionKey.Split('.'));
-            JToken currentObject = responseData;
+            var currentObject = responseData;
 
             // Step into the object till the correct object is found or the path leads to an invalid object.
             while (keyParts.Count > 0)
             {
+                // Check if the key is an array selector.
                 if (keyParts[0].StartsWith("["))
                 {
+                    // Remove the surrounding brackets [] to get the selector from the key.
                     var selector = keyParts[0].Substring(1, keyParts[0].Length - 2);
                     var selectorParts = selector.Split('=');
+                    
+                    if (selectorParts.Length != 2)
+                    {
+                        throw new Exception($"Selector '{selector}' is not valid. It should be in the format [key=value]. This selector is part of the question key '{questionKey}' in the question API '{questionApi.Title}'.");
+                    }
 
                     var matchFound = false;
 
+                    // Check for each object in the array if the property matches the first selector part and if its value matches the second selector part.
                     foreach (JToken jToken in currentObject)
                     {
                         if (jToken.Type != JTokenType.Object || !jToken[selectorParts[0]].Value<string>().Equals(selectorParts[1], StringComparison.InvariantCultureIgnoreCase))
@@ -1040,6 +1051,7 @@ AND questionConfiguratorApiId.`key` = 'api_question'");
                     return;
                 }
             }
+            
             if (!String.IsNullOrWhiteSpace(stepData.MaximumValue) && stepData.MaximumValue.StartsWith("JSON:", StringComparison.InvariantCultureIgnoreCase))
             {
                 stepData.MaximumValue = currentObject.SelectToken(stepData.MaximumValue.Substring(5)).Value<string>();
@@ -1063,7 +1075,7 @@ AND questionConfiguratorApiId.`key` = 'api_question'");
                 stepData.ExtraData.Add(property);
             }
             
-            // Setup mapping  for option ID, value and name.
+            // Setup mapping for option ID, value and name.
             var mappings = new Dictionary<string, string>();
             foreach (var detail in questionApi.Details)
             {
@@ -1253,13 +1265,13 @@ AND questionConfiguratorApiId.`key` = 'api_question'");
             {
                 if (!isDataQuery)
                 {
-                    template = template.Replace($"{{externalConfiguration.id}}", configuration.ExternalConfiguration.Id);
+                    template = template.Replace("{externalConfiguration.id}", configuration.ExternalConfiguration.Id);
                 }
                 else
                 {
-                    var parameterName = DatabaseHelpers.CreateValidParameterName("externalConfiguration.id");
+                    var parameterName = "externalConfigurationId";
                     databaseConnection.AddParameter(parameterName, configuration.ExternalConfiguration.Id);
-                    template = template.Replace($"'{{externalConfiguration.id}}'", $"?{parameterName}").Replace($"{{externalConfiguration.id}}", $"?{parameterName}");
+                    template = template.Replace("'{externalConfiguration.id}'", $"?{parameterName}").Replace("{externalConfiguration.id}", $"?{parameterName}");
                 }
             }
 
@@ -1383,7 +1395,7 @@ WHERE configurator.entity_type = 'configurator' AND configurator.title = ?config
                 return null;
             }
 
-            var startApi = await wiserItemsService.GetItemDetailsAsync(dataTable.Rows[0].Field<UInt64>("externalStartConfiguratorApi"), entityType: "ConfiguratorApi", skipPermissionsCheck: true);
+            var startApi = await wiserItemsService.GetItemDetailsAsync(dataTable.Rows[0].Field<ulong>("externalStartConfiguratorApi"), entityType: "ConfiguratorApi", skipPermissionsCheck: true);
             
             var endpoint = startApi.GetDetailValue("endpoint");
             var requestJson = startApi.GetDetailValue("request_json");
@@ -2143,7 +2155,7 @@ AND externalAnswerConfiguratorApi.`key` = 'api_answer'";
         {
             foreach (var detail in configuratorApi.Details)
             {
-                if (String.IsNullOrWhiteSpace(detail.GroupName) || !detail.GroupName.Equals("headers", StringComparison.InvariantCultureIgnoreCase) || String.IsNullOrWhiteSpace(detail.Key)) continue;
+                if (!String.Equals(detail.GroupName, "headers", StringComparison.CurrentCultureIgnoreCase) || String.IsNullOrWhiteSpace(detail.Key)) continue;
 
                 var value = detail.Value.ToString();
                 if (String.IsNullOrWhiteSpace(value)) continue;
