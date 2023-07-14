@@ -2439,6 +2439,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             databaseConnection.AddParameter("languageCode", languageCode);
             var query = $@"SELECT 
 	item.*,
+	details.groupname,
 	details.`key`,	
 	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
     details.language_code
@@ -2453,6 +2454,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.i
 UNION
 SELECT 
 	item.*,
+    details.groupname,
 	details.`key`,	
 	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
     details.language_code
@@ -2607,7 +2609,8 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                         # Item link details.
                         SELECT 
 	                        item.*,
-	                        details.`key`,	
+                            details.groupname,
+	                        details.`key`,
 	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
                             details.language_code,
                             link.id AS itemLinkId
@@ -2622,6 +2625,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                             UNION
                             SELECT 
 	                            item.*,
+                                details.groupname,
 	                            details.`key`,	
 	                            CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
                                 details.language_code,
@@ -4607,6 +4611,7 @@ WHERE id = ?saveDetailId";
                 Key = key,
                 Value = dataRow["value"],
                 LanguageCode = dataRow.Field<string>("language_code"),
+                GroupName = dataRow.Table.Columns.Contains("groupname") ? dataRow.Field<string>("groupname") : null,
                 Changed = false
             });
         }

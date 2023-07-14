@@ -1628,6 +1628,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             // Make a clone of the original so the cached version is not modified.
             var result = ObjectCloner.ObjectCloner.DeepClone(configurator);
+            result.ExternalConfiguration = configuration.ExternalConfiguration;
 
             List<string> stepsToProcess;
             var stepsToRemove = new List<string>();
@@ -1744,85 +1745,15 @@ namespace GeeksCoreLibrary.Components.Configurator
                 }
 
                 // Dependencies are valid, load options.
-                var stepOptionsQuery = stepData.StepOptionsQuery;
-                if (String.IsNullOrWhiteSpace(stepOptionsQuery))
+                switch (stepData.Datasource)
                 {
-                    stepData.Options = options;
-                    continue;
+                    case "customquery":
+                        await configuratorsService.SetVueStepOptionsWithQueryAsync(stepData, options, configuration);
+                        break;
+                    case "api":
+                        await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration);
+                        break;
                 }
-
-                stepOptionsQuery = await configuratorsService.ReplaceConfiguratorItemsAsync(stepOptionsQuery, configuration, true);
-                stepOptionsQuery = await TemplatesService.DoReplacesAsync(stepOptionsQuery, handleRequest: false, removeUnknownVariables: false, forQuery: true);
-                var stepOptionsDataTable = await DatabaseConnection.GetAsync(stepOptionsQuery);
-                if (stepOptionsDataTable.Rows.Count == 0)
-                {
-                    stepData.Options = options;
-                    continue;
-                }
-
-                // Some values of the step can be overriden through the step options query.
-                if (stepOptionsDataTable.Columns.Contains("minimumValue"))
-                {
-                    stepData.MinimumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["minimumValue"]);
-                }
-                if (stepOptionsDataTable.Columns.Contains("maximumValue"))
-                {
-                    stepData.MaximumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["maximumValue"]);
-                }
-                if (stepOptionsDataTable.Columns.Contains("validationRegex"))
-                {
-                    stepData.ValidationRegex = Convert.ToString(stepOptionsDataTable.Rows[0]["validationRegex"]);
-                }
-
-                // Handle the data rows.
-                var stepOptionProperties = typeof(VueStepOptionDataModel).GetProperties();
-                foreach (var dataRow in stepOptionsDataTable.Rows.Cast<DataRow>())
-                {
-                    var stepOption = new VueStepOptionDataModel
-                    {
-                        AdditionalData = new Dictionary<string, object>()
-                    };
-
-                    foreach (var dataColumn in stepOptionsDataTable.Columns.Cast<DataColumn>())
-                    {
-                        var columnName = dataColumn.ColumnName;
-                        var columnValue = dataRow[dataColumn];
-                        var property = stepOptionProperties.FirstOrDefault(property => property.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
-                        if (property != null)
-                        {
-                            // Check if the property is a boolean and if so, convert the value to a boolean.
-                            if (property.PropertyType == typeof(bool))
-                            {
-                                // String values are handled differently.
-                                if (columnValue is string stringValue)
-                                {
-                                    property.SetValue(stepOption, stringValue.InList(StringComparer.OrdinalIgnoreCase, "1", "true"));
-                                }
-                                else
-                                {
-                                    property.SetValue(stepOption, Convert.ToBoolean(columnValue));
-                                }
-                            }
-                            else
-                            {
-                                var type = property.PropertyType;
-                                type = Nullable.GetUnderlyingType(type) ?? type;
-
-                                // All other data types are just added as-is.
-                                property.SetValue(stepOption, Convert.ChangeType(columnValue, type));
-                            }
-                        }
-                        else
-                        {
-                            // Add the value to the additional data dictionary.
-                            stepOption.AdditionalData.Add(columnName, columnValue);
-                        }
-                    }
-
-                    options.Add(stepOption);
-                }
-
-                stepData.Options = options;
             }
 
             // Remove the steps listed in stepsToRemove from the result.
@@ -1834,6 +1765,29 @@ namespace GeeksCoreLibrary.Components.Configurator
             return result;
         }
 
+        /// <summary>
+        /// Start the configuration at an external API.
+        /// </summary>
+        /// <param name="steps">A list of steps that are dependant on an API.</param>
+        /// <param name="configuration">A <see cref="VueConfigurationsModel"/> object.</param>
+        /// <returns>The <see cref="VueConfiguratorDataModel"/> including a <see cref="ExternalConfigurationModel"/> containing the information for the configuration at an external API.</returns>
+        public async Task<VueConfiguratorDataModel> StartConfigurationExternally(List<string> steps, VueConfigurationsModel configuration)
+        {
+            configuration.ExternalConfiguration = await configuratorsService.StartConfigurationExternallyAsync(configuration);
+            return await GetConfiguratorData(steps, configuration);
+        }
+        
+        /// <summary>
+        /// Send an answer to an external API.
+        /// </summary>
+        /// <param name="configuration">>A <see cref="VueConfigurationsModel"/> object.</param>
+        /// <param name="stepId">The ID of the step that the answer to for.</param>
+        /// <returns></returns>
+        public async Task<bool> SendAnswerToExternalApi(VueConfigurationsModel configuration, int stepId)
+        {
+            return await configuratorsService.SendAnswerToExternalApiAsync(configuration, stepId);
+        }
+        
         #endregion
     }
 }
