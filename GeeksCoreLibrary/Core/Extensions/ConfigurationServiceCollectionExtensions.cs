@@ -137,14 +137,15 @@ namespace GeeksCoreLibrary.Core.Extensions
             {
                 // During startup, make sure that the log table exists, but only if the logging is enabled.
                 using var scope = builder.ApplicationServices.CreateScope();
+                var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
+                
                 var gclSettings = scope.ServiceProvider.GetRequiredService<IOptions<GclSettings>>();
                 if (!gclSettings.Value.LogOpeningAndClosingOfConnections)
                 {
+                    await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {WiserTableNames.WiserEntity});
                     return;
                 }
-
-                var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
-                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {Modules.Databases.Models.Constants.DatabaseConnectionLogTableName});
+                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {Modules.Databases.Models.Constants.DatabaseConnectionLogTableName, WiserTableNames.WiserEntity});
             });
 
             return builder;

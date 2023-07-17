@@ -51,6 +51,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserQuery = "wiser_query";
         /// <summary>
+        /// This table contains dynamic style outputs that can be used as alternative endpoint outputs 
+        /// </summary>
+        public const string WiserStyledOutput = "wiser_styled_output";
+        /// <summary>
         /// This table contains the history of everything. Any change to an item or link will be saved here.
         /// </summary>
         public const string WiserHistory = "wiser_history";
