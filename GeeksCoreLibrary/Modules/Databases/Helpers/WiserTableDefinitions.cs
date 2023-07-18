@@ -770,6 +770,22 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserQuery, "idx_show_in_export_module", IndexTypes.Normal, new List<string> { "show_in_export_module" })
                 }
             },
+            
+            // wiser_styled_output
+            new WiserTableDefinitionModel()
+            {
+                Name = WiserTableNames.WiserStyledOutput,
+                LastUpdate = new DateTime(2023, 7, 18),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("format_begin", MySqlDbType.MediumText),
+                    new("format_item", MySqlDbType.MediumText),
+                    new("format_end", MySqlDbType.MediumText),
+                    new("query_id", MySqlDbType.Int32),
+                    new("return_type", MySqlDbType.VarChar, 10)
+                }
+            },
 
             // wiser_permission
             new WiserTableDefinitionModel
