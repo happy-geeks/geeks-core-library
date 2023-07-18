@@ -191,8 +191,6 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
 
                     break;
                 }
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(item.Value.Type), item.Value.Type, null);
             }
         }
 

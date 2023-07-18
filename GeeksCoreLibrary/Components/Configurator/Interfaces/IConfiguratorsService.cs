@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Models;
@@ -21,6 +22,24 @@ public interface IConfiguratorsService
     /// <param name="includeStepsData">Optional: Whether the data for the steps should also be retrieved. Default value is true.</param>
     /// <returns>A <see cref="DataTable"/> object.</returns>
     Task<VueConfiguratorDataModel> GetVueConfiguratorDataAsync(string name, bool includeStepsData = true);
+
+    /// <summary>
+    /// Set the step options from a query.
+    /// </summary>
+    /// <param name="stepData">The <see cref="VueStepDataModel"/> containing the information of the step to set the values for.</param>
+    /// <param name="options">The options to use when no results are provided.</param>
+    /// <param name="configuration">The <see cref="VueConfigurationsModel"/> to use for replacements.</param>
+    /// <returns></returns>
+    Task SetVueStepOptionsWithQueryAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration);
+
+    /// <summary>
+    /// Set the step options from an API.
+    /// </summary>
+    /// <param name="stepData">The <see cref="VueStepDataModel"/> containing the information of the step to set the values for.</param>
+    /// <param name="options">The options to use when no results are provided.</param>
+    /// <param name="configuration">The <see cref="VueConfigurationsModel"/> to use for replacements.</param>
+    /// <returns></returns>
+    Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration);
 
     /// <summary>
     /// save configuration to database
@@ -55,6 +74,21 @@ public interface IConfiguratorsService
     /// <returns>The <paramref name="template"/> with any items from the configuration replaced.</returns>
     Task<string> ReplaceConfiguratorItemsAsync(string template, VueConfigurationsModel configuration, bool isDataQuery);
 
+    /// <summary>
+    /// Start the configuration at an external API.
+    /// </summary>
+    /// <param name="vueConfiguration">A <see cref="VueConfigurationsModel"/> object.</param>
+    /// <returns>The ID of the configuration in the external API.</returns>
+    Task<ExternalConfigurationModel> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration);
+
+    /// <summary>
+    /// Send an answer to an external API.
+    /// </summary>
+    /// <param name="configuration">>A <see cref="VueConfigurationsModel"/> object.</param>
+    /// <param name="stepId">The ID of the step that the answer to for.</param>
+    /// <returns>Returns true if the answer was correctly set at the external API.</returns>
+    Task<bool> SendAnswerToExternalApiAsync(VueConfigurationsModel configuration, int stepId);
+    
     /// <summary>
     /// <para>Calculates the price and purchase price of a product.</para>
     /// <para>Returns a <see cref="Tuple"/> where Item1 is the purchase price, Item2 is the customer price, and Item3 is the from price.</para>
