@@ -433,7 +433,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     }
 
                     // Create the new step template and clear variables.
-                    stepCount = 1;
+                    stepCount = 0;
                     currentMainStepName = row.Field<string>("mainstepname");
 
                     WriteToTrace($"Starting HTML for new main step. Main step #{mainStepCount}, name: {currentMainStepName}");
@@ -455,7 +455,8 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                 if (row.Field<string>("stepname") != currentStepName)
                 {
-                    subStepCount = 1;
+                    subStepCount = 0;
+                    stepCount += 1;
                     currentStepName = row.Field<string>("stepname");
 
                     WriteToTrace($"Starting HTML for new step. Step #{stepCount}, name: {currentStepName}");
@@ -505,11 +506,10 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                     currentStepHtml.Append(await RenderStepAsync(currentConfiguratorName, row, mainStepCount, stepCount));
 
-                    stepCount += 1;
-
                     WriteToTrace($"1 - Starting HTML for new sub step. Sub step #{subStepCount}, name: {row.Field<string>("substepname")}");
 
                     currentSubSteps.Clear();
+                    subStepCount += 1;
                     currentSubSteps.Add(new SubStepHtmlModel
                     {
                         Id = Convert.ToUInt64(row["subStepId"]),
@@ -518,12 +518,12 @@ namespace GeeksCoreLibrary.Components.Configurator
                         Index = subStepCount,
                         Html = await DoRenderingOfSubStepAsync(currentConfiguratorName, row, mainStepCount, stepCount, subStepCount)
                     });
-                    subStepCount += 1;
                 }
                 else
                 {
                     WriteToTrace($"2 - Starting HTML for new sub step. Sub step #{subStepCount}, name: {row.Field<string>("substepname")}");
 
+                    subStepCount += 1;
                     currentSubSteps.Add(new SubStepHtmlModel
                     {
                         Id = Convert.ToUInt64(row["subStepId"]),
@@ -532,7 +532,6 @@ namespace GeeksCoreLibrary.Components.Configurator
                         Index = subStepCount,
                         Html = await DoRenderingOfSubStepAsync(currentConfiguratorName, row, mainStepCount, stepCount, subStepCount)
                     });
-                    subStepCount += 1;
                 }
             }
 
@@ -775,30 +774,26 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             var stepNumbersDictionary = stepNumbers[currentConfiguratorName];
 
-            // Handle dependencies, but only if the component is not in Vue mode. The Vue component handles dependencies itself.
-            if (Settings.ComponentMode != ComponentModes.Vue)
+            var dependsOnString = "";
+            if (!String.IsNullOrEmpty(connectedId))
             {
-                var dependsOnString = "";
-                if (!String.IsNullOrEmpty(connectedId))
+                var dependsOnValues = new List<string>();
+                var connectedItems = connectedId.Replace(",", ";").Split(";");
+
+                foreach (var dependency in connectedItems)
                 {
-                    var dependsOnValues = new List<string>();
-                    var connectedItems = connectedId.Replace(",", ";").Split(";");
-
-                    foreach (var dependency in connectedItems)
+                    if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0 || !stepNumbersDictionary.ContainsKey(dependency))
                     {
-                        if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0 || !stepNumbersDictionary.ContainsKey(dependency))
-                        {
-                            continue;
-                        }
-
-                        dependsOnValues.Add($"jjl_configurator_step-{stepNumbersDictionary[dependency].Position}");
+                        continue;
                     }
 
-                    dependsOnString = String.Join(";", dependsOnValues);
+                    dependsOnValues.Add($"jjl_configurator_step-{stepNumbersDictionary[dependency].Position}");
                 }
 
-                template = template.Replace("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'", StringComparison.OrdinalIgnoreCase);
+                dependsOnString = String.Join(";", dependsOnValues);
             }
+
+            template = template.Replace("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'", StringComparison.OrdinalIgnoreCase);
 
             var stepContentBuilder = new StringBuilder();
             var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
@@ -970,51 +965,47 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             var stepNumbersDictionary = stepNumbers[currentConfiguratorName];
 
-            // Handle dependencies, but only if the component is not in Vue mode. The Vue component handles dependencies itself.
-            if (Settings.ComponentMode != ComponentModes.Vue)
+            var dependsOnString = "";
+            if (!String.IsNullOrEmpty(connectedId))
             {
-                var dependsOnString = "";
-                if (!String.IsNullOrEmpty(connectedId))
+                var dependsOnValues = new List<string>();
+                var connectedItems = connectedId.Replace(",", ";").Split(";");
+
+                foreach (var dependency in connectedItems)
                 {
-                    var dependsOnValues = new List<string>();
-                    var connectedItems = connectedId.Replace(",", ";").Split(";");
-
-                    foreach (var dependency in connectedItems)
+                    if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0)
                     {
-                        if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0)
-                        {
-                            continue;
-                        }
-
-                        string dependencyValue;
-                        if (stepNumbersDictionary.TryGetValue(dependency, out var value))
-                        {
-                            dependencyValue = $"jjl_configurator_step-{value.Position}";
-                        }
-                        else
-                        {
-                            var step = stepNumbersDictionary.FirstOrDefault(step => step.Value.SubStepPositions.ContainsKey(dependency)).Value;
-                            if (step == null)
-                            {
-                                continue;
-                            }
-
-                            dependencyValue = $"jjl_configurator_substep-{step.SubStepPositions[dependency]}";
-                        }
-
-                        if (String.IsNullOrWhiteSpace(dependencyValue))
-                        {
-                            continue;
-                        }
-
-                        dependsOnValues.Add(dependencyValue);
+                        continue;
                     }
 
-                    dependsOnString = String.Join(";", dependsOnValues);
+                    string dependencyValue;
+                    if (stepNumbersDictionary.TryGetValue(dependency, out var value))
+                    {
+                        dependencyValue = $"jjl_configurator_step-{value.Position}";
+                    }
+                    else
+                    {
+                        var step = stepNumbersDictionary.FirstOrDefault(step => step.Value.SubStepPositions.ContainsKey(dependency)).Value;
+                        if (step == null)
+                        {
+                            continue;
+                        }
+
+                        dependencyValue = $"jjl_configurator_substep-{step.SubStepPositions[dependency]}";
+                    }
+
+                    if (String.IsNullOrWhiteSpace(dependencyValue))
+                    {
+                        continue;
+                    }
+
+                    dependsOnValues.Add(dependencyValue);
                 }
 
-                template = template.Replace("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'", StringComparison.OrdinalIgnoreCase);
+                dependsOnString = String.Join(";", dependsOnValues);
             }
+
+            template = template.Replace("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'", StringComparison.OrdinalIgnoreCase);
 
             var subStepContent = $"<!-- datasource: {row.Field<string>("substep_datasource")} - connectedId: {connectedId} {connectedIdNumber} -->";
 
