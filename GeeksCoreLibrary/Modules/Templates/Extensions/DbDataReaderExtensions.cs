@@ -41,14 +41,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.ParentSortOrder = await reader.IsDBNullAsync("parent_ordering") ? 0 : await reader.GetFieldValueAsync<int>("parent_ordering");
             template.LoadAlways = Convert.ToBoolean(reader.GetValue("load_always"));
             template.UrlRegex = reader.GetStringHandleNull("url_regex");
-            template.CachePerUrl = Convert.ToBoolean(reader.GetValue("cache_per_url"));
-            template.CachePerQueryString = Convert.ToBoolean(reader.GetValue("cache_per_querystring"));
-            template.CachePerHostName = Convert.ToBoolean(reader.GetValue("cache_per_hostname"));
-            template.CacheUsingRegex = Convert.ToBoolean(reader.GetValue("cache_using_regex"));
+            template.CachePerUrl = reader.HasColumn("cache_per_url") && Convert.ToBoolean(reader.GetValue("cache_per_url"));
+            template.CachePerQueryString = reader.HasColumn("cache_per_querystring") && Convert.ToBoolean(reader.GetValue("cache_per_querystring"));
+            template.CachePerHostName = reader.HasColumn("cache_per_hostname") && Convert.ToBoolean(reader.GetValue("cache_per_hostname"));
+            template.CacheUsingRegex = reader.HasColumn("cache_using_regex") && Convert.ToBoolean(reader.GetValue("cache_using_regex"));
             template.CachingMinutes = await reader.IsDBNullAsync("cache_minutes") ? 0 : await reader.GetFieldValueAsync<int>("cache_minutes");
             template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations)await reader.GetFieldValueAsync<int>("caching_location");
             template.CachingRegex = reader.GetStringHandleNull("cache_regex");
-            template.IsPartial = !reader.HasColumn("is_partial") ? false : Convert.ToBoolean(reader.GetValue("is_partial"));
+            template.IsPartial = reader.HasColumn("is_partial") && Convert.ToBoolean(reader.GetValue("is_partial"));
             template.Version = reader.GetInt32("version");
 
             if (!await reader.IsDBNullAsync("changed_on"))

@@ -188,12 +188,20 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             // Build progress bar HTML.
             var progressBarHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarTemplate, removeUnknownVariables: false);
+            var progressBarStepHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarStepTemplate, removeUnknownVariables: false);
             var progressBarStepsHtmlBuilder = new StringBuilder();
             progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\">");
-            progressBarStepsHtmlBuilder.Append(await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarStepTemplate, removeUnknownVariables: false));
+            progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
+            progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
+            progressBarStepsHtmlBuilder.Append("<progress-bar-step :is-summary-step=\"true\">");
+            progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
             progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
 
             progressBarHtml = progressBarHtml.Replace("{steps}", progressBarStepsHtmlBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
+
+            // Build progress HTML.
+            var progressHtml = Settings.SummaryHtml;
+            progressHtml = progressHtml.Replace("{progress_template}", await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false));
 
             // Build summary HTML.
             var summaryHtml = Settings.FinalSummaryHtml;
@@ -205,9 +213,9 @@ namespace GeeksCoreLibrary.Components.Configurator
                 .Replace("{steps}", stepsHtml, StringComparison.OrdinalIgnoreCase)
                 .Replace("{substeps}", stepsHtml, StringComparison.OrdinalIgnoreCase);
 
-            mainHtml = mainHtml.Replace("{progressbar}", progressBarHtml, StringComparison.OrdinalIgnoreCase)
-                .Replace("{progress}", progressBarHtml, StringComparison.OrdinalIgnoreCase);
-
+            // Replace the progress bar, progress and summary HTML variables.
+            mainHtml = mainHtml.Replace("{progressbar}", progressBarHtml, StringComparison.OrdinalIgnoreCase);
+            mainHtml = mainHtml.Replace("{progress}", progressHtml, StringComparison.OrdinalIgnoreCase);
             mainHtml = mainHtml.Replace("{summary}", summaryHtml, StringComparison.OrdinalIgnoreCase);
 
             var resultHtml = new StringBuilder();
@@ -272,7 +280,6 @@ namespace GeeksCoreLibrary.Components.Configurator
             var stepHtml = new StringBuilder();
             stepHtml.Append("<step");
             stepHtml.Append($" ref=\"step-{stepData.Position}\"");
-            stepHtml.Append($" position=\"{stepData.Position}\"");
             stepHtml.Append($" step-name=\"{stepData.StepName}\"");
             stepHtml.Append(" v-slot=\"{ step }\"");
             stepHtml.Append($" :visible=\"stepVisible('{stepData.StepName}')\"");
@@ -426,7 +433,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                     }
 
                     // Create the new step template and clear variables.
-                    stepCount = 1;
+                    stepCount = 0;
                     currentMainStepName = row.Field<string>("mainstepname");
 
                     WriteToTrace($"Starting HTML for new main step. Main step #{mainStepCount}, name: {currentMainStepName}");
@@ -448,7 +455,8 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                 if (row.Field<string>("stepname") != currentStepName)
                 {
-                    subStepCount = 1;
+                    subStepCount = 0;
+                    stepCount += 1;
                     currentStepName = row.Field<string>("stepname");
 
                     WriteToTrace($"Starting HTML for new step. Step #{stepCount}, name: {currentStepName}");
@@ -498,11 +506,10 @@ namespace GeeksCoreLibrary.Components.Configurator
 
                     currentStepHtml.Append(await RenderStepAsync(currentConfiguratorName, row, mainStepCount, stepCount));
 
-                    stepCount += 1;
-
                     WriteToTrace($"1 - Starting HTML for new sub step. Sub step #{subStepCount}, name: {row.Field<string>("substepname")}");
 
                     currentSubSteps.Clear();
+                    subStepCount += 1;
                     currentSubSteps.Add(new SubStepHtmlModel
                     {
                         Id = Convert.ToUInt64(row["subStepId"]),
@@ -511,12 +518,12 @@ namespace GeeksCoreLibrary.Components.Configurator
                         Index = subStepCount,
                         Html = await DoRenderingOfSubStepAsync(currentConfiguratorName, row, mainStepCount, stepCount, subStepCount)
                     });
-                    subStepCount += 1;
                 }
                 else
                 {
                     WriteToTrace($"2 - Starting HTML for new sub step. Sub step #{subStepCount}, name: {row.Field<string>("substepname")}");
 
+                    subStepCount += 1;
                     currentSubSteps.Add(new SubStepHtmlModel
                     {
                         Id = Convert.ToUInt64(row["subStepId"]),
@@ -525,7 +532,6 @@ namespace GeeksCoreLibrary.Components.Configurator
                         Index = subStepCount,
                         Html = await DoRenderingOfSubStepAsync(currentConfiguratorName, row, mainStepCount, stepCount, subStepCount)
                     });
-                    subStepCount += 1;
                 }
             }
 
@@ -768,30 +774,26 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             var stepNumbersDictionary = stepNumbers[currentConfiguratorName];
 
-            // Handle dependencies, but only if the component is not in Vue mode. The Vue component handles dependencies itself.
-            if (Settings.ComponentMode != ComponentModes.Vue)
+            var dependsOnString = "";
+            if (!String.IsNullOrEmpty(connectedId))
             {
-                var dependsOnString = "";
-                if (!String.IsNullOrEmpty(connectedId))
+                var dependsOnValues = new List<string>();
+                var connectedItems = connectedId.Replace(",", ";").Split(";");
+
+                foreach (var dependency in connectedItems)
                 {
-                    var dependsOnValues = new List<string>();
-                    var connectedItems = connectedId.Replace(",", ";").Split(";");
-
-                    foreach (var dependency in connectedItems)
+                    if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0 || !stepNumbersDictionary.ContainsKey(dependency))
                     {
-                        if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0 || !stepNumbersDictionary.ContainsKey(dependency))
-                        {
-                            continue;
-                        }
-
-                        dependsOnValues.Add($"jjl_configurator_step-{stepNumbersDictionary[dependency].Position}");
+                        continue;
                     }
 
-                    dependsOnString = String.Join(";", dependsOnValues);
+                    dependsOnValues.Add($"jjl_configurator_step-{stepNumbersDictionary[dependency].Position}");
                 }
 
-                template = template.Replace("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'", StringComparison.OrdinalIgnoreCase);
+                dependsOnString = String.Join(";", dependsOnValues);
             }
+
+            template = template.Replace("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'", StringComparison.OrdinalIgnoreCase);
 
             var stepContentBuilder = new StringBuilder();
             var subStepsRegex = new Regex("\\{substeps(?:\\|(?<ids>.*?))?\\}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
@@ -963,51 +965,47 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             var stepNumbersDictionary = stepNumbers[currentConfiguratorName];
 
-            // Handle dependencies, but only if the component is not in Vue mode. The Vue component handles dependencies itself.
-            if (Settings.ComponentMode != ComponentModes.Vue)
+            var dependsOnString = "";
+            if (!String.IsNullOrEmpty(connectedId))
             {
-                var dependsOnString = "";
-                if (!String.IsNullOrEmpty(connectedId))
+                var dependsOnValues = new List<string>();
+                var connectedItems = connectedId.Replace(",", ";").Split(";");
+
+                foreach (var dependency in connectedItems)
                 {
-                    var dependsOnValues = new List<string>();
-                    var connectedItems = connectedId.Replace(",", ";").Split(";");
-
-                    foreach (var dependency in connectedItems)
+                    if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0)
                     {
-                        if (String.IsNullOrEmpty(dependency) || connectedIdNumber != 0)
-                        {
-                            continue;
-                        }
-
-                        string dependencyValue;
-                        if (stepNumbersDictionary.TryGetValue(dependency, out var value))
-                        {
-                            dependencyValue = $"jjl_configurator_step-{value.Position}";
-                        }
-                        else
-                        {
-                            var step = stepNumbersDictionary.FirstOrDefault(step => step.Value.SubStepPositions.ContainsKey(dependency)).Value;
-                            if (step == null)
-                            {
-                                continue;
-                            }
-
-                            dependencyValue = $"jjl_configurator_substep-{step.SubStepPositions[dependency]}";
-                        }
-
-                        if (String.IsNullOrWhiteSpace(dependencyValue))
-                        {
-                            continue;
-                        }
-
-                        dependsOnValues.Add(dependencyValue);
+                        continue;
                     }
 
-                    dependsOnString = String.Join(";", dependsOnValues);
+                    string dependencyValue;
+                    if (stepNumbersDictionary.TryGetValue(dependency, out var value))
+                    {
+                        dependencyValue = $"jjl_configurator_step-{value.Position}";
+                    }
+                    else
+                    {
+                        var step = stepNumbersDictionary.FirstOrDefault(step => step.Value.SubStepPositions.ContainsKey(dependency)).Value;
+                        if (step == null)
+                        {
+                            continue;
+                        }
+
+                        dependencyValue = $"jjl_configurator_substep-{step.SubStepPositions[dependency]}";
+                    }
+
+                    if (String.IsNullOrWhiteSpace(dependencyValue))
+                    {
+                        continue;
+                    }
+
+                    dependsOnValues.Add(dependencyValue);
                 }
 
-                template = template.Replace("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'", StringComparison.OrdinalIgnoreCase);
+                dependsOnString = String.Join(";", dependsOnValues);
             }
+
+            template = template.Replace("{dependsOn}", $"data-jconfigurator-depends-on='{dependsOnString}'", StringComparison.OrdinalIgnoreCase);
 
             var subStepContent = $"<!-- datasource: {row.Field<string>("substep_datasource")} - connectedId: {connectedId} {connectedIdNumber} -->";
 
@@ -1621,6 +1619,7 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             // Make a clone of the original so the cached version is not modified.
             var result = ObjectCloner.ObjectCloner.DeepClone(configurator);
+            result.ExternalConfiguration = configuration.ExternalConfiguration;
 
             List<string> stepsToProcess;
             var stepsToRemove = new List<string>();
@@ -1737,85 +1736,15 @@ namespace GeeksCoreLibrary.Components.Configurator
                 }
 
                 // Dependencies are valid, load options.
-                var stepOptionsQuery = stepData.StepOptionsQuery;
-                if (String.IsNullOrWhiteSpace(stepOptionsQuery))
+                switch (stepData.Datasource)
                 {
-                    stepData.Options = options;
-                    continue;
+                    case "customquery":
+                        await configuratorsService.SetVueStepOptionsWithQueryAsync(stepData, options, configuration);
+                        break;
+                    case "api":
+                        await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration);
+                        break;
                 }
-
-                stepOptionsQuery = await configuratorsService.ReplaceConfiguratorItemsAsync(stepOptionsQuery, configuration, true);
-                stepOptionsQuery = await TemplatesService.DoReplacesAsync(stepOptionsQuery, handleRequest: false, removeUnknownVariables: false, forQuery: true);
-                var stepOptionsDataTable = await DatabaseConnection.GetAsync(stepOptionsQuery);
-                if (stepOptionsDataTable.Rows.Count == 0)
-                {
-                    stepData.Options = options;
-                    continue;
-                }
-
-                // Some values of the step can be overriden through the step options query.
-                if (stepOptionsDataTable.Columns.Contains("minimumValue"))
-                {
-                    stepData.MinimumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["minimumValue"]);
-                }
-                if (stepOptionsDataTable.Columns.Contains("maximumValue"))
-                {
-                    stepData.MaximumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["maximumValue"]);
-                }
-                if (stepOptionsDataTable.Columns.Contains("validationRegex"))
-                {
-                    stepData.ValidationRegex = Convert.ToString(stepOptionsDataTable.Rows[0]["validationRegex"]);
-                }
-
-                // Handle the data rows.
-                var stepOptionProperties = typeof(VueStepOptionDataModel).GetProperties();
-                foreach (var dataRow in stepOptionsDataTable.Rows.Cast<DataRow>())
-                {
-                    var stepOption = new VueStepOptionDataModel
-                    {
-                        AdditionalData = new Dictionary<string, object>()
-                    };
-
-                    foreach (var dataColumn in stepOptionsDataTable.Columns.Cast<DataColumn>())
-                    {
-                        var columnName = dataColumn.ColumnName;
-                        var columnValue = dataRow[dataColumn];
-                        var property = stepOptionProperties.FirstOrDefault(property => property.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
-                        if (property != null)
-                        {
-                            // Check if the property is a boolean and if so, convert the value to a boolean.
-                            if (property.PropertyType == typeof(bool))
-                            {
-                                // String values are handled differently.
-                                if (columnValue is string stringValue)
-                                {
-                                    property.SetValue(stepOption, stringValue.InList(StringComparer.OrdinalIgnoreCase, "1", "true"));
-                                }
-                                else
-                                {
-                                    property.SetValue(stepOption, Convert.ToBoolean(columnValue));
-                                }
-                            }
-                            else
-                            {
-                                var type = property.PropertyType;
-                                type = Nullable.GetUnderlyingType(type) ?? type;
-
-                                // All other data types are just added as-is.
-                                property.SetValue(stepOption, Convert.ChangeType(columnValue, type));
-                            }
-                        }
-                        else
-                        {
-                            // Add the value to the additional data dictionary.
-                            stepOption.AdditionalData.Add(columnName, columnValue);
-                        }
-                    }
-
-                    options.Add(stepOption);
-                }
-
-                stepData.Options = options;
             }
 
             // Remove the steps listed in stepsToRemove from the result.
@@ -1827,6 +1756,29 @@ namespace GeeksCoreLibrary.Components.Configurator
             return result;
         }
 
+        /// <summary>
+        /// Start the configuration at an external API.
+        /// </summary>
+        /// <param name="steps">A list of steps that are dependant on an API.</param>
+        /// <param name="configuration">A <see cref="VueConfigurationsModel"/> object.</param>
+        /// <returns>The <see cref="VueConfiguratorDataModel"/> including a <see cref="ExternalConfigurationModel"/> containing the information for the configuration at an external API.</returns>
+        public async Task<VueConfiguratorDataModel> StartConfigurationExternally(List<string> steps, VueConfigurationsModel configuration)
+        {
+            configuration.ExternalConfiguration = await configuratorsService.StartConfigurationExternallyAsync(configuration);
+            return await GetConfiguratorData(steps, configuration);
+        }
+        
+        /// <summary>
+        /// Send an answer to an external API.
+        /// </summary>
+        /// <param name="configuration">>A <see cref="VueConfigurationsModel"/> object.</param>
+        /// <param name="stepId">The ID of the step that the answer to for.</param>
+        /// <returns></returns>
+        public async Task<bool> SendAnswerToExternalApi(VueConfigurationsModel configuration, int stepId)
+        {
+            return await configuratorsService.SendAnswerToExternalApiAsync(configuration, stepId);
+        }
+        
         #endregion
     }
 }
