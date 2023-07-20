@@ -40,11 +40,11 @@
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralStandardJavaScriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.GeneralStandardJavaScriptFileName)"></script>
+            @:<script src="@Html.Raw(Model.Javascript.GeneralStandardJavaScriptFileName)" defer></script>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageStandardJavascriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.PageStandardJavascriptFileName)"></script>
+            @:<script src="@Html.Raw(Model.Javascript.PageStandardJavascriptFileName)" defer></script>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralInlineHeadJavaScript))
         {
@@ -87,20 +87,20 @@
         {
             foreach (var javascript in Model.Javascript.GeneralSyncFooterJavaScriptFileName)
             {
-                @:<script src="@Html.Raw(javascript)"></script>
+                @:<script src="@Html.Raw(javascript)" defer></script>
             }
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralAsyncFooterJavaScriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.GeneralAsyncFooterJavaScriptFileName)" async></script>
+            @:<script src="@Html.Raw(Model.Javascript.GeneralAsyncFooterJavaScriptFileName)" async defer></script>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageAsyncFooterJavascriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.PageAsyncFooterJavascriptFileName)" async></script>
+            @:<script src="@Html.Raw(Model.Javascript.PageAsyncFooterJavascriptFileName)" async defer></script>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageSyncFooterJavascriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.PageSyncFooterJavascriptFileName)"></script>
+            @:<script src="@Html.Raw(Model.Javascript.PageSyncFooterJavascriptFileName)" defer></script>
         }
         if (Model?.Javascript?.PagePluginInlineJavascriptSnippets != null)
         {
