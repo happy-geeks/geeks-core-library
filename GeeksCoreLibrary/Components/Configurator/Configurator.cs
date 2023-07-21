@@ -190,10 +190,10 @@ namespace GeeksCoreLibrary.Components.Configurator
             var progressBarHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarTemplate, removeUnknownVariables: false);
             var progressBarStepHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarStepTemplate, removeUnknownVariables: false);
             var progressBarStepsHtmlBuilder = new StringBuilder();
-            progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\">");
+            progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\" :is-summary-step=\"false\" v-slot=\"{ isSummaryStep }\">");
             progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
             progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
-            progressBarStepsHtmlBuilder.Append("<progress-bar-step :is-summary-step=\"true\">");
+            progressBarStepsHtmlBuilder.Append("<progress-bar-step :is-summary-step=\"true\" v-slot=\"{ isSummaryStep }\">");
             progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
             progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
 

@@ -397,8 +397,16 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         /// <inheritdoc />
         public async Task<VueConfiguratorDataModel> GetVueConfiguratorDataAsync(string name, bool includeStepsData = true)
         {
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("name", name);
+            databaseConnection.AddParameter("languageCode", languagesService.CurrentLanguageCode);
 
             var configuratorSettings = await databaseConnection.GetAsync($@"SELECT
     configurator.id AS configuratorId,
@@ -406,14 +414,16 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
     CONCAT_WS('', progressBarTemplate.`value`, progressBarTemplate.long_value) AS progressBarTemplate,
     CONCAT_WS('', progressBarStepTemplate.`value`, progressBarStepTemplate.long_value) AS progressBarStepTemplate,
     CONCAT_WS('', summaryTemplate.`value`, summaryTemplate.long_value) AS summaryTemplate,
+    summaryStepName.`value` AS summaryStepName,
     priceCalculationQuery.`value` AS priceCalculationQuery,
     deliveryTimeCalculationQuery.`value` AS deliveryTimeCalculationQuery,
-	apiStartConfiguration.`value` IS NOT NULL AND apiStartConfiguration.`value` <> '' AS startExternalConfigurationOnStart
+    apiStartConfiguration.`value` IS NOT NULL AND apiStartConfiguration.`value` <> '' AS startExternalConfigurationOnStart
 FROM {WiserTableNames.WiserItem} AS configurator
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS mainTemplate ON mainTemplate.item_id = configurator.id AND mainTemplate.`key` = 'template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarTemplate ON progressBarTemplate.item_id = configurator.id AND progressBarTemplate.`key` = 'progress_bar_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarStepTemplate ON progressBarStepTemplate.item_id = configurator.id AND progressBarStepTemplate.`key` = 'progress_bar_step_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryTemplate ON summaryTemplate.item_id = configurator.id AND summaryTemplate.`key` = 'summary_template'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryStepName ON summaryStepName.item_id = configurator.id AND summaryStepName.`key` = 'summary_step_name' AND summaryStepName.language_code = ?languageCode
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS priceCalculationQuery ON priceCalculationQuery.item_id = configurator.id AND priceCalculationQuery.`key` = 'price_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS deliveryTimeCalculationQuery ON deliveryTimeCalculationQuery.item_id = configurator.id AND deliveryTimeCalculationQuery.`key` = 'delivery_time_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiStartConfiguration ON apiStartConfiguration.item_id = configurator.id AND apiStartConfiguration.`key` = 'api_start'
@@ -432,6 +442,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
                 ProgressBarTemplate = configuratorSettings.Rows[0].Field<string>("progressBarTemplate"),
                 ProgressBarStepTemplate = configuratorSettings.Rows[0].Field<string>("progressBarStepTemplate"),
                 SummaryTemplate = configuratorSettings.Rows[0].Field<string>("summaryTemplate"),
+                SummaryStepName = configuratorSettings.Rows[0].Field<string>("summaryStepName"),
                 PriceCalculationQuery = configuratorSettings.Rows[0].Field<string>("priceCalculationQuery"),
                 DeliveryTimeCalculationQuery = configuratorSettings.Rows[0].Field<string>("deliveryTimeCalculationQuery"),
                 StartExternalConfigurationOnStart = Convert.ToBoolean(configuratorSettings.Rows[0]["startExternalConfigurationOnStart"])
@@ -623,13 +634,6 @@ FROM cte
 ORDER BY parentStepId, ordering";
 
             #endregion
-
-            // Make sure the language code has a value.
-            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
-            {
-                // This function fills the property "CurrentLanguageCode".
-                await languagesService.GetLanguageCodeAsync();
-            }
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("configuratorId", configuratorId);
