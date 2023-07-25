@@ -871,7 +871,7 @@ AND stepOptionsQuery.`key` = 'custom_query'");
         }
 
         /// <inheritdoc />
-        public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration)
+        public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration, Dictionary<string, JToken> apiData)
         {
             // Get the correct Configurator API entity.
             databaseConnection.ClearParameters();
@@ -975,17 +975,28 @@ AND questionConfiguratorApiId.`key` = 'api_question'");
             await AddAuthenticationToApiCall(restRequest, questionApi);
             await AddAcceptLanguageToApiCall(restRequest);
             await AddCustomHeadersAsync(restRequest, questionApi, vueConfiguration: configuration, extraData: extraData);
-            
-            var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
-            if (!restResponse.IsSuccessful || restResponse.Content == null)
+
+            // Create a hash of the endpoint and request JSON to use as key for the API data to reuse the response if possible.
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{endpoint}{requestJson}"));
+            var apiDataHash = string.Join("", hash.Select(b => b.ToString("x2")));
+
+            // If the data is not yet retrieved, get it from the API.
+            if (!apiData.ContainsKey(apiDataHash))
             {
-                logger.LogWarning("Error while trying to get the configuration from API ({questionApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}", questionApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
-                stepData.Options = options;
-                return;
+                var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
+                if (!restResponse.IsSuccessful || restResponse.Content == null)
+                {
+                    logger.LogWarning("Error while trying to get the configuration from API ({questionApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}", questionApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
+                    stepData.Options = options;
+                    return;
+                }
+                
+                apiData[apiDataHash] = JToken.Parse(restResponse.Content);
             }
             
             // Get the question from the response.
-            var responseData = JToken.Parse(restResponse.Content);
+            var responseData = apiData[apiDataHash];
             var keyParts = new List<string>(questionKey.Split('.'));
             var currentObject = responseData;
 

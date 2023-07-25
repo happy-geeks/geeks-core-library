@@ -10,7 +10,6 @@ using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -1633,6 +1632,9 @@ namespace GeeksCoreLibrary.Components.Configurator
                 stepsToRemove.AddRange(result.StepsData.Select(stepData => stepData.StepName).Except(stepsToProcess));
             }
 
+            // Data retrieved from APIs is cached in this dictionary to reuse the response for multiple steps.
+            var apiData = new Dictionary<string, JToken>();
+
             // Update options.
             foreach (var step in stepsToProcess)
             {
@@ -1742,7 +1744,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         await configuratorsService.SetVueStepOptionsWithQueryAsync(stepData, options, configuration);
                         break;
                     case "api":
-                        await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration);
+                        await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration, apiData);
                         break;
                 }
             }

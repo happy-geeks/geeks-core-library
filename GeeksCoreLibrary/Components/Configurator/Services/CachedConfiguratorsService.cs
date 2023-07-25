@@ -14,6 +14,7 @@ using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using LazyCache;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Components.Configurator.Services
 {
@@ -102,9 +103,9 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
-        public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration)
+        public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration, Dictionary<string, JToken> apiData)
         {
-            await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration);
+            await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration, apiData);
         }
 
         /// <inheritdoc />
