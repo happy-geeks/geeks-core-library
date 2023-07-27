@@ -10,7 +10,19 @@ public class VueConfiguratorDataModel
     /// </summary>
     [JsonProperty("configuratorId")]
     public ulong ConfiguratorId { get; set; }
-    
+
+    /// <summary>
+    /// Gets or sets whether the summary step should be added to the progress bar.
+    /// </summary>
+    [JsonProperty("configuratorName")]
+    public bool ShowSummaryProgressBarStep { get; set; }
+
+    /// <summary>
+    /// Gets or sets the summary step name.
+    /// </summary>
+    [JsonProperty("summaryStepName")]
+    public string SummaryStepName { get; set; }
+
     /// <summary>
     /// Gets or sets if the configurator needs to start the configuration at an extern API when starting the configurator.
     /// </summary>
@@ -57,6 +69,15 @@ public class VueConfiguratorDataModel
     /// </remarks>
     [JsonIgnore]
     public string ProgressBarStepTemplate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the progress HTML template.
+    /// </summary>
+    /// <remarks>
+    /// This property is not serialized to JSON because it's not needed in the client-side.
+    /// </remarks>
+    [JsonIgnore]
+    public string ProgressTemplate { get; set; }
 
     /// <summary>
     /// Gets or sets the summary HTML template.

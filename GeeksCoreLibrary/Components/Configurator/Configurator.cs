@@ -189,18 +189,22 @@ namespace GeeksCoreLibrary.Components.Configurator
             var progressBarHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarTemplate, removeUnknownVariables: false);
             var progressBarStepHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarStepTemplate, removeUnknownVariables: false);
             var progressBarStepsHtmlBuilder = new StringBuilder();
-            progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\">");
+            progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\" :is-summary-step=\"false\" :step-display-name=\"step.displayName\" :step-number=\"index + 1\" v-slot=\"{ isSummaryStep, stepDisplayName, stepNumber }\">");
             progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
             progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
-            progressBarStepsHtmlBuilder.Append("<progress-bar-step :is-summary-step=\"true\">");
-            progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
-            progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
+
+            if (configuratorData.ShowSummaryProgressBarStep)
+            {
+                progressBarStepsHtmlBuilder.Append("<progress-bar-step :is-summary-step=\"true\" :step-display-name=\"summaryStepName\" :step-number=\"summaryStepNumber\" v-slot=\"{ isSummaryStep, stepDisplayName, stepNumber }\">");
+                progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
+                progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
+            }
 
             progressBarHtml = progressBarHtml.Replace("{steps}", progressBarStepsHtmlBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
 
             // Build progress HTML.
             var progressHtml = Settings.SummaryHtml;
-            progressHtml = progressHtml.Replace("{progress_template}", await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false));
+            progressHtml = progressHtml.Replace("{progress_template}", await TemplatesService.DoReplacesAsync(configuratorData.ProgressTemplate, removeUnknownVariables: false));
 
             // Build summary HTML.
             var summaryHtml = Settings.FinalSummaryHtml;
