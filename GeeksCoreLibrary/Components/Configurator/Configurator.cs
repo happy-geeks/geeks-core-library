@@ -208,7 +208,9 @@ namespace GeeksCoreLibrary.Components.Configurator
 
             // Build summary HTML.
             var summaryHtml = Settings.FinalSummaryHtml;
-            summaryHtml = summaryHtml.Replace("{summary_template}", await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false));
+            summaryHtml = summaryHtml
+                .Replace("{summary_template}", await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false))
+                .Replace("{progressbar}", progressBarHtml);
 
             // Build the main HTML.
             var mainHtml = await TemplatesService.DoReplacesAsync(configuratorData.MainTemplate, removeUnknownVariables: false);
