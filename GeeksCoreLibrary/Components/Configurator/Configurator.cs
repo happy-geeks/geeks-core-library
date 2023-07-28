@@ -10,7 +10,6 @@ using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -190,18 +189,22 @@ namespace GeeksCoreLibrary.Components.Configurator
             var progressBarHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarTemplate, removeUnknownVariables: false);
             var progressBarStepHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarStepTemplate, removeUnknownVariables: false);
             var progressBarStepsHtmlBuilder = new StringBuilder();
-            progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\">");
+            progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\" :is-summary-step=\"false\" :step-display-name=\"step.displayName\" :step-number=\"index + 1\" v-slot=\"{ isSummaryStep, stepDisplayName, stepNumber }\">");
             progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
             progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
-            progressBarStepsHtmlBuilder.Append("<progress-bar-step :is-summary-step=\"true\">");
-            progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
-            progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
+
+            if (configuratorData.ShowSummaryProgressBarStep)
+            {
+                progressBarStepsHtmlBuilder.Append("<progress-bar-step :is-summary-step=\"true\" :step-display-name=\"summaryStepName\" :step-number=\"summaryStepNumber\" v-slot=\"{ isSummaryStep, stepDisplayName, stepNumber }\">");
+                progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
+                progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
+            }
 
             progressBarHtml = progressBarHtml.Replace("{steps}", progressBarStepsHtmlBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
 
             // Build progress HTML.
             var progressHtml = Settings.SummaryHtml;
-            progressHtml = progressHtml.Replace("{progress_template}", await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false));
+            progressHtml = progressHtml.Replace("{progress_template}", await TemplatesService.DoReplacesAsync(configuratorData.ProgressTemplate, removeUnknownVariables: false));
 
             // Build summary HTML.
             var summaryHtml = Settings.FinalSummaryHtml;
@@ -1633,6 +1636,9 @@ namespace GeeksCoreLibrary.Components.Configurator
                 stepsToRemove.AddRange(result.StepsData.Select(stepData => stepData.StepName).Except(stepsToProcess));
             }
 
+            // Data retrieved from APIs is cached in this dictionary to reuse the response for multiple steps.
+            var apiData = new Dictionary<string, JToken>();
+
             // Update options.
             foreach (var step in stepsToProcess)
             {
@@ -1742,7 +1748,7 @@ namespace GeeksCoreLibrary.Components.Configurator
                         await configuratorsService.SetVueStepOptionsWithQueryAsync(stepData, options, configuration);
                         break;
                     case "api":
-                        await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration);
+                        await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration, apiData);
                         break;
                 }
             }

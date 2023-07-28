@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Models;
+using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Components.Configurator.Interfaces;
 
@@ -38,8 +39,9 @@ public interface IConfiguratorsService
     /// <param name="stepData">The <see cref="VueStepDataModel"/> containing the information of the step to set the values for.</param>
     /// <param name="options">The options to use when no results are provided.</param>
     /// <param name="configuration">The <see cref="VueConfigurationsModel"/> to use for replacements.</param>
+    /// <param name="apiData">Previous responses from an API during the current loading of steps. The key is a hash from the URL and body.</param>
     /// <returns></returns>
-    Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration);
+    Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration, Dictionary<string, JToken> apiData);
 
     /// <summary>
     /// save configuration to database

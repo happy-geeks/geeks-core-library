@@ -397,23 +397,37 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         /// <inheritdoc />
         public async Task<VueConfiguratorDataModel> GetVueConfiguratorDataAsync(string name, bool includeStepsData = true)
         {
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("name", name);
+            databaseConnection.AddParameter("languageCode", languagesService.CurrentLanguageCode);
 
             var configuratorSettings = await databaseConnection.GetAsync($@"SELECT
     configurator.id AS configuratorId,
     CONCAT_WS('', mainTemplate.`value`, mainTemplate.long_value) AS mainTemplate,
     CONCAT_WS('', progressBarTemplate.`value`, progressBarTemplate.long_value) AS progressBarTemplate,
     CONCAT_WS('', progressBarStepTemplate.`value`, progressBarStepTemplate.long_value) AS progressBarStepTemplate,
+    CONCAT_WS('', progressTemplate.`value`, progressTemplate.long_value) AS progressTemplate,
     CONCAT_WS('', summaryTemplate.`value`, summaryTemplate.long_value) AS summaryTemplate,
+    summaryStepName.`value` AS summaryStepName,
+    IFNULL(showSummaryProgressBarStep.`value`, '1') = '1' AS showSummaryProgressBarStep,
     priceCalculationQuery.`value` AS priceCalculationQuery,
     deliveryTimeCalculationQuery.`value` AS deliveryTimeCalculationQuery,
-	apiStartConfiguration.`value` IS NOT NULL AND apiStartConfiguration.`value` <> '' AS startExternalConfigurationOnStart
+    apiStartConfiguration.`value` IS NOT NULL AND apiStartConfiguration.`value` <> '' AS startExternalConfigurationOnStart
 FROM {WiserTableNames.WiserItem} AS configurator
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS mainTemplate ON mainTemplate.item_id = configurator.id AND mainTemplate.`key` = 'template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarTemplate ON progressBarTemplate.item_id = configurator.id AND progressBarTemplate.`key` = 'progress_bar_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarStepTemplate ON progressBarStepTemplate.item_id = configurator.id AND progressBarStepTemplate.`key` = 'progress_bar_step_template'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressTemplate ON progressTemplate.item_id = configurator.id AND progressTemplate.`key` = 'progress_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryTemplate ON summaryTemplate.item_id = configurator.id AND summaryTemplate.`key` = 'summary_template'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS showSummaryProgressBarStep ON showSummaryProgressBarStep.item_id = configurator.id AND showSummaryProgressBarStep.`key` = 'show_summary_progress_bar_step'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryStepName ON summaryStepName.item_id = configurator.id AND summaryStepName.`key` = 'summary_step_name' AND summaryStepName.language_code = ?languageCode
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS priceCalculationQuery ON priceCalculationQuery.item_id = configurator.id AND priceCalculationQuery.`key` = 'price_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS deliveryTimeCalculationQuery ON deliveryTimeCalculationQuery.item_id = configurator.id AND deliveryTimeCalculationQuery.`key` = 'delivery_time_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiStartConfiguration ON apiStartConfiguration.item_id = configurator.id AND apiStartConfiguration.`key` = 'api_start'
@@ -431,7 +445,9 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
                 MainTemplate = configuratorSettings.Rows[0].Field<string>("mainTemplate"),
                 ProgressBarTemplate = configuratorSettings.Rows[0].Field<string>("progressBarTemplate"),
                 ProgressBarStepTemplate = configuratorSettings.Rows[0].Field<string>("progressBarStepTemplate"),
+                ProgressTemplate = configuratorSettings.Rows[0].Field<string>("progressTemplate"),
                 SummaryTemplate = configuratorSettings.Rows[0].Field<string>("summaryTemplate"),
+                SummaryStepName = configuratorSettings.Rows[0].Field<string>("summaryStepName"),
                 PriceCalculationQuery = configuratorSettings.Rows[0].Field<string>("priceCalculationQuery"),
                 DeliveryTimeCalculationQuery = configuratorSettings.Rows[0].Field<string>("deliveryTimeCalculationQuery"),
                 StartExternalConfigurationOnStart = Convert.ToBoolean(configuratorSettings.Rows[0]["startExternalConfigurationOnStart"])
@@ -623,13 +639,6 @@ FROM cte
 ORDER BY parentStepId, ordering";
 
             #endregion
-
-            // Make sure the language code has a value.
-            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
-            {
-                // This function fills the property "CurrentLanguageCode".
-                await languagesService.GetLanguageCodeAsync();
-            }
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("configuratorId", configuratorId);
@@ -871,7 +880,7 @@ AND stepOptionsQuery.`key` = 'custom_query'");
         }
 
         /// <inheritdoc />
-        public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration)
+        public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration, Dictionary<string, JToken> apiData)
         {
             // Get the correct Configurator API entity.
             databaseConnection.ClearParameters();
@@ -975,17 +984,28 @@ AND questionConfiguratorApiId.`key` = 'api_question'");
             await AddAuthenticationToApiCall(restRequest, questionApi);
             await AddAcceptLanguageToApiCall(restRequest);
             await AddCustomHeadersAsync(restRequest, questionApi, vueConfiguration: configuration, extraData: extraData);
-            
-            var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
-            if (!restResponse.IsSuccessful || restResponse.Content == null)
+
+            // Create a hash of the endpoint and request JSON to use as key for the API data to reuse the response if possible.
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{endpoint}{requestJson}"));
+            var apiDataHash = string.Join("", hash.Select(b => b.ToString("x2")));
+
+            // If the data is not yet retrieved, get it from the API.
+            if (!apiData.ContainsKey(apiDataHash))
             {
-                logger.LogWarning("Error while trying to get the configuration from API ({questionApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}", questionApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
-                stepData.Options = options;
-                return;
+                var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
+                if (!restResponse.IsSuccessful || restResponse.Content == null)
+                {
+                    logger.LogWarning("Error while trying to get the configuration from API ({questionApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}", questionApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
+                    stepData.Options = options;
+                    return;
+                }
+                
+                apiData[apiDataHash] = JToken.Parse(restResponse.Content);
             }
             
             // Get the question from the response.
-            var responseData = JToken.Parse(restResponse.Content);
+            var responseData = apiData[apiDataHash];
             var keyParts = new List<string>(questionKey.Split('.'));
             var currentObject = responseData;
 

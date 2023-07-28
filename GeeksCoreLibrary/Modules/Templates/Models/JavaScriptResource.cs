@@ -8,6 +8,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
 
         public bool Async { get; set; }
 
-        public bool Defer { get; set; }
+        public bool Defer { get; set; } = true;
     }
 }
