@@ -663,7 +663,7 @@ ORDER BY parentStepId, ordering";
                         var dependencyValuesMatch = dependencyValuesRegex.Match(dependency);
                         if (dependencyValuesMatch.Success)
                         {
-                            dependencyValues = dependencyValuesMatch.Groups["values"].Captures.Select(c => c.Value).ToList();
+                            dependencyValues = dependencyValuesMatch.Groups["values"].Value.Split(',').ToList();
                             dependencyStepName = dependency.Replace(dependencyValuesMatch.Value, String.Empty);
                         }
 
@@ -686,7 +686,7 @@ ORDER BY parentStepId, ordering";
                         var requiredConditionValuesMatch = dependencyValuesRegex.Match(requiredCondition);
                         if (!requiredConditionValuesMatch.Success) continue;
 
-                        var requiredConditionValues = requiredConditionValuesMatch.Groups["values"].Captures.Select(c => c.Value).ToList();
+                        var requiredConditionValues = requiredConditionValuesMatch.Groups["values"].Value.Split(',').ToList();
                         var requiredConditionStepName = requiredCondition.Replace(requiredConditionValuesMatch.Value, String.Empty);
 
                         requiredConditions.Add(new VueStepDependencyModel
