@@ -7,7 +7,10 @@
         Buckaroo,
         MultiSafepay,
         CM,
-        RaboOmniKassa,
+        /// <summary>
+        /// This used to be called RaboOmnikassa, but Rabobank changed the name in 2022.
+        /// </summary>
+        RaboSmartPay,
         AfterPay,
         Mollie,
         PayNl

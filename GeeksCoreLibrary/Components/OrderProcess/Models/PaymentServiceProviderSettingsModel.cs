@@ -12,7 +12,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// Gets or sets the type of PSP.
         /// </summary>
         public PaymentServiceProviders Type { get; set; }
-        
+
         /// <summary>
         /// Gets or sets whether or not to log all requests done to the API of the PSP to the database.
         /// </summary>
@@ -41,26 +41,26 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// <summary>
         /// Gets or sets the URL to send the user to after a successful payment/order.
         /// </summary>
-        internal string SuccessUrl { get; set; }
+        public string SuccessUrl { get; set; }
 
         /// <summary>
         /// Gets or sets the URL for the WebHook of the PSP, to send status updates to us.
         /// </summary>
-        internal string WebhookUrl { get; set; }
+        public string WebhookUrl { get; set; }
 
         /// <summary>
         /// Gets or sets the URL to send the user to after a failed or cancelled payment/order.
         /// </summary>
-        internal string FailUrl { get; set; }
+        public string FailUrl { get; set; }
 
         /// <summary>
         /// Gets or sets the URL to send the user to if we have to decide on-the-fly where to send the user to.
         /// </summary>
-        internal string ReturnUrl { get; set; }
+        public string ReturnUrl { get; set; }
 
         /// <summary>
         /// Gets or sets the URL to send the user to if their payment is still pending.
         /// </summary>
-        internal string PendingUrl { get; set; }
+        public string PendingUrl { get; set; }
     }
 }

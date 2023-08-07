@@ -28,7 +28,6 @@ using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
-using GeeksCoreLibrary.Modules.Payments.Enums.Buckaroo;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
@@ -499,22 +498,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                                 paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
-
-                                mollieApiKeyLive.`value` AS mollieApiKeyLive,
-                                mollieApiKeyTest.`value` AS mollieApiKeyTest,
-                                buckarooWebsiteKeyLive.`value` AS buckarooWebsiteKeyLive,
-                                buckarooWebsiteKeyTest.`value` AS buckarooWebsiteKeyTest,
-                                buckarooSecretKeyLive.`value` AS buckarooSecretKeyLive,
-                                buckarooSecretKeyTest.`value` AS buckarooSecretKeyTest,
-                                buckarooPushContentType.`value` AS buckarooPushContentType,
-                                buckarooHashMethod.`value` AS buckarooHashMethod,
-                                multiSafepayApiKeyLive.`value` AS multiSafepayApiKeyLive,
-                                multiSafepayApiKeyTest.`value` AS multiSafepayApiKeyTest,
-                                raboOmniKassaRefreshTokenLive.`value` AS raboOmniKassaRefreshTokenLive,
-                                raboOmniKassaRefreshTokenTest.`value` AS raboOmniKassaRefreshTokenTest,
-                                raboOmniKassaSigningKeyLive.`value` AS raboOmniKassaSigningKeyLive,
-                                raboOmniKassaSigningKeyTest.`value` AS raboOmniKassaSigningKeyTest
+                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
                             FROM {WiserTableNames.WiserItem} AS orderProcess
 
                             # Payment method
@@ -535,36 +519,18 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
-                            
-                            # Mollie
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS mollieApiKeyLive ON mollieApiKeyLive.item_id = paymentServiceProvider.id AND mollieApiKeyLive.`key` = '{Constants.MollieApiKeyLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS mollieApiKeyTest ON mollieApiKeyTest.item_id = paymentServiceProvider.id AND mollieApiKeyTest.`key` = '{Constants.MollieApiKeyTestProperty}'
-
-                            # Buckaroo
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooWebsiteKeyLive ON buckarooWebsiteKeyLive.item_id = paymentServiceProvider.id AND buckarooWebsiteKeyLive.`key` = '{Constants.BuckarooWebsiteKeyLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooWebsiteKeyTest ON buckarooWebsiteKeyTest.item_id = paymentServiceProvider.id AND buckarooWebsiteKeyTest.`key` = '{Constants.BuckarooWebsiteKeyTestProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooSecretKeyLive ON buckarooSecretKeyLive.item_id = paymentServiceProvider.id AND buckarooSecretKeyLive.`key` = '{Constants.BuckarooSecretKeyLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooSecretKeyTest ON buckarooSecretKeyTest.item_id = paymentServiceProvider.id AND buckarooSecretKeyTest.`key` = '{Constants.BuckarooSecretKeyTestProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooPushContentType ON buckarooPushContentType.item_id = paymentServiceProvider.id AND buckarooPushContentType.`key` = '{Constants.BuckarooPushContentTypeProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooHashMethod ON buckarooHashMethod.item_id = paymentServiceProvider.id AND buckarooHashMethod.`key` = '{Constants.BuckarooHashMethodProperty}'
-
-                            # MultiSafepay
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS multiSafepayApiKeyLive ON multiSafepayApiKeyLive.item_id = paymentServiceProvider.id AND multiSafepayApiKeyLive.`key` = '{Constants.MultiSafepayApiKeyLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS multiSafepayApiKeyTest ON multiSafepayApiKeyTest.item_id = paymentServiceProvider.id AND multiSafepayApiKeyTest.`key` = '{Constants.MultiSafepayApiKeyTestProperty}'
-
-                            # RaboOmniKassa
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS raboOmniKassaRefreshTokenLive ON raboOmniKassaRefreshTokenLive.item_id = paymentServiceProvider.id AND raboOmniKassaRefreshTokenLive.`key` = '{Constants.RaboOmniKassaRefreshTokenLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS raboOmniKassaRefreshTokenTest ON raboOmniKassaRefreshTokenTest.item_id = paymentServiceProvider.id AND raboOmniKassaRefreshTokenTest.`key` = '{Constants.RaboOmniKassaRefreshTokenTestProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS raboOmniKassaSigningKeyLive ON raboOmniKassaSigningKeyLive.item_id = paymentServiceProvider.id AND raboOmniKassaSigningKeyLive.`key` = '{Constants.RaboOmniKassaSigningKeyLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS raboOmniKassaSigningKeyTest ON raboOmniKassaSigningKeyTest.item_id = paymentServiceProvider.id AND raboOmniKassaSigningKeyTest.`key` = '{Constants.RaboOmniKassaSigningKeyTestProperty}'
 
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'";
 
             databaseConnection.AddParameter("id", orderProcessId);
             var dataTable = await databaseConnection.GetAsync(query);
-            var results = dataTable.Rows.Cast<DataRow>().Select(DataRowToPaymentMethodSettingsModel).ToList();
-            
+            var results = new List<PaymentMethodSettingsModel>();
+            foreach (DataRow dataRow in dataTable.Rows)
+            {
+                results.Add(await DataRowToPaymentMethodSettingsModelAsync(dataRow));
+            }
+
             // get total amount of order
             var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync();
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();
@@ -573,7 +539,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             {
                 totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings);
             }
-            
+
             // check if paymentmethods are allowed for the price that the costumer should pay
             results = results.Where(paymentMethod =>
             {
@@ -582,22 +548,22 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 {
                     return false;
                 }
-               
-                // check if total price is above the maximum 
+
+                // check if total price is above the maximum
                 if (paymentMethod.UseMaximumAmountCheck && totalPrice > paymentMethod.MaximumAmountCheck)
                 {
                     return false;
                 }
-                
-                // amount is within range or checks are disabled 
+
+                // amount is within range or checks are disabled
                 return true;
             }).ToList();
-            
+
             if (loggedInUser == null)
             {
                 return results;
             }
-            
+
             // Only get the payment methods that the user can see.
             results = results.Where(paymentMethod =>
             {
@@ -708,22 +674,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                                 paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
-
-                                mollieApiKeyLive.`value` AS mollieApiKeyLive,
-                                mollieApiKeyTest.`value` AS mollieApiKeyTest,
-                                buckarooWebsiteKeyLive.`value` AS buckarooWebsiteKeyLive,
-                                buckarooWebsiteKeyTest.`value` AS buckarooWebsiteKeyTest,
-                                buckarooSecretKeyLive.`value` AS buckarooSecretKeyLive,
-                                buckarooSecretKeyTest.`value` AS buckarooSecretKeyTest,
-                                buckarooPushContentType.`value` AS buckarooPushContentType,
-                                buckarooHashMethod.`value` AS buckarooHashMethod,
-                                multiSafepayApiKeyLive.`value` AS multiSafepayApiKeyLive,
-                                multiSafepayApiKeyTest.`value` AS multiSafepayApiKeyTest,
-                                raboOmniKassaRefreshTokenLive.`value` AS raboOmniKassaRefreshTokenLive,
-                                raboOmniKassaRefreshTokenTest.`value` AS raboOmniKassaRefreshTokenTest,
-                                raboOmniKassaSigningKeyLive.`value` AS raboOmniKassaSigningKeyLive,
-                                raboOmniKassaSigningKeyTest.`value` AS raboOmniKassaSigningKeyTest
+                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
                             FROM {WiserTableNames.WiserItem} AS paymentMethod
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
@@ -740,28 +691,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
-                            
-                            # Mollie
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS mollieApiKeyLive ON mollieApiKeyLive.item_id = paymentServiceProvider.id AND mollieApiKeyLive.`key` = '{Constants.MollieApiKeyLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS mollieApiKeyTest ON mollieApiKeyTest.item_id = paymentServiceProvider.id AND mollieApiKeyTest.`key` = '{Constants.MollieApiKeyTestProperty}'
-
-                            # Buckaroo
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooWebsiteKeyLive ON buckarooWebsiteKeyLive.item_id = paymentServiceProvider.id AND buckarooWebsiteKeyLive.`key` = '{Constants.BuckarooWebsiteKeyLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooWebsiteKeyTest ON buckarooWebsiteKeyTest.item_id = paymentServiceProvider.id AND buckarooWebsiteKeyTest.`key` = '{Constants.BuckarooWebsiteKeyTestProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooSecretKeyLive ON buckarooSecretKeyLive.item_id = paymentServiceProvider.id AND buckarooSecretKeyLive.`key` = '{Constants.BuckarooSecretKeyLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooSecretKeyTest ON buckarooSecretKeyTest.item_id = paymentServiceProvider.id AND buckarooSecretKeyTest.`key` = '{Constants.BuckarooSecretKeyTestProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooPushContentType ON buckarooPushContentType.item_id = paymentServiceProvider.id AND buckarooPushContentType.`key` = '{Constants.BuckarooPushContentTypeProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS buckarooHashMethod ON buckarooHashMethod.item_id = paymentServiceProvider.id AND buckarooHashMethod.`key` = '{Constants.BuckarooHashMethodProperty}'
-
-                            # MultiSafepay
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS multiSafepayApiKeyLive ON multiSafepayApiKeyLive.item_id = paymentServiceProvider.id AND multiSafepayApiKeyLive.`key` = '{Constants.MultiSafepayApiKeyLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS multiSafepayApiKeyTest ON multiSafepayApiKeyTest.item_id = paymentServiceProvider.id AND multiSafepayApiKeyTest.`key` = '{Constants.MultiSafepayApiKeyTestProperty}'
-
-                            # RaboOmniKassa
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS raboOmniKassaRefreshTokenLive ON raboOmniKassaRefreshTokenLive.item_id = paymentServiceProvider.id AND raboOmniKassaRefreshTokenLive.`key` = '{Constants.RaboOmniKassaRefreshTokenLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS raboOmniKassaRefreshTokenTest ON raboOmniKassaRefreshTokenTest.item_id = paymentServiceProvider.id AND raboOmniKassaRefreshTokenTest.`key` = '{Constants.RaboOmniKassaRefreshTokenTestProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS raboOmniKassaSigningKeyLive ON raboOmniKassaSigningKeyLive.item_id = paymentServiceProvider.id AND raboOmniKassaSigningKeyLive.`key` = '{Constants.RaboOmniKassaSigningKeyLiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS raboOmniKassaSigningKeyTest ON raboOmniKassaSigningKeyTest.item_id = paymentServiceProvider.id AND raboOmniKassaSigningKeyTest.`key` = '{Constants.RaboOmniKassaSigningKeyTestProperty}'
 
                             WHERE paymentMethod.id = ?id
                             AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'";
@@ -774,7 +703,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             }
 
             var dataRow = dataTable.Rows[0];
-            var result = DataRowToPaymentMethodSettingsModel(dataRow);
+            var result = await DataRowToPaymentMethodSettingsModelAsync(dataRow);
 
             return result;
         }
@@ -1291,12 +1220,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 return false;
             }
 
-            var invoiceNumber = GetInvoiceNumberFromRequest(paymentMethodSettings.PaymentServiceProvider.Type);
-            var conceptOrders = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(invoiceNumber);
-
             // Create the correct service for the payment service provider using the factory.
             var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Type);
             paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
+
+            var invoiceNumber = paymentServiceProviderService.GetInvoiceNumberFromRequest();
+            var conceptOrders = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(invoiceNumber);
 
             // Let the payment service provider service handle the status update.
             var pspUpdateResult = await paymentServiceProviderService.ProcessStatusUpdateAsync(orderProcessSettings, paymentMethodSettings);
@@ -1408,13 +1337,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         /// <param name="dataRow">The <see cref="DataRow"/> to convert.</param>
         /// <returns>A <see cref="PaymentMethodSettingsModel"/> with the data from the <see cref="DataRow"/>.</returns>
         /// <exception cref="ArgumentOutOfRangeException">When using a PaymentServiceProvider that we don't support.</exception>
-        private PaymentMethodSettingsModel DataRowToPaymentMethodSettingsModel(DataRow dataRow)
+        private async Task<PaymentMethodSettingsModel> DataRowToPaymentMethodSettingsModelAsync(DataRow dataRow)
         {
             // Build the payment settings model.
             Decimal.TryParse(dataRow.Field<string>("paymentMethodFee")?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var fee);
             Decimal.TryParse(dataRow.Field<string?>(Constants.PaymentMethodMinimalAmountProperty)?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var minimalAmountProperty );
             Decimal.TryParse(dataRow.Field<string?>(Constants.PaymentMethodMaximumAmountProperty)?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var maximumAmountProperty);
-            
+
             var result = new PaymentMethodSettingsModel
             {
                 Id = dataRow.Field<ulong>("paymentMethodId"),
@@ -1425,91 +1354,27 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 UseMinimalAmountCheck =  Convert.ToBoolean(dataRow.Field<Int64>(Constants.PaymentMethodUseMinimalAmountProperty)),
                 UseMaximumAmountCheck =  Convert.ToBoolean(dataRow.Field<Int64>(Constants.PaymentMethodUseMaximumAmountProperty)),
                 MinimalAmountCheck =  minimalAmountProperty,
-                MaximumAmountCheck = maximumAmountProperty
+                MaximumAmountCheck = maximumAmountProperty,
+                PaymentServiceProvider = new PaymentServiceProviderSettingsModel
+                {
+                    // Settings that are the same for all PSPs.
+                    Id = dataRow.Field<ulong>("paymentServiceProviderId"),
+                    Title = dataRow.Field<string>("paymentServiceProviderTitle"),
+                    Type = EnumHelpers.ToEnum<PaymentServiceProviders>(dataRow.Field<string>("paymentServiceProviderType") ?? "0"),
+                    LogAllRequests = dataRow.Field<string>("paymentServiceProviderLogAllRequests") == "1",
+                    OrdersCanBeSetDirectlyToFinished = dataRow.Field<string>("paymentServiceProviderSetOrdersDirectlyToFinished") == "1",
+                    SkipPaymentWhenOrderAmountEqualsZero = dataRow.Field<string>("paymentServiceProviderSkipWhenOrderAmountEqualsZero") == "1"
+                }
             };
-
-            // Build the PSP settings model based on the type of PSP.
-            var paymentServiceProvider = EnumHelpers.ToEnum<PaymentServiceProviders>(dataRow.Field<string>("paymentServiceProviderType") ?? "0");
-            result.PaymentServiceProvider = paymentServiceProvider switch
-            {
-                PaymentServiceProviders.Unknown => new PaymentServiceProviderSettingsModel(),
-                PaymentServiceProviders.NoPsp => new PaymentServiceProviderSettingsModel(),
-                PaymentServiceProviders.Buckaroo => new BuckarooSettingsModel
-                {
-                    WebsiteKey = GetSecretKeyValue(dataRow, "buckarooWebsiteKey"),
-                    SecretKey = GetSecretKeyValue(dataRow, "buckarooSecretKey"),
-                    PushContentType = GetEnumValue<PushContentTypes>(dataRow, "buckarooPushContentType"),
-                    HashMethod = GetEnumValue<HashMethods>(dataRow, "buckarooHashMethod")
-                },
-                PaymentServiceProviders.MultiSafepay => new MultiSafepaySettingsModel
-                {
-                    ApiKey = GetSecretKeyValue(dataRow, "multiSafepayApiKey")
-                },
-                PaymentServiceProviders.RaboOmniKassa => new RaboOmniKassaSettingsModel
-                {
-                    RefreshToken = GetSecretKeyValue(dataRow, "raboOmniKassaRefreshToken"),
-                    SigningKey = GetSecretKeyValue(dataRow, "raboOmniKassaSigningKey")
-                },
-                PaymentServiceProviders.Mollie => new MollieSettingsModel
-                {
-                    ApiKey = GetSecretKeyValue(dataRow, "mollieApiKey")
-                },
-                PaymentServiceProviders.PayNl => new PayNLSettingsModel
-                {
-                    Username = GetSecretKeyValue(dataRow, "payNlUsername"),
-                    Password = GetSecretKeyValue(dataRow, "payNlPassword"),
-                    ServiceId = GetSecretKeyValue(dataRow, "payNlServiceId"),
-                },
-                _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), paymentServiceProvider.ToString(), "Unsupported value used.")
-            };
-
-            // Settings that are the same for all PSPs.
-            result.PaymentServiceProvider.Id = dataRow.Field<ulong>("paymentServiceProviderId");
-            result.PaymentServiceProvider.Title = dataRow.Field<string>("paymentServiceProviderTitle");
-            result.PaymentServiceProvider.Type = paymentServiceProvider;
-            result.PaymentServiceProvider.LogAllRequests = dataRow.Field<string>("paymentServiceProviderLogAllRequests") == "1";
-            result.PaymentServiceProvider.OrdersCanBeSetDirectlyToFinished = dataRow.Field<string>("paymentServiceProviderSetOrdersDirectlyToFinished") == "1";
-            result.PaymentServiceProvider.SkipPaymentWhenOrderAmountEqualsZero = dataRow.Field<string>("paymentServiceProviderSkipWhenOrderAmountEqualsZero") == "1";
 
             if (String.IsNullOrEmpty(result.ExternalName))
             {
                 result.ExternalName = result.Title;
             }
 
-            return result;
-        }
-
-        /// <summary>
-        /// Get and decrypt a secret key from a <see cref="DataRow"/>.
-        /// </summary>
-        /// <param name="dataRow">The <see cref="DataRow"/> to get the secret key from.</param>
-        /// <param name="itemDetailKey">The name of the column that contains the secret key, without the environment suffix.</param>
-        /// <returns>The decrypted secret key, if it exists, or null if it doesn't.</returns>
-        private string GetSecretKeyValue(DataRow dataRow, string itemDetailKey)
-        {
-            var suffix = gclSettings.Environment.InList(Environments.Development, Environments.Test) ? "Test" : "Live";
-            var result = dataRow.Field<string>($"{itemDetailKey}{suffix}");
-            if (String.IsNullOrWhiteSpace(result))
-            {
-                return result;
-            }
-
-            return result.DecryptWithAesWithSalt();
-        }
-
-        /// <summary>
-        /// Get and attempt to convert a value from a <see cref="DataRow"/> to an <see cref="Enum"/>.
-        /// </summary>
-        /// <param name="dataRow">The <see cref="DataRow"/> to get the enum value from.</param>
-        /// <param name="itemDetailKey">The name of the column that contains the enum value.</param>
-        /// <typeparam name="TEnum">An <see cref="Enum"/> type.</typeparam>
-        /// <returns>The value of the enum, or the default value of the enum if the value couldn't be parsed.</returns>
-        private TEnum GetEnumValue<TEnum>(DataRow dataRow, string itemDetailKey) where TEnum : struct, Enum
-        {
-            if (!Enum.TryParse(dataRow.Field<string>(itemDetailKey), out TEnum result))
-            {
-                result = default;
-            }
+            // Build the PSP settings model based on the type of PSP.
+            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(result.PaymentServiceProvider.Title);
+            result.PaymentServiceProvider = await paymentServiceProviderService.GetProviderSettingsAsync(result.PaymentServiceProvider);
 
             return result;
         }
@@ -1624,31 +1489,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     Address = senderAddress,
                     DisplayName = senderName
                 }
-            };
-        }
-
-        /// <summary>
-        /// Gets the invoice number from the request.
-        /// Each PSP sends this number in their own way, this method will get the number from the request based on which PSP is being used.
-        /// </summary>
-        /// <param name="paymentServiceProvider">The PSP that is being used.</param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentOutOfRangeException">If an unknown PSP has been used.</exception>
-        private string GetInvoiceNumberFromRequest(PaymentServiceProviders paymentServiceProvider)
-        {
-            if (paymentServiceProvider == PaymentServiceProviders.Unknown)
-            {
-                throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), "Unknown payment service provider.");
-            }
-
-            return paymentServiceProvider switch
-            {
-                PaymentServiceProviders.Buckaroo => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "brq_invoicenumber"),
-                PaymentServiceProviders.MultiSafepay => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "transactionid"),
-                PaymentServiceProviders.RaboOmniKassa => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "order_id"),
-                PaymentServiceProviders.Mollie => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "invoice_number"),
-                PaymentServiceProviders.PayNl => HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, "orderId"),
-                _ => throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), $"Payment service provider '{paymentServiceProvider:G}' is not yet supported.")
             };
         }
 

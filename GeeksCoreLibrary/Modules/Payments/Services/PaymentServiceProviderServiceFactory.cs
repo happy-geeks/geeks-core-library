@@ -20,21 +20,17 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         public IPaymentServiceProviderService GetPaymentServiceProviderService(PaymentServiceProviders paymentServiceProvider)
         {
             var paymentServiceProviderName = paymentServiceProvider.ToString("G");
-            var serviceProviderTypes = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
-            var serviceProviderType = serviceProviderTypes.FirstOrDefault(type => type.Name.Equals($"{paymentServiceProviderName}Service", StringComparison.OrdinalIgnoreCase));
-
-            if (serviceProviderType == null)
-            {
-                throw new ArgumentOutOfRangeException(nameof(paymentServiceProvider), paymentServiceProvider, $"A payment service provider with the name '{paymentServiceProviderName}Service' was not found.");
-            }
-
-            return (IPaymentServiceProviderService)serviceProvider.GetRequiredService(serviceProviderType);
+            return GetPaymentServiceProviderService(paymentServiceProviderName);
         }
 
         public IPaymentServiceProviderService GetPaymentServiceProviderService(string paymentServiceProviderName)
         {
-            var serviceProviderTypes = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
-            var serviceProviderType = serviceProviderTypes.FirstOrDefault(type => type.Name.Equals($"{paymentServiceProviderName}Service", StringComparison.OrdinalIgnoreCase));
+            //var assembly = Assembly.Load($"GeeksCoreLibrary.Modules.Payments.{paymentServiceProviderName}");
+            //var serviceProviderTypes = assembly.GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
+            //var serviceProviderType = Type.GetType($"GeeksCoreLibrary.Modules.Payments.{paymentServiceProviderName}.{paymentServiceProviderName}Service");
+            //var serviceProviderTypes = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
+            //var serviceProviderType = serviceProviderTypes.FirstOrDefault(type => type.Name.Equals($"{paymentServiceProviderName}Service", StringComparison.OrdinalIgnoreCase));
+            var serviceProviderType = FindTypeInLoadedAssemblies(paymentServiceProviderName);
 
             if (serviceProviderType == null)
             {
@@ -42,6 +38,22 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             }
 
             return (IPaymentServiceProviderService)serviceProvider.GetRequiredService(serviceProviderType);
+        }
+
+        private Type FindTypeInLoadedAssemblies(string paymentServiceProviderName)
+        {
+            var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies().Where(assembly => assembly.FullName!.StartsWith("GeeksCoreLibrary.Modules.Payments"));
+            foreach (var assembly in loadedAssemblies)
+            {
+                var serviceProviderTypes = assembly.GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
+                var serviceProviderType = serviceProviderTypes.FirstOrDefault(type => type.Name.Equals($"{paymentServiceProviderName}Service", StringComparison.OrdinalIgnoreCase));
+                if (serviceProviderType != null)
+                {
+                    return serviceProviderType;
+                }
+            }
+
+            return null;
         }
     }
 }
