@@ -4,7 +4,6 @@ using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
-using System.Reflection;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
@@ -25,13 +24,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
         public IPaymentServiceProviderService GetPaymentServiceProviderService(string paymentServiceProviderName)
         {
-            //var assembly = Assembly.Load($"GeeksCoreLibrary.Modules.Payments.{paymentServiceProviderName}");
-            //var serviceProviderTypes = assembly.GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
-            //var serviceProviderType = Type.GetType($"GeeksCoreLibrary.Modules.Payments.{paymentServiceProviderName}.{paymentServiceProviderName}Service");
-            //var serviceProviderTypes = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
-            //var serviceProviderType = serviceProviderTypes.FirstOrDefault(type => type.Name.Equals($"{paymentServiceProviderName}Service", StringComparison.OrdinalIgnoreCase));
             var serviceProviderType = FindTypeInLoadedAssemblies(paymentServiceProviderName);
-
             if (serviceProviderType == null)
             {
                 throw new ArgumentOutOfRangeException(nameof(paymentServiceProviderName), paymentServiceProviderName, $"A payment service provider with the name '{paymentServiceProviderName}Service' was not found.");
@@ -42,7 +35,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
 
         private Type FindTypeInLoadedAssemblies(string paymentServiceProviderName)
         {
-            var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies().Where(assembly => assembly.FullName!.StartsWith("GeeksCoreLibrary.Modules.Payments"));
+            var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies().Where(assembly => assembly.FullName!.StartsWith("GeeksCoreLibrary"));
             foreach (var assembly in loadedAssemblies)
             {
                 var serviceProviderTypes = assembly.GetTypes().Where(type => type.GetInterfaces().Contains(typeof(IPaymentServiceProviderService)));
