@@ -78,7 +78,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                     result.CustomerNumber = await objectService.FindSystemObjectByDomainNameAsync("PostNlNetherlandsCustomerNumber");
                     result.BarcodeType = "3S";
                     result.BarcodeSerie = "0000000-9999999";
-                    result.ProductCode = "4952";
+                    result.ProductCode = "4912";
                     break;
 
                 case ShippingLocations.Global:

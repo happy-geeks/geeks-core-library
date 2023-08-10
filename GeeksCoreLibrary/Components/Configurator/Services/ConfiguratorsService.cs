@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Configurator.Interfaces;
 using GeeksCoreLibrary.Components.Configurator.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
@@ -396,24 +397,40 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         /// <inheritdoc />
         public async Task<VueConfiguratorDataModel> GetVueConfiguratorDataAsync(string name, bool includeStepsData = true)
         {
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("name", name);
+            databaseConnection.AddParameter("languageCode", languagesService.CurrentLanguageCode);
 
             var configuratorSettings = await databaseConnection.GetAsync($@"SELECT
     configurator.id AS configuratorId,
     CONCAT_WS('', mainTemplate.`value`, mainTemplate.long_value) AS mainTemplate,
     CONCAT_WS('', progressBarTemplate.`value`, progressBarTemplate.long_value) AS progressBarTemplate,
     CONCAT_WS('', progressBarStepTemplate.`value`, progressBarStepTemplate.long_value) AS progressBarStepTemplate,
+    CONCAT_WS('', progressTemplate.`value`, progressTemplate.long_value) AS progressTemplate,
     CONCAT_WS('', summaryTemplate.`value`, summaryTemplate.long_value) AS summaryTemplate,
+    summaryStepName.`value` AS summaryStepName,
+    IFNULL(showSummaryProgressBarStep.`value`, '1') = '1' AS showSummaryProgressBarStep,
     priceCalculationQuery.`value` AS priceCalculationQuery,
-    deliveryTimeCalculationQuery.`value` AS deliveryTimeCalculationQuery
+    deliveryTimeCalculationQuery.`value` AS deliveryTimeCalculationQuery,
+    apiStartConfiguration.`value` IS NOT NULL AND apiStartConfiguration.`value` <> '' AS startExternalConfigurationOnStart
 FROM {WiserTableNames.WiserItem} AS configurator
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS mainTemplate ON mainTemplate.item_id = configurator.id AND mainTemplate.`key` = 'template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarTemplate ON progressBarTemplate.item_id = configurator.id AND progressBarTemplate.`key` = 'progress_bar_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarStepTemplate ON progressBarStepTemplate.item_id = configurator.id AND progressBarStepTemplate.`key` = 'progress_bar_step_template'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressTemplate ON progressTemplate.item_id = configurator.id AND progressTemplate.`key` = 'progress_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryTemplate ON summaryTemplate.item_id = configurator.id AND summaryTemplate.`key` = 'summary_template'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS showSummaryProgressBarStep ON showSummaryProgressBarStep.item_id = configurator.id AND showSummaryProgressBarStep.`key` = 'show_summary_progress_bar_step'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryStepName ON summaryStepName.item_id = configurator.id AND summaryStepName.`key` = 'summary_step_name' AND summaryStepName.language_code = ?languageCode
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS priceCalculationQuery ON priceCalculationQuery.item_id = configurator.id AND priceCalculationQuery.`key` = 'price_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS deliveryTimeCalculationQuery ON deliveryTimeCalculationQuery.item_id = configurator.id AND deliveryTimeCalculationQuery.`key` = 'delivery_time_calculation_query'
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiStartConfiguration ON apiStartConfiguration.item_id = configurator.id AND apiStartConfiguration.`key` = 'api_start'
 WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND configurator.title = ?name");
 
             if (configuratorSettings.Rows.Count == 0)
@@ -428,9 +445,12 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
                 MainTemplate = configuratorSettings.Rows[0].Field<string>("mainTemplate"),
                 ProgressBarTemplate = configuratorSettings.Rows[0].Field<string>("progressBarTemplate"),
                 ProgressBarStepTemplate = configuratorSettings.Rows[0].Field<string>("progressBarStepTemplate"),
+                ProgressTemplate = configuratorSettings.Rows[0].Field<string>("progressTemplate"),
                 SummaryTemplate = configuratorSettings.Rows[0].Field<string>("summaryTemplate"),
+                SummaryStepName = configuratorSettings.Rows[0].Field<string>("summaryStepName"),
                 PriceCalculationQuery = configuratorSettings.Rows[0].Field<string>("priceCalculationQuery"),
-                DeliveryTimeCalculationQuery = configuratorSettings.Rows[0].Field<string>("deliveryTimeCalculationQuery")
+                DeliveryTimeCalculationQuery = configuratorSettings.Rows[0].Field<string>("deliveryTimeCalculationQuery"),
+                StartExternalConfigurationOnStart = Convert.ToBoolean(configuratorSettings.Rows[0]["startExternalConfigurationOnStart"])
             };
 
             if (!includeStepsData)
@@ -448,6 +468,8 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         IFNULL(title.`value`, step.title) AS displayName,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        datasource.`value` AS datasource,
+        IF(apiAnswer.id IS NULL OR apiAnswer.`value` = '', FALSE, TRUE) AS isApiAnswer,
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
         requiredConditions.`value` AS requiredConditions,
         minimumValue.`value` AS minimumValue,
@@ -467,13 +489,12 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
             (SELECT CONCAT_WS('', `value`, long_value) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'values_template'),
             CONCAT_WS('', stepOptionTemplate.`value`, stepOptionTemplate.long_value)
         ) AS stepOptionTemplate,
-        CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
         CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
         (SELECT JSON_OBJECTAGG(`key`, CONCAT_WS('', `value`, long_value)) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = step.id AND groupname = 'extra_data') AS extraData,
 
         IFNULL(optionsOpenModal.`value`, '0') = '1' AS optionsOpenModal,
-        CONCAT_WS('', modalTemplate.`value`, stepOptionsQuery.long_value) AS modalTemplate,
+        CONCAT_WS('', modalTemplate.`value`, modalTemplate.long_value) AS modalTemplate,
         modalContainerSelector.`value` AS modalContainerSelector,
 
         stepLink.ordering
@@ -484,6 +505,8 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS title ON title.item_id = step.id AND title.`key` = 'title' AND title.language_code = ?languageCode
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS datasource ON datasource.item_id = step.id AND datasource.`key` = 'datasource'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiAnswer ON apiAnswer.item_id = step.id AND apiAnswer.`key` = 'api_answer'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
@@ -500,7 +523,6 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS templatesFromStepId ON templatesFromStepId.item_id = step.id AND templatesFromStepId.`key` = 'duplicatelayoutfrom'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepTemplate ON stepTemplate.item_id = step.id AND stepTemplate.`key` = 'step_template'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionTemplate ON stepOptionTemplate.item_id = step.id AND stepOptionTemplate.`key` = 'values_template'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionsQuery ON stepOptionsQuery.item_id = step.id AND stepOptionsQuery.`key` = 'custom_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS extraDataQuery ON extraDataQuery.item_id = step.id AND extraDataQuery.`key` = 'extra_data_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = step.id AND urlRegex.`key` = 'urlregex'
 
@@ -518,6 +540,8 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         IFNULL(title.`value`, step.title) AS displayName,
         variableName.`value` AS stepName,
         dependencies.`value` AS dependencies,
+        datasource.`value` AS datasource,
+        IF(apiAnswer.id IS NULL OR apiAnswer.`value` = '', FALSE, TRUE) AS isApiAnswer,
 
         # Validation properties.
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
@@ -541,13 +565,12 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
             (SELECT CONCAT_WS('', `value`, long_value) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = CONVERT(templatesFromStepId.`value`, UNSIGNED) AND `key` = 'values_template'),
             CONCAT_WS('', stepOptionTemplate.`value`, stepOptionTemplate.long_value)
         ) AS stepOptionTemplate,
-        CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery,
         CONCAT_WS('', extraDataQuery.`value`, extraDataQuery.long_value) AS extraDataQuery,
         urlRegex.`value` AS urlRegex,
         (SELECT JSON_OBJECTAGG(`key`, CONCAT_WS('', `value`, long_value)) FROM {WiserTableNames.WiserItemDetail} WHERE item_id = step.id AND groupname = 'extra_data') AS extraData,
 
         IFNULL(optionsOpenModal.`value`, '0') = '1' AS optionsOpenModal,
-        CONCAT_WS('', modalTemplate.`value`, stepOptionsQuery.long_value) AS modalTemplate,
+        CONCAT_WS('', modalTemplate.`value`, modalTemplate.long_value) AS modalTemplate,
         modalContainerSelector.`value` AS modalContainerSelector,
 
         stepLink.ordering
@@ -559,6 +582,8 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS title ON title.item_id = step.id AND title.`key` = 'title' AND title.language_code = ?languageCode
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS variableName ON variableName.item_id = step.id AND variableName.`key` = 'variable_name'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS dependencies ON dependencies.item_id = step.id AND dependencies.`key` = 'datasource_connectedid'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS datasource ON datasource.item_id = step.id AND datasource.`key` = 'datasource'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiAnswer ON apiAnswer.item_id = step.id AND apiAnswer.`key` = 'api_answer'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
@@ -575,7 +600,6 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS templatesFromStepId ON templatesFromStepId.item_id = step.id AND templatesFromStepId.`key` = 'duplicatelayoutfrom'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepTemplate ON stepTemplate.item_id = step.id AND stepTemplate.`key` = 'step_template'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionTemplate ON stepOptionTemplate.item_id = step.id AND stepOptionTemplate.`key` = 'values_template'
-    LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepOptionsQuery ON stepOptionsQuery.item_id = step.id AND stepOptionsQuery.`key` = 'custom_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS extraDataQuery ON extraDataQuery.item_id = step.id AND extraDataQuery.`key` = 'extra_data_query'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS urlRegex ON urlRegex.item_id = step.id AND urlRegex.`key` = 'urlregex'
 
@@ -591,6 +615,8 @@ SELECT
     displayName,
     stepName,
     dependencies,
+    datasource,
+    isApiAnswer,
     isRequired,
     requiredConditions,
     minimumValue,
@@ -602,7 +628,6 @@ SELECT
     validationRegexErrorMessage,
     stepTemplate,
     stepOptionTemplate,
-    stepOptionsQuery,
     extraDataQuery,
     urlRegex,
     extraData,
@@ -614,13 +639,6 @@ FROM cte
 ORDER BY parentStepId, ordering";
 
             #endregion
-
-            // Make sure the language code has a value.
-            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
-            {
-                // This function fills the property "CurrentLanguageCode".
-                await languagesService.GetLanguageCodeAsync();
-            }
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("configuratorId", configuratorId);
@@ -645,7 +663,7 @@ ORDER BY parentStepId, ordering";
                         var dependencyValuesMatch = dependencyValuesRegex.Match(dependency);
                         if (dependencyValuesMatch.Success)
                         {
-                            dependencyValues = dependencyValuesMatch.Groups["values"].Captures.Select(c => c.Value).ToList();
+                            dependencyValues = dependencyValuesMatch.Groups["values"].Value.Split(',').ToList();
                             dependencyStepName = dependency.Replace(dependencyValuesMatch.Value, String.Empty);
                         }
 
@@ -668,7 +686,7 @@ ORDER BY parentStepId, ordering";
                         var requiredConditionValuesMatch = dependencyValuesRegex.Match(requiredCondition);
                         if (!requiredConditionValuesMatch.Success) continue;
 
-                        var requiredConditionValues = requiredConditionValuesMatch.Groups["values"].Captures.Select(c => c.Value).ToList();
+                        var requiredConditionValues = requiredConditionValuesMatch.Groups["values"].Value.Split(',').ToList();
                         var requiredConditionStepName = requiredCondition.Replace(requiredConditionValuesMatch.Value, String.Empty);
 
                         requiredConditions.Add(new VueStepDependencyModel
@@ -679,9 +697,9 @@ ORDER BY parentStepId, ordering";
                     }
                 }
 
-                var requiredErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("requiredErrorMessage"));
-                var minimumValueErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("minimumValueErrorMessage"));
-                var maximumValueErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("maximumValueErrorMessage"));
+                var requiredErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("requiredErrorMessage"), removeUnknownVariables: false);
+                var minimumValueErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("minimumValueErrorMessage"), removeUnknownVariables: false);
+                var maximumValueErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("maximumValueErrorMessage"), removeUnknownVariables: false);
                 var validationRegexErrorMessage = await stringReplacementsService.DoAllReplacementsAsync(dataRow.Field<string>("validationRegexErrorMessage"));
 
                 var extraDataJson = dataRow.Field<string>("extraData");
@@ -718,7 +736,8 @@ ORDER BY parentStepId, ordering";
                     RequiredConditions = requiredConditions,
                     StepTemplate = dataRow.Field<string>("stepTemplate"),
                     StepOptionTemplate = dataRow.Field<string>("stepOptionTemplate"),
-                    StepOptionsQuery = dataRow.Field<string>("stepOptionsQuery"),
+                    Datasource = dataRow.Field<string>("datasource"),
+                    IsApiAnswer = Convert.ToBoolean(dataRow["isApiAnswer"]),
                     ExtraDataQuery = dataRow.Field<string>("extraDataQuery"),
                     UrlRegex = dataRow.Field<string>("urlRegex"),
                     OptionsOpenModal = Convert.ToBoolean(dataRow["optionsOpenModal"]),
@@ -763,6 +782,421 @@ ORDER BY parentStepId, ordering";
             return current;
         }
 
+        /// <inheritdoc />
+        public async Task SetVueStepOptionsWithQueryAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration)
+        {
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("stepId", stepData.StepId);
+            var dataTable = await databaseConnection.GetAsync($@"SELECT CONCAT_WS('', stepOptionsQuery.`value`, stepOptionsQuery.long_value) AS stepOptionsQuery
+FROM {WiserTableNames.WiserItemDetail} AS stepOptionsQuery
+WHERE stepOptionsQuery.item_id = ?stepId
+AND stepOptionsQuery.`key` = 'custom_query'");
+            
+            if (dataTable.Rows.Count == 0)
+            {
+                stepData.Options = options;
+                return;
+            }
+            
+            var stepOptionsQuery = dataTable.Rows[0].Field<string>("stepOptionsQuery");
+            if (String.IsNullOrWhiteSpace(stepOptionsQuery))
+            {
+                stepData.Options = options;
+                return;
+            }
+
+            stepOptionsQuery = await ReplaceConfiguratorItemsAsync(stepOptionsQuery, configuration, true);
+            stepOptionsQuery = await templatesService.DoReplacesAsync(stepOptionsQuery, handleRequest: false, removeUnknownVariables: false, forQuery: true);
+            var stepOptionsDataTable = await databaseConnection.GetAsync(stepOptionsQuery);
+            if (stepOptionsDataTable.Rows.Count == 0)
+            {
+                stepData.Options = options;
+                return;
+            }
+
+            // Some values of the step can be overriden through the step options query.
+            if (stepOptionsDataTable.Columns.Contains("minimumValue"))
+            {
+                stepData.MinimumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["minimumValue"]);
+            }
+            if (stepOptionsDataTable.Columns.Contains("maximumValue"))
+            {
+                stepData.MaximumValue = Convert.ToString(stepOptionsDataTable.Rows[0]["maximumValue"]);
+            }
+            if (stepOptionsDataTable.Columns.Contains("validationRegex"))
+            {
+                stepData.ValidationRegex = Convert.ToString(stepOptionsDataTable.Rows[0]["validationRegex"]);
+            }
+
+            // Handle the data rows.
+            var stepOptionProperties = typeof(VueStepOptionDataModel).GetProperties();
+            foreach (var dataRow in stepOptionsDataTable.Rows.Cast<DataRow>())
+            {
+                var stepOption = new VueStepOptionDataModel
+                {
+                    AdditionalData = new Dictionary<string, object>()
+                };
+
+                foreach (var dataColumn in stepOptionsDataTable.Columns.Cast<DataColumn>())
+                {
+                    var columnName = dataColumn.ColumnName;
+                    var columnValue = dataRow[dataColumn];
+                    var property = stepOptionProperties.FirstOrDefault(property => property.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+                    if (property != null)
+                    {
+                        // Check if the property is a boolean and if so, convert the value to a boolean.
+                        if (property.PropertyType == typeof(bool))
+                        {
+                            // String values are handled differently.
+                            if (columnValue is string stringValue)
+                            {
+                                property.SetValue(stepOption, stringValue.InList(StringComparer.OrdinalIgnoreCase, "1", "true"));
+                            }
+                            else
+                            {
+                                property.SetValue(stepOption, Convert.ToBoolean(columnValue));
+                            }
+                        }
+                        else
+                        {
+                            var type = property.PropertyType;
+                            type = Nullable.GetUnderlyingType(type) ?? type;
+
+                            // All other data types are just added as-is.
+                            property.SetValue(stepOption, Convert.ChangeType(columnValue, type));
+                        }
+                    }
+                    else
+                    {
+                        // Add the value to the additional data dictionary.
+                        stepOption.AdditionalData.Add(columnName, columnValue);
+                    }
+                }
+
+                options.Add(stepOption);
+            }
+
+            stepData.Options = options;
+        }
+
+        /// <inheritdoc />
+        public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration, Dictionary<string, JToken> apiData)
+        {
+            // Get the correct Configurator API entity.
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("stepId", stepData.StepId);
+            var dataTable = await databaseConnection.GetAsync($@"SELECT
+	CAST(questionConfiguratorApiId.`value` AS UNSIGNED) AS questionConfiguratorApiId,
+	apiExtraData.`key`,
+	apiExtraData.`value`
+FROM {WiserTableNames.WiserItemDetail} AS questionConfiguratorApiId
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiExtraData ON apiExtraData.item_id = questionConfiguratorApiId.item_id AND apiExtraData.groupname = 'api_extra_data'
+WHERE questionConfiguratorApiId.item_id = ?stepId
+AND questionConfiguratorApiId.`key` = 'api_question'");
+            
+            if (dataTable.Rows.Count == 0)
+            {
+                stepData.Options = options;
+                return;
+            }
+            
+            var questionApi = await wiserItemsService.GetItemDetailsAsync(dataTable.Rows[0].Field<UInt64>("questionConfiguratorApiId"), entityType: "ConfiguratorApi", skipPermissionsCheck: true);
+            if (questionApi == null)
+            {
+                stepData.Options = options;
+                return;
+            }
+
+            var endpoint = questionApi.GetDetailValue("endpoint");
+            var requestJson = questionApi.GetDetailValue("request_json");
+            var questionKey = questionApi.GetDetailValue("question_key");
+            var answersKey = questionApi.GetDetailValue("answers_key");
+            var query = questionApi.GetDetailValue("api_query");
+            
+            if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(questionKey) || String.IsNullOrWhiteSpace(answersKey))
+            {
+                stepData.Options = options;
+                return;
+            }
+            
+            // Get the the extra data for the API based on the group name of the details that are set in Wiser.
+            var apiExtraData = new Dictionary<string, string>();
+            foreach (DataRow row in dataTable.Rows)
+            {
+                apiExtraData.Add(row.Field<string>("key"), row.Field<string>("value"));
+            }
+            
+            DataRow extraData = null;
+
+            // If a query is set, execute it and use the results for the replacements in the JSON.
+            if (!String.IsNullOrWhiteSpace(query))
+            {
+                query = stringReplacementsService.DoReplacements(query, apiExtraData, forQuery: true);
+                query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
+                query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                var extraDataTable = await databaseConnection.GetAsync(query);
+
+                if (extraDataTable.Rows.Count > 0)
+                {
+                    extraData = extraDataTable.Rows[0];
+                }
+            }
+
+            endpoint = stringReplacementsService.DoReplacements(endpoint, apiExtraData);
+            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+            endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, removeUnknownVariables: false);
+
+            // If not all replacements have been replaced the endpoint is not valid. Calling it will not give a result.
+            // This can happen for example if the endpoint has an external ID and the external configuration has not yet started.
+            if (endpoint.Contains("{"))
+            {
+                stepData.Options = options;
+                return;
+            }
+            
+            questionKey = stringReplacementsService.DoReplacements(questionKey, apiExtraData);
+            questionKey = await ReplaceConfiguratorItemsAsync(questionKey, configuration, false);
+            questionKey = await stringReplacementsService.DoAllReplacementsAsync(questionKey, removeUnknownVariables: false);
+            
+            answersKey = stringReplacementsService.DoReplacements(answersKey, apiExtraData);
+            answersKey = await ReplaceConfiguratorItemsAsync(answersKey, configuration, false);
+            answersKey = await stringReplacementsService.DoAllReplacementsAsync(answersKey, removeUnknownVariables: false);
+            
+            var requestMethod = (Method) questionApi.GetDetailValue<int>("request_type");
+            
+            var restClient = new RestClient();
+            var restRequest = new RestRequest(endpoint, requestMethod);
+            
+            // If a body is provided perform replacements and add it to the request.
+            if (!String.IsNullOrWhiteSpace(requestJson))
+            {
+                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+
+                // Replace all not replaced values with null to prevent invalid JSON.
+                var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                requestJson = regex.Replace(requestJson, "null");
+
+                restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+            }
+            
+            await AddAuthenticationToApiCall(restRequest, questionApi);
+            await AddAcceptLanguageToApiCall(restRequest);
+            await AddCustomHeadersAsync(restRequest, questionApi, vueConfiguration: configuration, extraData: extraData);
+
+            // Create a hash of the endpoint and request JSON to use as key for the API data to reuse the response if possible.
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{endpoint}{requestJson}"));
+            var apiDataHash = string.Join("", hash.Select(b => b.ToString("x2")));
+
+            // If the data is not yet retrieved, get it from the API.
+            if (!apiData.ContainsKey(apiDataHash))
+            {
+                var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
+                if (!restResponse.IsSuccessful || restResponse.Content == null)
+                {
+                    logger.LogWarning("Error while trying to get the configuration from API ({questionApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}", questionApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
+                    stepData.Options = options;
+                    return;
+                }
+                
+                apiData[apiDataHash] = JToken.Parse(restResponse.Content);
+            }
+            
+            // Get the question from the response.
+            var responseData = apiData[apiDataHash];
+            var keyParts = new List<string>(questionKey.Split('.'));
+            var currentObject = responseData;
+
+            // Step into the object till the correct object is found or the path leads to an invalid object.
+            while (keyParts.Count > 0)
+            {
+                // Check if the key is an array selector.
+                if (keyParts[0].StartsWith("["))
+                {
+                    // Remove the surrounding brackets [] to get the selector from the key.
+                    var selector = keyParts[0].Substring(1, keyParts[0].Length - 2);
+                    var selectorParts = selector.Split('=');
+                    
+                    if (selectorParts.Length != 2)
+                    {
+                        throw new Exception($"Selector '{selector}' is not valid. It should be in the format [key=value]. This selector is part of the question key '{questionKey}' in the question API '{questionApi.Title}'.");
+                    }
+
+                    var matchFound = false;
+
+                    // Check for each object in the array if the property matches the first selector part and if its value matches the second selector part.
+                    foreach (JToken jToken in currentObject)
+                    {
+                        if (jToken.Type != JTokenType.Object || !jToken[selectorParts[0]].Value<string>().Equals(selectorParts[1], StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        currentObject = jToken;
+                        matchFound = true;
+                        break;
+                    }
+                    
+                    // If no match is found set the current object to null so the question is not found and will not have answers.
+                    if (!matchFound)
+                    {
+                        currentObject = null;
+                    }
+                }
+                else
+                {
+                    currentObject = currentObject[keyParts[0]];
+                }
+                
+                keyParts.RemoveAt(0);
+                
+                // If the current object is null, the question is not found and will not have answers.
+                if (currentObject == null)
+                {
+                    stepData.Options = options;
+                    return;
+                }
+            }
+
+            if (!String.IsNullOrWhiteSpace(stepData.MinimumValue) && stepData.MinimumValue.StartsWith("JSON:", StringComparison.InvariantCultureIgnoreCase))
+            {
+                stepData.MinimumValue = currentObject.SelectToken(stepData.MinimumValue.Substring(5)).Value<string>();
+                
+                // If the property could not be found while being expected the question is not complete and will not have answers.
+                if (stepData.MinimumValue == null)
+                {
+                    stepData.Options = options;
+                    return;
+                }
+            }
+            
+            if (!String.IsNullOrWhiteSpace(stepData.MaximumValue) && stepData.MaximumValue.StartsWith("JSON:", StringComparison.InvariantCultureIgnoreCase))
+            {
+                stepData.MaximumValue = currentObject.SelectToken(stepData.MaximumValue.Substring(5)).Value<string>();
+                
+                // If the property could not be found while being expected the question is not complete and will not have answers.
+                if (stepData.MaximumValue == null)
+                {
+                    stepData.Options = options;
+                    return;
+                }
+            }
+            
+            // Get properties from question as extra data if it is not an object or array.
+            foreach (var property in (JObject)currentObject)
+            {
+                if (property.Value.Type == JTokenType.Object || property.Value.Type == JTokenType.Array)
+                {
+                    continue;
+                }
+                
+                stepData.ExtraData.Add(property);
+            }
+            
+            // Setup mapping for option ID, value and name.
+            var mappings = new Dictionary<string, string>();
+            foreach (var detail in questionApi.Details)
+            {
+                if (String.IsNullOrWhiteSpace(detail.GroupName) || !detail.GroupName.Equals("mapping", StringComparison.InvariantCultureIgnoreCase) || String.IsNullOrWhiteSpace(detail.Key))
+                {
+                    continue;
+                }
+
+                mappings.Add(detail.Key, detail.Value.ToString());
+            }
+
+            keyParts = new List<string>(answersKey.Split('.'));
+
+            // Step into the object till the correct object is found or the path leads to an invalid object.
+            while (keyParts.Count > 0)
+            {
+                currentObject = currentObject[keyParts[0]];
+                keyParts.RemoveAt(0);
+                
+                // If the current object is null, the answers are not found.
+                if (currentObject == null)
+                {
+                    stepData.Options = options;
+                    return;
+                }
+            }
+            
+            var stepOptions = new List<VueStepOptionDataModel>();
+
+            // Select the answers from the response.
+            JObject[] answers = null;
+            if (currentObject.Type == JTokenType.Object)
+            {
+                answers = new[] { (JObject)currentObject };
+            }
+            else if (currentObject.Type == JTokenType.Array)
+            {
+                answers = currentObject.Select(x => (JObject)x).ToArray();
+            }
+
+            if (answers == null || !answers.Any())
+            {
+                stepData.Options = options;
+                return;
+            }
+            
+            // Add each answer to the step options.
+            var optionId = 1;
+            foreach (var jObject in answers)
+            {
+                var stepOption = new VueStepOptionDataModel
+                {
+                    Id = optionId.ToString(),
+                    Value = optionId.ToString(),
+                    Name = $"Answer {optionId}",
+                    AdditionalData = new Dictionary<string, object>()
+                };
+                
+                foreach (var property in jObject)
+                {
+                    var propertyIsMapped = false;
+                
+                    foreach (var mapping in mappings)
+                    {
+                        if (!property.Key.Equals(mapping.Value, StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        switch (mapping.Key)
+                        {
+                            case "id":
+                                stepOption.Id = property.Value.Value<string>();
+                                propertyIsMapped = true;
+                                break;
+                            case "value":
+                                stepOption.Value = property.Value.Value<string>();
+                                propertyIsMapped = true;
+                                break;
+                            case "name":
+                                stepOption.Name = property.Value.Value<string>();
+                                propertyIsMapped = true;
+                                break;
+                        }
+                    }
+                
+                    if (propertyIsMapped)
+                    {
+                        continue;
+                    }
+                    
+                    stepOption.AdditionalData.Add(property.Key, property.Value);
+                }
+
+                stepOptions.Add(stepOption);
+                optionId++;
+            }
+
+            stepData.Options = stepOptions;
+        }
+        
         /// <inheritdoc />
         public async Task<string> ReplaceConfiguratorItemsAsync(string templateOrQuery, ConfigurationsModel configuration, bool isQuery)
         {
@@ -844,6 +1278,21 @@ ORDER BY parentStepId, ordering";
             if (configuration == null || !template.Contains('{'))
             {
                 return template;
+            }
+            
+            // Replace external configurator ID if one is provided.
+            if (configuration.ExternalConfiguration != null && !String.IsNullOrWhiteSpace(configuration.ExternalConfiguration.Id))
+            {
+                if (!isDataQuery)
+                {
+                    template = template.Replace("{externalConfiguration.id}", configuration.ExternalConfiguration.Id);
+                }
+                else
+                {
+                    var parameterName = "externalConfigurationId";
+                    databaseConnection.AddParameter(parameterName, configuration.ExternalConfiguration.Id);
+                    template = template.Replace("'{externalConfiguration.id}'", $"?{parameterName}").Replace("{externalConfiguration.id}", $"?{parameterName}");
+                }
             }
 
             foreach (var queryStringItem in configuration.QueryStringItems.Where(queryStringItem => template.Contains($"{{{queryStringItem.Key}}}", StringComparison.OrdinalIgnoreCase)))
@@ -947,6 +1396,196 @@ ORDER BY parentStepId, ordering";
             }
 
             return (deliveryTime, deliveryTimeExtra);
+        }
+
+        /// <inheritdoc />
+        public async Task<ExternalConfigurationModel> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration)
+        {
+            var query = $@"SELECT CAST(externalStartConfiguratorApi.`value` AS UNSIGNED) AS externalStartConfiguratorApi
+FROM {WiserTableNames.WiserItem} AS configurator
+JOIN {WiserTableNames.WiserItemDetail} AS externalStartConfiguratorApi ON externalStartConfiguratorApi.item_id = configurator.id AND externalStartConfiguratorApi.`key` = 'api_start'
+WHERE configurator.entity_type = 'configurator' AND configurator.title = ?configuratorName";
+            
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("configuratorName", vueConfiguration.ConfiguratorName);
+            var dataTable = await databaseConnection.GetAsync(query);
+            
+            if (dataTable.Rows.Count == 0)
+            {
+                return null;
+            }
+
+            var startApi = await wiserItemsService.GetItemDetailsAsync(dataTable.Rows[0].Field<ulong>("externalStartConfiguratorApi"), entityType: "ConfiguratorApi", skipPermissionsCheck: true);
+            
+            var endpoint = startApi.GetDetailValue("endpoint");
+            var requestJson = startApi.GetDetailValue("request_json");
+            var externalConfigurationIdLey = startApi.GetDetailValue("external_configuration_id_key");
+            query = startApi.GetDetailValue("api_query");
+
+            if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(externalConfigurationIdLey))
+            {
+                return null;
+            }
+
+            DataRow extraData = null;
+
+            // If a query is set handle it to add extra information for the replacements in the JSON.
+            if (!String.IsNullOrWhiteSpace(query))
+            {
+                query = await ReplaceConfiguratorItemsAsync(query, vueConfiguration, true);
+                query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                var extraDataTable = await databaseConnection.GetAsync(query);
+
+                if (extraDataTable.Rows.Count > 0)
+                {
+                    extraData = extraDataTable.Rows[0];
+                }
+            }
+
+            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, vueConfiguration, false);
+            endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
+
+            var requestMethod = (Method) startApi.GetDetailValue<int>("request_type");
+
+            var restClient = new RestClient();
+            var restRequest = new RestRequest(endpoint, requestMethod);
+
+            // If a body is provided perform replacements and add it to the request.
+            if (!String.IsNullOrWhiteSpace(requestJson))
+            {
+                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, vueConfiguration, false);
+                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+
+                var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                requestJson = regex.Replace(requestJson, "null");
+
+                restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+            }
+
+            await AddAuthenticationToApiCall(restRequest, startApi);
+            await AddAcceptLanguageToApiCall(restRequest);
+            await AddCustomHeadersAsync(restRequest, startApi, vueConfiguration: vueConfiguration, extraData: extraData);
+
+            var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
+            if (!restResponse.IsSuccessful || restResponse.Content == null)
+            {
+                logger.LogWarning("Error while trying to start the configuration at an API ({startApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}",  startApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
+                return null;
+            }
+            
+            // Get the external configuration ID from the response.
+            var responseData = JObject.Parse(restResponse.Content);
+            var keyParts = new List<string>(externalConfigurationIdLey.Split('.'));
+            var currentObject = responseData;
+
+            // Step into the object till only 1 key part is left.
+            while (keyParts.Count > 1)
+            {
+                currentObject = (JObject) currentObject[keyParts[0]];
+                keyParts.RemoveAt(0);
+                
+                // If the current object is null, the key is not found.
+                if (currentObject == null)
+                {
+                    return null;
+                }
+            }
+
+            return new ExternalConfigurationModel()
+            {
+                Id = currentObject?[keyParts[0]]?.ToString()
+            };
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> SendAnswerToExternalApiAsync(VueConfigurationsModel configuration, int stepId)
+        {
+            var query = $@"SELECT
+	CAST(externalAnswerConfiguratorApi.`value` AS UNSIGNED) AS externalAnswerConfiguratorApi,
+	apiExtraData.`key`,
+	apiExtraData.`value`
+FROM {WiserTableNames.WiserItemDetail} AS externalAnswerConfiguratorApi
+LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiExtraData ON apiExtraData.item_id = externalAnswerConfiguratorApi.item_id AND apiExtraData.groupname = 'api_extra_data'
+WHERE externalAnswerConfiguratorApi.item_id = ?stepId
+AND externalAnswerConfiguratorApi.`key` = 'api_answer'";
+            
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("stepId", stepId);
+            var dataTable = await databaseConnection.GetAsync(query);
+            
+            if (dataTable.Rows.Count == 0)
+            {
+                return false;
+            }
+
+            var answerApi = await wiserItemsService.GetItemDetailsAsync(dataTable.Rows[0].Field<UInt64>("externalAnswerConfiguratorApi"), entityType: "ConfiguratorApi", skipPermissionsCheck: true);
+            
+            var endpoint = answerApi.GetDetailValue("endpoint");
+            var requestJson = answerApi.GetDetailValue("request_json");
+            query = answerApi.GetDetailValue("api_query");
+
+            if (String.IsNullOrWhiteSpace(endpoint))
+            {
+                return false;
+            }
+            
+            // Get the the extra data for the API based on the group name of the details that are set in Wiser.
+            var apiExtraData = new Dictionary<string, string>();
+            foreach (DataRow row in dataTable.Rows)
+            {
+                apiExtraData.Add(row.Field<string>("key"), row.Field<string>("value"));
+            }
+
+            DataRow extraData = null;
+
+            // If a query is set handle it to add extra information for the replacements in the JSON.
+            if (!String.IsNullOrWhiteSpace(query))
+            {
+                query = stringReplacementsService.DoReplacements(query, apiExtraData, forQuery: true);
+                query = await ReplaceConfiguratorItemsAsync(query, configuration, true);
+                query = await stringReplacementsService.DoAllReplacementsAsync(query, removeUnknownVariables: false, forQuery: true);
+                var extraDataTable = await databaseConnection.GetAsync(query);
+
+                if (extraDataTable.Rows.Count > 0)
+                {
+                    extraData = extraDataTable.Rows[0];
+                }
+            }
+            
+            endpoint = stringReplacementsService.DoReplacements(endpoint, apiExtraData);
+            endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+            endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
+
+            var requestMethod = (Method) answerApi.GetDetailValue<int>("request_type");
+
+            var restClient = new RestClient();
+            var restRequest = new RestRequest(endpoint, requestMethod);
+
+            // If a body is provided perform replacements and add it to the request.
+            if (!String.IsNullOrWhiteSpace(requestJson))
+            {
+                requestJson = stringReplacementsService.DoReplacements(requestJson, apiExtraData);
+                requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+                requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+
+                var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                requestJson = regex.Replace(requestJson, "null");
+
+                restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+            }
+
+            await AddAuthenticationToApiCall(restRequest, answerApi);
+            await AddAcceptLanguageToApiCall(restRequest);
+            await AddCustomHeadersAsync(restRequest, answerApi, vueConfiguration: configuration, extraData: extraData);
+
+            var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
+            if (!restResponse.IsSuccessful || restResponse.Content == null)
+            {
+                logger.LogWarning("Error while trying to send the answer to an API ({answerApi}). The API response HTTP code was '{restResponseStatusCode}' and the result was: {restResponseContent}.\n\n{requestJson}",  answerApi.Title, restResponse.StatusCode, restResponse.Content, requestJson);
+                return false;
+            }
+
+            return true;
         }
 
         /// <inheritdoc />
@@ -1151,6 +1790,7 @@ ORDER BY parentStepId, ordering";
 
                     await AddAuthenticationToApiCall(restRequest, priceApi);
                     await AddAcceptLanguageToApiCall(restRequest);
+                    await AddCustomHeadersAsync(restRequest, priceApi, configuration, extraData: extraData);
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
@@ -1357,6 +1997,7 @@ ORDER BY parentStepId, ordering";
 
                     await AddAuthenticationToApiCall(restRequest, saveApi);
                     await AddAcceptLanguageToApiCall(restRequest);
+                    await AddCustomHeadersAsync(restRequest, saveApi, input, extraData: extraData);
 
                     restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
@@ -1395,7 +2036,7 @@ ORDER BY parentStepId, ordering";
                         continue;
                     }
 
-                    // Get the three different prices from the response.
+                    // Get the supplier ID from the response.
                     var responseData = JObject.Parse(restResponse.Content);
                     var keyParts = new List<string>(supplierIdKey.Split('.'));
                     var currentObject = responseData;
@@ -1493,6 +2134,8 @@ ORDER BY parentStepId, ordering";
 
             switch (authenticationType)
             {
+                case 0: // When not set skip authentication. Either no authentication is needed or done by custom header.
+                    return;
                 case 1: // OAuth 2.0
                     // TODO handle OAuth 2
                     request.AddHeader("Authorization", $"Bearer {await objectsService.GetSystemObjectValueAsync("configurator_api_token")}");
@@ -1517,6 +2160,42 @@ ORDER BY parentStepId, ordering";
             if (!String.IsNullOrWhiteSpace(languageCode))
             {
                 request.AddHeader("Accept-Language", languageCode);
+            }
+        }
+        
+        /// <summary>
+        /// Add the custom headers to the request that are set in the <see cref="configuratorApi"/>.
+        /// </summary>
+        /// <param name="request">The request to add the headers to.</param>
+        /// <param name="configuratorApi">The configurator API settings to set the headers from.</param>
+        /// <param name="configuration">The configuration to use for configuration replacements in the header's value.</param>
+        /// <param name="vueConfiguration">The Vue configuration to use for configuration replacements in the header's value.</param>
+        /// <param name="extraData">Extra data to use for replacements in the header's value.</param>
+        private async Task AddCustomHeadersAsync(RestRequest request, WiserItemModel configuratorApi, ConfigurationsModel configuration = null, VueConfigurationsModel vueConfiguration = null, DataRow extraData = null)
+        {
+            foreach (var detail in configuratorApi.Details)
+            {
+                if (!String.Equals(detail.GroupName, "headers", StringComparison.CurrentCultureIgnoreCase) || String.IsNullOrWhiteSpace(detail.Key)) continue;
+
+                var value = detail.Value.ToString();
+                if (String.IsNullOrWhiteSpace(value)) continue;
+
+                if (configuration != null)
+                {
+                    value = await ReplaceConfiguratorItemsAsync(value, configuration, false);
+                }
+
+                if (vueConfiguration != null)
+                {
+                    value = await ReplaceConfiguratorItemsAsync(value, vueConfiguration, false);
+                }
+
+                value = await stringReplacementsService.DoAllReplacementsAsync(value, extraData, removeUnknownVariables: false);
+                
+                // Check if there is still a value after replacements.
+                if (String.IsNullOrWhiteSpace(value)) continue;
+
+                request.AddHeader(detail.Key, value);
             }
         }
 

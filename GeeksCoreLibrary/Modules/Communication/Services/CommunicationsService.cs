@@ -479,7 +479,12 @@ WHERE id = ?id";
 
             using var client = new SmtpClient();
             await client.ConnectAsync(smtpSettings.Host, smtpSettings.Port, secureSocketOptions);
-            await client.AuthenticateAsync(smtpSettings.Username, smtpSettings.Password);
+            
+            // If both username and password are not set the mail will be sent anonymously to the SMTP server.
+            if (!String.IsNullOrWhiteSpace(smtpSettings.Username) || !String.IsNullOrWhiteSpace(smtpSettings.Password))
+            {
+                await client.AuthenticateAsync(smtpSettings.Username, smtpSettings.Password);
+            }
 
             client.Timeout = timeout;
             var result = await client.SendAsync(message);

@@ -142,6 +142,18 @@ public class VueStepDataModel
     public string ModalContainerSelector { get; set; }
 
     /// <summary>
+    /// Gets or sets the datasource type being used for the step.
+    /// </summary>
+    [JsonProperty("datasource")]
+    public string Datasource { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether the step needs to send its answer to an API.
+    /// </summary>
+    [JsonProperty("isApiAnswer")]
+    public bool IsApiAnswer { get; set; }
+
+    /// <summary>
     /// Gets or sets extra data which are retrieved from the database.
     /// </summary>
     [JsonProperty("extraData")]
@@ -175,15 +187,6 @@ public class VueStepDataModel
     /// </remarks>
     [JsonIgnore]
     public string StepOptionTemplate { get; set; }
-
-    /// <summary>
-    /// Gets or sets the query that retrieves the step data and step options data.
-    /// </summary>
-    /// <remarks>
-    /// This property is not serialized to JSON because it is not needed in the client-side and because it would be a security risk.
-    /// </remarks>
-    [JsonIgnore]
-    public string StepOptionsQuery { get; set; }
 
     /// <summary>
     /// Gets or sets the query that retrieves the step's extension data.

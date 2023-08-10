@@ -34,4 +34,10 @@ public class VueConfigurationsModel
     /// </summary>
     [JsonProperty("qsItems")]
     public Dictionary<string, string> QueryStringItems { get; set; } = new();
+    
+    /// <summary>
+    /// Gets or sets the external configuration information if the configurator is connected to an external API.
+    /// </summary>
+    [JsonProperty("externalConfiguration")]
+    public ExternalConfigurationModel ExternalConfiguration { get; set; }
 }

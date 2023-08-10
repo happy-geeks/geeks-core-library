@@ -107,15 +107,17 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 return (await documentStorageService.StoreItemAsync(wiserItem, entitySettings)).model;
             }
-            
-            var isNewlycreated = wiserItem.Id == 0;
-            
+
+            var isNewlyCreated = wiserItem.Id == 0;
+
             while (!transactionCompleted)
             {
+                var alreadyHadTransaction = databaseConnection.HasActiveTransaction();
+                
                 try
                 {
-                    if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
-                    if (isNewlycreated)
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
+                    if (isNewlyCreated)
                     {
                         wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck, storeTypeOverride);
 
@@ -123,9 +125,9 @@ namespace GeeksCoreLibrary.Core.Services
                         alwaysSaveValues = true;
                     }
 
-                    var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlycreated);
+                    var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated);
 
-                    if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
 
                     return result;
@@ -153,7 +155,7 @@ namespace GeeksCoreLibrary.Core.Services
                 }
                 catch
                 {
-                    if (createNewTransaction) await databaseConnection.RollbackTransactionAsync(false);
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.RollbackTransactionAsync(false);
                     throw;
                 }
             }
@@ -196,7 +198,7 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 return (await documentStorageService.StoreItemAsync(wiserItem, entityTypeSettings)).model;
             }
-            
+
             var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
             if (wiserItem.ModuleId <= 0 && entityTypeSettings != null)
             {
@@ -208,9 +210,11 @@ namespace GeeksCoreLibrary.Core.Services
 
             while (!transactionCompleted)
             {
+                var alreadyHadTransaction = databaseConnection.HasActiveTransaction();
+                
                 try
                 {
-                    if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
                     databaseConnection.AddParameter("moduleId", wiserItem.ModuleId);
                     databaseConnection.AddParameter("title", wiserItem.Title ?? "");
                     databaseConnection.AddParameter("entityType", wiserItem.EntityType);
@@ -278,7 +282,7 @@ UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET parent_item_id = ?parentId, 
 VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                     }
 
-                    if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
 
                     return wiserItem;
@@ -301,7 +305,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                 }
                 catch
                 {
-                    if (createNewTransaction) await databaseConnection.RollbackTransactionAsync(false);
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.RollbackTransactionAsync(false);
 
                     throw;
                 }
@@ -518,12 +522,14 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
 
             while (!transactionCompleted)
             {
+                var alreadyHadTransaction = databaseConnection.HasActiveTransaction();
+                
                 try
                 {
-                    if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
                     var result = await DuplicateItemLocalAsync(itemId, parentId, 1, entityType, parentEntityType);
 
-                    if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
 
                     return result;
@@ -551,7 +557,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                 }
                 catch
                 {
-                    if (createNewTransaction) await databaseConnection.RollbackTransactionAsync(false);
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.RollbackTransactionAsync(false);
                     throw;
                 }
             }
@@ -608,9 +614,11 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
 
             while (!transactionCompleted)
             {
+                var alreadyHadTransaction = databaseConnection.HasActiveTransaction();
+                
                 try
                 {
-                    if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
                     // Set session variables with username and user id. These will be used in triggers for keeping track of the change history.
                     databaseConnection.AddParameter("username", username);
                     databaseConnection.AddParameter("userId", userId);
@@ -813,7 +821,7 @@ UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET {String.Join(",", updateQuer
 
                     if ((wiserItem.Details == null || !wiserItem.Details.Any()) && !insertQueryBuilder.Any() && !updateQueryBuilder.Any())
                     {
-                        if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
+                        if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                         return wiserItem;
                     }
 
@@ -1160,7 +1168,7 @@ SET @saveHistory = ?saveHistoryGcl;
                             databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
                             databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
 
-                            var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
+                            var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
                             databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
                             databaseConnection.AddParameter($"itemDetailId{SeoPropertySuffix}{counter}", seoValueItemDetailId);
 
@@ -1237,7 +1245,7 @@ SET @saveHistory = ?saveHistoryGcl;
                     // Execute the after update query, if one is entered.
                     await ExecuteWorkflowAsync(itemId, false, entityTypeSettings, wiserItem, userId, username);
 
-                    if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
 
                     return wiserItem;
@@ -1265,7 +1273,7 @@ SET @saveHistory = ?saveHistoryGcl;
                 }
                 catch(Exception exp)
                 {
-                    if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.RollbackTransactionAsync();
                     throw;
                 }
             }
@@ -1395,9 +1403,11 @@ SET @saveHistory = ?saveHistoryGcl;
 
             while (!transactionCompleted)
             {
+                var alreadyHadTransaction = databaseConnection.HasActiveTransaction();
+                
                 try
                 {
-                    if (createNewTransaction) await databaseConnection.BeginTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
                     var allLinkTypeSettings = await GetAllLinkTypeSettingsAsync();
 
                     var formattedItemIds = String.Join(",", filteredItemIds);
@@ -1787,7 +1797,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                         }
                     }
 
-                    if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
 
                     return result;
@@ -1815,7 +1825,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
                 catch
                 {
-                    if (createNewTransaction) await databaseConnection.RollbackTransactionAsync();
+                    if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.RollbackTransactionAsync();
                     throw;
                 }
             }
@@ -2439,6 +2449,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             databaseConnection.AddParameter("languageCode", languageCode);
             var query = $@"SELECT 
 	item.*,
+	details.groupname,
 	details.`key`,	
 	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
     details.language_code
@@ -2453,6 +2464,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.i
 UNION
 SELECT 
 	item.*,
+    details.groupname,
 	details.`key`,	
 	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
     details.language_code
@@ -2607,7 +2619,8 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                         # Item link details.
                         SELECT 
 	                        item.*,
-	                        details.`key`,	
+                            details.groupname,
+	                        details.`key`,
 	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
                             details.language_code,
                             link.id AS itemLinkId
@@ -2622,6 +2635,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                             UNION
                             SELECT 
 	                            item.*,
+                                details.groupname,
 	                            details.`key`,	
 	                            CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
                                 details.language_code,
@@ -2822,13 +2836,14 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                         StoreType = dataRow.Field<string>("store_type")?.ToLowerInvariant() switch
                         {
                             null => StoreType.Table,
-                            "normal" => StoreType.Table,
+                            "" => StoreType.Table,
+                            "table" => StoreType.Table,
                             "document_store" => StoreType.DocumentStore,
                             "hybrid" => StoreType.Hybrid,
                             _ => throw new ArgumentOutOfRangeException("store_type", dataRow.Field<string>("store_type"))
                         }
                     };
-                    
+
                     allEntityTypeSettings.Add(settings);
                 }
 
@@ -4606,6 +4621,7 @@ WHERE id = ?saveDetailId";
                 Key = key,
                 Value = dataRow["value"],
                 LanguageCode = dataRow.Field<string>("language_code"),
+                GroupName = dataRow.Table.Columns.Contains("groupname") ? dataRow.Field<string>("groupname") : null,
                 Changed = false
             });
         }

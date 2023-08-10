@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using LazyCache;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Components.Configurator.Services
 {
@@ -95,6 +97,18 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         }
 
         /// <inheritdoc />
+        public async Task SetVueStepOptionsWithQueryAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration)
+        {
+            await configuratorsService.SetVueStepOptionsWithQueryAsync(stepData, options, configuration);
+        }
+
+        /// <inheritdoc />
+        public async Task SetVueStepOptionsWithApiAsync(VueStepDataModel stepData, List<VueStepOptionDataModel> options, VueConfigurationsModel configuration, Dictionary<string, JToken> apiData)
+        {
+            await configuratorsService.SetVueStepOptionsWithApiAsync(stepData, options, configuration, apiData);
+        }
+
+        /// <inheritdoc />
         public async Task<ulong> SaveConfigurationAsync(ConfigurationsModel input, ulong? parentId = null)
         {
             return await configuratorsService.SaveConfigurationAsync(input, parentId);
@@ -116,6 +130,18 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
         public Task<string> ReplaceConfiguratorItemsAsync(string template, VueConfigurationsModel configuration, bool isDataQuery)
         {
             return configuratorsService.ReplaceConfiguratorItemsAsync(template, configuration, isDataQuery);
+        }
+
+        /// <inheritdoc />
+        public async Task<ExternalConfigurationModel> StartConfigurationExternallyAsync(VueConfigurationsModel vueConfiguration)
+        {
+            return await configuratorsService.StartConfigurationExternallyAsync(vueConfiguration);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> SendAnswerToExternalApiAsync(VueConfigurationsModel configuration, int stepId)
+        {
+            return await configuratorsService.SendAnswerToExternalApiAsync(configuration, stepId);
         }
 
         /// <inheritdoc />
