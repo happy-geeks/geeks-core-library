@@ -217,9 +217,10 @@ namespace GeeksCoreLibrary.Components.Configurator
                 .Replace("{substeps}", stepsHtml, StringComparison.OrdinalIgnoreCase);
 
             // Replace the progress bar, progress and summary HTML variables.
-            mainHtml = mainHtml.Replace("{progressbar}", progressBarHtml, StringComparison.OrdinalIgnoreCase);
-            mainHtml = mainHtml.Replace("{progress}", progressHtml, StringComparison.OrdinalIgnoreCase);
-            mainHtml = mainHtml.Replace("{summary}", summaryHtml, StringComparison.OrdinalIgnoreCase);
+            mainHtml = mainHtml
+                .Replace("{summary}", summaryHtml, StringComparison.OrdinalIgnoreCase)
+                .Replace("{progressbar}", progressBarHtml, StringComparison.OrdinalIgnoreCase)
+                .Replace("{progress}", progressHtml, StringComparison.OrdinalIgnoreCase);
 
             var resultHtml = new StringBuilder();
             resultHtml.Append("<div id=\"configurator\" v-cloak>");

@@ -121,7 +121,7 @@ added_by,
 added_on,
 changed_by,
 changed_on";
-            
+
             var query = $@"SELECT
     id,
     name
@@ -144,7 +144,7 @@ ORDER BY name ASC";
             {
                 settings.TriggerStart = DateTime.Now;
             }
-            
+
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("id", settings.Id);
             databaseConnection.AddParameter("name", settings.Name);
@@ -173,7 +173,7 @@ ORDER BY name ASC";
                 {
                     settings.LastProcessed.Add(new LastProcessedModel { Type = setting.Type });
                 }
-                
+
                 databaseConnection.AddParameter("last_processed", JsonConvert.SerializeObject(settings.LastProcessed));
 
                 var query = $@"{queryPrefix}
@@ -252,7 +252,7 @@ WHERE id = ?id";
         public async Task DeleteSettingsAsync(int id, string username = "GCL")
         {
             await UpdateCommunicationTableAsync();
-            
+
             databaseConnection.AddParameter("id", id);
             databaseConnection.AddParameter("username", username);
             var query = $"SET @_username = ?username; DELETE FROM {WiserTableNames.WiserCommunication} WHERE id = ?id";
@@ -263,7 +263,7 @@ WHERE id = ?id";
         public async Task<bool> CommunicationExistsAsync(int id)
         {
             await UpdateCommunicationTableAsync();
-            
+
             databaseConnection.AddParameter("id", id);
             var query = $"SELECT NULL FROM {WiserTableNames.WiserCommunication} WHERE id = ?id";
             var dataTable = await databaseConnection.GetAsync(query);
@@ -403,7 +403,7 @@ WHERE id = ?id";
         {
             await SendEmailDirectlyAsync(communication, gclSettings.SmtpSettings, timeout);
         }
-        
+
         /// <inheritdoc />
         public async Task SendEmailDirectlyAsync(SingleCommunicationModel communication, SmtpSettings smtpSettings, int timeout = 120_000)
         {
@@ -435,7 +435,7 @@ WHERE id = ?id";
             var sender = new MailboxAddress(communication.SenderName ?? smtpSettings.SenderName, communication.Sender ?? smtpSettings.SenderEmailAddress);
             var receivers = new List<MailboxAddress>(communication.Receivers.Count());
             receivers.AddRange(communication.Receivers.Select(receiver => new MailboxAddress(receiver.DisplayName, receiver.Address)));
-            
+
             var message = new MimeMessage();
 
             message.From.Add(sender);
@@ -479,7 +479,7 @@ WHERE id = ?id";
 
             using var client = new SmtpClient();
             await client.ConnectAsync(smtpSettings.Host, smtpSettings.Port, secureSocketOptions);
-            
+
             // If both username and password are not set the mail will be sent anonymously to the SMTP server.
             if (!String.IsNullOrWhiteSpace(smtpSettings.Username) || !String.IsNullOrWhiteSpace(smtpSettings.Password))
             {
@@ -487,7 +487,7 @@ WHERE id = ?id";
             }
 
             client.Timeout = timeout;
-            var result = await client.SendAsync(message);
+            await client.SendAsync(message);
             await client.DisconnectAsync(true);
         }
 
@@ -522,7 +522,7 @@ WHERE id = ?id";
                 To = new List<string>(communication.Receivers.Select(x => String.IsNullOrWhiteSpace(x.DisplayName) ? x.Address : $"{x.DisplayName} <{x.Address}>")),
                 Cc = communication.Cc.ToList(),
                 Recipients = recipients,
-                ReplyTo = String.IsNullOrWhiteSpace(communication.ReplyToName) ? communication.ReplyTo : $"{communication.ReplyToName} <{communication.ReplyTo}>", 
+                ReplyTo = String.IsNullOrWhiteSpace(communication.ReplyToName) ? communication.ReplyTo : $"{communication.ReplyToName} <{communication.ReplyTo}>",
                 Subject = communication.Subject,
                 Html = communication.Content
             };
@@ -530,7 +530,7 @@ WHERE id = ?id";
             if (attachments != null && attachments.Any())
             {
                 requestBody.Attachments = new List<SmtPeterRquestAttachmentModel>();
-                
+
                 foreach (var attachment in attachments)
                 {
                     requestBody.Attachments.Add(new SmtPeterRquestAttachmentModel()
@@ -540,7 +540,7 @@ WHERE id = ?id";
                     });
                 }
             }
-            
+
             using var client = new HttpClient();
             client.Timeout = TimeSpan.FromMilliseconds(timeout);
             using var response = await client.PostAsJsonAsync($"https://www.smtpeter.com/v1/send?access_token={smtpSettings.SmtPeterSettings.ApiAccessToken}", requestBody, new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -549,11 +549,11 @@ WHERE id = ?id";
             {
                 return;
             }
-            
+
             // If request was not success throw the body as an exception.
             throw new Exception(await response.Content.ReadAsStringAsync());
         }
-        
+
         private async Task<List<(string FileName, byte[] FileBytes)>> GetAttachmentsAsync(SingleCommunicationModel communication)
         {
             var totalAttachments = (communication.AttachmentUrls?.Count ?? 0) + (communication.WiserItemFiles?.Count ?? 0 + (!String.IsNullOrWhiteSpace(communication.UploadedFileName) && communication.UploadedFile != null ? 1 : 0));
@@ -564,7 +564,7 @@ WHERE id = ?id";
             }
 
             var attachments = new List<(string FileName, byte[] FileBytes)>(totalAttachments);
-            
+
             if (!String.IsNullOrWhiteSpace(communication.UploadedFileName) && communication.UploadedFile != null)
             {
                 attachments.Add((communication.UploadedFileName, communication.UploadedFile));
@@ -676,17 +676,17 @@ WHERE id = ?id";
             {
                 throw new ArgumentException("Phone number is missing the country code.");
             }
-            
+
             // Now "sanitize" the phone number by removing all whitespace characters and hyphens.
             receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
             // The regex will remove the + symbol as well, so it needs to be put back.
             receiverPhoneNumber = receiverPhoneNumber.Insert(0, "+");
-            
+
             var response = await MessageResource.CreateAsync(
                 body: communication.Content,
                 from: communication.Sender ?? smsSettings.SenderPhoneNumber,
                 to: receiverPhoneNumber);
-            
+
             var successfulStatuses = new[]
             {
                 MessageResource.StatusEnum.Accepted,
@@ -843,9 +843,9 @@ WHERE id = ?id";
             // If request was not success throw the status message as an exception.
             throw new Exception(response.statusMessage);
         }
-    
+
         private async Task SendMetaWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings, string receiverPhoneNumber)
-        {    
+        {
             var apiToken = smsSettings.ProviderId;
             var phoneNumberId = smsSettings.PhoneNumberId;
             var resource = $"https://graph.facebook.com/v14.0/{phoneNumberId}/messages";
@@ -889,7 +889,7 @@ WHERE id = ?id";
                 var metaConnection = new RestClient();
                 var request = new RestRequest(resource, Method.Post);
                 request.AddHeader("Authorization", $"Bearer {apiToken}");
-               
+
                 request.AddJsonBody(new WhatsAppSendMessageRequestModel
                 {
                     MessagingProduct = "whatsapp",
@@ -954,7 +954,7 @@ WHERE id = ?id";
                             TypeUrlVideo = typeUrl != "video" ? null : new AttachmentUrlsModel
                             { Url = url }
                         });
-                        
+
                         response = await metaConnection.ExecuteAsync(request);
                     }
 
@@ -1077,4 +1077,3 @@ WHERE id = ?id";
         }
     }
 }
-
