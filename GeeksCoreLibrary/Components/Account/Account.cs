@@ -444,12 +444,7 @@ namespace GeeksCoreLibrary.Components.Account
                         case LoginResults.Success:
                         {
                             stepNumber += 1;
-
-                            if (!String.IsNullOrWhiteSpace(Settings.RedirectAfterAction))
-                            {
-                                response?.Redirect(await StringReplacementsService.DoAllReplacementsAsync(Settings.RedirectAfterAction, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables), true);
-                            }
-
+                            await DoRedirect(response);
                             break;
                         }
 
@@ -487,11 +482,7 @@ namespace GeeksCoreLibrary.Components.Account
                                 HttpContext.Session.SetString($"WiserLogin_{queryStringKey}", Request.Query[queryStringKey]);
                             }
 
-                            if (!String.IsNullOrWhiteSpace(Settings.RedirectAfterAction))
-                            {
-                                response?.Redirect(await StringReplacementsService.DoAllReplacementsAsync(Settings.RedirectAfterAction, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables), true);
-                            }
-
+                            await DoRedirect(response);
                             break;
                         }
 
@@ -581,9 +572,9 @@ namespace GeeksCoreLibrary.Components.Account
                                 }
                             }
 
-                            if (done && !String.IsNullOrWhiteSpace(Settings.RedirectAfterAction))
+                            if (done)
                             {
-                                response.Redirect(await StringReplacementsService.DoAllReplacementsAsync(Settings.RedirectAfterAction, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables), true);
+                                await DoRedirect(response);
                             }
 
                             break;
@@ -738,10 +729,7 @@ namespace GeeksCoreLibrary.Components.Account
                                 }
                             }
 
-                            if (!String.IsNullOrWhiteSpace(Settings.RedirectAfterAction))
-                            {
-                                response.Redirect(Settings.RedirectAfterAction);
-                            }
+                            await DoRedirect(response);
                         }
                     }
 
@@ -932,9 +920,9 @@ namespace GeeksCoreLibrary.Components.Account
                         isLoggedIn = true;
                     }
 
-                    if (createOrUpdateAccountResult.Result == CreateOrUpdateAccountResults.Success && changePasswordResult == ResetOrChangePasswordResults.Success && !String.IsNullOrWhiteSpace(Settings.RedirectAfterAction))
+                    if (createOrUpdateAccountResult.Result == CreateOrUpdateAccountResults.Success && changePasswordResult == ResetOrChangePasswordResults.Success)
                     {
-                        response.Redirect(await StringReplacementsService.DoAllReplacementsAsync(Settings.RedirectAfterAction, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables), true);
+                        await DoRedirect(response);
                     }
 
                     resultHtml = resultHtml.ReplaceCaseInsensitive("{isLoggedIn}", isLoggedIn.ToString().ToLowerInvariant());
@@ -1672,6 +1660,24 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Handle the redirection if one has been provided.
+        /// </summary>
+        /// <param name="response">The response to use for the redirect.</param>
+        private async Task DoRedirect(HttpResponse response)
+        {
+            //If a redirect after action URL is provided, redirect to that URL instead of the default. Only redirect to an URL that is on the same domain as the current URL to prevent cross-site request forgery.
+            if (Request.Query.TryGetValue("redirectAfterAction", out var redirectAfterActionFromQueryString) && !String.IsNullOrWhiteSpace(redirectAfterActionFromQueryString) && redirectAfterActionFromQueryString.ToString().StartsWith(Request.GetDisplayUrl().Replace($"{Request.Path}{Request.QueryString}", "")))
+            {
+                response?.Redirect(redirectAfterActionFromQueryString, false);
+            }
+            // Only redirect if a redirect url has been specified
+            else if (!String.IsNullOrWhiteSpace(Settings.RedirectAfterAction))
+            {
+                response?.Redirect(await StringReplacementsService.DoAllReplacementsAsync(Settings.RedirectAfterAction, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables), true);
+            }
         }
 
         /// <summary>
