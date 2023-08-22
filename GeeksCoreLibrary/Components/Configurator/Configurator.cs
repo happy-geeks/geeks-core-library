@@ -1764,6 +1764,22 @@ namespace GeeksCoreLibrary.Components.Configurator
         }
 
         /// <summary>
+        /// Retrieve price data for the configuration.
+        /// </summary>
+        /// <param name="configuration">The current configuration from the client-side.</param>
+        /// <returns>A <see cref="VueConfigurationPriceModel"/> object containing data about the price for the configuration.</returns>
+        public async Task<VueConfigurationPriceModel> CalculatePriceAsync(VueConfigurationsModel configuration)
+        {
+            var prices = await configuratorsService.CalculatePriceAsync(configuration);
+            return new VueConfigurationPriceModel
+            {
+                CustomerPrice = prices.customerPrice,
+                FromPrice = prices.fromPrice,
+                PurchasePrice = prices.purchasePrice
+            };
+        }
+
+        /// <summary>
         /// Start the configuration at an external API.
         /// </summary>
         /// <param name="steps">A list of steps that are dependant on an API.</param>
