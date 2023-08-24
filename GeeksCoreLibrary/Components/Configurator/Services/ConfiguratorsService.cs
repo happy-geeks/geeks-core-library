@@ -1744,8 +1744,9 @@ AND externalAnswerConfiguratorApi.`key` = 'api_answer'";
                     var customerPriceKey = priceApi.GetDetailValue("price_calculation_customer_price_key");
                     var fromPriceKey = priceApi.GetDetailValue("price_calculation_from_price_key");
                     var query = priceApi.GetDetailValue("api_query");
+                    var requestMethod = (Method) priceApi.GetDetailValue<int>("request_type");
 
-                    if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
+                    if (String.IsNullOrWhiteSpace(endpoint) || (requestMethod != Method.Get && String.IsNullOrWhiteSpace(requestJson)) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
                     {
                         continue;
                     }
@@ -1766,33 +1767,35 @@ AND externalAnswerConfiguratorApi.`key` = 'api_answer'";
                         }
                     }
 
-                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, true);
-                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, vueConfiguration, true);
+                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, vueConfiguration, false);
                     endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
-
-                    requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
-                    requestJson = await ReplaceConfiguratorItemsAsync(requestJson, vueConfiguration, false);
-                    requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
-
-                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                    requestJson = regex.Replace(requestJson, "null");
-
-                    // If there is no request JSON it is useless to do an API call.
-                    if (String.IsNullOrWhiteSpace(requestJson))
-                    {
-                        continue;
-                    }
-
-                    var requestMethod = (Method) priceApi.GetDetailValue<int>("request_type");
-
+                    
                     var restClient = new RestClient();
                     var restRequest = new RestRequest(endpoint, requestMethod);
+                    
+                    // If a body is provided perform replacements and add it to the request.
+                    if (!String.IsNullOrWhiteSpace(requestJson))
+                    {
+                        requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+                        requestJson = await ReplaceConfiguratorItemsAsync(requestJson, vueConfiguration, false);
+                        requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+
+                        var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                        requestJson = regex.Replace(requestJson, "null");
+
+                        // If there is no request JSON if a body is expected it is useless to do an API call.
+                        if (requestMethod != Method.Get && String.IsNullOrWhiteSpace(requestJson))
+                        {
+                            continue;
+                        }
+
+                        restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+                    }
 
                     await AddAuthenticationToApiCall(restRequest, priceApi);
                     await AddAcceptLanguageToApiCall(restRequest);
                     await AddCustomHeadersAsync(restRequest, priceApi, configuration, extraData: extraData);
-
-                    restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
                     var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
                     if (!restResponse.IsSuccessful || restResponse.Content == null)
