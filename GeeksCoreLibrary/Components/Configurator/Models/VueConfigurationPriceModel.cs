@@ -15,10 +15,4 @@ public class VueConfigurationPriceModel
     /// </summary>
     [JsonProperty("fromPrice")]
     public decimal FromPrice { get; set; }
-
-    /// <summary>
-    /// Gets or sets the calculated purchase price of the configuration.
-    /// </summary>
-    [JsonProperty("purchasePrice")]
-    public decimal PurchasePrice { get; set; }
 }

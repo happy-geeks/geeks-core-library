@@ -1774,8 +1774,7 @@ namespace GeeksCoreLibrary.Components.Configurator
             return new VueConfigurationPriceModel
             {
                 CustomerPrice = prices.customerPrice,
-                FromPrice = prices.fromPrice,
-                PurchasePrice = prices.purchasePrice
+                FromPrice = prices.fromPrice
             };
         }
 
