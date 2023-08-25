@@ -471,6 +471,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         datasource.`value` AS datasource,
         IF(apiAnswer.id IS NULL OR apiAnswer.`value` = '', FALSE, TRUE) AS isApiAnswer,
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
+        IFNULL(isRequiredOnlyWithOptions.`value`, '0') = '1' AS isRequiredOnlyWithOptions,
         requiredConditions.`value` AS requiredConditions,
         minimumValue.`value` AS minimumValue,
         maximumValue.`value` AS maximumValue,
@@ -509,6 +510,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiAnswer ON apiAnswer.item_id = step.id AND apiAnswer.`key` = 'api_answer'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequiredOnlyWithOptions ON isRequiredOnlyWithOptions.item_id = step.id AND isRequiredOnlyWithOptions.`key` = 'is_required_only_with_options'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = step.id AND minimumValue.`key` = 'min_value'
@@ -545,6 +547,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
 
         # Validation properties.
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
+        IFNULL(isRequiredOnlyWithOptions.`value`, '0') = '1' AS isRequiredOnlyWithOptions,
         requiredConditions.`value` AS requiredConditions,
         minimumValue.`value` AS minimumValue,
         maximumValue.`value` AS maximumValue,
@@ -586,6 +589,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiAnswer ON apiAnswer.item_id = step.id AND apiAnswer.`key` = 'api_answer'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequiredOnlyWithOptions ON isRequiredOnlyWithOptions.item_id = step.id AND isRequiredOnlyWithOptions.`key` = 'is_required_only_with_options'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = step.id AND minimumValue.`key` = 'min_value'
@@ -618,6 +622,7 @@ SELECT
     datasource,
     isApiAnswer,
     isRequired,
+    isRequiredOnlyWithOptions,
     requiredConditions,
     minimumValue,
     maximumValue,
@@ -733,6 +738,7 @@ ORDER BY parentStepId, ordering";
                     MaximumValueErrorMessage = maximumValueErrorMessage,
                     ValidationRegexErrorMessage = validationRegexErrorMessage,
                     IsRequired = Convert.ToBoolean(dataRow["isRequired"]),
+                    IsRequiredOnlyWithOptions = Convert.ToBoolean(dataRow["isRequiredOnlyWithOptions"]),
                     RequiredConditions = requiredConditions,
                     StepTemplate = dataRow.Field<string>("stepTemplate"),
                     StepOptionTemplate = dataRow.Field<string>("stepOptionTemplate"),
