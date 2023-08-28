@@ -52,7 +52,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
-    <PackageReference Include="Mollie.Api" Version="2.3.0.2" />
+    <PackageReference Include="Mollie.Api" Version="3.0.0" />
     <PackageReference Include="MultiSafepay" Version="0.8.7" />
     <PackageReference Include="MySql.Data" Version="8.1.0" />
     <PackageReference Include="ObjectCloner" Version="2.2.2" />
