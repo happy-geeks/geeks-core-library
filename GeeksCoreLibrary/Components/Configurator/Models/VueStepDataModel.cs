@@ -55,6 +55,12 @@ public class VueStepDataModel
     public bool IsRequired { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the step is required only when there are options available.
+    /// </summary>
+    [JsonProperty("isRequiredOnlyWithOptions")]
+    public bool IsRequiredOnlyWithOptions { get; set; }
+
+    /// <summary>
     /// Gets or sets the minimum value for the step. This is used for validation.
     /// </summary>
     /// <remarks>
