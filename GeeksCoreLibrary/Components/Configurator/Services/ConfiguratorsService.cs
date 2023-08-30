@@ -471,6 +471,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
         datasource.`value` AS datasource,
         IF(apiAnswer.id IS NULL OR apiAnswer.`value` = '', FALSE, TRUE) AS isApiAnswer,
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
+        IFNULL(isRequiredOnlyWithOptions.`value`, '0') = '1' AS isRequiredOnlyWithOptions,
         requiredConditions.`value` AS requiredConditions,
         minimumValue.`value` AS minimumValue,
         maximumValue.`value` AS maximumValue,
@@ -509,6 +510,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiAnswer ON apiAnswer.item_id = step.id AND apiAnswer.`key` = 'api_answer'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequiredOnlyWithOptions ON isRequiredOnlyWithOptions.item_id = step.id AND isRequiredOnlyWithOptions.`key` = 'is_required_only_with_options'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = step.id AND minimumValue.`key` = 'min_value'
@@ -545,6 +547,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
 
         # Validation properties.
         IFNULL(isRequired.`value`, 'true') = 'true' AS isRequired,
+        IFNULL(isRequiredOnlyWithOptions.`value`, '0') = '1' AS isRequiredOnlyWithOptions,
         requiredConditions.`value` AS requiredConditions,
         minimumValue.`value` AS minimumValue,
         maximumValue.`value` AS maximumValue,
@@ -586,6 +589,7 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiAnswer ON apiAnswer.item_id = step.id AND apiAnswer.`key` = 'api_answer'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequired ON isRequired.item_id = step.id AND isRequired.`key` = 'isrequired'
+    LEFT JOIN {WiserTableNames.WiserItemDetail} AS isRequiredOnlyWithOptions ON isRequiredOnlyWithOptions.item_id = step.id AND isRequiredOnlyWithOptions.`key` = 'is_required_only_with_options'
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS requiredConditions ON requiredConditions.item_id = step.id AND requiredConditions.`key` = 'required_conditions'
 
     LEFT JOIN {WiserTableNames.WiserItemDetail} AS minimumValue ON minimumValue.item_id = step.id AND minimumValue.`key` = 'min_value'
@@ -618,6 +622,7 @@ SELECT
     datasource,
     isApiAnswer,
     isRequired,
+    isRequiredOnlyWithOptions,
     requiredConditions,
     minimumValue,
     maximumValue,
@@ -733,6 +738,7 @@ ORDER BY parentStepId, ordering";
                     MaximumValueErrorMessage = maximumValueErrorMessage,
                     ValidationRegexErrorMessage = validationRegexErrorMessage,
                     IsRequired = Convert.ToBoolean(dataRow["isRequired"]),
+                    IsRequiredOnlyWithOptions = Convert.ToBoolean(dataRow["isRequiredOnlyWithOptions"]),
                     RequiredConditions = requiredConditions,
                     StepTemplate = dataRow.Field<string>("stepTemplate"),
                     StepOptionTemplate = dataRow.Field<string>("stepOptionTemplate"),
@@ -1744,8 +1750,9 @@ AND externalAnswerConfiguratorApi.`key` = 'api_answer'";
                     var customerPriceKey = priceApi.GetDetailValue("price_calculation_customer_price_key");
                     var fromPriceKey = priceApi.GetDetailValue("price_calculation_from_price_key");
                     var query = priceApi.GetDetailValue("api_query");
+                    var requestMethod = (Method) priceApi.GetDetailValue<int>("request_type");
 
-                    if (String.IsNullOrWhiteSpace(endpoint) || String.IsNullOrWhiteSpace(requestJson) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
+                    if (String.IsNullOrWhiteSpace(endpoint) || (requestMethod != Method.Get && String.IsNullOrWhiteSpace(requestJson)) || String.IsNullOrWhiteSpace(purchasePriceKey) || String.IsNullOrWhiteSpace(customerPriceKey) || String.IsNullOrWhiteSpace(fromPriceKey))
                     {
                         continue;
                     }
@@ -1766,33 +1773,35 @@ AND externalAnswerConfiguratorApi.`key` = 'api_answer'";
                         }
                     }
 
-                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, true);
-                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, vueConfiguration, true);
+                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, configuration, false);
+                    endpoint = await ReplaceConfiguratorItemsAsync(endpoint, vueConfiguration, false);
                     endpoint = await stringReplacementsService.DoAllReplacementsAsync(endpoint, extraData, removeUnknownVariables: false);
-
-                    requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
-                    requestJson = await ReplaceConfiguratorItemsAsync(requestJson, vueConfiguration, false);
-                    requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
-
-                    var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                    requestJson = regex.Replace(requestJson, "null");
-
-                    // If there is no request JSON it is useless to do an API call.
-                    if (String.IsNullOrWhiteSpace(requestJson))
-                    {
-                        continue;
-                    }
-
-                    var requestMethod = (Method) priceApi.GetDetailValue<int>("request_type");
-
+                    
                     var restClient = new RestClient();
                     var restRequest = new RestRequest(endpoint, requestMethod);
+                    
+                    // If a body is provided perform replacements and add it to the request.
+                    if (!String.IsNullOrWhiteSpace(requestJson))
+                    {
+                        requestJson = await ReplaceConfiguratorItemsAsync(requestJson, configuration, false);
+                        requestJson = await ReplaceConfiguratorItemsAsync(requestJson, vueConfiguration, false);
+                        requestJson = await stringReplacementsService.DoAllReplacementsAsync(requestJson, extraData, removeUnknownVariables: false);
+
+                        var regex = new Regex("([\"'])?{[^\\]}\\s]*}([\"'])?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                        requestJson = regex.Replace(requestJson, "null");
+
+                        // If there is no request JSON if a body is expected it is useless to do an API call.
+                        if (requestMethod != Method.Get && String.IsNullOrWhiteSpace(requestJson))
+                        {
+                            continue;
+                        }
+
+                        restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
+                    }
 
                     await AddAuthenticationToApiCall(restRequest, priceApi);
                     await AddAcceptLanguageToApiCall(restRequest);
                     await AddCustomHeadersAsync(restRequest, priceApi, configuration, extraData: extraData);
-
-                    restRequest.AddBody(requestJson, MediaTypeNames.Application.Json);
 
                     var restResponse = await DoExternalConfiguratorApiCallAsync(restClient, restRequest);
                     if (!restResponse.IsSuccessful || restResponse.Content == null)
