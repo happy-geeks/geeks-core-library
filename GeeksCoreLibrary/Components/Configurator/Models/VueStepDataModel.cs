@@ -13,6 +13,12 @@ public class VueStepDataModel
     public ulong StepId { get; set; }
 
     /// <summary>
+    /// Gets or sets the parent step ID.
+    /// </summary>
+    [JsonProperty("parentStepId")]
+    public ulong ParentStepId { get; set; }
+
+    /// <summary>
     /// Gets or sets the display name of the step.
     /// </summary>
     [JsonProperty("displayName")]
@@ -166,15 +172,6 @@ public class VueStepDataModel
     public IDictionary<string, JToken> ExtraData = new Dictionary<string, JToken>();
 
     #region Server-side only properties
-
-    /// <summary>
-    /// Gets or sets the parent step ID.
-    /// </summary>
-    /// <remarks>
-    /// This property is not serialized to JSON because it's not needed in the client-side.
-    /// </remarks>
-    [JsonIgnore]
-    public ulong ParentStepId { get; set; }
 
     /// <summary>
     /// Gets or sets the HTML template for the step.
