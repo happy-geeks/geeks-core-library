@@ -2569,6 +2569,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                     # Item link details.
                     SELECT 
 	                    item.*,
+                        details.groupname,
 	                    details.`key`,	
 	                    CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
                         details.language_code,
@@ -2583,6 +2584,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
             var query = $@"# Item details.
                         SELECT 
 	                        item.*,
+                            details.groupname,
 	                        details.`key`,	
 	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
                             details.language_code,
