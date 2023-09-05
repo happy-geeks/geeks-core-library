@@ -189,16 +189,9 @@ namespace GeeksCoreLibrary.Components.Configurator
             var progressBarHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarTemplate, removeUnknownVariables: false);
             var progressBarStepHtml = await TemplatesService.DoReplacesAsync(configuratorData.ProgressBarStepTemplate, removeUnknownVariables: false);
             var progressBarStepsHtmlBuilder = new StringBuilder();
-            progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\" :is-summary-step=\"false\" :step-display-name=\"step.displayName\" :step-number=\"index + 1\" v-slot=\"{ isSummaryStep, stepDisplayName, stepNumber }\">");
+            progressBarStepsHtmlBuilder.Append("<progress-bar-step v-for=\"(step, index) in availableSteps\" :key=\"step.stepId\" :step-display-name=\"step.displayName\" :step-number=\"index + 1\" v-slot=\"{ stepDisplayName, stepNumber }\">");
             progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
             progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
-
-            if (configuratorData.ShowSummaryProgressBarStep)
-            {
-                progressBarStepsHtmlBuilder.Append("<progress-bar-step :is-summary-step=\"true\" :step-display-name=\"summaryStepName\" :step-number=\"summaryStepNumber\" v-slot=\"{ isSummaryStep, stepDisplayName, stepNumber }\">");
-                progressBarStepsHtmlBuilder.Append(progressBarStepHtml);
-                progressBarStepsHtmlBuilder.Append("</progress-bar-step>");
-            }
 
             progressBarHtml = progressBarHtml.Replace("{steps}", progressBarStepsHtmlBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
 
@@ -206,19 +199,14 @@ namespace GeeksCoreLibrary.Components.Configurator
             var progressHtml = Settings.SummaryHtml;
             progressHtml = progressHtml.Replace("{progress_template}", await TemplatesService.DoReplacesAsync(configuratorData.ProgressTemplate, removeUnknownVariables: false));
 
-            // Build summary HTML.
-            var summaryHtml = Settings.FinalSummaryHtml;
-            summaryHtml = summaryHtml.Replace("{summary_template}", await TemplatesService.DoReplacesAsync(configuratorData.SummaryTemplate, removeUnknownVariables: false));
-
             // Build the main HTML.
             var mainHtml = await TemplatesService.DoReplacesAsync(configuratorData.MainTemplate, removeUnknownVariables: false);
             mainHtml = mainHtml.Replace("{mainsteps}", stepsHtml, StringComparison.OrdinalIgnoreCase)
                 .Replace("{steps}", stepsHtml, StringComparison.OrdinalIgnoreCase)
                 .Replace("{substeps}", stepsHtml, StringComparison.OrdinalIgnoreCase);
 
-            // Replace the progress bar, progress and summary HTML variables.
+            // Replace the progress bar and progress HTML variables.
             mainHtml = mainHtml
-                .Replace("{summary}", summaryHtml, StringComparison.OrdinalIgnoreCase)
                 .Replace("{progressbar}", progressBarHtml, StringComparison.OrdinalIgnoreCase)
                 .Replace("{progress}", progressHtml, StringComparison.OrdinalIgnoreCase);
 

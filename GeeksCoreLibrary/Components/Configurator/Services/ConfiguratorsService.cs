@@ -414,9 +414,6 @@ namespace GeeksCoreLibrary.Components.Configurator.Services
     CONCAT_WS('', progressBarTemplate.`value`, progressBarTemplate.long_value) AS progressBarTemplate,
     CONCAT_WS('', progressBarStepTemplate.`value`, progressBarStepTemplate.long_value) AS progressBarStepTemplate,
     CONCAT_WS('', progressTemplate.`value`, progressTemplate.long_value) AS progressTemplate,
-    CONCAT_WS('', summaryTemplate.`value`, summaryTemplate.long_value) AS summaryTemplate,
-    summaryStepName.`value` AS summaryStepName,
-    IFNULL(showSummaryProgressBarStep.`value`, '1') = '1' AS showSummaryProgressBarStep,
     priceCalculationQuery.`value` AS priceCalculationQuery,
     deliveryTimeCalculationQuery.`value` AS deliveryTimeCalculationQuery,
     apiStartConfiguration.`value` IS NOT NULL AND apiStartConfiguration.`value` <> '' AS startExternalConfigurationOnStart
@@ -425,9 +422,6 @@ LEFT JOIN {WiserTableNames.WiserItemDetail} AS mainTemplate ON mainTemplate.item
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarTemplate ON progressBarTemplate.item_id = configurator.id AND progressBarTemplate.`key` = 'progress_bar_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressBarStepTemplate ON progressBarStepTemplate.item_id = configurator.id AND progressBarStepTemplate.`key` = 'progress_bar_step_template'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS progressTemplate ON progressTemplate.item_id = configurator.id AND progressTemplate.`key` = 'progress_template'
-LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryTemplate ON summaryTemplate.item_id = configurator.id AND summaryTemplate.`key` = 'summary_template'
-LEFT JOIN {WiserTableNames.WiserItemDetail} AS showSummaryProgressBarStep ON showSummaryProgressBarStep.item_id = configurator.id AND showSummaryProgressBarStep.`key` = 'show_summary_progress_bar_step'
-LEFT JOIN {WiserTableNames.WiserItemDetail} AS summaryStepName ON summaryStepName.item_id = configurator.id AND summaryStepName.`key` = 'summary_step_name' AND summaryStepName.language_code = ?languageCode
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS priceCalculationQuery ON priceCalculationQuery.item_id = configurator.id AND priceCalculationQuery.`key` = 'price_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS deliveryTimeCalculationQuery ON deliveryTimeCalculationQuery.item_id = configurator.id AND deliveryTimeCalculationQuery.`key` = 'delivery_time_calculation_query'
 LEFT JOIN {WiserTableNames.WiserItemDetail} AS apiStartConfiguration ON apiStartConfiguration.item_id = configurator.id AND apiStartConfiguration.`key` = 'api_start'
@@ -446,8 +440,6 @@ WHERE configurator.entity_type = '{Constants.ConfiguratorEntityType}' AND config
                 ProgressBarTemplate = configuratorSettings.Rows[0].Field<string>("progressBarTemplate"),
                 ProgressBarStepTemplate = configuratorSettings.Rows[0].Field<string>("progressBarStepTemplate"),
                 ProgressTemplate = configuratorSettings.Rows[0].Field<string>("progressTemplate"),
-                SummaryTemplate = configuratorSettings.Rows[0].Field<string>("summaryTemplate"),
-                SummaryStepName = configuratorSettings.Rows[0].Field<string>("summaryStepName"),
                 PriceCalculationQuery = configuratorSettings.Rows[0].Field<string>("priceCalculationQuery"),
                 DeliveryTimeCalculationQuery = configuratorSettings.Rows[0].Field<string>("deliveryTimeCalculationQuery"),
                 StartExternalConfigurationOnStart = Convert.ToBoolean(configuratorSettings.Rows[0]["startExternalConfigurationOnStart"])
