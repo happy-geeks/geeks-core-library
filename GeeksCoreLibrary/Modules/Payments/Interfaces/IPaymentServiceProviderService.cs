@@ -49,5 +49,19 @@ namespace GeeksCoreLibrary.Modules.Payments.Interfaces
                 Action = PaymentResultActions.None
             });
         }
+
+        /// <summary>
+        /// Gets the settings for the current payment service provider. This requires a <see cref="PaymentServiceProviderSettingsModel"/> with basic properties set, like the ID.
+        /// This will then return a model with all the settings for the specific PSP.
+        /// </summary>
+        /// <param name="paymentServiceProviderSettings">The basic settings for the payment service provider.</param>
+        Task<PaymentServiceProviderSettingsModel> GetProviderSettingsAsync(PaymentServiceProviderSettingsModel paymentServiceProviderSettings);
+
+        /// <summary>
+        /// Gets the invoice number from the request.
+        /// Each PSP sends this number in their own way, this method will get the number from the request based on which PSP is being used.
+        /// </summary>
+        /// <returns>The invoice number.</returns>
+        string GetInvoiceNumberFromRequest();
     }
 }

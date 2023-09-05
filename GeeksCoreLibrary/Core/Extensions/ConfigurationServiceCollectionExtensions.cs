@@ -36,8 +36,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
-using GeeksCoreLibrary.Components.Configurator.Interfaces;
-using GeeksCoreLibrary.Components.Configurator.Services;
 using GeeksCoreLibrary.Components.DataSelectorParser.Interfaces;
 using GeeksCoreLibrary.Components.DataSelectorParser.Services;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
@@ -138,7 +136,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 // During startup, make sure that the log table exists, but only if the logging is enabled.
                 using var scope = builder.ApplicationServices.CreateScope();
                 var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
-                
+
                 var gclSettings = scope.ServiceProvider.GetRequiredService<IOptions<GclSettings>>();
                 if (!gclSettings.Value.LogOpeningAndClosingOfConnections)
                 {
@@ -155,11 +153,11 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// Adds all services that are required to run the GCL on a website or API.
         /// This handles the GclSettings, MVC, where to find the views of the GCL and dependency injection.
         /// </summary>
-        /// <param name="services"></param>
-        /// <param name="configuration"></param>
-        /// <param name="useCaching"></param>
+        /// <param name="services">The <see cref="IServiceCollection"/> of the startup.</param>
+        /// <param name="configuration">The <see cref="IConfiguration"/> for reading the app settings.</param>
+        /// <param name="useCaching">Whether or not to use caching. Default is true.</param>
         /// <param name="isApi">Set this to true if you're using the GCL in an API, so that no XSRF protection will be added.</param>
-        /// <returns></returns>
+        /// <returns>The <see cref="IServiceCollection"/> of the startup.</returns>
         public static IServiceCollection AddGclServices(this IServiceCollection services, IConfiguration configuration, bool useCaching = true, bool isApi = false, bool isWeb = true)
         {
             // MVC looks in the directory "Areas" by default, but we use the directory "Modules", so we have to tell MC that.
@@ -301,7 +299,6 @@ namespace GeeksCoreLibrary.Core.Extensions
             services.Decorate<IRedirectService, CachedRedirectService>();
             services.Decorate<IWebPagesService, CachedWebPagesService>();
             services.Decorate<IWiserItemsService, CachedWiserItemsService>();
-            services.Decorate<IConfiguratorsService, CachedConfiguratorsService>();
             services.Decorate<IShoppingBasketsService, CachedShoppingBasketsService>();
             services.Decorate<IDataSelectorParsersService, CachedDataSelectorParsersService>();
             services.Decorate<IOrderProcessesService, CachedOrderProcessesService>();

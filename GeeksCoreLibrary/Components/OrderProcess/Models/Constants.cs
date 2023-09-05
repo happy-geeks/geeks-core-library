@@ -126,7 +126,7 @@
         public const string FieldSaveToProperty = "formfieldsaveto";
 
         public const string FieldRequiresUniqueValueProperty = "formfieldrequireuniquevalue";
-        
+
         public const string FieldTabIndexProperty = "formfieldtabindex";
 
         public const string PaymentServiceProviderTypeProperty = "psptype";
@@ -136,34 +136,6 @@
         public const string PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty = "psporderscanbesetdirectlytofinished";
 
         public const string PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty = "pspkippaymentwhenorderamountequalszero";
-
-        public const string MollieApiKeyLiveProperty = "mollieapikeylive";
-
-        public const string MollieApiKeyTestProperty = "mollieapikeytest";
-
-        public const string BuckarooWebsiteKeyLiveProperty = "buckaroowebsitekeylive";
-
-        public const string BuckarooWebsiteKeyTestProperty = "buckaroowebsitekeytest";
-
-        public const string BuckarooSecretKeyLiveProperty = "buckaroosecretkeylive";
-
-        public const string BuckarooSecretKeyTestProperty = "buckaroosecretkeytest";
-
-        public const string BuckarooPushContentTypeProperty = "buckaroopushcontenttype";
-
-        public const string BuckarooHashMethodProperty = "buckaroohashmethod";
-
-        public const string MultiSafepayApiKeyLiveProperty = "multisafepayapikeylive";
-
-        public const string MultiSafepayApiKeyTestProperty = "multisafepayapikeytest";
-
-        public const string RaboOmniKassaRefreshTokenLiveProperty = "raboomnikassarefreshtokenlive";
-
-        public const string RaboOmniKassaRefreshTokenTestProperty = "raboomnikassarefreshtokentest";
-
-        public const string RaboOmniKassaSigningKeyLiveProperty = "raboomnikassasigningkeylive";
-
-        public const string RaboOmniKassaSigningKeyTestProperty = "raboomnikassasigningkeytest";
 
         public const string PaymentMethodServiceProviderProperty = "paymentmethodprovider";
 
@@ -178,9 +150,9 @@
         public const string PaymentMethodExternalNameProperty = "paymentmethodexternalname";
 
         public const string PaymentMethodMinimalAmountProperty = "paymentmethodminimalamount";
-        
+
         public const string PaymentMethodMaximumAmountProperty = "paymentmethodmaximumamount";
-        
+
         public const string PaymentMethodUseMinimalAmountProperty = "paymentmethoduseminimalamount";
 
         public const string PaymentMethodUseMaximumAmountProperty = "paymentmethodusemaximumamount";
@@ -198,7 +170,7 @@
         public const string MeasurementProtocolPurchaseJsonProperty = "measurementprotocolpurchasejson";
 
         public const string MeasurementProtocolMeasurementIdProperty = "measurementprotocolmeasurementid";
-        
+
         public const string MeasurementProtocolApiSecretProperty = "measurementprotocolapisecret";
 
         #endregion
