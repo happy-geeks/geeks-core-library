@@ -1,7 +1,6 @@
 ﻿using System;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Models;
-using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Models;
@@ -46,6 +45,19 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         {
             // There is no payment_in call for "No PSP".
             throw new NotImplementedException();
+        }
+
+        /// <inheritdoc />
+        public Task<PaymentServiceProviderSettingsModel> GetProviderSettingsAsync(PaymentServiceProviderSettingsModel paymentServiceProviderSettings)
+        {
+            return Task.FromResult(new PaymentServiceProviderSettingsModel());
+        }
+
+        /// <inheritdoc />
+        public string GetInvoiceNumberFromRequest()
+        {
+            // Not applicable for "No PSP".
+            return null;
         }
     }
 }

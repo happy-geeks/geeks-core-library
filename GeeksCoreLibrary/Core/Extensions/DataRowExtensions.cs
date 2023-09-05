@@ -51,7 +51,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         {
             return !dataRow.Table.Columns.Contains(columnName) ? defaultValue : dataRow[columnName];
         }
-        
+
         /// <summary>
         /// Converts a <see cref="DataRow"/> to an <see cref="JObject"/>.
         /// This will also parse certain suffixes, such as _encrypt to encrypt the value of that column from the <see cref="DataRow"/>.
@@ -200,6 +200,35 @@ namespace GeeksCoreLibrary.Core.Extensions
                 {
                     result.TryAdd(TrimPrefix(columnName, requiredColumnNamePrefix), new JValue(dataRow[dataColumn]));
                 }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Get and decrypt a secret key from a <see cref="DataRow"/>.
+        /// </summary>
+        /// <param name="dataRow">The <see cref="DataRow"/> to get the secret key from.</param>
+        /// <param name="itemDetailKey">The name of the column that contains the secret key, without the environment suffix.</param>
+        /// <returns>The decrypted secret key, if it exists, or null if it doesn't.</returns>
+        public static string GetAndDecryptSecretKey(this DataRow dataRow, string itemDetailKey)
+        {
+            var result = dataRow.Field<string>(itemDetailKey);
+            return String.IsNullOrWhiteSpace(result) ? result : result.DecryptWithAesWithSalt();
+        }
+
+        /// <summary>
+        /// Get and attempt to convert a value from a <see cref="DataRow"/> to an <see cref="Enum"/>.
+        /// </summary>
+        /// <param name="dataRow">The <see cref="DataRow"/> to get the enum value from.</param>
+        /// <param name="columnName">The name of the column that contains the enum value.</param>
+        /// <typeparam name="TEnum">An <see cref="Enum"/> type.</typeparam>
+        /// <returns>The value of the enum, or the default value of the enum if the value couldn't be parsed.</returns>
+        public static TEnum GetEnumValue<TEnum>(this DataRow dataRow, string columnName) where TEnum : struct, Enum
+        {
+            if (!Enum.TryParse(dataRow.Field<string>(columnName), out TEnum result))
+            {
+                result = default;
             }
 
             return result;
