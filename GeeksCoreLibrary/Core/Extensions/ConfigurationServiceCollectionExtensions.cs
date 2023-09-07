@@ -99,7 +99,7 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             builder.UseMiddleware<AddAntiForgeryMiddleware>();
             builder.UseMiddleware<OutputCachingMiddleware>();
-
+            builder.UseMiddleware<IpAccessMiddleware>();
             builder.UseStaticFiles();
 
             builder.UseRouting();
