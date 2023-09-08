@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Helpers;
@@ -24,7 +25,7 @@ public class IpAccessMiddleware
         logger.LogDebug("Invoked IpAccessMiddleware");
         var userIp = HttpContextHelpers.GetUserIpAddress(context);
         var blockedIps = await objectsService.FindSystemObjectByDomainNameAsync("blockips");
-        if (!String.IsNullOrEmpty(blockedIps) && blockedIps.Contains(userIp))
+        if (!String.IsNullOrEmpty(blockedIps) && blockedIps.Split(';').Contains(userIp))
         {
             logger.LogDebug("Ip blocked: found in blacklist");
             context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
@@ -32,7 +33,7 @@ public class IpAccessMiddleware
         }
 
         var whiteListedIps = await objectsService.FindSystemObjectByDomainNameAsync("whitelistips");
-        if (!String.IsNullOrEmpty(whiteListedIps) && !whiteListedIps.Contains(userIp))
+        if (!String.IsNullOrEmpty(whiteListedIps) && !whiteListedIps.Split(';').Contains(userIp))
         {
             logger.LogDebug("Ip blocked: not found in whitelist");
             context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
