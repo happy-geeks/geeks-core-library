@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
@@ -10,11 +9,11 @@ using GeeksCoreLibrary.Modules.Databases.Models;
 
 namespace GeeksCoreLibrary.Modules.Databases.Services;
 
-/// <inheritdoc />
+/// <inheritdoc cref="GeeksCoreLibrary.Modules.Databases.Interfaces.IDocumentStorageService" />
 public class MySqlDocumentStorageService : IDocumentStorageService, IScopedService
 {
     private readonly IDocumentStoreConnection documentStorageConnection;
-
+    
     public MySqlDocumentStorageService(IDocumentStoreConnection documentStorageConnection)
     {
         this.documentStorageConnection = documentStorageConnection;
