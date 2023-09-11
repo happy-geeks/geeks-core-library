@@ -40,7 +40,7 @@
     <PackageReference Include="EvoPdf.HtmlToPdf.NetCore.x64" Version="8.0.0" />
     <PackageReference Include="FluentFTP" Version="47.1.0" />
     <PackageReference Include="GoogleAuthenticator" Version="3.1.0" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.52" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.53" />
     <PackageReference Include="JetBrains.Annotations" Version="2023.2.0" />
     <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
     <PackageReference Include="libphonenumber-csharp" Version="8.13.19" />
