@@ -1,14 +1,10 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics.CodeAnalysis;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using DocumentFormat.OpenXml.Spreadsheet;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using Microsoft.AspNetCore.Http;
@@ -32,14 +28,19 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
 
     private readonly ConcurrentDictionary<string, object> parameters = new();
     private readonly JsonSerializerSettings jsonSerializerSettings;
+    private readonly IBranchesService branchesService;
 
     /// <summary>
     /// Creates a new instance of <see cref="DocumentStoreConnection"/>.
     /// </summary>
-    public DocumentStoreConnection(IOptions<GclSettings> gclSettings, IHttpContextAccessor httpContextAccessor, ILogger<DocumentStoreConnection> logger)
+    public DocumentStoreConnection(IOptions<GclSettings> gclSettings, 
+                                   IHttpContextAccessor httpContextAccessor, 
+                                   ILogger<DocumentStoreConnection> logger, 
+                                   IBranchesService branchesService)
     {
         this.httpContextAccessor = httpContextAccessor;
         this.logger = logger;
+        this.branchesService = branchesService;
         this.gclSettings = gclSettings.Value;
 
         jsonSerializerSettings = new JsonSerializerSettings
@@ -176,8 +177,19 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
             return;
         }
 
-        Session = MySQLX.GetSession(gclSettings.DocumentStoreConnectionString);
+        var connectionString = gclSettings.DocumentStoreConnectionString ?? gclSettings.ConnectionString;
+
+        MySqlXConnectionStringBuilder connectionStringBuilder = new MySqlXConnectionStringBuilder(connectionString);
+
+        var branchDatabase = branchesService.GetDatabaseNameFromCookie();
         
+        if (!String.IsNullOrEmpty(branchDatabase))
+        {
+            connectionStringBuilder.Database = branchDatabase;
+        }
+
+        Session = MySQLX.GetSession(connectionStringBuilder.ToString());
+
         ConnectedDatabase = Session.Schema.Name;
     }
 
