@@ -7,7 +7,7 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace GeeksCoreLibrary.Modules.ItemFiles;
+namespace GeeksCoreLibrary.Modules.ItemFiles.Middlewares;
 
 public class WiserItemFilesMiddleware
 {

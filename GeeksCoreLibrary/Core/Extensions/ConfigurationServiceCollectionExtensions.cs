@@ -47,7 +47,7 @@ using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Services;
-using GeeksCoreLibrary.Modules.ItemFiles;
+using GeeksCoreLibrary.Modules.ItemFiles.Middlewares;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Options;
 using WebMarkupMin.AspNetCore3;
