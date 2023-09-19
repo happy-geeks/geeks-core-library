@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -80,6 +81,8 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             dataDictionary.Add("MlJclLanguageCode", languagesService.CurrentLanguageCode); // Legacy key for old library support.
             dataDictionary.Add("Hostname", HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext));
             dataDictionary.Add("Environment", (int)gclSettings.Environment);
+            dataDictionary.Add("IpAddress", HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext));
+            dataDictionary.Add("UserAgent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, Microsoft.Net.Http.Headers.HeaderNames.UserAgent));
             input = replacementsMediator.DoReplacements(input, dataDictionary, forQuery: forQuery);
 
             // System object replaces.
