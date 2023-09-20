@@ -200,7 +200,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                     foreach (Match match in regex.Matches(newBodyHtml))
                     {
-                        newBodyHtml = newBodyHtml.Replace(match.Groups[1].Value, "");
+                        if (!String.IsNullOrEmpty(match.Groups[1].Value))
+                        {
+                            newBodyHtml = newBodyHtml.Replace(match.Groups[1].Value, "");
+                        }
                     }
                 }
 
