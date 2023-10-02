@@ -50,7 +50,11 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         /// <inheritdoc />
         public Task<PaymentServiceProviderSettingsModel> GetProviderSettingsAsync(PaymentServiceProviderSettingsModel paymentServiceProviderSettings)
         {
-            return Task.FromResult(new PaymentServiceProviderSettingsModel());
+            return Task.FromResult(new PaymentServiceProviderSettingsModel()
+            {
+                Type = PaymentServiceProviders.NoPsp,
+                Title = "NoPsp",
+            });
         }
 
         /// <inheritdoc />
