@@ -44,7 +44,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     }
 
     /// <inheritdoc />
-    public IEnumerable<IEnumerable<string>> DoReplacements(string input, DataSet replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}")
+    public IEnumerable<IEnumerable<string>> DoReplacements(string input, DataSet replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
     {
         if (replaceData == null || replaceData.Tables.Count == 0)
         {
@@ -53,12 +53,12 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
 
         foreach (DataTable dataTable in replaceData.Tables)
         {
-            yield return DoReplacements(input, dataTable, forQuery, caseSensitive, prefix, suffix);
+            yield return DoReplacements(input, dataTable, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
         }
     }
 
     /// <inheritdoc />
-    public IEnumerable<string> DoReplacements(string input, DataTable replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}")
+    public IEnumerable<string> DoReplacements(string input, DataTable replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
     {
         if (replaceData == null || replaceData.Rows.Count == 0)
         {
@@ -67,12 +67,12 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
 
         foreach (DataRow dataRow in replaceData.Rows)
         {
-            yield return DoReplacements(input, dataRow, forQuery, caseSensitive, prefix, suffix);
+            yield return DoReplacements(input, dataRow, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
         }
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}")
+    public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
     {
         if (replaceData == null)
         {
@@ -85,11 +85,11 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             dataDictionary.Add(column.ColumnName, replaceData[column]);
         }
 
-        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery);
+        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter);
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, IEnumerable<KeyValuePair<string, string>> replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}")
+    public string DoReplacements(string input, IEnumerable<KeyValuePair<string, string>> replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
     {
         if (replaceData == null)
         {
@@ -102,11 +102,11 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             dataDictionary.Add(key, value);
         }
 
-        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery);
+        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter);
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, IEnumerable<KeyValuePair<string, StringValues>> replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}")
+    public string DoReplacements(string input, IEnumerable<KeyValuePair<string, StringValues>> replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
     {
         if (replaceData == null)
         {
@@ -119,11 +119,11 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             dataDictionary.Add(key, value.ToString());
         }
 
-        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery);
+        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter);
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, ISession replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}")
+    public string DoReplacements(string input, ISession replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
     {
         var dataDictionary = new Dictionary<string, object>(caseSensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
         foreach (var item in replaceData.Keys)
@@ -136,11 +136,11 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             dataDictionary.Add(item, Encoding.UTF8.GetString(rawValue));
         }
 
-        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery);
+        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter);
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
+    public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
     {
         if (replaceData == null)
         {
@@ -162,7 +162,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         }
 
         // Do the replacements for the current level.
-        output = DoReplacements(output, dataDictionary, prefix, suffix, forQuery);
+        output = DoReplacements(output, dataDictionary, prefix, suffix, forQuery, defaultFormatter);
 
         // Repeat the process for each object in the current level until the bottom is reached.
         foreach (var jToken in replaceData)
@@ -175,7 +175,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             switch (item.Value.Type)
             {
                 case JTokenType.Object:
-                    output = DoReplacements(output, item.Value, forQuery, caseSensitive, prefix, suffix);
+                    output = DoReplacements(output, item.Value, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
                     break;
                 case JTokenType.Array:
                 {
@@ -186,7 +186,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
                             continue;
                         }
 
-                        output = DoReplacements(output, subItem, forQuery, caseSensitive, prefix, suffix);
+                        output = DoReplacements(output, subItem, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
                     }
 
                     break;
@@ -198,7 +198,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, IDictionary<string, object> replaceData, string prefix = "{", string suffix = "}", bool forQuery = false)
+    public string DoReplacements(string input, IDictionary<string, object> replaceData, string prefix = "{", string suffix = "}", bool forQuery = false, string defaultFormatter = "HtmlEncode")
     {
         if (replaceData == null || replaceData.Count == 0)
         {
@@ -206,7 +206,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         }
 
         // Find all replacement variables in the input string. Every replacement variable can also have multiple formatters.
-        var variables = forQuery ? GetReplacementVariables(input, prefix, suffix, null) : GetReplacementVariables(input, prefix, suffix);
+        var variables = forQuery ? GetReplacementVariables(input, prefix, suffix, null) : GetReplacementVariables(input, prefix, suffix, defaultFormatter);
         if (variables.Length == 0)
         {
             return input;

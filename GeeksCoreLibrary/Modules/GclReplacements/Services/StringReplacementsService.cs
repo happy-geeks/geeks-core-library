@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -50,7 +49,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> DoAllReplacementsAsync(string input, DataRow dataRow = null, bool handleRequest = true, bool evaluateLogicSnippets = true, bool removeUnknownVariables = true, bool forQuery = false)
+        public async Task<string> DoAllReplacementsAsync(string input, DataRow dataRow = null, bool handleRequest = true, bool evaluateLogicSnippets = true, bool removeUnknownVariables = true, bool forQuery = false, string defaultFormatter = "HtmlEncode")
         {
             if (String.IsNullOrWhiteSpace(input))
             {
@@ -83,7 +82,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             dataDictionary.Add("Environment", (int)gclSettings.Environment);
             dataDictionary.Add("IpAddress", HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext));
             dataDictionary.Add("UserAgent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, Microsoft.Net.Http.Headers.HeaderNames.UserAgent));
-            input = replacementsMediator.DoReplacements(input, dataDictionary, forQuery: forQuery);
+            input = replacementsMediator.DoReplacements(input, dataDictionary, forQuery: forQuery, defaultFormatter: defaultFormatter);
 
             // System object replaces.
             if (input.Contains("[SO{"))
@@ -102,7 +101,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     dataDictionary.Add(value, await objectsService.FindSystemObjectByDomainNameAsync(value.Replace("\\:", ":")));
                 }
 
-                input = replacementsMediator.DoReplacements(input, dataDictionary, "[SO{", "}]", forQuery: forQuery);
+                input = replacementsMediator.DoReplacements(input, dataDictionary, "[SO{", "}]", forQuery: forQuery, defaultFormatter: defaultFormatter);
             }
 
             input = await accountsService.DoAccountReplacementsAsync(input, forQuery);
@@ -116,14 +115,14 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 // DataRow replacements.
                 if (dataRow != null)
                 {
-                    input = replacementsMediator.DoReplacements(input, dataRow, forQuery);
+                    input = replacementsMediator.DoReplacements(input, dataRow, forQuery, defaultFormatter: defaultFormatter);
                 }
 
                 // Request replacements.
                 if (handleRequest && httpContextAccessor?.HttpContext != null)
                 {
-                    input = DoHttpRequestReplacements(input, forQuery);
-                    input = DoSessionReplacements(input, forQuery);
+                    input = DoHttpRequestReplacements(input, forQuery, defaultFormatter);
+                    input = DoSessionReplacements(input, forQuery, defaultFormatter);
                 }
 
                 // Translations.
@@ -141,7 +140,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         }
 
                         // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as translation.
-                        var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}");
+                        var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}", defaultFormatter: defaultFormatter);
                         foreach (var variable in replacementVariables)
                         {
                             if (variable.Formatters.All(f => replacementsMediator.GetFormatterMethod(f) != null))
@@ -153,7 +152,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         dataDictionary.Add(value, await languagesService.GetTranslationAsync(value));
                     }
 
-                    input = replacementsMediator.DoReplacements(input, dataDictionary, "[T{", "}]", forQuery: forQuery);
+                    input = replacementsMediator.DoReplacements(input, dataDictionary, "[T{", "}]", forQuery: forQuery, defaultFormatter: defaultFormatter);
                 }
 
                 // CMS objects.
@@ -178,7 +177,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         }
 
                         // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as object name.
-                        var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}");
+                        var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}", defaultFormatter: defaultFormatter);
                         foreach (var variable in replacementVariables)
                         {
                             if (variable.Formatters.All(f => replacementsMediator.GetFormatterMethod(f) != null))
@@ -190,7 +189,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                         dataDictionary.Add(value, await objectsService.GetObjectValueAsync(value, objectsTypeNumber));
                     }
 
-                    input = replacementsMediator.DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery);
+                    input = replacementsMediator.DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery, defaultFormatter: defaultFormatter);
                 }
             }
 
@@ -213,7 +212,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         }
 
         /// <inheritdoc />
-        public string DoHttpRequestReplacements(string input, bool forQuery = false)
+        public string DoHttpRequestReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
         {
             if (httpContextAccessor?.HttpContext == null)
             {
@@ -223,85 +222,85 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             // GET variables.
             if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
             {
-                input = replacementsMediator.DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery);
+                input = replacementsMediator.DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: defaultFormatter);
             }
             else
             {
-                input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery);
+                input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: defaultFormatter);
             }
 
             // POST variables.
             if (httpContextAccessor.HttpContext.Request.HasFormContentType)
             {
-                input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery);
+                input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: defaultFormatter);
             }
 
             // Cookies.
-            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery);
+            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: defaultFormatter);
 
             // Request cache.
-            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery);
+            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery, defaultFormatter: defaultFormatter);
 
             return input;
         }
 
         /// <inheritdoc />
-        public string DoSessionReplacements(string input, bool forQuery = false)
+        public string DoSessionReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
         {
             if (httpContextAccessor?.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
             {
                 return input;
             }
 
-            return replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Session, forQuery);
+            return replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Session, forQuery, defaultFormatter: defaultFormatter);
         }
 
         /// <inheritdoc />
-        public IEnumerable<IEnumerable<string>> DoReplacements(string input, DataSet replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
+        public IEnumerable<IEnumerable<string>> DoReplacements(string input, DataSet replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
-            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
         }
 
         /// <inheritdoc />
-        public IEnumerable<string> DoReplacements(string input, DataTable replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
+        public IEnumerable<string> DoReplacements(string input, DataTable replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
-            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
         }
 
         /// <inheritdoc />
-        public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
+        public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
-            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
         }
 
         /// <inheritdoc />
-        public string DoReplacements(string input, IEnumerable<KeyValuePair<string, string>> replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
+        public string DoReplacements(string input, IEnumerable<KeyValuePair<string, string>> replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
-            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
         }
 
         /// <inheritdoc />
-        public string DoReplacements(string input, IEnumerable<KeyValuePair<string, StringValues>> replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
+        public string DoReplacements(string input, IEnumerable<KeyValuePair<string, StringValues>> replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
-            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
         }
 
         /// <inheritdoc />
-        public string DoReplacements(string input, ISession replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
+        public string DoReplacements(string input, ISession replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
-            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
         }
 
         /// <inheritdoc />
-        public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}")
+        public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
         {
-            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix);
+            return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
         }
 
         /// <inheritdoc />
-        public string DoReplacements(string input, IDictionary<string, object> replaceData, string prefix = "{", string suffix = "}", bool forQuery = false)
+        public string DoReplacements(string input, IDictionary<string, object> replaceData, string prefix = "{", string suffix = "}", bool forQuery = false, string defaultFormatter = "HtmlEncode")
         {
-            return replacementsMediator.DoReplacements(input, replaceData, prefix, suffix, forQuery);
+            return replacementsMediator.DoReplacements(input, replaceData, prefix, suffix, forQuery, defaultFormatter);
         }
 
         /// <inheritdoc />
