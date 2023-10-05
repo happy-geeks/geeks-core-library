@@ -41,7 +41,7 @@ public class FtpsHandler : IFtpHandler, IScopedService
         {
             return (await client.UploadFile(fromPath, uploadPath, createRemoteDir: true)).IsSuccess();
         }
-        
+
         var ftpResults = await client.UploadDirectory(fromPath, uploadPath, existsMode: FtpRemoteExists.Overwrite);
         return ftpResults.Any(ftpResult => ftpResult.IsSuccess);
     }
@@ -59,20 +59,20 @@ public class FtpsHandler : IFtpHandler, IScopedService
         {
             return (await client.DownloadFile(writePath, downloadPath)).IsSuccess();
         }
-        
+
         // Get the names of the files that need to be downloaded.
         var filesToDownload = await GetFilesInFolderAsync(downloadPath);
         if (!filesToDownload.Any())
         {
             return true;
         }
-            
+
         // Combine the name with the path to the folder.
         for (var i = 0; i < filesToDownload.Count; i++)
         {
             filesToDownload[i] = Path.Combine(downloadPath, filesToDownload[i]);
         }
-        
+
         var downloadCount = await client.DownloadFiles(writePath, filesToDownload);
         return downloadCount.Count == filesToDownload.Count;
     }
@@ -80,9 +80,10 @@ public class FtpsHandler : IFtpHandler, IScopedService
     /// <inheritdoc />
     public async Task<List<string>> GetFilesInFolderAsync(string folderPath)
     {
-        var listing = await client.GetListing(folderPath);
-
-        return listing.Select(file => file.Name).ToList();
+        return (await client.GetListing(folderPath))
+            .Where(item => item.Type == FtpObjectType.File)
+            .Select(file => file.Name)
+            .ToList();
     }
 
     /// <inheritdoc />
