@@ -37,11 +37,11 @@ public class SftpHandler : IFtpHandler, IScopedService
                 new PasswordAuthenticationMethod(ftpSettings.User, ftpSettings.Password)
             };
         }
-        
+
         var connectionInfo = new ConnectionInfo(ftpSettings.Host, ftpSettings.Port, ftpSettings.User, authenticationMethods);
         client = new SftpClient(connectionInfo);
         client.Connect();
-        
+
         return Task.CompletedTask;
     }
 
@@ -61,7 +61,7 @@ public class SftpHandler : IFtpHandler, IScopedService
             client.UploadFile(stream, uploadPath);
             return Task.FromResult(true);
         }
-        
+
         foreach(var file in Directory.GetFiles(fromPath))
         {
             // Fix upload path, make dynamic with file name.
@@ -112,15 +112,10 @@ public class SftpHandler : IFtpHandler, IScopedService
     /// <inheritdoc />
     public Task<List<string>> GetFilesInFolderAsync(string folderPath)
     {
-    var listing = new List<string>();
-
-        foreach (var file in client.ListDirectory(folderPath))
-        {
-            if (!file.IsDirectory)
-            {
-                listing.Add(file.Name);
-            }
-        }
+        var listing = client.ListDirectory(folderPath)
+            .Where(item => item.IsRegularFile)
+            .Select(file => file.Name)
+            .ToList();
 
         return Task.FromResult(listing);
     }
