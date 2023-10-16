@@ -159,7 +159,7 @@ namespace GeeksCoreLibrary.Components.Pagination
                 }
 
                 // Perform replacements on the query.
-                parsedQuery = await TemplatesService.DoReplacesAsync(parsedQuery, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables, forQuery: true);
+                parsedQuery = await TemplatesService.DoReplacesAsync(parsedQuery, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables, forQuery: true);
 
                 var getCountResult = await DatabaseConnection.GetAsync(parsedQuery);
                 if (getCountResult.Rows.Count > 0)
