@@ -236,7 +236,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2023, 7, 4),
+                LastUpdate = new DateTime(2023, 10, 20),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -247,6 +247,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("template_type", MySqlDbType.Int32, notNull: true),
                     new("version", MySqlDbType.Int24, notNull: true),
                     new("template_id", MySqlDbType.Int32, notNull: true),
+                    new("added_on", MySqlDbType.DateTime, notNull: true),
+                    new("added_by", MySqlDbType.VarChar, 50, notNull: true),
                     new("changed_on", MySqlDbType.DateTime, notNull: true),
                     new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
                     new("published_environment", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
@@ -419,7 +421,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserDynamicContent,
-                LastUpdate = new DateTime(2023, 7, 4),
+                LastUpdate = new DateTime(2023, 10, 20),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -429,6 +431,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("component_mode", MySqlDbType.VarChar, 255, notNull: true),
                     new("version", MySqlDbType.Int24, notNull: true, defaultValue: "0"),
                     new("title", MySqlDbType.VarChar, 255, notNull: true),
+                    new("added_on", MySqlDbType.DateTime, notNull: true),
+                    new("added_by", MySqlDbType.VarChar, 50, notNull: true),
                     new("changed_on", MySqlDbType.DateTime, notNull: true),
                     new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
                     new("published_environment", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
@@ -770,7 +774,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserQuery, "idx_show_in_export_module", IndexTypes.Normal, new List<string> { "show_in_export_module" })
                 }
             },
-            
+
             // wiser_styled_output
             new WiserTableDefinitionModel()
             {
