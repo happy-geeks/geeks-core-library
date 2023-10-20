@@ -53,11 +53,6 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
         public async Task<FileContentResult> ConvertHtmlStringToPdfAsync(HtmlToPdfRequestModel settings)
         {
             var httpContext = httpContextAccessor?.HttpContext;
-            if (httpContext == null)
-            {
-                throw new Exception("No http context available.");
-            }
-
             var converter = new HtmlToPdfConverter
             {
                 LicenseKey = gclSettings.EvoPdfLicenseKey
@@ -248,7 +243,8 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                 p.SetValue(converter.PdfDocumentOptions, Convert.ChangeType(options[p.Name], p.PropertyType), null);
             }
 
-            var output = converter.ConvertHtml(settings.Html, HttpContextHelpers.GetBaseUri(httpContext).ToString());
+            var baseUri = httpContext == null ? "/" : HttpContextHelpers.GetBaseUri(httpContext).ToString();
+            var output = converter.ConvertHtml(settings.Html, baseUri);
             var fileResult = new FileContentResult(output, "application/pdf")
             {
                 FileDownloadName = EnsureCorrectFileName(settings.FileName)
