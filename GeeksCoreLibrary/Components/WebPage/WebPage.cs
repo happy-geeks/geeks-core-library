@@ -112,7 +112,7 @@ namespace GeeksCoreLibrary.Components.WebPage
                         break;
                     }
                 default:
-                    throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'GenerateHtmlAsync'.");
+                    throw new ArgumentOutOfRangeException(nameof(Settings.ComponentMode), Settings.ComponentMode.ToString("G"), $"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'GenerateHtmlAsync'.");
             }
 
             return new HtmlString(resultHtml.ToString());
