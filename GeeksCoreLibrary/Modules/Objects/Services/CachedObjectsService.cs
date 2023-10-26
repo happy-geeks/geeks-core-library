@@ -6,6 +6,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Extensions;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -26,6 +27,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ICacheService cacheService;
         private readonly GclSettings gclSettings;
+        private readonly IBranchesService branchesService;
 
         private readonly string hostName;
         private readonly string hostNameIncludingTestWww;
@@ -36,6 +38,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
             IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
             ICacheService cacheService,
+            IBranchesService branchesService,
             IHttpContextAccessor httpContextAccessor = null)
         {
             this.objectsService = objectsService;
@@ -44,6 +47,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
             this.httpContextAccessor = httpContextAccessor;
             this.cacheService = cacheService;
             this.gclSettings = gclSettings.Value;
+            this.branchesService = branchesService;
 
             hostName = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false);
             hostNameIncludingTestWww = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true, includePort: false);
@@ -55,7 +59,8 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
         /// </summary>
         private async Task<Dictionary<string, SettingObject>> CacheObjectsAsync()
         {
-            return await cache.GetOrAddAsync("SettingObjects", GetAllObjects, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Objects));
+            var cacheName = $"SettingObjects_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName, GetAllObjects, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Objects));
 
             async Task<Dictionary<string, SettingObject>> GetAllObjects(ICacheEntry cacheEntry)
             {

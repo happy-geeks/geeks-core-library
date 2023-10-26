@@ -9,6 +9,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using LazyCache;
 using Microsoft.AspNetCore.Http;
@@ -24,11 +25,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private readonly ICacheService cacheService;
         private readonly ConcurrentDictionary<string, object> parameters = new();
         private readonly GclSettings gclSettings;
+        private readonly IBranchesService branchesService;
 
         public CachedDatabaseConnection(IDatabaseConnection databaseConnection,
             IAppCache cache,
             IOptions<GclSettings> gclSettings,
             ICacheService cacheService,
+            IBranchesService branchesService,
             IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
@@ -36,6 +39,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             this.httpContextAccessor = httpContextAccessor;
             this.cacheService = cacheService;
             this.gclSettings = gclSettings.Value;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
@@ -87,7 +91,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 cacheName.Append($"{key}={value}");
             }
-
+            
+            cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
             return await cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
                 {
@@ -118,7 +123,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 cacheName.Append($"{key}={value}");
             }
-
+            
+            cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
             return await cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
                 {

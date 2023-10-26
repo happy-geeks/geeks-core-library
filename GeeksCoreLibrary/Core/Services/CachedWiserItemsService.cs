@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
+using GeeksCoreLibrary.Modules.Branches.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using LazyCache;
 using Microsoft.Extensions.Options;
@@ -20,14 +22,16 @@ namespace GeeksCoreLibrary.Core.Services
         private readonly IWiserItemsService wiserItemsService;
         private readonly IDatabaseConnection databaseConnection;
         private readonly ICacheService cacheService;
+        private readonly IBranchesService branchesService;
 
-        public CachedWiserItemsService(IOptions<GclSettings> gclSettings, IAppCache cache, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection, ICacheService cacheService)
+        public CachedWiserItemsService(IOptions<GclSettings> gclSettings, IAppCache cache, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection, ICacheService cacheService, IBranchesService branchesService)
         {
             this.gclSettings = gclSettings.Value;
             this.cache = cache;
             this.wiserItemsService = wiserItemsService;
             this.databaseConnection = databaseConnection;
             this.cacheService = cacheService;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
@@ -141,8 +145,8 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<AccessRights> GetUserItemPermissionsAsync(IWiserItemsService service, ulong itemId, ulong userId, string entityType = null)
         {
-            var cacheKey = $"user_item_permission_{itemId}_{userId}_{entityType ?? ""}_{databaseConnection.GetDatabaseNameForCaching()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"user_item_permission_{itemId}_{userId}_{entityType ?? ""}_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
@@ -153,8 +157,8 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<AccessRights> GetUserModulePermissions(int moduleId, ulong userId)
         {
-            var cacheKey = $"user_module_permission_{moduleId}_{userId}_{databaseConnection.GetDatabaseNameForCaching()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"user_module_permission_{moduleId}_{userId}_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
@@ -165,8 +169,8 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<AccessRights> GetUserQueryPermissionsAsync(int queryId, ulong userId)
         {
-            var cacheKey = $"user_query_permission_{queryId}_{userId}_{databaseConnection.GetDatabaseNameForCaching()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"user_query_permission_{queryId}_{userId}_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
@@ -177,8 +181,8 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<AccessRights> GetUserDataSelectorPermissionsAsync(int dataSelectorId, ulong userId)
         {
-            var cacheKey = $"user_data_selector_permission_{dataSelectorId}_{userId}_{databaseConnection.GetDatabaseNameForCaching()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"user_data_selector_permission_{dataSelectorId}_{userId}_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
@@ -225,8 +229,8 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<EntitySettingsModel> GetEntityTypeSettingsAsync(string entityType, int moduleId = 0)
         {
-            var cacheKey = $"entity_type_settings_{entityType}_{moduleId}_{databaseConnection.GetDatabaseNameForCaching()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"entity_type_settings_{entityType}_{moduleId}_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;                    
@@ -237,8 +241,8 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<Dictionary<string, Dictionary<string, object>>> GetFieldOptionsForLinkFieldsAsync(int linkType)
         {
-            var cacheKey = $"link_type_field_options_{linkType}_{databaseConnection.GetDatabaseNameForCaching()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"link_type_field_options_{linkType}_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;                    
@@ -261,8 +265,8 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<int> GetLinkTypeAsync(string destinationEntityType, string connectedEntityType)
         {
-            var cacheKey = $"link_type_{destinationEntityType}_{connectedEntityType}_{databaseConnection.GetDatabaseNameForCaching()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"link_type_{destinationEntityType}_{connectedEntityType}_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
@@ -450,8 +454,8 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<List<LinkSettingsModel>> GetAllLinkTypeSettingsAsync()
         {
-            var cacheKey = $"all_link_type_settings_{databaseConnection.GetDatabaseNameForCaching()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"all_link_type_settings_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
@@ -522,8 +526,8 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<List<WiserItemPropertyAggregateOptionsModel>> GetAggregationSettingsAsync(IWiserItemsService service, string entityType = null, int linkType = 0)
         {
-            var cacheKey = $"aggregation_settings_{(String.IsNullOrWhiteSpace(entityType) ? linkType.ToString() : entityType)}_{databaseConnection.GetDatabaseNameForCaching()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"aggregation_settings_{(String.IsNullOrWhiteSpace(entityType) ? linkType.ToString() : entityType)}_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                  async cacheEntry =>
                  {                    
                      cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;

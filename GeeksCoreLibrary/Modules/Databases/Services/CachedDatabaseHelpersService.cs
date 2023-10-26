@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using LazyCache;
@@ -19,14 +20,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private readonly ICacheService cacheService;
         private readonly IDatabaseConnection databaseConnection;
         private readonly GclSettings gclSettings;
+        private readonly IBranchesService branchesService;
 
-        public CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelpersService, IAppCache cache, IOptions<GclSettings> gclSettings, ICacheService cacheService, IDatabaseConnection databaseConnection)
+        public CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelpersService, IAppCache cache, IOptions<GclSettings> gclSettings, ICacheService cacheService, IDatabaseConnection databaseConnection, IBranchesService branchesService)
         {
             this.databaseHelpersService = databaseHelpersService;
             this.cache = cache;
             this.cacheService = cacheService;
             this.databaseConnection = databaseConnection;
             this.gclSettings = gclSettings.Value;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
@@ -37,7 +40,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
-            var cacheName = $"CachedDatabaseHelpersService_ColumnExistsAsync_{databaseName}_{tableName}_{columnName}";
+            
+            var cacheName = $"CachedDatabaseHelpersService_ColumnExistsAsync_{databaseName}_{tableName}_{columnName}_{branchesService.GetDatabaseNameFromCookie()}";
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
@@ -54,7 +58,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
-            var cacheName = $"CachedDatabaseHelpersService_GetColumnNamesAsync_{databaseName}_{tableName}";
+            
+            var cacheName = $"CachedDatabaseHelpersService_GetColumnNamesAsync_{databaseName}_{tableName}_{branchesService.GetDatabaseNameFromCookie()}";
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
@@ -107,7 +112,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
-            var cacheName = $"CachedDatabaseHelpersService_TableExistsAsync_{databaseName}_{tableName}";
+            
+            var cacheName = $"CachedDatabaseHelpersService_TableExistsAsync_{databaseName}_{tableName}_{branchesService.GetDatabaseNameFromCookie()}";
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
@@ -119,7 +125,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async Task<bool> DatabaseExistsAsync(string databaseName)
         {
-            var cacheName = $"CachedDatabaseHelpersService_DatabaseExistsAsync_{databaseName}";
+            var cacheName = $"CachedDatabaseHelpersService_DatabaseExistsAsync_{databaseName}_{branchesService.GetDatabaseNameFromCookie()}";
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
@@ -172,13 +178,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
-            var cacheName = $"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}";
+            
+            var cacheName = $"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}_{branchesService.GetDatabaseNameFromCookie()}";
             return await cache.GetOrAddAsync(cacheName,
-                                           async cacheEntry =>
-                                           {
-                                               cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
-                                               return await databaseHelpersService.GetLastTableUpdatesAsync(service, databaseName);
-                                           }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+               async cacheEntry =>
+               {
+                   cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
+                   return await databaseHelpersService.GetLastTableUpdatesAsync(service, databaseName);
+               }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
 
         /// <inheritdoc />
@@ -216,8 +223,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 databaseName = databaseConnection.ConnectedDatabase;
             }
-            var cacheName = $"CachedDatabaseHelpersService_GetAllTableNames_{databaseName}";
-
+            
+            var cacheName = $"CachedDatabaseHelpersService_GetAllTableNames_{databaseName}_{branchesService.GetDatabaseNameFromCookie()}";
             return await cache.GetOrAddAsync(cacheName, async cacheEntry =>
             {
                 cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
