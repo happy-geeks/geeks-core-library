@@ -582,6 +582,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                     else
                     {
+                        cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
                         var fileName = $"{cacheName}.html";
                         var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
