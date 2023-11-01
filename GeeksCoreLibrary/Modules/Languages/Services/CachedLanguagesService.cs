@@ -16,6 +16,7 @@ using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 
 namespace GeeksCoreLibrary.Modules.Languages.Services
@@ -29,6 +30,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IAppCache cache;
         private readonly ICacheService cacheService;
+        private readonly IBranchesService branchesService;
         private readonly GclSettings gclSettings;
         private readonly ILogger<CachedLanguagesService> logger;
 
@@ -42,6 +44,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             IDatabaseConnection databaseConnection,
             IOptions<GclSettings> gclSettings,
             ICacheService cacheService,
+            IBranchesService branchesService,
             IHttpContextAccessor httpContextAccessor = null)
         {
             this.logger = logger;
@@ -50,6 +53,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             this.databaseConnection = databaseConnection;
             this.httpContextAccessor = httpContextAccessor;
             this.cacheService = cacheService;
+            this.branchesService = branchesService;
             this.cache = cache;
             this.gclSettings = gclSettings.Value;
         }
@@ -90,6 +94,7 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                 cacheName.Append('_').Append(HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.IndexOfLanguagePartInUrl));
             }
 
+            cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
             var currentLanguageCode = await cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
                 {
@@ -108,7 +113,8 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         /// <inheritdoc />
         public async Task<List<LanguageModel>> GetAllLanguagesAsync()
         {
-            return await cache.GetOrAddAsync("all_languages",
+            var cacheName = $"all_languages_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                  async cacheEntry =>
                  {
                      // Use the normal languages service to get the language code, which always looks in the database if necessary.
@@ -126,7 +132,8 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
         /// <returns></returns>
         private async Task<Hashtable> CacheLanguageAsync(string languageCode)
         {
-            return await cache.GetOrAddAsync($"GCLTranslations{languageCode}", GetLanguagesAndTranslations, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Languages));
+            var cacheName = $"GCLTranslations{languageCode}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName, GetLanguagesAndTranslations, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Languages));
 
             async Task<Hashtable> GetLanguagesAndTranslations(ICacheEntry cacheEntry)
             {
