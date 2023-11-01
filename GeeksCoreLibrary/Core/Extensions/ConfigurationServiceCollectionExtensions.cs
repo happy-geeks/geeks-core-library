@@ -50,7 +50,7 @@ using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.ItemFiles.Middlewares;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Options;
-using WebMarkupMin.AspNetCore3;
+using WebMarkupMin.AspNetCore7;
 using WebMarkupMin.Core;
 
 [assembly: AspMvcAreaViewLocationFormat("/Modules/{2}/Views/{1}/{0}.cshtml")]
@@ -183,12 +183,11 @@ namespace GeeksCoreLibrary.Core.Extensions
             // Add MySql health checks.
             if (isWeb)
             {
-                services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, "MySqlRead");
+                services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlRead");
                 if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
                 {
-                    services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, "MySqlWrite");
+                    services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite");
                 }
-
 
                 // Set default settings for JSON.NET.
                 JsonConvert.DefaultSettings = () => new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
@@ -252,7 +251,6 @@ namespace GeeksCoreLibrary.Core.Extensions
             {
                 services.AddScoped<ITemplatesService, TemplatesService>();
             }
-
 
             // Configure automatic scanning of classes for dependency injection.
             services.Scan(scan => scan
