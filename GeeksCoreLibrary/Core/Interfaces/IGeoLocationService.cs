@@ -5,6 +5,6 @@ namespace GeeksCoreLibrary.Core.Interfaces
 {
     public interface IGeoLocationService
     {
-        Task<AddressInfoModel> GetAddressInfo(string zipCode, string houseNumber, string houseNumberAddition = "", string country = "");
+        Task<AddressInfoModel> GetAddressInfoAsync(string zipCode, string houseNumber, string houseNumberAddition = "", string country = "");
     }
 }

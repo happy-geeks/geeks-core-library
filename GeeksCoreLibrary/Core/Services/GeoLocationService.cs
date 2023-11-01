@@ -6,6 +6,7 @@ using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Core.Models.Pro6PP;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using Microsoft.Extensions.Logging;
 using RestSharp;
 using RestSharp.Serializers.NewtonsoftJson;
 
@@ -14,14 +15,16 @@ namespace GeeksCoreLibrary.Core.Services
     public class GeoLocationService : IGeoLocationService, IScopedService
     {
         private readonly IObjectsService objectsService;
+        private readonly ILogger<GeoLocationService> logger;
 
-        public GeoLocationService(IObjectsService objectsService)
+        public GeoLocationService(IObjectsService objectsService, ILogger<GeoLocationService> logger)
         {
             this.objectsService = objectsService;
+            this.logger = logger;
         }
 
         /// <inheritdoc />
-        public async Task<AddressInfoModel> GetAddressInfo(string zipCode, string houseNumber, string houseNumberAddition = "", string country = "")
+        public async Task<AddressInfoModel> GetAddressInfoAsync(string zipCode, string houseNumber, string houseNumberAddition = "", string country = "")
         {
             var authKey = await objectsService.FindSystemObjectByDomainNameAsync("pro6pp_key");
             if (String.IsNullOrWhiteSpace(authKey))
@@ -30,7 +33,7 @@ namespace GeeksCoreLibrary.Core.Services
             }
 
             // Create client and request.
-            var restClient = new RestClient(configureSerialization: s => s.UseNewtonsoftJson());
+            var restClient = new RestClient("https://api.pro6pp.nl", configureSerialization: serializerConfig => serializerConfig.UseNewtonsoftJson());
 
             var restRequest = new RestRequest("/v1/autocomplete", Method.Get);
             restRequest.AddQueryParameter("auth_key", authKey);
@@ -75,24 +78,30 @@ namespace GeeksCoreLibrary.Core.Services
             // Although JSON format is the default, it is explicitly set anyway, in case the default ever changes.
             restRequest.AddQueryParameter("format", "json");
 
-            var restResult = await restClient.ExecuteAsync<Pro6PPAutoCompleteResultModel>(restRequest);
-            if (!restResult.IsSuccessful || restResult.Data == null || !restResult.Data.Status.Equals("ok", StringComparison.OrdinalIgnoreCase) || !restResult.Data.Results.Any())
+            try
             {
-                return new AddressInfoModel { Success = false, Error = restResult.Data?.Error?.Message ?? "No matched found, or an unknown error occurred in 6PP API." };
+                var restResult = await restClient.ExecuteAsync<Pro6PPAutoCompleteResultModel>(restRequest);
+                if (!restResult.IsSuccessful || restResult.Data == null || !restResult.Data.Status.Equals("ok", StringComparison.OrdinalIgnoreCase) || !restResult.Data.Results.Any())
+                {
+                    return new AddressInfoModel { Success = false, Error = restResult.Data?.Error?.Message ?? "No matches found, or an unknown error occurred in 6PP API." };
+                }
+
+                return new AddressInfoModel
+                {
+                    Success = true,
+                    StreetName = restResult.Data.Results.First().StreetName,
+                    PlaceName = restResult.Data.Results.First().City,
+                    Province = restResult.Data.Results.First().Province,
+                    Municipality = restResult.Data.Results.First().Municipality,
+                    Longitude = restResult.Data.Results.First().Longitude,
+                    Latitude = restResult.Data.Results.First().Latitude
+                };
             }
-
-            var result = new AddressInfoModel
+            catch (Exception exception)
             {
-                Success = true,
-                StreetName = restResult.Data.Results.First().StreetName,
-                PlaceName = restResult.Data.Results.First().City,
-                Province = restResult.Data.Results.First().Province,
-                Municipality = restResult.Data.Results.First().Municipality,
-                Longitude = restResult.Data.Results.First().Longitude,
-                Latitude = restResult.Data.Results.First().Latitude
-            };
-
-            return result;
+                logger.LogWarning(exception, "An error occurred while retrieving address information from 6PP API.");
+                return new AddressInfoModel { Success = false, Error = exception.Message };
+            }
         }
     }
 }
