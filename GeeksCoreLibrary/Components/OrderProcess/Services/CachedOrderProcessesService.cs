@@ -66,13 +66,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         /// <inheritdoc />
         public override async Task<List<PaymentMethodSettingsModel>> GetPaymentMethodsAsync(ulong orderProcessId, UserCookieDataModel loggedInUser = null)
         {
-            var cacheName = $"OrderProcessGetPaymentMethods_{orderProcessId}_{(loggedInUser == null ? "all" : loggedInUser.UserId.ToString())}_{branchesService.GetDatabaseNameFromCookie()}";
-            return await cache.GetOrAddAsync(cacheName,
-                delegate(ICacheEntry cacheEntry)
-                {                    
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
-                    return orderProcessesService.GetPaymentMethodsAsync(orderProcessId, loggedInUser);
-                });
+            return await orderProcessesService.GetPaymentMethodsAsync(orderProcessId, loggedInUser);
         }
 
         /// <inheritdoc />
