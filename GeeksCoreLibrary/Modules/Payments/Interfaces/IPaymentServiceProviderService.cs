@@ -51,11 +51,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Interfaces
         }
 
         /// <summary>
-        /// Gets the settings for the current payment service provider. This requires a <see cref="PaymentServiceProviderSettingsModel"/> with basic properties set, like the ID.
-        /// This will then return a model with all the settings for the specific PSP.
+        /// Gets the settings for the current payment service provider and saves them in the given model. This requires a <see cref="PaymentServiceProviderSettingsModel"/> with basic properties set, like the ID.
         /// </summary>
         /// <param name="paymentServiceProviderSettings">The basic settings for the payment service provider.</param>
-        Task<PaymentServiceProviderSettingsModel> GetProviderSettingsAsync(PaymentServiceProviderSettingsModel paymentServiceProviderSettings);
+        Task GetProviderSettingsAsync(PaymentServiceProviderSettingsModel paymentServiceProviderSettings);
 
         /// <summary>
         /// Gets the invoice number from the request.
