@@ -48,9 +48,9 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public Task GetProviderSettingsAsync(PaymentServiceProviderSettingsModel paymentServiceProviderSettings)
+        public Task<PaymentServiceProviderSettingsModel> GetProviderSettingsAsync(PaymentServiceProviderSettingsModel paymentServiceProviderSettings)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(paymentServiceProviderSettings);
         }
 
         /// <inheritdoc />

@@ -1374,7 +1374,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
             // Build the PSP settings model based on the type of PSP.
             var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(result.PaymentServiceProvider.Title);
-            await paymentServiceProviderService.GetProviderSettingsAsync(result.PaymentServiceProvider);
+            result.PaymentServiceProvider = await paymentServiceProviderService.GetProviderSettingsAsync(result.PaymentServiceProvider);
 
             return result;
         }
