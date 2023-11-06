@@ -4,6 +4,7 @@ using GeeksCoreLibrary.Components.Account.Models;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using LazyCache;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -15,19 +16,21 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         private readonly IAppCache cache;
         private readonly GclSettings gclSettings;
         private readonly IOrderProcessesService orderProcessesService;
+        private readonly IBranchesService branchesService;
 
-        public CachedOrderProcessesService(IAppCache cache, IOptions<GclSettings> gclSettings, IOrderProcessesService orderProcessesService) : base(orderProcessesService)
+        public CachedOrderProcessesService(IAppCache cache, IOptions<GclSettings> gclSettings, IOrderProcessesService orderProcessesService, IBranchesService branchesService) : base(orderProcessesService)
         {
             this.cache = cache;
             this.gclSettings = gclSettings.Value;
             this.orderProcessesService = orderProcessesService;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
         public override async Task<OrderProcessSettingsModel> GetOrderProcessSettingsAsync(ulong orderProcessId)
         {
-            var key = $"OrderProcessSettings_{orderProcessId}";
-            return await cache.GetOrAddAsync(key,
+            var cacheName = $"OrderProcessSettings_{orderProcessId}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 delegate(ICacheEntry cacheEntry)
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
@@ -38,8 +41,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         /// <inheritdoc />
         public override async Task<OrderProcessSettingsModel> GetOrderProcessViaFixedUrlAsync(string fixedUrl)
         {
-            var key = $"OrderProcessWithFixedUrl_{fixedUrl}";
-            return await cache.GetOrAddAsync(key,
+            var cacheName = $"OrderProcessWithFixedUrl_{fixedUrl}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 delegate(ICacheEntry cacheEntry)
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
@@ -63,20 +66,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         /// <inheritdoc />
         public override async Task<List<PaymentMethodSettingsModel>> GetPaymentMethodsAsync(ulong orderProcessId, UserCookieDataModel loggedInUser = null)
         {
-            var key = $"OrderProcessGetPaymentMethods_{orderProcessId}_{(loggedInUser == null ? "all" : loggedInUser.UserId.ToString())}";
-            return await cache.GetOrAddAsync(key,
-                delegate(ICacheEntry cacheEntry)
-                {                    
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;
-                    return orderProcessesService.GetPaymentMethodsAsync(orderProcessId, loggedInUser);
-                });
+            return await orderProcessesService.GetPaymentMethodsAsync(orderProcessId, loggedInUser);
         }
 
         /// <inheritdoc />
         public override async Task<PaymentMethodSettingsModel> GetPaymentMethodAsync(ulong paymentMethodId)
         {
-            var key = $"OrderProcessGetPaymentMethodAsync_{paymentMethodId}";
-            return await cache.GetOrAddAsync(key,
+            var cacheName = $"OrderProcessGetPaymentMethodAsync_{paymentMethodId}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 delegate(ICacheEntry cacheEntry)
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultOrderProcessCacheDuration;

@@ -8,6 +8,7 @@ using GeeksCoreLibrary.Components.WebPage.Models;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using LazyCache;
@@ -23,8 +24,9 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
         private readonly ILanguagesService languagesService;
         private readonly ICacheService cacheService;
         private readonly IStringReplacementsService stringReplacementsService;
+        private readonly IBranchesService branchesService;
 
-        public CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSettings, IWebPagesService webPagesService, ILanguagesService languagesService, ICacheService cacheService, IStringReplacementsService stringReplacementsService)
+        public CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSettings, IWebPagesService webPagesService, ILanguagesService languagesService, ICacheService cacheService, IStringReplacementsService stringReplacementsService, IBranchesService branchesService)
         {
             this.cache = cache;
             this.gclSettings = gclSettings.Value;
@@ -32,6 +34,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
             this.languagesService = languagesService;
             this.cacheService = cacheService;
             this.stringReplacementsService = stringReplacementsService;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
@@ -42,8 +45,8 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
                 throw new ArgumentNullException(nameof(fixedUrl));
             }
 
-            var key = $"WebPagesWithFixedUrl_{fixedUrl}";
-            return await cache.GetOrAddAsync(key,
+            var cacheName = $"WebPagesWithFixedUrl_{fixedUrl}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWebPageCacheDuration;
@@ -73,13 +76,14 @@ namespace GeeksCoreLibrary.Components.WebPage.Services
                 languageCode = await stringReplacementsService.DoAllReplacementsAsync(languagesService.CurrentLanguageCode);
             }
 
-            var key = $"WebPage_{languageCode}_{settings.PageId}_{pageName}_{pathMustContainName}_{settings.SearchNumberOfLevels}";
+            var cacheName = $"WebPage_{languageCode}_{settings.PageId}_{pageName}_{pathMustContainName}_{settings.SearchNumberOfLevels}";
             if (extraData != null && extraData.Any())
             {
-                key += $"_{String.Join("_", extraData.Select(x => $"{x.Key}={x.Value}"))}";
+                cacheName += $"_{String.Join("_", extraData.Select(x => $"{x.Key}={x.Value}"))}";
             }
 
-            return await cache.GetOrAddAsync(key,
+            cacheName += $"_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWebPageCacheDuration;

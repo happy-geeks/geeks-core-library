@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using LazyCache;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,14 +18,16 @@ public class CachedRolesService : IRolesService
     private readonly ICacheService cacheService;
     private readonly GclSettings gclSettings;
     private readonly ILogger<CachedRolesService> logger;
+    private readonly IBranchesService branchesService;
 
-    public CachedRolesService(IRolesService rolesService, IAppCache cache, ICacheService cacheService, IOptions<GclSettings> gclSettings, ILogger<CachedRolesService> logger)
+    public CachedRolesService(IRolesService rolesService, IAppCache cache, ICacheService cacheService, IOptions<GclSettings> gclSettings, ILogger<CachedRolesService> logger, IBranchesService branchesService)
     {
         this.rolesService = rolesService;
         this.cache = cache;
         this.cacheService = cacheService;
         this.gclSettings = gclSettings.Value;
         this.logger = logger;
+        this.branchesService = branchesService;
     }
 
     /// <inheritdoc />
@@ -34,9 +37,8 @@ public class CachedRolesService : IRolesService
 
         // Base the cache name on whether permissions are included.
         cacheName.Append(includePermissions ? "WithPermissions" : "WithoutPermissions");
-
-        var roles = await cache.GetOrAddAsync(
-            cacheName.ToString(),
+        cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
+        var roles = await cache.GetOrAddAsync(cacheName.ToString(),
             async cacheEntry =>
             {
                 // Use the normal roles service to get the roles.

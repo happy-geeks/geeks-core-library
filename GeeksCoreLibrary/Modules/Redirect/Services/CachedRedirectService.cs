@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Redirect.Interfaces;
 using GeeksCoreLibrary.Modules.Redirect.Models;
 using LazyCache;
@@ -16,24 +17,27 @@ namespace GeeksCoreLibrary.Modules.Redirect.Services
         private readonly IRedirectService redirectService;
         private readonly ICacheService cacheService;
         private readonly GclSettings gclSettings;
+        private readonly IBranchesService branchesService;
 
-        public CachedRedirectService(IAppCache cache, IRedirectService redirectService, IOptions<GclSettings> gclSettings, ICacheService cacheService)
+        public CachedRedirectService(IAppCache cache, IRedirectService redirectService, IOptions<GclSettings> gclSettings, ICacheService cacheService, IBranchesService branchesService)
         {
             this.cache = cache;
             this.redirectService = redirectService;
             this.cacheService = cacheService;
             this.gclSettings = gclSettings.Value;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
         public async Task<RedirectModel> GetRedirectAsync(Uri uri)
         {
-            return await cache.GetOrAddAsync($"Redirect_{uri}",
-                                             async cacheEntry =>
-                                             {
-                                                 cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultRedirectModuleCacheDuration;
-                                                 return await redirectService.GetRedirectAsync(uri);
-                                             }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Redirects));
+            var cacheName = $"Redirect_{uri}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
+                 async cacheEntry =>
+                 {
+                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultRedirectModuleCacheDuration;
+                     return await redirectService.GetRedirectAsync(uri);
+                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Redirects));
         }
 
         /// <inheritdoc />

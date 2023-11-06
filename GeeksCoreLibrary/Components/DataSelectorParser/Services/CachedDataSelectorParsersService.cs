@@ -6,6 +6,7 @@ using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using LazyCache;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -18,13 +19,15 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser.Services
         private readonly IDataSelectorParsersService dataSelectorParsersService;
         private readonly IAppCache cache;
         private readonly ICacheService cacheService;
+        private readonly IBranchesService branchesService;
 
-        public CachedDataSelectorParsersService(IOptions<GclSettings> gclSettings, IDataSelectorParsersService dataSelectorParsersService, IAppCache cache, ICacheService cacheService)
+        public CachedDataSelectorParsersService(IOptions<GclSettings> gclSettings, IDataSelectorParsersService dataSelectorParsersService, IAppCache cache, ICacheService cacheService, IBranchesService branchesService)
         {
             this.gclSettings = gclSettings.Value;
             this.dataSelectorParsersService = dataSelectorParsersService;
             this.cache = cache;
             this.cacheService = cacheService;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
@@ -35,12 +38,12 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser.Services
                 return null;
             }
 
-            var cacheKey = new StringBuilder();
-            cacheKey.Append("GCLDataSelectorParser_");
-            cacheKey.Append(!String.IsNullOrWhiteSpace(dataSelectorId) ? dataSelectorId : dataSelectorJson.ToSha512Simple());
-
+            var cacheName = new StringBuilder();
+            cacheName.Append("GCLDataSelectorParser_");
+            cacheName.Append(!String.IsNullOrWhiteSpace(dataSelectorId) ? dataSelectorId : dataSelectorJson.ToSha512Simple());
+            cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
             return await cache.GetOrAddAsync(
-                cacheKey.ToString(),
+                cacheName.ToString(),
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultDataSelectorParsersCacheDuration;

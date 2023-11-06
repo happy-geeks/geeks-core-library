@@ -6,6 +6,7 @@ using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using LazyCache;
 using Microsoft.Extensions.Options;
 
@@ -20,13 +21,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         private readonly IAppCache cache;
         private readonly IShoppingBasketsService shoppingBasketsService;
         private readonly ICacheService cacheService;
+        private readonly IBranchesService branchesService;
 
-        public CachedShoppingBasketsService(IOptions<GclSettings> gclSettings, IAppCache cache, IShoppingBasketsService shoppingBasketsService, ICacheService cacheService)
+        public CachedShoppingBasketsService(IOptions<GclSettings> gclSettings, IAppCache cache, IShoppingBasketsService shoppingBasketsService, ICacheService cacheService, IBranchesService branchesService)
         {
             this.gclSettings = gclSettings.Value;
             this.cache = cache;
             this.shoppingBasketsService = shoppingBasketsService;
             this.cacheService = cacheService;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
@@ -206,7 +209,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// <inheritdoc />
         public async Task<IList<WiserItemModel>> GetFreeProductActionsAsync()
         {
-            return await cache.GetOrAddAsync("GCLShoppingBasketFreeProductActions",
+            var cacheName = $"GCLShoppingBasketFreeProductActions_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultShoppingBasketsCacheDuration;
@@ -217,7 +221,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         /// <inheritdoc />
         public async Task<IList<VatRule>> GetVatRulesAsync()
         {
-            return await cache.GetOrAddAsync("GCLShoppingBasketVatRules",
+            var cacheName = $"GCLShoppingBasketVatRules_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultShoppingBasketsCacheDuration;

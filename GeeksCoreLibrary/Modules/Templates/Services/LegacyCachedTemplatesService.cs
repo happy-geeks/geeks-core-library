@@ -9,6 +9,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -32,6 +33,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly GclSettings gclSettings;
         private readonly ICacheService cacheService;
         private readonly IWebHostEnvironment webHostEnvironment;
+        private readonly IBranchesService branchesService;
 
         public LegacyCachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger,
             ITemplatesService templatesService,
@@ -39,6 +41,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
             ICacheService cacheService,
+            IBranchesService branchesService,
             IWebHostEnvironment webHostEnvironment = null)
         {
             this.logger = logger;
@@ -48,6 +51,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.databaseConnection = databaseConnection;
             this.cacheService = cacheService;
             this.webHostEnvironment = webHostEnvironment;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
@@ -121,8 +125,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Cache the template settings in memory.
-            var cacheKey = $"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}";
-            var template = await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}_{branchesService.GetDatabaseNameFromCookie()}";
+            var template = await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -176,8 +180,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
-            var cacheKey = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {                    
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -194,8 +198,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
-            var cacheKey = $"GeneralTemplateLastChangedDate_{templateType}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"GeneralTemplateLastChangedDate_{templateType}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -206,8 +210,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
         {
-            var cacheKey = $"GeneralTemplateValue_{templateType}_{byInsertMode:G}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"GeneralTemplateValue_{templateType}_{byInsertMode:G}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -375,7 +379,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// </summary>
         private async Task<Dictionary<int, DynamicContent>> CacheDynamicContentAsync()
         {
-            return await cache.GetOrAddAsync("DynamicContent", GetDynamicContentForCachingAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+            var cacheName = $"DynamicContent_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName, GetDynamicContentForCachingAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />

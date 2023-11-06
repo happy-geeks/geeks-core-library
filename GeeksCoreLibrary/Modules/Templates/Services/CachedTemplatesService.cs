@@ -12,6 +12,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -42,6 +43,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly IObjectsService objectsService;
         private readonly ILanguagesService languagesService;
+        private readonly IBranchesService branchesService;
 
         public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger,
             ITemplatesService templatesService,
@@ -51,6 +53,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             ICacheService cacheService,
             IObjectsService objectsService,
             ILanguagesService languagesService,
+            IBranchesService branchesService,
             IHttpContextAccessor httpContextAccessor = null,
             IWebHostEnvironment webHostEnvironment = null)
         {
@@ -64,6 +67,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.webHostEnvironment = webHostEnvironment;
             this.objectsService = objectsService;
             this.languagesService = languagesService;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
@@ -163,8 +167,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Cache the template settings in memory.
-            var cacheKey = $"Template_{languagesService.CurrentLanguageCode ?? ""}_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}";
-            var template = await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"Template_{languagesService.CurrentLanguageCode ?? ""}_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}_{branchesService.GetDatabaseNameFromCookie()}";
+            var template = await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -219,8 +223,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
-            var cacheKey = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -232,8 +236,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
         {
-            var cacheKey = $"GetTemplateIdFromName_{name}_{type}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"GetTemplateIdFromName_{name}_{type}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -252,8 +256,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 await languagesService.GetLanguageCodeAsync();
             }
 
-            var cacheKey = $"GeneralTemplateLastChangedDate_{languagesService.CurrentLanguageCode ?? ""}_{templateType}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"GeneralTemplateLastChangedDate_{languagesService.CurrentLanguageCode ?? ""}_{templateType}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -272,8 +276,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 await languagesService.GetLanguageCodeAsync();
             }
 
-            var cacheKey = $"GeneralTemplateValue_{languagesService.CurrentLanguageCode ?? ""}_{templateType}_{byInsertMode:G}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"GeneralTemplateValue_{languagesService.CurrentLanguageCode ?? ""}_{templateType}_{byInsertMode:G}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -359,8 +363,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 await languagesService.GetLanguageCodeAsync();
             }
 
-            var cacheKey = $"image_template_{languagesService.CurrentLanguageCode ?? ""}_{input.ToSha512Simple()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"image_template_{languagesService.CurrentLanguageCode ?? ""}_{input.ToSha512Simple()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -429,7 +433,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// </summary>
         private async Task<Dictionary<int, DynamicContent>> CacheDynamicContentAsync()
         {
-            return await cache.GetOrAddAsync("DynamicContent", GetDynamicContentForCachingAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+            var cacheName = $"DynamicContent_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName, GetDynamicContentForCachingAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />
@@ -486,19 +491,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
-            var cacheKey = new StringBuilder($"dynamicContent_{languagesService.CurrentLanguageCode ?? ""}_{dynamicContent.Id}_");
+            var cacheName = new StringBuilder($"dynamicContent_{languagesService.CurrentLanguageCode ?? ""}_{dynamicContent.Id}_");
             switch (settings.CachingMode)
             {
                 case TemplateCachingModes.ServerSideCaching:
                     break;
                 case TemplateCachingModes.ServerSideCachingPerUrl:
-                    cacheKey.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
+                    cacheName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
                     break;
                 case TemplateCachingModes.ServerSideCachingPerUrlAndQueryString:
-                    cacheKey.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
+                    cacheName.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
                     break;
                 case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
-                    cacheKey.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
+                    cacheName.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
                     break;
                 case TemplateCachingModes.ServerSideCachingBasedOnUrlRegex:
                     if (String.IsNullOrWhiteSpace(settings.CacheRegex))
@@ -528,7 +533,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
 
                             // Add the group value to the file name.
-                            cacheKey.Append($"{Uri.EscapeDataString(value)}_");
+                            cacheName.Append($"{Uri.EscapeDataString(value)}_");
                         }
                     }
                     catch (ArgumentException argumentException)
@@ -549,17 +554,18 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 foreach (var key in extraData.Keys)
                 {
-                    cacheKey.Append($"_{key}={extraData[key]}");
+                    cacheName.Append($"_{key}={extraData[key]}");
                 }
             }
-
+            
             string html = null;
             var addedToCache = false;
             switch (settings.CachingLocation)
             {
                 case TemplateCachingLocations.InMemory:
                 case TemplateCachingLocations.OnDisk when !String.IsNullOrWhiteSpace(callMethod):
-                    html = (string)await cache.GetOrAddAsync(cacheKey.ToString(),
+                    cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
+                    html = (string)await cache.GetOrAddAsync(cacheName.ToString(),
                         async cacheEntry =>
                         {
                             addedToCache = true;
@@ -577,7 +583,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                     else
                     {
-                        var fileName = $"{cacheKey}.html";
+                        cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
+                        var fileName = $"{cacheName}.html";
                         var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
                         // Check if a cache file already exists and if it hasn't expired yet.
@@ -617,15 +624,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return html;
             }
 
-            cacheKey.Append($"_{Constants.PageMetaDataFromComponentKey}");
+            cacheName.Append($"_{Constants.PageMetaDataFromComponentKey}");
 
             if (addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
             {
-                cache.Add(cacheKey.ToString(), componentSeoData);
+                cache.Add(cacheName.ToString(), componentSeoData);
             }
             else if (!addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] == null)
             {
-                componentSeoData = cache.Get<PageMetaDataModel>(cacheKey.ToString());
+                componentSeoData = cache.Get<PageMetaDataModel>(cacheName.ToString());
                 if (componentSeoData != null)
                 {
                     httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] = componentSeoData;
@@ -692,8 +699,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<List<Template>> GetTemplateUrlsAsync()
         {
-            var cacheKey = $"template_urls_{databaseConnection.GetDatabaseNameForCaching()}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"template_urls_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -723,8 +730,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
         {
-            var cacheKey = $"page_widgets_{databaseConnection.GetDatabaseNameForCaching()}_global";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"page_widgets_{databaseConnection.GetDatabaseNameForCaching()}_global_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
@@ -742,8 +749,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService service, int templateId, bool includeGlobalSnippets = true)
         {
-            var cacheKey = $"page_widgets_{databaseConnection.GetDatabaseNameForCaching()}_{templateId}_{includeGlobalSnippets}";
-            return await cache.GetOrAddAsync(cacheKey,
+            var cacheName = $"page_widgets_{databaseConnection.GetDatabaseNameForCaching()}_{templateId}_{includeGlobalSnippets}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;

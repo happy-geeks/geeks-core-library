@@ -4,6 +4,7 @@ using System.Xml.Linq;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Seo.Interfaces;
 using GeeksCoreLibrary.Modules.Seo.Models;
 using LazyCache;
@@ -17,19 +18,22 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
         private readonly ISeoService seoService;
         private readonly ICacheService cacheService;
         private readonly GclSettings gclSettings;
+        private readonly IBranchesService branchesService;
 
-        public CachedSeoService(IAppCache cache, ISeoService seoService, IOptions<GclSettings> gclSettings, ICacheService cacheService)
+        public CachedSeoService(IAppCache cache, ISeoService seoService, IOptions<GclSettings> gclSettings, ICacheService cacheService, IBranchesService branchesService)
         {
             this.cache = cache;
             this.seoService = seoService;
             this.cacheService = cacheService;
             this.gclSettings = gclSettings.Value;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
         public async Task<PageMetaDataModel> GetSeoDataForPageAsync(Uri pageUri)
         {
-            return await cache.GetOrAddAsync($"Seo_{pageUri.AbsoluteUri}",
+            var cacheName = $"Seo_{pageUri.AbsoluteUri}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultSeoModuleCacheDuration;
@@ -46,7 +50,8 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
         /// <inheritdoc />
         public async Task<XDocument> GenerateSiteMap()
         {
-            return await cache.GetOrAddAsync("Sitemap",
+            var cacheName = $"Sitemap_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultSeoModuleCacheDuration;
@@ -57,7 +62,8 @@ namespace GeeksCoreLibrary.Modules.Seo.Services
         /// <inheritdoc />
         public async Task<XDocument> GenerateImageSiteMap()
         {
-            return await cache.GetOrAddAsync("ImageSitemap",
+            var cacheName = $"ImageSitemap_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultSeoModuleCacheDuration;
