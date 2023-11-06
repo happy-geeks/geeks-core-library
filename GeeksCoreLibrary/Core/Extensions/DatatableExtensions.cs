@@ -110,12 +110,14 @@ namespace GeeksCoreLibrary.Core.Extensions
                 // This function is to merge objects based on property values of those objects, so if the token is not an object, there is nothing to merge.
                 if (token is not JObject item)
                 {
+                    newList.Add(token);
                     continue;
                 }
 
                 // If the object doesn't contain the key, there is nothing to merge.
                 if (!item.ContainsKey(key))
                 {
+                    newList.Add(item);
                     continue;
                 }
 
@@ -123,6 +125,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 var keyValue = item[key]?.ToString();
                 if (String.IsNullOrWhiteSpace(keyValue))
                 {
+                    newList.Add(item);
                     continue;
                 }
 
