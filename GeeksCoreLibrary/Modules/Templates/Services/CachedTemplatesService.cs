@@ -285,13 +285,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         /// <inheritdoc />
         public async Task<List<Template>> GetTemplatesAsync(ICollection<int> templateIds, bool includeContent)
         {
-            var results = new List<Template>();
-            foreach (var id in templateIds)
-            {
-                results.Add(await GetTemplateAsync(id, includeContent: includeContent));
-            }
-
-            return results;
+            var cacheKey = $"GetMultipleTemplates_{includeContent}_{String.Join("_", templateIds.Order())}";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetTemplatesAsync(templateIds, includeContent);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />
