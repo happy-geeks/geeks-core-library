@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -26,10 +25,10 @@ namespace GeeksCoreLibrary.Core.Controllers
         /// <param name="houseNumberAddition">A house number addition.</param>
         /// <param name="country">A country code. Should be either 'nl' or 'be'.</param>
         /// <returns></returns>
-        [Route("addressinfo.gcl")]
-        [Route("addressinfo.jcl")]
+        [Route("/addressinfo.gcl")]
+        [Route("/addressinfo.jcl")]
         [HttpGet]
-        public async Task<IActionResult> GetAddressInfo(
+        public async Task<IActionResult> GetAddressInfoAsync(
             [Required(ErrorMessage = "ZIP code is required."), RegularExpression(@"^\d{4}\s*(?:[a-zA-Z]{2})?$", ErrorMessage = "Invalid ZIP code.")] string zipCode,
             [Required(ErrorMessage = "House number is required.")] string houseNumber,
             string houseNumberAddition = "",
@@ -46,7 +45,7 @@ namespace GeeksCoreLibrary.Core.Controllers
                 Formatting = Formatting.None
             };
 
-            var result = JsonConvert.SerializeObject(await geoLocationService.GetAddressInfo(zipCode, houseNumber, houseNumberAddition, country), serializerSettings);
+            var result = JsonConvert.SerializeObject(await geoLocationService.GetAddressInfoAsync(zipCode, houseNumber, houseNumberAddition, country), serializerSettings);
             return Content(result, "application/json");
         }
     }
