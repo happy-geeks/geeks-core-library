@@ -39,8 +39,8 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         formatters = typeof(StringReplacementsExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public);
 
         // Create some regular expressions so they can be re-used instead of creating them each time the function is called.
-        formatterRegex = new Regex(@"(?<methodname>[^\(\)]+)(?:\((?<parameters>[^\)]+)\))?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
-        logicSnippetRegex = new Regex(@"\[if\((?<left>((?!\[if\().)*?)(?<op>=|!|<|>|&lt;|&gt;|%)(?<right>((?!\[if\().)*?)\)\](?<text>((?!\[if\().)*?)\[endif\]", RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+        formatterRegex = new Regex(@"(?<methodname>[^\(\)]+)(?:\((?<parameters>[^\)]+)\))?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(2));
+        logicSnippetRegex = new Regex(@"\[if\((?<left>((?!\[if\().)*?)(?<op>=|!|<|>|&lt;|&gt;|%)(?<right>((?!\[if\().)*?)\)\](?<text>((?!\[if\().)*?)\[endif\]", RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(2));
     }
 
     /// <inheritdoc />

@@ -7,7 +7,6 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Redirect.Interfaces;
 using GeeksCoreLibrary.Modules.Redirect.Models;
-using Microsoft.AspNetCore.Http;
 
 namespace GeeksCoreLibrary.Modules.Redirect.Services
 {
@@ -78,7 +77,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Services
             {
                 return String.Empty;
             }
-            
+
             return await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
         }
 
