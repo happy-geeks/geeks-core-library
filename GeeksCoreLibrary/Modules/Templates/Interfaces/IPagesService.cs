@@ -35,7 +35,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="bodyHtml">The complete HTML of the body of this page.</param>
         /// <param name="templateId">Optional: The ID of the template that is used for this page. Leave empty if you're creating a view model for something that is not a template from the Wiser template module.</param>
         /// <returns>The model for the view.</returns>
-        Task<PageViewModel> CreatePageViewModelAsync(List<PageResource> externalCss, List<int> cssTemplates, List<PageResource> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0);
+        Task<PageViewModel> CreatePageViewModelAsync(List<PageResourceModel> externalCss, List<int> cssTemplates, List<PageResourceModel> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0);
 
         /// <summary>
         /// Sets the SEO meta data for the current page.

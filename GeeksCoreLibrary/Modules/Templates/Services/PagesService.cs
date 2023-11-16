@@ -195,7 +195,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<PageViewModel> CreatePageViewModelAsync(List<PageResource> externalCss, List<int> cssTemplates, List<PageResource> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0)
+        public async Task<PageViewModel> CreatePageViewModelAsync(List<PageResourceModel> externalCss, List<int> cssTemplates, List<PageResourceModel> externalJavascript, List<int> javascriptTemplates, string bodyHtml, int templateId = 0)
         {
             var viewModel = new PageViewModel();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
@@ -461,14 +461,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Check if some component is adding external JavaScript libraries to the page.
-            var externalScripts = externalJavascript.Select(ej => new JavaScriptResource { Uri = ej.Uri, Hash = ej.Hash }).ToList();
+            var externalScripts = externalJavascript.Select(ej => new JavaScriptResourceModel { Uri = ej.Uri, Hash = ej.Hash }).ToList();
             foreach (var externalScript in externalScripts.Where(externalScript => !externalScript.Uri.IsAbsoluteUri))
             {
                 // Turn relative URI into absolute.
                 externalScript.Uri = new Uri($"{HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}{externalScript.Uri.OriginalString}");
             }
 
-            if (httpContextAccessor?.HttpContext?.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] is List<JavaScriptResource> componentExternalJavaScriptLibraries)
+            if (httpContextAccessor?.HttpContext?.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] is List<JavaScriptResourceModel> componentExternalJavaScriptLibraries)
             {
                 foreach (var externalLibrary in componentExternalJavaScriptLibraries.Where(externalLibrary => !externalScripts.Any(l => l.Uri.AbsoluteUri.Equals(externalLibrary.Uri.AbsoluteUri, StringComparison.OrdinalIgnoreCase))))
                 {
@@ -748,7 +748,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 return;
             }
 
-            viewModel.Javascript.ExternalJavascript.Add(new JavaScriptResource
+            viewModel.Javascript.ExternalJavascript.Add(new JavaScriptResourceModel
             {
                 Uri = new Uri($"https://www.google.com/recaptcha/api.js?render={reCaptchaSiteKey}"),
                 Async = true,
@@ -807,7 +807,7 @@ gclExecuteReCaptcha(""Page_load"")");
             var googleAnalytics4Enabled = !String.IsNullOrWhiteSpace(googleAnalytics4Code);
             if (googleAnalytics4Enabled)
             {
-                viewModel.GoogleAnalytics.HeadJavaScriptResources.Add(new JavaScriptResource
+                viewModel.GoogleAnalytics.HeadJavaScriptResources.Add(new JavaScriptResourceModel
                 {
                     Uri = new Uri($"https://www.googletagmanager.com/gtag/js?id={googleAnalytics4Code}"),
                     Async = true
@@ -883,7 +883,7 @@ gclExecuteReCaptcha(""Page_load"")");
                 var trackJsToken = await objectsService.FindSystemObjectByDomainNameAsync("TrackJSToken");
                 if (!String.IsNullOrWhiteSpace(trackJsToken))
                 {
-                    viewModel.Javascript.ExternalJavascript.Add(new JavaScriptResource
+                    viewModel.Javascript.ExternalJavascript.Add(new JavaScriptResourceModel
                     {
                         Uri = new Uri("https://cdn.trackjs.com/agent/v3/latest/t.js")
                     });

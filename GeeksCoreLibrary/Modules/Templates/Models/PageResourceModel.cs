@@ -2,7 +2,7 @@
 
 namespace GeeksCoreLibrary.Modules.Templates.Models;
 
-public class PageResource
+public class PageResourceModel
 {
     /// <summary>
     /// Gets or sets the full (absolute) path to the file.

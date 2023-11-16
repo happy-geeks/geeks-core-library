@@ -1334,8 +1334,8 @@ ORDER BY ORDINAL_POSITION ASC";
 
             var cssStringBuilder = new StringBuilder();
             var jsStringBuilder = new StringBuilder();
-            var externalCssFilesList = new List<PageResource>();
-            var externalJavaScriptFilesList = new List<PageResource>();
+            var externalCssFilesList = new List<PageResourceModel>();
+            var externalJavaScriptFilesList = new List<PageResourceModel>();
             foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
             {
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);

@@ -100,7 +100,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 var jsonString = reader.GetStringHandleNull("external_files_json");
                 if (!String.IsNullOrEmpty(jsonString))
                 {
-                    template.ExternalFiles = JsonConvert.DeserializeObject<List<PageResource>>(jsonString);
+                    template.ExternalFiles = JsonConvert.DeserializeObject<List<PageResourceModel>>(jsonString);
                 }
             }
 
@@ -114,7 +114,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                         continue;
                     }
 
-                    template.ExternalFiles.Add(new PageResource
+                    template.ExternalFiles.Add(new PageResourceModel
                     {
                         Uri = uri
                     });

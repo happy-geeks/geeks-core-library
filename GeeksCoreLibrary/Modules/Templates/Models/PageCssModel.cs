@@ -8,7 +8,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// <summary>
         /// Gets or sets the list of external CSS files.
         /// </summary>
-        public List<PageResource> ExternalCss { get; set; } = new();
+        public List<PageResourceModel> ExternalCss { get; set; } = new();
 
         /// <summary>
         /// Gets or sets the file name of the CSS for all pages, that is loaded via the header on top of the page.

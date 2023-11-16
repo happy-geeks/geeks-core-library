@@ -79,8 +79,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
 
                 var javascriptTemplates = new List<int>();
                 var cssTemplates = new List<int>();
-                var externalJavascript = new List<PageResource>();
-                var externalCss = new List<PageResource>();
+                var externalJavascript = new List<PageResourceModel>();
+                var externalCss = new List<PageResourceModel>();
                 var contentTemplate = await templatesService.GetTemplateAsync(templateId, templateName);
 
                 templateId = contentTemplate.Id;

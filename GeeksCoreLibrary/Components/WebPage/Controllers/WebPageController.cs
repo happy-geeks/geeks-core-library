@@ -100,8 +100,8 @@ namespace GeeksCoreLibrary.Components.WebPage.Controllers
 
             var javascriptTemplates = new List<int>();
             var cssTemplates = new List<int>();
-            var externalJavascript = new List<PageResource>();
-            var externalCss = new List<PageResource>();
+            var externalJavascript = new List<PageResourceModel>();
+            var externalCss = new List<PageResourceModel>();
             var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase);
 
             var contentToWrite = new StringBuilder();

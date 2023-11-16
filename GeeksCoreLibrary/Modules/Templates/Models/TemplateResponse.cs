@@ -18,6 +18,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// <summary>
         /// Gets or sets a list of external files. If this template needs to load external CSS/Javascript files, the URLs to these files will be added here.
         /// </summary>
-        public List<PageResource> ExternalFiles { get; set; } = new();
+        public List<PageResourceModel> ExternalFiles { get; set; } = new();
     }
 }
