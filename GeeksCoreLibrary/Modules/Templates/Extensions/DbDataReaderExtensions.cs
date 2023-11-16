@@ -109,7 +109,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             {
                 foreach (var file in externalFiles)
                 {
-                    if (!Uri.TryCreate(file, UriKind.Absolute, out var uri))
+                    if (!Uri.TryCreate(file, UriKind.RelativeOrAbsolute, out var uri))
                     {
                         continue;
                     }

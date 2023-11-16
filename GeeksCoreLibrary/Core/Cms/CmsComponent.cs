@@ -309,7 +309,7 @@ namespace GeeksCoreLibrary.Core.Cms
             {
                 javaScriptLibraries.Add(new JavaScriptResourceModel
                 {
-                    Uri = new Uri(url),
+                    Uri = new Uri(url, UriKind.RelativeOrAbsolute),
                     Async = async,
                     Defer = defer
                 });
