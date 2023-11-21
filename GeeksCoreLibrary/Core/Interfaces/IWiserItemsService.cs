@@ -24,8 +24,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
         /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <param name="storeTypeOverride">Optional: Override the storeType of the item.</param>
+        /// <param name="alwaysSaveReadOnly">Save the value even if it is marked as readonly.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again, with the new ID.</returns>
-        Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null);
+        Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, bool alwaysSaveReadOnly = false);
         
         /// <summary>
         /// Saves an item. If the item has an ID of 0, a new item will be created.
@@ -42,8 +43,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
         /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <param name="storeTypeOverride">Optional: Override the storeType of the item.</param>
+        /// <param name="alwaysSaveReadOnly">Save the value even if it is marked as readonly.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again, with the new ID.</returns>
-        Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null);
+        Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, bool alwaysSaveReadOnly = false);
 
         /// <summary>
         /// Creates an item.
@@ -126,8 +128,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
         /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <param name="isNewlyCreatedItem">Whether this item has just been created in code and contains no details yet. If this is set to true, then this function will just insert all the details without checking if they already exist.</param>
+        /// <param name="alwaysSaveReadOnly">Save the value even if it is marked as readonly.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again.</returns>
-        Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false);
+        Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false);
 
         /// <summary>
         /// Updates an item.
@@ -143,8 +146,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
         /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <param name="isNewlyCreatedItem">Whether this item has just been created in code and contains no details yet. If this is set to true, then this function will just insert all the details without checking if they already exist.</param>
+        /// <param name="alwaysSaveReadOnly">Save the value even if it is marked as readonly.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again.</returns>
-        Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false);
+        Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false);
 
         /// <summary>
         /// Changes an entity type of an item.

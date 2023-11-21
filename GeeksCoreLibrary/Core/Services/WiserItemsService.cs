@@ -88,13 +88,13 @@ namespace GeeksCoreLibrary.Core.Services
         #region Implemented methods from interface
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, bool alwaysSaveReadOnly = false)
         {
-            return await SaveAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, storeTypeOverride);
+            return await SaveAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, storeTypeOverride, alwaysSaveReadOnly);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null)
+        public async Task<WiserItemModel> SaveAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, bool alwaysSaveReadOnly = false)
         {
             var retries = 0;
             var transactionCompleted = false;
@@ -125,7 +125,7 @@ namespace GeeksCoreLibrary.Core.Services
                         alwaysSaveValues = true;
                     }
 
-                    var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated);
+                    var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated, alwaysSaveReadOnly);
 
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
@@ -566,13 +566,13 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false)
+        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false)
         {
-            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, isNewlyCreatedItem);
+            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, isNewlyCreatedItem, alwaysSaveReadOnly);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false)
+        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false)
         {
             if (itemId <= 0)
             {
@@ -949,7 +949,7 @@ WHERE item.id = ?itemId");
                         }
 
                         // Skip fields that are readonly, if they already contain a value. Still allow an initial value to be saved.
-                        if (fieldOptions != null && fieldOptions.ContainsKey(key) && fieldOptions[key].ContainsKey(ReadOnlyKey) && (bool) fieldOptions[key][ReadOnlyKey])
+                        if (fieldOptions != null && fieldOptions.ContainsKey(key) && fieldOptions[key].ContainsKey(ReadOnlyKey) && (bool) fieldOptions[key][ReadOnlyKey] && !alwaysSaveReadOnly)
                         {
                             var previousField = previousItemDetails.FirstOrDefault(x =>
                                 x.IsLinkProperty == itemDetail.IsLinkProperty &&
