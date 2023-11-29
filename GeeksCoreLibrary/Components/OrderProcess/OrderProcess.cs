@@ -31,7 +31,7 @@ using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.OrderProcess

@@ -25,7 +25,6 @@ using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Google.Authenticator;
-using Google.Protobuf;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
@@ -34,7 +33,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.Account.Models.Constants;
 

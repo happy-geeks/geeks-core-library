@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Enums;
 using GeeksCoreLibrary.Modules.Databases.Models;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace GeeksCoreLibrary.Modules.Databases.Helpers
 {

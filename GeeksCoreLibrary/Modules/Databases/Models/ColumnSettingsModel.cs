@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using GeeksCoreLibrary.Modules.Databases.Enums;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace GeeksCoreLibrary.Modules.Databases.Models
 {

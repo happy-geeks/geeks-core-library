@@ -13,7 +13,7 @@ using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using Microsoft.Extensions.Logging;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace GeeksCoreLibrary.Modules.Databases.Services
 {

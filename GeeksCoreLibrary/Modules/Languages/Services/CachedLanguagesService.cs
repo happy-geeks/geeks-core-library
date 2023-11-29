@@ -145,24 +145,20 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
                     databaseConnection.AddParameter("gcl_languageCode", languageCode);
                     databaseConnection.AddParameter("gcl_groupName", Constants.TranslationsGroupName);
                     databaseConnection.AddParameter("gcl_translationsItemId", await objectsService.FindSystemObjectByDomainNameAsync("W2LANGUAGES_TranslationsItemId"));
-                    var reader = await databaseConnection.GetReaderAsync(@$"SELECT
-    `key`,
-    CONCAT_WS('', `value`, long_value) AS `value`
-FROM {WiserTableNames.WiserItemDetail}
-WHERE item_id = ?gcl_translationsItemId
-AND groupname = ?gcl_groupName
-AND language_code = ?gcl_languageCode");
-                    try
+                    await using (var reader = await databaseConnection.GetReaderAsync($"""
+                                                                                       SELECT
+                                                                                           `key`,
+                                                                                           CONCAT_WS('', `value`, long_value) AS `value`
+                                                                                       FROM {WiserTableNames.WiserItemDetail}
+                                                                                       WHERE item_id = ?gcl_translationsItemId
+                                                                                       AND groupname = ?gcl_groupName
+                                                                                       AND language_code = ?gcl_languageCode
+                                                                                       """))
                     {
                         while (await reader.ReadAsync())
                         {
                             translations.Add(reader.GetStringHandleNull(0), reader.GetStringHandleNull(1));
                         }
-                    }
-                    finally
-                    {
-                        await reader.CloseAsync();
-                        await reader.DisposeAsync();
                     }
 
                     logger.LogDebug($"{translations.Count} translations loaded from database for language ID {languageCode}");

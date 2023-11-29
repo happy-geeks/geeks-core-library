@@ -27,7 +27,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 {

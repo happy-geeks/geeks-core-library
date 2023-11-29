@@ -13,7 +13,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
     {
         public static async Task<Template> ToTemplateModelAsync(this DbDataReader reader, TemplateTypes? type = null)
         {
-            if (!Enum.TryParse(typeof(TemplateTypes), reader.GetStringHandleNull("template_type"), true, out var templateType))
+            if (!Enum.TryParse(typeof(TemplateTypes), Convert.ToString(await reader.GetFieldValueAsync<int>("template_type")), true, out var templateType))
             {
                 if (!Enum.TryParse(typeof(TemplateTypes), reader.GetStringHandleNull("root_name"), true, out templateType))
                 {
@@ -21,7 +21,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 }
             }
 
-            if (!Enum.TryParse(typeof(ResourceInsertModes), reader.GetStringHandleNull("insert_mode"), true, out var insertMode))
+            if (!Enum.TryParse(typeof(ResourceInsertModes), Convert.ToString(reader.GetFieldValueAsync<int>("insert_mode")), true, out var insertMode))
             {
                 insertMode = ResourceInsertModes.Standard;
             }
