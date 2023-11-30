@@ -81,7 +81,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             dataDictionary.Add("Hostname", HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext));
             dataDictionary.Add("Environment", (int)gclSettings.Environment);
             dataDictionary.Add("IpAddress", HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext));
-            dataDictionary.Add("UserAgent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, Microsoft.Net.Http.Headers.HeaderNames.UserAgent));
+            dataDictionary.Add("UserAgent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, Microsoft.Net.Http.Headers.HeaderNames.UserAgent) ?? String.Empty);
             input = replacementsMediator.DoReplacements(input, dataDictionary, forQuery: forQuery, defaultFormatter: defaultFormatter);
 
             // System object replaces.
