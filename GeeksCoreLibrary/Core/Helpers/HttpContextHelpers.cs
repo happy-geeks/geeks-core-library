@@ -318,6 +318,11 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <returns>The remote IP address of the client.</returns>
         public static string GetUserIpAddress(HttpContext httpContext)
         {
+            if (httpContext == null)
+            {
+                return String.Empty;
+            }
+            
             var result = GetHeaderValueAs<string>(httpContext, "CF_CONNECTING_IP"); // Cloud Flare IP address.
             if (String.IsNullOrWhiteSpace(result))
             {
