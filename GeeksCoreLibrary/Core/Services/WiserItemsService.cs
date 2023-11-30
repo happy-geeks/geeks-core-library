@@ -261,8 +261,9 @@ SELECT LAST_INSERT_ID() AS newId;";
                         wiserItem.ParentItemId = parentId.Value;
                         databaseConnection.AddParameter("newItemId", wiserItem.Id);
                         databaseConnection.AddParameter("parentId", parentId);
-                        await databaseConnection.ExecuteAsync($@"SET @newOrdering = (SELECT IFNULL(MAX(ordering), 0) + 1 FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE parent_item_id = ?parentId);
-UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET parent_item_id = ?parentId, ordering = @newOrdering WHERE id = ?newItemId");
+                        var orderResult = await databaseConnection.GetAsync($"SELECT IFNULL(MAX(ordering), 0) + 1 AS newOrdering FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE parent_item_id = ?parentId");
+                        databaseConnection.AddParameter("newOrdering", orderResult.Rows.Count > 0 ? orderResult.Rows[0].Field<long>("newOrdering") : 1);
+                        await databaseConnection.ExecuteAsync($"UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET parent_item_id = ?parentId, ordering = @newOrdering WHERE id = ?newItemId");
                     }
                     else
                     {
