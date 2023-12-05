@@ -188,7 +188,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 return null;
             }
 
-            var result = MySql.Data.MySqlClient.MySqlHelper.EscapeString(input);
+            var result = MySqlConnector.MySqlHelper.EscapeString(input);
             return encloseInQuotes ? $"'{result}'" : result;
         }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Data.Common;
+using MySqlConnector;
 
 namespace GeeksCoreLibrary.Core.Extensions
 {
@@ -16,7 +17,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         {
             return reader.IsDBNull(columnIndex) ? String.Empty : reader.GetString(columnIndex);
         }
-        
+
         /// <summary>
         /// Gets a string value from a <see cref="DbDataReader"/> and returns an empty string if the value is <see langword="null"/>.
         /// </summary>
@@ -25,9 +26,14 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns>A <see langword="string"/> with the value.</returns>
         public static string GetStringHandleNull(this DbDataReader reader, string columnName)
         {
+            if (!reader.HasColumn(columnName))
+            {
+                return String.Empty;
+            }
+
             return reader.IsDBNull(reader.GetOrdinal(columnName)) ? String.Empty : reader.GetString(columnName);
         }
-        
+
         /// <summary>
         /// Checks if a columns exists in a data reader.
         /// </summary>

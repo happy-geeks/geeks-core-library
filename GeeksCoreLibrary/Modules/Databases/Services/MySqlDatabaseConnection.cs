@@ -20,7 +20,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Modules.Databases.Services
@@ -51,7 +51,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
         private readonly GclSettings gclSettings;
 
-        private DbDataReader dataReader;
+        private MySqlDataReader dataReader;
 
         private IDbTransaction transaction;
         private readonly Guid instanceId;
@@ -135,7 +135,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 var result = new DataTable();
                 commandToUse.CommandText = query;
                 using var dataAdapter = new MySqlDataAdapter(commandToUse);
-                await dataAdapter.FillAsync(result);
+                dataAdapter.Fill(result);
 
                 logger.LogDebug("Query: {query}", query);
 
@@ -533,6 +533,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             await ConnectionForReading.OpenAsync();
 
             await SetTimezone(CommandForReading);
+            await SetCharacterSetAndCollationAsync(CommandForReading);
 
             if (createdNewConnection)
             {
@@ -585,6 +586,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             await ConnectionForWriting.OpenAsync();
 
             await SetTimezone(CommandForWriting);
+            await SetCharacterSetAndCollationAsync(CommandForWriting);
 
             if (createdNewConnection)
             {
@@ -669,7 +671,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var dataTable = new DataTable();
             command.CommandText = $"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = '{Constants.DatabaseConnectionLogTableName}' AND TABLE_SCHEMA = '{(ConnectionForWriting ?? ConnectionForReading).Database.ToMySqlSafeValue(false)}'";
             using var dataAdapter = new MySqlDataAdapter(command);
-            await dataAdapter.FillAsync(dataTable);
+            dataAdapter.Fill(dataTable);
 
             if (dataTable.Rows.Count == 0)
             {
@@ -721,6 +723,34 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             catch (Exception exception)
             {
                 logger.LogWarning(exception, $"An error occurred while trying to set the time zone to '{gclSettings.DatabaseTimeZone}'");
+            }
+        }
+
+        /// <summary>
+        /// Sets the correct character set and collation for the database connection.
+        /// </summary>
+        /// <param name="command">The <see cref="MySqlCommand"/> object that will execute the query.</param>
+        private async Task SetCharacterSetAndCollationAsync(MySqlCommand command)
+        {
+            try
+            {
+                var characterSet = !String.IsNullOrWhiteSpace(gclSettings.DatabaseCharacterSet) ? gclSettings.DatabaseCharacterSet : "utf8mb4";
+                var collation = !String.IsNullOrWhiteSpace(gclSettings.DatabaseCollation) ? gclSettings.DatabaseCollation : "utf8mb4_general_ci";
+
+                // Make sure we always use the correct timezone.
+                if (!String.IsNullOrWhiteSpace(gclSettings.DatabaseTimeZone))
+                {
+                    command.CommandText = $"SET NAMES {characterSet} COLLATE {collation};";
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
+            catch (MySqlException mySqlException)
+            {
+                logger.LogWarning(mySqlException, $"An error occurred while trying to set the character set to '{gclSettings.DatabaseCharacterSet}' and the collation to '{gclSettings.DatabaseCollation}'");
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, $"An error occurred while trying to set the character set to '{gclSettings.DatabaseCharacterSet}' and the collation to '{gclSettings.DatabaseCollation}'");
             }
         }
 

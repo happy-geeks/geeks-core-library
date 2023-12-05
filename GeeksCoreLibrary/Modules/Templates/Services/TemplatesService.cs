@@ -207,15 +207,9 @@ GROUP BY template.template_id
 ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
             Template result;
-            var reader = await databaseConnection.GetReaderAsync(query);
-            try
+            await using (var reader = await databaseConnection.GetReaderAsync(query))
             {
                 result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
-            }
-            finally
-            {
-                await reader.CloseAsync();
-                await reader.DisposeAsync();
             }
 
             // Check login requirement.
@@ -478,19 +472,11 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                         GROUP BY template.template_id
                         ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, parent2.ordering ASC, parent1.ordering ASC, template.ordering ASC";
 
-            var reader = await databaseConnection.GetReaderAsync(query);
-            try
+            await using var reader = await databaseConnection.GetReaderAsync(query);
+            while (await reader.ReadAsync())
             {
-                while (await reader.ReadAsync())
-                {
-                    var template = await reader.ToTemplateModelAsync();
-                    results.Add(template);
-                }
-            }
-            finally
-            {
-                await reader.CloseAsync();
-                await reader.DisposeAsync();
+                var template = await reader.ToTemplateModelAsync();
+                results.Add(template);
             }
 
             return results;
@@ -571,19 +557,13 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             var idsLoaded = new List<int>();
             var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
 
-            var reader = await databaseConnection.GetReaderAsync(query);
-            try
+            await using (var reader = await databaseConnection.GetReaderAsync(query))
             {
                 while (await reader.ReadAsync())
                 {
                     var template = await reader.ToTemplateModelAsync();
                     await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
                 }
-            }
-            finally
-            {
-                await reader.CloseAsync();
-                await reader.DisposeAsync();
             }
 
             result.Content = resultBuilder.ToString();

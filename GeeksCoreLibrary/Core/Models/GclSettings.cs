@@ -35,6 +35,20 @@ namespace GeeksCoreLibrary.Core.Models
         public string DatabaseTimeZone { get; set; } = "Europe/Amsterdam";
 
         /// <summary>
+        /// This will be used to set the correct character set for the database before executing any query. The MySqlConnector package normally
+        /// forces the character set to utf8mb4, but that might not be the correct character set for your database. This setting allows you to
+        /// set the character set to the correct value.
+        /// </summary>
+        public string DatabaseCharacterSet { get; set; } = "utf8mb4";
+
+        /// <summary>
+        /// This will be used to set the correct collation for the database before executing any query. The MySqlConnector package normally
+        /// forces the collation to the database standard, which is usually utf8mb4_0900_ai_ci for MySQL 8.x installations, but that might not be the
+        /// correct collation for your database. This setting allows you to set the collation to the correct value.
+        /// </summary>
+        public string DatabaseCollation { get; set; } = "utf8mb4_general_ci";
+
+        /// <summary>
         /// The maximum amount of times the GCL should retry executing a query.
         /// The GCL only does this for the following MySQL error codes, any other error will not cause another attempt:
         /// <list type="ErrorCodes">
