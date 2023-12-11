@@ -61,7 +61,7 @@ using MySqlX.XDevAPI.CRUD;
     /// <param name="item">The item that will be serialized.</param>
     /// <param name="id">The document ID. If the item doesn't exist yet, a new ID will be generated.</param>
     /// <returns>The <see cref="Result"/> object that contains data about the inserted/updated item.</returns>
-    Task<string> InsertOrUpdateDocumentAsync(string collectionName, object item, ulong id = 0);
+    Task<string> InsertOrUpdateDocumentAsync(string collectionName, object item, string id = null);
 
     /// <summary>
     /// Modifies a document by its internal id (the _id column). Note that it has to match the _id column exactly.

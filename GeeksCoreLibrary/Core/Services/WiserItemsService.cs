@@ -103,7 +103,7 @@ namespace GeeksCoreLibrary.Core.Services
             var entitySettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
             storeType ??= entitySettings.StoreType;
 
-            if (storeType is StoreType.DocumentStore or StoreType.Hybrid)
+            if (storeType is StoreType.DocumentStore)
             {
                 return (await documentStorageService.StoreItemAsync(wiserItem, entitySettings)).model;
             }
@@ -121,16 +121,26 @@ namespace GeeksCoreLibrary.Core.Services
                     {
                         wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck, storeTypeOverride);
 
+                        if (storeType == StoreType.Hybrid)
+                        {
+                            wiserItem = (await documentStorageService.StoreItemAsync(wiserItem, entitySettings)).model;
+                            if (createNewTransaction && !alreadyHadTransaction)
+                            {
+                                await databaseConnection.CommitTransactionAsync();
+                            }
+
+                            transactionCompleted = true;
+                            return wiserItem;
+                        }
                         // When a new item has been created the values always need to be saved. There is no use to check if they have been changed since they are all new.
                         alwaysSaveValues = true;
                     }
-
-                    var result = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated, alwaysSaveReadOnly);
+                    wiserItem = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated);
 
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
 
-                    return result;
+                    return wiserItem;
                 }
                 catch (MySqlException mySqlException)
                 {
@@ -194,9 +204,13 @@ namespace GeeksCoreLibrary.Core.Services
             var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
             storeType ??= entityTypeSettings.StoreType;
 
-            if (storeType is StoreType.DocumentStore or StoreType.Hybrid)
+            switch (storeType)
             {
-                return (await documentStorageService.StoreItemAsync(wiserItem, entityTypeSettings)).model;
+                case StoreType.DocumentStore:
+                    return (await documentStorageService.StoreItemAsync(wiserItem, entityTypeSettings)).model;
+                case StoreType.Hybrid:
+                    wiserItem.PublishedEnvironment = 0;
+                    break;
             }
 
             var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
@@ -221,14 +235,15 @@ namespace GeeksCoreLibrary.Core.Services
                     databaseConnection.AddParameter("parentId", parentId);
                     databaseConnection.AddParameter("linkTypeNumber", linkTypeNumber);
                     databaseConnection.AddParameter("username", username);
-                    databaseConnection.AddParameter("username", username);
                     databaseConnection.AddParameter("userId", userId);
+                    databaseConnection.AddParameter("publishedEnvironment", 
+                                                    wiserItem.PublishedEnvironment ?? Environments.Live | Environments.Acceptance | Environments.Test | Environments.Development);
                     databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
                     var query = $@"SET @saveHistory = ?saveHistoryGcl;
 SET @_userId = ?userId;
 SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {tablePrefix}{WiserTableNames.WiserItem} (moduleid, title, entity_type, added_by)
-VALUES (?moduleId, ?title, ?entityType, ?username);
+INSERT INTO {tablePrefix}{WiserTableNames.WiserItem} (moduleid, title, entity_type, added_by, published_environment)
+VALUES (?moduleId, ?title, ?entityType, ?username, ?publishedEnvironment);
 SELECT LAST_INSERT_ID() AS newId;";
                     var queryResult = await databaseConnection.GetAsync(query, true);
 

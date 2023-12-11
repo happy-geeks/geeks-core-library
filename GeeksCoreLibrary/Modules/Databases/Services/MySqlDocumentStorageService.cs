@@ -71,7 +71,7 @@ public class MySqlDocumentStorageService : IDocumentStorageService, IScopedServi
         
         wiserItem.ChangedOn = DateTime.Now;
         
-        var id = await documentStorageConnection.InsertOrUpdateDocumentAsync($"{prefix}{WiserTableNames.WiserItemStore}", wiserItem, wiserItem.Id);
+        var id = await documentStorageConnection.InsertOrUpdateDocumentAsync($"{prefix}{WiserTableNames.WiserItemStore}", wiserItem, wiserItem.UniqueUuid);
 
         return (wiserItem, id);
     }

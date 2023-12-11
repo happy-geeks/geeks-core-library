@@ -194,21 +194,20 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     }
 
     /// <inheritdoc />
-    public async Task<string> InsertOrUpdateDocumentAsync(string collectionName, object item, ulong id = 0)
+    public async Task<string> InsertOrUpdateDocumentAsync(string collectionName, object item, string id = null)
     {
         var collection = GetCollection(collectionName);
 
-        var itemString = JsonConvert.SerializeObject(item, jsonSerializerSettings);
-        if (id == 0UL)
+        if (String.IsNullOrWhiteSpace(id))
         {
-            // New item.
+            var itemString = JsonConvert.SerializeObject(item, jsonSerializerSettings);
             var result = await collection.Add(itemString).ExecuteAsync();
+            
             return result.GeneratedIds[0];
         }
         
-        await collection.Modify("id = :itemId").Patch(itemString).Bind("itemId", $"{id}").ExecuteAsync();
-
-        return null;
+        await ModifyDocumentByIdAsync(collectionName, id, item);
+        return id;
     }
 
     /// <inheritdoc />
