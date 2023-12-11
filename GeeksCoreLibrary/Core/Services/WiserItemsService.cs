@@ -236,7 +236,8 @@ namespace GeeksCoreLibrary.Core.Services
                     databaseConnection.AddParameter("linkTypeNumber", linkTypeNumber);
                     databaseConnection.AddParameter("username", username);
                     databaseConnection.AddParameter("userId", userId);
-                    databaseConnection.AddParameter("publishedEnvironment", wiserItem.PublishedEnvironment ?? Environments.Live);
+                    databaseConnection.AddParameter("publishedEnvironment", 
+                                                    wiserItem.PublishedEnvironment ?? Environments.Live | Environments.Acceptance | Environments.Test | Environments.Development);
                     databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
                     var query = $@"SET @saveHistory = ?saveHistoryGcl;
 SET @_userId = ?userId;
