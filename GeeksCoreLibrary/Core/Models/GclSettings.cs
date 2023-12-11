@@ -231,6 +231,12 @@ namespace GeeksCoreLibrary.Core.Models
         /// By default the GCL adds XSRF protection in the form of anti forgery tokens. To disable this functionality, set this option to <see langword="true"/>.
         /// </summary>
         public bool DisableXsrfProtection { get; set; }
+        
+        /// <summary>
+        /// Specifies whether to suppress the generation of X-Frame-Options header which is used to prevent ClickJacking.
+        /// By default, the X-Frame-Options header is generated with the value SAMEORIGIN. If this setting is 'true', the X-Frame-Options header will not be generated for the response.
+        /// </summary>
+        public bool SuppressXFrameOptionHeader { get; set; }
 
         /// <summary>
         /// In Wiser 3 we created a new templates module from scratch, which will be used by default.

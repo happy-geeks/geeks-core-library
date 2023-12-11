@@ -201,11 +201,18 @@ namespace GeeksCoreLibrary.Core.Extensions
                     {
                         options.HeaderName = "X-CSRF-TOKEN";
                         options.Cookie.Name = "CSRF-TOKEN";
+                        options.SuppressXFrameOptionsHeader = gclSettings.SuppressXFrameOptionHeader;
                     });
                 }
                 else
                 {
                     services.AddControllersWithViews().AddNewtonsoftJson();
+                    // the call to AddControllersWithViews() (or AddMvc() for that matter) will always call AddAntiforgery() no matter what, so DisableXsrfProtection might need another look
+                    // setting the XFrameOptions setting here as well makes sure this setting will always work no matter what happens with DisableXsrfProtection
+                    services.AddAntiforgery(options =>
+                    {
+                        options.SuppressXFrameOptionsHeader = gclSettings.SuppressXFrameOptionHeader;
+                    });
                 }
 
                 // Let MVC know about the GCL controllers.
