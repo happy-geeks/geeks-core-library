@@ -53,7 +53,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
         private MySqlDataReader dataReader;
 
-        private IDbTransaction transaction;
+        private MySqlTransaction transaction;
         private readonly Guid instanceId;
         private int readConnectionLogId;
         private int writeConnectionLogId;
@@ -371,7 +371,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 throw new InvalidOperationException("Called BeginTransaction, but there already is an active transaction.");
             }
 
-            transaction?.Rollback();
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync();
+            }
 
             // If we're using transactions, make sure to use it on the write connection, if we have one.
             MySqlConnection connectionToUse;
@@ -387,6 +390,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
 
             transaction = await connectionToUse.BeginTransactionAsync();
+
+            // MySqlConnector wants us to set the transaction on the command, so that it knows which transaction to use.
+            if (CommandForReading != null)
+            {
+                CommandForReading.Transaction = transaction;
+            }
+            if (CommandForWriting != null)
+            {
+                CommandForWriting.Transaction = transaction;
+            }
 
             return transaction;
         }
@@ -404,11 +417,22 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 return;
             }
 
-            transaction.Commit();
+            await transaction.CommitAsync();
 
             // Dispose and set to null, so that we know there is no more active transaction.
-            transaction.Dispose();
+            await transaction.DisposeAsync();
             transaction = null;
+
+            // Also reset the Transaction property on the commands, so that they don't use the transaction anymore.
+            if (CommandForReading != null)
+            {
+                CommandForReading.Transaction = null;
+            }
+            if (CommandForWriting != null)
+            {
+                CommandForWriting.Transaction = null;
+            }
+
             await CleanUpAsync();
         }
 
@@ -425,11 +449,22 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 return;
             }
 
-            transaction.Rollback();
+            await transaction.RollbackAsync();
 
             // Dispose and set to null, so that we know there is no more active transaction.
-            transaction.Dispose();
+            await transaction.DisposeAsync();
             transaction = null;
+
+            // Also reset the Transaction property on the commands, so that they don't use the transaction anymore.
+            if (CommandForReading != null)
+            {
+                CommandForReading.Transaction = null;
+            }
+            if (CommandForWriting != null)
+            {
+                CommandForWriting.Transaction = null;
+            }
+
             await CleanUpAsync();
         }
 
@@ -853,7 +888,7 @@ SELECT LAST_INSERT_ID();";
                     }
                 }
 
-                if (commandToUse.Connection.State == ConnectionState.Closed)
+                if (commandToUse.Connection is { State: ConnectionState.Closed })
                 {
                     await commandToUse.Connection.OpenAsync();
                 }
