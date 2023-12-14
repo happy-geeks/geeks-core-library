@@ -779,13 +779,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel()
             {
                 Name = WiserTableNames.WiserStyledOutput,
-                LastUpdate = new DateTime(2023, 7, 18),
+                LastUpdate = new DateTime(2023, 12, 14),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("name",MySqlDbType.VarChar,255),
                     new("format_begin", MySqlDbType.MediumText),
                     new("format_item", MySqlDbType.MediumText),
                     new("format_end", MySqlDbType.MediumText),
+                    new("format_empty",MySqlDbType.MediumText),
                     new("query_id", MySqlDbType.Int32),
                     new("return_type", MySqlDbType.VarChar, 10)
                 }
