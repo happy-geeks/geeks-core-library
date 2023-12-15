@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace GeeksCoreLibrary.Modules.Branches.Models
 {
@@ -27,5 +26,10 @@ namespace GeeksCoreLibrary.Modules.Branches.Models
         /// Gets or sets the settings for how the user wants to handle conflicts.
         /// </summary>
         public List<MergeConflictModel> ConflictSettings { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether to check for conflicts or just merge everything.
+        /// </summary>
+        public bool CheckForConflicts { get; set; } = true;
     }
 }
