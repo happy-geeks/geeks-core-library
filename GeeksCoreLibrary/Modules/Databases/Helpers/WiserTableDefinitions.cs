@@ -797,7 +797,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserPermission,
-                LastUpdate = new DateTime(2022, 9, 30),
+                LastUpdate = new DateTime(2023, 12, 19),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -812,11 +812,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
 8 = Delete"),
                     new("module_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("query_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
-                    new("data_selector_id", MySqlDbType.Int32, notNull: true, defaultValue: "0")
+                    new("data_selector_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("endpoint_url", MySqlDbType.VarChar, 500, notNull: true, defaultValue: ""),
+                    new("endpoint_http_method", MySqlDbType.Enum, notNull: true, defaultValue: "GET", enumValues: new List<string> { "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH" }),
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
-                    new(WiserTableNames.WiserPermission, "role_id", IndexTypes.Unique, new List<string> { "role_id", "entity_name", "item_id", "entity_property_id", "module_id", "query_id", "data_selector_id" })
+                    new(WiserTableNames.WiserPermission, "role_id", IndexTypes.Unique, new List<string> { "role_id", "entity_name", "item_id", "entity_property_id", "module_id", "query_id", "data_selector_id", "endpoint_url", "endpoint_http_method" })
                 }
             },
 
