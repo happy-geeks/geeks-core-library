@@ -776,14 +776,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             },
 
             // wiser_styled_output
-            new WiserTableDefinitionModel()
+            new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserStyledOutput,
                 LastUpdate = new DateTime(2023, 12, 14),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
-                    new("name",MySqlDbType.VarChar,255),
+                    new("name", MySqlDbType.VarChar, 255),
                     new("format_begin", MySqlDbType.MediumText),
                     new("format_item", MySqlDbType.MediumText),
                     new("format_end", MySqlDbType.MediumText),
