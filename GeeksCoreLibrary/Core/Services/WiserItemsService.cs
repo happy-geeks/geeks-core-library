@@ -135,7 +135,7 @@ namespace GeeksCoreLibrary.Core.Services
                         // When a new item has been created the values always need to be saved. There is no use to check if they have been changed since they are all new.
                         alwaysSaveValues = true;
                     }
-                    wiserItem = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated);
+                    wiserItem = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated, alwaysSaveReadOnly);
 
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
