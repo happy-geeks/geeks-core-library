@@ -137,7 +137,7 @@ namespace GeeksCoreLibrary.Core.Services
                         return wiserItem;
                     }
 
-                    wiserItem = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated, false);
+                    wiserItem = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated, alwaysSaveReadOnly);
 
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
