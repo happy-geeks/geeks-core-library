@@ -120,21 +120,23 @@ namespace GeeksCoreLibrary.Core.Services
                     if (isNewlyCreated)
                     {
                         wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck, storeTypeOverride);
-
-                        if (storeType == StoreType.Hybrid)
-                        {
-                            wiserItem = (await documentStorageService.StoreItemAsync(wiserItem, entitySettings)).model;
-                            if (createNewTransaction && !alreadyHadTransaction)
-                            {
-                                await databaseConnection.CommitTransactionAsync();
-                            }
-
-                            transactionCompleted = true;
-                            return wiserItem;
-                        }
+                       
                         // When a new item has been created the values always need to be saved. There is no use to check if they have been changed since they are all new.
                         alwaysSaveValues = true;
                     }
+                    
+                    if (storeType == StoreType.Hybrid)
+                    {
+                        wiserItem = (await documentStorageService.StoreItemAsync(wiserItem, entitySettings)).model;
+                        if (createNewTransaction && !alreadyHadTransaction)
+                        {
+                            await databaseConnection.CommitTransactionAsync();
+                        }
+
+                        transactionCompleted = true;
+                        return wiserItem;
+                    }
+
                     wiserItem = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated, alwaysSaveReadOnly);
 
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
@@ -624,7 +626,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
             // Get the settings of the entity type.
             var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType, wiserItem.ModuleId);
             var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
-
+            
             var retries = 0;
             var transactionCompleted = false;
 
