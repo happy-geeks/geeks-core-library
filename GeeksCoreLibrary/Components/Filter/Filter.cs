@@ -334,8 +334,8 @@ namespace GeeksCoreLibrary.Components.Filter
                     {
                         searchPart.AppendLine($"JOIN wiser_itemdetail search1 ON search1.item_id=f.product_id AND search1.`key`={Settings.SearchKeys.ToMySqlSafeValue(true)} AND (search1.language_code='{languageCode}' OR search1.language_code='') AND search1.`value` LIKE CONCAT('%',{HttpContext.Request.Query[Settings.SearchQuerystring].ToString().ToMySqlSafeValue(true)},'%')");
                     }
-                }                
-                
+                }
+
                 if (Settings.ComponentMode == ComponentModes.Aggregation)
                 {
                     var filterItemsQueryNew = "";
@@ -368,7 +368,7 @@ namespace GeeksCoreLibrary.Components.Filter
                         var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
                         filterItemsQueryNew += $" UNION ALL ({filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart).Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
                     }
-                    
+
                     filterItemsQuery = filterItemsQueryNew;
                 }
                 else
@@ -573,7 +573,7 @@ namespace GeeksCoreLibrary.Components.Filter
                     foreach (var item in f.Items)
                     {
                         if (!String.Equals(item.Key, tempName, StringComparison.OrdinalIgnoreCase) || item.Value.ItemDetails == null)
-                        {                            
+                        {
                             continue;
                         }
 
@@ -782,7 +782,7 @@ namespace GeeksCoreLibrary.Components.Filter
         {
             string tempValue;
             string tempValueSeo;
-            
+
             var selectedMinValue = filterGroup.SelectedMinValue;
             var selectedMaxValue = filterGroup.SelectedMaxValue;
 
