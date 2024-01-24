@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
@@ -83,7 +84,7 @@ ORDER BY role_name ASC";
                 EntityPropertyId = dataRow.Field<int>("entity_property_id"),
                 Permissions = (AccessRights)dataRow.Field<int>("permissions"),
                 EndpointUrl = dataRow.Field<string>("endpoint_url"),
-                EndpointHttpMethod = dataRow.Field<string>("endpoint_http_method")
+                EndpointHttpMethod = new HttpMethod(dataRow.Field<string>("endpoint_http_method"))
             });
         }
 

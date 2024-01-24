@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Http;
 using GeeksCoreLibrary.Core.Enums;
 
 namespace GeeksCoreLibrary.Core.Models;
@@ -36,5 +37,5 @@ public class PermissionModel
     /// <summary>
     /// Gets or sets the HTTP method for the endpoint.
     /// </summary>
-    public string EndpointHttpMethod { get; set; }
+    public HttpMethod EndpointHttpMethod { get; set; }
 }
