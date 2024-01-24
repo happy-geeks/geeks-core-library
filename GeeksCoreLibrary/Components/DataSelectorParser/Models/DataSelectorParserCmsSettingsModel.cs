@@ -87,7 +87,7 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser.Models
             TextEditorType = CmsAttributes.CmsTextEditorType.TextField,
             DisplayOrder = 31
         )]
-        public bool SeoTitleEntityPropertyName { get; set; }
+        public string SeoTitleEntityPropertyName { get; set; }
 
         [CmsProperty(
             PrettyName = "SEO description entity property name",
@@ -97,7 +97,7 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser.Models
             TextEditorType = CmsAttributes.CmsTextEditorType.TextField,
             DisplayOrder = 32
         )]
-        public bool SeoDescriptionEntityPropertyName { get; set; }
+        public string SeoDescriptionEntityPropertyName { get; set; }
 
         [CmsProperty(
             PrettyName = "Canonical URL entity property name",
@@ -107,7 +107,7 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser.Models
             TextEditorType = CmsAttributes.CmsTextEditorType.TextField,
             DisplayOrder = 33
         )]
-        public bool SeoCanoicalUrlEntityPropertyName { get; set; }
+        public string SeoCanoicalUrlEntityPropertyName { get; set; }
 
         [CmsProperty(
             PrettyName = "No-index entity property name",
