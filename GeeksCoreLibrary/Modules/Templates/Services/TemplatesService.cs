@@ -162,7 +162,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.load_always,
     template.changed_on,
     template.external_files,
-    IF(COUNT(externalFiles.external_file) = 0, NULL, JSON_ARRAYAGG(JSON_OBJECT('url', externalFiles.external_file, 'hash', externalFiles.hash))) AS external_files_json,
+    IF(COUNT(externalFiles.external_file) = 0, NULL, JSON_ARRAYAGG(JSON_OBJECT('uri', externalFiles.external_file, 'hash', externalFiles.hash, 'ordering', externalFiles.ordering))) AS external_files_json,
     {(includeContent ? "template.template_data_minified, template.template_data," : "")}
     template.url_regex,
     template.cache_minutes,
@@ -440,7 +440,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
     template.load_always,
     template.changed_on,
     template.external_files,
-    IF(COUNT(externalFiles.external_file) = 0, NULL, JSON_ARRAYAGG(JSON_OBJECT('url', externalFiles.external_file, 'hash', externalFiles.hash))) AS external_files_json,
+    IF(COUNT(externalFiles.external_file) = 0, NULL, JSON_ARRAYAGG(JSON_OBJECT('uri', externalFiles.external_file, 'hash', externalFiles.hash, 'ordering', externalFiles.ordering))) AS external_files_json,
     {(includeContent ? "template.template_data_minified, template.template_data," : "")}
     template.url_regex,
     template.cache_per_url,
@@ -523,7 +523,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
     template.load_always,
     template.changed_on,
     template.external_files,
-    IF(COUNT(externalFiles.external_file) = 0, NULL, JSON_ARRAYAGG(JSON_OBJECT('url', externalFiles.external_file, 'hash', externalFiles.hash))) AS external_files_json,
+    IF(COUNT(externalFiles.external_file) = 0, NULL, JSON_ARRAYAGG(JSON_OBJECT('uri', externalFiles.external_file, 'hash', externalFiles.hash, 'ordering', externalFiles.ordering))) AS external_files_json,
     template.template_data_minified,
     template.template_data,
     template.url_regex,

@@ -100,7 +100,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                 var jsonString = reader.GetStringHandleNull("external_files_json");
                 if (!String.IsNullOrEmpty(jsonString))
                 {
-                    template.ExternalFiles = JsonConvert.DeserializeObject<List<PageResourceModel>>(jsonString);
+                    template.ExternalFiles = JsonConvert.DeserializeObject<List<PageResourceModel>>(jsonString).OrderBy(resource => resource.Ordering).ToList();
                 }
             }
 

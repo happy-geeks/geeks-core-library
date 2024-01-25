@@ -307,13 +307,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplateExternalFiles,
-                LastUpdate = new DateTime(2023, 6, 29),
+                LastUpdate = new DateTime(2024, 12, 25),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("template_id", MySqlDbType.Int32, notNull: true),
                     new("external_file", MySqlDbType.VarChar, 1000, notNull: true),
-                    new("hash", MySqlDbType.VarChar, 32, notNull: true)
+                    new("hash", MySqlDbType.VarChar, 255, notNull: true),
+                    new("ordering", MySqlDbType.Int32, 11, notNull: true, defaultValue: "0")
                 },
             },
 
