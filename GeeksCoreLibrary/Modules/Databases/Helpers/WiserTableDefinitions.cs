@@ -803,7 +803,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("role_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("entity_name", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
-                    new("item_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                    new("item_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
                     new("entity_property_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                     new("permissions", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: @"0 = Nothing
 1 = Read

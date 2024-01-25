@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Http;
 using GeeksCoreLibrary.Core.Enums;
 
 namespace GeeksCoreLibrary.Core.Models;
@@ -27,4 +28,14 @@ public class PermissionModel
     /// Gets or sets the actual permissions. This is an enum with the <see cref="FlagsAttribute"/>, which means you can set multiple permissions in one property.
     /// </summary>
     public AccessRights Permissions { get; set; }
+
+    /// <summary>
+    /// Gets or sets the URL for the endpoint.
+    /// </summary>
+    public string EndpointUrl { get; set; }
+
+    /// <summary>
+    /// Gets or sets the HTTP method for the endpoint.
+    /// </summary>
+    public HttpMethod EndpointHttpMethod { get; set; }
 }

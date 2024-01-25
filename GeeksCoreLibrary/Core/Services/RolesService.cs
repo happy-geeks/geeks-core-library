@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
@@ -35,7 +37,9 @@ public class RolesService : IRolesService, ITransientService
     permission.item_id,
     permission.entity_property_id,
     permission.module_id,
-    permission.permissions
+    permission.permissions,
+	permission.endpoint_url,
+	permission.endpoint_http_method
 FROM {WiserTableNames.WiserRoles} AS role 
 LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = role.id
 ORDER BY role_name ASC";
@@ -50,7 +54,7 @@ ORDER BY role_name ASC";
         }
 
         var dataTable = await databaseConnection.GetAsync(query);
-        
+
         var results = new List<RoleModel>();
         foreach (DataRow dataRow in dataTable.Rows)
         {
@@ -75,10 +79,12 @@ ORDER BY role_name ASC";
             role.Permissions ??= new List<PermissionModel>();
             role.Permissions.Add(new PermissionModel
             {
-                ItemId = dataRow.Field<ulong>("item_id"),
+                ItemId = Convert.ToUInt64(dataRow["item_id"]),
                 ModuleId = dataRow.Field<int>("module_id"),
                 EntityPropertyId = dataRow.Field<int>("entity_property_id"),
-                Permissions = (AccessRights)dataRow.Field<int>("permissions")
+                Permissions = (AccessRights)dataRow.Field<int>("permissions"),
+                EndpointUrl = dataRow.Field<string>("endpoint_url"),
+                EndpointHttpMethod = new HttpMethod(dataRow.Field<string>("endpoint_http_method"))
             });
         }
 
