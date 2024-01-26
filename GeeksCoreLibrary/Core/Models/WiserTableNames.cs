@@ -208,6 +208,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserTemplateRenderLog = "wiser_template_render_log";
         /// <summary>
+        /// This table is used by the RequestLoggingMiddleware to log all incoming requests, if enabled.
+        /// </summary>
+        public const string GclRequestLog = "gcl_request_log";
+        /// <summary>
         /// All deleted items will be moved to archive tables, this is the suffix for those archive tables.
         /// </summary>
         public const string ArchiveSuffix = "_archive";
