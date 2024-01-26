@@ -85,6 +85,8 @@ namespace GeeksCoreLibrary.Core.Extensions
                 builder.UseHsts();
             }
 
+            builder.UseMiddleware<RequestLoggingMiddleware>();
+
             builder.UseStatusCodePagesWithReExecute("/webpage.gcl", "?errorCode={0}");
 
             builder.UseSession();
@@ -117,7 +119,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                     Predicate = _ => true,
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 });
-                
+
                 endpoints.MapHealthChecks("/health/wts", new HealthCheckOptions()
                 {
                     Predicate = healthCheck => healthCheck.Tags.Contains("WTS"),
@@ -164,7 +166,10 @@ namespace GeeksCoreLibrary.Core.Extensions
                 {
                     tablesToUpdate.Add(Modules.Databases.Models.Constants.DatabaseConnectionLogTableName);
                 }
-              
+                if (gclSettings.Value.RequestLoggingOptions.Enabled)
+                {
+                    tablesToUpdate.Add(WiserTableNames.GclRequestLog);
+                }
                 await databaseHelpersService.CheckAndUpdateTablesAsync(tablesToUpdate);
             });
 
