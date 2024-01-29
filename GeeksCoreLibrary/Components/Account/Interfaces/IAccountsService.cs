@@ -13,7 +13,7 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// If the user has no cookie, the cookie contains an invalid value or the token is expired, it will return 0.
         /// </summary>
         /// <returns>If the user has no cookie, the cookie contains an invalid value or the token is expired, it will return 0, otherwise the ID of the user.</returns>
-        Task<UserCookieDataModel> GetUserDataFromCookieAsync();
+        Task<UserCookieDataModel> GetUserDataFromCookieAsync(string cookieName = Constants.CookieName);
 
         /// <summary>
         /// Sometimes users want to place an order without creating an account. We do not want to login these users, but we do need an 'account' to link the order too.

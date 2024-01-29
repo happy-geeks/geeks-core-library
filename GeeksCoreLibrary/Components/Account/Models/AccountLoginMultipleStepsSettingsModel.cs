@@ -7,6 +7,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
     /// </summary>
     internal class AccountLoginMultipleStepsSettingsModel
     {
+        [DefaultValue(Constants.CookieName)]
+        internal string CookieName { get; set; }
+        
         [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
 <div id='GclAccountContainer{contentId}'>
     <jform id='GclLoginForm{contentId}' method='POST'>

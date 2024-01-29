@@ -56,7 +56,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
-        public async Task<UserCookieDataModel> GetUserDataFromCookieAsync()
+        public async Task<UserCookieDataModel> GetUserDataFromCookieAsync(string cookieName = Constants.CookieName)
         {
             var httpContext = httpContextAccessor?.HttpContext;
             if (httpContext == null)
@@ -81,7 +81,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 defaultAnonymousUserModel.MainUserId = defaultAnonymousUserId;
                 defaultAnonymousUserModel.UserId = defaultAnonymousUserId;
 
-                var cookieValue = httpContext.Request.Cookies[Constants.CookieName];
+                var cookieValue = httpContext.Request.Cookies[cookieName];
                 if (String.IsNullOrWhiteSpace(cookieValue))
                 {
                     return defaultAnonymousUserModel;
@@ -91,7 +91,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 if (cookieValueParts.Length != 3)
                 {
                     // Delete the cookie, it's not valid (anymore).
-                    httpContext.Response.Cookies.Delete(Constants.CookieName);
+                    httpContext.Response.Cookies.Delete(cookieName);
                     return defaultAnonymousUserModel;
                 }
 
@@ -122,7 +122,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 if (result.Rows.Count == 0)
                 {
                     // Delete the cookie, it's not valid (anymore).
-                    httpContext.Response.Cookies.Delete(Constants.CookieName);
+                    httpContext.Response.Cookies.Delete(cookieName);
                     return defaultAnonymousUserModel;
                 }
 
@@ -133,7 +133,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 if (!Uri.UnescapeDataString(cookieValueParts[1]).DecryptWithAes(gclSettings.AccountCookieValueEncryptionKey).VerifySha512(hashedValidator))
                 {
                     // Delete the cookie, it's not valid (anymore).
-                    httpContext.Response.Cookies.Delete(Constants.CookieName);
+                    httpContext.Response.Cookies.Delete(cookieName);
                     return defaultAnonymousUserModel;
                 }
 
@@ -304,7 +304,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 return;
             }
 
-            var cookieValue = currentContext.Request.Cookies[Constants.CookieName];
+            var cookieValue = currentContext.Request.Cookies[settings.CookieName];
             if (String.IsNullOrWhiteSpace(cookieValue))
             {
                 return;
@@ -320,7 +320,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             var ociUrl = currentContext.Request.Cookies[Constants.OciHookUrlCookieName];
 
             // Delete the cookie(s).
-            currentContext.Response.Cookies.Delete(Constants.CookieName);
+            currentContext.Response.Cookies.Delete(settings.CookieName);
             if (!String.IsNullOrWhiteSpace(ociUrl))
             {
                 currentContext.Response.Cookies.Delete(Constants.OciHookUrlCookieName);
