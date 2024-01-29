@@ -138,20 +138,21 @@ namespace GeeksCoreLibrary.Core.Extensions
                 var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
 
                 var gclSettings = scope.ServiceProvider.GetRequiredService<IOptions<GclSettings>>();
-                if (!gclSettings.Value.LogOpeningAndClosingOfConnections)
+                var tablesToUpdate = new List<string>
                 {
-                    await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {WiserTableNames.WiserEntity});
-                    return;
-                }
-
-                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string>
-                {
+                    WiserTableNames.WiserEntity,
+                    WiserTableNames.WiserPermission,
                     WiserTableNames.WiserTemplate,
                     WiserTableNames.WiserDynamicContent,
                     WiserTableNames.WiserTemplateDynamicContent,
                     WiserTableNames.WiserTemplateExternalFiles,
-                    Modules.Databases.Models.Constants.DatabaseConnectionLogTableName
-                , WiserTableNames.WiserEntity});
+                };
+                if (gclSettings.Value.LogOpeningAndClosingOfConnections)
+                {
+                    tablesToUpdate.Add(Modules.Databases.Models.Constants.DatabaseConnectionLogTableName);
+                }
+              
+                await databaseHelpersService.CheckAndUpdateTablesAsync(tablesToUpdate);
             });
 
             return builder;

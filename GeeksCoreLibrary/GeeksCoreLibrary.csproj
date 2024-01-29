@@ -5,11 +5,11 @@
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>4.1.4</Version>
+    <Version>4.1.5</Version>
     <Company>Happy Horizon B.V.</Company>
     <Description>Our base/core library that we use for most of our other projects.</Description>
-    <AssemblyVersion>4.1.4.0</AssemblyVersion>
-    <FileVersion>4.1.4.0</FileVersion>
+    <AssemblyVersion>4.1.5.0</AssemblyVersion>
+    <FileVersion>4.1.5.0</FileVersion>
     <PackageDescription>Geeks Core Library</PackageDescription>
     <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
@@ -39,10 +39,10 @@
     <PackageReference Include="EvoPdf.HtmlToPdf.NetCore.x64" Version="8.0.0" />
     <PackageReference Include="FluentFTP" Version="48.0.3" />
     <PackageReference Include="GoogleAuthenticator" Version="3.1.1" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.54" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.57" />
     <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" />
     <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
-    <PackageReference Include="Magick.NET-Q8-x64" Version="13.4.0" />
+    <PackageReference Include="Magick.NET-Q8-x64" Version="13.5.0" />
     <PackageReference Include="MailKit" Version="4.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="7.0.10" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
@@ -65,7 +65,7 @@
     <PackageReference Include="System.Runtime" Version="4.3.1" />
     <PackageReference Include="System.Runtime.Extensions" Version="4.3.1" />
     <PackageReference Include="System.Threading" Version="4.3.0" />
-    <PackageReference Include="Twilio" Version="6.15.0" />
+    <PackageReference Include="Twilio" Version="6.16.1" />
     <PackageReference Include="WebMarkupMin.AspNetCore7" Version="2.15.1" />
     <PackageReference Include="ZXing.Net" Version="0.16.9" />
     <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.13" />

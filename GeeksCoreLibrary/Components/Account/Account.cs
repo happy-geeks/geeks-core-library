@@ -1228,7 +1228,7 @@ namespace GeeksCoreLibrary.Components.Account
             await SaveGoogleClientIdAsync(userId);
 
             var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
-            HttpContextHelpers.WriteCookie(HttpContext, Constants.CookieName, cookieValue, offset, isEssential: true);
+            HttpContextHelpers.WriteCookie(HttpContext, Settings.CookieName, cookieValue, offset, isEssential: true);
 
             await SaveLoginAttemptAsync(true, userId);
         }
@@ -1862,7 +1862,7 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
-            HttpContextHelpers.WriteCookie(HttpContext, Constants.CookieName, cookieValue, offset, isEssential: true);
+            HttpContextHelpers.WriteCookie(HttpContext, Settings.CookieName, cookieValue, offset, isEssential: true);
 
             if (decryptedUserId == 0)
             {
