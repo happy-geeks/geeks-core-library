@@ -109,4 +109,11 @@ using MySqlX.XDevAPI.CRUD;
     /// <param name="name">The name of the collection</param>
     /// <returns>Boolean indicating whether the collection exists</returns>
     Task<bool> CollectionExists(string name);
+
+    /// <summary>
+    /// Change the connection string that is used by the connections.
+    /// </summary>
+    /// <param name="newConnectionString">The new connection string.</param>
+    /// <returns></returns>
+    void ChangeConnectionString(string newConnectionString);
 }

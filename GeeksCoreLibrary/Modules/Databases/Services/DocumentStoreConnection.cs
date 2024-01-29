@@ -29,6 +29,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     private readonly ConcurrentDictionary<string, object> parameters = new();
     private readonly JsonSerializerSettings jsonSerializerSettings;
     private readonly IBranchesService branchesService;
+    private MySqlXConnectionStringBuilder connectionString;
 
     /// <summary>
     /// Creates a new instance of <see cref="DocumentStoreConnection"/>.
@@ -42,6 +43,9 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
         this.logger = logger;
         this.branchesService = branchesService;
         this.gclSettings = gclSettings.Value;
+
+        connectionString = new MySqlXConnectionStringBuilder(this.gclSettings.DocumentStoreConnectionString ?? this.gclSettings.ConnectionString);
+        connectionString.Database = this.branchesService.GetDatabaseNameFromCookie() ?? connectionString.Database;
 
         jsonSerializerSettings = new JsonSerializerSettings
         {
@@ -67,7 +71,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
         {
             return Task.CompletedTask;
         }
-        
+
         // Create indices
         foreach (var (name, indexes) in collectionIndexes)
         {
@@ -76,7 +80,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
 
         return Task.CompletedTask;
     }
-    
+
     /// <inheritdoc />
     public Task<bool> CollectionExists(string name)
     {
@@ -85,7 +89,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
 
         return Task.FromResult(collection.ExistsInDatabase());
     }
-    
+
     private Collection GetCollection(string name, bool validateExistence = false)
     {
         EnsureOpenSession();
@@ -120,10 +124,10 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
         }
 
         using var documents = await findStatement.ExecuteAsync();
-        
+
         var items = documents.FetchAll();
 
-        JArray array = new JArray();
+        var array = new JArray();
         foreach (var item in items)
         {
             array.Add(JToken.Parse(item.ToString()));
@@ -177,18 +181,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
             return;
         }
 
-        var connectionString = gclSettings.DocumentStoreConnectionString ?? gclSettings.ConnectionString;
-
-        MySqlXConnectionStringBuilder connectionStringBuilder = new MySqlXConnectionStringBuilder(connectionString);
-
-        var branchDatabase = branchesService.GetDatabaseNameFromCookie();
-        
-        if (!String.IsNullOrEmpty(branchDatabase))
-        {
-            connectionStringBuilder.Database = branchDatabase;
-        }
-
-        Session = MySQLX.GetSession(connectionStringBuilder.ToString());
+        Session = MySQLX.GetSession(connectionString.ConnectionString);
 
         ConnectedDatabase = Session.Schema.Name;
     }
@@ -204,7 +197,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
             
             return result.GeneratedIds[0];
         }
-        
+
         await ModifyDocumentByIdAsync(collectionName, id, item);
         return id;
     }
@@ -222,7 +215,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
         EnsureOpenSession();
         var collection = GetCollection(collectionName);
         var removeStatement = collection.Remove(condition);
-        
+
         // Bind the parameters.
         foreach (var parameter in parameters)
         {
@@ -259,6 +252,17 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     public void RollbackTransaction()
     {
         Session.Rollback();
+    }
+
+    /// <inheritdoc />
+    public void ChangeConnectionString(string newConnectionString)
+    {
+        connectionString ??= new MySqlXConnectionStringBuilder();
+
+        connectionString.ConnectionString = newConnectionString;
+
+        Session?.Close();
+        Session = null;
     }
 
     /// <inheritdoc />
