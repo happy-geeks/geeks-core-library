@@ -200,8 +200,9 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
 
         if (String.IsNullOrWhiteSpace(id))
         {
-            var result = await collection.Add( JObject.FromObject(item)).ExecuteAsync();
-            
+            var itemString = JsonConvert.SerializeObject(item, jsonSerializerSettings);
+            var result = await collection.Add(itemString).ExecuteAsync();
+
             return result.GeneratedIds[0];
         }
         
