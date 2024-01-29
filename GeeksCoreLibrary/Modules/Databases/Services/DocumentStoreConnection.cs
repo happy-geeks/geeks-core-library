@@ -44,8 +44,11 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
         this.branchesService = branchesService;
         this.gclSettings = gclSettings.Value;
 
-        connectionString = new MySqlXConnectionStringBuilder(this.gclSettings.DocumentStoreConnectionString ?? this.gclSettings.ConnectionString);
-        connectionString.Database = this.branchesService.GetDatabaseNameFromCookie() ?? connectionString.Database;
+        if (!String.IsNullOrWhiteSpace(this.gclSettings.DocumentStoreConnectionString))
+        {
+            connectionString = new MySqlXConnectionStringBuilder(this.gclSettings.DocumentStoreConnectionString);
+            connectionString.Database = this.branchesService.GetDatabaseNameFromCookie() ?? connectionString.Database;
+        }
 
         jsonSerializerSettings = new JsonSerializerSettings
         {
@@ -65,6 +68,11 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     public Task CreateCollectionAsync(string collectionName, List<(string Name, DocumentStoreIndexModel Indexes)> collectionIndexes)
     {
         EnsureOpenSession();
+        if (Session == null)
+        {
+            logger.LogError("Tried to create a collection, but a session could not be created. Probably because a connection string is not set.");
+            return Task.CompletedTask;
+        }
 
         var collection = Session.Schema.CreateCollection(collectionName, true);
         if (collectionIndexes == null)
@@ -85,6 +93,12 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     public Task<bool> CollectionExists(string name)
     {
         EnsureOpenSession();
+        if (Session == null)
+        {
+            logger.LogError("Tried to check if a collection exists, but a session could not be created. Probably because a connection string is not set.");
+            return Task.FromResult(false);
+        }
+
         var collection = Session.Schema.GetCollection(name);
 
         return Task.FromResult(collection.ExistsInDatabase());
@@ -93,6 +107,12 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     private Collection GetCollection(string name, bool validateExistence = false)
     {
         EnsureOpenSession();
+        if (Session == null)
+        {
+            logger.LogError("Tried to open a collection, but a session could not be created. Probably because a connection string is not set.");
+            return null;
+        }
+
         var collection = Session.Schema.GetCollection(name, validateExistence);
 
         return collection.ExistsInDatabase() ? collection : Session.Schema.CreateCollection(name);
@@ -102,6 +122,11 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     public async Task<JArray> GetDocumentsAsync(string collectionName, string condition)
     {
         EnsureOpenSession();
+        if (Session == null)
+        {
+            logger.LogError("Tried to get a document from collection '{collectionName}' with condition '{condition}', but a session could not be created. Probably because a connection string is not set.", collectionName, condition);
+            return null;
+        }
 
         var findParameters = new DbDoc();
         if (!parameters.IsEmpty)
@@ -145,6 +170,11 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
         }
 
         EnsureOpenSession();
+        if (Session == null)
+        {
+            logger.LogError("Tried to get a document from collection '{collectionName}' with id '{id}', but a session could not be created. Probably because a connection string is not set.", collectionName, id);
+            return null;
+        }
 
         var collection = Session.Schema.GetCollection(collectionName, true);
         var result = await collection.Find("_id=?id").Bind("?id", id).ExecuteAsync();
@@ -176,13 +206,12 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     /// </summary>
     private void EnsureOpenSession()
     {
-        if (Session != null)
+        if (Session != null || connectionString == null)
         {
             return;
         }
 
         Session = MySQLX.GetSession(connectionString.ConnectionString);
-
         ConnectedDatabase = Session.Schema.Name;
     }
 
@@ -190,6 +219,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     public async Task<string> InsertOrUpdateDocumentAsync(string collectionName, object item, string id = null)
     {
         var collection = GetCollection(collectionName);
+        if (collection == null) return null;
 
         if (String.IsNullOrWhiteSpace(id))
         {
@@ -207,6 +237,8 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     public async Task ModifyDocumentByIdAsync(string collectionName, string id, object item)
     {
         var collection = GetCollection(collectionName);
+        if (collection == null) return;
+
         await collection.Modify("id = :docId").Patch(JsonConvert.SerializeObject(item, jsonSerializerSettings)).Bind("docId", id).ExecuteAsync();
     }
 
@@ -215,6 +247,8 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     {
         EnsureOpenSession();
         var collection = GetCollection(collectionName);
+        if (collection == null) return 0UL;
+
         var removeStatement = collection.Remove(condition);
 
         // Bind the parameters.
