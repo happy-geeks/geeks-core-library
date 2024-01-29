@@ -1257,8 +1257,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             var cssStringBuilder = new StringBuilder();
             var jsStringBuilder = new StringBuilder();
-            var externalCssFilesList = new List<string>();
-            var externalJavaScriptFilesList = new List<string>();
+            var externalCssFilesList = new List<PageResourceModel>();
+            var externalJavaScriptFilesList = new List<PageResourceModel>();
             foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
             {
                 var linkedTemplate = await templatesService.GetTemplateAsync(templateId);

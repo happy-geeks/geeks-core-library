@@ -7,7 +7,7 @@
         {
             foreach (var css in Model.Css.ExternalCss)
             {
-                @:<link rel="stylesheet" href="@Html.Raw(css)" />
+                @:<link rel="stylesheet" href="@Html.Raw(css.Uri)" @Html.Raw(!String.IsNullOrEmpty(css.Hash) ? $"integrity='{css.Hash}' crossorigin='anonymous'" : "") />
             }
         }
         if (!String.IsNullOrWhiteSpace(Model?.Css?.GeneralStandardCssFileName))
@@ -35,26 +35,31 @@
         {
             foreach (var javascript in Model.Javascript.ExternalJavascript)
             {
-                @:<script src="@Html.Raw(javascript.Uri.ToString())" @Html.Raw(javascript.Async ? "async" : "") @Html.Raw(javascript.Defer ? "defer" : "")></script>
+                <script
+                    src="@Html.Raw(javascript.Uri.ToString())"
+                    @Html.Raw(javascript.Async ? "async" : "")
+                    @Html.Raw(javascript.Defer ? "defer" : "")
+                    @Html.Raw(!String.IsNullOrEmpty(javascript.Hash) ? $"integrity='{javascript.Hash}' crossorigin='anonymous'" : "")>
+                </script>
             }
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralStandardJavaScriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.GeneralStandardJavaScriptFileName)" defer></script>
+            <script src="@Html.Raw(Model.Javascript.GeneralStandardJavaScriptFileName)" defer></script>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageStandardJavascriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.PageStandardJavascriptFileName)" defer></script>
+            <script src="@Html.Raw(Model.Javascript.PageStandardJavascriptFileName)" defer></script>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralInlineHeadJavaScript))
         {
-            @:<script>@Html.Raw(Model.Javascript.GeneralInlineHeadJavaScript)</script>
+            <script>@Html.Raw(Model.Javascript.GeneralInlineHeadJavaScript)</script>
         }
         if (Model?.Javascript?.PageInlineHeadJavascript != null)
         {
             foreach (var javascript in Model.Javascript.PageInlineHeadJavascript)
             {
-                @:<script>@Html.Raw(javascript)</script>
+                <script>@Html.Raw(javascript)</script>
             }
         }
     }
@@ -64,19 +69,19 @@
     @{
         if (!String.IsNullOrWhiteSpace(Model?.Css?.GeneralAsyncFooterCssFileName))
         {
-            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.GeneralAsyncFooterCssFileName)" async />
+            <link rel="stylesheet" href="@Html.Raw(Model.Css.GeneralAsyncFooterCssFileName)" async />
         }
         if (!String.IsNullOrWhiteSpace(Model?.Css?.GeneralSyncFooterCssFileName))
         {
-            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.GeneralSyncFooterCssFileName)" />
+            <link rel="stylesheet" href="@Html.Raw(Model.Css.GeneralSyncFooterCssFileName)" />
         }
         if (!String.IsNullOrWhiteSpace(Model?.Css?.PageAsyncFooterCssFileName))
         {
-            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.PageAsyncFooterCssFileName)" async />
+            <link rel="stylesheet" href="@Html.Raw(Model.Css.PageAsyncFooterCssFileName)" async />
         }
         if (!String.IsNullOrWhiteSpace(Model?.Css?.PageSyncFooterCssFileName))
         {
-            @:<link rel="stylesheet" href="@Html.Raw(Model.Css.PageSyncFooterCssFileName)" />
+            <link rel="stylesheet" href="@Html.Raw(Model.Css.PageSyncFooterCssFileName)" />
         }
     }
 }
@@ -87,26 +92,26 @@
         {
             foreach (var javascript in Model.Javascript.GeneralSyncFooterJavaScriptFileName)
             {
-                @:<script src="@Html.Raw(javascript)" defer></script>
+                <script src="@Html.Raw(javascript)" defer></script>
             }
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralAsyncFooterJavaScriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.GeneralAsyncFooterJavaScriptFileName)" async defer></script>
+            <script src="@Html.Raw(Model.Javascript.GeneralAsyncFooterJavaScriptFileName)" async defer></script>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageAsyncFooterJavascriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.PageAsyncFooterJavascriptFileName)" async defer></script>
+            <script src="@Html.Raw(Model.Javascript.PageAsyncFooterJavascriptFileName)" async defer></script>
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.PageSyncFooterJavascriptFileName))
         {
-            @:<script src="@Html.Raw(Model.Javascript.PageSyncFooterJavascriptFileName)" defer></script>
+            <script src="@Html.Raw(Model.Javascript.PageSyncFooterJavascriptFileName)" defer></script>
         }
         if (Model?.Javascript?.PagePluginInlineJavascriptSnippets != null)
         {
             foreach (var javascript in Model.Javascript.PagePluginInlineJavascriptSnippets)
             {
-                @:<script>@Html.Raw(javascript)</script>
+                <script>@Html.Raw(javascript)</script>
             }
         }
     }
@@ -118,7 +123,7 @@
         {
             foreach (var (name, content) in Model.MetaData.MetaTags)
             {
-                @:<meta name="@name" content="@content" />
+                <meta name="@name" content="@content" />
             }
         }
 
@@ -126,23 +131,23 @@
         {
             foreach (var (property, content) in Model.MetaData.OpenGraphMetaTags)
             {
-                @:<meta property="og:@property" content="@content" />
+                <meta property="og:@property" content="@content" />
             }
         }
 
         if (!String.IsNullOrWhiteSpace(Model?.MetaData?.Canonical))
         {
-            @:<link href="@Model.MetaData.Canonical" rel="canonical" />
+            <link href="@Model.MetaData.Canonical" rel="canonical" />
         }
 
         if (!String.IsNullOrWhiteSpace(Model?.MetaData?.PreviousPageLink))
         {
-            @:<link href="@Model.MetaData.PreviousPageLink" rel="prev" />
+            <link href="@Model.MetaData.PreviousPageLink" rel="prev" />
         }
 
         if (!String.IsNullOrWhiteSpace(Model?.MetaData?.NextPageLink))
         {
-            @:<link href="@Model.MetaData.NextPageLink" rel="next" />
+            <link href="@Model.MetaData.NextPageLink" rel="next" />
         }
     }
 }
@@ -153,12 +158,12 @@
         {
             foreach (var javascript in Model.GoogleAnalytics.HeadJavaScriptResources)
             {
-                @:<script src="@Html.Raw(javascript.Uri.ToString())" @Html.Raw(javascript.Async ? "async" : "") @Html.Raw(javascript.Defer ? "defer" : "")></script>
+                <script src="@Html.Raw(javascript.Uri.ToString())" @Html.Raw(javascript.Async ? "async" : "") @Html.Raw(javascript.Defer ? "defer" : "")></script>
             }
         }
         if (!String.IsNullOrWhiteSpace(Model?.GoogleAnalytics?.InlineHeadJavaScript))
         {
-            @:<script>@Html.Raw(Model.GoogleAnalytics.InlineHeadJavaScript)</script>
+            <script>@Html.Raw(Model.GoogleAnalytics.InlineHeadJavaScript)</script>
         }
     }
 }
@@ -167,7 +172,7 @@
     @{
         if (!String.IsNullOrWhiteSpace(Model?.GoogleAnalytics?.InlineBodyNoScript))
         {
-            @:<noscript>@Html.Raw(Model.GoogleAnalytics.InlineBodyNoScript)</noscript>
+            <noscript>@Html.Raw(Model.GoogleAnalytics.InlineBodyNoScript)</noscript>
         }
     }
 }

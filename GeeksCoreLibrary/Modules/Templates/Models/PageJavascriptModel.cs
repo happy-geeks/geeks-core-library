@@ -8,7 +8,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// <summary>
         /// Gets or sets the list of external javascript files.
         /// </summary>
-        public List<JavaScriptResource> ExternalJavascript { get; set; } = new();
+        public List<JavaScriptResourceModel> ExternalJavascript { get; set; } = new();
 
         /// <summary>
         /// Gets or sets the javascript for all pages that should be loaded in the header as an URL.
