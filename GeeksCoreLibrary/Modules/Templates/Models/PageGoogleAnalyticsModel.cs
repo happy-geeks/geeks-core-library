@@ -7,7 +7,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// <summary>
         /// Gets or sets external scripts that will be added in the head, as close to the opening head tag as possible.
         /// </summary>
-        public List<JavaScriptResource> HeadJavaScriptResources { get; set; } = new();
+        public List<JavaScriptResourceModel> HeadJavaScriptResources { get; set; } = new();
 
         /// <summary>
         /// Gets or sets inline scripts that will be added in the head, as close to the opening head tag as possible.

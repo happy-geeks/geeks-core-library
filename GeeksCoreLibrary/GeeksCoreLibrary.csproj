@@ -5,11 +5,11 @@
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>4.1.5</Version>
+    <Version>4.1.6</Version>
     <Company>Happy Horizon B.V.</Company>
     <Description>Our base/core library that we use for most of our other projects.</Description>
-    <AssemblyVersion>4.1.5.0</AssemblyVersion>
-    <FileVersion>4.1.5.0</FileVersion>
+    <AssemblyVersion>4.1.6.0</AssemblyVersion>
+    <FileVersion>4.1.6.0</FileVersion>
     <PackageDescription>Geeks Core Library</PackageDescription>
     <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
@@ -37,7 +37,7 @@
     <PackageReference Include="CsvHelper" Version="30.0.1" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="2.20.0" />
     <PackageReference Include="EvoPdf.HtmlToPdf.NetCore.x64" Version="8.0.0" />
-    <PackageReference Include="FluentFTP" Version="48.0.3" />
+    <PackageReference Include="FluentFTP" Version="49.0.2" />
     <PackageReference Include="GoogleAuthenticator" Version="3.2.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.57" />
     <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" />
@@ -50,13 +50,13 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
     <PackageReference Include="MySql.Data" Version="8.2.0" />
-    <PackageReference Include="MySqlConnector" Version="2.3.1" />
+    <PackageReference Include="MySqlConnector" Version="2.3.5" />
     <PackageReference Include="RestSharp" Version="110.2.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="110.2.0" />
     <PackageReference Include="Scrutor" Version="4.2.2" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
-    <PackageReference Include="SSH.NET" Version="2023.0.0" />
+    <PackageReference Include="SSH.NET" Version="2023.0.1" />
     <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0" />
     <PackageReference Include="System.Globalization" Version="4.3.0" />
     <PackageReference Include="System.IO.FileSystem" Version="4.3.0" />

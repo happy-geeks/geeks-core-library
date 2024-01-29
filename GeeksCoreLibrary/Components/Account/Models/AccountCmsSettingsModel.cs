@@ -1204,7 +1204,20 @@ namespace GeeksCoreLibrary.Components.Account.Models
         #endregion
 
         #region Tab Developer properties
-
+        
+        /// <summary>
+        /// Set cookie name if multiple account components with different accounts are used on the same page.
+        /// </summary>
+        [CmsProperty(
+            PrettyName = "Cookie name",
+            Description = "Set cookie name if multiple account components with different accounts are used on the same page.",
+            TabName = CmsAttributes.CmsTabName.Developer,
+            GroupName = CmsAttributes.CmsGroupName.Advanced,
+            DisplayOrder = 5,
+            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+        )]
+        public string CookieName { get; set; }
+        
         /// <summary>
         /// You can enter a comma separated list of cookie names to delete after the user logs out.
         /// </summary>

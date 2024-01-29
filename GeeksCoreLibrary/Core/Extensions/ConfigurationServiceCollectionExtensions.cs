@@ -138,12 +138,20 @@ namespace GeeksCoreLibrary.Core.Extensions
                 var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
 
                 var gclSettings = scope.ServiceProvider.GetRequiredService<IOptions<GclSettings>>();
-                var tablesToUpdate = new List<string> {WiserTableNames.WiserEntity, WiserTableNames.WiserPermission};
+                var tablesToUpdate = new List<string>
+                {
+                    WiserTableNames.WiserEntity,
+                    WiserTableNames.WiserPermission,
+                    WiserTableNames.WiserTemplate,
+                    WiserTableNames.WiserDynamicContent,
+                    WiserTableNames.WiserTemplateDynamicContent,
+                    WiserTableNames.WiserTemplateExternalFiles,
+                };
                 if (gclSettings.Value.LogOpeningAndClosingOfConnections)
                 {
                     tablesToUpdate.Add(Modules.Databases.Models.Constants.DatabaseConnectionLogTableName);
                 }
-
+              
                 await databaseHelpersService.CheckAndUpdateTablesAsync(tablesToUpdate);
             });
 
