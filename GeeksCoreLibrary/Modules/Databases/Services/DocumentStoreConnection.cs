@@ -30,6 +30,7 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     private readonly JsonSerializerSettings jsonSerializerSettings;
     private readonly IBranchesService branchesService;
     private MySqlXConnectionStringBuilder connectionString;
+    private readonly IDatabaseConnection databaseConnection;
 
     /// <summary>
     /// Creates a new instance of <see cref="DocumentStoreConnection"/>.
@@ -37,12 +38,14 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
     public DocumentStoreConnection(IOptions<GclSettings> gclSettings, 
                                    IHttpContextAccessor httpContextAccessor, 
                                    ILogger<DocumentStoreConnection> logger, 
-                                   IBranchesService branchesService)
+                                   IBranchesService branchesService,
+                                   IDatabaseConnection databaseConnection)
     {
         this.httpContextAccessor = httpContextAccessor;
         this.logger = logger;
         this.branchesService = branchesService;
         this.gclSettings = gclSettings.Value;
+        this.databaseConnection = databaseConnection;
 
         if (!String.IsNullOrWhiteSpace(this.gclSettings.DocumentStoreConnectionString))
         {
@@ -56,7 +59,6 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
             {
                 NamingStrategy = new CamelCaseNamingStrategy()
             },
-            Formatting = Formatting.Indented,
             NullValueHandling = NullValueHandling.Ignore
         };
     }
@@ -223,8 +225,16 @@ public class DocumentStoreConnection : IDocumentStoreConnection, IScopedService
 
         if (String.IsNullOrWhiteSpace(id))
         {
-            var itemString = JsonConvert.SerializeObject(item, jsonSerializerSettings);
-            var result = await collection.Add(itemString).ExecuteAsync();
+            var document = new DbDoc();
+            var result = await collection.Add(document).ExecuteAsync();
+
+            var tempItem = JObject.FromObject(item);
+            tempItem.Add("_id", new JValue(result.GeneratedIds[0]));
+            
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("doc", JsonConvert.SerializeObject(tempItem));
+            databaseConnection.AddParameter("id", result.GeneratedIds[0]);
+            await databaseConnection.ExecuteAsync($@"UPDATE {collectionName} SET doc = ?doc WHERE _id = ?id");
 
             return result.GeneratedIds[0];
         }
