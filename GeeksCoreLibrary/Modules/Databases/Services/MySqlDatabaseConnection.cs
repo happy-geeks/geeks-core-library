@@ -14,6 +14,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
+using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using Microsoft.AspNetCore.Hosting;
@@ -121,7 +122,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             try
             {
                 MySqlCommand commandToUse;
-                if (useWritingConnectionIfAvailable && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
+                if ((useWritingConnectionIfAvailable || QueryHelpers.IsWriteQuery(query)) && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
                 {
                     await EnsureOpenConnectionForWritingAsync();
                     commandToUse = CommandForWriting;
@@ -198,7 +199,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             try
             {
                 MySqlCommand commandToUse;
-                if (useWritingConnectionIfAvailable && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
+                if ((useWritingConnectionIfAvailable || QueryHelpers.IsWriteQuery(query)) && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
                 {
                     await EnsureOpenConnectionForWritingAsync();
                     commandToUse = CommandForWriting;
@@ -301,7 +302,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             try
             {
                 MySqlCommand commandToUse;
-                if (useWritingConnectionIfAvailable && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
+                if ((useWritingConnectionIfAvailable || QueryHelpers.IsWriteQuery(query)) && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
                 {
                     await EnsureOpenConnectionForWritingAsync();
                     commandToUse = CommandForWriting;
