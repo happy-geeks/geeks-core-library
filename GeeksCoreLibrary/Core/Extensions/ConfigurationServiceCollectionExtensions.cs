@@ -47,8 +47,10 @@ using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Services;
+using GeeksCoreLibrary.Modules.HealthChecks.Services;
 using GeeksCoreLibrary.Modules.ItemFiles.Middlewares;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using WebMarkupMin.AspNetCore7;
 using WebMarkupMin.Core;
@@ -197,7 +199,9 @@ namespace GeeksCoreLibrary.Core.Extensions
             // Add MySql health checks.
             if (isWeb)
             {
-                services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlRead");
+                services.AddHealthChecks()
+                    .AddMySql(gclSettings.ConnectionString, name: "MySqlRead")
+                    .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, new []{"WTS", "Wiser Task Scheduler"});
                 if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
                 {
                     services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite");
