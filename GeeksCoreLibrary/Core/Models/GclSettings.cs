@@ -2,6 +2,7 @@
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace GeeksCoreLibrary.Core.Models
 {
@@ -255,5 +256,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// That table will be automatically created if it doesn't exist yet.
         /// </summary>
         public bool LogOpeningAndClosingOfConnections { get; set; }
+        
+        /// <summary>
+        /// The SameSite mode to use for cookies.
+        /// </summary>
+        public SameSiteMode CookieSameSiteMode { get; set; } = SameSiteMode.Lax;
     }
 }
