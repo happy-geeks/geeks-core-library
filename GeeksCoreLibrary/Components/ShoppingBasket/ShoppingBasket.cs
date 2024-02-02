@@ -406,7 +406,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             }
 
             // Load the current basket.
-            var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings);
+            var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, Settings.ForcedBasketId);
             Main = shoppingBasket;
             Lines = basketLines;
             basketLineValidityMessage = validityMessage;
