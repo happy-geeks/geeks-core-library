@@ -113,18 +113,18 @@ namespace GeeksCoreLibrary.Core.Services
             while (!transactionCompleted)
             {
                 var alreadyHadTransaction = databaseConnection.HasActiveTransaction();
-                
+
                 try
                 {
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
                     if (isNewlyCreated)
                     {
                         wiserItem = await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck, storeTypeOverride);
-                       
+
                         // When a new item has been created the values always need to be saved. There is no use to check if they have been changed since they are all new.
                         alwaysSaveValues = true;
                     }
-                    
+
                     if (storeType == StoreType.Hybrid)
                     {
                         wiserItem = (await documentStorageService.StoreItemAsync(wiserItem, entitySettings)).model;
@@ -227,7 +227,7 @@ namespace GeeksCoreLibrary.Core.Services
             while (!transactionCompleted)
             {
                 var alreadyHadTransaction = databaseConnection.HasActiveTransaction();
-                
+
                 try
                 {
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
@@ -238,7 +238,7 @@ namespace GeeksCoreLibrary.Core.Services
                     databaseConnection.AddParameter("linkTypeNumber", linkTypeNumber);
                     databaseConnection.AddParameter("username", username);
                     databaseConnection.AddParameter("userId", userId);
-                    databaseConnection.AddParameter("publishedEnvironment", 
+                    databaseConnection.AddParameter("publishedEnvironment",
                                                     wiserItem.PublishedEnvironment ?? Environments.Live | Environments.Acceptance | Environments.Test | Environments.Development);
                     databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
                     var query = $@"SET @saveHistory = ?saveHistoryGcl;
@@ -541,7 +541,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
             while (!transactionCompleted)
             {
                 var alreadyHadTransaction = databaseConnection.HasActiveTransaction();
-                
+
                 try
                 {
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
@@ -626,14 +626,14 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
             // Get the settings of the entity type.
             var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType, wiserItem.ModuleId);
             var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
-            
+
             var retries = 0;
             var transactionCompleted = false;
 
             while (!transactionCompleted)
             {
                 var alreadyHadTransaction = databaseConnection.HasActiveTransaction();
-                
+
                 try
                 {
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
@@ -1422,7 +1422,7 @@ SET @saveHistory = ?saveHistoryGcl;
             while (!transactionCompleted)
             {
                 var alreadyHadTransaction = databaseConnection.HasActiveTransaction();
-                
+
                 try
                 {
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
@@ -4469,7 +4469,7 @@ LIMIT 1";
                     }
 
                     query = null;
-                    var isEmpty = itemDetail.Value == null || (string) itemDetail.Value == "";
+                    var isEmpty = itemDetail.Value == null || itemDetail.Value is "";
                     if (itemDetail.Id == 0)
                     {
                         if (!isEmpty && itemId > 0)
