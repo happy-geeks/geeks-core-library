@@ -34,8 +34,8 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
 
             // TODO: Use UriBuilder instead of string, for better performance and easier manipulation of the URL?
             var redirectToUrl = "";
-
-            if (!String.IsNullOrEmpty(context.Request.Headers["gclredirect"]) || context.Request.Method != "GET")
+            var oldUrl = HttpContextHelpers.GetOriginalRequestUri(context);
+            if (!String.IsNullOrEmpty(context.Request.Headers["gclredirect"]) || context.Request.Method != "GET" || oldUrl.AbsolutePath.Contains("/api/", StringComparison.CurrentCultureIgnoreCase))
             {
                 await next.Invoke(context);
                 return;
@@ -45,7 +45,6 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
 
             // Redirect module.
             var regEx = new Regex(CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)); // Only handle redirect module on pages, not on images, css, js, etc.
-            var oldUrl = HttpContextHelpers.GetOriginalRequestUri(context);
             if (!regEx.IsMatch(oldUrl.ToString()))
             {
                 var redirectRule = await redirectService.GetRedirectAsync(oldUrl);
@@ -106,6 +105,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
                     }
 
                     var original = newUrl;
+
                     // Group number/index matches.
                     foreach (Match subMatch in Regex.Matches(original, @"\[(\d+?)\]"))
                     {
@@ -184,10 +184,9 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
                 context.Response.Headers.Add("gclredirect", "true");
                 context.Response.Redirect(redirectToUrl, redirectPermanent);
             }
-
-            // Only proceed to next middleware if there's no redirect.
-            if (String.IsNullOrEmpty(redirectToUrl))
+            else
             {
+                // Only proceed to next middleware if there's no redirect.
                 await next.Invoke(context);
             }
         }
