@@ -928,7 +928,7 @@ ORDER BY id ASC");
 
                     if (String.IsNullOrWhiteSpace(imageViewportParameter))
                     {
-                        input = input.ReplaceCaseInsensitive(m.Value, "no viewport parameter specified");
+                        input = input.Replace(m.Value, "no viewport parameter specified", StringComparison.OrdinalIgnoreCase);
                         continue;
                     }
 
@@ -965,7 +965,7 @@ ORDER BY id ASC");
                 }
 
                 // Replace the image in the template
-                input = input.ReplaceCaseInsensitive(m.Value, output);
+                input = input.Replace(m.Value, output, StringComparison.OrdinalIgnoreCase);
             }
 
             return input;
@@ -1014,7 +1014,7 @@ ORDER BY id ASC");
                             templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery);
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, templateContent);
+                        input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
                     }
                     else
                     {
@@ -1025,7 +1025,7 @@ ORDER BY id ASC");
                             templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery);
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, templateContent);
+                        input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
                     }
                 }
 
@@ -1058,7 +1058,7 @@ ORDER BY id ASC");
                             content = content.Replace("<div class=\"dynamic-content", $"<div data=\"{queryString}\" class=\"/dynamic-content");
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, content);
+                        input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
                     }
                     else
                     {
@@ -1075,7 +1075,7 @@ ORDER BY id ASC");
                             content = content.Replace("<div class=\"dynamic-content", $"<div data=\"{queryString}\" class=\"/dynamic-content");
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, content);
+                        input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
                     }
                 }
             }
@@ -1272,7 +1272,7 @@ ORDER BY id ASC");
             query = await DoReplacesAsync(query, true, false, true, null, true, false, true, TemplateTypes.Query);
             if (query.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
             {
-                query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
+                query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart, StringComparison.OrdinalIgnoreCase);
             }
 
             var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
@@ -1769,7 +1769,7 @@ VALUES (?{idParameter}, ?rendering_version, ?rendering_url, ?rendering_environme
             // Querystring replaces.
             foreach (var key in httpContext.Request.Query.Keys)
             {
-                input = input.ReplaceCaseInsensitive($"{{{key}}}", httpContext.Request.Query[key]);
+                input = input.Replace($"{{{key}}}", httpContext.Request.Query[key], StringComparison.OrdinalIgnoreCase);
             }
 
             // Form replaces.
@@ -1777,7 +1777,7 @@ VALUES (?{idParameter}, ?rendering_version, ?rendering_url, ?rendering_environme
             {
                 foreach (var variable in httpContext.Request.Form.Keys)
                 {
-                    input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Request.Form[variable]);
+                    input = input.Replace($"{{{variable}}}", httpContext.Request.Form[variable], StringComparison.OrdinalIgnoreCase);
                 }
             }
 
@@ -1786,14 +1786,14 @@ VALUES (?{idParameter}, ?rendering_version, ?rendering_url, ?rendering_environme
             {
                 foreach (var variable in httpContext.Session.Keys)
                 {
-                    input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Session.GetString(variable));
+                    input = input.Replace($"{{{variable}}}", httpContext.Session.GetString(variable), StringComparison.OrdinalIgnoreCase);
                 }
             }
 
             // Cookie replaces.
             foreach (var key in httpContext.Request.Cookies.Keys)
             {
-                input = input.ReplaceCaseInsensitive($"{{{key}}}", httpContext.Request.Cookies[key]);
+                input = input.Replace($"{{{key}}}", httpContext.Request.Cookies[key], StringComparison.OrdinalIgnoreCase);
             }
 
             return input;

@@ -298,7 +298,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                     // Replace the {filters} variable by the joins from the filter component
                     if (query.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
                     {
-                        query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
+                        query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart, StringComparison.OrdinalIgnoreCase);
                     }
                     if (query.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
                     {
@@ -312,7 +312,7 @@ namespace GeeksCoreLibrary.Components.Repeater
 
                         if (Settings.ItemsPerPage == 0)
                         {
-                            query = query.ReplaceCaseInsensitive("{page_limit}", "");
+                            query = query.Replace("{page_limit}", "", StringComparison.OrdinalIgnoreCase);
                         }
                         else
                         {
@@ -358,7 +358,7 @@ namespace GeeksCoreLibrary.Components.Repeater
 
                         if (query.Contains("{page_limit}", StringComparison.OrdinalIgnoreCase))
                         {
-                            query = query.ReplaceCaseInsensitive("{page_limit}", limitClause);
+                            query = query.Replace("{page_limit}", limitClause, StringComparison.OrdinalIgnoreCase);
                         }
                         else
                         {
@@ -457,7 +457,7 @@ namespace GeeksCoreLibrary.Components.Repeater
 
                     // Do replacements on the banner HTML and then add that HTML.
                     var productBannerHtml = await StringReplacementsService.DoAllReplacementsAsync(Settings.ProductBannerTemplate, innerRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false);
-                    productBannerHtml = productBannerProperties.Aggregate(productBannerHtml, (current, property) => current.ReplaceCaseInsensitive($"{{{property.Name}}}", property.GetValue(banner)?.ToString() ?? ""));
+                    productBannerHtml = productBannerProperties.Aggregate(productBannerHtml, (current, property) => current.Replace($"{{{property.Name}}}", property.GetValue(banner)?.ToString() ?? "", StringComparison.OrdinalIgnoreCase));
                     html.Append(productBannerHtml);
                     blocksPlaced++;
 

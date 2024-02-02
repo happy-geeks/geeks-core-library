@@ -73,7 +73,7 @@ namespace GeeksCoreLibrary.Components.Pagination.Models
                 AddPageQueryStringToLinkFormat = AddPageQueryStringToLinkFormat,
                 RemoveFirstPageFromUrl = RemoveFirstPageFromURL,
                 AddDotsToFirstAndLast = AddDotsToFirstAndLast,
-                FullTemplate = (String.IsNullOrWhiteSpace(FullTemplate) ? "{summary} {pagination}" : FullTemplate).ReplaceCaseInsensitive("{pagination}", $"{Header ?? ""}{{pagination}}{Footer ?? ""}"),
+                FullTemplate = (String.IsNullOrWhiteSpace(FullTemplate) ? "{summary} {pagination}" : FullTemplate).Replace("{pagination}", $"{Header ?? ""}{{pagination}}{Footer ?? ""}", StringComparison.OrdinalIgnoreCase),
                 SummaryTemplate = Summarytemplate,
                 FirstPageTemplate = EerstePagina,
                 PreviousPageTemplate = VorigePagina,

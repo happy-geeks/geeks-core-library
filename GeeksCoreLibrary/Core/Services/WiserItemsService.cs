@@ -958,7 +958,7 @@ WHERE item.id = ?itemId");
                         // and we don't want to save the value if the dropdown/combobox does not have a value, to prevent saving the placeholder or optionLabel text.
                         if (itemDetail.Key.EndsWith("_input", StringComparison.OrdinalIgnoreCase))
                         {
-                            var dropDownItem = wiserItem.Details.FirstOrDefault(d => d.LanguageCode == itemDetail.LanguageCode && d.Key == itemDetail.Key.ReplaceCaseInsensitive("_input", ""));
+                            var dropDownItem = wiserItem.Details.FirstOrDefault(d => d.LanguageCode == itemDetail.LanguageCode && d.Key == itemDetail.Key.Replace("_input", "", StringComparison.OrdinalIgnoreCase));
                             if (String.IsNullOrEmpty(dropDownItem?.Value?.ToString()))
                             {
                                 // Don't save place holder texts.
@@ -1885,9 +1885,9 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             {
                 // Replace the version with quotes around it and the version without quotes around it.
                 workFlowQuery = workFlowQuery
-                    .ReplaceCaseInsensitive($"'{{{replacement.Key}}}'", replacement.Value)
-                    .ReplaceCaseInsensitive($"\"{{{replacement.Key}}}\"", replacement.Value)
-                    .ReplaceCaseInsensitive($"{{{replacement.Key}}}", replacement.Value);
+                    .Replace($"'{{{replacement.Key}}}'", replacement.Value, StringComparison.OrdinalIgnoreCase)
+                    .Replace($"\"{{{replacement.Key}}}\"", replacement.Value, StringComparison.OrdinalIgnoreCase)
+                    .Replace($"{{{replacement.Key}}}", replacement.Value, StringComparison.OrdinalIgnoreCase);
             }
 
             if (wiserItem?.Details != null && wiserItem.Details.Any())
@@ -2089,7 +2089,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             }
 
             // Execute the check query.
-            queryToExecute = queryToExecute.ReplaceCaseInsensitive("{itemId}", "?itemId");
+            queryToExecute = queryToExecute.Replace("{itemId}", "?itemId", StringComparison.OrdinalIgnoreCase);
 
             if (wiserItem?.Details != null)
             {
@@ -2992,7 +2992,7 @@ LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.Archive
                     return ($"<!-- No template found for item with ID '{itemId}' -->", null);
                 }
 
-                query = String.IsNullOrWhiteSpace(query) ? $"SELECT * FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE id = ?itemId" : query.ReplaceCaseInsensitive("{itemId}", "?itemId");
+                query = String.IsNullOrWhiteSpace(query) ? $"SELECT * FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE id = ?itemId" : query.Replace("{itemId}", "?itemId", StringComparison.OrdinalIgnoreCase);
 
                 dataTable = await databaseConnection.GetAsync(query, true);
                 return dataTable.Rows.Count == 0 ? ($"<!-- Query for entity type '{entityType}' and item '{itemId}' returned no results. -->", null) : (template, dataTable.Rows[0]);

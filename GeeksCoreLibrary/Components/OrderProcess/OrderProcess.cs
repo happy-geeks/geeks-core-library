@@ -416,8 +416,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 };
 
                 var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
-                stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, orderProcessSettings.Header + step.Header)
-                    .ReplaceCaseInsensitive(Constants.FooterReplacement, step.Footer + orderProcessSettings.Footer);
+                stepHtml = stepHtml.Replace(Constants.HeaderReplacement, orderProcessSettings.Header + step.Header, StringComparison.OrdinalIgnoreCase)
+                    .Replace(Constants.FooterReplacement, step.Footer + orderProcessSettings.Footer, StringComparison.OrdinalIgnoreCase);
 
                 // Build the groups HTML.
                 var groupsBuilder = new StringBuilder();
@@ -522,7 +522,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         throw new ArgumentOutOfRangeException(nameof(step.Type), step.Type.ToString());
                 }
 
-                stepHtml = stepHtml.ReplaceCaseInsensitive(Constants.GroupsReplacement, groupsBuilder.ToString());
+                stepHtml = stepHtml.Replace(Constants.GroupsReplacement, groupsBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
 
                 resultHtml = orderProcessSettings.Template;
                 if (String.IsNullOrEmpty(resultHtml))
@@ -530,13 +530,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     resultHtml = Settings.Template;
                 }
 
-                resultHtml = resultHtml.ReplaceCaseInsensitive(Constants.StepReplacement, stepHtml);
+                resultHtml = resultHtml.Replace(Constants.StepReplacement, stepHtml, StringComparison.OrdinalIgnoreCase);
 
                 // Build the HTML for the steps progress.
                 if (resultHtml.Contains(Constants.ProgressReplacement, StringComparison.OrdinalIgnoreCase))
                 {
                     var progressHtml = await RenderStepsProgressAsync(steps);
-                    resultHtml = resultHtml.ReplaceCaseInsensitive(Constants.ProgressReplacement, progressHtml);
+                    resultHtml = resultHtml.Replace(Constants.ProgressReplacement, progressHtml, StringComparison.OrdinalIgnoreCase);
                 }
 
                 if (fieldErrorsOccurred)
@@ -549,7 +549,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     resultHtml = AddStepErrorToResult(resultHtml, "Payment");
                 }
 
-                resultHtml = resultHtml.ReplaceCaseInsensitive("{activeStep}", ActiveStep.ToString());
+                resultHtml = resultHtml.Replace("{activeStep}", ActiveStep.ToString(), StringComparison.OrdinalIgnoreCase);
             }
             catch (ThreadAbortException)
             {
@@ -789,7 +789,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             };
 
             var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateFieldsGroup, replaceData);
-            groupHtml = groupHtml.ReplaceCaseInsensitive(Constants.HeaderReplacement, group.Header).ReplaceCaseInsensitive(Constants.FooterReplacement, group.Footer);
+            groupHtml = groupHtml.Replace(Constants.HeaderReplacement, group.Header, StringComparison.OrdinalIgnoreCase).Replace(Constants.FooterReplacement, group.Footer, StringComparison.OrdinalIgnoreCase);
 
             // Build the fields HTML.
             var fieldsBuilder = new StringBuilder();
@@ -799,7 +799,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 fieldsBuilder.AppendLine(fieldHtml);
             }
 
-            return groupHtml.ReplaceCaseInsensitive(Constants.FieldsReplacement, fieldsBuilder.ToString());
+            return groupHtml.Replace(Constants.FieldsReplacement, fieldsBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -829,14 +829,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             if (fieldErrorsOccurred)
             {
                 var errorMessage = await languagesService.GetTranslationAsync("orderProcess_paymentMethod_errorMessage", defaultValue: "");
-                errorHtml = Settings.TemplateFieldError.ReplaceCaseInsensitive(Constants.ErrorMessageReplacement, errorMessage);
+                errorHtml = Settings.TemplateFieldError.Replace(Constants.ErrorMessageReplacement, errorMessage, StringComparison.OrdinalIgnoreCase);
             }
 
             var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplatePaymentMethodsGroup, replaceData);
             groupHtml = groupHtml
-                .ReplaceCaseInsensitive(Constants.HeaderReplacement, group.Header)
-                .ReplaceCaseInsensitive(Constants.FooterReplacement, group.Footer)
-                .ReplaceCaseInsensitive(Constants.ErrorReplacement, errorHtml);
+                .Replace(Constants.HeaderReplacement, group.Header, StringComparison.OrdinalIgnoreCase)
+                .Replace(Constants.FooterReplacement, group.Footer, StringComparison.OrdinalIgnoreCase)
+                .Replace(Constants.ErrorReplacement, errorHtml, StringComparison.OrdinalIgnoreCase);
 
             // Build the fields HTML.
             var paymentMethodsBuilder = new StringBuilder();
@@ -846,7 +846,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 paymentMethodsBuilder.AppendLine(paymentMethodHtml);
             }
 
-            return groupHtml.ReplaceCaseInsensitive(Constants.PaymentMethodsReplacement, paymentMethodsBuilder.ToString());
+            return groupHtml.Replace(Constants.PaymentMethodsReplacement, paymentMethodsBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -951,24 +951,24 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             };
 
             fieldHtml = StringReplacementsService.DoReplacements(fieldHtml, replaceData);
-            fieldHtml = fieldHtml.ReplaceCaseInsensitive("{tabindex}", field.TabIndex > 0 ? $"tabindex='{field.TabIndex}'" : "");
+            fieldHtml = fieldHtml.Replace("{tabindex}", field.TabIndex > 0 ? $"tabindex='{field.TabIndex}'" : "", StringComparison.OrdinalIgnoreCase);
 
             // Build the field options HTML, if applicable.
             if (field.Values != null && field.Values.Any() && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
             {
                 var optionsHtml = await RenderFieldOptionsAsync(field, fieldValue);
-                fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.FieldOptionsReplacement, optionsHtml);
+                fieldHtml = fieldHtml.Replace(Constants.FieldOptionsReplacement, optionsHtml, StringComparison.OrdinalIgnoreCase);
             }
 
             if (field.IsValid)
             {
-                fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, "").ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "");
+                fieldHtml = fieldHtml.Replace(Constants.ErrorReplacement, "", StringComparison.OrdinalIgnoreCase).Replace(Constants.ErrorClassReplacement, "", StringComparison.OrdinalIgnoreCase);
             }
             else
             {
                 var errorMessage = await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_errorMessage", defaultValue: field.ErrorMessage ?? "");
-                var errorHtml = Settings.TemplateFieldError.ReplaceCaseInsensitive(Constants.ErrorMessageReplacement, errorMessage);
-                fieldHtml = fieldHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, errorHtml).ReplaceCaseInsensitive(Constants.ErrorClassReplacement, "error");
+                var errorHtml = Settings.TemplateFieldError.Replace(Constants.ErrorMessageReplacement, errorMessage, StringComparison.OrdinalIgnoreCase);
+                fieldHtml = fieldHtml.Replace(Constants.ErrorReplacement, errorHtml, StringComparison.OrdinalIgnoreCase).Replace(Constants.ErrorClassReplacement, "error", StringComparison.OrdinalIgnoreCase);
             }
 
             return fieldHtml;
@@ -1004,7 +1004,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 };
 
                 optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
-                optionHtml = optionHtml.ReplaceCaseInsensitive("{tabindex}", field.TabIndex > 0 ? $"tabindex='{field.TabIndex}'" : "");
+                optionHtml = optionHtml.Replace("{tabindex}", field.TabIndex > 0 ? $"tabindex='{field.TabIndex}'" : "", StringComparison.OrdinalIgnoreCase);
                 optionsBuilder.AppendLine(optionHtml);
             }
 
@@ -1041,7 +1041,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 progressBuilder.AppendLine(progressStepHtml);
             }
 
-            return Settings.TemplateProgress.ReplaceCaseInsensitive(Constants.StepsReplacement, progressBuilder.ToString());
+            return Settings.TemplateProgress.Replace(Constants.StepsReplacement, progressBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
         }
 
         #endregion
@@ -1247,10 +1247,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             }
             else
             {
-                resultHtml = resultHtml.ReplaceCaseInsensitive(Constants.ErrorReplacement, Settings.TemplateStepError);
+                resultHtml = resultHtml.Replace(Constants.ErrorReplacement, Settings.TemplateStepError, StringComparison.OrdinalIgnoreCase);
             }
 
-            resultHtml = resultHtml.ReplaceCaseInsensitive(Constants.ErrorTypeReplacement, errorType);
+            resultHtml = resultHtml.Replace(Constants.ErrorTypeReplacement, errorType, StringComparison.OrdinalIgnoreCase);
             return resultHtml;
         }
 

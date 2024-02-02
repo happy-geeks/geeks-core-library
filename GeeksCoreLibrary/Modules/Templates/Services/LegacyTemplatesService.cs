@@ -782,13 +782,13 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                 if (dataTable.Rows.Count == 0)
                 {
-                    input = input.ReplaceCaseInsensitive(m.Value, $"<img src=\"/img/noimg.png\" />");
+                    input = input.Replace(m.Value, $"<img src=\"/img/noimg.png\" />", StringComparison.OrdinalIgnoreCase);
                     continue;
                 }
 
                 if (imageIndex > dataTable.Rows.Count)
                 {
-                    input = input.ReplaceCaseInsensitive(m.Value, "specified image index out of bound");
+                    input = input.Replace(m.Value, "specified image index out of bound", StringComparison.OrdinalIgnoreCase);
                     continue;
                 }
 
@@ -804,7 +804,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                 if (items.Count == 0)
                 {
-                    input = input.ReplaceCaseInsensitive(m.Value, "no image set(s) specified, you must at least specify one set");
+                    input = input.Replace(m.Value, "no image set(s) specified, you must at least specify one set", StringComparison.OrdinalIgnoreCase);
                     continue;
                 }
 
@@ -819,7 +819,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                     if (String.IsNullOrWhiteSpace(imageViewportParameter))
                     {
-                        input = input.ReplaceCaseInsensitive(m.Value, "no viewport parameter specified");
+                        input = input.Replace(m.Value, "no viewport parameter specified", StringComparison.OrdinalIgnoreCase);
                         continue;
                     }
 
@@ -856,7 +856,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 }
 
                 // Replace the image in the template
-                input = input.ReplaceCaseInsensitive(m.Value, output);
+                input = input.Replace(m.Value, output, StringComparison.OrdinalIgnoreCase);
             }
 
             return input;
@@ -905,7 +905,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery);
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, templateContent);
+                        input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
                     }
                     else
                     {
@@ -916,7 +916,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery);
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, templateContent);
+                        input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
                     }
                 }
 
@@ -949,7 +949,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             content = content.Replace("<img src=\"/preview_image.aspx", $"<img data=\"{queryString}\" src=\"/preview_image.aspx");
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, content);
+                        input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
                     }
                     else
                     {
@@ -966,7 +966,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             content = content.Replace("<img src=\"/preview_image.aspx", $"<img data=\"{queryString}\" src=\"/preview_image.aspx");
                         }
 
-                        input = input.ReplaceCaseInsensitive(m.Groups[0].Value, content);
+                        input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
                     }
                 }
             }
@@ -1211,7 +1211,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             query = await DoReplacesAsync(query, true, false, true, null, true, false, true, TemplateTypes.Query);
             if (query.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
             {
-                query = query.ReplaceCaseInsensitive("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
+                query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart, StringComparison.OrdinalIgnoreCase);
             }
 
             var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
@@ -1426,7 +1426,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             // Querystring replaces.
             foreach (var key in httpContext.Request.Query.Keys)
             {
-                input = input.ReplaceCaseInsensitive($"{{{key}}}", httpContext.Request.Query[key]);
+                input = input.Replace($"{{{key}}}", httpContext.Request.Query[key], StringComparison.OrdinalIgnoreCase);
             }
 
             // Form replaces.
@@ -1434,7 +1434,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 foreach (var variable in httpContext.Request.Form.Keys)
                 {
-                    input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Request.Form[variable]);
+                    input = input.Replace($"{{{variable}}}", httpContext.Request.Form[variable], StringComparison.OrdinalIgnoreCase);
                 }
             }
 
@@ -1443,14 +1443,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 foreach (var variable in httpContext.Session.Keys)
                 {
-                    input = input.ReplaceCaseInsensitive($"{{{variable}}}", httpContext.Session.GetString(variable));
+                    input = input.Replace($"{{{variable}}}", httpContext.Session.GetString(variable), StringComparison.OrdinalIgnoreCase);
                 }
             }
 
             // Cookie replaces.
             foreach (var key in httpContext.Request.Cookies.Keys)
             {
-                input = input.ReplaceCaseInsensitive($"{{{key}}}", httpContext.Request.Cookies[key]);
+                input = input.Replace($"{{{key}}}", httpContext.Request.Cookies[key], StringComparison.OrdinalIgnoreCase);
             }
 
             return input;

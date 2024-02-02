@@ -855,7 +855,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
 
         private string DoDefaultShoppingBasketHtmlReplacements(string template)
         {
-            return template.ReplaceCaseInsensitive("{contentId}", ComponentId.ToString()).ReplaceCaseInsensitive("{basketId}", Main.Id.ToString());
+            return template.Replace("{contentId}", ComponentId.ToString(), StringComparison.OrdinalIgnoreCase).Replace("{basketId}", Main.Id.ToString(), StringComparison.OrdinalIgnoreCase);
         }
 
         #endregion

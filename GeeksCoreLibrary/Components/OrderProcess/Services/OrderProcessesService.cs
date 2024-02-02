@@ -871,7 +871,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 var invoiceNumberQuery = (await templatesService.GetTemplateAsync(name: Constants.InvoiceNumberQueryTemplate, type: TemplateTypes.Query))?.Content;
                 if (!String.IsNullOrWhiteSpace(invoiceNumberQuery))
                 {
-                    invoiceNumberQuery = invoiceNumberQuery.ReplaceCaseInsensitive("{oid}", orderId.ToString()).ReplaceCaseInsensitive("{orderId}", orderId.ToString());
+                    invoiceNumberQuery = invoiceNumberQuery.Replace("{oid}", orderId.ToString(), StringComparison.OrdinalIgnoreCase).Replace("{orderId}", orderId.ToString(), StringComparison.OrdinalIgnoreCase);
                     var getInvoiceNumberResult = await databaseConnection.GetAsync(invoiceNumberQuery);
                     if (getInvoiceNumberResult.Rows.Count > 0)
                     {

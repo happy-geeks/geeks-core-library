@@ -418,7 +418,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     else
                     {
                         bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_content}\|(.*?)\]", viewModel.MetaData.SeoText);
-                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", viewModel.MetaData.SeoText);
+                        bodyHtml = bodyHtml.Replace("[{seomodule_content}]", viewModel.MetaData.SeoText, StringComparison.OrdinalIgnoreCase);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H1Text))
@@ -428,7 +428,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     else
                     {
                         bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", viewModel.MetaData.H1Text);
-                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h1header}]", viewModel.MetaData.H1Text);
+                        bodyHtml = bodyHtml.Replace("[{seomodule_h1header}]", viewModel.MetaData.H1Text, StringComparison.OrdinalIgnoreCase);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H2Text))
@@ -438,7 +438,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     else
                     {
                         bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", viewModel.MetaData.H2Text);
-                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h2header}]", viewModel.MetaData.H2Text);
+                        bodyHtml = bodyHtml.Replace("[{seomodule_h2header}]", viewModel.MetaData.H2Text, StringComparison.OrdinalIgnoreCase);
                     }
 
                     if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H3Text))
@@ -448,7 +448,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     else
                     {
                         bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", viewModel.MetaData.H3Text);
-                        bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_h3header}]", viewModel.MetaData.H3Text);
+                        bodyHtml = bodyHtml.Replace("[{seomodule_h3header}]", viewModel.MetaData.H3Text, StringComparison.OrdinalIgnoreCase);
                     }
                 }
             }
@@ -456,7 +456,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             // Handle any left over seo module things.
             if (bodyHtml.Contains("[{seomodule_"))
             {
-                bodyHtml = bodyHtml.ReplaceCaseInsensitive("[{seomodule_content}]", "");
+                bodyHtml = bodyHtml.Replace("[{seomodule_content}]", "", StringComparison.OrdinalIgnoreCase);
                 bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_.*?}\|(.*?)\]", "$1");
             }
 
