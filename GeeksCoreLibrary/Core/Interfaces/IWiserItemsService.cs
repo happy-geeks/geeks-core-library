@@ -129,8 +129,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <param name="isNewlyCreatedItem">Whether this item has just been created in code and contains no details yet. If this is set to true, then this function will just insert all the details without checking if they already exist.</param>
         /// <param name="alwaysSaveReadOnly">Save the value even if it is marked as readonly.</param>
+        /// <param name="skipDetails">Skip the details and only update the main item.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again.</returns>
-        Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false);
+        Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false, bool skipDetails = false);
 
         /// <summary>
         /// Updates an item.
@@ -147,8 +148,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
         /// <param name="isNewlyCreatedItem">Whether this item has just been created in code and contains no details yet. If this is set to true, then this function will just insert all the details without checking if they already exist.</param>
         /// <param name="alwaysSaveReadOnly">Save the value even if it is marked as readonly.</param>
+        /// <param name="skipDetails">Skip the details and only update the main item.</param>
         /// <returns>The same <see cref="WiserItemModel"/> again.</returns>
-        Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false);
+        Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false, bool skipDetails = false);
 
         /// <summary>
         /// Changes an entity type of an item.
