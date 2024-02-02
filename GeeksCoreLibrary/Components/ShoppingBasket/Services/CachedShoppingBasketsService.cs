@@ -123,9 +123,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false)
+        public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, bool includeLines = true)
         {
-            return await shoppingBasketsService.LoadAsync(settings, itemId, encryptedItemId, connectToAccount, recursiveCall);
+            return await shoppingBasketsService.LoadAsync(settings, itemId, encryptedItemId, connectToAccount, recursiveCall, includeLines);
         }
 
         /// <inheritdoc />
@@ -159,9 +159,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds)
+        public async Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds, bool createNewTransaction = true)
         {
-            return await shoppingBasketsService.RemoveLinesAsync(shoppingBasket, basketLines, settings, itemIdsOrUniqueIds);
+            return await shoppingBasketsService.RemoveLinesAsync(shoppingBasket, basketLines, settings, itemIdsOrUniqueIds, createNewTransaction);
         }
 
         /// <inheritdoc />
@@ -175,7 +175,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             await shoppingBasketsService.AddLinesAsync(shoppingBasket, basketLines, settings, items, createNewTransaction);
         }
-        
+
         /// <inheritdoc />
         public async Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item)
         {
@@ -224,7 +224,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
             var cacheName = $"GCLShoppingBasketVatRules_{branchesService.GetDatabaseNameFromCookie()}";
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultShoppingBasketsCacheDuration;
                     return await shoppingBasketsService.GetVatRulesAsync();
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.ShoppingBaskets));
