@@ -83,10 +83,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             if (connectionStringForReading != null)
             {
                 connectionStringForReading.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForReading.Database;
+                // Ignore command transactions, because we have multiple connections and the MySqlConnector will otherwise library throw exceptions about that. See https://mysqlconnector.net/troubleshooting/transaction-usage//
+                connectionStringForReading.IgnoreCommandTransaction = true;
             }
             if (connectionStringForWriting != null)
             {
                 connectionStringForWriting.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForWriting.Database;
+                // Ignore command transactions, because we have multiple connections and the MySqlConnector will otherwise library throw exceptions about that. See https://mysqlconnector.net/troubleshooting/transaction-usage/.
+                connectionStringForWriting.IgnoreCommandTransaction = true;
             }
 
             logger.LogTrace($"Created new instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
@@ -875,7 +879,10 @@ SELECT LAST_INSERT_ID();";
             }
 
             // MySqlConnector wants us to set the transaction on the command, so that it knows which transaction to use.
-            command.Transaction = transaction;
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
 
             // Set the command timeout.
             if (commandTimeout.HasValue)
