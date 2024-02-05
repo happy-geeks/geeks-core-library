@@ -340,7 +340,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             else
             {
                 var template = Settings.Template ?? "";
-                template = await TemplatesService.DoReplacesAsync(DoDefaultShoppingBasketHtmlReplacements(template), false, false, false);
+                template = await TemplatesService.DoReplacesAsync(DoDefaultShoppingBasketHtmlReplacements(template), false, false, false, handleVariableDefaults: false);
 
                 var additionalReplacementData = new Dictionary<string, object>
                 {
