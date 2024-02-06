@@ -638,6 +638,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             connectionStringForReading.ConnectionString = newConnectionStringForReading;
             connectionStringForWriting.ConnectionString = String.IsNullOrWhiteSpace(newConnectionStringForWriting) ? newConnectionStringForReading : newConnectionStringForWriting;
+            connectionStringForReading.IgnoreCommandTransaction = true;
+            connectionStringForWriting.IgnoreCommandTransaction = true;
             await CleanUpAsync();
             if (ConnectionForReading != null)
             {
