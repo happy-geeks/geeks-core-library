@@ -347,12 +347,12 @@ namespace GeeksCoreLibrary.Components.Account
 
             if (!String.IsNullOrWhiteSpace(Settings.TemplateJavaScript))
             {
-                var javascript = Settings.TemplateJavaScript.ReplaceCaseInsensitive("{loginFieldName}", Settings.LoginFieldName)
-                    .ReplaceCaseInsensitive("{passwordFieldName}", Settings.PasswordFieldName)
-                    .ReplaceCaseInsensitive("{newPasswordFieldName}", Settings.NewPasswordFieldName)
-                    .ReplaceCaseInsensitive("{passwordConfirmationFieldName}", Settings.NewPasswordConfirmationFieldName)
-                    .ReplaceCaseInsensitive("{entityType}", Settings.EntityType)
-                    .ReplaceCaseInsensitive("{contentId}", ComponentId.ToString());
+                var javascript = Settings.TemplateJavaScript.Replace("{loginFieldName}", Settings.LoginFieldName, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{passwordFieldName}", Settings.PasswordFieldName, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{newPasswordFieldName}", Settings.NewPasswordFieldName, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{passwordConfirmationFieldName}", Settings.NewPasswordConfirmationFieldName, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{entityType}", Settings.EntityType, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{contentId}", ComponentId.ToString(), StringComparison.OrdinalIgnoreCase);
 
                 resultHtml.Append($"<script>{javascript}</script>");
             }
@@ -390,7 +390,7 @@ namespace GeeksCoreLibrary.Components.Account
                 TwoFactorAuthenticator twoFactorAuthenticator = new TwoFactorAuthenticator();
                 SetupCode setupInfo = twoFactorAuthenticator.GenerateSetupCode(Settings.GoogleAuthenticatorSiteId, username, googleAuthenticationKey, false, 3);
                 await AccountsService.Save2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId), googleAuthenticationKey);
-                return (template.ReplaceCaseInsensitive("{googleAuthenticationQrImageUrl}", setupInfo.QrCodeSetupImageUrl), stepNumber);
+                return (template.Replace("{googleAuthenticationQrImageUrl}", setupInfo.QrCodeSetupImageUrl, StringComparison.OrdinalIgnoreCase), stepNumber);
             }
 
             return (template, stepNumber);
@@ -452,7 +452,7 @@ namespace GeeksCoreLibrary.Components.Account
                             // There was an error, show that error to the user.
                             var (template, newStepNumber) = await RenderGoogleAuthenticatorAsync(Settings.Template, stepNumber);
                             stepNumber = newStepNumber;
-                            resultHtml = template.ReplaceCaseInsensitive("{error}", Settings.TemplateError.ReplaceCaseInsensitive("{errorType}", loginResult.Result.ToString()));
+                            resultHtml = template.Replace("{error}", Settings.TemplateError.Replace("{errorType}", loginResult.Result.ToString(), StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase);
                             break;
                         }
                     }
@@ -488,7 +488,7 @@ namespace GeeksCoreLibrary.Components.Account
                         default:
                         {
                             // There was an error, show that error to the user.
-                            resultHtml = Settings.Template.ReplaceCaseInsensitive("{error}", Settings.TemplateError.ReplaceCaseInsensitive("{errorType}", loginResult.Result.ToString()));
+                            resultHtml = Settings.Template.Replace("{error}", Settings.TemplateError.Replace("{errorType}", loginResult.Result.ToString(), StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase);
                             break;
                         }
                     }
@@ -500,7 +500,7 @@ namespace GeeksCoreLibrary.Components.Account
                         stepNumber = 1;
                     }
 
-                    resultHtml = Settings.Template.ReplaceCaseInsensitive("{error}", "");
+                    resultHtml = Settings.Template.Replace("{error}", "", StringComparison.OrdinalIgnoreCase);
 
                     if (String.Equals(request?.Query[$"{Constants.LogoutQueryStringKey}{ComponentId}"], "true", StringComparison.OrdinalIgnoreCase))
                     {
@@ -560,7 +560,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                                 case ComponentModes.LoginMultipleSteps:
                                 {
-                                    resultHtml = stepNumber > 2 ? Settings.TemplateSuccess : Settings.Template.ReplaceCaseInsensitive("{error}", "");
+                                    resultHtml = stepNumber > 2 ? Settings.TemplateSuccess : Settings.Template.Replace("{error}", "", StringComparison.OrdinalIgnoreCase);
                                     done = stepNumber > 2;
                                     break;
                                 }
@@ -583,7 +583,7 @@ namespace GeeksCoreLibrary.Components.Account
                         {
                             var (template, newStepNumber) = await RenderGoogleAuthenticatorAsync(Settings.Template, stepNumber);
                             stepNumber = newStepNumber;
-                            resultHtml = template.ReplaceCaseInsensitive("{error}", "");
+                            resultHtml = template.Replace("{error}", "", StringComparison.OrdinalIgnoreCase);
                             break;
                         }
 
@@ -592,11 +592,11 @@ namespace GeeksCoreLibrary.Components.Account
                             if (!String.IsNullOrWhiteSpace(loginResult.EmailAddress))
                             {
                                 await SendResetPasswordEmail(loginResult.EmailAddress);
-                                resultHtml = Settings.TemplateSuccess.ReplaceCaseInsensitive("{sentActivationMail}", "true");
+                                resultHtml = Settings.TemplateSuccess.Replace("{sentActivationMail}", "true", StringComparison.OrdinalIgnoreCase);
                             }
                             else
                             {
-                                resultHtml = Settings.Template.ReplaceCaseInsensitive("{error}", Settings.TemplateError.ReplaceCaseInsensitive("{errorType}", loginResult.Result.ToString()));
+                                resultHtml = Settings.Template.Replace("{error}", Settings.TemplateError.Replace("{errorType}", loginResult.Result.ToString(), StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase);
                             }
 
                             break;
@@ -607,13 +607,13 @@ namespace GeeksCoreLibrary.Components.Account
                             // There was an error, show that error to the user.
                             var (template, newStepNumber) = await RenderGoogleAuthenticatorAsync(Settings.Template, stepNumber);
                             stepNumber = newStepNumber;
-                            resultHtml = template.ReplaceCaseInsensitive("{error}", Settings.TemplateError.ReplaceCaseInsensitive("{errorType}", loginResult.Result.ToString()));
+                            resultHtml = template.Replace("{error}", Settings.TemplateError.Replace("{errorType}", loginResult.Result.ToString(), StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase);
                             break;
                         }
                     }
                 }
 
-                resultHtml = resultHtml.ReplaceCaseInsensitive("{stepNumber}", stepNumber.ToString()).ReplaceCaseInsensitive("{step}", ((LoginSteps)stepNumber).ToString());
+                resultHtml = resultHtml.Replace("{stepNumber}", stepNumber.ToString(), StringComparison.OrdinalIgnoreCase).Replace("{step}", ((LoginSteps)stepNumber).ToString(), StringComparison.OrdinalIgnoreCase);
 
                 // If we have a user ID and a main query, replace the results from the query into the results HTML.
                 if (userId > 0 && !String.IsNullOrWhiteSpace(Settings.MainQuery))
@@ -635,10 +635,10 @@ namespace GeeksCoreLibrary.Components.Account
                 }
                 else
                 {
-                    resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError);
+                    resultHtml = resultHtml.Replace("{error}", Settings.TemplateError, StringComparison.OrdinalIgnoreCase);
                 }
 
-                resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", "Server");
+                resultHtml = resultHtml.Replace("{errorType}", "Server", StringComparison.OrdinalIgnoreCase);
                 Logger.LogError(exception.ToString());
             }
 
@@ -732,12 +732,12 @@ namespace GeeksCoreLibrary.Components.Account
                         }
                     }
 
-                    resultHtml = (resetPasswordResult == ResetOrChangePasswordResults.Success ? Settings.TemplateSuccess : Settings.Template).ReplaceCaseInsensitive("{isLoggedIn}", isLoggedIn.ToString().ToLowerInvariant());
+                    resultHtml = (resetPasswordResult == ResetOrChangePasswordResults.Success ? Settings.TemplateSuccess : Settings.Template).Replace("{isLoggedIn}", isLoggedIn.ToString().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase);
                 }
 
                 resultHtml = resetPasswordResult == ResetOrChangePasswordResults.Success
-                    ? resultHtml.ReplaceCaseInsensitive("{error}", "")
-                    : resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError).ReplaceCaseInsensitive("{errorType}", resetPasswordResult.ToString());
+                    ? resultHtml.Replace("{error}", "", StringComparison.OrdinalIgnoreCase)
+                    : resultHtml.Replace("{error}", Settings.TemplateError, StringComparison.OrdinalIgnoreCase).Replace("{errorType}", resetPasswordResult.ToString(), StringComparison.OrdinalIgnoreCase);
             }
             catch (Exception exception)
             {
@@ -747,10 +747,10 @@ namespace GeeksCoreLibrary.Components.Account
                 }
                 else
                 {
-                    resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError);
+                    resultHtml = resultHtml.Replace("{error}", Settings.TemplateError, StringComparison.OrdinalIgnoreCase);
                 }
 
-                resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", "Server");
+                resultHtml = resultHtml.Replace("{errorType}", "Server", StringComparison.OrdinalIgnoreCase);
                 WriteToTrace(exception.ToString(), true);
             }
             return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(DoDefaultAccountHtmlReplacements(resultHtml), handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables), Constants.ComponentIdFormKey);
@@ -809,7 +809,7 @@ namespace GeeksCoreLibrary.Components.Account
                 // If there are form post variables and the correct content ID has been posted with them, it means the user is trying to login.
                 if (!request.HasFormContentType || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
                 {
-                    resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", "").ReplaceCaseInsensitive("{success}", "");
+                    resultHtml = resultHtml.Replace("{error}", "", StringComparison.OrdinalIgnoreCase).Replace("{success}", "", StringComparison.OrdinalIgnoreCase);
                 }
                 else
                 {
@@ -896,16 +896,16 @@ namespace GeeksCoreLibrary.Components.Account
                         if (userIsChangingPassword)
                         {
                             resultHtml = changePasswordResult != ResetOrChangePasswordResults.Success
-                                ? resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError).ReplaceCaseInsensitive("{success}", "")
-                                : resultHtml.ReplaceCaseInsensitive("{error}", "").ReplaceCaseInsensitive("{success}", Settings.TemplateSuccess);
+                                ? resultHtml.Replace("{error}", Settings.TemplateError, StringComparison.OrdinalIgnoreCase).Replace("{success}", "", StringComparison.OrdinalIgnoreCase)
+                                : resultHtml.Replace("{error}", "", StringComparison.OrdinalIgnoreCase).Replace("{success}", Settings.TemplateSuccess, StringComparison.OrdinalIgnoreCase);
                         }
                         else
                         {
-                            resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", createOrUpdateAccountResult.ErrorTemplate).ReplaceCaseInsensitive("{success}", createOrUpdateAccountResult.SuccessTemplate);
+                            resultHtml = resultHtml.Replace("{error}", createOrUpdateAccountResult.ErrorTemplate, StringComparison.OrdinalIgnoreCase).Replace("{success}", createOrUpdateAccountResult.SuccessTemplate, StringComparison.OrdinalIgnoreCase);
                         }
                     }
 
-                    resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "");
+                    resultHtml = resultHtml.Replace("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "", StringComparison.OrdinalIgnoreCase);
 
                     // Check if we can automatically login the user after creating a new account.
                     var isLoggedIn = false;
@@ -924,7 +924,7 @@ namespace GeeksCoreLibrary.Components.Account
                         await DoRedirect(response);
                     }
 
-                    resultHtml = resultHtml.ReplaceCaseInsensitive("{isLoggedIn}", isLoggedIn.ToString().ToLowerInvariant());
+                    resultHtml = resultHtml.Replace("{isLoggedIn}", isLoggedIn.ToString().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase);
                 }
 
                 // Loop through lines and replace variables.
@@ -952,8 +952,8 @@ namespace GeeksCoreLibrary.Components.Account
             }
             catch (Exception exception)
             {
-                resultHtml = resultHtml == null || !resultHtml.Contains("{error}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateError : resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError);
-                resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", "Server");
+                resultHtml = resultHtml == null || !resultHtml.Contains("{error}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateError : resultHtml.Replace("{error}", Settings.TemplateError, StringComparison.OrdinalIgnoreCase);
+                resultHtml = resultHtml.Replace("{errorType}", "Server", StringComparison.OrdinalIgnoreCase);
                 WriteToTrace(exception.ToString(), true);
             }
 
@@ -1040,11 +1040,11 @@ namespace GeeksCoreLibrary.Components.Account
                 {
                     query = SetupAccountQuery(Settings.DeleteAccountQuery, userData.MainUserId, subAccountId: deleteSubAccountId);
                     await RenderAndExecuteQueryAsync(query, skipCache: true);
-                    resultHtml = !resultHtml.Contains("{success}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateSuccess : resultHtml.ReplaceCaseInsensitive("{error}", "").ReplaceCaseInsensitive("{success}", Settings.TemplateSuccess);
+                    resultHtml = !resultHtml.Contains("{success}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateSuccess : resultHtml.Replace("{error}", "", StringComparison.OrdinalIgnoreCase).Replace("{success}", Settings.TemplateSuccess, StringComparison.OrdinalIgnoreCase);
                 }
                 else if (!request.HasFormContentType || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
                 {
-                    resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", "").ReplaceCaseInsensitive("{success}", "");
+                    resultHtml = resultHtml.Replace("{error}", "", StringComparison.OrdinalIgnoreCase).Replace("{success}", "", StringComparison.OrdinalIgnoreCase);
                 }
                 else
                 {
@@ -1073,18 +1073,18 @@ namespace GeeksCoreLibrary.Components.Account
                     }
                     else if (createOrUpdateAccountResult.Result != CreateOrUpdateAccountResults.Success)
                     {
-                        resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", createOrUpdateAccountResult.ErrorTemplate).ReplaceCaseInsensitive("{success}", createOrUpdateAccountResult.SuccessTemplate);
+                        resultHtml = resultHtml.Replace("{error}", createOrUpdateAccountResult.ErrorTemplate, StringComparison.OrdinalIgnoreCase).Replace("{success}", createOrUpdateAccountResult.SuccessTemplate, StringComparison.OrdinalIgnoreCase);
                     }
                     else if (userIsChangingPassword && changePasswordResult != ResetOrChangePasswordResults.Success)
                     {
-                        resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError).ReplaceCaseInsensitive("{success}", "");
+                        resultHtml = resultHtml.Replace("{error}", Settings.TemplateError, StringComparison.OrdinalIgnoreCase).Replace("{success}", "", StringComparison.OrdinalIgnoreCase);
                     }
                     else
                     {
-                        resultHtml = resultHtml.ReplaceCaseInsensitive("{error}", createOrUpdateAccountResult.ErrorTemplate).ReplaceCaseInsensitive("{success}", createOrUpdateAccountResult.SuccessTemplate);
+                        resultHtml = resultHtml.Replace("{error}", createOrUpdateAccountResult.ErrorTemplate, StringComparison.OrdinalIgnoreCase).Replace("{success}", createOrUpdateAccountResult.SuccessTemplate, StringComparison.OrdinalIgnoreCase);
                     }
 
-                    resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "");
+                    resultHtml = resultHtml.Replace("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "", StringComparison.OrdinalIgnoreCase);
 
                     // Execute the GetSubAccountQuery again, so that have can show the new values in the HTML.
                     query = SetupAccountQuery(Settings.GetSubAccountQuery, userData.MainUserId, subAccountId: selectedSubAccount);
@@ -1118,7 +1118,7 @@ namespace GeeksCoreLibrary.Components.Account
                 // List of sub accounts.
                 query = SetupAccountQuery(Settings.MainQuery, userData.MainUserId, subAccountId: selectedSubAccount);
                 dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
-                resultHtml = resultHtml.ReplaceCaseInsensitive("{amountOfSubAccounts}", dataTable.Rows.Count.ToString());
+                resultHtml = resultHtml.Replace("{amountOfSubAccounts}", dataTable.Rows.Count.ToString(), StringComparison.OrdinalIgnoreCase);
 
                 foreach (Match match in Regex.Matches(resultHtml, "{repeat:subAccounts}(.*?){/repeat:subAccounts}", RegexOptions.Singleline))
                 {
@@ -1134,7 +1134,7 @@ namespace GeeksCoreLibrary.Components.Account
                     foreach (DataRow dataRow in dataTable.Rows)
                     {
                         // Replace details
-                        var lineTemplate = await TemplatesService.DoReplacesAsync(subTemplate.ReplaceCaseInsensitive("{selectedSubAccount}", selectedSubAccount.ToString()).ReplaceCaseInsensitive("{selectedSubAccount_htmlencode}", selectedSubAccount.ToString()), dataRow: dataRow, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
+                        var lineTemplate = await TemplatesService.DoReplacesAsync(subTemplate.Replace("{selectedSubAccount}", selectedSubAccount.ToString(), StringComparison.OrdinalIgnoreCase).Replace("{selectedSubAccount_htmlencode}", selectedSubAccount.ToString(), StringComparison.OrdinalIgnoreCase), dataRow: dataRow, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
 
                         fieldsHtmlBuilder.Append(lineTemplate);
                     }
@@ -1144,9 +1144,9 @@ namespace GeeksCoreLibrary.Components.Account
             }
             catch (Exception exception)
             {
-                resultHtml = resultHtml == null || !resultHtml.Contains("{error}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateError : resultHtml.ReplaceCaseInsensitive("{error}", Settings.TemplateError);
+                resultHtml = resultHtml == null || !resultHtml.Contains("{error}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateError : resultHtml.Replace("{error}", Settings.TemplateError, StringComparison.OrdinalIgnoreCase);
 
-                resultHtml = resultHtml.ReplaceCaseInsensitive("{errorType}", "Server");
+                resultHtml = resultHtml.Replace("{errorType}", "Server", StringComparison.OrdinalIgnoreCase);
                 WriteToTrace(exception.ToString(), true);
             }
 
@@ -1293,7 +1293,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                         var parameterName = DatabaseHelpers.CreateValidParameterName(field);
                         DatabaseConnection.AddParameter(parameterName, formValue);
-                        query = query.ReplaceCaseInsensitive($"'{{{parameterName}}}'", $"?{parameterName}").ReplaceCaseInsensitive($"{{{parameterName}}}", $"?{parameterName}");
+                        query = query.Replace($"'{{{parameterName}}}'", $"?{parameterName}", StringComparison.OrdinalIgnoreCase).Replace($"{{{parameterName}}}", $"?{parameterName}", StringComparison.OrdinalIgnoreCase);
                     }
 
                     var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
@@ -1325,7 +1325,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                         var parameterName = DatabaseHelpers.CreateValidParameterName(field);
                         DatabaseConnection.AddParameter(parameterName, formValue);
-                        query = query.ReplaceCaseInsensitive($"'{{{parameterName}}}'", $"?{parameterName}").ReplaceCaseInsensitive($"{{{parameterName}}}", $"?{parameterName}");
+                        query = query.Replace($"'{{{parameterName}}}'", $"?{parameterName}", StringComparison.OrdinalIgnoreCase).Replace($"{{{parameterName}}}", $"?{parameterName}", StringComparison.OrdinalIgnoreCase);
                     }
 
                     // Add / update the account.
@@ -1371,7 +1371,7 @@ namespace GeeksCoreLibrary.Components.Account
                     {
                         DatabaseConnection.AddParameter("userId", userId);
                         DatabaseConnection.AddParameter("subAccountId", subAccountId);
-                        query = Settings.SetValueInWiserEntityPropertyQuery.ReplaceCaseInsensitive("'{name}'", "?name").ReplaceCaseInsensitive("{name}", "?name").ReplaceCaseInsensitive("'{value}'", "?value").ReplaceCaseInsensitive("{value}", "?value");
+                        query = Settings.SetValueInWiserEntityPropertyQuery.Replace("'{name}'", "?name", StringComparison.OrdinalIgnoreCase).Replace("{name}", "?name", StringComparison.OrdinalIgnoreCase).Replace("'{value}'", "?value", StringComparison.OrdinalIgnoreCase).Replace("{value}", "?value", StringComparison.OrdinalIgnoreCase);
 
                         foreach (var field in availableFields)
                         {
@@ -1510,7 +1510,7 @@ namespace GeeksCoreLibrary.Components.Account
 
             if (!String.IsNullOrWhiteSpace(Settings.QueryNotificationEmail))
             {
-                var query = Settings.QueryNotificationEmail.ReplaceCaseInsensitive("'{userId}'", "?userId").ReplaceCaseInsensitive("{userId}", "?userId");
+                var query = Settings.QueryNotificationEmail.Replace("'{userId}'", "?userId", StringComparison.OrdinalIgnoreCase).Replace("{userId}", "?userId", StringComparison.OrdinalIgnoreCase);
                 var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                 if (dataTable.Rows.Count == 0)
@@ -1611,17 +1611,17 @@ namespace GeeksCoreLibrary.Components.Account
             WriteToTrace($"bodyHtml: {body}");
             WriteToTrace($"subject: {subject}");
 
-            body = body.ReplaceCaseInsensitive("<jform", "<form")
-                .ReplaceCaseInsensitive("</jform", "</form")
-                .ReplaceCaseInsensitive("<jhtml", "<html")
-                .ReplaceCaseInsensitive("</jhtml", "</html")
-                .ReplaceCaseInsensitive("<jhead", "<head")
-                .ReplaceCaseInsensitive("</jhead", "</head")
-                .ReplaceCaseInsensitive("<jtitle", "<title")
-                .ReplaceCaseInsensitive("</jtitle", "</title")
-                .ReplaceCaseInsensitive("<jbody", "<body")
-                .ReplaceCaseInsensitive("</jbody", "</body")
-                .ReplaceCaseInsensitive("{userId}", newUserId.ToString());
+            body = body.Replace("<jform", "<form", StringComparison.OrdinalIgnoreCase)
+                .Replace("</jform", "</form", StringComparison.OrdinalIgnoreCase)
+                .Replace("<jhtml", "<html", StringComparison.OrdinalIgnoreCase)
+                .Replace("</jhtml", "</html", StringComparison.OrdinalIgnoreCase)
+                .Replace("<jhead", "<head", StringComparison.OrdinalIgnoreCase)
+                .Replace("</jhead", "</head", StringComparison.OrdinalIgnoreCase)
+                .Replace("<jtitle", "<title", StringComparison.OrdinalIgnoreCase)
+                .Replace("</jtitle", "</title", StringComparison.OrdinalIgnoreCase)
+                .Replace("<jbody", "<body", StringComparison.OrdinalIgnoreCase)
+                .Replace("</jbody", "</body", StringComparison.OrdinalIgnoreCase)
+                .Replace("{userId}", newUserId.ToString(), StringComparison.OrdinalIgnoreCase);
 
             await communicationsService.SendEmailAsync(await StringReplacementsService.DoAllReplacementsAsync(receiverEmail, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
                                                        await StringReplacementsService.DoAllReplacementsAsync(subject, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
@@ -1955,11 +1955,11 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             // Save the token and expire date.
-            query = Settings.SaveResetPasswordValuesQuery.ReplaceCaseInsensitive("'{resetPasswordToken}'", "?resetPasswordToken").ReplaceCaseInsensitive("{resetPasswordToken}", "?resetPasswordToken")
-                .ReplaceCaseInsensitive("'{resetPasswordTokenFieldName}'", "?resetPasswordTokenFieldName").ReplaceCaseInsensitive("{resetPasswordTokenFieldName}", "?resetPasswordTokenFieldName")
-                .ReplaceCaseInsensitive("'{resetPasswordExpireDate}'", "?resetPasswordExpireDate").ReplaceCaseInsensitive("{resetPasswordExpireDate}", "?resetPasswordExpireDate")
-                .ReplaceCaseInsensitive("'{resetPasswordExpireDateFieldName}'", "?resetPasswordExpireDateFieldName").ReplaceCaseInsensitive("{resetPasswordExpireDateFieldName}", "?resetPasswordExpireDateFieldName")
-                .ReplaceCaseInsensitive("'{userId}'", "?userId").ReplaceCaseInsensitive("{userId}", "?userId");
+            query = Settings.SaveResetPasswordValuesQuery.Replace("'{resetPasswordToken}'", "?resetPasswordToken", StringComparison.OrdinalIgnoreCase).Replace("{resetPasswordToken}", "?resetPasswordToken", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{resetPasswordTokenFieldName}'", "?resetPasswordTokenFieldName", StringComparison.OrdinalIgnoreCase).Replace("{resetPasswordTokenFieldName}", "?resetPasswordTokenFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{resetPasswordExpireDate}'", "?resetPasswordExpireDate", StringComparison.OrdinalIgnoreCase).Replace("{resetPasswordExpireDate}", "?resetPasswordExpireDate", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{resetPasswordExpireDateFieldName}'", "?resetPasswordExpireDateFieldName", StringComparison.OrdinalIgnoreCase).Replace("{resetPasswordExpireDateFieldName}", "?resetPasswordExpireDateFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{userId}'", "?userId").Replace("{userId}", "?userId", StringComparison.OrdinalIgnoreCase);
 
             DatabaseConnection.ClearParameters();
             DatabaseConnection.AddParameter("userId", userId);
@@ -1977,7 +1977,7 @@ namespace GeeksCoreLibrary.Components.Account
 
             if (!String.IsNullOrWhiteSpace(Settings.QueryPasswordForgottenEmail))
             {
-                query = Settings.QueryPasswordForgottenEmail.ReplaceCaseInsensitive("'{userId}'", "?userId").ReplaceCaseInsensitive("{userId}", "?userId");
+                query = Settings.QueryPasswordForgottenEmail.Replace("'{userId}'", "?userId", StringComparison.OrdinalIgnoreCase).Replace("{userId}", "?userId", StringComparison.OrdinalIgnoreCase);
                 result = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                 if (result.Rows.Count == 0)
@@ -2043,9 +2043,9 @@ namespace GeeksCoreLibrary.Components.Account
             WriteToTrace($"token: {token}");
             WriteToTrace($"url: {uriBuilder}");
 
-            body = body.ReplaceCaseInsensitive("{url}", uriBuilder.ToString()).ReplaceCaseInsensitive("<jform", "<form").ReplaceCaseInsensitive("</jform", "</form").ReplaceCaseInsensitive("<jhtml", "<html").ReplaceCaseInsensitive("</jhtml", "</html")
-                .ReplaceCaseInsensitive("<jhead", "<head").ReplaceCaseInsensitive("</jhead", "</head").ReplaceCaseInsensitive("<jtitle", "<title").ReplaceCaseInsensitive("</jtitle", "</title").ReplaceCaseInsensitive("<jbody", "<body")
-                .ReplaceCaseInsensitive("</jbody", "</body");
+            body = body.Replace("{url}", uriBuilder.ToString(), StringComparison.OrdinalIgnoreCase).Replace("<jform", "<form", StringComparison.OrdinalIgnoreCase).Replace("</jform", "</form", StringComparison.OrdinalIgnoreCase).Replace("<jhtml", "<html").Replace("</jhtml", "</html", StringComparison.OrdinalIgnoreCase)
+                .Replace("<jhead", "<head", StringComparison.OrdinalIgnoreCase).Replace("</jhead", "</head", StringComparison.OrdinalIgnoreCase).Replace("<jtitle", "<title", StringComparison.OrdinalIgnoreCase).Replace("</jtitle", "</title", StringComparison.OrdinalIgnoreCase).Replace("<jbody", "<body", StringComparison.OrdinalIgnoreCase)
+                .Replace("</jbody", "</body", StringComparison.OrdinalIgnoreCase);
 
             await communicationsService.SendEmailAsync(await StringReplacementsService.DoAllReplacementsAsync(emailAddress, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
                 await StringReplacementsService.DoAllReplacementsAsync(subject, userDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables),
@@ -2213,41 +2213,41 @@ namespace GeeksCoreLibrary.Components.Account
                 //SystemConnection.AddParameter("basketId", ShoppingBasket.GetBasketItemId("winkelmandje"));
             }
 
-            return template.ReplaceCaseInsensitive("'{userId}'", "?userId").ReplaceCaseInsensitive("{userId}", "?userId").ReplaceCaseInsensitive("'{token}'", "?token").ReplaceCaseInsensitive("{token}", "?token")
-                .ReplaceCaseInsensitive("'{resetPasswordTokenFieldName}'", "?resetPasswordTokenFieldName").ReplaceCaseInsensitive("{resetPasswordTokenFieldName}", "?resetPasswordTokenFieldName")
-                .ReplaceCaseInsensitive("'{resetPasswordExpireDateFieldName}'", "?resetPasswordExpireDateFieldName").ReplaceCaseInsensitive("{resetPasswordExpireDateFieldName}", "?resetPasswordExpireDateFieldName")
-                .ReplaceCaseInsensitive("'{loginFieldName}'", "?loginFieldName").ReplaceCaseInsensitive("{loginFieldName}", "?loginFieldName").ReplaceCaseInsensitive("'{entityType}'", "?entityType")
-                .ReplaceCaseInsensitive("{entityType}", "?entityType").ReplaceCaseInsensitive("'{failedLoginAttemptsFieldName}'", "?failedLoginAttemptsFieldName")
-                .ReplaceCaseInsensitive("{failedLoginAttemptsFieldName}", "?failedLoginAttemptsFieldName").ReplaceCaseInsensitive("'{lastLoginAttemptFieldName}'", "?lastLoginAttemptFieldName")
-                .ReplaceCaseInsensitive("{lastLoginAttemptFieldName}", "?failedLoginAttemptsFieldName").ReplaceCaseInsensitive("'{roleFieldName}'", "?roleFieldName").ReplaceCaseInsensitive("{roleFieldName}", "?roleFieldName")
-                .ReplaceCaseInsensitive("'{success}'", "?success").ReplaceCaseInsensitive("{success}", "?success").ReplaceCaseInsensitive("'{emailAddress}'", "?emailAddress").ReplaceCaseInsensitive("{emailAddress}", "?emailAddress")
-                .ReplaceCaseInsensitive("'{emailAddressGclAesEncrypted}'", "?emailAddressGclAesEncrypted").ReplaceCaseInsensitive("{emailAddressGclAesEncrypted}", "?emailAddressGclAesEncrypted")
-                .ReplaceCaseInsensitive("'{emailAddressAesEncrypted}'", "?emailAddressAesEncrypted").ReplaceCaseInsensitive("{emailAddressAesEncrypted}", "?emailAddressAesEncrypted")
-                .ReplaceCaseInsensitive("'{emailAddressFieldName}'", "?emailAddressFieldName").ReplaceCaseInsensitive("{emailAddressFieldName}", "?emailAddressFieldName").ReplaceCaseInsensitive("'{newPasswordHash}'", "?newPasswordHash")
-                .ReplaceCaseInsensitive("{newPasswordHash}", "?newPasswordHash").ReplaceCaseInsensitive("'{passwordFieldName}'", "?passwordFieldName").ReplaceCaseInsensitive("{passwordFieldName}", "?passwordFieldName")
-                .ReplaceCaseInsensitive("'{subAccountLinkTypeNumber}'", "?subAccountLinkTypeNumber").ReplaceCaseInsensitive("{subAccountLinkTypeNumber}", "?subAccountLinkTypeNumber")
-                .ReplaceCaseInsensitive("{subAccountEntityType}", "?subAccountEntityType").ReplaceCaseInsensitive("'{subAccountId}'", "?subAccountId").ReplaceCaseInsensitive("{subAccountId}", "?subAccountId")
-                .ReplaceCaseInsensitive("'{role}'", "?role").ReplaceCaseInsensitive("{role}", "?role").ReplaceCaseInsensitive("'{basketId}'", "?basketId").ReplaceCaseInsensitive("{basketId}", "?basketId");
+            return template.Replace("'{userId}'", "?userId", StringComparison.OrdinalIgnoreCase).Replace("{userId}", "?userId", StringComparison.OrdinalIgnoreCase).Replace("'{token}'", "?token", StringComparison.OrdinalIgnoreCase).Replace("{token}", "?token", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{resetPasswordTokenFieldName}'", "?resetPasswordTokenFieldName", StringComparison.OrdinalIgnoreCase).Replace("{resetPasswordTokenFieldName}", "?resetPasswordTokenFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{resetPasswordExpireDateFieldName}'", "?resetPasswordExpireDateFieldName", StringComparison.OrdinalIgnoreCase).Replace("{resetPasswordExpireDateFieldName}", "?resetPasswordExpireDateFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{loginFieldName}'", "?loginFieldName", StringComparison.OrdinalIgnoreCase).Replace("{loginFieldName}", "?loginFieldName", StringComparison.OrdinalIgnoreCase).Replace("'{entityType}'", "?entityType", StringComparison.OrdinalIgnoreCase)
+                .Replace("{entityType}", "?entityType", StringComparison.OrdinalIgnoreCase).Replace("'{failedLoginAttemptsFieldName}'", "?failedLoginAttemptsFieldName")
+                .Replace("{failedLoginAttemptsFieldName}", "?failedLoginAttemptsFieldName", StringComparison.OrdinalIgnoreCase).Replace("'{lastLoginAttemptFieldName}'", "?lastLoginAttemptFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("{lastLoginAttemptFieldName}", "?failedLoginAttemptsFieldName", StringComparison.OrdinalIgnoreCase).Replace("'{roleFieldName}'", "?roleFieldName", StringComparison.OrdinalIgnoreCase).Replace("{roleFieldName}", "?roleFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{success}'", "?success", StringComparison.OrdinalIgnoreCase).Replace("{success}", "?success", StringComparison.OrdinalIgnoreCase).Replace("'{emailAddress}'", "?emailAddress").Replace("{emailAddress}", "?emailAddress", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{emailAddressGclAesEncrypted}'", "?emailAddressGclAesEncrypted", StringComparison.OrdinalIgnoreCase).Replace("{emailAddressGclAesEncrypted}", "?emailAddressGclAesEncrypted", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{emailAddressAesEncrypted}'", "?emailAddressAesEncrypted", StringComparison.OrdinalIgnoreCase).Replace("{emailAddressAesEncrypted}", "?emailAddressAesEncrypted", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{emailAddressFieldName}'", "?emailAddressFieldName", StringComparison.OrdinalIgnoreCase).Replace("{emailAddressFieldName}", "?emailAddressFieldName").Replace("'{newPasswordHash}'", "?newPasswordHash", StringComparison.OrdinalIgnoreCase)
+                .Replace("{newPasswordHash}", "?newPasswordHash", StringComparison.OrdinalIgnoreCase).Replace("'{passwordFieldName}'", "?passwordFieldName", StringComparison.OrdinalIgnoreCase).Replace("{passwordFieldName}", "?passwordFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{subAccountLinkTypeNumber}'", "?subAccountLinkTypeNumber", StringComparison.OrdinalIgnoreCase).Replace("{subAccountLinkTypeNumber}", "?subAccountLinkTypeNumber", StringComparison.OrdinalIgnoreCase)
+                .Replace("{subAccountEntityType}", "?subAccountEntityType", StringComparison.OrdinalIgnoreCase).Replace("'{subAccountId}'", "?subAccountId", StringComparison.OrdinalIgnoreCase).Replace("{subAccountId}", "?subAccountId", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{role}'", "?role", StringComparison.OrdinalIgnoreCase).Replace("{role}", "?role", StringComparison.OrdinalIgnoreCase).Replace("'{basketId}'", "?basketId", StringComparison.OrdinalIgnoreCase).Replace("{basketId}", "?basketId", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
         /// Do default replacements, such as field names, on a string.
-        /// </summary>
+        /// </summary>, StringComparison.OrdinalIgnoreCase
         /// <param name="template">The value to do the replacements on.</param>
         /// <returns>The new value with replacements done.</returns>
         private string DoDefaultAccountHtmlReplacements(string template)
         {
             var logoutUrl = QueryHelpers.AddQueryString(HttpContextHelpers.GetOriginalRequestUri(HttpContext).PathAndQuery, $"{Constants.LogoutQueryStringKey}{ComponentId}", "true");
-            return template.ReplaceCaseInsensitive("{loginFieldName}", Settings.LoginFieldName).
-                ReplaceCaseInsensitive("{passwordFieldName}", Settings.PasswordFieldName).
-                ReplaceCaseInsensitive("{newPasswordFieldName}", Settings.NewPasswordFieldName).
-                ReplaceCaseInsensitive("{newPasswordConfirmationFieldName}", Settings.NewPasswordConfirmationFieldName).
-                ReplaceCaseInsensitive("{entityType}", Settings.EntityType).
-                ReplaceCaseInsensitive("{contentId}", ComponentId.ToString()).
-                ReplaceCaseInsensitive("{logoutUrl}", logoutUrl).
-                ReplaceCaseInsensitive("{emailAddressFieldName}", Settings.EmailAddressFieldName).
-                ReplaceCaseInsensitive("<jform", "<form").
-                ReplaceCaseInsensitive("</jform", "</form");
+            return template.Replace("{loginFieldName}", Settings.LoginFieldName, StringComparison.OrdinalIgnoreCase).
+                Replace("{passwordFieldName}", Settings.PasswordFieldName, StringComparison.OrdinalIgnoreCase).
+                Replace("{newPasswordFieldName}", Settings.NewPasswordFieldName, StringComparison.OrdinalIgnoreCase).
+                Replace("{newPasswordConfirmationFieldName}", Settings.NewPasswordConfirmationFieldName, StringComparison.OrdinalIgnoreCase).
+                Replace("{entityType}", Settings.EntityType, StringComparison.OrdinalIgnoreCase).
+                Replace("{contentId}", ComponentId.ToString(), StringComparison.OrdinalIgnoreCase).
+                Replace("{logoutUrl}", logoutUrl, StringComparison.OrdinalIgnoreCase).
+                Replace("{emailAddressFieldName}", Settings.EmailAddressFieldName, StringComparison.OrdinalIgnoreCase).
+                Replace("<jform", "<form", StringComparison.OrdinalIgnoreCase).
+                Replace("</jform", "</form", StringComparison.OrdinalIgnoreCase);
         }
 
         private int? GetAmountOfDaysToRememberCookie()

@@ -130,7 +130,7 @@ namespace GeeksCoreLibrary.Components.WebForm
 
             if (!String.IsNullOrWhiteSpace(Settings.TemplateJavaScript))
             {
-                var javascript = Settings.TemplateJavaScript.ReplaceCaseInsensitive("{contentId}", ComponentId.ToString()).ReplaceCaseInsensitive("{WebFormName}", Settings.Description);
+                var javascript = Settings.TemplateJavaScript.Replace("{contentId}", ComponentId.ToString(), StringComparison.OrdinalIgnoreCase).Replace("{WebFormName}", Settings.Description, StringComparison.OrdinalIgnoreCase);
                 resultHtml.Append($"<script>{javascript}</script>");
             }
 
@@ -154,9 +154,9 @@ namespace GeeksCoreLibrary.Components.WebForm
 
             var formHtml = Settings.FormHtmlTemplate;
 
-            formHtml = formHtml.ReplaceCaseInsensitive("{contentId}", ComponentId.ToString())
-                .ReplaceCaseInsensitive("<jform", "<form")
-                .ReplaceCaseInsensitive("</jform", "</form");
+            formHtml = formHtml.Replace("{contentId}", ComponentId.ToString(), StringComparison.OrdinalIgnoreCase)
+                .Replace("<jform", "<form", StringComparison.OrdinalIgnoreCase)
+                .Replace("</jform", "</form", StringComparison.OrdinalIgnoreCase);
 
             // Check if reCAPTCHA should be placed.
             if (formHtml.Contains("{recaptcha"))

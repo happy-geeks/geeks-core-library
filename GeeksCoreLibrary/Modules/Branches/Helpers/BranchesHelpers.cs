@@ -21,15 +21,15 @@ namespace GeeksCoreLibrary.Modules.Branches.Helpers
             var tablePrefix = "";
             if (tableName.EndsWith(WiserTableNames.WiserItem, StringComparison.OrdinalIgnoreCase))
             {
-                tablePrefix = tableName.ReplaceCaseInsensitive(WiserTableNames.WiserItem, "");
+                tablePrefix = tableName.Replace(WiserTableNames.WiserItem, "", StringComparison.OrdinalIgnoreCase);
             }
             else if (tableName.EndsWith(WiserTableNames.WiserItemDetail, StringComparison.OrdinalIgnoreCase))
             {
-                tablePrefix = tableName.ReplaceCaseInsensitive(WiserTableNames.WiserItemDetail, "");
+                tablePrefix = tableName.Replace(WiserTableNames.WiserItemDetail, "", StringComparison.OrdinalIgnoreCase);
             }
             else if (tableName.EndsWith(WiserTableNames.WiserItemFile, StringComparison.OrdinalIgnoreCase))
             {
-                tablePrefix = tableName.ReplaceCaseInsensitive(WiserTableNames.WiserItemFile, "");
+                tablePrefix = tableName.Replace(WiserTableNames.WiserItemFile, "", StringComparison.OrdinalIgnoreCase);
                 if (originalItemId == 0)
                 {
                     isWiserItemChange = false;
@@ -37,11 +37,11 @@ namespace GeeksCoreLibrary.Modules.Branches.Helpers
             }
             else if (tableName.EndsWith(WiserTableNames.WiserItemLink, StringComparison.OrdinalIgnoreCase))
             {
-                tablePrefix = tableName.ReplaceCaseInsensitive(WiserTableNames.WiserItemLink, "");
+                tablePrefix = tableName.Replace(WiserTableNames.WiserItemLink, "", StringComparison.OrdinalIgnoreCase);
             }
             else if (tableName.EndsWith(WiserTableNames.WiserItemLinkDetail, StringComparison.OrdinalIgnoreCase))
             {
-                tablePrefix = tableName.ReplaceCaseInsensitive(WiserTableNames.WiserItemLinkDetail, "");
+                tablePrefix = tableName.Replace(WiserTableNames.WiserItemLinkDetail, "", StringComparison.OrdinalIgnoreCase);
             }
             else
             {
