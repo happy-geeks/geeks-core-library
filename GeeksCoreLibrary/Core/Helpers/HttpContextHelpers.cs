@@ -224,7 +224,7 @@ namespace GeeksCoreLibrary.Core.Helpers
                 HttpOnly = httpOnly,
                 Secure = httpContext.Request.IsHttps,
                 IsEssential = isEssential,
-                SameSite = SameSiteMode.Lax
+                SameSite = GclSettings.Current.CookieSameSiteMode
             };
 
             httpContext.Response.Cookies.Append(key, value, newCookieOptions);
