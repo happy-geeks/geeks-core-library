@@ -28,9 +28,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// Gets results from a query as a DataTable.
         /// </summary>
         /// <param name="query">The query to execute and get the results of.</param>
-        /// <param name="skipCache"></param>
-        /// <param name="cleanUp">Clean up after the query has been completed.</param>
-        /// <param name="useWritingConnectionIfAvailable">Use the writing connection to get information only available on the connection such as LAST_INSERT_ID.</param>
+        /// <param name="skipCache">Optional: Set to true to skip the query cache. Queries that get data, will get cached by default, based on a hash of the query and all parameters.</param>
+        /// <param name="cleanUp">Optional: Clean up after the query has been completed.</param>
+        /// <param name="useWritingConnectionIfAvailable">Optional: Use the writing connection to get information, if there is one available. If we detect that your query contains a database modification, then we will always use the write connection string, no matter what you enter here.</param>
         Task<DataTable> GetAsync(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false);
 
         /// <summary>
@@ -38,15 +38,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// </summary>
         /// <param name="query">The query to execute and get the results of.</param>
         /// <param name="formatResult">Optional: Set to true to format the JSON to make is easy readable.</param>
+        /// <param name="skipCache">Optional: Set to true to skip the query cache. Queries that get data, will get cached by default, based on a hash of the query and all parameters.</param>
         Task<string> GetAsJsonAsync(string query, bool formatResult = false, bool skipCache = false);
 
         /// <summary>
         /// Executes a query and returns the amount of rows affected.
         /// </summary>
-        /// <param name="query"></param>
-        /// <param name="useWritingConnectionIfAvailable"></param>
-        /// <param name="cleanUp">Clean up after the query has been completed.</param>
-        /// <returns></returns>
+        /// <param name="query">The query to execute.</param>
+        /// <param name="useWritingConnectionIfAvailable">Optional: Use the writing connection to get information, if there is one available. If we detect that your query contains a database modification, then we will always use the write connection string, no matter what you enter here.</param>
+        /// <param name="cleanUp">Optional: Clean up the connection and command after the query has been completed.</param>
+        /// <returns>The amount of affected rows.</returns>
         Task<int> ExecuteAsync(string query, bool useWritingConnectionIfAvailable = true, bool cleanUp = true);
 
         /// <summary>
@@ -65,8 +66,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// Inserts a record using a query and returns the newly inserted ID.
         /// </summary>
         /// <param name="query">The query that should be executed, which should be an INSERT query.</param>
-        /// <param name="useWritingConnectionIfAvailable">Optional: If there is a separate connection for writing data, use that connection. Default is true.</param>
-        /// <returns></returns>
+        /// <param name="useWritingConnectionIfAvailable">Optional: Use the writing connection to get information, if there is one available. If we detect that your query contains a database modification, then we will always use the write connection string, no matter what you enter here.</param>
+        /// <returns>The ID of the newly inserted record.</returns>
         Task<long> InsertRecordAsync(string query, bool useWritingConnectionIfAvailable = true);
 
         /// <summary>
@@ -119,12 +120,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="writeDatabase">Optional: Set to <see langword="true"/> to get the database of the write connection (if applicable), otherwise get the database of the read connection. Default is <see langword="false"/>.</param>
         /// <returns>The key that you can use in caching.</returns>
         string GetDatabaseNameForCaching(bool writeDatabase = false);
-        
+
         /// <summary>
         /// If the connection is not open yet, open it.
         /// </summary>
         Task EnsureOpenConnectionForReadingAsync();
-        
+
         /// <summary>
         /// If the connection is not open yet, open it.
         /// </summary>
