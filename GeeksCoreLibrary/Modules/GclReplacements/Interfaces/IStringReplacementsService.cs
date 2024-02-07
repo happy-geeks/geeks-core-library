@@ -19,8 +19,9 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Interfaces
         /// <param name="removeUnknownVariables"></param>
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
         /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
+        /// <param name="handleVariableDefaults">Optional: Handle variable defaults (such as {name~Bob}, which will place the value "Bob" on that position, if the name variable is empty or doesn't exist. Default is true.</param>
         /// <returns></returns>
-        Task<string> DoAllReplacementsAsync(string input, DataRow dataRow = null, bool handleRequest = true, bool evaluateLogicSnippets = true, bool removeUnknownVariables = true, bool forQuery = false, string defaultFormatter = "HtmlEncode");
+        Task<string> DoAllReplacementsAsync(string input, DataRow dataRow = null, bool handleRequest = true, bool evaluateLogicSnippets = true, bool removeUnknownVariables = true, bool forQuery = false, string defaultFormatter = "HtmlEncode", bool handleVariableDefaults = true);
 
         /// <summary>
         /// Performs replacements based on data available in the HTTP request, such as query and form values.

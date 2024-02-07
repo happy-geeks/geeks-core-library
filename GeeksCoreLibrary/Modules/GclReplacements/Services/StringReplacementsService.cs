@@ -49,7 +49,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> DoAllReplacementsAsync(string input, DataRow dataRow = null, bool handleRequest = true, bool evaluateLogicSnippets = true, bool removeUnknownVariables = true, bool forQuery = false, string defaultFormatter = "HtmlEncode")
+        public async Task<string> DoAllReplacementsAsync(string input, DataRow dataRow = null, bool handleRequest = true, bool evaluateLogicSnippets = true, bool removeUnknownVariables = true, bool forQuery = false, string defaultFormatter = "HtmlEncode", bool handleVariableDefaults = true)
         {
             if (String.IsNullOrWhiteSpace(input))
             {
@@ -194,7 +194,10 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             }
 
             // Handle variables with default values that haven't been replaced yet.
-            input = HandleVariablesDefaultValues(input);
+            if (handleVariableDefaults)
+            {
+                input = HandleVariablesDefaultValues(input);
+            }
 
             // Whether template variables that were not replaced should be removed.
             if (removeUnknownVariables)

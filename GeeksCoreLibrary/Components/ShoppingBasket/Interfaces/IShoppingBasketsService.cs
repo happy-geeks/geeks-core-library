@@ -15,7 +15,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="uniquePaymentNumber">The value of the UniquePaymentNumber detail of the order item.</param>
         /// <returns>A <see cref="List{WiserItemModel}"/> of <see cref="WiserItemModel"/> objects.</returns>
         Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber);
-        
+
         /// <summary>
         /// Get all orders via unique payment number.
         /// </summary>
@@ -116,7 +116,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="includeDiscountGettingVat">Optional: Whether the discount should be included when attempting to determine the VAT of the price.</param>
         /// <returns>The calculated price as a decimal.</returns>
         Task<decimal> GetPriceAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ShoppingBasket.PriceTypes priceType = ShoppingBasket.PriceTypes.InVatInDiscount, string lineType = "", int onlyIfVatRate = -1, bool includeDiscountGettingVat = true);
-        
+
         /// <summary>
         /// Gets the total price of a single basket line.
         /// </summary>
@@ -145,7 +145,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <summary>
         /// Loads a basket from the database.
         /// </summary>
-        Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false);
+        Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, bool includeLines = true);
 
         /// <summary>
         /// Saves the current basket to the database.
@@ -192,7 +192,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="divideDiscountOverProducts">Optional: Whether the discount of coupons is being divided over all products.</param>
         /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
         Task UpdateCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, HandleCouponResultModel couponResult, decimal currentDiscount = 0M, bool divideDiscountOverProducts = false, bool createNewTransaction = true);
-        
+
         /// <summary>
         /// Removes multiple items from the basket.
         /// </summary>
@@ -200,8 +200,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketLines">The current basket lines.</param>
         /// <param name="settings">The settings of the <see cref="ShoppingBasket"/> component that called this function.</param>
         /// <param name="itemIdsOrUniqueIds">List of unique ID or item IDs to remove.</param>
+        /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
         /// <returns>The removed lines.</returns>
-        Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds);
+        Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds, bool createNewTransaction = true);
 
         /// <summary>
         /// Adds multiple items to the basket.
@@ -278,7 +279,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true);
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <returns>A list of <see cref="WiserItemModel"/> of products that are free as the result of the free products actions.</returns>
         Task<IList<WiserItemModel>> GetFreeProductActionsAsync();
@@ -297,7 +298,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="vatRate">The VAT rate used in the lookup.</param>
         /// <returns>A decimal representing the VAT factor.</returns>
         Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate);
-        
+
         /// <summary>
         /// Returns the VAT rule by given VAT rate, depending on the actual information and requirements of the rule.
         /// </summary>
@@ -336,7 +337,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="couponCode">The coupon code.</param>
         /// <returns>A <see cref="WiserItemModel"/> with the data of the coupon.</returns>
         Task<WiserItemModel> GetCouponAsync(string couponCode);
-        
+
         /// <summary>
         /// Checks whether or not the given coupon is valid and can still be used.
         /// </summary>

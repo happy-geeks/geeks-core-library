@@ -65,7 +65,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="includeContent">Set to true to also get the complete content of the template, false to only get the meta data.</param>
         /// <returns>A list of <see cref="Template"/>s.</returns>
         Task<List<Template>> GetTemplatesAsync(ICollection<int> templateIds, bool includeContent);
-        
+
         /// <summary>
         /// Get the content for multiple templates and combine them into one string.
         /// </summary>
@@ -73,7 +73,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="templateType">The type of content to get.</param>
         /// <returns></returns>
         Task<TemplateResponse> GetCombinedTemplateValueAsync(ICollection<int> templateIds, TemplateTypes templateType);
-        
+
         /// <summary>
         /// Get the content for multiple templates and combine them into one string.
         /// </summary>
@@ -117,8 +117,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="removeUnknownVariables">Optional: Whether ot not to remove all left over variables after all replacements have been done. Default value is true.</param>
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
         /// <param name="templateType">Optional: Limit which template type can be used for template includes. Use null for all template types.</param>
+        /// <param name="handleVariableDefaults">Optional: Handle variable defaults (such as {name~Bob}, which will place the value "Bob" on that position, if the name variable is empty or doesn't exist. Default is true.</param>
         /// <returns></returns>
-        Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null);
+        Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true);
 
         /// <summary>
         /// Do all replaces on a template. If you don't need to replace includes, please use IStringReplacementsService.DoAllReplacements() instead.
@@ -137,8 +138,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="removeUnknownVariables">Optional: Whether ot not to remove all left over variables after all replacements have been done. Default value is true.</param>
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
         /// <param name="templateType">Optional: Limit which template type can be used for template includes. Use null for all template types.</param>
+        /// <param name="handleVariableDefaults">Optional: Handle variable defaults (such as {name~Bob}, which will place the value "Bob" on that position, if the name variable is empty or doesn't exist. Default is true.</param>
         /// <returns></returns>
-        Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null);
+        Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true);
 
         /// <summary>
         /// Replaces [include[x]] with a template called 'x'.
@@ -149,8 +151,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="handleRequest">Optional: Whether or not to replace values from the request (such as query string, cookies and session) in the included template(s). Default value is true.</param>
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
         /// <param name="templateType">Optional: Limit which template type can be included. Use null for all template types.</param>
+        /// <param name="handleVariableDefaults">Optional: Handle variable defaults (such as {name~Bob}, which will place the value "Bob" on that position, if the name variable is empty or doesn't exist. Default is true.</param>
         /// <returns>The replaced string.</returns>
-        Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null);
+        Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true);
 
         /// <summary>
         /// Replaces [include[x]] with a template called 'x'.
@@ -162,8 +165,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="handleRequest">Optional: Whether or not to replace values from the request (such as query string, cookies and session) in the included template(s). Default value is true.</param>
         /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
         /// <param name="templateType">Optional: Limit which template type can be included. Use null for all template types.</param>
+        /// <param name="handleVariableDefaults">Optional: Handle variable defaults (such as {name~Bob}, which will place the value "Bob" on that position, if the name variable is empty or doesn't exist. Default is true.</param>
         /// <returns>The replaced string.</returns>
-        Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null);
+        Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true);
 
         /// <summary>
         /// Generates the HTML for dynamic content, based on the content ID.
@@ -184,7 +188,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="extraData">Optional: Any extra data to be used in all replacements in the component.</param>
         /// <returns>The generates HTML of the component or the result of the called method of the component.</returns>
         Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null);
-        
+
         Task<string> HandleImageTemplating(string input);
 
         Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "");
@@ -280,7 +284,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         /// <param name="extension">Optional: The extension to use for the file name. Default is ".html".</param>
         /// <returns>The name for the file to cache the contents of the template to.</returns>
         Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html");
-        
+
         /// <summary>
         /// Gets all templates that have an URL regex setup.
         /// </summary>

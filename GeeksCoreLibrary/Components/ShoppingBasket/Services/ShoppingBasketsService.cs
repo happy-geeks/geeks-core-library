@@ -291,7 +291,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false)
+        public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, bool includeLines = true)
         {
             var shoppingBasket = new WiserItemModel();
             var basketLines = new List<WiserItemModel>();
@@ -382,7 +382,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
                 else
                 {
-                    if (shoppingBasket.Id == 0)
+                    if (shoppingBasket.Id == 0 || !includeLines)
                     {
                         basketLines = new List<WiserItemModel>();
                     }
@@ -1691,7 +1691,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds)
+        public async Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds, bool createNewTransaction = true)
         {
             if (itemIdsOrUniqueIds == null || !itemIdsOrUniqueIds.Any())
             {
@@ -1735,7 +1735,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
             }
 
-            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings);
+            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, createNewTransaction: createNewTransaction);
 
             return basketLines;
         }

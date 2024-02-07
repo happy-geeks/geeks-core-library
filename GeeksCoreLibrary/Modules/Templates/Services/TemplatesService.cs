@@ -709,13 +709,13 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
         }
 
         /// <inheritdoc />
-        public async Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null)
+        public async Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
         {
-            return await DoReplacesAsync(this, input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery, templateType);
+            return await DoReplacesAsync(this, input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery, templateType, handleVariableDefaults);
         }
 
         /// <inheritdoc />
-        public async Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null)
+        public async Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
         {
             // Input cannot be empty.
             if (String.IsNullOrEmpty(input))
@@ -732,13 +732,13 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             // Then do the normal string replacements, because includes can contain variables in a query string, which need to be replaced first.
             if (handleStringReplacements)
             {
-                input = await stringReplacementsService.DoAllReplacementsAsync(input, dataRow, handleRequest, false, removeUnknownVariables, forQuery);
+                input = await stringReplacementsService.DoAllReplacementsAsync(input, dataRow, handleRequest, false, removeUnknownVariables, forQuery, handleVariableDefaults: handleVariableDefaults);
             }
 
             // HTML and mail templates.
             // Note: The string replacements service cannot handle the replacing of templates, because that would cause the StringReplacementsService to need
             // the TemplatesService, which in turn needs the StringReplacementsService, creating a circular dependency.
-            input = await templatesService.HandleIncludesAsync(input, forQuery: forQuery, templateType: templateType);
+            input = await templatesService.HandleIncludesAsync(input, forQuery: forQuery, templateType: templateType, handleVariableDefaults: handleVariableDefaults);
             input = await templatesService.HandleImageTemplating(input);
 
             // Replace dynamic content.
@@ -972,13 +972,13 @@ ORDER BY id ASC");
         }
 
         /// <inheritdoc />
-        public async Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null)
+        public async Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
         {
-            return await HandleIncludesAsync(this, input, handleStringReplacements, dataRow, handleRequest, forQuery, templateType);
+            return await HandleIncludesAsync(this, input, handleStringReplacements, dataRow, handleRequest, forQuery, templateType, handleVariableDefaults);
         }
 
         /// <inheritdoc />
-        public async Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null)
+        public async Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
         {
             if (String.IsNullOrWhiteSpace(input))
             {
@@ -999,7 +999,7 @@ ORDER BY id ASC");
                     if (templateName.Contains("{"))
                     {
                         // Make sure replaces for the template name are done
-                        templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery);
+                        templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery, handleVariableDefaults: handleVariableDefaults);
                     }
 
                     // Replace templates (syntax is <[templateName]> or <[parentFolder\templateName]>
@@ -1011,7 +1011,7 @@ ORDER BY id ASC");
                         var templateContent = template.Content;
                         if (handleStringReplacements)
                         {
-                            templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery);
+                            templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
                         }
 
                         input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
@@ -1022,7 +1022,7 @@ ORDER BY id ASC");
                         var templateContent = template.Content;
                         if (handleStringReplacements)
                         {
-                            templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery);
+                            templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
                         }
 
                         input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
@@ -1037,7 +1037,7 @@ ORDER BY id ASC");
                     if (templateName.Contains("{"))
                     {
                         // Make sure replaces for the template name are done
-                        templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery);
+                        templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery, handleVariableDefaults: handleVariableDefaults);
                     }
 
                     // Replace templates (syntax is [include[templateName]] or [include[parentFolder\templateName]] or [include[templateName?x=y]]
@@ -1050,7 +1050,7 @@ ORDER BY id ASC");
                         var content = replacementsMediator.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
                         {
-                            content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery);
+                            content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
                         }
 
                         if (!String.IsNullOrWhiteSpace(queryString))
@@ -1067,7 +1067,7 @@ ORDER BY id ASC");
                         var content = replacementsMediator.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
                         {
-                            content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery);
+                            content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
                         }
 
                         if (!String.IsNullOrWhiteSpace(queryString))

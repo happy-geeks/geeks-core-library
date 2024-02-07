@@ -252,7 +252,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
             DisplayOrder = 130
         )]
         public bool MultipleBasketsPossible { get; set; }
-        
+
         [CmsProperty(
             PrettyName = "Item excluded from discount property name",
             Description = "Items that have this property set to 1 are excluded from discount calculation.",
@@ -358,6 +358,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
             DisplayOrder = 10
         )]
         public bool BasketLineValidityCheck { get; set; }
+
+
+        /// <summary>
+        /// If you want the component to render a specific basket, you can set the ID of the basket here.
+        /// </summary>
+        public ulong ForcedBasketId { get; set; }
 
         #endregion
 
