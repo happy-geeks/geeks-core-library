@@ -407,7 +407,6 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             return input;
         }
 
-        // This regex will match any variable that has a default value. Except for several special cases that are used in baskets, that use a similar syntax.
         var regex = new Regex($@"{prefix}([^\]{suffix}\s]*)\~([^\]{suffix}\s]*){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         foreach (Match match in regex.Matches(input))
         {
