@@ -338,7 +338,6 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// Gets or sets the date and time of when the JSON was last processed to the details. Used for hybrid mode.
         /// </summary>
-        [JsonIgnore]
         public DateTime? JsonLastProcessedDate
         {
             get => jsonLastProcessedDate;

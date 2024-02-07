@@ -35,7 +35,6 @@ namespace GeeksCoreLibrary.Core.Services
 
         private readonly IDatabaseConnection databaseConnection;
 
-        private readonly IDocumentStorageService documentStorageService;
         private readonly IObjectsService objectsService;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IDataSelectorsService dataSelectorsService;
@@ -51,7 +50,7 @@ namespace GeeksCoreLibrary.Core.Services
         /// <summary>
         /// Creates a new instance of <see cref="WiserItemsService"/>.
         /// </summary>
-        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService, IOptions<GclSettings> gclSettings, ILogger<WiserItemsService> logger, IDocumentStorageService documentStorageService)
+        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService, IOptions<GclSettings> gclSettings, ILogger<WiserItemsService> logger)
         {
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
@@ -59,7 +58,6 @@ namespace GeeksCoreLibrary.Core.Services
             this.dataSelectorsService = dataSelectorsService;
             this.databaseHelpersService = databaseHelpersService;
             this.logger = logger;
-            this.documentStorageService = documentStorageService;
             this.gclSettings = gclSettings.Value;
         }
 
@@ -105,12 +103,32 @@ namespace GeeksCoreLibrary.Core.Services
                     
             if (storeType is StoreType.Hybrid or StoreType.DocumentStore)
             {
-                wiserItem.Json = JsonConvert.SerializeObject(wiserItem);
                 if (wiserItem.Id == 0)
                 {
+                    wiserItem.Json = JsonConvert.SerializeObject(wiserItem);
                     return await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck);
                 }
+
+                if (storeType == StoreType.DocumentStore)
+                {
+                    wiserItem.Json = JsonConvert.SerializeObject(wiserItem);
+                    return await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, false, alwaysSaveReadOnly, true);
+                }
                 
+                // For hybrid mode check if the item has already been processed.
+                var prefix = await wiserItemsService.GetTablePrefixForEntityAsync(wiserItem.EntityType);
+                databaseConnection.AddParameter("id", wiserItem.Id);
+                var dataTable = await databaseConnection.GetAsync($"SELECT json IS NOT NULL AS hasJson FROM {prefix}{WiserTableNames.WiserItem} WHERE id = ?id", true);
+
+                // If no JSON is found the item has already been processed, so save the changes directly to the tables.
+                if (!Convert.ToBoolean(dataTable.Rows[0]["hasJson"]))
+                {
+                    wiserItem.Json = null;
+                    wiserItem.JsonLastProcessedDate = DateTime.Now;
+                    return await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, alwaysSaveReadOnly: alwaysSaveReadOnly);
+                }
+
+                wiserItem.Json = JsonConvert.SerializeObject(wiserItem);
                 return await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, false, alwaysSaveReadOnly, true);
             }
 
@@ -2453,19 +2471,26 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             {
                 databaseConnection.AddParameter("itemId", itemId);
                 
-                var jsonQuery = $@"SELECT json FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE {String.Join(" AND ", where)}";
+                var jsonQuery = $@"SELECT item.id, item.json FROM {tablePrefix}{WiserTableNames.WiserItem} AS item WHERE {String.Join(" AND ", where)} AND item.json IS NOT NULL";
                 if (!returnNullIfDeleted)
                 {
-                    jsonQuery += $@" UNION SELECT json FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} WHERE {String.Join(" AND ", where)}";
+                    jsonQuery += $@" UNION SELECT item.id, item.json FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item WHERE {String.Join(" AND ", where)}  AND item.json IS NOT NULL";
                 }
 
                 var jsonDataTable = await databaseConnection.GetAsync(jsonQuery, true);
-                if (jsonDataTable.Rows.Count == 0)
+                if (jsonDataTable.Rows.Count > 0)
+                {
+                    var item = JsonConvert.DeserializeObject<WiserItemModel>(jsonDataTable.Rows[0].Field<string>("json"));
+                    item.Id = jsonDataTable.Rows[0].Field<ulong>("id");
+                    return item;
+                }
+
+                // If no entry is found for the document store return null.
+                // For hybrid store continue to get the details from the tables, the item has already been processed.
+                if (entitySettings.StoreType == StoreType.DocumentStore)
                 {
                     return null;
                 }
-
-                return JsonConvert.DeserializeObject<WiserItemModel>(jsonDataTable.Rows[0].Field<string>("json"));
             }
 
             var join = "";
