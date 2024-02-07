@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 {
@@ -10,7 +11,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
 
         public int Quantity { get; set; } = 1;
 
-        public string Type { get; set; } = "product";
+        public string Type { get; set; } = OrderProcessConstants.OrderLineProductType;
 
         public IDictionary<string, string> LineDetails { get; set; }
     }

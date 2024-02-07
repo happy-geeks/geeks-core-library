@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.Models;
+using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
 {
@@ -216,7 +217,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="type">The type of the item. Defaults to "product".</param>
         /// <param name="lineDetails">Additional properties for the basket line.</param>
         /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
-        Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null, bool createNewTransaction = true);
+        Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null, bool createNewTransaction = true);
 
         /// <summary>
         /// Adds multiple items to the basket.

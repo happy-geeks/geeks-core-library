@@ -28,6 +28,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
+using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 {
@@ -1274,7 +1275,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         {
             var shippingCosts = 0M;
 
-            if (GetLines(basketLines, "product").Count == 0)
+            if (GetLines(basketLines, OrderProcessConstants.OrderLineProductType).Count == 0)
             {
                 RemoveShippingCostsLine(basketLines);
                 return shippingCosts;
@@ -1326,7 +1327,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     }
                     case "fixedpercentage":
                     {
-                        var totalBasketPrice = await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.InVatInDiscount, "product");
+                        var totalBasketPrice = await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.InVatInDiscount, OrderProcessConstants.OrderLineProductType);
                         shippingCosts = (costs / 100) * totalBasketPrice;
 
                         break;
@@ -1362,7 +1363,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     {
                         var tempValue = basketLines.Where(line => !String.IsNullOrWhiteSpace(line.GetDetailValue(propertyName))).Sum(line => line.GetDetailValue<decimal>(propertyName) * line.GetDetailValue<decimal>("quantity"));
 
-                        shippingCosts = tempValue / GetLines(basketLines, "product").Count;
+                        shippingCosts = tempValue / GetLines(basketLines, OrderProcessConstants.OrderLineProductType).Count;
                         break;
                     }
                     case "sumproductshipping":
@@ -1594,7 +1595,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         {
             var paymentMethodCosts = 0M;
 
-            if (GetLines(basketLines, "product").Count <= 0 || String.IsNullOrWhiteSpace(shoppingBasket.GetDetailValue("paymentmethod")))
+            if (GetLines(basketLines, OrderProcessConstants.OrderLineProductType).Count <= 0 || String.IsNullOrWhiteSpace(shoppingBasket.GetDetailValue("paymentmethod")))
             {
                 // Remove line.
                 RemovePaymentMethodCostsLine(basketLines);
@@ -1637,7 +1638,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 var isPercentage = Convert.ToString(getPaymentMethodCostsResult.Rows[0]["ispercentage"]) ?? "";
                 if (isPercentage == "1")
                 {
-                    var totalBasketPrice = await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.InVatInDiscount, "product");
+                    var totalBasketPrice = await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.InVatInDiscount, OrderProcessConstants.OrderLineProductType);
                     paymentMethodCosts = (costs / 100) * totalBasketPrice;
                 }
                 else
@@ -1741,7 +1742,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null, bool createNewTransaction = true)
+        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null, bool createNewTransaction = true)
         {
             var retries = 0;
             var transactionCompleted = false;
@@ -2893,7 +2894,7 @@ WHERE coupon.entity_type = 'coupon'", true);
             var totalPrice = 0M;
             if (discountOnlyOnProducts)
             {
-                foreach (var line in GetLines(basketLines, "product"))
+                foreach (var line in GetLines(basketLines, OrderProcessConstants.OrderLineProductType))
                 {
                     var itemId = line.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
                     if (excludedItems.Any(item => item.ItemId == itemId))
@@ -2974,7 +2975,7 @@ WHERE coupon.entity_type = 'coupon'", true);
             }
             else if (discountOnlyOnProducts)
             {
-                foreach (var line in GetLines(basketLines, "product"))
+                foreach (var line in GetLines(basketLines, OrderProcessConstants.OrderLineProductType))
                 {
                     var itemId = line.GetDetailValue<ulong>(Constants.ConnectedItemIdProperty);
                     if (excludedItems.Any(item => item.ItemId == itemId)) continue;
@@ -3077,7 +3078,7 @@ WHERE coupon.entity_type = 'coupon'", true);
         /// <param name="quantity"></param>
         /// <param name="type"></param>
         /// <param name="lineDetails"></param>
-        private static WiserItemModel AddLineInternal(ICollection<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null)
+        private static WiserItemModel AddLineInternal(ICollection<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null)
         {
             if (String.IsNullOrEmpty(uniqueId))
             {

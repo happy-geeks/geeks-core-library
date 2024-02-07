@@ -30,6 +30,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket
 {
@@ -544,7 +545,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             var type = HttpContextHelpers.GetRequestValue(HttpContext, "type");
             if (String.IsNullOrWhiteSpace(type))
             {
-                type = "product";
+                type = OrderProcessConstants.OrderLineProductType;
             }
 
             await shoppingBasketsService.AddLineAsync(Main, Lines, Settings, uniqueId, itemId, quantity, type);

@@ -9,6 +9,7 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using LazyCache;
 using Microsoft.Extensions.Options;
+using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 {
@@ -165,7 +166,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0, int quantity = 1, string type = "product", IDictionary<string, string> lineDetails = null, bool createNewTransaction = true)
+        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null, bool createNewTransaction = true)
         {
             await shoppingBasketsService.AddLineAsync(shoppingBasket, basketLines, settings, uniqueId, itemId, quantity, type, lineDetails, createNewTransaction);
         }
