@@ -394,7 +394,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
             var userData = await GetUserDataFromCookieAsync();
 
-            var replaceData = new Dictionary<string, object>();
+            var replaceData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
             foreach (PropertyDescriptor property in TypeDescriptor.GetProperties(userData))
             {
                 replaceData.Add(property.Name, property.GetValue(userData) ?? "");
