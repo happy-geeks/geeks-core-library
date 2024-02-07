@@ -493,7 +493,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             // Evaluate template, working with if...else...then statements
             if (evaluateTemplate)
             {
-                EvaluateTemplate(inputString);
+                inputString = EvaluateTemplate(inputString);
             }
 
             return inputString;
