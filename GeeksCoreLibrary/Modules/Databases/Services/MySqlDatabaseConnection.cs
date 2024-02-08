@@ -147,6 +147,17 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
                 return result;
             }
+            catch (InvalidOperationException invalidOperationException)
+            {
+                if (retryCount >= gclSettings.MaximumRetryCountForQueries || !invalidOperationException.Message.Contains("This MySqlConnection is already in use", StringComparison.OrdinalIgnoreCase))
+                {
+                    logger.LogError(invalidOperationException, "Error trying to run this query: {query}", query);
+                    throw new GclQueryException("Error trying to run query", query, invalidOperationException);
+                }
+
+                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                return await GetAsync(query, retryCount + 1, cleanUp, useWritingConnectionIfAvailable);
+            }
             catch (MySqlException mySqlException)
             {
                 // Never retry single queries if we're in a transaction, because transactions will get rolled back when a deadlock occurs,
@@ -225,6 +236,17 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 commandToUse.CommandText = query;
                 logger.LogDebug("Query: {query}", query);
                 return await commandToUse.ExecuteNonQueryAsync();
+            }
+            catch (InvalidOperationException invalidOperationException)
+            {
+                if (retryCount >= gclSettings.MaximumRetryCountForQueries || !invalidOperationException.Message.Contains("This MySqlConnection is already in use", StringComparison.OrdinalIgnoreCase))
+                {
+                    logger.LogError(invalidOperationException, "Error trying to run this query: {query}", query);
+                    throw new GclQueryException("Error trying to run query", query, invalidOperationException);
+                }
+
+                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                return await ExecuteAsync(query, retryCount + 1, useWritingConnectionIfAvailable, cleanUp);
             }
             catch (MySqlException mySqlException)
             {
@@ -348,6 +370,17 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
 
                 return Int64.TryParse(Convert.ToString(reader.GetValue(0)), out var tempId) ? tempId : 0L;
+            }
+            catch (InvalidOperationException invalidOperationException)
+            {
+                if (retryCount >= gclSettings.MaximumRetryCountForQueries || !invalidOperationException.Message.Contains("This MySqlConnection is already in use", StringComparison.OrdinalIgnoreCase))
+                {
+                    logger.LogError(invalidOperationException, "Error trying to run this query: {query}", query);
+                    throw new GclQueryException("Error trying to run query", query, invalidOperationException);
+                }
+
+                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                return await InsertRecordAsync(query, retryCount + 1, useWritingConnectionIfAvailable);
             }
             catch (MySqlException mySqlException)
             {
@@ -850,10 +883,15 @@ SELECT LAST_INSERT_ID();";
             {
                 if (disposeConnection)
                 {
-                    var connection = (isWriteConnection ? ConnectionForWriting : ConnectionForReading);
-                    if (connection != null)
+                    if (isWriteConnection)
                     {
-                        await connection.DisposeAsync();
+                        await ConnectionForWriting.DisposeAsync();
+                        ConnectionForWriting = null;
+                    }
+                    else
+                    {
+                        await ConnectionForReading.DisposeAsync();
+                        ConnectionForReading = null;
                     }
                 }
             }
