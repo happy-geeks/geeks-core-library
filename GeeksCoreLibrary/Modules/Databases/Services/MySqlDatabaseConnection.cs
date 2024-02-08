@@ -19,6 +19,7 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
@@ -42,11 +43,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly ILogger<MySqlDatabaseConnection> logger;
         private readonly IBranchesService branchesService;
+        private readonly MySqlConnection readConnection;
+        private readonly MySqlConnection writeConnection;
         private MySqlConnectionStringBuilder connectionStringForReading;
         private MySqlConnectionStringBuilder connectionStringForWriting;
 
-        private MySqlConnection ConnectionForReading { get; set; }
-        private MySqlConnection ConnectionForWriting { get; set; }
+        private MySqlConnection connectionForReading;
+        private MySqlConnection connectionForWriting;
 
         private readonly GclSettings gclSettings;
 
@@ -67,6 +70,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public MySqlDatabaseConnection(IOptions<GclSettings> gclSettings,
             ILogger<MySqlDatabaseConnection> logger,
             IBranchesService branchesService,
+            [FromKeyedServices("ReadConnection")] MySqlConnection readConnection,
+            [FromKeyedServices("WriteConnection")] MySqlConnection writeConnection,
             IHttpContextAccessor httpContextAccessor = null,
             IWebHostEnvironment webHostEnvironment = null)
         {
@@ -74,13 +79,23 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             this.webHostEnvironment = webHostEnvironment;
             this.logger = logger;
             this.branchesService = branchesService;
+            this.readConnection = readConnection;
+            this.writeConnection = writeConnection;
             this.gclSettings = gclSettings.Value;
 
             instanceId = Guid.NewGuid();
-            connectionStringForReading = String.IsNullOrWhiteSpace(this.gclSettings.ConnectionString) ? null : new MySqlConnectionStringBuilder { ConnectionString = this.gclSettings.ConnectionString };
-            connectionStringForWriting = String.IsNullOrWhiteSpace(this.gclSettings.ConnectionStringForWriting) ? null : new MySqlConnectionStringBuilder { ConnectionString = this.gclSettings.ConnectionStringForWriting };
 
-            if (connectionStringForReading != null)
+            var branchDatabase = branchesService.GetDatabaseNameFromCookie();
+            if (!String.IsNullOrWhiteSpace(branchDatabase))
+            {
+                readConnection.ChangeDatabase(branchDatabase);
+                writeConnection.ChangeDatabase(branchDatabase);
+            }
+
+            connectionStringForReading = new MySqlConnectionStringBuilder { ConnectionString = readConnection.ConnectionString };
+            connectionStringForWriting = new MySqlConnectionStringBuilder { ConnectionString = writeConnection.ConnectionString };
+
+            /*if (connectionStringForReading != null)
             {
                 connectionStringForReading.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForReading.Database;
                 // Ignore command transactions, because we have multiple connections and the MySqlConnector will otherwise library throw exceptions about that. See https://mysqlconnector.net/troubleshooting/transaction-usage//
@@ -91,7 +106,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 connectionStringForWriting.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForWriting.Database;
                 // Ignore command transactions, because we have multiple connections and the MySqlConnector will otherwise library throw exceptions about that. See https://mysqlconnector.net/troubleshooting/transaction-usage/.
                 connectionStringForWriting.IgnoreCommandTransaction = true;
-            }
+            }*/
 
             logger.LogTrace($"Created new instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
         }
@@ -106,9 +121,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public async Task<DbDataReader> GetReaderAsync(string query)
         {
             logger.LogTrace($"Called GetReaderAsync of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
-            await EnsureOpenConnectionForReadingAsync();
-            await using var command = new MySqlCommand(query, ConnectionForReading);
-            SetupMySqlCommand(command);
+
+            await using var command = await OpenConnectionAndCreateCommandAsync(query);
             dataReader = await command.ExecuteReaderAsync();
 
             return dataReader;
@@ -122,25 +136,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
         private async Task<DataTable> GetAsync(string query, int retryCount, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
         {
-            MySqlCommand commandToUse = null;
             try
             {
-                if ((useWritingConnectionIfAvailable || QueryHelpers.IsWriteQuery(query)) && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
-                {
-                    await EnsureOpenConnectionForWritingAsync();
-                    commandToUse = new MySqlCommand(query, ConnectionForWriting);
-                }
-                else
-                {
-                    await EnsureOpenConnectionForReadingAsync();
-                    commandToUse = new MySqlCommand(query, ConnectionForReading);
-                }
-
-                SetupMySqlCommand(commandToUse);
-
+                await using var command = await OpenConnectionAndCreateCommandAsync(query, useWritingConnectionIfAvailable);
                 var result = new DataTable();
-                commandToUse.CommandText = query;
-                using var dataAdapter = new MySqlDataAdapter(commandToUse);
+                using var dataAdapter = new MySqlDataAdapter(command);
                 dataAdapter.Fill(result);
 
                 logger.LogDebug("Query: {query}", query);
@@ -182,11 +182,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             finally
             {
-                if (commandToUse != null)
-                {
-                    await commandToUse.DisposeAsync();
-                }
-
                 // If we're not using transactions, dispose everything here. Otherwise we will dispose it when the transaction gets committed or roll backed.
                 if (!HasActiveTransaction() && cleanUp)
                 {
@@ -217,25 +212,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <returns></returns>
         private async Task<int> ExecuteAsync(string query, int retryCount, bool useWritingConnectionIfAvailable = true, bool cleanUp = true)
         {
-            MySqlCommand commandToUse = null;
             try
             {
-                if ((useWritingConnectionIfAvailable || QueryHelpers.IsWriteQuery(query)) && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
-                {
-                    await EnsureOpenConnectionForWritingAsync();
-                    commandToUse = new MySqlCommand(query, ConnectionForWriting);
-                }
-                else
-                {
-                    await EnsureOpenConnectionForReadingAsync();
-                    commandToUse = new MySqlCommand(query, ConnectionForReading);
-                }
-
-                SetupMySqlCommand(commandToUse);
-
-                commandToUse.CommandText = query;
+                await using var command = await OpenConnectionAndCreateCommandAsync(query, useWritingConnectionIfAvailable);
                 logger.LogDebug("Query: {query}", query);
-                return await commandToUse.ExecuteNonQueryAsync();
+                return await command.ExecuteNonQueryAsync();
             }
             catch (InvalidOperationException invalidOperationException)
             {
@@ -272,11 +253,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             finally
             {
-                if (commandToUse != null)
-                {
-                    await commandToUse.DisposeAsync();
-                }
-
                 // If we're not using transactions, dispose everything here. Otherwise we will dispose it when the transaction gets comitted or rollbacked.
                 if (transaction == null && cleanUp)
                 {
@@ -338,7 +314,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 return 0L;
             }
 
-            MySqlCommand commandToUse = null;
             try
             {
                 var finalQuery = new StringBuilder(query.TrimEnd());
@@ -350,20 +325,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // Add the query to retrieve the last inserted ID to the query that was passed to the function.
                 finalQuery.Append("SELECT LAST_INSERT_ID();");
 
-                if ((useWritingConnectionIfAvailable || QueryHelpers.IsWriteQuery(query)) && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
-                {
-                    await EnsureOpenConnectionForWritingAsync();
-                    commandToUse = new MySqlCommand(finalQuery.ToString(), ConnectionForWriting);
-                }
-                else
-                {
-                    await EnsureOpenConnectionForReadingAsync();
-                    commandToUse = new MySqlCommand(finalQuery.ToString(), ConnectionForReading);
-                }
-
-                SetupMySqlCommand(commandToUse);
-
-                await using var reader = await commandToUse.ExecuteReaderAsync();
+                await using var command = await OpenConnectionAndCreateCommandAsync(query, useWritingConnectionIfAvailable);
+                await using var reader = await command.ExecuteReaderAsync();
                 if (!await reader.ReadAsync())
                 {
                     return 0L;
@@ -406,11 +369,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             finally
             {
-                if (commandToUse != null)
-                {
-                    await commandToUse.DisposeAsync();
-                }
-
                 // If we're not using transactions, dispose everything here. Otherwise we will dispose it when the transaction gets comitted or rollbacked.
                 if (transaction == null)
                 {
@@ -432,20 +390,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await transaction.RollbackAsync();
             }
 
-            // If we're using transactions, make sure to use it on the write connection, if we have one.
-            MySqlConnection connectionToUse;
-            if (!String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
-            {
-                await EnsureOpenConnectionForWritingAsync();
-                connectionToUse = ConnectionForWriting;
-            }
-            else
-            {
-                await EnsureOpenConnectionForReadingAsync();
-                connectionToUse = ConnectionForReading;
-            }
-
-            transaction = await connectionToUse.BeginTransactionAsync();
+            await EnsureConnectionIsOpenAsync(true);
+            transaction = await writeConnection.BeginTransactionAsync();
 
             return transaction;
         }
@@ -533,12 +479,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 await dataReader.DisposeAsync();
             }
 
-            if (ConnectionForReading != null)
+            if (connectionForReading != null)
             {
                 await AddConnectionCloseLogAsync(false, true);
             }
 
-            if (ConnectionForWriting != null)
+            if (connectionForWriting != null)
             {
                 await AddConnectionCloseLogAsync(true, true);
             }
@@ -553,12 +499,43 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             AddConnectionCloseLogAsync(true, true);
         }
 
+        private async Task<MySqlConnection> EnsureConnectionIsOpenAsync(bool useWritingConnection = false)
+        {
+            var connectionToUse = useWritingConnection ? writeConnection : readConnection;
+
+            // Remember the database name that was connected to.
+            ConnectedDatabase = connectionToUse.Database;
+
+            if (connectionToUse.State == ConnectionState.Closed)
+            {
+                await connectionToUse.OpenAsync();
+
+                await SetTimezone(connectionToUse);
+                await SetCharacterSetAndCollationAsync(connectionToUse);
+
+                // Log the opening of the connection.
+                await AddConnectionOpenLogAsync(false);
+            }
+
+            return connectionToUse;
+        }
+
+        private async Task<MySqlCommand> OpenConnectionAndCreateCommandAsync(string commandText, bool useWritingConnection = false)
+        {
+            var connectionToUse = await EnsureConnectionIsOpenAsync(useWritingConnection || HasActiveTransaction() || QueryHelpers.IsWriteQuery(commandText));
+            var command = connectionToUse.CreateCommand();
+            command.CommandText = commandText;
+            SetupMySqlCommand(command);
+            return command;
+        }
+
         /// <summary>
         /// If the connection is not open yet, open it.
         /// </summary>
         public async Task EnsureOpenConnectionForReadingAsync()
         {
-            var createdNewConnection = false;
+            await EnsureConnectionIsOpenAsync();
+            /*var createdNewConnection = false;
             if (ConnectionForReading == null)
             {
                 ConnectionForReading = new MySqlConnection { ConnectionString = connectionStringForReading.ConnectionString };
@@ -582,7 +559,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 // Log the opening of the connection.
                 await AddConnectionOpenLogAsync(false);
-            }
+            }*/
         }
 
         /// <summary>
@@ -591,6 +568,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <returns></returns>
         public async Task EnsureOpenConnectionForWritingAsync()
         {
+            await EnsureConnectionIsOpenAsync(true);
+            /*
             if (String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
             {
                 ConnectedDatabaseForWriting = null;
@@ -621,7 +600,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 // Log the opening of the connection.
                 await AddConnectionOpenLogAsync(true);
-            }
+            }*/
         }
 
         /// <inheritdoc />
@@ -635,20 +614,22 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             connectionStringForReading.IgnoreCommandTransaction = true;
             connectionStringForWriting.IgnoreCommandTransaction = true;
             await CleanUpAsync();
-            if (ConnectionForReading != null)
+            var newReadConnection = connectionForReading.CloneWith(connectionStringForReading.ConnectionString);
+            var newWriteConnection = connectionForWriting.CloneWith(connectionStringForWriting.ConnectionString);
+            if (connectionForReading != null)
             {
                 await AddConnectionCloseLogAsync(false);
-                await ConnectionForReading.CloseAsync();
+                await connectionForReading.CloseAsync();
             }
 
-            if (ConnectionForWriting != null)
+            if (connectionForWriting != null)
             {
                 await AddConnectionCloseLogAsync(true);
-                await ConnectionForWriting.CloseAsync();
+                await connectionForWriting.CloseAsync();
             }
 
-            ConnectionForReading = null;
-            ConnectionForWriting = null;
+            connectionForReading = newReadConnection;
+            connectionForWriting = newWriteConnection;
         }
 
         /// <inheritdoc />
@@ -672,7 +653,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             // Simple text file that indicates whether or not the log table exists, so that we don't have to execute an extra query every time.
             var cacheDirectory = webHostEnvironment == null ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data") : FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
-            var filePath = cacheDirectory == null ? null : Path.Combine(cacheDirectory, String.Format(Constants.LogTableExistsCacheFileName, (ConnectionForWriting ?? ConnectionForReading).Database));
+            var filePath = cacheDirectory == null ? null : Path.Combine(cacheDirectory, String.Format(Constants.LogTableExistsCacheFileName, (connectionForWriting ?? connectionForReading).Database));
             if (filePath != null && File.Exists(filePath))
             {
                 return true;
@@ -692,7 +673,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
 
             var dataTable = new DataTable();
-            command.CommandText = $"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = '{Constants.DatabaseConnectionLogTableName}' AND TABLE_SCHEMA = '{(ConnectionForWriting ?? ConnectionForReading).Database.ToMySqlSafeValue(false)}'";
+            command.CommandText = $"SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_NAME = '{Constants.DatabaseConnectionLogTableName}' AND TABLE_SCHEMA = '{(connectionForWriting ?? connectionForReading).Database.ToMySqlSafeValue(false)}'";
             using var dataAdapter = new MySqlDataAdapter(command);
             dataAdapter.Fill(dataTable);
 
@@ -790,7 +771,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     return;
                 }
 
-                await using var commandToUse = new MySqlCommand("", !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? ConnectionForWriting : ConnectionForReading);
+                await using var commandToUse = new MySqlCommand("", !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? connectionForWriting : connectionForReading);
 
                 logTableExists ??= await LogTableExistsAsync(commandToUse);
 
@@ -862,7 +843,7 @@ SELECT LAST_INSERT_ID();";
                     return;
                 }
 
-                await using var commandToUse = new MySqlCommand("", !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? ConnectionForWriting : ConnectionForReading);
+                await using var commandToUse = new MySqlCommand("", !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? connectionForWriting : connectionForReading);
 
                 if (commandToUse.Connection is { State: ConnectionState.Closed })
                 {
@@ -885,13 +866,13 @@ SELECT LAST_INSERT_ID();";
                 {
                     if (isWriteConnection)
                     {
-                        await ConnectionForWriting.DisposeAsync();
-                        ConnectionForWriting = null;
+                        await connectionForWriting.DisposeAsync();
+                        connectionForWriting = null;
                     }
                     else
                     {
-                        await ConnectionForReading.DisposeAsync();
-                        ConnectionForReading = null;
+                        await connectionForReading.DisposeAsync();
+                        connectionForReading = null;
                     }
                 }
             }

@@ -52,6 +52,7 @@ using GeeksCoreLibrary.Modules.ItemFiles.Middlewares;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using MySqlConnector;
 using WebMarkupMin.AspNetCore7;
 using WebMarkupMin.Core;
 
@@ -164,7 +165,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 {
                     tablesToUpdate.Add(Modules.Databases.Models.Constants.DatabaseConnectionLogTableName);
                 }
-              
+
                 await databaseHelpersService.CheckAndUpdateTablesAsync(tablesToUpdate);
             });
 
@@ -272,6 +273,8 @@ namespace GeeksCoreLibrary.Core.Extensions
             // Manual additions.
             services.AddHttpContextAccessor();
             services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
+            services.AddKeyedMySqlDataSource("ReadConnection", gclSettings.ConnectionString);
+            services.AddKeyedMySqlDataSource("WriteConnection", String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting) ? gclSettings.ConnectionString :  gclSettings.ConnectionStringForWriting);
 
             // Templates service.
             if (gclSettings.UseLegacyWiser1TemplateModule)
