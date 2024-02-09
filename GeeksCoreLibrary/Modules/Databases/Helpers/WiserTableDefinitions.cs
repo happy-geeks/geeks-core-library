@@ -21,7 +21,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserItem,
-                LastUpdate = new DateTime(2021, 9, 1),
+                LastUpdate = new DateTime(2024, 2, 2),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -37,7 +37,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
                     new("added_by", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
                     new("changed_on", MySqlDbType.DateTime, notNull: true, updateTimeStampOnChange: true),
-                    new("changed_by", MySqlDbType.VarChar, 255, notNull: true, defaultValue: "")
+                    new("changed_by", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
+                    new("json", MySqlDbType.JSON),
+                    new("json_last_processed_date", MySqlDbType.DateTime)
                 },
                 Indexes = new List<IndexSettingsModel>
                 {

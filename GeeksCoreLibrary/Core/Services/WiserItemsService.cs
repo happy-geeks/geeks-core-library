@@ -35,7 +35,6 @@ namespace GeeksCoreLibrary.Core.Services
 
         private readonly IDatabaseConnection databaseConnection;
 
-        private readonly IDocumentStorageService documentStorageService;
         private readonly IObjectsService objectsService;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IDataSelectorsService dataSelectorsService;
@@ -51,7 +50,7 @@ namespace GeeksCoreLibrary.Core.Services
         /// <summary>
         /// Creates a new instance of <see cref="WiserItemsService"/>.
         /// </summary>
-        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService, IOptions<GclSettings> gclSettings, ILogger<WiserItemsService> logger, IDocumentStorageService documentStorageService)
+        public WiserItemsService(IDatabaseConnection databaseConnection, IObjectsService objectsService, IStringReplacementsService stringReplacementsService, IDataSelectorsService dataSelectorsService, IDatabaseHelpersService databaseHelpersService, IOptions<GclSettings> gclSettings, ILogger<WiserItemsService> logger)
         {
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
@@ -59,7 +58,6 @@ namespace GeeksCoreLibrary.Core.Services
             this.dataSelectorsService = dataSelectorsService;
             this.databaseHelpersService = databaseHelpersService;
             this.logger = logger;
-            this.documentStorageService = documentStorageService;
             this.gclSettings = gclSettings.Value;
         }
 
@@ -102,10 +100,36 @@ namespace GeeksCoreLibrary.Core.Services
             var storeType = storeTypeOverride;
             var entitySettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
             storeType ??= entitySettings.StoreType;
-
-            if (storeType is StoreType.DocumentStore)
+                    
+            if (storeType is StoreType.Hybrid or StoreType.DocumentStore)
             {
-                return (await documentStorageService.StoreItemAsync(wiserItem, entitySettings)).model;
+                if (wiserItem.Id == 0)
+                {
+                    wiserItem.Json = JsonConvert.SerializeObject(wiserItem);
+                    return await wiserItemsService.CreateAsync(wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, false, skipPermissionsCheck);
+                }
+
+                if (storeType == StoreType.DocumentStore)
+                {
+                    wiserItem.Json = JsonConvert.SerializeObject(wiserItem);
+                    return await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, false, alwaysSaveReadOnly, true);
+                }
+                
+                // For hybrid mode check if the item has already been processed.
+                var prefix = await wiserItemsService.GetTablePrefixForEntityAsync(wiserItem.EntityType);
+                databaseConnection.AddParameter("id", wiserItem.Id);
+                var dataTable = await databaseConnection.GetAsync($"SELECT json IS NOT NULL AS hasJson FROM {prefix}{WiserTableNames.WiserItem} WHERE id = ?id", true);
+
+                // If no JSON is found the item has already been processed, so save the changes directly to the tables.
+                if (!Convert.ToBoolean(dataTable.Rows[0]["hasJson"]))
+                {
+                    wiserItem.Json = null;
+                    wiserItem.JsonLastProcessedDate = DateTime.Now;
+                    return await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, alwaysSaveReadOnly: alwaysSaveReadOnly);
+                }
+
+                wiserItem.Json = JsonConvert.SerializeObject(wiserItem);
+                return await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, false, alwaysSaveReadOnly, true);
             }
 
             var isNewlyCreated = wiserItem.Id == 0;
@@ -123,18 +147,6 @@ namespace GeeksCoreLibrary.Core.Services
 
                         // When a new item has been created the values always need to be saved. There is no use to check if they have been changed since they are all new.
                         alwaysSaveValues = true;
-                    }
-
-                    if (storeType == StoreType.Hybrid)
-                    {
-                        wiserItem = (await documentStorageService.StoreItemAsync(wiserItem, entitySettings)).model;
-                        if (createNewTransaction && !alreadyHadTransaction)
-                        {
-                            await databaseConnection.CommitTransactionAsync();
-                        }
-
-                        transactionCompleted = true;
-                        return wiserItem;
                     }
 
                     wiserItem = await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, isNewlyCreated, alwaysSaveReadOnly);
@@ -206,13 +218,9 @@ namespace GeeksCoreLibrary.Core.Services
             var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
             storeType ??= entityTypeSettings.StoreType;
 
-            switch (storeType)
+            if (storeType == StoreType.Hybrid)
             {
-                case StoreType.DocumentStore:
-                    return (await documentStorageService.StoreItemAsync(wiserItem, entityTypeSettings)).model;
-                case StoreType.Hybrid:
-                    wiserItem.PublishedEnvironment = 0;
-                    break;
+                wiserItem.PublishedEnvironment = 0;
             }
 
             var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
@@ -240,12 +248,14 @@ namespace GeeksCoreLibrary.Core.Services
                     databaseConnection.AddParameter("userId", userId);
                     databaseConnection.AddParameter("publishedEnvironment",
                                                     wiserItem.PublishedEnvironment ?? Environments.Live | Environments.Acceptance | Environments.Test | Environments.Development);
+                    databaseConnection.AddParameter("json", wiserItem.Json);
+                    databaseConnection.AddParameter("jsonLastProcessedDate", wiserItem.JsonLastProcessedDate);
                     databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
                     var query = $@"SET @saveHistory = ?saveHistoryGcl;
 SET @_userId = ?userId;
 SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {tablePrefix}{WiserTableNames.WiserItem} (moduleid, title, entity_type, added_by, published_environment)
-VALUES (?moduleId, ?title, ?entityType, ?username, ?publishedEnvironment);
+INSERT INTO {tablePrefix}{WiserTableNames.WiserItem} (moduleid, title, entity_type, added_by, published_environment, json, json_last_processed_date)
+VALUES (?moduleId, ?title, ?entityType, ?username, ?publishedEnvironment, ?json, ?jsonLastProcessedDate);
 SELECT LAST_INSERT_ID() AS newId;";
                     var queryResult = await databaseConnection.GetAsync(query, true);
 
@@ -584,13 +594,13 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false)
+        public async Task<WiserItemModel> UpdateAsync(ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false, bool skipDetails = false)
         {
-            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, isNewlyCreatedItem, alwaysSaveReadOnly);
+            return await UpdateAsync(this, itemId, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, createNewTransaction, skipPermissionsCheck, isNewlyCreatedItem, alwaysSaveReadOnly, skipDetails);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false)
+        public async Task<WiserItemModel> UpdateAsync(IWiserItemsService wiserItemsService, ulong itemId, WiserItemModel wiserItem, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, bool isNewlyCreatedItem = false, bool alwaysSaveReadOnly = false, bool skipDetails = false)
         {
             if (itemId <= 0)
             {
@@ -804,6 +814,14 @@ GROUP BY ep.property_name";
                             databaseConnection.AddParameter("changed_by", username);
                             updateQueryParts.Add("changed_by = ?changed_by");
                         }
+                        
+                        if (entityTypeSettings.StoreType is StoreType.Hybrid or StoreType.DocumentStore)
+                        {
+                            databaseConnection.AddParameter("json", wiserItem.Json);
+                            updateQueryParts.Add("json = ?json");
+                            databaseConnection.AddParameter("jsonLastProcessedDate", wiserItem.JsonLastProcessedDate);
+                            updateQueryParts.Add("json_last_processed_date = ?jsonLastProcessedDate");
+                        }
 
                         // You should never change the entity type of an item with this function, unless the entity type is still empty in the database.
                         if (!String.IsNullOrEmpty(wiserItem.EntityType) && String.IsNullOrEmpty(entityTypeInDatabase))
@@ -837,7 +855,7 @@ UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET {String.Join(",", updateQuer
                         wiserItem.Changed = false;
                     }
 
-                    if ((wiserItem.Details == null || !wiserItem.Details.Any()) && !insertQueryBuilder.Any() && !updateQueryBuilder.Any())
+                    if (skipDetails || ((wiserItem.Details == null || !wiserItem.Details.Any()) && !insertQueryBuilder.Any() && !updateQueryBuilder.Any()))
                     {
                         if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                         return wiserItem;
@@ -2435,10 +2453,9 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             }
 
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
-
+            var entitySettings = await wiserItemsService.GetEntityTypeSettingsAsync(entityType);
+            
             var where = new List<string>();
-            var join = "";
-            var joinDeleted = "";
             if (itemId > 0)
             {
                 where.Add("item.id = ?itemId");
@@ -2448,6 +2465,36 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             {
                 where.Add("item.unique_uuid = ?uniqueId");
             }
+
+            // If the item is stored as hybrid or in document store get the stored JSON and deserialize it.
+            if (entitySettings.StoreType is StoreType.Hybrid or StoreType.DocumentStore)
+            {
+                databaseConnection.AddParameter("itemId", itemId);
+                
+                var jsonQuery = $@"SELECT item.id, item.json FROM {tablePrefix}{WiserTableNames.WiserItem} AS item WHERE {String.Join(" AND ", where)} AND item.json IS NOT NULL";
+                if (!returnNullIfDeleted)
+                {
+                    jsonQuery += $@" UNION SELECT item.id, item.json FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item WHERE {String.Join(" AND ", where)}  AND item.json IS NOT NULL";
+                }
+
+                var jsonDataTable = await databaseConnection.GetAsync(jsonQuery, true);
+                if (jsonDataTable.Rows.Count > 0)
+                {
+                    var item = JsonConvert.DeserializeObject<WiserItemModel>(jsonDataTable.Rows[0].Field<string>("json"));
+                    item.Id = jsonDataTable.Rows[0].Field<ulong>("id");
+                    return item;
+                }
+
+                // If no entry is found for the document store return null.
+                // For hybrid store continue to get the details from the tables, the item has already been processed.
+                if (entitySettings.StoreType == StoreType.DocumentStore)
+                {
+                    return null;
+                }
+            }
+
+            var join = "";
+            var joinDeleted = "";
 
             if (!String.IsNullOrEmpty(languageCode))
             {
@@ -2474,7 +2521,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
 FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
 {join}
 LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id                                        
-{(where.Count > 0 ? $"WHERE {String.Join(" AND ", where)}" : "")}";
+WHERE {String.Join(" AND ", where)}";
 
             if (!returnNullIfDeleted)
             {
@@ -2489,7 +2536,7 @@ SELECT
 FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
 {joinDeleted}
 LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id                                        
-{(where.Count > 0 ? $"WHERE {String.Join(" AND ", where)}" : "")}";
+WHERE {String.Join(" AND ", where)}";
             }
 
             var dataTable = await databaseConnection.GetAsync(query, true);

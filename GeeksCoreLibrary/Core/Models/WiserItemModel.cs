@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Core.Models
 {
@@ -310,6 +311,43 @@ namespace GeeksCoreLibrary.Core.Models
                     Changed = true;
                 }
                 entityType = value;
+            }
+        }
+
+        private string json;
+
+        /// <summary>
+        /// Gets or sets the JSON of the item. Used for document store and hybrid mode.
+        /// </summary>
+        [JsonIgnore]
+        public string Json
+        {
+            get => json;
+            set
+            {
+                if (json != value)
+                {
+                    Changed = true;
+                }
+                json = value;
+            }
+        }
+
+        private DateTime? jsonLastProcessedDate;
+        
+        /// <summary>
+        /// Gets or sets the date and time of when the JSON was last processed to the details. Used for hybrid mode.
+        /// </summary>
+        public DateTime? JsonLastProcessedDate
+        {
+            get => jsonLastProcessedDate;
+            set
+            {
+                if (jsonLastProcessedDate != value)
+                {
+                    Changed = true;
+                }
+                jsonLastProcessedDate = value;
             }
         }
 
