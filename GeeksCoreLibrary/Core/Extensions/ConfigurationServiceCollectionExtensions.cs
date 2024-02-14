@@ -117,6 +117,12 @@ namespace GeeksCoreLibrary.Core.Extensions
                     Predicate = _ => true,
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 });
+                
+                endpoints.MapHealthChecks("/health/wts", new HealthCheckOptions()
+                {
+                    Predicate = healthCheck => healthCheck.Tags.Contains("WTS"),
+                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+                });
             });
 
             builder.HandleStartupFunctions();

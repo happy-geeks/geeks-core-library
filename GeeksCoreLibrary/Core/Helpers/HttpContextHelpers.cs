@@ -22,7 +22,9 @@ namespace GeeksCoreLibrary.Core.Helpers
             "/template.jcl",
             $"/{Components.OrderProcess.Models.Constants.CheckoutPage}",
             $"/{Components.OrderProcess.Models.Constants.PaymentInPage}",
-            $"/{Components.OrderProcess.Models.Constants.PaymentOutPage}"
+            $"/{Components.OrderProcess.Models.Constants.PaymentOutPage}",
+            "/health",
+            "/health/wts"
         };
 
         /// <summary>
