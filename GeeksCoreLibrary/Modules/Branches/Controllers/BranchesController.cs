@@ -18,14 +18,14 @@ namespace GeeksCoreLibrary.Modules.Branches.Controllers
             this.databaseHelpersService = databaseHelpersService;
         }
 
-        [Route("{dataBaseName}")]
+        [HttpGet("{dataBaseName}")]
         public async Task<IActionResult> SwitchToBranchAsync(string databaseName)
         {
             if (!await databaseHelpersService.DatabaseExistsAsync(databaseName))
             {
                 return NotFound($"Database / branch with name '{databaseName}' does not exist.");
             }
-            
+
             branchesService.SaveDatabaseNameToCookie(databaseName);
             return Redirect("/");
         }
