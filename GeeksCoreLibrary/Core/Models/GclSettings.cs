@@ -2,6 +2,7 @@
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
+using GeeksCoreLibrary.Modules.MessageBroker.Enums;
 using Microsoft.AspNetCore.Http;
 
 namespace GeeksCoreLibrary.Core.Models
@@ -256,5 +257,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// The SameSite mode to use for cookies.
         /// </summary>
         public SameSiteMode CookieSameSiteMode { get; set; } = SameSiteMode.Lax;
+
+
+        public MessageBrokers MessageBroker { get; set; } = MessageBrokers.None;
+        
+        public string MessageBrokerConnectionString { get; set; }
     }
 }

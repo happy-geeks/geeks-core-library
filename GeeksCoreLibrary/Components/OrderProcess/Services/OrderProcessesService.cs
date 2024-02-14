@@ -26,6 +26,7 @@ using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.MeasurementProtocol.Interfaces;
+using GeeksCoreLibrary.Modules.MessageBroker.Services;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
@@ -57,6 +58,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         private readonly IHtmlToPdfConverterService htmlToPdfConverterService;
         private readonly GclSettings gclSettings;
         private readonly IMeasurementProtocolService measurementProtocolService;
+        private readonly IMessageService messageService;
 
         /// <summary>
         /// Creates a new instance of <see cref="OrderProcessesService"/>.
@@ -74,6 +76,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             IObjectsService objectsService,
             IMeasurementProtocolService measurementProtocolService,
             IHtmlToPdfConverterService htmlToPdfConverterService,
+            IMessageService messageService,
             IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
@@ -88,6 +91,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             this.logger = logger;
             this.objectsService = objectsService;
             this.htmlToPdfConverterService = htmlToPdfConverterService;
+            this.messageService = messageService;
             this.gclSettings = gclSettings.Value;
             this.measurementProtocolService = measurementProtocolService;
         }
@@ -1246,6 +1250,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         await measurementProtocolService.PurchaseEventAsync(orderProcessSettings, main, lines, basketSettings, main.GetDetailValue(Constants.UniquePaymentNumberProperty));
                     }
                 }
+                
+                await messageService.SendAsync("wiser.order.payment.success", main.Id);
             }
 
             if ((orderProcessSettings == null) || (hasAlreadyBeenConvertedToOrderBefore))
