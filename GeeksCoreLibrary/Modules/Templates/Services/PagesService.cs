@@ -461,8 +461,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Check if some component is adding external JavaScript libraries to the page.
-            var externalScripts = externalJavascript.Select(ej => new JavaScriptResourceModel { Uri = ej.Uri, Hash = ej.Hash }).ToList();
-            foreach (var externalScript in externalJavascript.Where(externalScript => !externalScript.Uri.IsAbsoluteUri))
+            var externalScripts = externalJavascript.Select(ej => new JavaScriptResourceModel { Uri = new Uri(ej.Uri.OriginalString, UriKind.RelativeOrAbsolute), Hash = ej.Hash }).ToList();
+            foreach (var externalScript in externalScripts.Where(externalScript => !externalScript.Uri.IsAbsoluteUri))
             {
                 // Turn relative URI into absolute.
                 externalScript.Uri = new Uri($"{HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}{externalScript.Uri.OriginalString}");
