@@ -55,7 +55,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserItemDetail,
-                LastUpdate = new DateTime(2021, 9, 1),
+                LastUpdate = new DateTime(2024, 2, 19),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -64,13 +64,46 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("groupname", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                     new("key", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                     new("value", MySqlDbType.VarChar, 1000, notNull: true, defaultValue: ""),
+                    new("value_as_int", MySqlDbType.Int64, isVirtual: true, virtualType: VirtualTypes.Virtual, virtualExpression: "CAST(`value` AS SIGNED)"),
+                    new("value_as_decimal", MySqlDbType.Decimal, isVirtual: true, virtualType: VirtualTypes.Virtual, virtualExpression: "CAST(`value` AS DECIMAL(65,30))"),
                     new("long_value", MySqlDbType.MediumText)
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
-                    new(WiserTableNames.WiserItemDetail, "key_value", IndexTypes.Normal, new List<string> { "key", "value" }),
-                    new(WiserTableNames.WiserItemDetail, "item_id_key_value", IndexTypes.Normal, new List<string> { "item_id", "key", "value" }),
-                    new(WiserTableNames.WiserItemDetail, "item_id_group", IndexTypes.Normal, new List<string> { "item_id", "groupname", "key" })
+                    new(WiserTableNames.WiserItemDetail, "key_value", IndexTypes.Normal, new List<string> { "key(50)", "value(100)" }),
+                    new(WiserTableNames.WiserItemDetail, "key_int_value", IndexTypes.Normal, new List<string> { "key(50)", "value_as_int" }),
+                    new(WiserTableNames.WiserItemDetail, "key_decimal_value", IndexTypes.Normal, new List<string> { "key(50)", "value_as_decimal" }),
+                    new(WiserTableNames.WiserItemDetail, "item_id_key_value", IndexTypes.Normal, new List<string> { "item_id", "key(40)", "value(40)" }),
+                    new(WiserTableNames.WiserItemDetail, "item_id_key_int_value", IndexTypes.Normal, new List<string> { "item_id", "key(40)", "value_as_int" }),
+                    new(WiserTableNames.WiserItemDetail, "item_id_key_decimal_value", IndexTypes.Normal, new List<string> { "item_id", "key(40)", "value_as_decimal" }),
+                    new(WiserTableNames.WiserItemDetail, "item_id_group", IndexTypes.Normal, new List<string> { "item_id", "groupname", "key(40)" })
+                }
+            },
+
+            // wiser_itemlinkdetail
+            new WiserTableDefinitionModel
+            {
+                Name = WiserTableNames.WiserItemLinkDetail,
+                LastUpdate = new DateTime(2024, 2, 19),
+                Columns = new List<ColumnSettingsModel>
+                {
+                    new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                    new("language_code", MySqlDbType.VarChar, 5, notNull: true, defaultValue: "", comment: "leeg betekent beschikbaar voor alle talen"),
+                    new("itemlink_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                    new("groupname", MySqlDbType.VarChar, 100, notNull: true, defaultValue: "", comment: "optionele groepering van items, zoals een 'specs' tabel"),
+                    new("key", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
+                    new("value", MySqlDbType.VarChar, 1000, notNull: true, defaultValue: ""),
+                    new("value_as_int", MySqlDbType.Int64, isVirtual: true, virtualType: VirtualTypes.Virtual, virtualExpression: "CAST(`value` AS SIGNED)"),
+                    new("value_as_decimal", MySqlDbType.Decimal, isVirtual: true, virtualType: VirtualTypes.Virtual, virtualExpression: "CAST(`value` AS DECIMAL(65,30))"),
+                    new("long_value", MySqlDbType.MediumText, comment: "Voor waardes die niet in 'value' passen, zoals van HTMLeditors")
+                },
+                Indexes = new List<IndexSettingsModel>
+                {
+                    new(WiserTableNames.WiserItemLinkDetail, "itemlink_key", IndexTypes.Unique, new List<string> { "itemlink_id", "key", "language_code" }, "voor opbouwen productoverzicht"),
+                    new(WiserTableNames.WiserItemLinkDetail, "itemlink_id", IndexTypes.Normal, new List<string> { "itemlink_id" }, "voor zoeken waardes van 1 item"),
+                    new(WiserTableNames.WiserItemLinkDetail, "key_value", IndexTypes.Normal, new List<string> { "key(50)", "value(100)" }, "filteren van items"),
+                    new(WiserTableNames.WiserItemLinkDetail, "key_int_value", IndexTypes.Normal, new List<string> { "key(50)", "value_as_int" }),
+                    new(WiserTableNames.WiserItemLinkDetail, "key_decimal_value", IndexTypes.Normal, new List<string> { "key(50)", "value_as_decimal" })
                 }
             },
 

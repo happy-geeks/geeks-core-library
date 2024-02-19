@@ -293,7 +293,25 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             foreach (var index in indexes.Where(index => !String.IsNullOrWhiteSpace(index.Name) && index.Fields != null && index.Fields.Any()))
             {
-                var createIndexQuery = $"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue(false)}` (`{String.Join("`,`", index.Fields.Select(f => f.ToMySqlSafeValue(false)))}`)";
+                // Create a list of the fields. This is to ensure the sub-part (length or expression) is handled correctly and not considered as part of the field's name.
+                var fields = new List<string>(index.Fields.Count);
+                foreach (var field in index.Fields)
+                {
+                    var subPartStart = field.LastIndexOf('(');
+                    var subPartEnd = field.LastIndexOf(')');
+                    // Check if the field contains both opening and closing parentheses and if the closing parenthesis comes after the opening parenthesis.
+                    if (subPartStart == -1 || subPartEnd == -1 || subPartStart > subPartEnd)
+                    {
+                        // Either the '(' or ')' is missing, or '(' comes after ')'.
+                        fields.Add($"`{field.ToMySqlSafeValue(false)}`");
+                        continue;
+                    }
+
+                    fields.Add($"`{field[..subPartStart].ToMySqlSafeValue(false)}`{field[subPartStart..].ToMySqlSafeValue(false)}");
+                }
+
+                var commentPart = String.IsNullOrWhiteSpace(index.Comment) ? String.Empty : $" COMMENT '{index.Comment.ToMySqlSafeValue(false)}'";
+                var createIndexQuery = $"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue(false)}` ({String.Join(",", fields)}){commentPart}";
 
                 databaseConnection.AddParameter("indexName", index.Name);
 
@@ -647,49 +665,59 @@ ON DUPLICATE KEY UPDATE last_update = VALUES(last_update)");
                 queryBuilder.Append(" UNSIGNED");
             }
 
+            if (settings.IsVirtual)
+            {
+                var virtualType = settings.VirtualType.ToString("G").ToUpperInvariant();
+                queryBuilder.Append($" GENERATED ALWAYS AS ({settings.VirtualExpression}) {virtualType}");
+            }
+
             if (settings.NotNull)
             {
                 queryBuilder.Append(" NOT NULL");
             }
 
-            if (settings.DefaultValue != null)
+            // Some modifiers/keywords don't work with virtual columns.
+            if (!settings.IsVirtual)
             {
-                if (settings.DefaultValue.Equals("CURRENT_TIMESTAMP"))
+                if (settings.DefaultValue != null)
                 {
-                    queryBuilder.Append(" DEFAULT CURRENT_TIMESTAMP");
-                }
-                else if (settings.Type == MySqlDbType.Enum)
-                {
-                    if (settings.EnumValues == null || !settings.EnumValues.Any())
+                    if (settings.DefaultValue.Equals("CURRENT_TIMESTAMP"))
                     {
-                        throw new DatabaseColumnMissingEnumValuesException(tableName, settings.Name);
+                        queryBuilder.Append(" DEFAULT CURRENT_TIMESTAMP");
                     }
-
-                    if (!String.IsNullOrEmpty(settings.DefaultValue) && settings.EnumValues.Contains(settings.DefaultValue))
+                    else if (settings.Type == MySqlDbType.Enum)
                     {
-                        // Given default value exists in the list, so use it.
+                        if (settings.EnumValues == null || !settings.EnumValues.Any())
+                        {
+                            throw new DatabaseColumnMissingEnumValuesException(tableName, settings.Name);
+                        }
+
+                        if (!String.IsNullOrEmpty(settings.DefaultValue) && settings.EnumValues.Contains(settings.DefaultValue))
+                        {
+                            // Given default value exists in the list, so use it.
+                            queryBuilder.Append($" DEFAULT {settings.DefaultValue.ToMySqlSafeValue(true)}");
+                        }
+                        else if (settings.NotNull)
+                        {
+                            // Given default value doesn't exist, and null values aren't allowed, so use first value from list.
+                            queryBuilder.Append($" DEFAULT {settings.EnumValues.First().ToMySqlSafeValue(true)}");
+                        }
+                    }
+                    else
+                    {
                         queryBuilder.Append($" DEFAULT {settings.DefaultValue.ToMySqlSafeValue(true)}");
                     }
-                    else if (settings.NotNull)
-                    {
-                        // Given default value doesn't exist, and null values aren't allowed, so use first value from list.
-                        queryBuilder.Append($" DEFAULT {settings.EnumValues.First().ToMySqlSafeValue(true)}");
-                    }
                 }
-                else
+
+                if (settings.UpdateTimeStampOnChange)
                 {
-                    queryBuilder.Append($" DEFAULT {settings.DefaultValue.ToMySqlSafeValue(true)}");
+                    queryBuilder.Append(" ON UPDATE CURRENT_TIMESTAMP");
                 }
-            }
 
-            if (settings.UpdateTimeStampOnChange)
-            {
-                queryBuilder.Append(" ON UPDATE CURRENT_TIMESTAMP");
-            }
-
-            if (settings.AutoIncrement)
-            {
-                queryBuilder.Append(" AUTO_INCREMENT");
+                if (settings.AutoIncrement)
+                {
+                    queryBuilder.Append(" AUTO_INCREMENT");
+                }
             }
 
             if (!String.IsNullOrWhiteSpace(settings.Comment))
