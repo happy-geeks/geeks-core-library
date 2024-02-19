@@ -65,7 +65,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("key", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                     new("value", MySqlDbType.VarChar, 1000, notNull: true, defaultValue: ""),
                     new("value_as_int", MySqlDbType.Int64, isVirtual: true, virtualType: VirtualTypes.Virtual, virtualExpression: "CAST(`value` AS SIGNED)"),
-                    new("value_as_decimal", MySqlDbType.Decimal, isVirtual: true, virtualType: VirtualTypes.Virtual, virtualExpression: "CAST(`value` AS DECIMAL(65,30))"),
+                    new("value_as_decimal", MySqlDbType.Decimal, 65, 30, isVirtual: true, virtualType: VirtualTypes.Virtual, virtualExpression: "CAST(`value` AS DECIMAL(65,30))"),
                     new("long_value", MySqlDbType.MediumText)
                 },
                 Indexes = new List<IndexSettingsModel>
@@ -94,7 +94,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("key", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                     new("value", MySqlDbType.VarChar, 1000, notNull: true, defaultValue: ""),
                     new("value_as_int", MySqlDbType.Int64, isVirtual: true, virtualType: VirtualTypes.Virtual, virtualExpression: "CAST(`value` AS SIGNED)"),
-                    new("value_as_decimal", MySqlDbType.Decimal, isVirtual: true, virtualType: VirtualTypes.Virtual, virtualExpression: "CAST(`value` AS DECIMAL(65,30))"),
+                    new("value_as_decimal", MySqlDbType.Decimal, 65, 30, isVirtual: true, virtualType: VirtualTypes.Virtual, virtualExpression: "CAST(`value` AS DECIMAL(65,30))"),
                     new("long_value", MySqlDbType.MediumText, comment: "Voor waardes die niet in 'value' passen, zoals van HTMLeditors")
                 },
                 Indexes = new List<IndexSettingsModel>
