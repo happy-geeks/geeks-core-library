@@ -105,22 +105,27 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         public TemplateCachingModes CachingMode { get; set; } = TemplateCachingModes.NoCaching;
 
         /// <summary>
-        /// Gets or sets whether the caching is seperated by SEO url
+        /// Gets or sets whether the caching is seperated by SEO url.
         /// </summary>
         public bool CachePerUrl { get; set; }
 
         /// <summary>
-        /// Gets or sets whether the caching is seperated by query string parameters
+        /// Gets or sets whether the caching is seperated by query string parameters.
         /// </summary>
         public bool CachePerQueryString { get; set; }
 
         /// <summary>
-        /// Gets or sets whether the caching is seperated by hostname
+        /// Gets or sets whether the caching is seperated by user ID.
+        /// </summary>
+        public bool CachePerUser { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the caching is seperated by hostname.
         /// </summary>
         public bool CachePerHostName { get; set; }
 
         /// <summary>
-        /// Gets or sets whether caching is determined by a regex
+        /// Gets or sets whether caching is determined by a regex.
         /// </summary>
         public bool CacheUsingRegex { get; set; }
 

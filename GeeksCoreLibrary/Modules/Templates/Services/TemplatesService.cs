@@ -171,6 +171,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.cache_per_url,
     template.cache_per_querystring,
     template.cache_per_hostname,
+    template.cache_per_user,
     template.cache_using_regex,
     0 AS use_obfuscate,
     template.insert_mode,
@@ -299,6 +300,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                             template.cache_per_url,
                             template.cache_per_querystring,
                             template.cache_per_hostname,
+                            template.cache_per_user,
                             template.cache_using_regex,
                             template.cache_regex,
                             template.template_type
@@ -318,6 +320,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 CachePerUrl = Convert.ToBoolean(dataTable.Rows[0]["cache_per_url"]),
                 CachePerQueryString = Convert.ToBoolean(dataTable.Rows[0]["cache_per_querystring"]),
                 CachePerHostName = Convert.ToBoolean(dataTable.Rows[0]["cache_per_hostname"]),
+                CachePerUser = Convert.ToBoolean(dataTable.Rows[0]["cache_per_user"]),
                 CacheUsingRegex = Convert.ToBoolean(dataTable.Rows[0]["cache_using_regex"]),
                 CachingLocation = dataTable.Rows[0].Field<TemplateCachingLocations>("cache_location"),
                 CachingRegex = dataTable.Rows[0].Field<string>("cache_regex"),
@@ -446,6 +449,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
     template.cache_per_url,
     template.cache_per_querystring,
     template.cache_per_hostname,
+    template.cache_per_user,
     template.cache_using_regex,
     template.cache_minutes,
     template.cache_location,
@@ -530,6 +534,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
     template.cache_per_url,
     template.cache_per_querystring,
     template.cache_per_hostname,
+    template.cache_per_user,
     template.cache_using_regex,
     template.cache_minutes,
     template.cache_location,
@@ -1498,6 +1503,12 @@ ORDER BY ORDINAL_POSITION ASC";
             if (!String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
             {
                 cacheFileName.Append($"_{languagesService.CurrentLanguageCode}");
+            }
+
+            if (contentTemplate.CachePerUser)
+            {
+                var userData = await accountsService.GetUserDataFromCookieAsync();
+                cacheFileName.Append($"_{userData.MainUserId}");
             }
 
             if (String.IsNullOrEmpty(extension))
