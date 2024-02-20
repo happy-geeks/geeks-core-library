@@ -100,7 +100,7 @@ namespace GeeksCoreLibrary.Core.Services
             var storeType = storeTypeOverride;
             var entitySettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
             storeType ??= entitySettings.StoreType;
-                    
+
             if (storeType is StoreType.Hybrid or StoreType.DocumentStore)
             {
                 if (wiserItem.Id == 0)
@@ -114,7 +114,7 @@ namespace GeeksCoreLibrary.Core.Services
                     wiserItem.Json = JsonConvert.SerializeObject(wiserItem);
                     return await wiserItemsService.UpdateAsync(wiserItem.Id, wiserItem, userId, username, encryptionKey, alwaysSaveValues, saveHistory, false, skipPermissionsCheck, false, alwaysSaveReadOnly, true);
                 }
-                
+
                 // For hybrid mode check if the item has already been processed.
                 var prefix = await wiserItemsService.GetTablePrefixForEntityAsync(wiserItem.EntityType);
                 databaseConnection.AddParameter("id", wiserItem.Id);
@@ -814,7 +814,7 @@ GROUP BY ep.property_name";
                             databaseConnection.AddParameter("changed_by", username);
                             updateQueryParts.Add("changed_by = ?changed_by");
                         }
-                        
+
                         if (entityTypeSettings.StoreType is StoreType.Hybrid or StoreType.DocumentStore)
                         {
                             databaseConnection.AddParameter("json", wiserItem.Json);
@@ -1203,6 +1203,7 @@ SET @saveHistory = ?saveHistoryGcl;
                             databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
                             databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
                             databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
+                            databaseConnection.AddParameter($"key{SeoPropertySuffix}{counter}", $"{itemDetail.Key}{SeoPropertySuffix}");
 
                             var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
                             databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
@@ -2454,7 +2455,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
 
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
             var entitySettings = await wiserItemsService.GetEntityTypeSettingsAsync(entityType);
-            
+
             var where = new List<string>();
             if (itemId > 0)
             {
@@ -2470,7 +2471,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             if (entitySettings.StoreType is StoreType.Hybrid or StoreType.DocumentStore)
             {
                 databaseConnection.AddParameter("itemId", itemId);
-                
+
                 var jsonQuery = $@"SELECT item.id, item.json FROM {tablePrefix}{WiserTableNames.WiserItem} AS item WHERE {String.Join(" AND ", where)} AND item.json IS NOT NULL";
                 if (!returnNullIfDeleted)
                 {
@@ -4318,7 +4319,12 @@ WHERE {String.Join(" AND ", where)}";
 
                 columnsForQuery[setting.TableName].Add($"`{setting.ColumnName.ToMySqlSafeValue(false)}`");
 
+                databaseConnection.AddParameter("itemId", wiserItem.Id);
                 databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
+                databaseConnection.AddParameter($"languageCode{counter}", itemDetail.LanguageCode ?? "");
+                databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
+                databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
+                databaseConnection.AddParameter($"key{SeoPropertySuffix}{counter}", $"{itemDetail.Key}{SeoPropertySuffix}");
                 var (useLongValueColumn, _, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, true, true, "");
                 databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
                 databaseConnection.AddParameter($"itemDetailId{SeoPropertySuffix}{counter}", seoValueItemDetailId);
