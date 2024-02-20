@@ -2093,9 +2093,9 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     SELECT
                         vatrule.id,
                         IFNULL(country.`value`, '') AS country,
-                        IFNULL(b2b.`value`, '') AS b2b,
-                        COALESCE(vatratecode.`value`, vatrate.`value`, '') AS vatrate,
-                        IFNULL(percentage.`value`, '') AS percentage
+                        IFNULL(b2b.value_as_int, 0) AS b2b,
+                        COALESCE(vatratecode.value_as_int, vatrate.value_as_int, 0) AS vatrate,
+                        IFNULL(percentage.value_as_decimal, 0) AS percentage
                     FROM `{WiserTableNames.WiserItem}` AS vatrule
                     LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS country ON country.item_id = vatrule.id AND country.`key` = 'country'
                     LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS b2b ON b2b.item_id = vatrule.id AND b2b.`key` = 'b2b'
@@ -2109,14 +2109,14 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 {
                     var rule = new VatRule { Country = row.Field<string>("country") };
 
-                    var ruleB2BValue = row.Field<string>("b2b");
-                    if (Int32.TryParse(ruleB2BValue, out var ruleB2B)) rule.B2B = ruleB2B;
+                    var ruleB2BValue = row.Field<long>("b2b");
+                    var vatRateValue = row.Field<long>("vatrate");
+                    var rulePercentageValue = row.Field<decimal>("percentage");
 
-                    var ruleVatRateValue = row.Field<string>("vatrate");
-                    if (Int32.TryParse(ruleVatRateValue, out var ruleVatRate)) rule.VatRate = ruleVatRate;
-
-                    var rulePercentageValue = row.Field<string>("percentage");
-                    if (Decimal.TryParse(rulePercentageValue, out var rulePercentage)) rule.Percentage = rulePercentage;
+                    // The "value_as_int" column returns a long, so we need to convert it to an int.
+                    if (ruleB2BValue > 0) rule.B2B = Convert.ToInt32(ruleB2BValue);
+                    if (vatRateValue > 0) rule.VatRate = Convert.ToInt32(vatRateValue);
+                    if (rulePercentageValue > 0) rule.Percentage = rulePercentageValue;
 
                     vatRules.Add(rule);
                 }

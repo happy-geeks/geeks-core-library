@@ -13,7 +13,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
         {
         }
 
-        public ColumnSettingsModel(string name, MySqlDbType type, int length = 0, int decimals = 2, string defaultValue = null, bool notNull = false, bool addIndex = false, IndexTypes indexType = IndexTypes.Normal, bool autoIncrement = false, IList<string> enumValues = null, string comment = null, string addAfterColumnName = null, bool updateTimeStampOnChange = false, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", bool isPrimaryKey = false)
+        public ColumnSettingsModel(string name, MySqlDbType type, int length = 0, int decimals = 2, string defaultValue = null, bool notNull = false, bool addIndex = false, IndexTypes indexType = IndexTypes.Normal, bool autoIncrement = false, IList<string> enumValues = null, string comment = null, string addAfterColumnName = null, bool updateTimeStampOnChange = false, string characterSet = "utf8mb4", string collation = "utf8mb4_general_ci", bool isPrimaryKey = false, bool isVirtual = false, VirtualTypes? virtualType = null, string virtualExpression = null)
         {
             Name = name;
             Type = type;
@@ -31,6 +31,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
             CharacterSet = characterSet;
             Collation = collation;
             IsPrimaryKey = isPrimaryKey;
+            IsVirtual = isVirtual;
+            VirtualType = virtualType ?? VirtualTypes.Virtual;
+            VirtualExpression = virtualExpression;
         }
 
         /// <summary>
@@ -113,5 +116,22 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
         /// Gets or sets whether this column should be part of the primary key.
         /// </summary>
         public bool IsPrimaryKey { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether this column is a virtual column.
+        /// </summary>
+        public bool IsVirtual { get; set; }
+
+        /// <summary>
+        /// Gets or sets the type of virtual column.
+        /// This is only used if <see cref="IsVirtual"/> is set to <see langword="true"/>.
+        /// </summary>
+        public VirtualTypes VirtualType { get; set; } = VirtualTypes.Virtual;
+
+        /// <summary>
+        /// Gets or sets the expression for a virtual column.
+        /// This is only used if <see cref="IsVirtual"/> is set to <see langword="true"/>.
+        /// </summary>
+        public string VirtualExpression { get; set; }
     }
 }

@@ -33,17 +33,17 @@ namespace GeeksCoreLibrary.Modules.Redirect.Services
                 databaseConnection.AddParameter("url4", uri.PathAndQuery.Split('?')[0]); // Without host without query-strings
             }
 
-            var query = $@"SELECT 	
-	                        oldUrl.`value` AS oldUrl,
-	                        newUrl.`value` AS newUrl,
-	                        permanent.`value` AS permanent	                        
+            var query = $@"SELECT
+                            oldUrl.`value` AS oldUrl,
+                            newUrl.`value` AS newUrl,
+                            permanent.`value` AS permanent
                         FROM {WiserTableNames.WiserItem} AS redirect
                         JOIN {WiserTableNames.WiserItemDetail} AS oldUrl ON oldUrl.item_id = redirect.id AND oldUrl.`key` = 'oldurl' AND oldUrl.`value` IN (?url1, ?url2{(String.IsNullOrEmpty(uri.Query) ? String.Empty : ", ?url3, ?url4")})                            
                         JOIN {WiserTableNames.WiserItemDetail} AS newUrl ON newUrl.item_id = redirect.id AND newUrl.`key` = 'newurl'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS permanent ON permanent.item_id=redirect.id AND permanent.`key` = 'permanent'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS ordering ON ordering.item_id=redirect.id AND ordering.`key` = 'ordering'
                         WHERE redirect.entity_type = 'redirect'
-                        ORDER BY ordering.`value` + 0 DESC
+                        ORDER BY ordering.value_as_int DESC
                         LIMIT 1";
 
             var dataTable = await databaseConnection.GetAsync(query);

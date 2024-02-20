@@ -488,11 +488,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 paymentServiceProvider.id AS paymentServiceProviderId,
                                 paymentServiceProvider.title AS paymentServiceProviderTitle,
                                 paymentServiceProviderType.`value` AS paymentServiceProviderType,
-                                paymentMethodFee.`value` AS paymentMethodFee,
+                                paymentMethodFee.value_as_decimal AS paymentMethodFee,
                                 paymentMethodVisibility.`value` AS paymentMethodVisibility,
                                 paymentMethodExternalName.`value` AS paymentMethodExternalName,
-                                paymentMethodMinimalAmount.`value` AS paymentMethodMinimalAmount,
-                                paymentMethodMaximumAmount.`value` AS paymentMethodMaximumAmount,
+                                paymentMethodMinimalAmount.value_as_decimal AS paymentMethodMinimalAmount,
+                                paymentMethodMaximumAmount.value_as_decimal AS paymentMethodMaximumAmount,
                                 IF(paymentMethodUseMinimalAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMinimalAmount,
                                 IF(paymentMethodUseMaximumAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMaximumAmount,
 
@@ -664,11 +664,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                                 paymentServiceProvider.id AS paymentServiceProviderId,
                                 paymentServiceProvider.title AS paymentServiceProviderTitle,
                                 paymentServiceProviderType.`value` AS paymentServiceProviderType,
-                                paymentMethodFee.`value` AS paymentMethodFee,
+                                paymentMethodFee.value_as_decimal AS paymentMethodFee,
                                 paymentMethodVisibility.`value` AS paymentMethodVisibility,
                                 paymentMethodExternalName.`value` AS paymentMethodExternalName,
-                                paymentMethodMinimalAmount.`value` AS paymentMethodMinimalAmount,
-                                paymentMethodMaximumAmount.`value` AS paymentMethodMaximumAmount,
+                                paymentMethodMinimalAmount.value_as_decimal AS paymentMethodMinimalAmount,
+                                paymentMethodMaximumAmount.value_as_decimal AS paymentMethodMaximumAmount,
                                 CAST(IFNULL(paymentMethodUseMinimalAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMinimalAmount,
                                 CAST(IFNULL(paymentMethodUseMaximumAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMaximumAmount,
 
@@ -1340,9 +1340,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         private async Task<PaymentMethodSettingsModel> DataRowToPaymentMethodSettingsModelAsync(DataRow dataRow)
         {
             // Build the payment settings model.
-            Decimal.TryParse(dataRow.Field<string>("paymentMethodFee")?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var fee);
-            Decimal.TryParse(dataRow.Field<string?>(Constants.PaymentMethodMinimalAmountProperty)?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var minimalAmountProperty );
-            Decimal.TryParse(dataRow.Field<string?>(Constants.PaymentMethodMaximumAmountProperty)?.Replace(",", "."), NumberStyles.Any, new CultureInfo("en-US"), out var maximumAmountProperty);
+            var fee = dataRow.Field<decimal?>("paymentMethodFee") ?? 0;
+            var minimalAmountProperty = dataRow.Field<decimal?>(Constants.PaymentMethodMinimalAmountProperty) ?? 0;
+            var maximumAmountProperty = dataRow.Field<decimal?>(Constants.PaymentMethodMaximumAmountProperty) ?? 0;
 
             var result = new PaymentMethodSettingsModel
             {
