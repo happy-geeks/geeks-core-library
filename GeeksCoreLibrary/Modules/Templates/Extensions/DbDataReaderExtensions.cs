@@ -46,6 +46,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.CachePerUrl = reader.HasColumn("cache_per_url") && Convert.ToBoolean(reader.GetValue("cache_per_url"));
             template.CachePerQueryString = reader.HasColumn("cache_per_querystring") && Convert.ToBoolean(reader.GetValue("cache_per_querystring"));
             template.CachePerHostName = reader.HasColumn("cache_per_hostname") && Convert.ToBoolean(reader.GetValue("cache_per_hostname"));
+            template.CachePerUser = reader.HasColumn("cache_per_user") && Convert.ToBoolean(reader.GetValue("cache_per_user"));
             template.CacheUsingRegex = reader.HasColumn("cache_using_regex") && Convert.ToBoolean(reader.GetValue("cache_using_regex"));
             template.CachingMinutes = await reader.IsDBNullAsync("cache_minutes") ? 0 : await reader.GetFieldValueAsync<int>("cache_minutes");
             template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations)await reader.GetFieldValueAsync<int>("caching_location");

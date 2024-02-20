@@ -238,7 +238,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserTemplate,
-                LastUpdate = new DateTime(2023, 10, 20),
+                LastUpdate = new DateTime(2024, 2, 19),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -249,14 +249,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("template_type", MySqlDbType.Int32, notNull: true),
                     new("version", MySqlDbType.Int24, notNull: true),
                     new("template_id", MySqlDbType.Int32, notNull: true),
-                    new("added_on", MySqlDbType.DateTime, notNull: true),
+                    new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
                     new("added_by", MySqlDbType.VarChar, 50, notNull: true),
-                    new("changed_on", MySqlDbType.DateTime, notNull: true),
+                    new("changed_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
                     new("changed_by", MySqlDbType.VarChar, 50, notNull: true),
                     new("published_environment", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
                     new("cache_per_url", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
                     new("cache_per_querystring", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
                     new("cache_per_hostname", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
+                    new("cache_per_user", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
                     new("cache_using_regex", MySqlDbType.Int16, length: 1, notNull: true, defaultValue: "0"),
                     new("cache_minutes", MySqlDbType.Int32, notNull: true, defaultValue: "-1"),
                     new("cache_location", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
