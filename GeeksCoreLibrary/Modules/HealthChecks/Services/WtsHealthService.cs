@@ -71,6 +71,7 @@ public class WtsHealthService : IHealthCheck
                 case "success":
                 case "active":
                 {
+                    // If the service is active or was successful the last time it ran, check if it should have started more than 5 minutes ago.
                     var startRunTime = row.Field<DateTime>("next_run");
                     if (DateTime.Now > startRunTime.AddMinutes(5))
                     {
@@ -79,6 +80,7 @@ public class WtsHealthService : IHealthCheck
                     break;
                 }
                 case "running":
+                    // If the service is running, check if it has been running for longer than the provided minutes.
                     if (runningLongerThanMinutes.HasValue)
                     {
                         var startRunTime = row.Field<DateTime>("next_run");
@@ -97,9 +99,6 @@ public class WtsHealthService : IHealthCheck
                 case "failed":
                     errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} has failed");
                     break;
-                case "error":
-                    errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} is in error state");
-                    break;
                 case "warning":
                 {
                     if (countWarningAsError)
@@ -107,6 +106,7 @@ public class WtsHealthService : IHealthCheck
                         errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} is in warning state");
                     }
 
+                    // If the service is in warning state, check if it should have started more than 5 minutes ago.
                     var startRunTime = row.Field<DateTime>("next_run");
                     if (DateTime.Now > startRunTime.AddMinutes(5))
                     {
