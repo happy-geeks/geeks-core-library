@@ -95,19 +95,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             connectionStringForReading = new MySqlConnectionStringBuilder { ConnectionString = readConnection.ConnectionString };
             connectionStringForWriting = new MySqlConnectionStringBuilder { ConnectionString = writeConnection.ConnectionString };
 
-            /*if (connectionStringForReading != null)
-            {
-                connectionStringForReading.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForReading.Database;
-                // Ignore command transactions, because we have multiple connections and the MySqlConnector will otherwise library throw exceptions about that. See https://mysqlconnector.net/troubleshooting/transaction-usage//
-                connectionStringForReading.IgnoreCommandTransaction = true;
-            }
-            if (connectionStringForWriting != null)
-            {
-                connectionStringForWriting.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForWriting.Database;
-                // Ignore command transactions, because we have multiple connections and the MySqlConnector will otherwise library throw exceptions about that. See https://mysqlconnector.net/troubleshooting/transaction-usage/.
-                connectionStringForWriting.IgnoreCommandTransaction = true;
-            }*/
-
             logger.LogTrace($"Created new instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
         }
 
@@ -534,32 +521,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// </summary>
         public async Task EnsureOpenConnectionForReadingAsync()
         {
-            await EnsureConnectionIsOpenAsync();
-            /*var createdNewConnection = false;
-            if (ConnectionForReading == null)
-            {
-                ConnectionForReading = new MySqlConnection { ConnectionString = connectionStringForReading.ConnectionString };
-                createdNewConnection = true;
-            }
-
-            // Remember the database name that was connected to.
-            ConnectedDatabase = ConnectionForReading.Database;
-
-            if (ConnectionForReading.State != ConnectionState.Closed)
-            {
-                return;
-            }
-
-            await ConnectionForReading.OpenAsync();
-
-            await SetTimezone(ConnectionForReading);
-            await SetCharacterSetAndCollationAsync(ConnectionForReading);
-
-            if (createdNewConnection)
-            {
-                // Log the opening of the connection.
-                await AddConnectionOpenLogAsync(false);
-            }*/
+            await EnsureConnectionIsOpenAsync(false);
         }
 
         /// <summary>
@@ -569,38 +531,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public async Task EnsureOpenConnectionForWritingAsync()
         {
             await EnsureConnectionIsOpenAsync(true);
-            /*
-            if (String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
-            {
-                ConnectedDatabaseForWriting = null;
-                return;
-            }
-
-            var createdNewConnection = false;
-            if (ConnectionForWriting == null)
-            {
-                ConnectionForWriting = new MySqlConnection { ConnectionString = connectionStringForWriting.ConnectionString };
-                createdNewConnection = true;
-            }
-
-            // Remember the database name that was connected to.
-            ConnectedDatabaseForWriting = ConnectionForWriting.Database;
-
-            if (ConnectionForWriting.State != ConnectionState.Closed)
-            {
-                return;
-            }
-
-            await ConnectionForWriting.OpenAsync();
-
-            await SetTimezone(ConnectionForWriting);
-            await SetCharacterSetAndCollationAsync(ConnectionForWriting);
-
-            if (createdNewConnection)
-            {
-                // Log the opening of the connection.
-                await AddConnectionOpenLogAsync(true);
-            }*/
         }
 
         /// <inheritdoc />
