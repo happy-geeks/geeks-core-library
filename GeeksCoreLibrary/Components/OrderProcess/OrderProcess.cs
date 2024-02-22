@@ -708,7 +708,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
         }
 
         /// <summary>
-        /// Handles the payment out component mode and outputs the HTML for this mode.
+        /// Handles the payment return component mode and outputs the HTML for this mode.
         /// </summary>
         /// <returns>The output HTML of the component.</returns>
         private async Task<string> HandlePaymentReturnModeAsync()

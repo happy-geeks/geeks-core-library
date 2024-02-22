@@ -498,7 +498,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                                 paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
+                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
+                                IFNULL(paymentServiceProviderSuccessUrl.`value`,'') AS paymentServiceProviderSuccessUrl,
+                                IFNULL(paymentServiceProviderFailUrl.`value`,'') AS paymentServiceProviderFailUrl,
+                                IFNULL(paymentServiceProviderPendingUrl.`value`,'') AS paymentServiceProviderPendingUrl
                             FROM {WiserTableNames.WiserItem} AS orderProcess
 
                             # Payment method
@@ -519,6 +522,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSuccessUrl ON paymentServiceProviderSuccessUrl.item_id = paymentServiceProvider.id AND paymentServiceProviderSuccessUrl.`key` = '{Constants.PaymentServiceProviderSuccessUrlProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderFailUrl ON paymentServiceProviderFailUrl.item_id = paymentServiceProvider.id AND paymentServiceProviderFailUrl.`key` = '{Constants.PaymentServiceProviderFailUrlProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderPendingUrl ON paymentServiceProviderPendingUrl.item_id = paymentServiceProvider.id AND paymentServiceProviderPendingUrl.`key` = '{Constants.PaymentServiceProviderPendingUrlProperty}'
 
                             WHERE orderProcess.id = ?id
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'";
@@ -674,7 +680,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                                 paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
                                 paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
+                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero,
+                                IFNULL(paymentServiceProviderSuccessUrl.`value`,'') AS paymentServiceProviderSuccessUrl,
+                                IFNULL(paymentServiceProviderFailUrl.`value`,'') AS paymentServiceProviderFailUrl,
+                                IFNULL(paymentServiceProviderPendingUrl.`value`,'') AS paymentServiceProviderPendingUrl
                             FROM {WiserTableNames.WiserItem} AS paymentMethod
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
@@ -691,6 +700,9 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSuccessUrl ON paymentServiceProviderSuccessUrl.item_id = paymentServiceProvider.id AND paymentServiceProviderSuccessUrl.`key` = '{Constants.PaymentServiceProviderSuccessUrlProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderFailUrl ON paymentServiceProviderFailUrl.item_id = paymentServiceProvider.id AND paymentServiceProviderFailUrl.`key` = '{Constants.PaymentServiceProviderFailUrlProperty}'
+                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderPendingUrl ON paymentServiceProviderPendingUrl.item_id = paymentServiceProvider.id AND paymentServiceProviderPendingUrl.`key` = '{Constants.PaymentServiceProviderPendingUrlProperty}'
 
                             WHERE paymentMethod.id = ?id
                             AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'";
@@ -717,15 +729,23 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         /// <inheritdoc />
         public async Task<PaymentRequestResult> HandlePaymentRequestAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId)
         {
+            var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
+            var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
+            
+            // Build the fail, success and pending URLs.
+            var (failUrl, successUrl, pendingUrl) = BuildUrls(orderProcessSettings, steps);
+            var basketToConceptOrderMethod = orderProcessSettings.BasketToConceptOrderMethod;
+            
+            return await HandlePaymentRequestAsync(orderProcessesService, orderProcessId, failUrl, successUrl, pendingUrl, basketToConceptOrderMethod, orderProcessSettings);
+        }
+
+        /// <inheritdoc />
+        public async Task<PaymentRequestResult> HandlePaymentRequestAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, string failUrl, string successUrl, string pendingUrl, OrderProcessBasketToConceptOrderMethods basketToConceptOrderMethod, OrderProcessSettingsModel orderProcessSettings)
+        {
             // Retrieve baskets.
             var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync();
             var selectedPaymentMethodId = shoppingBaskets.First().Main.GetDetailValue<ulong>(Constants.PaymentMethodProperty);
-            var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
-            var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
             var conceptOrders = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
-
-            // Build the fail, success and pending URLs.
-            var (failUrl, successUrl, pendingUrl) = BuildUrls(orderProcessSettings, steps);
 
             // Check if we have a valid payment method.
             if (selectedPaymentMethodId == 0)
@@ -751,9 +771,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 };
             }
 
-            paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl;
-            paymentMethodSettings.PaymentServiceProvider.SuccessUrl = successUrl;
-            paymentMethodSettings.PaymentServiceProvider.PendingUrl = pendingUrl;
+            if (!String.IsNullOrEmpty(failUrl))
+            {
+                paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl;    
+            }
+
+            if (!String.IsNullOrEmpty(successUrl))
+            {
+                paymentMethodSettings.PaymentServiceProvider.SuccessUrl = successUrl;    
+            }
+            if (!String.IsNullOrEmpty(pendingUrl))
+            {
+                paymentMethodSettings.PaymentServiceProvider.PendingUrl = pendingUrl;    
+            }
 
             try
             {
@@ -793,10 +823,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     webhookUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext));
                 }
 
-                webhookUrl.Path = Constants.PaymentInPage;
+                webhookUrl.Path = (orderProcessId == 0 ? "directPaymentIn.gcl" : Constants.PaymentInPage);
 
                 var queryString = HttpUtility.ParseQueryString(webhookUrl.Query);
-                queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
+                if (orderProcessId > 0)
+                {
+                    queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
+                }
                 queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
                 webhookUrl.Query = queryString.ToString()!;
                 paymentMethodSettings.PaymentServiceProvider.WebhookUrl = webhookUrl.ToString();
@@ -804,10 +837,13 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 // Build the return URL.
                 var returnUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext))
                 {
-                    Path = Constants.PaymentReturnPage
+                    Path = (orderProcessId == 0 ? "directPaymentReturn.gcl" : Constants.PaymentReturnPage)
                 };
                 queryString = HttpUtility.ParseQueryString(returnUrl.Query);
-                queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
+                if (orderProcessId > 0)
+                {
+                    queryString[Constants.OrderProcessIdRequestKey] = orderProcessId.ToString();
+                }
                 queryString[Constants.SelectedPaymentMethodRequestKey] = paymentMethodSettings.Id.ToString();
                 returnUrl.Query = queryString.ToString()!;
                 paymentMethodSettings.PaymentServiceProvider.ReturnUrl = returnUrl.ToString();
@@ -827,17 +863,20 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 }
 
                 // Double check that we received a valid payment method.
-                var availablePaymentMethods = await orderProcessesService.GetPaymentMethodsAsync(orderProcessId, loggedInUser);
-
-                if (availablePaymentMethods == null || availablePaymentMethods.All(p => p.Id != selectedPaymentMethodId))
+                if (orderProcessId > 0)
                 {
-                    return new PaymentRequestResult
+                    var availablePaymentMethods = await orderProcessesService.GetPaymentMethodsAsync(orderProcessId, loggedInUser);
+
+                    if (availablePaymentMethods == null || availablePaymentMethods.All(p => p.Id != selectedPaymentMethodId))
                     {
-                        Successful = false,
-                        Action = PaymentRequestActions.Redirect,
-                        ActionData = failUrl,
-                        ErrorMessage = "Invalid payment method selected"
-                    };
+                        return new PaymentRequestResult
+                        {
+                            Successful = false,
+                            Action = PaymentRequestActions.Redirect,
+                            ActionData = failUrl,
+                            ErrorMessage = "Invalid payment method selected"
+                        };
+                    }
                 }
 
                 // Convert baskets to concept orders.
@@ -845,7 +884,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 var basketSettings = await shoppingBasketsService.GetSettingsAsync();
                 foreach (var (main, lines) in shoppingBaskets)
                 {
-                    var basketToConceptOrderMethod = orderProcessSettings.BasketToConceptOrderMethod;
                     if (paymentMethodSettings.PaymentServiceProvider.Type != PaymentServiceProviders.NoPsp && basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert)
                     {
                         // Converting a basket to a concept order is only allowed for payment methods that don't go via an external PSP.
@@ -911,7 +949,16 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 }
 
                 // Allow custom code to be executed before we send the user to the PSP and cancel the payment if the code returned false.
-                var beforeOutResult = await orderProcessesService.PaymentRequestBeforeOutAsync(conceptOrders, orderProcessSettings, paymentMethodSettings);
+                PaymentRequestResult beforeOutResult = null;
+                if (orderProcessSettings == null)
+                {
+                    beforeOutResult = await orderProcessesService.PaymentRequestBeforeOutAsync(conceptOrders, paymentMethodSettings);
+                }
+                else
+                {
+                    beforeOutResult = await orderProcessesService.PaymentRequestBeforeOutAsync(conceptOrders, orderProcessSettings, paymentMethodSettings);
+                }
+                
                 if (beforeOutResult is {Successful: false})
                 {
                     if (String.IsNullOrWhiteSpace(beforeOutResult.ActionData) && beforeOutResult.Action == PaymentRequestActions.Redirect)
@@ -980,7 +1027,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 }
 
                 // Get the correct service based on name.
-                var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Title);
+                var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Type);
                 paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
 
                 return await paymentServiceProviderService.HandlePaymentRequestAsync(conceptOrders, userDetails, paymentMethodSettings, uniquePaymentNumber);
@@ -1021,21 +1068,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var mailsToSendToUser = new List<SingleCommunicationModel>();
             var mailsToSendToMerchant = new List<SingleCommunicationModel>();
             var basketSettings = await shoppingBasketsService.GetSettingsAsync();
-
-            var emailContent = "";
-            var emailSubject = "";
-            var userEmailAddress = "";
-            var merchantEmailAddress = "";
-            var bcc = "";
-            var senderAddress = "";
-            var senderName = "";
-            var replyToAddress = "";
-            var replyToName = "";
-
             var hasAlreadyBeenConvertedToOrderBefore = false;
 
             // Make sure the language code has a value.
-            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            if ((orderProcessSettings != null) && String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
             {
                 // This function fills the property "CurrentLanguageCode".
                 await languagesService.GetLanguageCodeAsync();
@@ -1045,159 +1081,194 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             {
                 hasAlreadyBeenConvertedToOrderBefore = main.EntityType == Constants.OrderEntityType;
 
-                // Get email content and addresses.
-                var mailValues = await GetMailValuesAsync(orderProcessSettings, main, lines);
-                if (mailValues != null)
+                if (orderProcessSettings == null)
                 {
-                    emailContent = mailValues.Content;
-                    emailSubject = mailValues.Subject;
-                    userEmailAddress = mailValues.User?.Address ?? "";
-                    merchantEmailAddress = mailValues.Merchant?.Address ?? "";
-                    bcc = mailValues.Bcc;
-                    senderAddress = mailValues.Sender?.Address ?? "";
-                    senderName = mailValues.Sender?.DisplayName ?? "";
-                    replyToAddress = mailValues.ReplyTo?.Address ?? "";
-                    replyToName = mailValues.ReplyTo?.DisplayName ?? "";
-                }
+                    main.SetDetail(Constants.PaymentHistoryProperty, $"{DateTime.Now:yyyyMMddHHmmss} - {newStatus}", true);
+                    await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
 
-                // Get email content specifically for the merchant.
-                mailValues = await GetMailValuesAsync(orderProcessSettings, main, lines, true);
-                string merchantEmailContent;
-                string merchantEmailSubject;
-                string merchantBcc;
-                string merchantSenderAddress;
-                string merchantSenderName;
-                string merchantReplyToAddress;
-                string merchantReplyToName;
-                if (mailValues != null)
-                {
-                    merchantEmailContent = mailValues.Content;
-                    merchantEmailSubject = mailValues.Subject;
-                    merchantEmailAddress = mailValues.Merchant.Address;
-                    merchantBcc = mailValues.Bcc;
-                    merchantSenderAddress = mailValues.Sender?.Address ?? "";
-                    merchantSenderName = mailValues.Sender?.DisplayName ?? "";
-                    merchantReplyToAddress = mailValues.ReplyTo?.Address ?? "";
-                    merchantReplyToName = mailValues.ReplyTo?.DisplayName ?? "";
+                    // If order is not finished yet and the payment was successful.
+                    if (!hasAlreadyBeenConvertedToOrderBefore && isSuccessfulStatus && convertConceptOrderToOrder)
+                    {
+                        await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
+                    }
+
+                    // Allow custom code to be executed before we send the user to the PSP and cancel the payment if the code returned false.
+                    var success = await orderProcessesService.PaymentStatusUpdateBeforeCommunicationAsync(main, lines, hasAlreadyBeenConvertedToOrderBefore, isSuccessfulStatus);    
+                
+                    if (!success)
+                    {
+                        return false;
+                    }
                 }
                 else
                 {
-                    merchantEmailContent = emailContent;
-                    merchantEmailSubject = emailSubject;
-                    merchantBcc = bcc;
-                    merchantSenderAddress = senderAddress;
-                    merchantSenderName = senderName;
-                    merchantReplyToAddress = replyToAddress;
-                    merchantReplyToName = replyToName;
-                }
-
-                // Generate an invoice for this order and save the HTML with the order.
-                var fileId = 0UL;
-                if (orderProcessSettings.StatusUpdateInvoiceTemplateId > 0)
-                {
-                    // Get PDF settings.
-                    var pdfSettings = await htmlToPdfConverterService.GetHtmlToPdfSettingsAsync(orderProcessSettings.StatusUpdateInvoiceTemplateId, languagesService.CurrentLanguageCode);
-                    if (!String.IsNullOrWhiteSpace(pdfSettings.Html))
+                    var emailContent = "";
+                    var emailSubject = "";
+                    var userEmailAddress = "";
+                    var merchantEmailAddress = "";
+                    var bcc = "";
+                    var senderAddress = "";
+                    var senderName = "";
+                    var replyToAddress = "";
+                    var replyToName = "";
+                    
+                    // Get email content and addresses.
+                    var mailValues = await GetMailValuesAsync(orderProcessSettings, main, lines);
+                    if (mailValues != null)
                     {
-                        pdfSettings.Html = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Html, isForConfirmationEmail: true);
-                        pdfSettings.Header = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Header, isForConfirmationEmail: true);
-                        pdfSettings.Footer = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Footer, isForConfirmationEmail: true);
-                        pdfSettings.FileName = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.FileName, isForConfirmationEmail: true);
-
-                        // Save invoice HTML in order details.
-                        main.SetDetail(Constants.InvoiceHtmlProperty, pdfSettings.Html);
-
-                        // Convert HTML to PDF and save the PDF in wiser_itemfile, linked to the order.
-                        var file = await htmlToPdfConverterService.ConvertHtmlStringToPdfAsync(pdfSettings);
-                        var wiserItemFile = new WiserItemFileModel
-                        {
-                            Content = file.FileContents,
-                            FileName = file.FileDownloadName,
-                            Extension = Path.GetExtension(file.FileDownloadName),
-                            ContentType = "application/pdf",
-                            ItemId = main.Id,
-                            PropertyName = Constants.InvoicePdfProperty
-                        };
-
-                        fileId = await wiserItemsService.AddItemFileAsync(wiserItemFile, skipPermissionsCheck: true);
+                        emailContent = mailValues.Content;
+                        emailSubject = mailValues.Subject;
+                        userEmailAddress = mailValues.User?.Address ?? "";
+                        merchantEmailAddress = mailValues.Merchant?.Address ?? "";
+                        bcc = mailValues.Bcc;
+                        senderAddress = mailValues.Sender?.Address ?? "";
+                        senderName = mailValues.Sender?.DisplayName ?? "";
+                        replyToAddress = mailValues.ReplyTo?.Address ?? "";
+                        replyToName = mailValues.ReplyTo?.DisplayName ?? "";
                     }
-                }
 
-                main.SetDetail(Constants.PaymentHistoryProperty, $"{DateTime.Now:yyyyMMddHHmmss} - {newStatus}", true);
-                main.SetDetail("user_mail_body", emailContent);
-                main.SetDetail("user_mail_subject", emailSubject);
-                await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
-
-                // If order is not finished yet and the payment was successful.
-                if (!hasAlreadyBeenConvertedToOrderBefore && isSuccessfulStatus && convertConceptOrderToOrder)
-                {
-                    await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
-                }
-
-                // Allow custom code to be executed before we send the user to the PSP and cancel the payment if the code returned false.
-                var success = await orderProcessesService.PaymentStatusUpdateBeforeCommunicationAsync(main, lines, orderProcessSettings, hasAlreadyBeenConvertedToOrderBefore, isSuccessfulStatus);
-                if (!success)
-                {
-                    return false;
-                }
-
-                if (!String.IsNullOrWhiteSpace(userEmailAddress) && !String.IsNullOrWhiteSpace(emailContent))
-                {
-                    mailsToSendToUser.Add(new SingleCommunicationModel
+                    // Get email content specifically for the merchant.
+                    mailValues = await GetMailValuesAsync(orderProcessSettings, main, lines, true);
+                    string merchantEmailContent;
+                    string merchantEmailSubject;
+                    string merchantBcc;
+                    string merchantSenderAddress;
+                    string merchantSenderName;
+                    string merchantReplyToAddress;
+                    string merchantReplyToName;
+                    if (mailValues != null)
                     {
-                        Content = emailContent,
-                        Subject = emailSubject,
-                        Receivers = new List<CommunicationReceiverModel> { new() { Address = userEmailAddress } },
-                        Bcc = !String.IsNullOrWhiteSpace(bcc) ? new List<string> { bcc } : null,
-                        ReplyTo = replyToAddress,
-                        ReplyToName = replyToName,
-                        Sender = senderAddress,
-                        SenderName = senderName,
-                        WiserItemFiles = fileId > 0 ? new List<ulong> { fileId } : null
-                    });
-                }
-
-                if (!String.IsNullOrWhiteSpace(merchantEmailAddress) && !String.IsNullOrWhiteSpace(merchantEmailContent))
-                {
-                    mailsToSendToMerchant.Add(new SingleCommunicationModel
+                        merchantEmailContent = mailValues.Content;
+                        merchantEmailSubject = mailValues.Subject;
+                        merchantEmailAddress = mailValues.Merchant.Address;
+                        merchantBcc = mailValues.Bcc;
+                        merchantSenderAddress = mailValues.Sender?.Address ?? "";
+                        merchantSenderName = mailValues.Sender?.DisplayName ?? "";
+                        merchantReplyToAddress = mailValues.ReplyTo?.Address ?? "";
+                        merchantReplyToName = mailValues.ReplyTo?.DisplayName ?? "";
+                    }
+                    else
                     {
-                        Content = merchantEmailContent,
-                        Subject = merchantEmailSubject,
-                        Receivers = new List<CommunicationReceiverModel> { new() { Address = merchantEmailAddress } },
-                        Bcc = !String.IsNullOrWhiteSpace(merchantBcc) ? new List<string> { merchantBcc } : null,
-                        ReplyTo = merchantReplyToAddress,
-                        ReplyToName = merchantReplyToName,
-                        Sender = merchantSenderAddress,
-                        SenderName = merchantSenderName,
-                        WiserItemFiles = fileId > 0 ? new List<ulong> { fileId } : null
-                    });
-                }
+                        merchantEmailContent = emailContent;
+                        merchantEmailSubject = emailSubject;
+                        merchantBcc = bcc;
+                        merchantSenderAddress = senderAddress;
+                        merchantSenderName = senderName;
+                        merchantReplyToAddress = replyToAddress;
+                        merchantReplyToName = replyToName;
+                    }
 
-                if (isSuccessfulStatus && orderProcessSettings.MeasurementProtocolActive)
-                {
-                    await measurementProtocolService.PurchaseEventAsync(orderProcessSettings, main, lines, basketSettings, main.GetDetailValue(Constants.UniquePaymentNumberProperty));
+                    // Generate an invoice for this order and save the HTML with the order.
+                    var fileId = 0UL;
+                    if (orderProcessSettings.StatusUpdateInvoiceTemplateId > 0)
+                    {
+                        // Get PDF settings.
+                        var pdfSettings = await htmlToPdfConverterService.GetHtmlToPdfSettingsAsync(orderProcessSettings.StatusUpdateInvoiceTemplateId, languagesService.CurrentLanguageCode);
+                        if (!String.IsNullOrWhiteSpace(pdfSettings.Html))
+                        {
+                            pdfSettings.Html = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Html, isForConfirmationEmail: true);
+                            pdfSettings.Header = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Header, isForConfirmationEmail: true);
+                            pdfSettings.Footer = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Footer, isForConfirmationEmail: true);
+                            pdfSettings.FileName = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.FileName, isForConfirmationEmail: true);
+
+                            // Save invoice HTML in order details.
+                            main.SetDetail(Constants.InvoiceHtmlProperty, pdfSettings.Html);
+
+                            // Convert HTML to PDF and save the PDF in wiser_itemfile, linked to the order.
+                            var file = await htmlToPdfConverterService.ConvertHtmlStringToPdfAsync(pdfSettings);
+                            var wiserItemFile = new WiserItemFileModel
+                            {
+                                Content = file.FileContents,
+                                FileName = file.FileDownloadName,
+                                Extension = Path.GetExtension(file.FileDownloadName),
+                                ContentType = "application/pdf",
+                                ItemId = main.Id,
+                                PropertyName = Constants.InvoicePdfProperty
+                            };
+
+                            fileId = await wiserItemsService.AddItemFileAsync(wiserItemFile, skipPermissionsCheck: true);
+                        }
+                    }
+
+                    main.SetDetail("user_mail_body", emailContent);
+                    main.SetDetail("user_mail_subject", emailSubject);
+                    main.SetDetail(Constants.PaymentHistoryProperty, $"{DateTime.Now:yyyyMMddHHmmss} - {newStatus}", true);
+                    await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
+
+                    // If order is not finished yet and the payment was successful.
+                    if (!hasAlreadyBeenConvertedToOrderBefore && isSuccessfulStatus && convertConceptOrderToOrder)
+                    {
+                        await shoppingBasketsService.ConvertConceptOrderToOrderAsync(main, basketSettings);
+                    }
+
+                    // Allow custom code to be executed before we send the user to the PSP and cancel the payment if the code returned false.
+                    var success = await orderProcessesService.PaymentStatusUpdateBeforeCommunicationAsync(main, lines, orderProcessSettings, hasAlreadyBeenConvertedToOrderBefore, isSuccessfulStatus);
+
+                    if (!success)
+                    {
+                        return false;
+                    }
+
+                    if (!String.IsNullOrWhiteSpace(userEmailAddress) && !String.IsNullOrWhiteSpace(emailContent))
+                    {
+                        mailsToSendToUser.Add(new SingleCommunicationModel
+                        {
+                            Content = emailContent,
+                            Subject = emailSubject,
+                            Receivers = new List<CommunicationReceiverModel> { new() { Address = userEmailAddress } },
+                            Bcc = !String.IsNullOrWhiteSpace(bcc) ? new List<string> { bcc } : null,
+                            ReplyTo = replyToAddress,
+                            ReplyToName = replyToName,
+                            Sender = senderAddress,
+                            SenderName = senderName,
+                            WiserItemFiles = fileId > 0 ? new List<ulong> { fileId } : null
+                        });
+                    }
+
+                    if (!String.IsNullOrWhiteSpace(merchantEmailAddress) && !String.IsNullOrWhiteSpace(merchantEmailContent))
+                    {
+                        mailsToSendToMerchant.Add(new SingleCommunicationModel
+                        {
+                            Content = merchantEmailContent,
+                            Subject = merchantEmailSubject,
+                            Receivers = new List<CommunicationReceiverModel> { new() { Address = merchantEmailAddress } },
+                            Bcc = !String.IsNullOrWhiteSpace(merchantBcc) ? new List<string> { merchantBcc } : null,
+                            ReplyTo = merchantReplyToAddress,
+                            ReplyToName = merchantReplyToName,
+                            Sender = merchantSenderAddress,
+                            SenderName = merchantSenderName,
+                            WiserItemFiles = fileId > 0 ? new List<ulong> { fileId } : null
+                        });
+                    }
+
+                    if (isSuccessfulStatus && orderProcessSettings.MeasurementProtocolActive)
+                    {
+                        await measurementProtocolService.PurchaseEventAsync(orderProcessSettings, main, lines, basketSettings, main.GetDetailValue(Constants.UniquePaymentNumberProperty));
+                    }
                 }
             }
 
-            if (!hasAlreadyBeenConvertedToOrderBefore)
+            if ((orderProcessSettings == null) || (hasAlreadyBeenConvertedToOrderBefore))
             {
-                foreach (var mailToSend in mailsToSendToUser)
-                {
-                    if (isSuccessfulStatus && mailToSend.Receivers.Any() && !String.IsNullOrWhiteSpace(mailToSend.Content))
-                    {
-                        await communicationsService.SendEmailAsync(mailToSend);
-                    }
-                }
+                return true;
+            }
 
-                foreach (var mailToSend in mailsToSendToMerchant)
+            foreach (var mailToSend in mailsToSendToUser)
+            {
+                if (isSuccessfulStatus && mailToSend.Receivers.Any() && !String.IsNullOrWhiteSpace(mailToSend.Content))
                 {
-                    if (!mailToSend.Receivers.Any() || String.IsNullOrWhiteSpace(mailToSend.Content))
-                    {
-                        continue;
-                    }
-
                     await communicationsService.SendEmailAsync(mailToSend);
                 }
+            }
+
+            foreach (var mailToSend in mailsToSendToMerchant)
+            {
+                if (!mailToSend.Receivers.Any() || String.IsNullOrWhiteSpace(mailToSend.Content))
+                {
+                    continue;
+                }
+
+                await communicationsService.SendEmailAsync(mailToSend);
             }
 
             return true;
@@ -1212,12 +1283,17 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         /// <inheritdoc />
         public async Task<bool> HandlePaymentServiceProviderWebhookAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, ulong paymentMethodId)
         {
-            var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
             var paymentMethodSettings = await orderProcessesService.GetPaymentMethodAsync(paymentMethodId);
-            if (orderProcessSettings == null || orderProcessSettings.Id == 0 || paymentMethodSettings == null || paymentMethodSettings.Id == 0)
+            OrderProcessSettingsModel orderProcessSettings = null;
+            
+            if (orderProcessId > 0)
             {
-                logger.LogError($"Called HandlePaymentServiceProviderWebhookAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}");
-                return false;
+                orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
+                if (orderProcessSettings == null || orderProcessSettings.Id == 0 || paymentMethodSettings == null || paymentMethodSettings.Id == 0)
+                {
+                    logger.LogError($"Called HandlePaymentServiceProviderWebhookAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}");
+                    return false;
+                }    
             }
 
             // Create the correct service for the payment service provider using the factory.
@@ -1254,25 +1330,53 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
         public async Task<PaymentReturnResult> HandlePaymentReturnAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, ulong paymentMethodId)
         {
             var orderProcessSettings = await orderProcessesService.GetOrderProcessSettingsAsync(orderProcessId);
-            var paymentMethodSettings = await orderProcessesService.GetPaymentMethodAsync(paymentMethodId);
             var steps = await orderProcessesService.GetAllStepsGroupsAndFieldsAsync(orderProcessId);
-
+                
             // Build the fail, success and pending URLs.
             var (failUrl, successUrl, pendingUrl) = BuildUrls(orderProcessSettings, steps);
-
-            if (orderProcessSettings == null || orderProcessSettings.Id == 0 || paymentMethodSettings == null || paymentMethodSettings.Id == 0)
+            
+            if (orderProcessSettings == null || orderProcessSettings.Id == 0)
             {
-                logger.LogError($"Called HandlePaymentReturnAsync with invalid orderProcessId ({orderProcessId}) and/or invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}");
+                logger.LogError($"Called HandlePaymentReturnAsync with invalid orderProcessId ({orderProcessId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}");
                 return new PaymentReturnResult
                 {
                     Action = PaymentResultActions.Redirect,
                     ActionData = failUrl
                 };
             }
+            
+            return await HandlePaymentReturnAsync(orderProcessesService, orderProcessId, paymentMethodId, failUrl, successUrl, pendingUrl, orderProcessSettings);
+        }
 
-            paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl;
-            paymentMethodSettings.PaymentServiceProvider.SuccessUrl = successUrl;
-            paymentMethodSettings.PaymentServiceProvider.PendingUrl = pendingUrl;
+        /// <inheritdoc />
+        public async Task<PaymentReturnResult> HandlePaymentReturnAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, ulong paymentMethodId, string failUrl, string successUrl, string pendingUrl, OrderProcessSettingsModel orderProcessSettings)
+        {
+            var paymentMethodSettings = await orderProcessesService.GetPaymentMethodAsync(paymentMethodId);
+            
+            if (paymentMethodSettings == null || paymentMethodSettings.Id == 0)
+            {
+                logger.LogError($"Called HandlePaymentReturnAsync with invalid paymentMethodId ({paymentMethodId}). Full URL: {HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}");
+                return new PaymentReturnResult
+                {
+                    Action = PaymentResultActions.Redirect,
+                    ActionData = failUrl
+                };
+            }
+            
+            if (!String.IsNullOrEmpty(failUrl))
+            {
+                paymentMethodSettings.PaymentServiceProvider.FailUrl = failUrl;    
+            }
+
+            if (!String.IsNullOrEmpty(successUrl))
+            {
+                paymentMethodSettings.PaymentServiceProvider.SuccessUrl = successUrl;    
+            }
+            if (!String.IsNullOrEmpty(pendingUrl))
+            {
+                paymentMethodSettings.PaymentServiceProvider.PendingUrl = pendingUrl;    
+            }
+
 
             if (paymentMethodSettings.PaymentServiceProvider.Type == PaymentServiceProviders.Unknown)
             {
@@ -1322,9 +1426,25 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             // Use the decorator pattern to create an overwrite of IOrderProcessesService and then add custom code in this snippet.
             return Task.FromResult(new PaymentRequestResult { Successful = true });
         }
+        
+        /// <inheritdoc />
+        public Task<PaymentRequestResult> PaymentRequestBeforeOutAsync(List<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, PaymentMethodSettingsModel paymentMethodSettings)
+        {
+            // We do nothing here. This function is meant to overwrite in projects so custom code snippets can be executed.
+            // Use the decorator pattern to create an overwrite of IOrderProcessesService and then add custom code in this snippet.
+            return Task.FromResult(new PaymentRequestResult { Successful = true });
+        }
 
         /// <inheritdoc />
         public Task<bool> PaymentStatusUpdateBeforeCommunicationAsync(WiserItemModel main, List<WiserItemModel> lines, OrderProcessSettingsModel orderProcessSettings, bool wasHandledBefore, bool isSuccessfulStatus)
+        {
+            // We do nothing here. This function is meant to overwrite in projects so custom code snippets can be executed.
+            // Use the decorator pattern to create an overwrite of IOrderProcessesService and then add custom code in this snippet.
+            return Task.FromResult(true);
+        }
+        
+        /// <inheritdoc />
+        public Task<bool> PaymentStatusUpdateBeforeCommunicationAsync(WiserItemModel main, List<WiserItemModel> lines, bool wasHandledBefore, bool isSuccessfulStatus)
         {
             // We do nothing here. This function is meant to overwrite in projects so custom code snippets can be executed.
             // Use the decorator pattern to create an overwrite of IOrderProcessesService and then add custom code in this snippet.
@@ -1363,7 +1483,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     Type = EnumHelpers.ToEnum<PaymentServiceProviders>(dataRow.Field<string>("paymentServiceProviderType") ?? "0"),
                     LogAllRequests = dataRow.Field<string>("paymentServiceProviderLogAllRequests") == "1",
                     OrdersCanBeSetDirectlyToFinished = dataRow.Field<string>("paymentServiceProviderSetOrdersDirectlyToFinished") == "1",
-                    SkipPaymentWhenOrderAmountEqualsZero = dataRow.Field<string>("paymentServiceProviderSkipWhenOrderAmountEqualsZero") == "1"
+                    SkipPaymentWhenOrderAmountEqualsZero = dataRow.Field<string>("paymentServiceProviderSkipWhenOrderAmountEqualsZero") == "1",
+                    SuccessUrl = dataRow.Field<string>("paymentServiceProviderSuccessUrl"),
+                    PendingUrl = dataRow.Field<string>("paymentServiceProviderPendingUrl"),
+                    FailUrl = dataRow.Field<string>("paymentServiceProviderFailUrl") 
                 }
             };
 
@@ -1373,7 +1496,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             }
 
             // Build the PSP settings model based on the type of PSP.
-            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(result.PaymentServiceProvider.Title);
+            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(result.PaymentServiceProvider.Type);
             result.PaymentServiceProvider = await paymentServiceProviderService.GetProviderSettingsAsync(result.PaymentServiceProvider);
 
             return result;
