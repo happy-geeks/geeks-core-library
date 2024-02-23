@@ -71,11 +71,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                 Indexes = new List<IndexSettingsModel>
                 {
                     new(WiserTableNames.WiserItemDetail, "key_value", IndexTypes.Normal, new List<string> { "key(50)", "value(100)" }),
-                    new(WiserTableNames.WiserItemDetail, "key_int_value", IndexTypes.Normal, new List<string> { "key(50)", "value_as_int" }),
-                    new(WiserTableNames.WiserItemDetail, "key_decimal_value", IndexTypes.Normal, new List<string> { "key(50)", "value_as_decimal" }),
                     new(WiserTableNames.WiserItemDetail, "item_id_key_value", IndexTypes.Normal, new List<string> { "item_id", "key(40)", "value(40)" }),
-                    new(WiserTableNames.WiserItemDetail, "item_id_key_int_value", IndexTypes.Normal, new List<string> { "item_id", "key(40)", "value_as_int" }),
-                    new(WiserTableNames.WiserItemDetail, "item_id_key_decimal_value", IndexTypes.Normal, new List<string> { "item_id", "key(40)", "value_as_decimal" }),
                     new(WiserTableNames.WiserItemDetail, "item_id_group", IndexTypes.Normal, new List<string> { "item_id", "groupname", "key(40)" })
                 }
             },
@@ -102,8 +98,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new(WiserTableNames.WiserItemLinkDetail, "itemlink_key", IndexTypes.Unique, new List<string> { "itemlink_id", "key", "language_code" }, "voor opbouwen productoverzicht"),
                     new(WiserTableNames.WiserItemLinkDetail, "itemlink_id", IndexTypes.Normal, new List<string> { "itemlink_id" }, "voor zoeken waardes van 1 item"),
                     new(WiserTableNames.WiserItemLinkDetail, "key_value", IndexTypes.Normal, new List<string> { "key(50)", "value(100)" }, "filteren van items"),
-                    new(WiserTableNames.WiserItemLinkDetail, "key_int_value", IndexTypes.Normal, new List<string> { "key(50)", "value_as_int" }),
-                    new(WiserTableNames.WiserItemLinkDetail, "key_decimal_value", IndexTypes.Normal, new List<string> { "key(50)", "value_as_decimal" })
                 }
             },
 
