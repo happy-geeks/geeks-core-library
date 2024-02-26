@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using Microsoft.AspNetCore.Http;
@@ -87,6 +88,7 @@ public class RequestLoggingMiddleware
             databaseConnection.AddParameter("request_body", currentOptions.LogRequestBody ? await new StreamReader(context.Request.Body).ReadToEndAsync() : null);
             databaseConnection.AddParameter("environment", gclSettings.Environment.ToString());
             databaseConnection.AddParameter("start_datetime", DateTime.Now);
+            databaseConnection.AddParameter("ip_address", HttpContextHelpers.GetUserIpAddress(context));
             return await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(WiserTableNames.GclRequestLog, 0UL);
         }
         catch (Exception exception)

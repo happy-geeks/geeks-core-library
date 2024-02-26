@@ -1042,6 +1042,7 @@ public class WiserTableDefinitions
                 new("status_code", MySqlDbType.Int24),
                 new("environment", MySqlDbType.VarChar, 50, notNull: true),
                 new("user_id", MySqlDbType.UInt64),
+                new("ip_address", MySqlDbType.VarChar, 255),
                 new("extra_data", MySqlDbType.JSON),
                 new("start_datetime", MySqlDbType.DateTime, notNull: true),
                 new("end_datetime", MySqlDbType.DateTime)

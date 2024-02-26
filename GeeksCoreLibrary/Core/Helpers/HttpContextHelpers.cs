@@ -328,7 +328,11 @@ public static class HttpContextHelpers
         var result = GetHeaderValueAs<string>(httpContext, "CF_CONNECTING_IP"); // Cloud Flare IP address.
         if (String.IsNullOrWhiteSpace(result))
         {
-            result = GetHeaderValueAs<string>(httpContext, "X_FORWARDED_FOR");
+            result = GetHeaderValueAs<string>(httpContext, "True-Client-IP"); // Also Cloud Flare IP address.
+            }
+            if (String.IsNullOrWhiteSpace(result))
+            {
+                result = GetHeaderValueAs<string>(httpContext, "X_FORWARDED_FOR"); // TransIP and other providers use this.
         }
 
         if (String.IsNullOrWhiteSpace(result))
