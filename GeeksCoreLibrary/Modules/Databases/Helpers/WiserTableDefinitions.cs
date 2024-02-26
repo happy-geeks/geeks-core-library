@@ -1025,12 +1025,13 @@ public class WiserTableDefinitions
         new WiserTableDefinitionModel
         {
             Name = WiserTableNames.GclRequestLog,
-            LastUpdate = new DateTime(2024, 1, 26),
+            LastUpdate = new DateTime(2024, 2, 26),
             Columns = new List<ColumnSettingsModel>
             {
                 new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
                 new("host", MySqlDbType.VarChar, 255, notNull: true),
                 new("path", MySqlDbType.VarChar, 255),
+                new("query_string", MySqlDbType.MediumText),
                 new("scheme", MySqlDbType.VarChar, 10),
                 new("method", MySqlDbType.VarChar, 10),
                 new("protocol", MySqlDbType.VarChar, 20),
@@ -1038,17 +1039,20 @@ public class WiserTableDefinitions
                 new("request_body", MySqlDbType.MediumText),
                 new("response_headers", MySqlDbType.MediumText),
                 new("response_body", MySqlDbType.MediumText),
-                new("status_code", MySqlDbType.Int16),
+                new("status_code", MySqlDbType.Int24),
                 new("environment", MySqlDbType.VarChar, 50, notNull: true),
                 new("user_id", MySqlDbType.UInt64),
+                new("extra_data", MySqlDbType.JSON),
+                new("start_datetime", MySqlDbType.DateTime, notNull: true),
+                new("end_datetime", MySqlDbType.DateTime)
             },
             Indexes = new List<IndexSettingsModel>
             {
-                new(Constants.DatabaseConnectionLogTableName, "idx_environment", IndexTypes.Normal, new List<string> { "environment", "user_id", "status_code" }),
-                new(Constants.DatabaseConnectionLogTableName, "idx_user_id", IndexTypes.Normal, new List<string> { "user_id", "status_code" }),
-                new(Constants.DatabaseConnectionLogTableName, "idx_status_code", IndexTypes.Normal, new List<string> { "status_code" }),
-                new(Constants.DatabaseConnectionLogTableName, "idx_host", IndexTypes.Normal, new List<string> { "host", "path", "method" }),
-                new(Constants.DatabaseConnectionLogTableName, "idx_path", IndexTypes.Normal, new List<string> { "path", "method" })
+                new(WiserTableNames.GclRequestLog, "idx_environment", IndexTypes.Normal, new List<string> { "environment", "user_id", "status_code" }),
+                new(WiserTableNames.GclRequestLog, "idx_user_id", IndexTypes.Normal, new List<string> { "user_id", "status_code" }),
+                new(WiserTableNames.GclRequestLog, "idx_status_code", IndexTypes.Normal, new List<string> { "status_code" }),
+                new(WiserTableNames.GclRequestLog, "idx_host", IndexTypes.Normal, new List<string> { "host", "path", "method" }),
+                new(WiserTableNames.GclRequestLog, "idx_path", IndexTypes.Normal, new List<string> { "path", "method" })
             }
         }
     };

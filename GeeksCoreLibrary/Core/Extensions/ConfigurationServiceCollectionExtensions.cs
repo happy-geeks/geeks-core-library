@@ -51,6 +51,7 @@ using GeeksCoreLibrary.Modules.HealthChecks.Services;
 using GeeksCoreLibrary.Modules.ItemFiles.Middlewares;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WebMarkupMin.AspNetCore7;
 using WebMarkupMin.Core;
@@ -143,34 +144,44 @@ namespace GeeksCoreLibrary.Core.Extensions
             var applicationLifetime = builder.ApplicationServices.GetService<IHostApplicationLifetime>();
             applicationLifetime.ApplicationStarted.Register(async () =>
             {
-                // During startup, make sure that the log table exists, but only if the logging is enabled.
-                using var scope = builder.ApplicationServices.CreateScope();
-                var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
+                // Make sure all important tables exist and are up to date, while starting the application.
+                try
+                {
+                    using var scope = builder.ApplicationServices.CreateScope();
+                    var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
 
-                var gclSettings = scope.ServiceProvider.GetRequiredService<IOptions<GclSettings>>();
-                var tablesToUpdate = new List<string>
-                {
-                    WiserTableNames.WiserEntity,
-                    WiserTableNames.WiserPermission,
-                    WiserTableNames.WiserTemplate,
-                    WiserTableNames.WiserDynamicContent,
-                    WiserTableNames.WiserTemplateDynamicContent,
-                    WiserTableNames.WiserTemplateExternalFiles,
-                    WiserTableNames.WiserItem,
-                    WiserTableNames.WiserItemDetail,
-                    WiserTableNames.WiserItemFile,
-                    WiserTableNames.WiserItemLink,
-                    WiserTableNames.WiserItemLinkDetail
-                };
-                if (gclSettings.Value.LogOpeningAndClosingOfConnections)
-                {
-                    tablesToUpdate.Add(Modules.Databases.Models.Constants.DatabaseConnectionLogTableName);
+                    var gclSettings = scope.ServiceProvider.GetRequiredService<IOptions<GclSettings>>();
+                    var tablesToUpdate = new List<string>
+                    {
+                        WiserTableNames.WiserEntity,
+                        WiserTableNames.WiserPermission,
+                        WiserTableNames.WiserTemplate,
+                        WiserTableNames.WiserDynamicContent,
+                        WiserTableNames.WiserTemplateDynamicContent,
+                        WiserTableNames.WiserTemplateExternalFiles,
+                        WiserTableNames.WiserItem,
+                        WiserTableNames.WiserItemDetail,
+                        WiserTableNames.WiserItemFile,
+                        WiserTableNames.WiserItemLink,
+                        WiserTableNames.WiserItemLinkDetail
+                    };
+
+                    if (gclSettings.Value.LogOpeningAndClosingOfConnections)
+                    {
+                        tablesToUpdate.Add(Modules.Databases.Models.Constants.DatabaseConnectionLogTableName);
+                    }
+
+                    if (gclSettings.Value.RequestLoggingOptions.Enabled)
+                    {
+                        tablesToUpdate.Add(WiserTableNames.GclRequestLog);
+                    }
+
+                    await databaseHelpersService.CheckAndUpdateTablesAsync(tablesToUpdate);
                 }
-                if (gclSettings.Value.RequestLoggingOptions.Enabled)
+                catch (Exception exception)
                 {
-                    tablesToUpdate.Add(WiserTableNames.GclRequestLog);
+                    builder.ApplicationServices.GetService<ILogger>().LogError(exception, "Error while updating tables.");
                 }
-                await databaseHelpersService.CheckAndUpdateTablesAsync(tablesToUpdate);
             });
 
             return builder;
