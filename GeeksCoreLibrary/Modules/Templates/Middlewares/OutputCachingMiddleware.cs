@@ -124,6 +124,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 return;
             }
 
+            contentTemplate.Name ??= "Unknown";
             var cacheFileName = await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate);
             var fullCachePath = Path.Combine(cacheFolder, Models.Constants.PageCacheRootDirectoryName, contentTemplate.Type.ToString(), $"{contentTemplate.Name.StripIllegalPathCharacters()} ({contentTemplate.Id})", cacheFileName);
             var cacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
