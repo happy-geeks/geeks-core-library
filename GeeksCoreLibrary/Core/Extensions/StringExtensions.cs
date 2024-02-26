@@ -783,6 +783,11 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns>A string that can be safely used as a file name on the machine that this application runs on.</returns>
         public static string StripIllegalFilenameCharacters(this string input)
         {
+            if (String.IsNullOrEmpty(input))
+            {
+                return input;
+            }
+
             var regexSearch = Path.GetInvalidFileNameChars().ToString();
             var regex = new Regex($"[{Regex.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             var output = regex.Replace(input, "");

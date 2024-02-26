@@ -124,6 +124,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 return;
             }
 
+            contentTemplate.Name ??= "Unknown";
             var cacheFileName = await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate);
             // If the cache file name is empty, it means that caching is disabled for this template.
             if (String.IsNullOrWhiteSpace(cacheFileName))
