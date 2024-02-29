@@ -22,7 +22,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
             return GetPaymentServiceProviderService(paymentServiceProviderName);
         }
 
-        public IPaymentServiceProviderService GetPaymentServiceProviderService(string paymentServiceProviderName)
+        private IPaymentServiceProviderService GetPaymentServiceProviderService(string paymentServiceProviderName)
         {
             var serviceProviderType = FindTypeInLoadedAssemblies(paymentServiceProviderName);
             if (serviceProviderType == null)
