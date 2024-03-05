@@ -544,7 +544,8 @@ WHERE id = ?id";
             using var client = new HttpClient();
             client.Timeout = TimeSpan.FromMilliseconds(timeout);
             using var response = await client.PostAsJsonAsync($"https://www.smtpeter.com/v1/send?access_token={smtpSettings.SmtPeterSettings.ApiAccessToken}", requestBody, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
+            communication.StatusMessage = await response.Content.ReadAsStringAsync();
+            
             if (response.IsSuccessStatusCode)
             {
                 return;
