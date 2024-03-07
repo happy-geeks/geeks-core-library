@@ -15,6 +15,7 @@
         Permission,
         Query,
         Role,
-        UserRole
+        UserRole,
+        StyledOutput
     }
 }
