@@ -292,7 +292,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, bool includeLines = true)
+        public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, bool includeLines = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             var shoppingBasket = new WiserItemModel();
             var basketLines = new List<WiserItemModel>();
@@ -457,7 +457,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
                             if (userId > 0 && !settings.MultipleBasketsPossible && shoppingBasket.EntityType == Constants.BasketEntityType)
                             {
-                                foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, Constants.BasketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true)).Where(basketItemId => basketItemId != shoppingBasket.Id))
+                                foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, basketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true)).Where(basketItemId => basketItemId != shoppingBasket.Id))
                                 {
                                     await DeleteAsync(basketItemId);
                                 }
@@ -474,7 +474,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 // Check if the user is logged in and has basket from account.
                 if (user is { MainUserId: > 0 } && !settings.MultipleBasketsPossible)
                 {
-                    var linkedBaskets = await wiserItemsService.GetLinkedItemIdsAsync(user.MainUserId, Constants.BasketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true);
+                    var linkedBaskets = await wiserItemsService.GetLinkedItemIdsAsync(user.MainUserId, basketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true);
                     var basketId = linkedBaskets.FirstOrDefault(id => id > 0);
                     if (basketId > 0)
                     {
@@ -490,7 +490,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             var newBasket = false;
             var user = await accountsService.GetUserDataFromCookieAsync();
@@ -535,14 +535,14 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     {
                         if (user is {MainUserId: > 0})
                         {
-                            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, user.MainUserId, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
+                            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, user.MainUserId, basketToUserLinkType, skipPermissionsCheck: true);
                         }
                         else
                         {
                             var newlyCreatedAccount = accountsService.GetRecentlyCreatedAccountId();
                             if (newlyCreatedAccount > 0)
                             {
-                                await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, newlyCreatedAccount, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
+                                await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, newlyCreatedAccount, basketToUserLinkType, skipPermissionsCheck: true);
                             }
                         }
                     }

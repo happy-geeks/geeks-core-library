@@ -124,15 +124,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, bool includeLines = true)
+        public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, bool includeLines = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            return await shoppingBasketsService.LoadAsync(settings, itemId, encryptedItemId, connectToAccount, recursiveCall, includeLines);
+            return await shoppingBasketsService.LoadAsync(settings, itemId, encryptedItemId, connectToAccount, recursiveCall, includeLines, basketToUserLinkType);
         }
 
         /// <inheritdoc />
-        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
+        public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            return await shoppingBasketsService.SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
+            return await shoppingBasketsService.SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction, basketToUserLinkType);
         }
 
         /// <inheritdoc />
