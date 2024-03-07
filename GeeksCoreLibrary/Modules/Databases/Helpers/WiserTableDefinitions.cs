@@ -844,14 +844,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserParentUpdates,
-                LastUpdate = new DateTime(2023, 12, 14),
+                LastUpdate = new DateTime(2024, 3, 7),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                     new("target_id", MySqlDbType.UInt64),
                     new("changed_on", MySqlDbType.DateTime),
-                    new("changed_by", MySqlDbType.VarChar,50),
-                    new("target_table", MySqlDbType.VarChar,50),
+                    new("changed_by", MySqlDbType.VarChar, 50),
+                    new("target_table", MySqlDbType.VarChar, 50)
                 }                
             },
 
