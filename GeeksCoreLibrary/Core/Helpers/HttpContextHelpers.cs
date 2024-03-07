@@ -313,7 +313,7 @@ namespace GeeksCoreLibrary.Core.Helpers
         }
 
         /// <summary>
-        /// Get the real remote IP of the clint.
+        /// Get the real remote IP of the client.
         /// This will also check if there is a header from Cloud Flare or a load balancer in the request headers.
         /// </summary>
         /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
@@ -324,7 +324,7 @@ namespace GeeksCoreLibrary.Core.Helpers
             {
                 return String.Empty;
             }
-            
+
             var result = GetHeaderValueAs<string>(httpContext, "CF_CONNECTING_IP"); // Cloud Flare IP address.
             if (String.IsNullOrWhiteSpace(result))
             {
@@ -337,6 +337,17 @@ namespace GeeksCoreLibrary.Core.Helpers
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Get whether the current request is from localhost.
+        /// </summary>
+        /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
+        /// <returns>True if the current request is from localhost, false if it's not.</returns>
+        public static bool IsLocalhost(HttpContext httpContext)
+        {
+            var ip = httpContext?.Connection.RemoteIpAddress?.ToString();
+            return ip is "::1" or "127.0.0.1";
         }
 
         /// <summary>
