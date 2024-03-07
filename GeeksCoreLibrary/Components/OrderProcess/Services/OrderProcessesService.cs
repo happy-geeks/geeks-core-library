@@ -823,7 +823,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     webhookUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext));
                 }
 
-                webhookUrl.Path = (orderProcessId == 0 ? "directPaymentIn.gcl" : Constants.PaymentInPage);
+                webhookUrl.Path = (orderProcessId == 0 ? Constants.DirectPaymentInPage : Constants.PaymentInPage);
 
                 var queryString = HttpUtility.ParseQueryString(webhookUrl.Query);
                 if (orderProcessId > 0)
@@ -837,7 +837,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 // Build the return URL.
                 var returnUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext))
                 {
-                    Path = (orderProcessId == 0 ? "directPaymentReturn.gcl" : Constants.PaymentReturnPage)
+                    Path = (orderProcessId == 0 ? Constants.DirectPaymentReturnPage : Constants.PaymentReturnPage)
                 };
                 queryString = HttpUtility.ParseQueryString(returnUrl.Query);
                 if (orderProcessId > 0)
