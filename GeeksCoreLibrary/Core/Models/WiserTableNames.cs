@@ -47,6 +47,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public const string WiserModule = "wiser_module";
         /// <summary>
+        /// This table contains updates for updating parents items through the wts
+        /// </summary>
+        public const string WiserParentUpdates = "wiser_parent_updates";
+        /// <summary>
         /// This table contains dynamic queries that can be used in certain places in Wiser, such as grids and action buttons.
         /// </summary>
         public const string WiserQuery = "wiser_query";
