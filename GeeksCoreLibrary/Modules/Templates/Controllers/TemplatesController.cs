@@ -70,6 +70,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 var context = HttpContext;
                 var templateName = HttpContextHelpers.GetRequestValue(context, "templatename");
                 Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
+                if (templateId <= 0)
+                {
+                    Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "id"), out templateId);
+                }
                 logger.LogDebug($"GetAsync content from HTML template, templateName: '{templateName}', templateId: '{templateId}'.");
 
                 if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)

@@ -1026,7 +1026,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     };
                 }
 
-                // Get the correct service based on name.
+                // Get the correct service based on type.
                 var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Type);
                 paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
 
