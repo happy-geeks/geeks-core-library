@@ -4,11 +4,13 @@ using System.IO;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
+using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
@@ -82,6 +84,27 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentOut, orderProcessId);
             return Content(html, "text/html");
         }
+        
+        [Route(Constants.DirectPaymentOutPage)]
+        public async Task<IActionResult> DirectPaymentOutAsync()
+        {
+            if (httpContextAccessor?.HttpContext == null)
+            {
+                return Content("HttpContext not available.", "text/html");
+            }
+
+            var paymentRequestResult = await orderProcessesService.HandlePaymentRequestAsync(orderProcessesService, 0, "", "", "", OrderProcessBasketToConceptOrderMethods.Convert, null);
+            switch (paymentRequestResult.Action)
+            {
+                case PaymentRequestActions.Redirect:
+                    httpContextAccessor.HttpContext.Response.Redirect(paymentRequestResult.ActionData);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(paymentRequestResult.Action), paymentRequestResult.Action.ToString());
+            }
+            
+            return Content("", "text/html");
+        }
 
         [Route(Constants.PaymentInPage)]
         [IgnoreAntiforgeryToken]
@@ -98,6 +121,30 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentIn, orderProcessId);
             return Content(html, "text/html");
         }
+        
+        [Route(Constants.DirectPaymentInPage)]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> DirectPaymentInAsync()
+        {
+            if (httpContextAccessor?.HttpContext == null)
+            {
+                return Content("HttpContext not available.", "text/html");
+            }
+
+            var paymentMethodFromRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.SelectedPaymentMethodRequestKey);
+            if (!UInt64.TryParse(paymentMethodFromRequest, out var paymentMethodId) || paymentMethodId == 0)
+            {
+                throw new Exception($"Invalid payment method ID: {paymentMethodFromRequest}");
+            }
+
+            var success = await orderProcessesService.HandlePaymentServiceProviderWebhookAsync(0, paymentMethodId);
+            if (!success)
+            {
+                throw new Exception("Payment update webhook failed.");
+            }
+
+            return Content("", "text/html");
+        }
 
         [Route(Constants.PaymentReturnPage)]
         [IgnoreAntiforgeryToken]
@@ -113,6 +160,38 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
 
             var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentReturn, orderProcessId);
             return Content(html, "text/html");
+        }
+        
+        [Route(Constants.DirectPaymentReturnPage)]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> DirectPaymentReturnAsync()
+        {
+            if (httpContextAccessor?.HttpContext == null)
+            {
+                return Content("HttpContext not available.", "text/html");
+            }
+
+            var paymentMethodFromRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor.HttpContext, Constants.SelectedPaymentMethodRequestKey);
+            if (!UInt64.TryParse(paymentMethodFromRequest, out var paymentMethodId) || paymentMethodId == 0)
+            {
+                throw new Exception($"Invalid payment method ID: {paymentMethodFromRequest}");
+            }
+
+            var result = await orderProcessesService.HandlePaymentReturnAsync(orderProcessesService,0, paymentMethodId,"","", "",null);
+
+            switch (result.Action)
+            {
+                case PaymentResultActions.Redirect:
+                    httpContextAccessor.HttpContext.Response.Redirect(result.ActionData);
+                    break;
+                case PaymentResultActions.None:
+                    // Do nothing.
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(result.Action), result.Action.ToString());
+            }
+
+            return Content("", "text/html");
         }
 
         [Route(Constants.DownloadInvoicePage + "{orderId:int}")]
