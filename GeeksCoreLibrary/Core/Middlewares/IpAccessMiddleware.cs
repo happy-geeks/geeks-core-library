@@ -23,6 +23,13 @@ public class IpAccessMiddleware
     public async Task Invoke(HttpContext context, IObjectsService objectsService)
     {
         logger.LogDebug("Invoked IpAccessMiddleware");
+        if (HttpContextHelpers.IsLocalhost(context))
+        {
+            logger.LogDebug("Current request is from localhost, so skip any ip access check.");
+            await next.Invoke(context);
+            return;
+        }
+
         var userIp = HttpContextHelpers.GetUserIpAddress(context);
         var blockedIps = await objectsService.FindSystemObjectByDomainNameAsync("blockips");
         if (!String.IsNullOrEmpty(blockedIps) && blockedIps.Split(';').Contains(userIp))
