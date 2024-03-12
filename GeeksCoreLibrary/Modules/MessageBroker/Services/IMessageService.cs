@@ -4,9 +4,8 @@ using System.Threading.Tasks;
 
 namespace GeeksCoreLibrary.Modules.MessageBroker.Services;
 
-public interface IMessageService
+public interface IMessageService : IMessageSender, IMessageReceiver
 {
-    Task SendAsync<T>(string queue, T message, CancellationToken cancellationToken = default);
     
-    Task ReceiveAsync<T>(string queue, Func<T, Task> onMessage, CancellationToken cancellationToken = default);
 }
+

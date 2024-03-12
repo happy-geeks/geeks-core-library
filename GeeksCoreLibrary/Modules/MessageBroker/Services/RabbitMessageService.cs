@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 namespace GeeksCoreLibrary.Modules.MessageBroker.Services;
 
 /// <inheritdoc cref="GeeksCoreLibrary.Modules.MessageBroker.Services.IMessageService" />
-public class RabbitMessageService : IMessageService, IScopedService, IDisposable
+public class RabbitMessageService : IMessageService, IScopedService, ISingletonService, IDisposable
 {
     private readonly ILogger<RabbitMessageService> logger;
     private readonly GclSettings gclSettings;
@@ -24,18 +24,18 @@ public class RabbitMessageService : IMessageService, IScopedService, IDisposable
     }
     
     /// <inheritdoc />
-    public Task SendAsync<T>(string queue, T message, CancellationToken cancellationToken = default)
+    public async Task SendAsync<T>(string queue, T message, CancellationToken cancellationToken = default)
     {
         if (gclSettings.MessageBroker != MessageBrokers.RabbitMq)
         {
             logger.LogDebug("Send in RabbitMessageService called but message broker has not been set to RabbitMQ");
-            return Task.CompletedTask;
+            return;
         }
         
         bus ??= RabbitHutch.CreateBus(this.gclSettings.MessageBrokerConnectionString);
 
         logger.LogInformation($"Sending message via RabbitMQ message queue \"{queue}\". The message was: {message}");
-        return bus.SendReceive.SendAsync(queue, message, cancellationToken);
+        await bus.SendReceive.SendAsync(queue, message, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -50,12 +50,13 @@ public class RabbitMessageService : IMessageService, IScopedService, IDisposable
         bus ??= RabbitHutch.CreateBus(this.gclSettings.MessageBrokerConnectionString);
 
         logger.LogInformation($"Started listening on message queue \"{queue}\"");
-        await bus.SendReceive.ReceiveAsync<T>(queue, (message, _) => onMessage.Invoke(message), cancellationToken: cancellationToken);
+        await bus.SendReceive.ReceiveAsync<T>(queue, onMessage, cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
+        logger.LogInformation($"Disposing {nameof(RabbitMessageService)}");
         bus?.Dispose();
         bus = null;
     }
