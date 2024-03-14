@@ -24,7 +24,10 @@
         <Content Remove="Core\Cms\Services\**"/>
         <EmbeddedResource Remove="Core\Cms\Services\**"/>
         <None Remove="Core\Cms\Services\**"/>
-    </ItemGroup>
+        <None Update="Modules\ScriptInterpreters\Lua\Modules\json.lua">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+  </ItemGroup>
 
     <ItemGroup>
         <Folder Include="Modules\PostalServices\PostNL\Models\"/>
@@ -52,7 +55,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.1"/>
         <PackageReference Include="MySqlConnector" Version="2.4.0"/>
         <PackageReference Include="PDFsharp" Version="6.1.1"/>
-        <PackageReference Include="NLua" Version="1.7.1" />
+        <PackageReference Include="NLua" Version="1.7.2" />
         <PackageReference Include="RestSharp" Version="112.1.0"/>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
         <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="112.1.0"/>
