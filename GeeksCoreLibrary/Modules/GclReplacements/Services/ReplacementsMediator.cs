@@ -443,7 +443,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         prefix = Regex.Escape(prefix);
         suffix = Regex.Escape(suffix);
 
-        var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+        var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]+?){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
 
         var result = new List<StringReplacementVariable>();
         foreach (Match match in regex.Matches(input))
@@ -458,12 +458,12 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             if (defaultValueSeparatorLocation > 0) // This 0 is on purpose, it wouldn't make sense if the default value separator is the first character of the variable.
             {
                 var colonIndexOf = fieldName.LastIndexOf(":", StringComparison.Ordinal);
-                if (defaultValueSeparatorLocation + 1 > colonIndexOf)
-                {
-                    var defaultValueWithSeparator = colonIndexOf == -1 ? fieldName.Substring(defaultValueSeparatorLocation) : fieldName.Substring(defaultValueSeparatorLocation, colonIndexOf);
-                    defaultValue = defaultValueWithSeparator.Remove(0, 1);
-                    fieldName = fieldName.Remove(defaultValueSeparatorLocation, defaultValueWithSeparator.Length);
-                }
+                var defaultValueWithSeparator = colonIndexOf == -1 || defaultValueSeparatorLocation + 1 > colonIndexOf
+                    ? fieldName[defaultValueSeparatorLocation..]
+                    : fieldName.Substring(defaultValueSeparatorLocation, colonIndexOf - defaultValueSeparatorLocation);
+
+                defaultValue = defaultValueWithSeparator.Remove(0, 1);
+                fieldName = fieldName.Remove(defaultValueSeparatorLocation, defaultValueWithSeparator.Length);
             }
 
             // Colons that are escaped with a backslash are temporarily replaced with "~~COLON~~".
