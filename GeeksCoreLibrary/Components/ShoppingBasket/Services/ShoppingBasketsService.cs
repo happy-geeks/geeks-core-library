@@ -2093,9 +2093,9 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     SELECT
                         vatrule.id,
                         IFNULL(country.`value`, '') AS country,
-                        IFNULL(b2b.value_as_int, 0) AS b2b,
-                        COALESCE(vatratecode.value_as_int, vatrate.value_as_int, 0) AS vatrate,
-                        IFNULL(percentage.value_as_decimal, 0) AS percentage
+                        IFNULL(CAST(b2b.value AS SIGNED), 0) AS b2b,
+                        CAST(COALESCE(vatratecode.value, vatrate.value, 0) AS SIGNED) AS vatrate,
+                        IFNULL(CAST(percentage.value AS DECIMAL(65,30)), 0) AS percentage
                     FROM `{WiserTableNames.WiserItem}` AS vatrule
                     LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS country ON country.item_id = vatrule.id AND country.`key` = 'country'
                     LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS b2b ON b2b.item_id = vatrule.id AND b2b.`key` = 'b2b'
@@ -2113,7 +2113,6 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     var vatRateValue = row.Field<long>("vatrate");
                     var rulePercentageValue = row.Field<decimal>("percentage");
 
-                    // The "value_as_int" column returns a long, so we need to convert it to an int.
                     if (ruleB2BValue > 0) rule.B2B = Convert.ToInt32(ruleB2BValue);
                     if (vatRateValue > 0) rule.VatRate = Convert.ToInt32(vatRateValue);
                     if (rulePercentageValue > 0) rule.Percentage = rulePercentageValue;

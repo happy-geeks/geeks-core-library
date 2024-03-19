@@ -43,7 +43,7 @@ namespace GeeksCoreLibrary.Modules.Redirect.Services
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS permanent ON permanent.item_id=redirect.id AND permanent.`key` = 'permanent'
                         LEFT JOIN {WiserTableNames.WiserItemDetail} AS ordering ON ordering.item_id=redirect.id AND ordering.`key` = 'ordering'
                         WHERE redirect.entity_type = 'redirect'
-                        ORDER BY ordering.value_as_int DESC
+                        ORDER BY CAST(ordering.value AS SIGNED) DESC
                         LIMIT 1";
 
             var dataTable = await databaseConnection.GetAsync(query);
