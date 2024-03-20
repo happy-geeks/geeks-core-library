@@ -655,7 +655,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
 
                     // The word "update" at the end of the query is to force the GCL to use the write database (for customers that use multiple databases).
                     // Otherwise the GCL might throw the exception that the item doesn't exist, if it has just been created and not synchronised to the slave database(s) yet.
-                    var dataTable = await databaseConnection.GetAsync($"SELECT readonly, entity_type FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE id = ?itemId #UPDATE", true);
+                    var dataTable = await databaseConnection.GetAsync($"SELECT readonly, entity_type, parent_item_id FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE id = ?itemId #UPDATE", true);
                     if (dataTable.Rows.Count == 0)
                     {
                         throw new Exception($"Item with id '{itemId}' does not exist.");
@@ -678,6 +678,10 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                     if (String.IsNullOrWhiteSpace(wiserItem.EntityType))
                     {
                         wiserItem.EntityType = entityTypeInDatabase;
+                    }
+                    if (wiserItem.ParentItemId == 0) // ParentItemId is necessary for use in the aggregate functionality
+                    {
+                        wiserItem.ParentItemId = dataTable.Rows[0].Field<ulong>("parent_item_id");
                     }
 
                     wiserItem.Changed = originalChangedValue;
@@ -4234,8 +4238,10 @@ WHERE {String.Join(" AND ", where)}";
 
                 await databaseHelpersService.CreateTableAsync(tableName, new List<ColumnSettingsModel> { new("id", MySqlDbType.UInt64) });
                 await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("title", MySqlDbType.VarChar, 255));
+                await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("parent_item_id", MySqlDbType.UInt64));
 
                 var settingsForThisTable = settings.Where(setting => setting.TableName == tableName).ToList();
+                
                 if (settingsForThisTable.First().LinkType > 0)
                 {
                     await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("source_item_id", MySqlDbType.UInt64));
@@ -4274,6 +4280,7 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("id", wiserItem.Id);
             databaseConnection.AddParameter("title", wiserItem.Title);
+            databaseConnection.AddParameter("parent_item_id", wiserItem.ParentItemId);
             var columnsForQuery = new Dictionary<string, List<string>>();
             var parametersForQuery = new Dictionary<string, List<string>>();
             var counter = 0;
@@ -4281,8 +4288,8 @@ WHERE {String.Join(" AND ", where)}";
             {
                 if (!columnsForQuery.ContainsKey(setting.TableName))
                 {
-                    columnsForQuery.Add(setting.TableName, new List<string> { "id", "title" });
-                    parametersForQuery.Add(setting.TableName, new List<string> { "?id", "?title" });
+                    columnsForQuery.Add(setting.TableName, new List<string> { "id", "title", "parent_item_id" });
+                    parametersForQuery.Add(setting.TableName, new List<string> { "?id", "?title", "?parent_item_id" });
                 }
 
                 var itemDetail = wiserItem.Details.FirstOrDefault(detail => String.Equals(detail.Key, setting.PropertyName, StringComparison.OrdinalIgnoreCase) && String.Equals(detail.LanguageCode ?? "", setting.LanguageCode ?? "", StringComparison.OrdinalIgnoreCase));
