@@ -740,7 +740,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserBranchesQueue,
-                LastUpdate = new DateTime(2022, 6, 17),
+                LastUpdate = new DateTime(2024, 3, 20),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -755,7 +755,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("started_on", MySqlDbType.DateTime),
                     new("finished_on", MySqlDbType.DateTime),
                     new("success", MySqlDbType.Int16),
-                    new("errors", MySqlDbType.MediumText)
+                    new("errors", MySqlDbType.MediumText),
+                    new("total_items", MySqlDbType.Int32),
+                    new("items_processed", MySqlDbType.Int32)
                 },
                 Indexes = new List<IndexSettingsModel>
                 {
@@ -839,7 +841,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("return_type", MySqlDbType.VarChar, 10)
                 }
             },
-            
+
             // wiser_parent_updates
             new WiserTableDefinitionModel
             {
@@ -852,7 +854,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("changed_on", MySqlDbType.DateTime),
                     new("changed_by", MySqlDbType.VarChar, 50),
                     new("target_table", MySqlDbType.VarChar, 50)
-                }                
+                }
             },
 
             // wiser_permission
