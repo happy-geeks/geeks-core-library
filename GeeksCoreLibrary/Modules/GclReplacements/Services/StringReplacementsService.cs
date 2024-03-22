@@ -477,17 +477,17 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     {
                         stringValue = value.ToString();
                     }
-                }
-
-                var variableName = MakeColumnValueFromVariable(m.Groups[1].Value);
-                var replacementData = new Dictionary<string, string>
-                {
+                    
+                    var variableName = MakeColumnValueFromVariable(m.Groups[1].Value);
+                    var replacementData = new Dictionary<string, string>
                     {
-                        variableName, stringValue
-                    }
-                };
+                        {
+                            variableName, stringValue
+                        }
+                    };
 
-                inputString = replacementsMediator.DoReplacements(inputString, replacementData, caseSensitive: false);
+                    inputString = replacementsMediator.DoReplacements(inputString, replacementData, caseSensitive: false);
+                }
             }
 
             // Evaluate template, working with if...else...then statements
