@@ -82,6 +82,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             dataDictionary.Add("Environment", (int)gclSettings.Environment);
             dataDictionary.Add("IpAddress", HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext));
             dataDictionary.Add("UserAgent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, Microsoft.Net.Http.Headers.HeaderNames.UserAgent) ?? String.Empty);
+            dataDictionary.Add("RelativeUrl", HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext).PathAndQuery);
             input = replacementsMediator.DoReplacements(input, dataDictionary, forQuery: forQuery, defaultFormatter: defaultFormatter);
 
             // System object replaces.
@@ -477,17 +478,17 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     {
                         stringValue = value.ToString();
                     }
-                }
-
-                var variableName = MakeColumnValueFromVariable(m.Groups[1].Value);
-                var replacementData = new Dictionary<string, string>
-                {
+                    
+                    var variableName = MakeColumnValueFromVariable(m.Groups[1].Value);
+                    var replacementData = new Dictionary<string, string>
                     {
-                        variableName, stringValue
-                    }
-                };
+                        {
+                            variableName, stringValue
+                        }
+                    };
 
-                inputString = replacementsMediator.DoReplacements(inputString, replacementData, caseSensitive: false);
+                    inputString = replacementsMediator.DoReplacements(inputString, replacementData, caseSensitive: false);
+                }
             }
 
             // Evaluate template, working with if...else...then statements
