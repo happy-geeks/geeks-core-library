@@ -83,6 +83,12 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             dataDictionary.Add("IpAddress", HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext));
             dataDictionary.Add("UserAgent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, Microsoft.Net.Http.Headers.HeaderNames.UserAgent) ?? String.Empty);
             dataDictionary.Add("RelativeUrl", HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext).PathAndQuery);
+            if (input.Contains("{Guid", StringComparison.OrdinalIgnoreCase) || input.Contains("{Uuid", StringComparison.OrdinalIgnoreCase))
+            {
+                var guid = Guid.NewGuid().ToString();
+                dataDictionary.Add("Guid", guid);
+                dataDictionary.Add("Uuid", guid);
+            }
             input = replacementsMediator.DoReplacements(input, dataDictionary, forQuery: forQuery, defaultFormatter: defaultFormatter);
 
             // System object replaces.
