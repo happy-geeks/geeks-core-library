@@ -228,7 +228,7 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 wiserItem.ModuleId = entityTypeSettings.ModuleId;
             }
-
+      
             var retries = 0;
             var transactionCompleted = false;
 
@@ -240,6 +240,7 @@ namespace GeeksCoreLibrary.Core.Services
                 {
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
                     databaseConnection.AddParameter("moduleId", wiserItem.ModuleId);
+                    databaseConnection.AddParameter("ordering", wiserItem.Ordering);
                     databaseConnection.AddParameter("title", wiserItem.Title ?? "");
                     databaseConnection.AddParameter("entityType", wiserItem.EntityType);
                     databaseConnection.AddParameter("parentId", parentId);
@@ -1901,7 +1902,8 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 { "title", "?workFlowItemTitle" },
                 { "moduleId", wiserItem?.ModuleId.ToString() },
                 { "userId", userId.ToString() },
-                { "username", "?username" }
+                { "username", "?username" },
+                { "ordering", wiserItem?.Ordering.ToString() },
             };
 
             foreach (var replacement in replacements)
@@ -4733,6 +4735,7 @@ WHERE id = ?saveDetailId";
 
             wiserItem.EntityType = dataRow.Field<string>("entity_type");
             wiserItem.ModuleId = dataRow.Field<int>("moduleid");
+            wiserItem.Ordering = dataRow.Field<int>("ordering");
             wiserItem.PublishedEnvironment = (Environments)dataRow.Field<int>("published_environment");
             wiserItem.ReadOnly = Convert.ToInt32(dataRow["readonly"]) > 0;
             wiserItem.Removed = dataRow.Table.Columns.Contains("removed") && Convert.ToInt32(dataRow["removed"]) > 0;

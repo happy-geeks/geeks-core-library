@@ -132,6 +132,24 @@ namespace GeeksCoreLibrary.Core.Models
                 uniqueUuid = value;
             }
         }
+        
+        private int ordering;
+
+        /// <summary>
+        /// Gets or sets the ordering of this item.
+        /// </summary>
+        public int Ordering
+        {
+            get => ordering;
+            set
+            {
+                if (ordering != value)
+                {
+                    Changed = true;
+                }
+                ordering = value;
+            }
+        }
 
         private int moduleId;
 
@@ -533,7 +551,8 @@ namespace GeeksCoreLibrary.Core.Models
                 {"moduleid", ModuleId.ToString()},
                 {"published_environment", ((int?) PublishedEnvironment ?? 4).ToString()},
                 {"readonly", ReadOnly == true ? "1" : "0"},
-                {"removed", Removed == true ? "1" : "0"}
+                {"removed", Removed == true ? "1" : "0"},
+                {"ordering", Ordering.ToString()}
             };
 
             if (Title != null)
