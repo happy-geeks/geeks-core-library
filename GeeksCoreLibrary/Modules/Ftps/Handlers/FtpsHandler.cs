@@ -103,4 +103,11 @@ public class FtpsHandler : IFtpHandler, IScopedService
         await client.DeleteFile(filePath);
         return true;
     }
+    
+    /// <inheritdoc />
+    public async Task<bool> MoveFileAsync(string fromPath, string toPath)
+    {
+        await client.MoveFile(fromPath, toPath);
+        return true;
+    }
 }

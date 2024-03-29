@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using Renci.SshNet;
@@ -135,6 +136,13 @@ public class SftpHandler : IFtpHandler, IScopedService
         }
 
         client.Delete(filePath);
+        return true;
+    }
+    
+    /// <inheritdoc />
+    public async Task<bool> MoveFileAsync(string fromPath, string toPath)
+    {
+        await client.RenameFileAsync(fromPath, toPath, default);
         return true;
     }
 }
