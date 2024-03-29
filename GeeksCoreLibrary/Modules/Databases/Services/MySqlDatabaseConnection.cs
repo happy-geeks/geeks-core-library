@@ -883,15 +883,16 @@ SELECT LAST_INSERT_ID();";
             {
                 if (disposeConnection)
                 {
-                    if (isWriteConnection)
+                    switch (isWriteConnection)
                     {
-                        await ConnectionForWriting.DisposeAsync();
-                        ConnectionForWriting = null;
-                    }
-                    else
-                    {
-                        await ConnectionForReading.DisposeAsync();
-                        ConnectionForReading = null;
+                        case true when ConnectionForWriting != null:
+                            await ConnectionForWriting.DisposeAsync();
+                            ConnectionForWriting = null;
+                            break;
+                        case false when ConnectionForReading != null:
+                            await ConnectionForReading.DisposeAsync();
+                            ConnectionForReading = null;
+                            break;
                     }
                 }
             }
