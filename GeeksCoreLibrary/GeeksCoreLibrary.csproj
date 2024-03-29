@@ -19,14 +19,11 @@
         <LangVersion>default</LangVersion>
     </PropertyGroup>
 
-    <ItemGroup>
-        <Compile Remove="Core\Cms\Services\**"/>
-        <Content Remove="Core\Cms\Services\**"/>
-        <EmbeddedResource Remove="Core\Cms\Services\**"/>
-        <None Remove="Core\Cms\Services\**"/>
-        <None Update="Modules\ScriptInterpreters\Lua\Modules\json.lua">
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
+  <ItemGroup>
+    <Compile Remove="Core\Cms\Services\**" />
+    <Content Remove="Core\Cms\Services\**" />
+    <EmbeddedResource Remove="Core\Cms\Services\**" />
+    <None Remove="Core\Cms\Services\**" />
   </ItemGroup>
 
     <ItemGroup>
@@ -45,7 +42,8 @@
         <PackageReference Include="GoogleAuthenticator" Version="3.2.0"/>
         <PackageReference Include="HtmlAgilityPack" Version="1.11.72"/>
         <PackageReference Include="JetBrains.Annotations" Version="2024.3.0"/>
-        <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0"/>
+        <PackageReference Include="Jint" Version="3.0.1" />
+        <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
         <PackageReference Include="Magick.NET-Q8-x64" Version="14.4.0"/>
         <PackageReference Include="MailKit" Version="4.9.0"/>
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.1"/>
@@ -53,9 +51,8 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.1"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.1"/>
-        <PackageReference Include="MySqlConnector" Version="2.4.0"/>
-        <PackageReference Include="PDFsharp" Version="6.1.1"/>
-        <PackageReference Include="NLua" Version="1.7.2" />
+        <PackageReference Include="MySqlConnector" Version="2.4.0" />
+        <PackageReference Include="PDFsharp" Version="6.1.1" />
         <PackageReference Include="RestSharp" Version="112.1.0"/>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
         <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="112.1.0"/>
