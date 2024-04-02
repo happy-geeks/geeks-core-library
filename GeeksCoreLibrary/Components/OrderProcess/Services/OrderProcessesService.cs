@@ -901,8 +901,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                 // Add order ID to the URLs for later reference.
                 var queryParameters = new Dictionary<string, string> {{"order", orderId.ToString().Encrypt()}};
-                paymentMethodSettings.PaymentServiceProvider.SuccessUrl = UriHelpers.AddToQueryString(paymentMethodSettings.PaymentServiceProvider.SuccessUrl, queryParameters);
-                paymentMethodSettings.PaymentServiceProvider.PendingUrl = UriHelpers.AddToQueryString(paymentMethodSettings.PaymentServiceProvider.PendingUrl, queryParameters);
+                paymentMethodSettings.PaymentServiceProvider.SuccessUrl = UriHelpers.AddToQueryString(paymentMethodSettings.PaymentServiceProvider.SuccessUrl ?? $"{webhookUrl.Scheme}://{webhookUrl.Host}/" , queryParameters);
+                paymentMethodSettings.PaymentServiceProvider.PendingUrl = UriHelpers.AddToQueryString(paymentMethodSettings.PaymentServiceProvider.PendingUrl ?? $"{webhookUrl.Scheme}://{webhookUrl.Host}/", queryParameters);
 
                 // Generate invoice number.
                 var invoiceNumber = "";
