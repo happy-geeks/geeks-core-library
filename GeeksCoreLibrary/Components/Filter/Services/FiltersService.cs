@@ -72,7 +72,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     await languagesService.GetLanguageCodeAsync();
                 }
                 
-                databaseConnection.AddParameter("?currentLanguageCode", languagesService.CurrentLanguageCode);
+                databaseConnection.AddParameter("currentLanguageCode", languagesService.CurrentLanguageCode);
 
                 // Get a list of filters from the URL
                 if (!String.IsNullOrEmpty(filterParameter))
