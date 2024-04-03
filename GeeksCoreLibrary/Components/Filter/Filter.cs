@@ -310,7 +310,7 @@ namespace GeeksCoreLibrary.Components.Filter
             var languageCode = await languageService.GetLanguageCodeAsync();
             var filterItemsQuery = Settings.FilterItemsQuery;
             filterItemsQuery = filterItemsQuery.Replace("{categoryId}", categoryId.ToString());
-            filterItemsQuery = filterItemsQuery.Replace("{languageCode}", languageCode);
+            filterItemsQuery = filterItemsQuery.Replace("{languageCode}", languageCode.ToMySqlSafeValue(false)); // Value can also be used for the aggregation table name, so it can't be surrounded by quotes on default.
             filterItemsQuery = filterItemsQuery.Replace("`wiser_filter_aggregation_`", "`wiser_filter_aggregation`"); // If no language code, trim trailing underscore
 
             // Replace the {filters} variable with the join and where parts to exclude not possible filter values when filtered
@@ -332,7 +332,7 @@ namespace GeeksCoreLibrary.Components.Filter
                     }
                     else
                     {
-                        searchPart.AppendLine($"JOIN wiser_itemdetail search1 ON search1.item_id=f.product_id AND search1.`key`={Settings.SearchKeys.ToMySqlSafeValue(true)} AND (search1.language_code='{languageCode}' OR search1.language_code='') AND search1.`value` LIKE CONCAT('%',{HttpContext.Request.Query[Settings.SearchQuerystring].ToString().ToMySqlSafeValue(true)},'%')");
+                        searchPart.AppendLine($"JOIN wiser_itemdetail search1 ON search1.item_id=f.product_id AND search1.`key`={Settings.SearchKeys.ToMySqlSafeValue(true)} AND (search1.language_code={languageCode.ToMySqlSafeValue(true)} OR search1.language_code='') AND search1.`value` LIKE CONCAT('%',{HttpContext.Request.Query[Settings.SearchQuerystring].ToString().ToMySqlSafeValue(true)},'%')");
                     }
                 }
 
