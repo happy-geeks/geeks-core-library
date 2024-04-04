@@ -1039,7 +1039,19 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 try
                 {
                     // Delete the concept order(s) if this failed.
-                    await DeleteConceptOrdersAsync(conceptOrders);
+                    if (basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert)
+                    {
+                        // Convert concept order back to basket
+                        foreach (var (main, lines) in conceptOrders)
+                        {
+                            await shoppingBasketsService.RevertConceptOrderToBasketAsync(main, lines);
+                        }
+                    }
+                    else
+                    {
+                        // Delete concept order (is copy of basket)
+                        await DeleteConceptOrdersAsync(conceptOrders);    
+                    }
                 }
                 catch (Exception deleteException)
                 {

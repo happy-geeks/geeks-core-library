@@ -85,6 +85,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         Task<(ulong ConceptOrderId, WiserItemModel ConceptOrder, List<WiserItemModel> ConceptOrderLines)> MakeConceptOrderFromBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, OrderProcessBasketToConceptOrderMethods basketToConceptOrderMethod);
 
         /// <summary>
+        /// Reverts a concept order to a basket if paymentOut failed
+        /// </summary>
+        /// <returns></returns>
+        Task RevertConceptOrderToBasketAsync(WiserItemModel conceptOrder, List<WiserItemModel> conceptOrderLines);
+
+        /// <summary>
         /// Turns a concept order into a final order.
         /// </summary>
         Task ConvertConceptOrderToOrderAsync(WiserItemModel conceptOrder, ShoppingBasketCmsSettingsModel settings);
