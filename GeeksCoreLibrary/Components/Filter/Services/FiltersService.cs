@@ -72,7 +72,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     await languagesService.GetLanguageCodeAsync();
                 }
                 
-                databaseConnection.AddParameter("currentLanguageCode", languagesService.CurrentLanguageCode);
+                databaseConnection.AddParameter("sql_currentLanguageCode", languagesService.CurrentLanguageCode);
 
                 // Get a list of filters from the URL
                 if (!String.IsNullOrEmpty(filterParameter))
@@ -268,7 +268,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         {
                                             if (filterGroup.IsMultiLanguage)
                                             {
-                                                queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                                queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                             }
                                             else
                                             {
@@ -277,7 +277,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         }
                                         else if (filterGroup.IsMultiLanguage)
                                         {
-                                            queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
+                                            queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
                                         }
                                         else
                                         {
@@ -365,7 +365,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                     {
                                         if (filterGroup.IsMultiLanguage)
                                         {
-                                            queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                            queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                         }
                                         else
                                         {
@@ -379,7 +379,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                     }
                                     else if (filterGroup.IsMultiLanguage)
                                     {
-                                        queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
+                                        queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
                                     }
                                     else
                                     {
@@ -435,7 +435,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemDetail} fi{filterCounter}d ON fi{filterCounter}d.item_id=fi{filterCounter}i.id AND fi{filterCounter}d.`key`='{filterGroup.ConnectedEntityProperty.ToMySqlSafeValue(false)}{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}' ");
                                         if (filterGroup.IsMultiLanguage)
                                         {
-                                            queryJoinPart.Append($"AND fi{filterCounter}d.language_code=?currentLanguageCode ");
+                                            queryJoinPart.Append($"AND fi{filterCounter}d.language_code=?sql_currentLanguageCode ");
                                         }
                                         else
                                         {

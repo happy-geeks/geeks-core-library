@@ -332,8 +332,8 @@ namespace GeeksCoreLibrary.Components.Filter
                     }
                     else
                     {
-                        DatabaseConnection.AddParameter("languageCode", languageCode);
-                        searchPart.AppendLine($"JOIN wiser_itemdetail search1 ON search1.item_id=f.product_id AND search1.`key`={Settings.SearchKeys.ToMySqlSafeValue(true)} AND (search1.language_code=?languageCode OR search1.language_code='') AND search1.`value` LIKE CONCAT('%',{HttpContext.Request.Query[Settings.SearchQuerystring].ToString().ToMySqlSafeValue(true)},'%')");
+                        DatabaseConnection.AddParameter("sql_languageCode", languageCode);
+                        searchPart.AppendLine($"JOIN wiser_itemdetail search1 ON search1.item_id=f.product_id AND search1.`key`={Settings.SearchKeys.ToMySqlSafeValue(true)} AND (search1.language_code=?sql_languageCode OR search1.language_code='') AND search1.`value` LIKE CONCAT('%',{HttpContext.Request.Query[Settings.SearchQuerystring].ToString().ToMySqlSafeValue(true)},'%')");
                     }
                 }
 
