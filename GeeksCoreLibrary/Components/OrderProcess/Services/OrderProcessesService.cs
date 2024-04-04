@@ -884,7 +884,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 var basketSettings = await shoppingBasketsService.GetSettingsAsync();
                 foreach (var (main, lines) in shoppingBaskets)
                 {
-                    if (paymentMethodSettings.PaymentServiceProvider.Type != PaymentServiceProviders.NoPsp && basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert)
+                    var copyBasketToConceptOrderOnPspPayment  = (await objectsService.FindSystemObjectByDomainNameAsync("psp_copy_basket_to_concept_order","1")) == "1";
+                    if (paymentMethodSettings.PaymentServiceProvider.Type != PaymentServiceProviders.NoPsp && basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert && copyBasketToConceptOrderOnPspPayment)
                     {
                         // Converting a basket to a concept order is only allowed for payment methods that don't go via an external PSP.
                         // Otherwise users can create an order with only one product, start a payment, go back to the website and add several more products,
