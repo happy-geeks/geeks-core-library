@@ -6,5 +6,5 @@ namespace GeeksCoreLibrary.Modules.MessageBroker.Services;
 
 public interface IMessageSender : IScopedService
 {
-    Task SendAsync<T>(string queue, T message, CancellationToken cancellationToken = default);
+    Task SendAsync<T>(T message, string topic, CancellationToken cancellationToken = default);
 }

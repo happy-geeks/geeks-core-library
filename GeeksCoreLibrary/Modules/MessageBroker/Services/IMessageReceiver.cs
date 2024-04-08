@@ -7,5 +7,6 @@ namespace GeeksCoreLibrary.Modules.MessageBroker.Services;
 
 public interface IMessageReceiver : ISingletonService
 {
-    Task ReceiveAsync<T>(string queue, Func<T, Task> onMessage, CancellationToken cancellationToken = default);
+    Task ReceiveAsync<T>(string topic, Func<T, CancellationToken, Task> onMessage, string subscriptionId = null,
+        CancellationToken cancellationToken = default);
 }

@@ -7,6 +7,7 @@ using GeeksCoreLibrary.Core.Models;
 using Microsoft.Extensions.Options;
 using GeeksCoreLibrary.Modules.MessageBroker.Enums;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.MessageBroker.Services;
 
@@ -24,7 +25,7 @@ public class RabbitMessageService : IMessageService, IScopedService, ISingletonS
     }
     
     /// <inheritdoc />
-    public async Task SendAsync<T>(string queue, T message, CancellationToken cancellationToken = default)
+    public async Task SendAsync<T>(T message, string topic, CancellationToken cancellationToken = default)
     {
         if (gclSettings.MessageBroker != MessageBrokers.RabbitMq)
         {
@@ -32,14 +33,19 @@ public class RabbitMessageService : IMessageService, IScopedService, ISingletonS
             return;
         }
         
+        JObject jsonMessage = JObject.FromObject(message);
+        
         bus ??= RabbitHutch.CreateBus(this.gclSettings.MessageBrokerConnectionString);
 
-        logger.LogInformation($"Sending message via RabbitMQ message queue \"{queue}\". The message was: {message}");
-        await bus.SendReceive.SendAsync(queue, message, cancellationToken);
+        logger.LogInformation($"Sending message via RabbitMQ message queue \"{topic}\". The message was: {message}");
+        await bus.PubSub.PublishAsync(jsonMessage, config =>
+        {
+            config.WithTopic(topic);
+        }, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task ReceiveAsync<T>(string queue, Func<T, Task> onMessage, CancellationToken cancellationToken = default)
+    public async Task ReceiveAsync<T>(string topic, Func<T, CancellationToken, Task> onMessage, string subscriptionId = null, CancellationToken cancellationToken = default)
     {
         if (gclSettings.MessageBroker != MessageBrokers.RabbitMq)
         {
@@ -49,8 +55,10 @@ public class RabbitMessageService : IMessageService, IScopedService, ISingletonS
         
         bus ??= RabbitHutch.CreateBus(this.gclSettings.MessageBrokerConnectionString);
 
-        logger.LogInformation($"Started listening on message queue \"{queue}\"");
-        await bus.SendReceive.ReceiveAsync<T>(queue, onMessage, cancellationToken: cancellationToken);
+        logger.LogInformation($"Started listening on message queue \"{topic}\"");
+
+        await bus.PubSub.SubscribeAsync<T>(subscriptionId ?? gclSettings.MessageBrokerSubscriptionId, onMessage: onMessage, 
+            configure: config => config.WithTopic(topic), cancellationToken);
     }
 
     /// <inheritdoc />

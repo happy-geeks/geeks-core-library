@@ -1251,7 +1251,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     }
                 }
                 
-                await messageService.SendAsync("wiser.order.payment.success", main.Id);
+                await messageService.SendAsync(main.Id, "wiser.order.payment.success");
             }
 
             if ((orderProcessSettings == null) || (hasAlreadyBeenConvertedToOrderBefore))

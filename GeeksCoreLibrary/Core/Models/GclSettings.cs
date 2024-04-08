@@ -262,5 +262,7 @@ namespace GeeksCoreLibrary.Core.Models
         public MessageBrokers MessageBroker { get; set; } = MessageBrokers.None;
         
         public string MessageBrokerConnectionString { get; set; }
+        
+        public string MessageBrokerSubscriptionId { get; set; } = "GCL";
     }
 }
