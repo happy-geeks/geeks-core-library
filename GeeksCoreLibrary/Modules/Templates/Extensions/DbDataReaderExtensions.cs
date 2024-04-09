@@ -13,9 +13,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
 {
     public static class DbDataReaderExtensions
     {
-        public static async Task<Template> ToTemplateModelAsync(this DbDataReader reader, TemplateTypes? type = null)
+        public static async Task<Template> ToTemplateModelAsync(this DbDataReader reader, TemplateTypes? type = null, bool legacy = false)
         {
-            if (!Enum.TryParse(typeof(TemplateTypes), Convert.ToString(await reader.GetFieldValueAsync<int>("template_type")), true, out var templateType))
+            if (!Enum.TryParse(typeof(TemplateTypes), legacy ? reader.GetStringHandleNull("template_type") : Convert.ToString(await reader.GetFieldValueAsync<int>("template_type")), true, out var templateType))
             {
                 if (!Enum.TryParse(typeof(TemplateTypes), reader.GetStringHandleNull("root_name"), true, out templateType))
                 {
