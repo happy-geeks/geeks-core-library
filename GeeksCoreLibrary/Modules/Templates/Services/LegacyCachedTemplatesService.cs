@@ -11,6 +11,7 @@ using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
@@ -34,7 +35,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly ICacheService cacheService;
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly IBranchesService branchesService;
-
+        private readonly IObjectsService objectsService;
+        private readonly IHttpContextAccessor httpContextAccessor;
+        
         public LegacyCachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger,
             ITemplatesService templatesService,
             IAppCache cache,
@@ -42,6 +45,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IDatabaseConnection databaseConnection,
             ICacheService cacheService,
             IBranchesService branchesService,
+            IObjectsService objectsService,
+            IHttpContextAccessor httpContextAccessor = null,
             IWebHostEnvironment webHostEnvironment = null)
         {
             this.logger = logger;
@@ -51,6 +56,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.databaseConnection = databaseConnection;
             this.cacheService = cacheService;
             this.webHostEnvironment = webHostEnvironment;
+            this.objectsService = objectsService;
+            this.httpContextAccessor = httpContextAccessor;
             this.branchesService = branchesService;
         }
 
@@ -125,8 +132,26 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Cache the template settings in memory.
-            var cacheName = $"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}_{branchesService.GetDatabaseNameFromCookie()}";
-            var template = await cache.GetOrAddAsync(cacheName,
+            var cacheName = new StringBuilder($"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}_{branchesService.GetDatabaseNameFromCookie()}");
+            
+            // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
+            var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (cookieCacheDeviation.Length > 0)
+            {
+                var requestCookies = httpContextAccessor?.HttpContext?.Request.Cookies;
+                foreach (var cookieName in cookieCacheDeviation)
+                {
+                    if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
+                    {
+                        continue;
+                    }
+
+                    var combinedCookiePart = $"{cookieName}:{cookieValue}";
+                    cacheName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
+                }
+            }
+            
+            var template = await cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
