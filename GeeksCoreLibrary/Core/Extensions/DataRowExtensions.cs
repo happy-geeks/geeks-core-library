@@ -23,7 +23,11 @@ namespace GeeksCoreLibrary.Core.Extensions
         private const string DecryptWithDateSuffix = "_decrypt_withdate";
         private const string NormalDecryptSuffix = "_normaldecrypt";
         private const string NormalDecryptWithDateSuffix = "_normaldecrypt_withdate";
-
+        private const string SaferDecryptSuffix = "_saferdecrypt";
+        private const string SaferEncryptSuffix = "_saferencrypt";
+        private const string SaferDecryptWithDateSuffix = "_saferdecrypt_withdate";
+        private const string SaferEncryptWithDateSuffix = "_saferencrypt_withdate";
+        
         /// <summary>
         /// Gets a value from a <see cref="DataRow" />, if the columns exists.
         /// If the column does not exist, the default value will be returned.
@@ -129,16 +133,23 @@ namespace GeeksCoreLibrary.Core.Extensions
 
                     result.TryAdd(TrimPrefix(columnName[..^(withDate ? EncryptListWithDateSuffix : EncryptListSuffix).Length], requiredColumnNamePrefix), value);
                 }
-                else if (columnName.EndsWith(NormalEncryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(NormalEncryptWithDateSuffix, StringComparison.OrdinalIgnoreCase))
+                else if (columnName.EndsWith(NormalEncryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(NormalEncryptWithDateSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(SaferEncryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(SaferEncryptWithDateSuffix, StringComparison.OrdinalIgnoreCase))
                 {
-                    var withDate = columnName.EndsWith(NormalEncryptWithDateSuffix, StringComparison.OrdinalIgnoreCase);
+                    var withDate = columnName.EndsWith(NormalEncryptWithDateSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(SaferEncryptWithDateSuffix, StringComparison.OrdinalIgnoreCase);
+                    var saferMethod = columnName.EndsWith(SaferEncryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(SaferEncryptWithDateSuffix, StringComparison.OrdinalIgnoreCase);
                     var value = Convert.ToString(dataRow[dataColumn]);
                     if (!String.IsNullOrWhiteSpace(value))
                     {
-                        value = value.EncryptWithAes(encryptionKey, withDate);
+                        value = value.EncryptWithAes(encryptionKey, withDate, useSlowerButMoreSecureMethod:saferMethod);
                     }
-
-                    result.TryAdd(TrimPrefix(columnName[..^(withDate ? NormalEncryptWithDateSuffix : NormalEncryptSuffix).Length], requiredColumnNamePrefix), value.UrlEncode());
+                    if (saferMethod)
+                    {
+                        result.TryAdd(TrimPrefix(columnName[..^(withDate ? SaferEncryptWithDateSuffix : SaferEncryptSuffix).Length], requiredColumnNamePrefix), value.UrlEncode());
+                    }
+                    else
+                    {
+                        result.TryAdd(TrimPrefix(columnName[..^(withDate ? NormalEncryptWithDateSuffix : NormalEncryptSuffix).Length], requiredColumnNamePrefix), value.UrlEncode());
+                    }
                 }
                 else if (columnName.EndsWith(NormalEncryptListSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(NormalEncryptListWithDateSuffix, StringComparison.OrdinalIgnoreCase))
                 {
@@ -174,9 +185,10 @@ namespace GeeksCoreLibrary.Core.Extensions
 
                     result.TryAdd(TrimPrefix(columnName[..^(withDate ? DecryptWithDateSuffix : DecryptSuffix).Length], requiredColumnNamePrefix), value);
                 }
-                else if (allowValueDecryption && (columnName.EndsWith(NormalDecryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(NormalDecryptWithDateSuffix, StringComparison.OrdinalIgnoreCase)))
+                else if (allowValueDecryption && (columnName.EndsWith(NormalDecryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(NormalDecryptWithDateSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(SaferDecryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(SaferDecryptWithDateSuffix, StringComparison.OrdinalIgnoreCase)))
                 {
-                    var withDate = columnName.EndsWith(NormalDecryptWithDateSuffix, StringComparison.OrdinalIgnoreCase);
+                    var withDate = columnName.EndsWith(NormalDecryptWithDateSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(SaferDecryptWithDateSuffix, StringComparison.OrdinalIgnoreCase);
+                    var saferMethod = columnName.EndsWith(SaferDecryptSuffix, StringComparison.OrdinalIgnoreCase) || columnName.EndsWith(SaferDecryptWithDateSuffix, StringComparison.OrdinalIgnoreCase);
                     var value = Convert.ToString(dataRow[dataColumn]) ?? "";
 
                     if (value.Contains(","))
@@ -184,17 +196,17 @@ namespace GeeksCoreLibrary.Core.Extensions
                         var values = value.Split(',');
                         for (var i = 0; i < values.Length; i++)
                         {
-                            values[i] = values[i].UrlDecode().Replace(" ", "+").DecryptWithAes(encryptionKey, withDate);
+                            values[i] = values[i].UrlDecode().Replace(" ", "+").DecryptWithAes(encryptionKey, withDate, useSlowerButMoreSecureMethod:saferMethod);
                         }
 
                         value = String.Join(',', values);
                     }
                     else if (!String.IsNullOrWhiteSpace(value))
                     {
-                        value = value.UrlDecode().Replace(" ", "+").DecryptWithAes(encryptionKey, withDate);
+                        value = value.UrlDecode().Replace(" ", "+").DecryptWithAes(encryptionKey, withDate, useSlowerButMoreSecureMethod:saferMethod);
                     }
 
-                    result.TryAdd(TrimPrefix(columnName[..^(withDate ? NormalDecryptWithDateSuffix : NormalDecryptSuffix).Length], requiredColumnNamePrefix), value);
+                    result.TryAdd(TrimPrefix(columnName[..^(withDate ? (saferMethod ? SaferDecryptWithDateSuffix : NormalDecryptWithDateSuffix) : (saferMethod ? SaferDecryptSuffix : NormalDecryptSuffix)).Length], requiredColumnNamePrefix), value);
                 }
                 else
                 {
