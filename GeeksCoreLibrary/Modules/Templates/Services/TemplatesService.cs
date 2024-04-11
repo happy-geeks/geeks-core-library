@@ -1292,7 +1292,7 @@ ORDER BY id ASC");
                 queryTemplate.GroupingSettings.GroupingColumn = "id";
             }
 
-            var dataTable = await databaseConnection.GetAsync(query);
+            var dataTable = await databaseConnection.GetAsync(query,skipCache:queryTemplate.CachingMinutes<0);
             var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
 
             if (pusherMatches.Any())
