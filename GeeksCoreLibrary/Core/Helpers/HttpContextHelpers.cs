@@ -444,7 +444,19 @@ namespace GeeksCoreLibrary.Core.Helpers
         /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
         public static bool IsGclMiddleWarePage(HttpContext httpContext)
         {
-            return httpContext?.Request.Path != null && GclMiddleWarePages.Contains(httpContext.Request.Path);
+            if (httpContext?.Request.Path == null)
+            {
+                return false;
+            }
+            
+            var path = httpContext.Request.Path.ToString();
+            
+            if (path.EndsWith('/'))
+            {
+                return GclMiddleWarePages.Contains(path) || GclMiddleWarePages.Contains(path[..^1]);
+            }
+            
+            return GclMiddleWarePages.Contains(path) || GclMiddleWarePages.Contains($"{path}/");
         }
     }
 }
