@@ -142,6 +142,6 @@ public class SftpHandler : IFtpHandler, IScopedService
     public async Task<bool> MoveFileAsync(string fromPath, string toPath)
     {
         await client.RenameFileAsync(fromPath, toPath, default);
-        return true;
+        return client.Exists(toPath);
     }
 }
