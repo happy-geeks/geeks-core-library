@@ -94,6 +94,10 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
             }
 
             var paymentRequestResult = await orderProcessesService.HandlePaymentRequestAsync(orderProcessesService, 0, "", "", "", OrderProcessBasketToConceptOrderMethods.Convert, null);
+            if (!paymentRequestResult.Successful)
+            {
+                return Content($"Error DirectPaymentOutPage: {paymentRequestResult.ErrorMessage}", "text/html");
+            }
             switch (paymentRequestResult.Action)
             {
                 case PaymentRequestActions.Redirect:
@@ -102,8 +106,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
                 default:
                     throw new ArgumentOutOfRangeException(nameof(paymentRequestResult.Action), paymentRequestResult.Action.ToString());
             }
-            
-            return Content("", "text/html");
+             
+            return Content("Empty DirectPaymentOutPage result", "text/html");
         }
 
         [Route(Constants.PaymentInPage)]
