@@ -202,7 +202,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             Template result;
             await using (var reader = await databaseConnection.GetReaderAsync(query))
             {
-                result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type) : new Template();
+                result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type, legacy: true) : new Template();
             }
 
             // Check login requirement.
@@ -425,7 +425,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 while (await reader.ReadAsync())
                 {
-                    var template = await reader.ToTemplateModelAsync();
+                    var template = await reader.ToTemplateModelAsync(legacy: true);
                     await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
                 }
             }
@@ -511,7 +511,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             await using var reader = await databaseConnection.GetReaderAsync(query);
             while (await reader.ReadAsync())
             {
-                var template = await reader.ToTemplateModelAsync();
+                var template = await reader.ToTemplateModelAsync(legacy: true);
                 results.Add(template);
             }
 
@@ -1226,7 +1226,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 queryTemplate.GroupingSettings.GroupingColumn = "id";
             }
 
-            var dataTable = await databaseConnection.GetAsync(query);
+            var dataTable = await databaseConnection.GetAsync(query, skipCache: queryTemplate.CachingMinutes < 0);
             var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
 
             if (pusherMatches.Any())
