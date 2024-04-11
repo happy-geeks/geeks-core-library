@@ -800,6 +800,73 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
             return (conceptOrder.Id, conceptOrder, newLines);
         }
+        
+        /// <inheritdoc />
+        public async Task RevertConceptOrderToBasketAsync(WiserItemModel conceptOrder, List<WiserItemModel> conceptOrderLines)
+        {
+            var user = await accountsService.GetUserDataFromCookieAsync();
+            var userId = user.MainUserId;
+            var linkTypeBasketLineToBasket = await wiserItemsService.GetLinkTypeAsync( Constants.BasketEntityType, Constants.BasketLineEntityType);
+
+            var userEntityType = user.EntityType;
+            if (String.IsNullOrWhiteSpace(userEntityType))
+            {
+                userEntityType = await objectsService.FindSystemObjectByDomainNameAsync("userEntityType", defaultResult: "relatie");
+            }
+
+            var linkTypeBasketToUser = await wiserItemsService.GetLinkTypeAsync(userEntityType, Constants.BasketEntityType);
+            if (linkTypeBasketToUser == 0)
+            {
+                linkTypeBasketToUser = Constants.BasketToUserLinkType;
+            }
+
+            if (linkTypeBasketLineToBasket == 0)
+            {
+                linkTypeBasketLineToBasket = Constants.BasketLineToBasketLinkType;
+            }
+
+            if (userId == 0UL)
+            {
+                userId = accountsService.GetRecentlyCreatedAccountId();
+                if (userId == 0UL)
+                {
+                    userId = (await wiserItemsService.GetLinkedItemIdsAsync(conceptOrder.Id, Constants.BasketToUserLinkType, reverse: true, skipPermissionsCheck: true)).FirstOrDefault();
+                }
+
+                if (userId > 0UL)
+                {
+                    var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Account.Models.Constants.DefaultEntityType);
+                    databaseConnection.AddParameter("userId", userId);
+                    var getEntityTypeResult = await databaseConnection.GetAsync($"SELECT entity_type FROM `{tablePrefix}{WiserTableNames.WiserItem}` WHERE id = ?userId", true);
+                    if (getEntityTypeResult.Rows.Count > 0)
+                    {
+                        linkTypeBasketToUser = await wiserItemsService.GetLinkTypeAsync(getEntityTypeResult.Rows[0].Field<string>("entity_type"), Constants.BasketEntityType);
+                        if (linkTypeBasketToUser == 0)
+                        {
+                            linkTypeBasketToUser = Constants.BasketToUserLinkType;
+                        }
+                    }
+                }
+            }
+
+            await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, conceptOrder.EntityType, Constants.BasketEntityType, skipPermissionsCheck: true, resetAddedOnDate: true);
+
+            // Change link types if they are different between baskets and orders.
+            if (Constants.BasketLineToBasketLinkType != linkTypeBasketLineToBasket)
+            {
+                await wiserItemsService.ChangeLinkTypesAsync(conceptOrder.Id, Constants.BasketLineToBasketLinkType, linkTypeBasketLineToBasket, skipPermissionsCheck: true);
+            }
+
+            if (userId > 0 && Constants.BasketToUserLinkType != linkTypeBasketToUser)
+            {
+                await wiserItemsService.ChangeLinkTypeAsync(userId, Constants.BasketToUserLinkType, linkTypeBasketToUser, conceptOrder.Id, skipPermissionsCheck: true);
+            }
+
+            foreach (var line in conceptOrderLines)
+            {
+                await wiserItemsService.ChangeEntityTypeAsync(line.Id, line.EntityType, Constants.BasketLineEntityType, skipPermissionsCheck: true, resetAddedOnDate: true);
+            }
+        }
 
         /// <inheritdoc />
         public async Task ConvertConceptOrderToOrderAsync(WiserItemModel conceptOrder, ShoppingBasketCmsSettingsModel settings)

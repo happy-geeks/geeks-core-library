@@ -92,13 +92,19 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             return await shoppingBasketsService.MakeConceptOrderFromBasketAsync(shoppingBasket, basketLines, settings, basketToConceptOrderMethod);
         }
+        
+        /// <inheritdoc />
+        public async Task RevertConceptOrderToBasketAsync(WiserItemModel conceptOrder, List<WiserItemModel> conceptOrderLines)
+        {
+            await shoppingBasketsService.RevertConceptOrderToBasketAsync(conceptOrder, conceptOrderLines);
+        }
 
         /// <inheritdoc />
         public async Task ConvertConceptOrderToOrderAsync(WiserItemModel conceptOrder, ShoppingBasketCmsSettingsModel settings)
         {
             await shoppingBasketsService.ConvertConceptOrderToOrderAsync(conceptOrder, settings);
         }
-
+        
         /// <inheritdoc />
         public async Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null, bool forQuery = false)
         {
