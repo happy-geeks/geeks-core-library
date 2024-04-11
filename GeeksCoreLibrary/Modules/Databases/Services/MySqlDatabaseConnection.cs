@@ -23,6 +23,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
 using Newtonsoft.Json;
+using Renci.SshNet;
+using ConnectionInfo = Microsoft.AspNetCore.Http.ConnectionInfo;
 
 namespace GeeksCoreLibrary.Modules.Databases.Services
 {
@@ -938,6 +940,50 @@ SELECT LAST_INSERT_ID();";
                 Thread.Sleep(10);
                 counter++;
             }
+        }
+
+        private static (SshClient SshClient, uint Port) ConnectSsh(string sshHostName, string sshUserName, string sshPassword = null,
+            string sshKeyFile = null, string sshPassPhrase = null, int sshPort = 22, string databaseServer = "localhost", int databasePort = 3306)
+        {
+            // check arguments
+            if (string.IsNullOrEmpty(sshHostName))
+                throw new ArgumentException($"{nameof(sshHostName)} must be specified.", nameof(sshHostName));
+            if (string.IsNullOrEmpty(sshHostName))
+                throw new ArgumentException($"{nameof(sshUserName)} must be specified.", nameof(sshUserName));
+            if (string.IsNullOrEmpty(sshPassword) && string.IsNullOrEmpty(sshKeyFile))
+                throw new ArgumentException($"One of {nameof(sshPassword)} and {nameof(sshKeyFile)} must be specified.");
+            if (string.IsNullOrEmpty(databaseServer))
+                throw new ArgumentException($"{nameof(databaseServer)} must be specified.", nameof(databaseServer));
+
+            // define the authentication methods to use (in order)
+            var authenticationMethods = new List<AuthenticationMethod>();
+            if (!String.IsNullOrEmpty(sshKeyFile))
+            {
+                authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshUserName, new PrivateKeyFile(sshKeyFile, String.IsNullOrEmpty(sshPassPhrase) ? null : sshPassPhrase)));
+            }
+            if (!String.IsNullOrEmpty(sshPassword))
+            {
+                authenticationMethods.Add(new PasswordAuthenticationMethod(sshUserName, sshPassword));
+            }
+
+            // connect to the SSH server
+            var connectionInfo = new ConnectionInfo("sftp.foo.com",
+                "guest",
+                new PasswordAuthenticationMethod("guest", "pwd"),
+                new PrivateKeyAuthenticationMethod("rsa.key"));
+            var test = new ConnectionInfo(sshHostName, sshPort, sshUserName, authenticationMethods.ToArray());
+            new ConnectionInfo()
+            var sshClient = new SshClient(sshHostName, sshPort, sshPassword);
+
+            //sshClient.
+            sshClient.Connect();
+
+            // forward a local port to the database server and port, using the SSH server
+            var forwardedPort = new ForwardedPortLocal("127.0.0.1", databaseServer, (uint) databasePort);
+            sshClient.AddForwardedPort(forwardedPort);
+            forwardedPort.Start();
+
+            return (sshClient, forwardedPort.BoundPort);
         }
     }
 }
