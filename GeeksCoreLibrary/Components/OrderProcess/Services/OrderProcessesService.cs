@@ -1497,8 +1497,12 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             }
 
             // Build the PSP settings model based on the type of PSP.
-            var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(result.PaymentServiceProvider.Type);
-            result.PaymentServiceProvider = await paymentServiceProviderService.GetProviderSettingsAsync(result.PaymentServiceProvider);
+            if (result.PaymentServiceProvider.Type != PaymentServiceProviders.NoPsp)
+            {
+                //Only load assemblies when provider is not NoPsp 
+                var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(result.PaymentServiceProvider.Type);
+                result.PaymentServiceProvider = await paymentServiceProviderService.GetProviderSettingsAsync(result.PaymentServiceProvider);
+            } 
 
             return result;
         }
