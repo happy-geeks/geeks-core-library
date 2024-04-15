@@ -77,6 +77,7 @@ namespace GeeksCoreLibrary.Core.Services
         public const string AutoIncrementPropertySuffix = "_auto_increment";
         public const string SaveValueAsItemLinkKey = "saveValueAsItemLink";
         public const string CurrentItemIsDestinationIdKey = "currentItemIsDestinationId";
+        public const string EntityTypeKey = "entityType";
         public const string LinkTypeNumberKey = "linkTypeNumber";
         public const string DefaultInputType = "text";
         public const string LinkOrderingFieldName = "__ordering";
@@ -1035,10 +1036,10 @@ WHERE item.id = ?itemId");
                                         destinationIds.Add(integerValue);
                                     }
 
-                                    var linkTablePrefix = await GetTablePrefixForLinkAsync(linkTypeNumber, wiserItem.EntityType);
+                                    var currentItemIsDestinationId = fieldOptions[key].ContainsKey(CurrentItemIsDestinationIdKey) && (bool) fieldOptions[key][CurrentItemIsDestinationIdKey];
+                                    var linkTablePrefix = await GetTablePrefixForLinkAsync(linkTypeNumber, currentItemIsDestinationId ? Convert.ToString(fieldOptions[key][EntityTypeKey]) : wiserItem.EntityType);
 
                                     databaseConnection.AddParameter("linkTypeNumber", linkTypeNumber);
-                                    var currentItemIsDestinationId = fieldOptions[key].ContainsKey(CurrentItemIsDestinationIdKey) && (bool) fieldOptions[key][CurrentItemIsDestinationIdKey];
 
                                     // Delete any previous links that were added via this field.
                                     // NOTE: Here we make an assumption that the given linkTypeNumber is not used for anything else!
@@ -1229,7 +1230,7 @@ SET @saveHistory = ?saveHistoryGcl;
                             }
                             else
                             {
-                                updateQueryBuilder.Add($"UPDATE {WiserTableNames.WiserItemLinkDetail} SET `key` = ?key{counter}, `value` = ?value{counter}, `long_value` = ?longValue{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemDetailId{counter};");
+                                updateQueryBuilder.Add($"UPDATE {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} SET `key` = ?key{counter}, `value` = ?value{counter}, `long_value` = ?longValue{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemDetailId{counter};");
                             }
 
                             if (alsoSaveSeoValue)
@@ -1241,7 +1242,7 @@ SET @saveHistory = ?saveHistoryGcl;
                                 }
                                 else
                                 {
-                                    updateQueryBuilder.Add($"UPDATE {WiserTableNames.WiserItemLinkDetail} SET `key` = ?key{SeoPropertySuffix}{counter}, `value` = ?value{SeoPropertySuffix}{counter}, `long_value` = ?longValue{SeoPropertySuffix}{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemIDetailId{counter};");
+                                    updateQueryBuilder.Add($"UPDATE {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} SET `key` = ?key{SeoPropertySuffix}{counter}, `value` = ?value{SeoPropertySuffix}{counter}, `long_value` = ?longValue{SeoPropertySuffix}{counter}, `groupname` = ?groupName{counter}, language_code = ?languageCode{counter} WHERE id = ?itemDetailId{counter};");
                                 }
                             }
 
