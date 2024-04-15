@@ -707,6 +707,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             WHERE paymentMethod.id = ?id
                             AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'";
 
+            databaseConnection.ClearParameters();
             databaseConnection.AddParameter("id", paymentMethodId);
             var dataTable = await databaseConnection.GetAsync(query);
             if (dataTable.Rows.Count == 0)
