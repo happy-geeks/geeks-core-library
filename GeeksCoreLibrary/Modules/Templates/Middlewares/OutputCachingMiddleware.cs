@@ -125,6 +125,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             }
 
             var cacheFileName = await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate);
+            // If the cache file name is empty, it means that caching is disabled for this template.
+            if (String.IsNullOrWhiteSpace(cacheFileName))
+            {
+                logger.LogDebug($"Content cache disabled for page '{HttpContextHelpers.GetOriginalRequestUri(context)}', because it's disabled in the template settings ({contentTemplate.Id}).");
+                await next.Invoke(context);
+                return;
+            }
+            
             var fullCachePath = Path.Combine(cacheFolder, Models.Constants.PageCacheRootDirectoryName, contentTemplate.Type.ToString(), $"{contentTemplate.Name.StripIllegalPathCharacters()} ({contentTemplate.Id})", cacheFileName);
             var cacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
 
