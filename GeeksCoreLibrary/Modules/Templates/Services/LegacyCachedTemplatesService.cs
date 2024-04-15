@@ -132,24 +132,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             // Cache the template settings in memory.
-            var cacheName = new StringBuilder($"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}_{branchesService.GetDatabaseNameFromCookie()}");
-            
-            // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
-            var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (cookieCacheDeviation.Length > 0)
-            {
-                var requestCookies = httpContextAccessor?.HttpContext?.Request.Cookies;
-                foreach (var cookieName in cookieCacheDeviation)
-                {
-                    if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
-                    {
-                        continue;
-                    }
-
-                    var combinedCookiePart = $"{cookieName}:{cookieValue}";
-                    cacheName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
-                }
-            }
+            var cacheName = $"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}_{branchesService.GetDatabaseNameFromCookie()}{await GetContentCachingCookieDeviationSuffixAsync()}";
             
             var template = await cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
@@ -533,6 +516,34 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService service, int templateId, bool includeGlobalSnippets = true)
         {
             return await templatesService.GetPageWidgetsAsync(service, templateId, includeGlobalSnippets);
+        }
+
+        /// <summary>
+        /// Get cookie deviation suffix for content caching when configured in settings.
+        /// </summary>
+        /// <returns>The suffix or an empty string if none are set.</returns>
+        private async Task<string> GetContentCachingCookieDeviationSuffixAsync()
+        {
+            var result = new StringBuilder();
+            
+            // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
+            var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (cookieCacheDeviation.Length > 0)
+            {
+                var requestCookies = httpContextAccessor?.HttpContext?.Request.Cookies;
+                foreach (var cookieName in cookieCacheDeviation)
+                {
+                    if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
+                    {
+                        continue;
+                    }
+
+                    var combinedCookiePart = $"{cookieName}:{cookieValue}";
+                    result.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
+                }
+            }
+
+            return result.ToString();
         }
     }
 }
