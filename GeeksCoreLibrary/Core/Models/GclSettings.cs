@@ -21,9 +21,19 @@ namespace GeeksCoreLibrary.Core.Models
         public string ConnectionString { get; set; }
 
         /// <summary>
+        /// If the database connection requires an SSH tunnel, you can set the SSH settings here.
+        /// </summary>
+        public SshSettings DatabaseSshSettings { get; set; }
+
+        /// <summary>
         /// The default connection string for the current website. This will be used for queries that write data.
         /// </summary>
         public string ConnectionStringForWriting { get; set; }
+
+        /// <summary>
+        /// If the database connection requires an SSH tunnel, you can set the SSH settings here. This will be used for queries that write data.
+        /// </summary>
+        public SshSettings DatabaseSshSettingsForWriting { get; set; }
 
         /// <summary>
         /// This will be used to set the correct timezone for the database before executing any query, so that all times will be shown in the requested timezone.
