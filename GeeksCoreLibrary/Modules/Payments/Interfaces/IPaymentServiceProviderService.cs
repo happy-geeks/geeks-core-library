@@ -62,6 +62,6 @@ namespace GeeksCoreLibrary.Modules.Payments.Interfaces
         /// Each PSP sends this number in their own way, this method will get the number from the request based on which PSP is being used.
         /// </summary>
         /// <returns>The invoice number.</returns>
-        string GetInvoiceNumberFromRequest();
+        Task<string> GetInvoiceNumberFromRequestAsync();
     }
 }
