@@ -13,6 +13,7 @@
         RaboSmartPay,
         AfterPay,
         Mollie,
-        PayNl
+        PayNl,
+        PayPal
     }
 }
