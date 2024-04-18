@@ -205,7 +205,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserEntityProperty,
-                LastUpdate = new DateTime(2022, 8, 5),
+                LastUpdate = new DateTime(2024, 4, 18),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -240,7 +240,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("depends_on_field", MySqlDbType.VarChar, 100),
                     new("depends_on_operator", MySqlDbType.Enum, enumValues: new List<string> { "eq", "neq", "contains", "doesnotcontain", "startswith", "doesnotstartwith", "endswith", "doesnotendwith", "isempty", "isnotempty", "gte", "gt", "lte", "lt" }),
                     new("depends_on_value", MySqlDbType.VarChar, 255),
-                    new("depends_on_action", MySqlDbType.Enum, enumValues: new List<string> { "toggle-visibility", "refresh" }),
+                    new("depends_on_action", MySqlDbType.Enum, enumValues: new List<string> { "toggle-readonly", "toggle-visibility", "refresh" }),
                     new("language_code", MySqlDbType.VarChar, 5, notNull: true, defaultValue: ""),
                     new("custom_script", MySqlDbType.MediumText),
                     new("also_save_seo_value", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
