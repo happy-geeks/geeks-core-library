@@ -178,8 +178,8 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             }
 
             // Security settings.
-            converter.PdfSecurityOptions.CanEditContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_edit_content")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            converter.PdfSecurityOptions.CanCopyContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_copy_content")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            converter.PdfSecurityOptions.CanEditContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_edit_content", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            converter.PdfSecurityOptions.CanCopyContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_copy_content", "true")).Equals("true", StringComparison.OrdinalIgnoreCase);
             converter.PdfSecurityOptions.OwnerPassword = await objectsService.FindSystemObjectByDomainNameAsync("pdf_password");
 
             if (String.IsNullOrWhiteSpace(converter.PdfSecurityOptions.OwnerPassword))
