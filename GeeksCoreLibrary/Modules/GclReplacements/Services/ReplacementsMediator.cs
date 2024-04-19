@@ -496,7 +496,8 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             if (!String.IsNullOrWhiteSpace(defaultFormatter)
                 && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase))
                 && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase))
-                && !variable.Formatters.Any(f => f != null && f.StartsWith("CurrencySup", StringComparison.OrdinalIgnoreCase)))
+                && !variable.Formatters.Any(f => f != null && f.StartsWith("CurrencySup", StringComparison.OrdinalIgnoreCase))
+                && !variable.Formatters.Any(f => f != null && f.StartsWith("UrlEncode", StringComparison.OrdinalIgnoreCase)))
             {
                 variable.Formatters.Add(defaultFormatter);
             }
