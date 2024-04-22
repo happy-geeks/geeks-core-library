@@ -23,6 +23,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
 using Newtonsoft.Json;
+using Renci.SshNet;
+using ConnectionInfo = Renci.SshNet.ConnectionInfo;
 
 namespace GeeksCoreLibrary.Modules.Databases.Services
 {
@@ -38,6 +40,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             (int) MySqlErrorCode.TableDefinitionChanged
         };
 
+        private const string Localhost = "127.0.0.1";
+
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly ILogger<MySqlDatabaseConnection> logger;
@@ -45,8 +49,17 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private MySqlConnectionStringBuilder connectionStringForReading;
         private MySqlConnectionStringBuilder connectionStringForWriting;
 
+        private SshSettings sshSettingsForReading;
+        private SshSettings sshSettingsForWriting;
+
         private MySqlConnection ConnectionForReading { get; set; }
         private MySqlConnection ConnectionForWriting { get; set; }
+
+        private SshClient SshClientForReading { get; set; }
+        private SshClient SshClientForWriting { get; set; }
+
+        private ForwardedPortLocal ForwardedPortLocalForReading { get; set; }
+        private ForwardedPortLocal ForwardedPortLocalForWriting { get; set; }
 
         private readonly GclSettings gclSettings;
 
@@ -79,6 +92,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             instanceId = Guid.NewGuid();
             connectionStringForReading = String.IsNullOrWhiteSpace(this.gclSettings.ConnectionString) ? null : new MySqlConnectionStringBuilder { ConnectionString = this.gclSettings.ConnectionString };
             connectionStringForWriting = String.IsNullOrWhiteSpace(this.gclSettings.ConnectionStringForWriting) ? null : new MySqlConnectionStringBuilder { ConnectionString = this.gclSettings.ConnectionStringForWriting };
+            sshSettingsForReading = this.gclSettings.DatabaseSshSettings;
+            sshSettingsForWriting = this.gclSettings.DatabaseSshSettingsForWriting;
 
             if (connectionStringForReading != null)
             {
@@ -561,7 +576,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var createdNewConnection = false;
             if (ConnectionForReading == null)
             {
-                ConnectionForReading = new MySqlConnection { ConnectionString = connectionStringForReading.ConnectionString };
+                var (sshClient, localPort, forwardedPortLocal) = ConnectToSsh(sshSettingsForReading, connectionStringForReading.Server, connectionStringForReading.Port);
+                SshClientForReading = sshClient;
+                ForwardedPortLocalForReading = forwardedPortLocal;
+                if (sshClient != null)
+                {
+                    connectionStringForReading.Server = Localhost;
+                    connectionStringForReading.Port = localPort;
+                }
+
+                ConnectionForReading = new MySqlConnection {ConnectionString = connectionStringForReading.ConnectionString};
                 createdNewConnection = true;
             }
 
@@ -600,6 +624,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var createdNewConnection = false;
             if (ConnectionForWriting == null)
             {
+                var (sshClient, localPort, forwardedPortLocal) = ConnectToSsh(sshSettingsForWriting, connectionStringForWriting.Server, connectionStringForWriting.Port);
+                SshClientForWriting = sshClient;
+                ForwardedPortLocalForWriting = forwardedPortLocal;
+                if (sshClient != null)
+                {
+                    connectionStringForWriting.Server = Localhost;
+                    connectionStringForWriting.Port = localPort;
+                }
+
                 ConnectionForWriting = new MySqlConnection { ConnectionString = connectionStringForWriting.ConnectionString };
                 createdNewConnection = true;
             }
@@ -625,7 +658,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting = null)
+        public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting = null, SshSettings sshSettingsForReading = null, SshSettings sshSettingsForWriting = null)
         {
             connectionStringForReading ??= new MySqlConnectionStringBuilder();
             connectionStringForWriting ??= new MySqlConnectionStringBuilder();
@@ -634,17 +667,44 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             connectionStringForWriting.ConnectionString = String.IsNullOrWhiteSpace(newConnectionStringForWriting) ? newConnectionStringForReading : newConnectionStringForWriting;
             connectionStringForReading.IgnoreCommandTransaction = true;
             connectionStringForWriting.IgnoreCommandTransaction = true;
+            this.sshSettingsForReading = sshSettingsForReading;
+            this.sshSettingsForWriting = sshSettingsForWriting;
+
             await CleanUpAsync();
             if (ConnectionForReading != null)
             {
                 await AddConnectionCloseLogAsync(false);
-                await ConnectionForReading.CloseAsync();
+                await ConnectionForReading.DisposeAsync();
+            }
+
+            if (SshClientForReading != null)
+            {
+                SshClientForReading.Dispose();
+                SshClientForReading = null;
+            }
+
+            if (ForwardedPortLocalForReading != null)
+            {
+                ForwardedPortLocalForReading.Dispose();
+                ForwardedPortLocalForReading = null;
             }
 
             if (ConnectionForWriting != null)
             {
                 await AddConnectionCloseLogAsync(true);
-                await ConnectionForWriting.CloseAsync();
+                await ConnectionForWriting.DisposeAsync();
+            }
+
+            if (SshClientForWriting != null)
+            {
+                SshClientForWriting.Dispose();
+                SshClientForWriting = null;
+            }
+
+            if (ForwardedPortLocalForWriting != null)
+            {
+                ForwardedPortLocalForWriting.Dispose();
+                ForwardedPortLocalForWriting = null;
             }
 
             ConnectionForReading = null;
@@ -883,16 +943,45 @@ SELECT LAST_INSERT_ID();";
             {
                 if (disposeConnection)
                 {
-                    switch (isWriteConnection)
+                    if (isWriteConnection)
                     {
-                        case true when ConnectionForWriting != null:
+                        if (ConnectionForWriting != null)
+                        {
                             await ConnectionForWriting.DisposeAsync();
                             ConnectionForWriting = null;
-                            break;
-                        case false when ConnectionForReading != null:
+                        }
+
+                        if (SshClientForWriting != null)
+                        {
+                            SshClientForWriting.Dispose();
+                            SshClientForWriting = null;
+                        }
+
+                        if (ForwardedPortLocalForWriting != null)
+                        {
+                            ForwardedPortLocalForWriting.Dispose();
+                            ForwardedPortLocalForWriting = null;
+                        }
+                    }
+                    else
+                    {
+                        if (ConnectionForReading != null)
+                        {
                             await ConnectionForReading.DisposeAsync();
                             ConnectionForReading = null;
-                            break;
+                        }
+
+                        if (SshClientForReading != null)
+                        {
+                            SshClientForReading.Dispose();
+                            SshClientForReading = null;
+                        }
+
+                        if (ForwardedPortLocalForReading != null)
+                        {
+                            ForwardedPortLocalForReading.Dispose();
+                            ForwardedPortLocalForReading = null;
+                        }
                     }
                 }
             }
@@ -938,6 +1027,64 @@ SELECT LAST_INSERT_ID();";
                 Thread.Sleep(10);
                 counter++;
             }
+        }
+
+        /// <summary>
+        /// Connect to an SSH tunnel/server and forward the MySQL port through this tunnel.
+        /// If no SSH settings are given, then this method will return null and will not setup an SSH tunnel.
+        /// </summary>
+        /// <param name="sshSettings">The SSH settings to use.</param>
+        /// <param name="databaseServer">The host of the database that requires an SSH tunnel.</param>
+        /// <param name="databasePort">The database port to use.</param>
+        /// <returns>The <see cref="SshClient"/> and the port of the SSH tunnel.</returns>
+        /// <exception cref="ArgumentException">When not all required settings have been set.</exception>
+        private (SshClient sshClient, uint BoundPort, ForwardedPortLocal ForwardedPortLocal) ConnectToSsh(SshSettings sshSettings, string databaseServer, uint databasePort)
+        {
+            // Return null if we have no SSH settings.
+            if (String.IsNullOrEmpty(sshSettings?.Host) || String.IsNullOrEmpty(sshSettings?.Username))
+            {
+                return (null, 0, null);
+            }
+
+            // Make sure that the settings are fully set.
+            if (String.IsNullOrEmpty(sshSettings.Password) && String.IsNullOrEmpty(sshSettings.PrivateKeyPath))
+            {
+                throw new ArgumentException($"One of {nameof(sshSettings.Password)} and {nameof(sshSettings.PrivateKeyPath)} must be specified.");
+            }
+
+            // Define the authentication methods to use (in order).
+            var authenticationMethods = new List<AuthenticationMethod>();
+            if (!String.IsNullOrEmpty(sshSettings.PrivateKeyPath))
+            {
+                authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(sshSettings.PrivateKeyPath, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
+            }
+
+            if (!String.IsNullOrEmpty(sshSettings.Password))
+            {
+                authenticationMethods.Add(new PasswordAuthenticationMethod(sshSettings.Username, sshSettings.Password));
+            }
+
+            // Connect to the SSH server.
+            var sshClient = new SshClient(new ConnectionInfo(sshSettings.Host, sshSettings.Port, sshSettings.Username, authenticationMethods.ToArray()));
+
+            // Validate the finger print, if we know which finger print the host is supposed to have.
+            if (!String.IsNullOrWhiteSpace(sshSettings.ExpectedFingerPrint))
+            {
+                sshClient.HostKeyReceived += (sender, hostKeyEventArgs) => { hostKeyEventArgs.CanTrust = sshSettings.ExpectedFingerPrint.Equals(hostKeyEventArgs.FingerPrintSHA256); };
+            }
+            else
+            {
+                logger.LogWarning("No expected finger print is set for the SSH connection. This means that the connection will not be validated and man-in-the-middle attacks might be possible.");
+            }
+
+            sshClient.Connect();
+
+            // Forward a local port to the database server and port, using the SSH server.
+            var forwardedPort = new ForwardedPortLocal(Localhost, databaseServer, databasePort);
+            sshClient.AddForwardedPort(forwardedPort);
+            forwardedPort.Start();
+
+            return (sshClient, forwardedPort.BoundPort, forwardedPort);
         }
     }
 }

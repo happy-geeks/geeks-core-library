@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Models;
 using MySqlConnector;
 
 namespace GeeksCoreLibrary.Modules.Databases.Interfaces
@@ -136,8 +137,10 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// </summary>
         /// <param name="newConnectionStringForReading">The new connection string to use for reading.</param>
         /// <param name="newConnectionStringForWriting">The new connection string to use for writing.</param>
+        /// <param name="sshSettingsForReading">Optional: If the new connection for reading requires SSH, enter the SSH details here.</param>
+        /// <param name="sshSettingsForWriting">Optional: If the new connection for writing requires SSH, enter the SSH details here.</param>
         /// <returns></returns>
-        Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting = null);
+        Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting = null, SshSettings sshSettingsForReading = null, SshSettings sshSettingsForWriting = null);
 
         /// <summary>
         /// Sets the command timeout in seconds for the connection.
