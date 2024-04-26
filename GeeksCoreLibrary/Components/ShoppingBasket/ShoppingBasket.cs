@@ -319,6 +319,15 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         {
             var result = new StringBuilder();
 
+            if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
+            {
+                extraData ??= new Dictionary<string, object>();
+                foreach (var keyValuePair in ExtraDataForReplacements)
+                {
+                    extraData.Add(keyValuePair.Key, keyValuePair.Value);
+                }
+            }
+
             if (Lines?.Count == 0)
             {
                 var template = Settings.TemplateEmpty ?? "";
