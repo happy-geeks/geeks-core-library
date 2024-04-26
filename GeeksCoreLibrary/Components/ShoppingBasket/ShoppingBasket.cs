@@ -319,6 +319,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         {
             var result = new StringBuilder();
 
+            // If there is extra data saved for replacements, add it to the extra data dictionary that is used in the replacements later.
             if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
             {
                 extraData ??= new Dictionary<string, object>();
