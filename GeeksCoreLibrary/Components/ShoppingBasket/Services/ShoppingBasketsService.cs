@@ -2718,6 +2718,57 @@ WHERE coupon.entity_type = 'coupon'", true);
             }
         }
 
+        /// <inheritdoc />
+        public async Task<(string Html, string PdfDocumentOptions)> RenderBasketHtmlAsync(ulong templateId, WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string basketLineValidityMessage = "", string basketLineStockActionMessage = "")
+        {
+            var html = "";
+            var pdfDocumentOptions = "";
+
+            var pdfDocumentOptionsPropertyName = await objectsService.FindSystemObjectByDomainNameAsync("pdf_documentoptionspropertyname", "documentoptions");
+            var contentPropertyName = await objectsService.FindSystemObjectByDomainNameAsync("content_propertyname", "html_template");
+
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("id", templateId);
+            databaseConnection.AddParameter("contentPropertyName", contentPropertyName);
+            databaseConnection.AddParameter("pdfDocumentOptionsPropertyName", pdfDocumentOptionsPropertyName);
+            var getTemplateResult = await databaseConnection.GetAsync($"SELECT `key`, CONCAT_WS('', `value`, long_value) AS `value` FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?id AND `key` IN (?contentPropertyName, ?pdfDocumentOptionsPropertyName)");
+            if (getTemplateResult.Rows.Count > 0)
+            {
+                foreach (DataRow dataRow in getTemplateResult.Rows)
+                {
+                    var key = dataRow.Field<string>("key");
+                    if (key == contentPropertyName)
+                    {
+                        html = dataRow.Field<string>("value");
+                    }
+                    else if (key == pdfDocumentOptionsPropertyName)
+                    {
+                        pdfDocumentOptions = dataRow.Field<string>("value");
+                    }
+                }
+            }
+
+            return (await RenderBasketHtmlAsync(html, shoppingBasket, basketLines, settings, basketLineValidityMessage, basketLineStockActionMessage), pdfDocumentOptions);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> RenderBasketHtmlAsync(string htmlTemplate, WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string basketLineValidityMessage = "", string basketLineStockActionMessage = "")
+        {
+            // Add messages that were set while loading.
+            var additionalReplacementData = new Dictionary<string, object>
+            {
+                { "BasketLineStockActionMessage", basketLineStockActionMessage },
+                { "BasketLineValidityMessage", basketLineValidityMessage }
+            };
+
+            var html = await templatesService.DoReplacesAsync(htmlTemplate, false, false, false);
+            html = await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, html, stripNotExistingVariables: false, additionalReplacementData: additionalReplacementData);
+            html = await stringReplacementsService.DoAllReplacementsAsync(html, null, settings.HandleRequest, settings.EvaluateIfElseInTemplates, settings.RemoveUnknownVariables);
+            html = stringReplacementsService.EvaluateTemplate(html);
+
+            return settings.RemoveUnknownVariables ? Regex.Replace(html, "{[^\\]}\\s]*}", "") : html;
+        }
+
         #region Private functions (helper functions)
 
         private void WriteEncryptedIdToCookie(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings)
