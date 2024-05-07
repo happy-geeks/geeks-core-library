@@ -1641,7 +1641,13 @@ ORDER BY IFNULL(linkToParent.destination_item_id, 0) ASC, IFNULL(linkToParent.or
         /// <inheritdoc />
         public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
         {
-            var results = includeGlobalSnippets ? await templatesService.GetGlobalPageWidgetsAsync() : new List<PageWidgetModel>();
+            var results = new List<PageWidgetModel>();
+
+            // Add global snippets to the page.
+            if (includeGlobalSnippets)
+            {
+                results.AddRange(await GetGlobalPageWidgetsAsync());
+            }
 
             if (templateId <= 0)
             {
