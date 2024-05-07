@@ -584,49 +584,14 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             if (UInt64.TryParse(template, out var templateId))
             {
                 contentItemId = templateId;
-
-                var pdfDocumentOptionsPropertyName = await objectsService.FindSystemObjectByDomainNameAsync("pdf_documentoptionspropertyname", "documentoptions");
-                var contentPropertyName = await objectsService.FindSystemObjectByDomainNameAsync("content_propertyname", "html_template");
-
-                DatabaseConnection.ClearParameters();
-                DatabaseConnection.AddParameter("id", templateId);
-                DatabaseConnection.AddParameter("contentPropertyName", contentPropertyName);
-                DatabaseConnection.AddParameter("pdfDocumentOptionsPropertyName", pdfDocumentOptionsPropertyName);
-                var getTemplateResult = await DatabaseConnection.GetAsync($"SELECT `key`, CONCAT_WS('', `value`, long_value) AS `value` FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?id AND `key` IN (?contentPropertyName, ?pdfDocumentOptionsPropertyName)");
-                if (getTemplateResult.Rows.Count > 0)
-                {
-                    foreach (DataRow dataRow in getTemplateResult.Rows)
-                    {
-                        var key = dataRow.Field<string>("key");
-                        if (key == contentPropertyName)
-                        {
-                            html = dataRow.Field<string>("value");
-                        }
-                        else if (key == pdfDocumentOptionsPropertyName)
-                        {
-                            pdfDocumentOptions = dataRow.Field<string>("value");
-                        }
-                    }
-                }
+                (html, pdfDocumentOptions) = await shoppingBasketsService.RenderBasketHtmlAsync(templateId, Main, Lines, Settings, basketLineValidityMessage, basketLineStockActionMessage);
             }
             else
             {
-                html = template;
+                html = await shoppingBasketsService.RenderBasketHtmlAsync(template, Main, Lines, Settings, basketLineValidityMessage, basketLineStockActionMessage);
             }
 
-            // Add messages that were set while loading.
-            var additionalReplacementData = new Dictionary<string, object>
-            {
-                { "BasketLineStockActionMessage", basketLineStockActionMessage },
-                { "BasketLineValidityMessage", basketLineValidityMessage }
-            };
-
-            html = await TemplatesService.DoReplacesAsync(html, false, false, false);
-            html = await shoppingBasketsService.ReplaceBasketInTemplateAsync(Main, Lines, Settings, html, stripNotExistingVariables: false, additionalReplacementData: additionalReplacementData);
-            html = await StringReplacementsService.DoAllReplacementsAsync(html, null, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, Settings.RemoveUnknownVariables);
-            html = StringReplacementsService.EvaluateTemplate(html);
-
-            return (Settings.RemoveUnknownVariables ? Regex.Replace(html, "{[^\\]}\\s]*}", "") : html, contentItemId, pdfDocumentOptions);
+            return (html, contentItemId, pdfDocumentOptions);
         }
 
         public async Task<FileContentResult> GeneratePdfAsync()
