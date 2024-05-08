@@ -38,8 +38,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             this.wiserItemsService = wiserItemsService;
         }
 
-        private static readonly string[] europeanCountries = ["AT", "IT", "BE", "LV", "BG", "LT", "HR", "LU", "CY", "CZ", "DK", "EE", "PL", "FI", "PT", "FR", "RO", "DE", "SK", "SI", "GR", "ES", "HU", "SE", "IE" ];
-
+        private static readonly List<string> europeanCountries = new() { "AT", "IT", "BE", "LV", "BG", "LT", "HR", "LU", "CY", "CZ", "DK", "EE", "PL", "FI", "PT", "FR", "RO", "DE", "SK", "SI", "GR", "ES", "HU", "SE", "IE" };
         /// <summary>
         /// Cleans the PostNL log table
         /// </summary>
