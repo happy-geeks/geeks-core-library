@@ -45,7 +45,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     public class TemplatesService : ITemplatesService
     {
         private readonly GclSettings gclSettings;
-        private readonly ILogger<LegacyTemplatesService> logger;
+        private readonly ILogger<TemplatesService> logger;
         private readonly IDatabaseConnection databaseConnection;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IHttpContextAccessor httpContextAccessor;
@@ -61,9 +61,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IReplacementsMediator replacementsMediator;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
+        /// Initializes a new instance of <see cref="TemplatesService"/>.
         /// </summary>
-        public TemplatesService(ILogger<LegacyTemplatesService> logger,
+        public TemplatesService(ILogger<TemplatesService> logger,
             IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
             IStringReplacementsService stringReplacementsService,
