@@ -149,7 +149,7 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             converter.PdfDocumentOptions.ShowFooter = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_show")).Equals("true", StringComparison.OrdinalIgnoreCase);
             if (String.IsNullOrWhiteSpace(settings.Footer))
             {
-                settings.Header = await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_text");
+                settings.Footer = await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_text");
             }
             if (!String.IsNullOrWhiteSpace(settings.Footer))
             {
