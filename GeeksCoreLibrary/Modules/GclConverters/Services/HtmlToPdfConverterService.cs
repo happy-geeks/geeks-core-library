@@ -275,6 +275,8 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                 ItemId = templateItemId
             };
             
+            pdfSettings.BackgroundPropertyName = await objectsService.FindSystemObjectByDomainNameAsync("pdf_backgroundpropertyname");
+            
             var query = $"SELECT `key`, CONCAT_WS('', `value`, `long_value`) AS value, language_code FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?templateItemId";
             databaseConnection.AddParameter("templateItemId", templateItemId);
             var dataTable = await databaseConnection.GetAsync(query);
