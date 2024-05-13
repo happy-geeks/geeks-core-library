@@ -38,15 +38,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             this.wiserItemsService = wiserItemsService;
         }
 
-        public static List<string> EuropeanCountries = new() { "AT", "IT", "BE", "LV", "BG", "LT", "HR", "LU", "CY", "CZ", "DK", "EE", "PL", "FI", "PT", "FR", "RO", "DE", "SK", "SI", "GR", "ES", "HU", "SE", "IE" };
-
-        public enum ShippingLocations
-        {
-            Netherlands,
-            Europe,
-            Global
-        }
-
+        private static readonly List<string> europeanCountries = new() { "AT", "IT", "BE", "LV", "BG", "LT", "HR", "LU", "CY", "CZ", "DK", "EE", "PL", "FI", "PT", "FR", "RO", "DE", "SK", "SI", "GR", "ES", "HU", "SE", "IE" };
         /// <summary>
         /// Cleans the PostNL log table
         /// </summary>
@@ -55,12 +47,9 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             await databaseConnection.ExecuteAsync($"DELETE FROM {PostNlLogTableName} WHERE datetime < DATE_SUB(NOW(), INTERVAL 2 WEEK)");
         }
 
-        /// <summary>
-        /// Gets the settings for the specified shipping location
-        /// </summary>
-        /// <param name="shippingLocation"></param>
-        /// <returns></returns>
-        public async Task<SettingsModel> GetSettingsAsync(ShippingLocations shippingLocation)
+        /// <inheritdoc/>
+        public async Task<SettingsModel> GetSettingsAsync(ShippingLocations shippingLocation,
+            ParcelType parcelType = ParcelType.Standard)
         {
             var result = new SettingsModel();
             switch (shippingLocation)
@@ -93,6 +82,11 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                     throw new ArgumentOutOfRangeException(nameof(shippingLocation), shippingLocation, null);
             }
 
+            if (parcelType == ParcelType.Mailbox)
+            {
+                result.ProductCode = "2928";
+            }
+
             return result;
         }
 
@@ -120,12 +114,8 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             return countryCode;
         }
 
-        /// <summary>
-        /// Generate the shipping label based on the specified orderId
-        /// </summary>
-        /// <param name="encryptedOrderIds">Comma separated string of orderIds to create a shipping label</param>
-        /// <returns>Action result containing the text for the reason of the result or error</returns>
-        public async Task<List<string>> GenerateShippingLabelAsync(string encryptedOrderIds)
+        /// <inheritdoc/>
+        public async Task<List<string>> GenerateShippingLabelAsync(string encryptedOrderIds, ParcelType modelParcelType)
         {
             var result = new List<string>();
 
@@ -170,7 +160,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                 {
                     shippingLocation = ShippingLocations.Netherlands;
                 }
-                else if (EuropeanCountries.Any(c => c.Equals(shippingAddress.Countrycode, StringComparison.OrdinalIgnoreCase)))
+                else if (europeanCountries.Any(c => c.Equals(shippingAddress.Countrycode, StringComparison.OrdinalIgnoreCase)))
                 {
                     shippingLocation = ShippingLocations.Europe;
                 }
@@ -179,9 +169,9 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                     shippingLocation = ShippingLocations.Global;
                 }
 
-                barcode = (await CreateNewBarcodeAsync(orderId, shippingLocation))?.Barcode;
+                barcode = (await CreateNewBarcodeAsync(orderId, shippingLocation, modelParcelType))?.Barcode;
 
-                var settings = await GetSettingsAsync(shippingLocation);
+                var settings = await GetSettingsAsync(shippingLocation, modelParcelType);
                 var postNlRequest = new ShipmentRequestModel
                 {
                     Customer = new CustomerModel
@@ -295,13 +285,9 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             return result;
         }
 
-        /// <summary>
-        /// Creates a new barcode using the PostNL Api
-        /// </summary>
-        /// <param name="orderId">The orderId</param>
-        /// <param name="shippingLocation">The location the order will be send to</param>
-        /// <returns>A model containing the barcode created using the api</returns>
-        public async Task<BarcodeResponseModel> CreateNewBarcodeAsync(string orderId, ShippingLocations shippingLocation = ShippingLocations.Netherlands)
+        /// <inheritdoc/>
+        public async Task<BarcodeResponseModel> CreateNewBarcodeAsync(string orderId,
+            ShippingLocations shippingLocation = ShippingLocations.Netherlands, ParcelType parcelType = ParcelType.Standard)
         {
             var exceptionMessage = "";
             var responseString = "";
@@ -310,8 +296,8 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             try
             {
                 var restClient = new RestClient(gclSettings.PostNlApiBaseUrl);
-                var restRequest = new RestRequest("/shipment/v1_1/barcode", Method.Get);
-                var settings = await GetSettingsAsync(shippingLocation);
+                var restRequest = new RestRequest("/shipment/v2_2/barcode");
+                var settings = await GetSettingsAsync(shippingLocation, parcelType);
 
                 restRequest.AddQueryParameter("CustomerCode", settings.CustomerCode);
                 restRequest.AddQueryParameter("CustomerNumber", settings.CustomerNumber);
@@ -347,12 +333,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             }
         }
 
-        /// <summary>
-        /// Generates a new label using the PostNL api
-        /// </summary>
-        /// <param name="orderId">The orderId of the order the label must be created for</param>
-        /// <param name="request">Request model containing all the data used for creating the label</param>
-        /// <returns>Model containing the information of the generated label</returns>
+        /// <inheritdoc/>
         public async Task<ShipmentResponseModel> CreateTrackTraceLabelAsync(string orderId, ShipmentRequestModel request)
         {
             var exceptionMessage = "";
@@ -362,7 +343,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             try
             {
                 var restClient = new RestClient(gclSettings.PostNlApiBaseUrl);
-                var restRequest = new RestRequest("/v1/shipment?confirm=true", Method.Post);
+                var restRequest = new RestRequest("/shipment/v2_2/label?confirm=true", Method.Post);
                 requestString = JsonConvert.SerializeObject(request, Formatting.None, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
                 restRequest.AddParameter("application/json", requestString, ParameterType.RequestBody);
                 restRequest.AddJsonBody(request);
