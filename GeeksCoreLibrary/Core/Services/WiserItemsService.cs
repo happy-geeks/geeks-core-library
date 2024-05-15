@@ -2909,7 +2909,7 @@ WHERE {String.Join(" AND ", where)}";
                         ShowOverviewTab = !dataRow.IsNull("show_overview_tab") && Convert.ToBoolean(dataRow["show_overview_tab"]),
                         ShowTitleField = !dataRow.IsNull("show_title_field") && Convert.ToBoolean(dataRow["show_title_field"]),
                         DisplayName = dataRow.Field<string>("displayName"),
-                        SaveHistory = Convert.ToBoolean(dataRow["save_history"]),
+                        SaveHistory = dataRow.IsNull("save_history") || Convert.ToBoolean(dataRow["save_history"]),
                         DeleteAction = dataRow.Field<string>("delete_action")?.ToLowerInvariant() switch
                         {
                             null => EntityDeletionTypes.Archive,
