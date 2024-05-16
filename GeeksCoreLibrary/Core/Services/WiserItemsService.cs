@@ -229,6 +229,11 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 wiserItem.ModuleId = entityTypeSettings.ModuleId;
             }
+            
+            if (!entityTypeSettings!.SaveHistory)
+            {
+                saveHistory = false;
+            }
       
             var retries = 0;
             var transactionCompleted = false;
@@ -638,6 +643,11 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
             // Get the settings of the entity type.
             var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType, wiserItem.ModuleId);
             var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
+            
+            if (!entityTypeSettings!.SaveHistory)
+            {
+                saveHistory = false;
+            }
 
             var retries = 0;
             var transactionCompleted = false;
@@ -2899,6 +2909,7 @@ WHERE {String.Join(" AND ", where)}";
                         ShowOverviewTab = !dataRow.IsNull("show_overview_tab") && Convert.ToBoolean(dataRow["show_overview_tab"]),
                         ShowTitleField = !dataRow.IsNull("show_title_field") && Convert.ToBoolean(dataRow["show_title_field"]),
                         DisplayName = dataRow.Field<string>("displayName"),
+                        SaveHistory = dataRow.IsNull("save_history") || Convert.ToBoolean(dataRow["save_history"]),
                         DeleteAction = dataRow.Field<string>("delete_action")?.ToLowerInvariant() switch
                         {
                             null => EntityDeletionTypes.Archive,
