@@ -255,7 +255,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
                 // Simply replace the variable if there are no formatters found.
                 if (forQuery)
                 {
-                    var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.MatchString)}";
+                    var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.VariableName)}";
                     databaseConnection.AddParameter(parameterName, value);
                     value = $"?{parameterName}";
 
@@ -305,7 +305,9 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
                 }
                 else
                 {
-                    var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.MatchString)}";
+                    var list = new List<string> {variableName};
+                    list.AddRange(variable.Formatters);
+                    var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(String.Join("_", list))}";
                     databaseConnection.AddParameter(parameterName, value);
                     value = $"?{parameterName}";
 
