@@ -167,19 +167,37 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         // Repeat the process for each object in the current level until the bottom is reached.
         foreach (var jToken in replaceData)
         {
-            if (jToken is not JProperty item)
+            switch (jToken)
             {
-                continue;
-            }
+                case JProperty item:
+                    switch (item.Value.Type)
+                    {
+                        case JTokenType.Object:
+                            output = DoReplacements(output, item.Value, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
+                            break;
+                        case JTokenType.Array:
+                        {
+                            foreach (var subToken in item.Value)
+                            {
+                                if (subToken is not JObject subItem)
+                                {
+                                    continue;
+                                }
 
-            switch (item.Value.Type)
-            {
-                case JTokenType.Object:
-                    output = DoReplacements(output, item.Value, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
+                                output = DoReplacements(output, subItem, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
+                            }
+
+                            break;
+                        }
+                    }
+
                     break;
-                case JTokenType.Array:
+                case JObject jObject:
+                    output = DoReplacements(output, jObject, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
+                    break;
+                case JArray jArray:
                 {
-                    foreach (var subToken in item.Value)
+                    foreach (var subToken in jArray)
                     {
                         if (subToken is not JObject subItem)
                         {
