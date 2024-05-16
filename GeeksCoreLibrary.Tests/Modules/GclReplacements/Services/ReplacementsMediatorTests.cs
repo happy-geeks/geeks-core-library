@@ -64,7 +64,10 @@ public class ReplacementsMediatorTests
     [SetUp]
     public void Setup()
     {
+        // Create mocks.
         databaseConnectionMock = new Mock<IDatabaseConnection>();
+
+        // Create the service that we're testing.
         replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object);
     }
 
