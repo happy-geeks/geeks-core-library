@@ -152,5 +152,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// Check whether the connection currently has an active transaction.
         /// </summary>
         bool HasActiveTransaction();
+
+        /// <summary>
+        /// Bulk insert a <see cref="DataTable"/> into a table in the database.
+        /// </summary>
+        /// <param name="dataTable">The <see cref="DataTable"/> that contains the data to insert.</param>
+        /// <param name="tableName">The name of the table to insert the data into.</param>
+        /// <param name="useWritingConnectionIfAvailable">Optional: Use the writing connection to get information, if there is one available. If we detect that your query contains a database modification, then we will always use the write connection string, no matter what you enter here.</param>
+        /// <param name="useInsertIgnore">Optional: Whether to use INSERT IGNORE instead of INSERT, to ignore errors such as duplicate keys.</param>
+        Task<long> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false);
     }
 }
