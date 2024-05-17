@@ -118,7 +118,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     return Unauthorized();
                 }
 
-                var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase) && !contentTemplate.IsPartial;
+                var useGeneralLayout = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase) && !contentTemplate.IsPartial;
                 switch (contentTemplate.Type)
                 {
                     case TemplateTypes.Js:
@@ -170,7 +170,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 var url = (string) context.Items[Constants.OriginalPathAndQueryStringKey];
 
                 // Header template.
-                if (ombouw)
+                if (useGeneralLayout)
                 {
                     contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates));
                 }
@@ -179,7 +179,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 contentToWrite.Append(contentTemplate.Content);
 
                 // Footer template.
-                if (ombouw)
+                if (useGeneralLayout)
                 {
                     contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates));
                 }
@@ -211,12 +211,20 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     }
                 }
 
-                if (!ombouw)
-                {
-                    return Content(newBodyHtml, "text/html");
-                }
+                var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml, templateId, useGeneralLayout);
 
-                var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml, templateId);
+                if (!useGeneralLayout)
+                {
+                    // Check if the page has any CSS or JS to load. If so, return the view model so the view can load the CSS and JS.
+                    if (externalCss.Count > 0 || cssTemplates.Count > 0 || externalJavascript.Count > 0 || javascriptTemplates.Count > 0)
+                    {
+                        return View(viewModel);
+                    }
+                    else
+                    {
+                        return Content(newBodyHtml, "text/html");
+                    }
+                }
 
                 // If a component set the status code to a 4xx status code, then return that actual status code
                 // here too, so the StatusCodePagesWithReExecute middleware can handle the showing of custom error pages.
