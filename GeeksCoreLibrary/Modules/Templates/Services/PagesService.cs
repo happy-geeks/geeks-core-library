@@ -487,6 +487,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             viewModel.Javascript.ExternalJavascript.AddRange(externalScripts);
             viewModel.Body = bodyHtml;
 
+            // Ignore the rest if we're not using the general layout.
             if (!useGeneralLayout) return viewModel;
 
             // Add viewport.
