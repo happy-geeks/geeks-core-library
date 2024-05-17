@@ -728,7 +728,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public async Task<long> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false)
+        public async Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false)
         {
             if (dataTable == null || dataTable.Rows.Count == 0)
             {
@@ -749,7 +749,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
             }
 
-            return await InsertRecordAsync(query.ToString(), useWritingConnectionIfAvailable);
+            return await ExecuteAsync(query.ToString(), useWritingConnectionIfAvailable);
         }
 
         /// <summary>

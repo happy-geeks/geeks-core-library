@@ -226,7 +226,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public async Task<long> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false)
+        public async Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false)
         {
             return await databaseConnection.BulkInsertAsync(dataTable, tableName, useWritingConnectionIfAvailable, useInsertIgnore);
         }

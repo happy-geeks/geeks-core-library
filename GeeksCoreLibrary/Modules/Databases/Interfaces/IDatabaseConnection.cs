@@ -160,6 +160,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="tableName">The name of the table to insert the data into.</param>
         /// <param name="useWritingConnectionIfAvailable">Optional: Use the writing connection to get information, if there is one available. If we detect that your query contains a database modification, then we will always use the write connection string, no matter what you enter here.</param>
         /// <param name="useInsertIgnore">Optional: Whether to use INSERT IGNORE instead of INSERT, to ignore errors such as duplicate keys.</param>
-        Task<long> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false);
+        Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false);
     }
 }
