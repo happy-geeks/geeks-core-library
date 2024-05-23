@@ -154,6 +154,20 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         bool HasActiveTransaction();
 
         /// <summary>
+        /// Sometimes you might need the underlying DbConnection, for example when using the SqlBulkCopy class.
+        /// This function can be used for that.
+        /// </summary>
+        /// <returns>The <see cref="DbConnection"/> for the reading connection.</returns>
+        DbConnection GetConnectionForReading();
+
+        /// <summary>
+        /// Sometimes you might need the underlying DbConnection, for example when using the SqlBulkCopy class.
+        /// This function can be used for that.
+        /// </summary>
+        /// <returns>The <see cref="DbConnection"/> for the writing connection.</returns>
+        DbConnection GetConnectionForWriting();
+
+        /// <summary>
         /// Bulk insert a <see cref="DataTable"/> into a table in the database.
         /// </summary>
         /// <param name="dataTable">The <see cref="DataTable"/> that contains the data to insert.</param>

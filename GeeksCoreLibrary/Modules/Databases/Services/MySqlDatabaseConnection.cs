@@ -728,6 +728,18 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
+        public DbConnection GetConnectionForReading()
+        {
+            return ConnectionForReading;
+        }
+
+        /// <inheritdoc />
+        public DbConnection GetConnectionForWriting()
+        {
+            return String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? ConnectionForReading : ConnectionForWriting;
+        }
+
+        /// <inheritdoc />
         public async Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false)
         {
             if (dataTable == null || dataTable.Rows.Count == 0)
