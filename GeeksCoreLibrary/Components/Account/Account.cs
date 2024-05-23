@@ -510,7 +510,7 @@ namespace GeeksCoreLibrary.Components.Account
                     else
                     {
                         // Check if the user is already logged in and show the success template if they are.
-                        userId = (await AccountsService.GetUserDataFromCookieAsync()).UserId;
+                        userId = (await AccountsService.GetUserDataFromCookieAsync(Settings.CookieName)).UserId;
                         if (userId > 0)
                         {
                             resultHtml = Settings.TemplateSuccess;
@@ -782,7 +782,7 @@ namespace GeeksCoreLibrary.Components.Account
                     resultHtml = StringReplacementsService.DoSessionReplacements(resultHtml);
                 }
 
-                var userData = await AccountsService.GetUserDataFromCookieAsync();
+                var userData = await AccountsService.GetUserDataFromCookieAsync(Settings.CookieName);
                 var query = SetupAccountQuery(Settings.MainQuery, userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreatedAccountId());
                 var accountDataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 var availableFields = new List<string>();
@@ -986,7 +986,7 @@ namespace GeeksCoreLibrary.Components.Account
                     resultHtml = StringReplacementsService.DoSessionReplacements(resultHtml);
                 }
 
-                var userData = await AccountsService.GetUserDataFromCookieAsync();
+                var userData = await AccountsService.GetUserDataFromCookieAsync(Settings.CookieName);
                 if (userData.UserId <= 0)
                 {
                     // TODO Show a nice error message to the user, instead of this exception.
@@ -1449,7 +1449,7 @@ namespace GeeksCoreLibrary.Components.Account
                     }
 
                     // Save the Google Analytics client ID. Make sure to always save it, even if the required settings don't contain a value.
-                    await SaveGoogleClientIdAsync(createdNewAccount ? userId : (await AccountsService.GetUserDataFromCookieAsync()).UserId);
+                    await SaveGoogleClientIdAsync(createdNewAccount ? userId : (await AccountsService.GetUserDataFromCookieAsync(Settings.CookieName)).UserId);
 
                     if (useTransaction)
                     {
