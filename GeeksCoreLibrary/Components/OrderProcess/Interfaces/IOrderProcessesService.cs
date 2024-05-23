@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Models;
-using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.Models;
 
@@ -18,7 +17,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="orderProcessId">The Wiser item ID that contains the settings for the order process.</param>
         /// <returns>An <see cref="OrderProcessSettingsModel"/> with the basic settings for the order process.</returns>
         Task<OrderProcessSettingsModel> GetOrderProcessSettingsAsync(ulong orderProcessId);
-        
+
         /// <summary>
         /// Gets order process settings based on an URL path.
         /// </summary>
@@ -64,14 +63,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="currentItems">Any items that the user already has in the database. This will be used to make sure that the user won't get an error if they enter the same value that is already saved for their own item. For example, if the user is logged in they will have an account item, add that item to this list.</param>
         /// <returns>A <see cref="bool"/> indicating whether the value is valid or not.</returns>
         Task<bool> ValidateFieldValueAsync(OrderProcessFieldModel field, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems);
-        
+
         /// <summary>
         /// Handles a request to start a new payment for a basket/checkout.
         /// </summary>
         /// <param name="orderProcessId">The Wiser item ID that contains the settings for the order process.</param>
         /// <returns>A <see cref="PaymentRequestResult"/> with information about whether the request was successful or not and what to do after.</returns>
         Task<PaymentRequestResult> HandlePaymentRequestAsync(ulong orderProcessId);
-        
+
         /// <summary>
         /// Handles a request to start a new payment for a basket/checkout.
         /// </summary>
@@ -79,19 +78,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="orderProcessId">The Wiser item ID that contains the settings for the order process.</param>
         /// <returns>A <see cref="PaymentRequestResult"/> with information about whether the request was successful or not and what to do after.</returns>
         Task<PaymentRequestResult> HandlePaymentRequestAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId);
-        
-        /// <summary>
-        /// Handles a request to start a new payment for a basket/checkout.
-        /// </summary>
-        /// <param name="orderProcessesService">The <see cref="IOrderProcessesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetOrderProcessSettingsAsync() in this method.</param>
-        /// <param name="orderProcessId">The Wiser item ID that contains the settings for the order process.</param>
-        /// <param name="failUrl">The URL to redirect to when the payment fails.</param>
-        /// <param name="successUrl">The URL to redirect to when the payment is successful.</param>
-        /// <param name="pendingUrl">The URL to redirect to when the payment is pending.</param>
-        /// <param name="basketToConceptOrderMethod">The method how to convert baskets to orders.</param>
-        /// <param name="orderProcessSettings">The order process settings, can be null for direct payments.</param>
-        /// <returns>A <see cref="PaymentRequestResult"/> with information about whether the request was successful or not and what to do after.</returns>
-        Task<PaymentRequestResult> HandlePaymentRequestAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, string failUrl, string successUrl, string pendingUrl, OrderProcessBasketToConceptOrderMethods basketToConceptOrderMethod, OrderProcessSettingsModel orderProcessSettings);
 
         /// <summary>
         /// Handles a status update (usually done via a webhook) of a payment via an PSP.
@@ -128,7 +114,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="orderProcessId">The Wiser item ID that contains the settings for the order process.</param>
         /// <param name="paymentMethodId">The Wiser item ID that contains the settings for the payment method that the user selected during the checkout.</param>
         Task<bool> HandlePaymentServiceProviderWebhookAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, ulong paymentMethodId);
-        
+
         /// <summary>
         /// Determines what to do after a user is returned to the web shop after a payment.
         /// This is used for payment service providers that do not offer specific return URLs for multiple states, like successful state, error state, cancel state, etc.
@@ -136,7 +122,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="orderProcessId">The Wiser item ID that contains the settings for the order process.</param>
         /// <param name="paymentMethodId">The Wiser item ID that contains the settings for the payment method that the user selected during the checkout.</param>
         Task<PaymentReturnResult> HandlePaymentReturnAsync(ulong orderProcessId, ulong paymentMethodId);
-        
+
         /// <summary>
         /// Determines what to do after a user is returned to the web shop after a payment.
         /// This is used for payment service providers that do not offer specific return URLs for multiple states, like successful state, error state, cancel state, etc.
@@ -145,19 +131,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <param name="orderProcessId">The Wiser item ID that contains the settings for the order process.</param>
         /// <param name="paymentMethodId">The Wiser item ID that contains the settings for the payment method that the user selected during the checkout.</param>
         Task<PaymentReturnResult> HandlePaymentReturnAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, ulong paymentMethodId);
-        
-        /// <summary>
-        /// Determines what to do after a user is returned to the web shop after a payment.
-        /// This is used for payment service providers that do not offer specific return URLs for multiple states, like successful state, error state, cancel state, etc.
-        /// </summary>
-        /// <param name="orderProcessesService">The <see cref="IOrderProcessesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetOrderProcessSettingsAsync() in this method.</param>
-        /// <param name="orderProcessId">The Wiser item ID that contains the settings for the order process.</param>
-        /// <param name="paymentMethodId">The Wiser item ID that contains the settings for the payment method that the user selected during the checkout.</param>
-        /// <param name="failUrl">The URL to redirect to when the payment fails.</param>
-        /// <param name="successUrl">The URL to redirect to when the payment is successful.</param>
-        /// <param name="pendingUrl">The URL to redirect to when the payment is pending.</param>
-        /// <param name="orderProcessSettings">The order process settings, can be null for direct payments.</param>
-        Task<PaymentReturnResult> HandlePaymentReturnAsync(IOrderProcessesService orderProcessesService, ulong orderProcessId, ulong paymentMethodId, string failUrl, string successUrl, string pendingUrl, OrderProcessSettingsModel orderProcessSettings);
 
         /// <summary>
         /// Gets the invoice PDF file from an order. If there are multiple, the most recent one will be returned.
@@ -169,7 +142,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
 
         /// <summary>
         /// This function can be used to add custom code snippets in your project. This will be executed just before the user gets send to the PSP.
-        /// If you return false here, then the concept orders will be deleted the the user will be sent back to the checkout. 
+        /// If you return false here, then the concept orders will be deleted the the user will be sent back to the checkout.
         /// </summary>
         /// <param name="conceptOrders">The list of concept orders that were created for the user from their baskets. It's allowed to add custom values to these orders and also to change existing values.</param>
         /// <param name="orderProcessSettings">The settings of the current order process.</param>
@@ -177,16 +150,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <returns>A <see cref="PaymentRequestResult"/>, use the property "Success" to indicate whether or not your custom validation succeeded. If this is false, the user will not be sent to the PSP, but to the fail URL, or the URL you enter in "ActionData".</returns>
         // ReSharper disable UnusedParameter.Global
         Task<PaymentRequestResult> PaymentRequestBeforeOutAsync(List<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings);
-        
-        /// <summary>
-        /// This function can be used to add custom code snippets in your project. This will be executed just before the user gets send to the PSP.
-        /// If you return false here, then the concept orders will be deleted the the user will be sent back to the checkout. 
-        /// </summary>
-        /// <param name="conceptOrders">The list of concept orders that were created for the user from their baskets. It's allowed to add custom values to these orders and also to change existing values.</param>
-        /// <param name="paymentMethodSettings">The settings of the payment method that the user selected.</param>
-        /// <returns>A <see cref="PaymentRequestResult"/>, use the property "Success" to indicate whether or not your custom validation succeeded. If this is false, the user will not be sent to the PSP, but to the fail URL, or the URL you enter in "ActionData".</returns>
-        // ReSharper disable UnusedParameter.Global
-        Task<PaymentRequestResult> PaymentRequestBeforeOutAsync(List<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, PaymentMethodSettingsModel paymentMethodSettings);
 
         /// <summary>
         /// This function can be used to add custom code snippets in your project. This will be executed after a status update of the PSP has been handled, but before the order confirmation is being sent to the user..
@@ -200,16 +163,5 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Interfaces
         /// <returns>If you return false, then the confirmation e-mail of this order will not be sent to the user.</returns>
         Task<bool> PaymentStatusUpdateBeforeCommunicationAsync(WiserItemModel main, List<WiserItemModel> lines, OrderProcessSettingsModel orderProcessSettings, bool wasHandledBefore, bool isSuccessfulStatus);
         // ReSharper restore UnusedParameter.Global
-        
-        /// <summary>
-        /// This function can be used to add custom code snippets in your project. This will be executed after a status update of the PSP has been handled, but before the order confirmation is being sent to the user..
-        /// If the user paid for multiple orders at once, this function will be called once for each order.
-        /// </summary>
-        /// <param name="main">The <see cref="WiserItemModel"/> of the order.</param>
-        /// <param name="lines">A list of <see cref="WiserItemModel"/> with the order lines.</param>
-        /// <param name="wasHandledBefore">This will be true if the current order has already been handled and converted from concept order to order before. Sometimes PSPs send duplicate status updates, in those cases this can be true.</param>
-        /// <param name="isSuccessfulStatus">Whether the payment of the user was successful.</param>
-        /// <returns>If you return false, then the confirmation e-mail of this order will not be sent to the user.</returns>
-        Task<bool> PaymentStatusUpdateBeforeCommunicationAsync(WiserItemModel main, List<WiserItemModel> lines, bool wasHandledBefore, bool isSuccessfulStatus);
     }
 }
