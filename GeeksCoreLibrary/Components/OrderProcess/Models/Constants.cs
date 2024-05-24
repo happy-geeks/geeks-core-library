@@ -16,12 +16,6 @@
         public const string PaymentOutPage = "orderProcessPaymentOut.gcl";
 
         public const string PaymentReturnPage = "orderProcessPaymentReturn.gcl";
-        
-        public const string DirectPaymentInPage = "directPaymentIn.gcl";
-
-        public const string DirectPaymentOutPage = "directPaymentOut.gcl";
-
-        public const string DirectPaymentReturnPage = "directPaymentReturn.gcl";
 
         public const string DownloadInvoicePage = "/orders/invoice/";
 
@@ -142,13 +136,7 @@
         public const string PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty = "psporderscanbesetdirectlytofinished";
 
         public const string PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty = "pspkippaymentwhenorderamountequalszero";
-        
-        public const string PaymentServiceProviderSuccessUrlProperty = "success_url";
 
-        public const string PaymentServiceProviderFailUrlProperty = "fail_url";
-        
-        public const string PaymentServiceProviderPendingUrlProperty = "pending_url";
-        
         public const string PaymentMethodServiceProviderProperty = "paymentmethodprovider";
 
         public const string PaymentMethodFeeProperty = "paymentmethodfee";

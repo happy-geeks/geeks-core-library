@@ -23,8 +23,6 @@ namespace GeeksCoreLibrary.Core.Helpers
             $"/{Components.OrderProcess.Models.Constants.CheckoutPage}",
             $"/{Components.OrderProcess.Models.Constants.PaymentInPage}",
             $"/{Components.OrderProcess.Models.Constants.PaymentOutPage}",
-            $"/{Components.OrderProcess.Models.Constants.DirectPaymentInPage}",
-            $"/{Components.OrderProcess.Models.Constants.DirectPaymentOutPage}",
             "/health",
             "/health/wts"
         };
