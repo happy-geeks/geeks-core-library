@@ -124,6 +124,7 @@ public class ReplacementsMediatorTests
     [TestCase("Lowercase", "Lowercase", new object[] {false})]
     [TestCase("Lowercase(true)", "Lowercase", new object[] {true})]
     [TestCase("QrCode(1,1)", "QrCode", new object[] {1, 1})]
+    [TestCase("Replace(1, 2)", "Replace",new object[] {"1", "2"})]
     public void GetFormatterMethod_DifferentStrings_ReturnsCorrectFormatter(string formatterString, string expectedFormatterName, object[] expectedParameters)
     {
         // Act
@@ -183,6 +184,7 @@ public class ReplacementsMediatorTests
     [TestCase("String with {valid:Uppercase(true)} variable", "{valid:Uppercase(true)}", "valid", "valid:Uppercase(true)", new[] {"HtmlEncode", "Uppercase(true)"}, "")]
     [TestCase("String with {valid:Lowercase(true)} variable", "{valid:Lowercase(true)}", "valid", "valid:Lowercase(true)", new[] {"HtmlEncode", "Lowercase(true)"}, "")]
     [TestCase("String with {valid:QrCode(100, 100)} variable", "{valid:QrCode(100, 100)}", "valid", "valid:QrCode(100, 100)", new[] {"HtmlEncode", "QrCode(100, 100)"}, "")]
+    [TestCase("String with {valid:Replace(1, 2)} variable", "{valid:Replace(1, 2)}", "valid", "valid:Replace(1, 2)", new[] {"HtmlEncode", "Replace(1, 2)"}, "")]
     public void GetReplacementVariables_StringsWithSingleVariable_ReturnsReplacementVariablesArrayWithAtLeastOneItem(string input, string matchString, string variableName, string originalVariableName, ICollection<string> formatters, string defaultValue)
     {
         // Act

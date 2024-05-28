@@ -342,6 +342,18 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions
         {
             return useInvariantCulture ? input?.ToUpperInvariant() : input?.ToUpper();
         }
+        
+        /// <summary>
+        /// Replace occurances of the given string value with the new value
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="oldValue">The value to be replaced</param>
+        /// <param name="newValue">The value to replace the old value with</param>
+        /// <returns>New string with replaced values</returns>
+        public static string Replace(this string input, string oldValue, string newValue = "")
+        {
+            return input.Replace(oldValue, newValue);
+        }
 
         /// <summary>
         /// Converts this string to lowercase.
