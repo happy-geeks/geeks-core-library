@@ -918,6 +918,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     main.SetDetail(Constants.UniquePaymentNumberProperty, uniquePaymentNumber);
                     main.SetDetail(Constants.InvoiceNumberProperty, invoiceNumber);
                     main.SetDetail(Constants.LanguageCodeProperty, languagesService?.CurrentLanguageCode ?? "");
+                    main.SetDetail(Constants.CountryCodeProperty, await objectsService.FindSystemObjectByDomainNameAsync(Constants.LanguageCodeProperty));
                     main.SetDetail(Constants.IsTestOrderProperty, isTestOrder ? 1 : 0);
                     await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
                 }

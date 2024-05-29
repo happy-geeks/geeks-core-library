@@ -15,6 +15,7 @@
         Mollie,
         PayNl,
         PayPal,
-        XMoney
+        XMoney,
+        Dimoco
     }
 }
