@@ -217,6 +217,8 @@
 
         public const string EmailAddressProperty = "email";
 
+        public const string PhoneNumberProperty = "phone";
+
         public const string ImageUrlProperty = "ImageUrl";
 
         public const string DescriptionProperty = "Description";
