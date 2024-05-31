@@ -58,6 +58,11 @@ namespace GeeksCoreLibrary.Components.Account.Services
         /// <inheritdoc />
         public async Task<UserCookieDataModel> GetUserDataFromCookieAsync(string cookieName = Constants.CookieName)
         {
+            if (String.IsNullOrWhiteSpace(cookieName))
+            {
+                cookieName = Constants.CookieName;
+            }
+
             var httpContext = httpContextAccessor?.HttpContext;
             if (httpContext == null)
             {
