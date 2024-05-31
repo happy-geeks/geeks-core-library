@@ -484,7 +484,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     {
                         stringValue = value.ToString();
                     }
-                    
+
                     var variableName = MakeColumnValueFromVariable(m.Groups[1].Value);
                     var replacementData = new Dictionary<string, string>
                     {
@@ -542,7 +542,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
         /// <param name="input"></param>
         /// <param name="propertyName"></param>
         /// <returns></returns>
-        public JToken GetPropertyValue(JToken input, string propertyName)
+        private static JToken GetPropertyValue(JToken input, string propertyName)
         {
             if (input == null)
             {

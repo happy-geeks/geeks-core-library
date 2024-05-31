@@ -297,5 +297,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             await shoppingBasketsService.DeleteLinesAsync(basketItemId);
         }
+
+        /// <inheritdoc />
+        public async Task<(string Html, string PdfDocumentOptions)> RenderBasketHtmlAsync(ulong templateId, WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string basketLineValidityMessage = "", string basketLineStockActionMessage = "")
+        {
+            return await shoppingBasketsService.RenderBasketHtmlAsync(templateId, shoppingBasket, basketLines, settings, basketLineValidityMessage, basketLineStockActionMessage);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> RenderBasketHtmlAsync(string htmlTemplate, WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string basketLineValidityMessage = "", string basketLineStockActionMessage = "")
+        {
+            return await shoppingBasketsService.RenderBasketHtmlAsync(htmlTemplate, shoppingBasket, basketLines, settings, basketLineValidityMessage, basketLineStockActionMessage);
+        }
     }
 }

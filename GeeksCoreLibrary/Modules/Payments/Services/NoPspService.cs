@@ -54,10 +54,10 @@ namespace GeeksCoreLibrary.Modules.Payments.Services
         }
 
         /// <inheritdoc />
-        public string GetInvoiceNumberFromRequest()
+        public Task<string> GetInvoiceNumberFromRequestAsync()
         {
             // Not applicable for "No PSP".
-            return null;
+            return Task.FromResult((string)null);
         }
     }
 }

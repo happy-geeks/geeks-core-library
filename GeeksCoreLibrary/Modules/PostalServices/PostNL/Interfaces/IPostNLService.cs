@@ -20,21 +20,24 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Interfaces
         /// </summary>
         /// <param name="orderId">OrderId of the order a barcode must be created for</param>
         /// <param name="shippingLocation">The location the package of the order will be send to</param>
+        /// <param name="parcelType">The parcel type for which to create the barcode</param>
         /// <returns>Model containing the information about the created barcode</returns>
-        Task<BarcodeResponseModel> CreateNewBarcodeAsync(string orderId, PostNLService.ShippingLocations shippingLocation = PostNLService.ShippingLocations.Netherlands);
+        Task<BarcodeResponseModel> CreateNewBarcodeAsync(string orderId, ShippingLocations shippingLocation = ShippingLocations.Netherlands, ParcelType parcelType = ParcelType.Standard);
 
         /// <summary>
         /// Gets the settings of a specified shipping location
         /// </summary>
         /// <param name="shippingLocation">The shipping location the order must be send to</param>
+        /// <param name="parcelType">The parcel type for which to get the settings</param>
         /// <returns>Model of settings of the specified shipping location</returns>
-        Task<SettingsModel> GetSettingsAsync(PostNLService.ShippingLocations shippingLocation);
+        Task<SettingsModel> GetSettingsAsync(ShippingLocations shippingLocation, ParcelType parcelType);
 
         /// <summary>
         /// Generate the shipping label based on the specified orderId
         /// </summary>
         /// <param name="encryptedOrderIds">Comma separated string of orderIds to create a shipping label</param>
+        /// <param name="parcelType">The parcel type for which to generate the label</param>
         /// <returns>Action result containing the text for the reason of the result or error</returns>
-        Task<List<string>> GenerateShippingLabelAsync(string encryptedOrderIds);
+        Task<List<string>> GenerateShippingLabelAsync(string encryptedOrderIds, ParcelType parcelType);
     }
 }

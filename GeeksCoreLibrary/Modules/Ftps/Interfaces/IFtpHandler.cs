@@ -59,4 +59,12 @@ public interface IFtpHandler
     /// <param name="filePath">The full path to the file to delete.</param>
     /// <returns>Returns if the file has been deleted.</returns>
     Task<bool> DeleteFileAsync(bool allFilesInFolder, string filePath);
+    
+    /// <summary>
+    /// Move a file on the FTP server.
+    /// </summary>
+    /// <param name="fromPath">The full path the the file that needs to be moved.</param>
+    /// <param name="toPath">The full path to where the file needs to be moved.</param>
+    /// <returns>Returns if the file has been moved.</returns>
+    Task<bool> MoveFileAsync(string fromPath, string toPath);
 }

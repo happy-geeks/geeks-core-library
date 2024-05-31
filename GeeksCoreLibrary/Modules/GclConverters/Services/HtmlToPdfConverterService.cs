@@ -149,7 +149,7 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             converter.PdfDocumentOptions.ShowFooter = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_show")).Equals("true", StringComparison.OrdinalIgnoreCase);
             if (String.IsNullOrWhiteSpace(settings.Footer))
             {
-                settings.Header = await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_text");
+                settings.Footer = await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_text");
             }
             if (!String.IsNullOrWhiteSpace(settings.Footer))
             {
@@ -178,8 +178,8 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             }
 
             // Security settings.
-            converter.PdfSecurityOptions.CanEditContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_edit_content")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            converter.PdfSecurityOptions.CanCopyContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_copy_content")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            converter.PdfSecurityOptions.CanEditContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_edit_content", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            converter.PdfSecurityOptions.CanCopyContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_copy_content", "true")).Equals("true", StringComparison.OrdinalIgnoreCase);
             converter.PdfSecurityOptions.OwnerPassword = await objectsService.FindSystemObjectByDomainNameAsync("pdf_password");
 
             if (String.IsNullOrWhiteSpace(converter.PdfSecurityOptions.OwnerPassword))
@@ -274,6 +274,8 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             {
                 ItemId = templateItemId
             };
+            
+            pdfSettings.BackgroundPropertyName = await objectsService.FindSystemObjectByDomainNameAsync("pdf_backgroundpropertyname");
             
             var query = $"SELECT `key`, CONCAT_WS('', `value`, `long_value`) AS value, language_code FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?templateItemId";
             databaseConnection.AddParameter("templateItemId", templateItemId);

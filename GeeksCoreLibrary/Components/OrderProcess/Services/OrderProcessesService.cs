@@ -1313,7 +1313,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
             var paymentServiceProviderService = paymentServiceProviderServiceFactory.GetPaymentServiceProviderService(paymentMethodSettings.PaymentServiceProvider.Type);
             paymentServiceProviderService.LogPaymentActions = paymentMethodSettings.PaymentServiceProvider.LogAllRequests;
 
-            var invoiceNumber = paymentServiceProviderService.GetInvoiceNumberFromRequest();
+            var invoiceNumber = await paymentServiceProviderService.GetInvoiceNumberFromRequestAsync();
             var conceptOrders = await shoppingBasketsService.GetOrdersByUniquePaymentNumberAsync(invoiceNumber);
 
             // Let the payment service provider service handle the status update.

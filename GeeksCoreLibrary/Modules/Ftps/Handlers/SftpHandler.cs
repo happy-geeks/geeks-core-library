@@ -137,4 +137,11 @@ public class SftpHandler : IFtpHandler, IScopedService
         client.Delete(filePath);
         return true;
     }
+    
+    /// <inheritdoc />
+    public async Task<bool> MoveFileAsync(string fromPath, string toPath)
+    {
+        await client.RenameFileAsync(fromPath, toPath, default);
+        return client.Exists(toPath);
+    }
 }

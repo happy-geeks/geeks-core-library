@@ -91,7 +91,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 cacheName.Append($"{key}={value}");
             }
-            
+
             cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
             return await cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
@@ -123,7 +123,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 cacheName.Append($"{key}={value}");
             }
-            
+
             cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
             return await cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
@@ -208,9 +208,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         }
 
         /// <inheritdoc />
-        public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting)
+        public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting, SshSettings sshSettingsForReading = null, SshSettings sshSettingsForWriting = null)
         {
-            await databaseConnection.ChangeConnectionStringsAsync(newConnectionStringForReading, newConnectionStringForWriting);
+            await databaseConnection.ChangeConnectionStringsAsync(newConnectionStringForReading, newConnectionStringForWriting, sshSettingsForReading, sshSettingsForWriting);
         }
 
         /// <inheritdoc />

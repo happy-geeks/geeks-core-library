@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.PostalServices.PostNL.Interfaces;
+using GeeksCoreLibrary.Modules.PostalServices.PostNL.Models;
 
 namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Controllers
 {
@@ -12,18 +13,23 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Controllers
 
         public PostNLController(IPostNLService postNLService)
         {
-            this.postNlService = postNLService;
+            postNlService = postNLService;
         }
         
+        /// <summary>
+        /// Generate shipping label for the given order
+        /// </summary>
+        /// <param name="model">model containing order data for which to generate the label</param>
+        /// <returns>Ok response or BadRequest if no order ids are given</returns>
         [HttpGet, Route("shipping-label")]
-        public async Task<IActionResult> GenerateShippingLabelAsync([FromQuery] string encryptedOrderIds)
+        public async Task<IActionResult> GenerateShippingLabelAsync([FromQuery] ShippingLabelRequestModel model)
         {
-            if (String.IsNullOrWhiteSpace(encryptedOrderIds))
+            if (String.IsNullOrWhiteSpace(model.EncryptedOrderIds))
             {
-                BadRequest("No order id specified");
+                return BadRequest("No order id specified");
             }
 
-            return Ok(await postNlService.GenerateShippingLabelAsync(encryptedOrderIds));
+            return Ok(await postNlService.GenerateShippingLabelAsync(model.EncryptedOrderIds, model.ParcelType));
         }
     }
 }

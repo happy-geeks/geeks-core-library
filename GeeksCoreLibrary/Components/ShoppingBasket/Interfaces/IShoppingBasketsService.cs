@@ -372,5 +372,29 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// </summary>
         /// <param name="basketItemId">The ID of the basket to delete.</param>
         Task DeleteLinesAsync(ulong basketItemId);
+
+        /// <summary>
+        /// Gets the HTML template from database, based on template ID, and render/parse it so that it can be printed.
+        /// </summary>
+        /// <param name="templateId">The ID of the template in Wiser.</param>
+        /// <param name="shoppingBasket">The shopping basket Wiser item.</param>
+        /// <param name="basketLines">The list of basket lines (Wiser items).</param>
+        /// <param name="settings">The setting of the shopping basket component.</param>
+        /// <param name="basketLineValidityMessage">A message that is shown if a basket line is invalid.</param>
+        /// <param name="basketLineStockActionMessage">A message that it shown if there isn't enough stock for a product.</param>
+        /// <returns>The rendered HTML that can be printed.</returns>
+        Task<(string Html, string PdfDocumentOptions)> RenderBasketHtmlAsync(ulong templateId, WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string basketLineValidityMessage = "", string basketLineStockActionMessage = "");
+        
+        /// <summary>
+        /// Gets the HTML template from database, based on template ID, and render/parse it so that it can be printed.
+        /// </summary>
+        /// <param name="htmlTemplate">The HTML template to render.</param>
+        /// <param name="shoppingBasket">The shopping basket Wiser item.</param>
+        /// <param name="basketLines">The list of basket lines (Wiser items).</param>
+        /// <param name="settings">The setting of the shopping basket component.</param>
+        /// <param name="basketLineValidityMessage">A message that is shown if a basket line is invalid.</param>
+        /// <param name="basketLineStockActionMessage">A message that it shown if there isn't enough stock for a product.</param>
+        /// <returns>The rendered HTML that can be printed.</returns>
+        Task<string> RenderBasketHtmlAsync(string htmlTemplate, WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string basketLineValidityMessage = "", string basketLineStockActionMessage = "");
     }
 }

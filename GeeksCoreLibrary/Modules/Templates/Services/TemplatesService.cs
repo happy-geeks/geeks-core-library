@@ -45,7 +45,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     public class TemplatesService : ITemplatesService
     {
         private readonly GclSettings gclSettings;
-        private readonly ILogger<LegacyTemplatesService> logger;
+        private readonly ILogger<TemplatesService> logger;
         private readonly IDatabaseConnection databaseConnection;
         private readonly IStringReplacementsService stringReplacementsService;
         private readonly IHttpContextAccessor httpContextAccessor;
@@ -61,9 +61,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IReplacementsMediator replacementsMediator;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
+        /// Initializes a new instance of <see cref="TemplatesService"/>.
         /// </summary>
-        public TemplatesService(ILogger<LegacyTemplatesService> logger,
+        public TemplatesService(ILogger<TemplatesService> logger,
             IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
             IStringReplacementsService stringReplacementsService,
@@ -1641,7 +1641,13 @@ ORDER BY IFNULL(linkToParent.destination_item_id, 0) ASC, IFNULL(linkToParent.or
         /// <inheritdoc />
         public async Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
         {
-            var results = includeGlobalSnippets ? await templatesService.GetGlobalPageWidgetsAsync() : new List<PageWidgetModel>();
+            var results = new List<PageWidgetModel>();
+
+            // Add global snippets to the page.
+            if (includeGlobalSnippets)
+            {
+                results.AddRange(await GetGlobalPageWidgetsAsync());
+            }
 
             if (templateId <= 0)
             {

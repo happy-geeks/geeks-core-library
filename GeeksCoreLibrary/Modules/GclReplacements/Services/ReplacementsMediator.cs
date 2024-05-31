@@ -167,19 +167,37 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         // Repeat the process for each object in the current level until the bottom is reached.
         foreach (var jToken in replaceData)
         {
-            if (jToken is not JProperty item)
+            switch (jToken)
             {
-                continue;
-            }
+                case JProperty item:
+                    switch (item.Value.Type)
+                    {
+                        case JTokenType.Object:
+                            output = DoReplacements(output, item.Value, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
+                            break;
+                        case JTokenType.Array:
+                        {
+                            foreach (var subToken in item.Value)
+                            {
+                                if (subToken is not JObject subItem)
+                                {
+                                    continue;
+                                }
 
-            switch (item.Value.Type)
-            {
-                case JTokenType.Object:
-                    output = DoReplacements(output, item.Value, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
+                                output = DoReplacements(output, subItem, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
+                            }
+
+                            break;
+                        }
+                    }
+
                     break;
-                case JTokenType.Array:
+                case JObject jObject:
+                    output = DoReplacements(output, jObject, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
+                    break;
+                case JArray jArray:
                 {
-                    foreach (var subToken in item.Value)
+                    foreach (var subToken in jArray)
                     {
                         if (subToken is not JObject subItem)
                         {
@@ -255,7 +273,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
                 // Simply replace the variable if there are no formatters found.
                 if (forQuery)
                 {
-                    var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.MatchString)}";
+                    var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.VariableName)}";
                     databaseConnection.AddParameter(parameterName, value);
                     value = $"?{parameterName}";
 
@@ -305,7 +323,9 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
                 }
                 else
                 {
-                    var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(variable.MatchString)}";
+                    var list = new List<string> {variableName};
+                    list.AddRange(variable.Formatters);
+                    var parameterName = $"sql_{DatabaseHelpers.CreateValidParameterName(String.Join("_", list))}";
                     databaseConnection.AddParameter(parameterName, value);
                     value = $"?{parameterName}";
 
@@ -443,7 +463,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         prefix = Regex.Escape(prefix);
         suffix = Regex.Escape(suffix);
 
-        var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]*?){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+        var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]+?){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
 
         var result = new List<StringReplacementVariable>();
         foreach (Match match in regex.Matches(input))
@@ -458,12 +478,12 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             if (defaultValueSeparatorLocation > 0) // This 0 is on purpose, it wouldn't make sense if the default value separator is the first character of the variable.
             {
                 var colonIndexOf = fieldName.LastIndexOf(":", StringComparison.Ordinal);
-                if (defaultValueSeparatorLocation + 1 > colonIndexOf)
-                {
-                    var defaultValueWithSeparator = colonIndexOf == -1 ? fieldName.Substring(defaultValueSeparatorLocation) : fieldName.Substring(defaultValueSeparatorLocation, colonIndexOf);
-                    defaultValue = defaultValueWithSeparator.Remove(0, 1);
-                    fieldName = fieldName.Remove(defaultValueSeparatorLocation, defaultValueWithSeparator.Length);
-                }
+                var defaultValueWithSeparator = colonIndexOf == -1 || defaultValueSeparatorLocation + 1 > colonIndexOf
+                    ? fieldName[defaultValueSeparatorLocation..]
+                    : fieldName.Substring(defaultValueSeparatorLocation, colonIndexOf - defaultValueSeparatorLocation);
+
+                defaultValue = defaultValueWithSeparator.Remove(0, 1);
+                fieldName = fieldName.Remove(defaultValueSeparatorLocation, defaultValueWithSeparator.Length);
             }
 
             // Colons that are escaped with a backslash are temporarily replaced with "~~COLON~~".
@@ -496,7 +516,8 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             if (!String.IsNullOrWhiteSpace(defaultFormatter)
                 && !variable.Formatters.Any(f => String.Equals(f, defaultFormatter, StringComparison.OrdinalIgnoreCase))
                 && !variable.Formatters.Any(f => String.Equals(f, RawFormatterName, StringComparison.OrdinalIgnoreCase))
-                && !variable.Formatters.Any(f => f != null && f.StartsWith("CurrencySup", StringComparison.OrdinalIgnoreCase)))
+                && !variable.Formatters.Any(f => f != null && f.StartsWith("CurrencySup", StringComparison.OrdinalIgnoreCase))
+                && !variable.Formatters.Any(f => f != null && f.StartsWith("UrlEncode", StringComparison.OrdinalIgnoreCase)))
             {
                 variable.Formatters.Add(defaultFormatter);
             }

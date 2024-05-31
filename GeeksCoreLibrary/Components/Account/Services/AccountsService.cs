@@ -65,9 +65,9 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             // Check if we already have the user data cached this life cycle and return it from the cache if that is the case.
-            if (httpContext.Items.ContainsKey(Constants.UserDataCachingKey))
+            if (httpContext.Items.ContainsKey(Constants.UserDataCachingKey + cookieName))
             {
-                return (UserCookieDataModel) httpContext.Items[Constants.UserDataCachingKey];
+                return (UserCookieDataModel) httpContext.Items[Constants.UserDataCachingKey + cookieName];
             }
 
             var defaultAnonymousUserModel = new UserCookieDataModel();
@@ -191,7 +191,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 logger.LogTrace($"Gotten user information in Account and saved it to lifecycle cache: {Newtonsoft.Json.JsonConvert.SerializeObject(output)}");
 
                 // Save to http context (caching during lifecycle).
-                httpContext.Items.Add(Constants.UserDataCachingKey, output);
+                httpContext.Items.Add(Constants.UserDataCachingKey + cookieName, output);
 
                 return output;
             }

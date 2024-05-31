@@ -5,11 +5,11 @@
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>4.2.3</Version>
+    <Version>4.2.10</Version>
     <Company>Happy Horizon B.V.</Company>
     <Description>Our base/core library that we use for most of our other projects.</Description>
-    <AssemblyVersion>4.2.3.0</AssemblyVersion>
-    <FileVersion>4.2.3.0</FileVersion>
+    <AssemblyVersion>4.2.10.0</AssemblyVersion>
+    <FileVersion>4.2.10.0</FileVersion>
     <PackageDescription>Geeks Core Library</PackageDescription>
     <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
@@ -34,12 +34,12 @@
     <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="7.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="7.1.0" />
     <PackageReference Include="CM.Text" Version="2.7.0" />
-    <PackageReference Include="CsvHelper" Version="31.0.2" />
+    <PackageReference Include="CsvHelper" Version="31.0.4" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.0.2" />
-    <PackageReference Include="EvoPdf.HtmlToPdf.NetCore.x64" Version="8.0.0" />
-    <PackageReference Include="FluentFTP" Version="49.0.2" />
+    <PackageReference Include="EvoPdf.HtmlToPdf.NetCore.x64" Version="10.0.0" />
+    <PackageReference Include="FluentFTP" Version="50.0.1" />
     <PackageReference Include="GoogleAuthenticator" Version="3.2.0" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.60" />
     <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" />
     <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
     <PackageReference Include="Magick.NET-Q8-x64" Version="13.6.0" />
@@ -64,7 +64,7 @@
     <PackageReference Include="System.Runtime" Version="4.3.1" />
     <PackageReference Include="System.Runtime.Extensions" Version="4.3.1" />
     <PackageReference Include="System.Threading" Version="4.3.0" />
-    <PackageReference Include="Twilio" Version="6.18.0" />
+    <PackageReference Include="Twilio" Version="7.0.0" />
     <PackageReference Include="WebMarkupMin.AspNetCore7" Version="2.16.0" />
     <PackageReference Include="ZXing.Net" Version="0.16.9" />
     <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.13" />
