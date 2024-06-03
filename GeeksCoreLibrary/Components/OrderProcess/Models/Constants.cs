@@ -191,6 +191,8 @@
 
         public const string LanguageCodeProperty = "LanguageCode";
 
+        public const string CountryCodeProperty = "CountryCode";
+
         public const string IsTestOrderProperty = "IsTestOrder";
 
         public const string PaymentHistoryProperty = "PaymentHistory";
@@ -212,6 +214,14 @@
         public const string InvoiceHtmlProperty = "InvoiceHtml";
 
         public const string InvoicePdfProperty = "InvoicePdf";
+
+        public const string EmailAddressProperty = "email";
+
+        public const string PhoneNumberProperty = "phone";
+
+        public const string ImageUrlProperty = "ImageUrl";
+
+        public const string DescriptionProperty = "Description";
 
         #endregion
 

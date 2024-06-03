@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Interfaces;
@@ -189,7 +190,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                             Street = postNlDetails.GetDetailValue("street"),
                             Zipcode = postNlDetails.GetDetailValue("zipcode")
                         },
-                        Email = orderDetails.GetDetailValue("email")
+                        Email = orderDetails.GetDetailValue(Constants.EmailAddressProperty)
                     },
                     Message = new MessageModel
                     {
@@ -208,8 +209,8 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                                 {
                                     new ContactModel
                                     {
-                                        Email = orderDetails.GetDetailValue("email"),
-                                        SmsNumber = orderDetails.GetDetailValue("phone")
+                                        Email = orderDetails.GetDetailValue(Constants.EmailAddressProperty),
+                                        SmsNumber = orderDetails.GetDetailValue(Constants.PhoneNumberProperty)
                                     }
                                 },
                                 Remark = orderId

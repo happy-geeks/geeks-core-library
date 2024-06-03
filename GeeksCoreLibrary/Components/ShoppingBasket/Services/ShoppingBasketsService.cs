@@ -800,7 +800,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
             return (conceptOrder.Id, conceptOrder, newLines);
         }
-        
+
         /// <inheritdoc />
         public async Task RevertConceptOrderToBasketAsync(WiserItemModel conceptOrder, List<WiserItemModel> conceptOrderLines)
         {
@@ -1478,7 +1478,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     shippingCostsLine.SetDetail("price", shippingCosts.ToString(CultureInfo.InvariantCulture));
                     shippingCostsLine.SetDetail("includesvat", includesVat);
                     shippingCostsLine.SetDetail("vatrate", vatRate);
-                    shippingCostsLine.SetDetail("description", friendlyName);
+                    shippingCostsLine.SetDetail(OrderProcessConstants.DescriptionProperty, friendlyName);
                 }
                 else
                 {
@@ -1487,7 +1487,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                         ["price"] = shippingCosts.ToString(CultureInfo.InvariantCulture),
                         ["includesvat"] = includesVat,
                         ["vatrate"] = vatRate,
-                        ["description"] = friendlyName
+                        [OrderProcessConstants.DescriptionProperty] = friendlyName
                     };
                     await AddLineAsync(shoppingBasket, basketLines, settings, id, type: "shipping_costs", lineDetails: details, createNewTransaction: createNewTransaction);
                 }
@@ -1599,7 +1599,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     { "includesvat", couponIncludesVat ? "1" : "0" },
                     { "vatrate", couponVatRateSetting },
                     { "code", couponResult.Coupon.GetDetailValue(CouponConstants.Code) },
-                    { "description", "Kortingscode" },
+                    { OrderProcessConstants.DescriptionProperty, "Kortingscode" },
                     { Constants.CouponDividedOverProductsPropertyName, divideDiscountOverProducts ? "1" : "0" }
                 };
 
@@ -1734,7 +1734,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     paymentMethodCostsLine.SetDetail("price", paymentMethodCosts.ToString(CultureInfo.InvariantCulture));
                     paymentMethodCostsLine.SetDetail("includesvat", includesVat);
                     paymentMethodCostsLine.SetDetail("vatrate", vatRate);
-                    paymentMethodCostsLine.SetDetail("description", friendlyName);
+                    paymentMethodCostsLine.SetDetail(OrderProcessConstants.DescriptionProperty, friendlyName);
                     logger.LogTrace("Calculating paymentmethodcosts - Changed existing rule");
                 }
                 else
@@ -1744,7 +1744,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                         ["price"] = paymentMethodCosts.ToString(CultureInfo.InvariantCulture),
                         ["includesvat"] = includesVat,
                         ["vatrate"] = vatRate,
-                        ["description"] = friendlyName
+                        [OrderProcessConstants.DescriptionProperty] = friendlyName
                     };
                     await AddLineAsync(shoppingBasket, basketLines, settings, id, type: "paymentmethod_costs", lineDetails: details, createNewTransaction: createNewTransaction);
                 }
