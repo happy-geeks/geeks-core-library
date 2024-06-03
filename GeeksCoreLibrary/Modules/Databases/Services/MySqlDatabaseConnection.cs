@@ -750,11 +750,20 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var query = new StringBuilder(useInsertIgnore ? "INSERT IGNORE INTO " : "INSERT INTO ");
             var columns = dataTable.Columns.Cast<DataColumn>().ToList();
             query.AppendLine($"`{tableName.ToMySqlSafeValue(false)}` ({String.Join(",", columns.Select(c => $"`{c.ColumnName}`"))}) VALUES ");
+
+            var parameterNames = columns.Select(c => DatabaseHelpers.CreateValidParameterName(c.ColumnName)).ToList();
+
             for (var index = 0; index < dataTable.Rows.Count; index++)
             {
                 var dataRow = dataTable.Rows[index];
-                query.Append($"({String.Join(",", columns.Select(c => $"?{DatabaseHelpers.CreateValidParameterName(c.ColumnName)}_{index}"))})");
-                columns.ForEach(c => AddParameter($"{DatabaseHelpers.CreateValidParameterName(c.ColumnName)}_{index}", dataRow[c]));
+                var index1 = index;
+                query.Append($"({String.Join(",", parameterNames.Select(c => $"?{c}_{index1}"))})");
+
+                for (var columnIndex = 0; columnIndex < columns.Count; columnIndex++)
+                {
+                    AddParameter($"{parameterNames[columnIndex]}_{index}", dataRow[columnIndex]);
+                }
+
                 if (index < dataTable.Rows.Count - 1)
                 {
                     query.AppendLine(",");
