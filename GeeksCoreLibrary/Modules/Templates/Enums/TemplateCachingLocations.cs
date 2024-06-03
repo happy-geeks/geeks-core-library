@@ -13,6 +13,11 @@
         /// <summary>
         /// Cache the template on disk. This is much slower than caching it in memory, but it will not be lost if the site is restarted and will not use (much) memory.
         /// </summary>
-        OnDisk
+        OnDisk,
+        
+        /// <summary>
+        /// Use distributed caching like Redis.
+        /// </summary>
+        Distributed
     }
 }
