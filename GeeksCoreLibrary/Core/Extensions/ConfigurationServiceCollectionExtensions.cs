@@ -262,6 +262,11 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             // Enable caching.
             services.AddLazyCache();
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = gclSettings.RedisConnectionString;
+                options.InstanceName = "GCL-TEST";
+            });
 
             // Enable session.
             if (isWeb)
