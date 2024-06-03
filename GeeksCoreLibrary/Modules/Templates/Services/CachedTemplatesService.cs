@@ -23,6 +23,7 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using LazyCache;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -36,6 +37,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     {
         private readonly ILogger<LegacyCachedTemplatesService> logger;
         private readonly ITemplatesService templatesService;
+        private readonly IDistributedCache distributedCache;
         private readonly IAppCache cache;
         private readonly IDatabaseConnection databaseConnection;
         private readonly GclSettings gclSettings;
@@ -54,7 +56,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             ICacheService cacheService,
             IObjectsService objectsService,
             ILanguagesService languagesService,
-            IBranchesService branchesService,
+            IBranchesService branchesService, 
+            IDistributedCache distributedCache, 
             IHttpContextAccessor httpContextAccessor = null,
             IWebHostEnvironment webHostEnvironment = null)
         {
@@ -69,6 +72,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.objectsService = objectsService;
             this.languagesService = languagesService;
             this.branchesService = branchesService;
+            this.distributedCache = distributedCache;
         }
 
         /// <inheritdoc />
@@ -99,7 +103,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     break;
             }
 
-            if (!skipCache && includeContent && cacheSettings.CachingMinutes > 0)
+            if (!skipCache && includeContent && cacheSettings.CachingMinutes > 0 || id == 141)
             {
                 // Get folder and file name.
                 var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
@@ -107,6 +111,15 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                 switch (cacheSettings.CachingLocation)
                 {
+                    case TemplateCachingLocations.Distributed:
+                        contentCacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
+                        var templateBytes = await distributedCache.GetAsync(contentCacheKey);
+                        if (templateBytes is not null)
+                        {
+                            templateContent = Encoding.UTF8.GetString(templateBytes);
+                            foundInOutputCache = !String.IsNullOrEmpty(templateContent);
+                        }
+                        break;
                     case TemplateCachingLocations.InMemory:
                     {
                         // Cache the template contents in memory.
@@ -200,6 +213,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 switch (cacheSettings.CachingLocation)
                 {
+                    case TemplateCachingLocations.Distributed:
+                        if (!String.IsNullOrWhiteSpace(contentCacheKey))
+                        {
+                            await distributedCache.SetAsync(contentCacheKey, Encoding.UTF8.GetBytes(template.Content));
+                        }
+                        break;
                     case TemplateCachingLocations.InMemory:
                         if (!String.IsNullOrWhiteSpace(contentCacheKey))
                         {
