@@ -3018,6 +3018,12 @@ WHERE coupon.entity_type = 'coupon'", true);
                     {
                         continue;
                     }
+                    
+                    var originalPrice = line.GetDetailValue(Constants.OriginalPricePropertyName);
+                    if (String.IsNullOrEmpty(originalPrice))
+                    {
+                        line.SetDetail(Constants.OriginalPricePropertyName, line.GetDetailValue<decimal>(settings.PricePropertyName));
+                    }
 
                     totalPrice += await GetLinePriceAsync(shoppingBasket, line, settings, useOriginalPrice: divideDiscountOverProducts);
                 }
@@ -3030,6 +3036,12 @@ WHERE coupon.entity_type = 'coupon'", true);
                     if (excludedItems.Any(item => item.ItemId == itemId))
                     {
                         continue;
+                    }
+
+                    var originalPrice = line.GetDetailValue(Constants.OriginalPricePropertyName);
+                    if (String.IsNullOrEmpty(originalPrice))
+                    {
+                        line.SetDetail(Constants.OriginalPricePropertyName, line.GetDetailValue<decimal>(settings.PricePropertyName));
                     }
 
                     totalPrice += await GetLinePriceAsync(shoppingBasket, line, settings);
