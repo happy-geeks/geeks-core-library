@@ -828,7 +828,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
             new WiserTableDefinitionModel
             {
                 Name = WiserTableNames.WiserStyledOutput,
-                LastUpdate = new DateTime(2024, 05, 28),
+                LastUpdate = new DateTime(2024, 06, 06),
                 Columns = new List<ColumnSettingsModel>
                 {
                     new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -839,7 +839,9 @@ namespace GeeksCoreLibrary.Modules.Databases.Helpers
                     new("format_empty",MySqlDbType.MediumText),
                     new("query_id", MySqlDbType.Int32),
                     new("return_type", MySqlDbType.VarChar, 10),
-                    new("options", MySqlDbType.JSON)
+                    new("options", MySqlDbType.JSON),
+                    new("log_average_runtime", MySqlDbType.Double),
+                    new("log_run_count", MySqlDbType.Int32)
                 }
             },
 
