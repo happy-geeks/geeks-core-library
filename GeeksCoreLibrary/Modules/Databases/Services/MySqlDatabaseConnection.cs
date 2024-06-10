@@ -100,12 +100,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 connectionStringForReading.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForReading.Database;
                 // Ignore command transactions, because we have multiple connections and the MySqlConnector will otherwise library throw exceptions about that. See https://mysqlconnector.net/troubleshooting/transaction-usage//
                 connectionStringForReading.IgnoreCommandTransaction = true;
+
+                connectionStringForReading.ConvertZeroDateTime = true;
             }
             if (connectionStringForWriting != null)
             {
                 connectionStringForWriting.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForWriting.Database;
                 // Ignore command transactions, because we have multiple connections and the MySqlConnector will otherwise library throw exceptions about that. See https://mysqlconnector.net/troubleshooting/transaction-usage/.
                 connectionStringForWriting.IgnoreCommandTransaction = true;
+
+                connectionStringForWriting.ConvertZeroDateTime = true;
             }
 
             logger.LogTrace($"Created new instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
@@ -721,6 +725,52 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public bool HasActiveTransaction()
         {
             return transaction != null;
+        }
+
+        /// <inheritdoc />
+        public DbConnection GetConnectionForReading()
+        {
+            return ConnectionForReading;
+        }
+
+        /// <inheritdoc />
+        public DbConnection GetConnectionForWriting()
+        {
+            return String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? ConnectionForReading : ConnectionForWriting;
+        }
+
+        /// <inheritdoc />
+        public async Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false)
+        {
+            if (dataTable == null || dataTable.Rows.Count == 0)
+            {
+                return 0;
+            }
+
+            var query = new StringBuilder(useInsertIgnore ? "INSERT IGNORE INTO " : "INSERT INTO ");
+            var columns = dataTable.Columns.Cast<DataColumn>().ToList();
+            query.AppendLine($"`{tableName.ToMySqlSafeValue(false)}` ({String.Join(",", columns.Select(c => $"`{c.ColumnName}`"))}) VALUES ");
+
+            var parameterNames = columns.Select(c => DatabaseHelpers.CreateValidParameterName(c.ColumnName)).ToList();
+
+            for (var index = 0; index < dataTable.Rows.Count; index++)
+            {
+                var dataRow = dataTable.Rows[index];
+                var index1 = index;
+                query.Append($"({String.Join(",", parameterNames.Select(c => $"?{c}_{index1}"))})");
+
+                for (var columnIndex = 0; columnIndex < columns.Count; columnIndex++)
+                {
+                    AddParameter($"{parameterNames[columnIndex]}_{index}", dataRow[columnIndex]);
+                }
+
+                if (index < dataTable.Rows.Count - 1)
+                {
+                    query.AppendLine(",");
+                }
+            }
+
+            return await ExecuteAsync(query.ToString(), useWritingConnectionIfAvailable);
         }
 
         /// <summary>

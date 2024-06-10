@@ -224,5 +224,23 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             return databaseConnection.HasActiveTransaction();
         }
+
+        /// <inheritdoc />
+        public DbConnection GetConnectionForReading()
+        {
+            return databaseConnection.GetConnectionForReading();
+        }
+
+        /// <inheritdoc />
+        public DbConnection GetConnectionForWriting()
+        {
+            return databaseConnection.GetConnectionForWriting();
+        }
+
+        /// <inheritdoc />
+        public async Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false)
+        {
+            return await databaseConnection.BulkInsertAsync(dataTable, tableName, useWritingConnectionIfAvailable, useInsertIgnore);
+        }
     }
 }
