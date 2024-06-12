@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Core.Middlewares;
 
+// ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class RequestLoggingMiddleware
 {
     private readonly RequestDelegate next;
