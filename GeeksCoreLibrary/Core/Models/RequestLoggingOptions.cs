@@ -7,7 +7,7 @@ namespace GeeksCoreLibrary.Core.Models;
 public class RequestLoggingOptions
 {
     /// <summary>
-    /// Whether or not the request logging is enabled. Default is false.
+    /// Whether request logging is enabled. Default is false.
     /// </summary>
     public bool Enabled { get; set; }
 
@@ -25,6 +25,13 @@ public class RequestLoggingOptions
         HeaderNames.AcceptCharset,
         HeaderNames.AcceptEncoding,
         HeaderNames.AcceptLanguage,
+        HeaderNames.AccessControlAllowCredentials,
+        HeaderNames.AccessControlAllowHeaders,
+        HeaderNames.AccessControlAllowMethods,
+        HeaderNames.AccessControlAllowOrigin,
+        HeaderNames.AccessControlExposeHeaders,
+        HeaderNames.AccessControlMaxAge,
+        HeaderNames.AccessControlRequestMethod,
         HeaderNames.Allow,
         HeaderNames.CacheControl,
         HeaderNames.Connection,
@@ -36,8 +43,10 @@ public class RequestLoggingOptions
         HeaderNames.Expect,
         HeaderNames.Host,
         HeaderNames.MaxForwards,
+        HeaderNames.Origin,
         HeaderNames.Pragma,
         HeaderNames.Range,
+        HeaderNames.Referer,
         HeaderNames.Server,
         HeaderNames.SecWebSocketExtensions,
         HeaderNames.SecWebSocketVersion,
@@ -52,12 +61,12 @@ public class RequestLoggingOptions
     };
 
     /// <summary>
-    /// Whether or not the request should be logged. Default is false.
+    /// Whether the request body should be logged. Default is false.
     /// </summary>
     public bool LogRequestBody { get; set; }
 
     /// <summary>
-    /// Whether or not the response should be logged. Default is false.
+    /// Whether the response body should be logged. Default is false.
     /// </summary>
     public bool LogResponseBody { get; set; }
 }
