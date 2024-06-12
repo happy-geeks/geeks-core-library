@@ -11,6 +11,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
     public interface IDatabaseHelpersService
     {
         /// <summary>
+        /// If your project has extra tables, you can add them here and use this class to automatically keep them updated.
+        /// </summary>
+        List<WiserTableDefinitionModel> ExtraWiserTableDefinitions { get; set; }
+
+        /// <summary>
         /// Check whether or not a column exists in a specific table.
         /// </summary>
         /// <param name="tableName">The name of the table.</param>

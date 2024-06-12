@@ -16,26 +16,32 @@ namespace GeeksCoreLibrary.Core.Middlewares;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class RequestLoggingMiddleware
 {
-    private readonly RequestDelegate next;
-    private readonly ILogger<RequestLoggingMiddleware> logger;
-    private readonly GclSettings gclSettings;
+    protected readonly RequestDelegate Next;
+    protected readonly ILogger<RequestLoggingMiddleware> Logger;
+    protected readonly GclSettings GclSettings;
+
+    /// <summary>
+    /// The table that should be used to save the logs in.
+    /// Default is <see cref="WiserTableNames.GclRequestLog"/>, can be overwritten in overloads.
+    /// </summary>
+    protected virtual string LogTableName => WiserTableNames.GclRequestLog;
 
     public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger, IOptions<GclSettings> gclSettings)
     {
-        this.next = next;
-        this.logger = logger;
-        this.gclSettings = gclSettings.Value;
+        Next = next;
+        Logger = logger;
+        GclSettings = gclSettings.Value;
     }
 
-    public async Task Invoke(HttpContext context, IDatabaseConnection databaseConnection, IAccountsService accountsService)
+    public async Task Invoke(HttpContext context, IServiceProvider serviceProvider)
     {
-        var logId = await LogRequestAsync(context, databaseConnection);
-        var user = await accountsService.GetUserDataFromCookieAsync();
+        var databaseConnection = (IDatabaseConnection)serviceProvider.GetService(typeof(IDatabaseConnection));
+        var logId = await LogRequestAsync(context, databaseConnection, serviceProvider);
 
-        if (!gclSettings.RequestLoggingOptions.LogResponseBody)
+        if (!GclSettings.RequestLoggingOptions.LogResponseBody)
         {
-            await next.Invoke(context);
-            await LogResponseAsync(logId, context, null, databaseConnection, user.UserId);
+            await Next.Invoke(context);
+            await LogResponseAsync(logId, context, null, databaseConnection, serviceProvider);
             return;
         }
 
@@ -44,7 +50,7 @@ public class RequestLoggingMiddleware
         using var responseBodyMemoryStream = new MemoryStream();
         context.Response.Body = responseBodyMemoryStream;
 
-        await next.Invoke(context);
+        await Next.Invoke(context);
 
         responseBodyMemoryStream.Position = 0;
         var content = await new StreamReader(responseBodyMemoryStream).ReadToEndAsync();
@@ -52,7 +58,20 @@ public class RequestLoggingMiddleware
         await responseBodyMemoryStream.CopyToAsync(originalResponseBody);
         context.Response.Body = originalResponseBody;
 
-        await LogResponseAsync(logId, context, content, databaseConnection, user.UserId);
+        await LogResponseAsync(logId, context, content, databaseConnection, serviceProvider);
+    }
+
+    /// <summary>
+    /// Get the ID of the authenticated user.
+    /// </summary>
+    /// <param name="context">The <see cref="HttpContext"/> of the request.</param>
+    /// <param name="serviceProvider">Service provider to get other services you might need.</param>
+    /// <returns>The ID of the user or 0 if the user is not authenticated.</returns>
+    protected virtual async Task<ulong> GetUserIdAsync(HttpContext context, IServiceProvider serviceProvider)
+    {
+        var accountsService = (IAccountsService)serviceProvider.GetService(typeof(IAccountsService));
+        var user = await accountsService!.GetUserDataFromCookieAsync();
+        return user.UserId;
     }
 
     /// <summary>
@@ -60,12 +79,13 @@ public class RequestLoggingMiddleware
     /// </summary>
     /// <param name="context">The <see cref="HttpContext"/> of the request.</param>
     /// <param name="databaseConnection">The <see cref="IDatabaseConnection"/> for writing the log to the database.</param>
+    /// <param name="serviceProvider">Service provider to get other services you might need. Is not used in the base class, but you can use it in overrides.</param>
     /// <returns>The ID of the newly added row in the log table.</returns>
-    protected virtual async Task<ulong> LogRequestAsync(HttpContext context, IDatabaseConnection databaseConnection)
+    protected virtual async Task<ulong> LogRequestAsync(HttpContext context, IDatabaseConnection databaseConnection, IServiceProvider serviceProvider)
     {
         try
         {
-            var currentOptions = gclSettings.RequestLoggingOptions;
+            var currentOptions = GclSettings.RequestLoggingOptions;
 
             if (!currentOptions.Enabled || currentOptions.HttpMethods.All(method => !String.Equals(method.Method, context.Request.Method, StringComparison.OrdinalIgnoreCase)))
             {
@@ -87,14 +107,14 @@ public class RequestLoggingMiddleware
             databaseConnection.AddParameter("protocol", context.Request.Protocol);
             databaseConnection.AddParameter("request_headers", String.Join(Environment.NewLine, headers));
             databaseConnection.AddParameter("request_body", currentOptions.LogRequestBody ? await new StreamReader(context.Request.Body).ReadToEndAsync() : null);
-            databaseConnection.AddParameter("environment", gclSettings.Environment.ToString());
+            databaseConnection.AddParameter("environment", GclSettings.Environment.ToString());
             databaseConnection.AddParameter("start_datetime", DateTime.Now);
             databaseConnection.AddParameter("ip_address", HttpContextHelpers.GetUserIpAddress(context));
-            return await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(WiserTableNames.GclRequestLog, 0UL);
+            return await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(LogTableName, 0UL);
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Error while logging request.");
+            Logger.LogError(exception, "Error while logging request.");
             return 0;
         }
     }
@@ -106,12 +126,12 @@ public class RequestLoggingMiddleware
     /// <param name="context">The <see cref="HttpContext"/> of the request.</param>
     /// <param name="responseBody">The complete body of the response. Set to <see langword="null"/> to not log response body.</param>
     /// <param name="databaseConnection">The <see cref="IDatabaseConnection"/> for writing the log to the database.</param>
-    /// <param name="userId">The ID of the logged in user.</param>
-    protected virtual async Task LogResponseAsync(ulong logId, HttpContext context, string responseBody, IDatabaseConnection databaseConnection, ulong userId)
+    /// <param name="serviceProvider">Service provider to get other services you might need. Is not used in the base class, but you can use it in overrides.</param>
+    protected virtual async Task LogResponseAsync(ulong logId, HttpContext context, string responseBody, IDatabaseConnection databaseConnection, IServiceProvider serviceProvider)
     {
         try
         {
-            var currentOptions = gclSettings.RequestLoggingOptions;
+            var currentOptions = GclSettings.RequestLoggingOptions;
 
             if (!currentOptions.Enabled || logId == 0)
             {
@@ -128,13 +148,13 @@ public class RequestLoggingMiddleware
             databaseConnection.AddParameter("response_headers", String.Join(Environment.NewLine, headers));
             databaseConnection.AddParameter("response_body", responseBody);
             databaseConnection.AddParameter("status_code", context.Response.StatusCode);
-            databaseConnection.AddParameter("user_id", userId);
+            databaseConnection.AddParameter("user_id", await GetUserIdAsync(context, serviceProvider));
             databaseConnection.AddParameter("end_datetime", DateTime.Now);
-            await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(WiserTableNames.GclRequestLog, logId);
+            await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(LogTableName, logId);
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Error while logging response.");
+            Logger.LogError(exception, "Error while logging response.");
         }
     }
 }
