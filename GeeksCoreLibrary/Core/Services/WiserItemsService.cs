@@ -258,6 +258,8 @@ namespace GeeksCoreLibrary.Core.Services
                     databaseConnection.AddParameter("json", wiserItem.Json);
                     databaseConnection.AddParameter("jsonLastProcessedDate", wiserItem.JsonLastProcessedDate);
                     databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+                    databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+
                     var query = $@"SET @saveHistory = ?saveHistoryGcl;
 SET @_userId = ?userId;
 SET @saveHistory = ?saveHistoryGcl;
@@ -664,6 +666,8 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                     databaseConnection.AddParameter("userId", userId);
                     databaseConnection.AddParameter("itemId", itemId);
                     databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+                    databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+
 
                     // The word "update" at the end of the query is to force the GCL to use the write database (for customers that use multiple databases).
                     // Otherwise the GCL might throw the exception that the item doesn't exist, if it has just been created and not synchronised to the slave database(s) yet.
@@ -1165,6 +1169,8 @@ SET @saveHistory = ?saveHistoryGcl;
                     // Save the item details / fields for link item details.
                     databaseConnection.AddParameter("itemId", itemId);
                     databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+                    databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+
                     counter = 0;
 
                     // If the property ReadOnly of ItemDetail is set to true, always skip it. It means it has been set to true in back-end code.
@@ -1370,6 +1376,8 @@ SET @saveHistory = ?saveHistoryGcl;
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("entityType", newEntityType);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+
             databaseConnection.AddParameter("now", DateTime.Now);
 
             var addedOnResetPart = !resetAddedOnDate ? "" : ", added_on = ?now, added_by = ?username";
@@ -1468,6 +1476,7 @@ SET @saveHistory = ?saveHistoryGcl;
                     databaseConnection.AddParameter("username", username);
                     databaseConnection.AddParameter("userId", userId);
                     databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+                    databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
                     databaseConnection.AddParameter("now", DateTime.Now); // Don't use MySQL time, because DigitalOcean uses a different timezone than us.
 
                     string query;
@@ -1953,6 +1962,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
             await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
                                                         SET @_userId = ?userId;
                                                         SET @saveHistory = ?saveHistoryGcl;
@@ -3121,6 +3131,8 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+
             var dataTable = await databaseConnection.GetAsync($@"SELECT id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE item_id = ?itemId AND destination_item_id = ?destinationItemId AND type = ?type", true);
             if (dataTable.Rows.Count > 0)
             {
@@ -3166,6 +3178,8 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+
             await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
                                                         SET @_userId = ?userId;
                                                         SET @saveHistory = ?saveHistoryGcl; 
@@ -3203,6 +3217,7 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
             // Copy the item links to the archive.
             var query = $@"SET @_username = ?username;
@@ -3291,6 +3306,7 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
             // Save the change to the history.
             var query = $@"SET @_username = ?username;
@@ -3365,6 +3381,7 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
             // Query for removing links in the table wiser_itemlinks.
             var wiserItemLinkQueryBuilder = new StringBuilder($@"SET @_username = ?username;
@@ -3471,6 +3488,8 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+
             await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
                                                         SET @_userId = ?userId;
                                                         SET @saveHistory = ?saveHistoryGcl;
@@ -3523,6 +3542,8 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+
             await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
                                                         SET @_userId = ?userId;
                                                         SET @saveHistory = ?saveHistoryGcl;
@@ -3577,6 +3598,8 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+
             await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
                                                         SET @_userId = ?userId;
                                                         SET @saveHistory = ?saveHistoryGcl;
@@ -3656,6 +3679,8 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+
             var addItemFileResult = await databaseConnection.GetAsync($@"
                 SET @_username = ?username;
                 SET @_userId = ?userId;
