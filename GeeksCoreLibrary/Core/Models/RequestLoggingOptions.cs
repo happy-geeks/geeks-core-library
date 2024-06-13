@@ -69,4 +69,20 @@ public class RequestLoggingOptions
     /// Whether the response body should be logged. Default is false.
     /// </summary>
     public bool LogResponseBody { get; set; }
+
+    /// <summary>
+    /// Properties from request or response bodies that should be redacted before they're logged.
+    /// </summary>
+    public List<string> SensitiveProperties = new()
+    {
+        "password",
+        "password_confirmation",
+        "client_secret",
+        "access_token",
+        "refresh_token",
+        "cookieValue",
+        "encryptedLoginLogId",
+        "totpPin",
+        "totpBackupCode"
+    };
 }

@@ -8,8 +8,11 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
+using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Core.Middlewares;
 
@@ -58,6 +61,8 @@ public class RequestLoggingMiddleware
         await responseBodyMemoryStream.CopyToAsync(originalResponseBody);
         context.Response.Body = originalResponseBody;
 
+        content = await RemoveSensitiveDataAsync(context.Response.ContentType, content);
+
         await LogResponseAsync(logId, context, content, databaseConnection, serviceProvider);
     }
 
@@ -72,6 +77,115 @@ public class RequestLoggingMiddleware
         var accountsService = (IAccountsService)serviceProvider.GetService(typeof(IAccountsService));
         var user = await accountsService!.GetUserDataFromCookieAsync();
         return user.UserId;
+    }
+
+    /// <summary>
+    /// Remove sensitive data from the request or response body, to prevent sensitive data to be saved in the logs.
+    /// </summary>
+    /// <param name="contentType">The content type of the request or response.</param>
+    /// <param name="body">The body of the request or response.</param>
+    /// <returns>The body with sensitive data redacted.</returns>
+    protected virtual async Task<string> RemoveSensitiveDataAsync(string contentType, string body)
+    {
+        try
+        {
+            if (String.IsNullOrWhiteSpace(contentType) || String.IsNullOrWhiteSpace(body))
+            {
+                return body;
+            }
+
+            if (contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+            {
+                var json = JToken.Parse(body);
+                await RemoveSensitiveDataAsync(json);
+
+                return json.ToString();
+            }
+
+            if (contentType.Contains("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase))
+            {
+                var formData = QueryHelpers.ParseQuery(body);
+                foreach (var property in GclSettings.RequestLoggingOptions.SensitiveProperties)
+                {
+                    var formKey = formData.Keys.FirstOrDefault(key => String.Equals(key, property, StringComparison.OrdinalIgnoreCase));
+                    if (formKey != null)
+                    {
+                        // No brackets here around redacted, because they will be encoded and that looks ugly in the logs.
+                        formData[formKey] = "REDACTED";
+                    }
+                }
+
+                return BuildFormDataString(formData);
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, $"An error occurred while trying to remove sensitive data from the request or response body, in {nameof(RequestLoggingMiddleware)}.");
+        }
+
+        return body;
+    }
+
+    /// <summary>
+    /// Remove sensitive data from the request or response body, to prevent sensitive data to be saved in the logs.
+    /// </summary>
+    protected virtual async Task RemoveSensitiveDataAsync(JToken jsonObject)
+    {
+        // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+        switch (jsonObject.Type)
+        {
+            case JTokenType.Object:
+            {
+                foreach (var jsonProperty in ((JObject)jsonObject).Properties())
+                {
+                    // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
+                    switch (jsonProperty.Value.Type)
+                    {
+                        case JTokenType.Object:
+                        case JTokenType.Array:
+                        case JTokenType.Property:
+                        {
+                            await RemoveSensitiveDataAsync(jsonProperty.Value);
+
+                            break;
+                        }
+                        default:
+                        {
+                            if (!GclSettings.RequestLoggingOptions.SensitiveProperties.Any(p => String.Equals(p, jsonProperty.Name, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                continue;
+                            }
+
+                            jsonProperty.Value = "[Redacted]";
+
+                            break;
+                        }
+                    }
+                }
+
+                break;
+            }
+            case JTokenType.Array:
+            {
+                foreach (var item in jsonObject.Children())
+                {
+                    await RemoveSensitiveDataAsync(item);
+                }
+
+                break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Build a form data string from a Dictionary.
+    /// </summary>
+    /// <param name="formData">The Dictionary with all the form data.</param>
+    /// <returns>The string for a form body.</returns>
+    protected string BuildFormDataString(Dictionary<string, StringValues> formData)
+    {
+        var formDataList = formData.Select(pair => $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}");
+        return String.Join("&", formDataList);
     }
 
     /// <summary>
@@ -98,6 +212,22 @@ public class RequestLoggingMiddleware
                 headers.Add($"{header.Key}: {(currentOptions.Headers.Any(h => String.Equals(h, header.Key, StringComparison.OrdinalIgnoreCase)) ? header.Value : "[Redacted]")}");
             }
 
+            string requestBody = null;
+
+            if (currentOptions.LogRequestBody)
+            {
+                // Enable buffering to allow the request body to be read multiple times.
+                // If we don't do this, the next middleware can't read the body anymore.
+                context.Request.EnableBuffering();
+
+                // Read the request body and remove sensitive data.
+                requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                requestBody = await RemoveSensitiveDataAsync(context.Request.ContentType ?? context.Request.Headers.Accept, requestBody);
+
+                // Reset the request body stream position so the next middleware can read it.
+                context.Request.Body.Position = 0;
+            }
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("host", context.Request.Host.Host);
             databaseConnection.AddParameter("path", context.Request.Path.Value);
@@ -106,7 +236,7 @@ public class RequestLoggingMiddleware
             databaseConnection.AddParameter("method", context.Request.Method);
             databaseConnection.AddParameter("protocol", context.Request.Protocol);
             databaseConnection.AddParameter("request_headers", String.Join(Environment.NewLine, headers));
-            databaseConnection.AddParameter("request_body", currentOptions.LogRequestBody ? await new StreamReader(context.Request.Body).ReadToEndAsync() : null);
+            databaseConnection.AddParameter("request_body", requestBody);
             databaseConnection.AddParameter("environment", GclSettings.Environment.ToString());
             databaseConnection.AddParameter("start_datetime", DateTime.Now);
             databaseConnection.AddParameter("ip_address", HttpContextHelpers.GetUserIpAddress(context));
