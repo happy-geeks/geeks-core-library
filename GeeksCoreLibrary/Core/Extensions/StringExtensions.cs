@@ -63,27 +63,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns>The string with all requested values replaced.</returns>
         public static string ReplaceCaseInsensitive(this string input, string oldValue, string newValue)
         {
-            if (String.IsNullOrEmpty(input))
-            {
-                return input;
-            }
-
-            var sb = new StringBuilder();
-
-            var previousIndex = 0;
-            var index = input.IndexOf(oldValue, StringComparison.CurrentCultureIgnoreCase);
-            while (index != -1)
-            {
-                sb.Append(input[previousIndex..index]);
-                sb.Append(newValue);
-                index += oldValue.Length;
-
-                previousIndex = index;
-                index = input.IndexOf(oldValue, index, StringComparison.CurrentCultureIgnoreCase);
-            }
-            sb.Append(input[previousIndex..]);
-
-            return sb.ToString();
+            return input.Replace(oldValue, newValue, StringComparison.CurrentCultureIgnoreCase);
         }
 
         /// <summary>
