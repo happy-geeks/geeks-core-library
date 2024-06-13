@@ -577,38 +577,6 @@ namespace GeeksCoreLibrary.Core.Extensions
         }
 
         /// <summary>
-        /// Encrypts a string using the Triple DES method, using an optional or standard encryption key.
-        /// </summary>
-        /// <param name="input">The string to encrypt.</param>
-        /// <param name="key">Optional: The key to use for encrypting. Will use the default key from the appsettings if empty.</param>
-        /// <returns>The encrypted string.</returns>
-        public static string EncryptTripleDes(this string input, string key = "")
-        {
-            if (String.IsNullOrWhiteSpace(key))
-            {
-                key = GclSettings.Current.DefaultEncryptionKeyTripleDes;
-            }
-
-            using var des = TripleDES.Create();
-            des.IV = new byte[8];
-            using var pdb = new PasswordDeriveBytes(key, Array.Empty<byte>());
-            des.Key = pdb.CryptDeriveKey("RC2", "MD5", 128, new byte[8]);
-            var ms = new MemoryStream((input.Length * 2) - 1);
-            byte[] encryptedBytes;
-            using (var encStream = new CryptoStream(ms, des.CreateEncryptor(), CryptoStreamMode.Write))
-            {
-                var plainBytes = Encoding.UTF8.GetBytes(input);
-                encStream.Write(plainBytes, 0, plainBytes.Length);
-                encStream.FlushFinalBlock();
-                encryptedBytes = new byte[ms.Length];
-                ms.Position = 0;
-                var _ = ms.Read(encryptedBytes, 0, (int)ms.Length);
-            }
-
-            return Convert.ToBase64String(encryptedBytes);
-        }
-
-        /// <summary>
         /// Hashes a string, adds a salt, and returns the salt + hashed bytes as a Base64 string.
         /// </summary>
         /// <param name="input">The string to hash.</param>
