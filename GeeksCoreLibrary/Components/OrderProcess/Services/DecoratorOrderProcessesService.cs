@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Models;
+using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Core.Models;
@@ -79,6 +80,12 @@ public abstract class DecoratorOrderProcessesService : IOrderProcessesService
     {
         return await orderProcessesService.HandlePaymentRequestAsync(service, orderProcessId);
     }
+    
+    /// <inheritdoc />
+    public virtual async Task<PaymentRequestResult> HandlePaymentRequestAsync(IOrderProcessesService service, ulong orderProcessId, string failUrl, string successUrl, string pendingUrl, OrderProcessBasketToConceptOrderMethods basketToConceptOrderMethod, OrderProcessSettingsModel orderProcessSettings)
+    {
+        return await orderProcessesService.HandlePaymentRequestAsync(service, orderProcessId, failUrl, successUrl, pendingUrl, basketToConceptOrderMethod, orderProcessSettings);
+    }
 
     /// <inheritdoc />
     public virtual async Task<bool> HandlePaymentStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, string newStatus, bool isSuccessfulStatus, bool convertConceptOrderToOrder = true)
@@ -115,6 +122,12 @@ public abstract class DecoratorOrderProcessesService : IOrderProcessesService
     {
         return await orderProcessesService.HandlePaymentReturnAsync(service, orderProcessId, paymentMethodId);
     }
+    
+    /// <inheritdoc />
+    public virtual async Task<PaymentReturnResult> HandlePaymentReturnAsync(IOrderProcessesService service, ulong orderProcessId, ulong paymentMethodId, string failUrl, string successUrl, string pendingUrl, OrderProcessSettingsModel orderProcessSettings)
+    {
+        return await orderProcessesService.HandlePaymentReturnAsync(service, orderProcessId, paymentMethodId, failUrl, successUrl, pendingUrl, orderProcessSettings);
+    }
 
     /// <inheritdoc />
     public virtual async Task<WiserItemFileModel> GetInvoicePdfAsync(ulong orderId)
@@ -127,10 +140,22 @@ public abstract class DecoratorOrderProcessesService : IOrderProcessesService
     {
         return await orderProcessesService.PaymentRequestBeforeOutAsync(conceptOrders, orderProcessSettings, paymentMethodSettings);
     }
+    
+    /// <inheritdoc />
+    public virtual async Task<PaymentRequestResult> PaymentRequestBeforeOutAsync(List<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, PaymentMethodSettingsModel paymentMethodSettings)
+    {
+        return await orderProcessesService.PaymentRequestBeforeOutAsync(conceptOrders, paymentMethodSettings);
+    }
 
     /// <inheritdoc />
     public virtual async Task<bool> PaymentStatusUpdateBeforeCommunicationAsync(WiserItemModel main, List<WiserItemModel> lines, OrderProcessSettingsModel orderProcessSettings, bool wasHandledBefore, bool isSuccessfulStatus)
     {
         return await orderProcessesService.PaymentStatusUpdateBeforeCommunicationAsync(main, lines, orderProcessSettings, wasHandledBefore, isSuccessfulStatus);
+    }
+    
+    /// <inheritdoc />
+    public virtual async Task<bool> PaymentStatusUpdateBeforeCommunicationAsync(WiserItemModel main, List<WiserItemModel> lines, bool wasHandledBefore, bool isSuccessfulStatus)
+    {
+        return await orderProcessesService.PaymentStatusUpdateBeforeCommunicationAsync(main, lines, wasHandledBefore, isSuccessfulStatus);
     }
 }
