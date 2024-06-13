@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Core.DependencyInjection.Interfaces
+﻿namespace GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+
+internal interface IServiceLocator
 {
-    internal interface IServiceLocator
-    {
-        T Get<T>();
-    }
+    T Get<T>();
 }

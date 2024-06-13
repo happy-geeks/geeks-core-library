@@ -1,9 +1,8 @@
-﻿namespace GeeksCoreLibrary.Core.Enums
+﻿namespace GeeksCoreLibrary.Core.Enums;
+
+public enum LinkRelationships
 {
-    public enum LinkRelationships
-    {
-        OneToOne,
-        OneToMany,
-        ManyToMany
-    }
+    OneToOne,
+    OneToMany,
+    ManyToMany
 }

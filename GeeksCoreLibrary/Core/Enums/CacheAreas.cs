@@ -1,18 +1,17 @@
-﻿namespace GeeksCoreLibrary.Core.Enums
+﻿namespace GeeksCoreLibrary.Core.Enums;
+
+public enum CacheAreas
 {
-    public enum CacheAreas
-    {
-        Unknown = 0,
-        Languages,
-        Objects,
-        Redirects,
-        Seo,
-        Database,
-        Templates,
-        WiserItems,
-        ShoppingBaskets,
-        DataSelectors,
-        Configurators,
-        WebPages
-    }
+    Unknown = 0,
+    Languages,
+    Objects,
+    Redirects,
+    Seo,
+    Database,
+    Templates,
+    WiserItems,
+    ShoppingBaskets,
+    DataSelectors,
+    Configurators,
+    WebPages
 }

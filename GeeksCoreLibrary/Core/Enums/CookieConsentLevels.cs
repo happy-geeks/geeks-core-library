@@ -1,10 +1,9 @@
-﻿namespace GeeksCoreLibrary.Core.Enums
+﻿namespace GeeksCoreLibrary.Core.Enums;
+
+public enum CookieConsentLevels
 {
-    public enum CookieConsentLevels
-    {
-        Necessary = 0,
-        Preferences = 1,
-        Statistics = 2,
-        Marketing = 3
-    }
+    Necessary = 0,
+    Preferences = 1,
+    Statistics = 2,
+    Marketing = 3
 }

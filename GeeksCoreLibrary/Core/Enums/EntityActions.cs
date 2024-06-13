@@ -1,10 +1,9 @@
-﻿namespace GeeksCoreLibrary.Core.Enums
+﻿namespace GeeksCoreLibrary.Core.Enums;
+
+public enum EntityActions
 {
-    public enum EntityActions
-    {
-        Read,
-        Create,
-        Update,
-        Delete
-    }
+    Read,
+    Create,
+    Update,
+    Delete
 }
