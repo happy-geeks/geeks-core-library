@@ -30,8 +30,9 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <param name="amountOfDaysToRememberCookie">The amount of days to remember the cookie for the user.</param>
         /// <param name="mainUserEntityType">The entity type for main accounts.</param>
         /// <param name="userEntityType">The entity type for sub accounts.</param>
+        /// <param name="role">Optional: the name of a custom role outside of the Wiser roles</param>
         /// <returns>The value that should be saved in the cookie.</returns>
-        Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account");
+        Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account", string role = null);
 
         /// <summary>
         /// Deletes a cookie token from the database, so that the user cannot login with it anymore, even if it still has a cookie with that token.

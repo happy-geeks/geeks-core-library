@@ -915,7 +915,7 @@ namespace GeeksCoreLibrary.Components.Account
                     }
                     else if (userData.UserId == 0 && createOrUpdateAccountResult.Result == CreateOrUpdateAccountResults.Success && changePasswordResult == ResetOrChangePasswordResults.Success && Settings.AutoLoginUserAfterAction)
                     {
-                        await AutoLoginUserAsync(createOrUpdateAccountResult.SubAccountId > 0 ? createOrUpdateAccountResult.SubAccountId : createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.UserId);
+                        await AutoLoginUserAsync(createOrUpdateAccountResult.SubAccountId > 0 ? createOrUpdateAccountResult.SubAccountId : createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.Role);
                         isLoggedIn = true;
                     }
 
@@ -1213,7 +1213,8 @@ namespace GeeksCoreLibrary.Components.Account
         /// </summary>
         /// <param name="userId">The ID of the user to login.</param>
         /// <param name="mainUserId">The ID of the main user, if the user is logging in with a sub account.</param>
-        private async Task AutoLoginUserAsync(ulong userId, ulong mainUserId)
+        /// <param name="role"></param>
+        private async Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role)
         {
             // Make sure we have a valid user ID.
             if (userId <= 0)
@@ -1224,7 +1225,7 @@ namespace GeeksCoreLibrary.Components.Account
 
             // Everything succeeded, so generate a cookie for the user and reset any failed login attempts.
             var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
-            var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType);
+            var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
             await SaveGoogleClientIdAsync(userId);
 
             var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
@@ -1853,9 +1854,15 @@ namespace GeeksCoreLibrary.Components.Account
                 }
             }
 
+            string role = null;
+            if (accountResult.Columns.Contains("role"))
+            {
+                role = accountResult.Rows[0].Field<string>("role");
+            }
+
             // Everything succeeded, so generate a cookie for the user and reset any failed login attempts.
             var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
-            var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(loggedInUserId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType);
+            var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(loggedInUserId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
             if (decryptedUserId == 0)
             {
                 await SaveGoogleClientIdAsync(loggedInUserId);

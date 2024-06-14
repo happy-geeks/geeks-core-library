@@ -102,10 +102,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
                 await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> { Constants.AuthenticationTokensTableName });
 
-                // Note: Added the word 'update' to the query force the GCL to use the write connection string.
-                // Note: This is done because sometimes the sync to a read database is not instant and then the cookie cannot be found immediately after creating it.
-                var query = $@"# UPDATE
-                                SELECT 
+                var query = $@"SELECT 
                                     user_id, 
                                     main_user_id,
                                     hashed_validator,
@@ -122,7 +119,9 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
                 databaseConnection.AddParameter("selector", cookieValueParts[0]);
                 databaseConnection.AddParameter("entityType", cookieValueParts[2]);
-                var result = await databaseConnection.GetAsync(query, true);
+                
+                // Writing connection is used because sometimes the sync to a read database is not instant and then the cookie cannot be found immediately after creating it.
+                var result = await databaseConnection.GetAsync(query, true, useWritingConnectionIfAvailable: true);
 
                 if (result.Rows.Count == 0)
                 {
@@ -154,6 +153,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                     UserAgent = dataSetFirstRow.Field<string>("user_agent"),
                     MainUserEntityType = dataSetFirstRow.Field<string>("main_user_entity_type"),
                     Roles = await GetUserRolesAsync(userId),
+                    CustomRole = dataSetFirstRow.Field<string>("role"),
                     ExtraData = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
                 };
 
@@ -236,7 +236,9 @@ namespace GeeksCoreLibrary.Components.Account.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId, int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account")
+        public async Task<string> GenerateNewCookieTokenAsync(ulong userId, ulong mainUserId,
+            int amountOfDaysToRememberCookie, string mainUserEntityType = "relatie", string userEntityType = "account",
+            string role = null)
         {
             // Make sure we always have a valid main user ID. If the user is logging in with a main user, this should be the same as the user ID.
             if (mainUserId == 0)
@@ -264,6 +266,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             databaseConnection.AddParameter("user_agent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, HeaderNames.UserAgent));
             databaseConnection.AddParameter("expires", DateTime.Now.AddDays(amountOfDaysToRememberCookie));
             databaseConnection.AddParameter("login_date", DateTime.Now);
+            databaseConnection.AddParameter("role", role);
             await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(Constants.AuthenticationTokensTableName, 0UL);
 
             return $"{selector}:{Uri.EscapeDataString(validator.EncryptWithAes(gclSettings.AccountCookieValueEncryptionKey))}:{entityTypeToUse}";
