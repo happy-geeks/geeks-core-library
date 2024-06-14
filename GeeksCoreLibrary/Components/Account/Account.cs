@@ -1213,7 +1213,7 @@ namespace GeeksCoreLibrary.Components.Account
         /// </summary>
         /// <param name="userId">The ID of the user to login.</param>
         /// <param name="mainUserId">The ID of the main user, if the user is logging in with a sub account.</param>
-        /// <param name="role"></param>
+        /// <param name="role">Used to set a custom role for the user separate of the Wiser role system</param>
         private async Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role)
         {
             // Make sure we have a valid user ID.
