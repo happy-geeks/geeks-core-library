@@ -32,6 +32,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             this.logger = logger;
         }
 
+        public List<WiserTableDefinitionModel> ExtraWiserTableDefinitions { get; set; }
+
         /// <inheritdoc />
         public async Task<bool> ColumnExistsAsync(string tableName, string columnName, string databaseName = null)
         {
@@ -458,7 +460,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
             foreach (var tableName in tablesToUpdate)
             {
-                var tableDefinition = WiserTableDefinitions.TablesToUpdate.FirstOrDefault(t => String.Equals(t.Name, tableName, StringComparison.OrdinalIgnoreCase));
+                WiserTableDefinitionModel tableDefinition = null;
+                if (ExtraWiserTableDefinitions != null)
+                {
+                    tableDefinition = ExtraWiserTableDefinitions.FirstOrDefault(t => String.Equals(t.Name, tableName, StringComparison.OrdinalIgnoreCase));
+                }
+
+                tableDefinition ??= WiserTableDefinitions.TablesToUpdate.FirstOrDefault(t => String.Equals(t.Name, tableName, StringComparison.OrdinalIgnoreCase));
                 if (tableDefinition == null)
                 {
                     logger.LogWarning($"Called CheckAndUpdateTablesAsync with a table that doesn't exist ('{tableName}').");

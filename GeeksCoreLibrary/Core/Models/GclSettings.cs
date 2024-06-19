@@ -266,5 +266,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// The SameSite mode to use for cookies.
         /// </summary>
         public SameSiteMode CookieSameSiteMode { get; set; } = SameSiteMode.Lax;
+
+        /// <summary>
+        /// Settings for request logging.
+        /// </summary>
+        public RequestLoggingOptions RequestLoggingOptions { get; set; } = new();
     }
 }

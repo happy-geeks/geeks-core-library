@@ -146,6 +146,7 @@ public static class HttpContextHelpers
         {
             return null;
         }
+
         if (String.IsNullOrEmpty(key))
         {
             return null;
@@ -196,6 +197,7 @@ public static class HttpContextHelpers
         {
             return false;
         }
+
         if (String.IsNullOrEmpty(key))
         {
             return false;
@@ -309,7 +311,7 @@ public static class HttpContextHelpers
             return default;
         }
 
-        return (T)Convert.ChangeType(rawValues, typeof(T));
+        return (T) Convert.ChangeType(rawValues, typeof(T));
     }
 
     /// <summary>
@@ -328,7 +330,12 @@ public static class HttpContextHelpers
         var result = GetHeaderValueAs<string>(httpContext, "CF_CONNECTING_IP"); // Cloud Flare IP address.
         if (String.IsNullOrWhiteSpace(result))
         {
-            result = GetHeaderValueAs<string>(httpContext, "X_FORWARDED_FOR");
+            result = GetHeaderValueAs<string>(httpContext, "True-Client-IP"); // Also Cloud Flare IP address.
+        }
+
+        if (String.IsNullOrWhiteSpace(result))
+        {
+            result = GetHeaderValueAs<string>(httpContext, "X_FORWARDED_FOR"); // TransIP and other providers use this.
         }
 
         if (String.IsNullOrWhiteSpace(result))
@@ -372,7 +379,7 @@ public static class HttpContextHelpers
 
         if (httpContext.Items.ContainsKey(Constants.OriginalPathKey) && httpContext.Items[Constants.OriginalPathKey] != null)
         {
-            result.Path = ((PathString)httpContext.Items[Constants.OriginalPathKey]).ToString();
+            result.Path = ((PathString) httpContext.Items[Constants.OriginalPathKey]).ToString();
         }
         else
         {
@@ -381,7 +388,7 @@ public static class HttpContextHelpers
 
         if (httpContext.Items.ContainsKey(Constants.OriginalQueryStringKey) && httpContext.Items[Constants.OriginalQueryStringKey] != null)
         {
-            result.Query = ((QueryString)httpContext.Items[Constants.OriginalQueryStringKey]).ToString();
+            result.Query = ((QueryString) httpContext.Items[Constants.OriginalQueryStringKey]).ToString();
         }
         else
         {
