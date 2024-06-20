@@ -35,9 +35,14 @@ namespace GeeksCoreLibrary.Components.Account.Models
         public string MainUserEntityType { get; set; }
 
         /// <summary>
-        /// The roles of the logged in user.
+        /// The roles of the logged in user. These are the Wiser roles from the table wiser_roles.
         /// </summary>
         public List<RoleModel> Roles { get; set; }
+        
+        /// <summary>
+        /// Any custom roles that the user might have, that are not Wiser roles from wiser_roles.
+        /// </summary>
+        public string CustomRole { get; set; }
 
         /// <summary>
         /// The date and time that the user logged in.
