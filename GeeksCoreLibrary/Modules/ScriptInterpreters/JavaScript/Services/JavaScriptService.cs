@@ -61,8 +61,6 @@ public class JavaScriptService : IJavaScriptService, ITransientService
     /// <inheritdoc />
     public object ExecuteScript(string script)
     {
-        var a = engine.Evaluate("").UnwrapIfPromise()
-
         return engine.Evaluate(script).ToObject();
     }
 
