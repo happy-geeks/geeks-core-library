@@ -2,13 +2,16 @@
 
 namespace GeeksCoreLibrary.Modules.ScriptInterpreters.JavaScript.Interfaces;
 
+/// <summary>
+/// Interface for a JavaScript interpreter service.
+/// </summary>
 public interface IJavaScriptService : IDisposable
 {
     /// <summary>
     /// Set a value in the JavaScript engine.
     /// </summary>
-    /// <param name="name"></param>
-    /// <param name="value"></param>
+    /// <param name="name">The name of the global object.</param>
+    /// <param name="value">The value of the global object.</param>
     void SetValue(string name, object value);
 
     /// <summary>
@@ -29,11 +32,11 @@ public interface IJavaScriptService : IDisposable
     /// Execute a script and return the result.
     /// </summary>
     /// <param name="script">The script to execute.</param>
-    /// <returns>An <see cref="object[]"/> containing the result of the script.</returns>
+    /// <returns>An <see cref="object"/> containing the result of the script.</returns>
     object ExecuteScript(string script);
 
     /// <summary>
-    /// Execute a script and return the result.
+    /// Execute a script and return the result. If the result is null or does not implement the <see cref="IConvertible"/> interface, it will return the default value of <see cref="T"/>.
     /// </summary>
     /// <param name="script">The script to execute.</param>
     /// <returns>A <see cref="T"/> containing the result of the script.</returns>
