@@ -1,18 +1,25 @@
 ﻿using System;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
-using GeeksCoreLibrary.Modules.ScriptInterpreters.Interfaces;
 using GeeksCoreLibrary.Modules.ScriptInterpreters.JavaScript.Interfaces;
 using Jint;
+using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Modules.ScriptInterpreters.JavaScript.Services;
 
-public class JavaScriptService : IScriptInterpretersService, IJavaScriptService, ITransientService
+/// <summary>
+/// A service for interpreting JavaScript.
+/// </summary>
+public class JavaScriptService : IJavaScriptService, ITransientService
 {
+    private readonly ILogger<JavaScriptService> logger;
+
     private Engine engine;
 
-    public JavaScriptService()
+    public JavaScriptService(ILogger<JavaScriptService> logger)
     {
+        this.logger = logger;
+
         engine = new Engine(new Options
         {
             Strict = true,
@@ -26,7 +33,7 @@ public class JavaScriptService : IScriptInterpretersService, IJavaScriptService,
             EncryptWithAes = new Func<string, string, bool, bool, string>(StringExtensions.EncryptWithAes),
             DecryptWithAes = new Func<string, string, bool, int, bool, string>(StringExtensions.DecryptWithAes),
             ToSha512 = new Func<string, string>(StringExtensions.ToSha512Simple),
-            ToSha512ForPasswords = new Func<string, byte[], string>(StringExtensions.ToSha512ForPasswords),
+            ToSha512ForPasswords = new Func<string, byte[], string>(StringExtensions.ToSha512ForPasswords)
         };
 
         // Expose the GCL methods to the engine.
@@ -54,38 +61,59 @@ public class JavaScriptService : IScriptInterpretersService, IJavaScriptService,
     /// <inheritdoc />
     public object ExecuteScript(string script)
     {
-        engine.Execute($$"""
-            function _GCL_Temp_Script() {
-                {{script}}
-            }
-            """);
+        var a = engine.Evaluate("").UnwrapIfPromise()
 
-        return engine.Invoke("_GCL_Temp_Script").ToObject();
+        return engine.Evaluate(script).ToObject();
     }
 
     /// <inheritdoc />
     public T ExecuteScript<T>(string script)
     {
-        var result = ExecuteScript(script);
-        return result is Jint.Native.JsUndefined or Jint.Native.JsNull
-            ? default
-            : (T)Convert.ChangeType(result, typeof(T));
+        object result = null;
+
+        try
+        {
+            result = ExecuteScript(script);
+            return result is not IConvertible ? default : (T) Convert.ChangeType(result, typeof(T));
+        }
+        catch (Exception exception) when (exception is InvalidCastException or FormatException)
+        {
+            logger.LogError(exception, "An error occurred while casting the result of a JavaScript snippet. Tried to cast '{Result}' to type '{GenericType}'", result ?? "null", typeof(T));
+            return default;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "An error occurred while executing a JavaScript snippet.");
+            return default;
+        }
     }
 
     /// <inheritdoc />
     public object ExecuteFunction(string functionName, params object[] arguments)
     {
-        var result = engine.Invoke(functionName, arguments);
-        return result is Jint.Native.JsUndefined or Jint.Native.JsNull ? null : result.ToObject();
+        return engine.Invoke(functionName, arguments).ToObject();
     }
 
     /// <inheritdoc />
     public T ExecuteFunction<T>(string functionName, params object[] arguments)
     {
-        var result = engine.Invoke(functionName, arguments);
-        return result is Jint.Native.JsUndefined or Jint.Native.JsNull
-            ? default
-            : (T)Convert.ChangeType(result.ToObject(), typeof(T));
+        object result = null;
+
+        try
+        {
+            result = ExecuteFunction(functionName, arguments);
+            return result is not IConvertible ? default : (T)Convert.ChangeType(result, typeof(T));
+        }
+        catch (Exception exception) when (exception is InvalidCastException or FormatException)
+        {
+            logger.LogError(exception, "An error occurred while casting the result of a JavaScript function. Tried to cast '{Result}' to type '{GenericType}'", result ?? "null", typeof(T));
+            return default;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "An error occurred while executing a JavaScript function.");
+            return default;
+        }
     }
 
     #region Disposing
