@@ -98,8 +98,8 @@ public class WiserTableDefinitions
             {
                 new(WiserTableNames.WiserItemLinkDetail, "itemlink_key", IndexTypes.Unique, new List<string> {"itemlink_id", "key", "language_code"}),
                 new(WiserTableNames.WiserItemLinkDetail, "key_value", IndexTypes.Normal, new List<string> {"key(50)", "value(100)"}),
-                new(WiserTableNames.WiserItemLinkDetail, "itemlink_id_key_value", IndexTypes.Normal, new List<string> {"item_id", "key(40)", "value(40)"}),
-                new(WiserTableNames.WiserItemLinkDetail, "itemlink_id_group", IndexTypes.Normal, new List<string> {"item_id", "groupname", "key(40)"})
+                new(WiserTableNames.WiserItemLinkDetail, "itemlink_id_key_value", IndexTypes.Normal, new List<string> {"itemlink_id", "key(40)", "value(40)"}),
+                new(WiserTableNames.WiserItemLinkDetail, "itemlink_id_group", IndexTypes.Normal, new List<string> {"itemlink_id", "groupname", "key(40)"})
             }
         },
 
