@@ -34,13 +34,13 @@
         // Cookies and sessions.
         public const string CookieName = "gcl_user_cookie";
         internal const string GoogleAnalyticsCookieName = "_ga";
-        internal const string OciHookUrlCookieName = "gcl_oci_hook_url";
-        internal const string CreatedAccountCookieName = "gcl_user_created";
+        public const string OciHookUrlCookieName = "gcl_oci_hook_url";
+        public const string CreatedAccountCookieName = "gcl_user_created";
 
-        internal const string LoginValueSessionKey = "AccountSavedLogin";
-        internal const string UserIdSessionKey = "AccountUserId";
+        public const string LoginValueSessionKey = "AccountSavedLogin";
+        public const string UserIdSessionKey = "AccountUserId";
 
-        internal const string UserDataCachingKey = "GCLAccountUser";
+        public const string UserDataCachingKey = "GCLAccountUser";
 
         #region Default settings
 
