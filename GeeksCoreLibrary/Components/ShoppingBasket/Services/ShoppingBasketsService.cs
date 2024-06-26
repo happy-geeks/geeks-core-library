@@ -409,7 +409,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     {
                         // Retrieve the TempData object, but make sure it doesn't cause a NullReferenceException.
                         var tempData = httpContextAccessor.HttpContext?.Items;
-                        var dataKey = $"ShoppingBasketQueriesExecuted_{settings.CookieName}";
+                        var dataKey = $"ShoppingBasketQueriesExecuted_{itemId}";
                         var allowGeneralQueries = tempData == null || !tempData.ContainsKey(dataKey) || Convert.ToInt32(tempData[dataKey]) != 1;
 
                         // Get extra details on line level, overwrite existing details.
@@ -2854,15 +2854,7 @@ WHERE coupon.entity_type = 'coupon'", true);
                 return;
             }
 
-            var user = await accountsService.GetUserDataFromCookieAsync();
-            var extraReplacements = new Dictionary<string, object>
-            {
-                { "Account_MainUserId", user.MainUserId },
-                { "Account_UserId", user.UserId },
-                { "AccountWiser2_MainUserId", user.MainUserId },
-                { "AccountWiser2_UserId", user.UserId }
-            };
-            query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(query, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
+            query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(await accountsService.DoAccountReplacementsAsync(query, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
 
             var queryResult = await databaseConnection.GetAsync(query, true);
 
