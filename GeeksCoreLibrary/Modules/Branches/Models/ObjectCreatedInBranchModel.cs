@@ -8,7 +8,7 @@ public class ObjectCreatedInBranchModel
     /// <summary>
     /// Gets or sets the ID of the object.
     /// </summary>
-    public ulong ObjectId { get; set; }
+    public string ObjectId { get; set; }
 
     /// <summary>
     /// Gets or sets the name of the table that contains the object.
