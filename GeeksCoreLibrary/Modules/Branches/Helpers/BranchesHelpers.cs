@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Models;
 
@@ -61,7 +60,7 @@ namespace GeeksCoreLibrary.Modules.Branches.Helpers
         /// <param name="action">The action from wiser_history.</param>
         /// <param name="objectId">The item_id from wiser_history.</param>
         /// <param name="tableName">The table_name from wiser_history.</param>
-        public static void TrackObjectAction(List<ObjectCreatedInBranchModel> trackedObjects, string action, ulong objectId, string tableName)
+        public static void TrackObjectAction(List<ObjectCreatedInBranchModel> trackedObjects, string action, string objectId, string tableName)
         {
             var wiserObject = trackedObjects.FirstOrDefault(i => i.ObjectId == objectId && String.Equals(i.TableName, tableName, StringComparison.OrdinalIgnoreCase));
             switch (action)
