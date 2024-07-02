@@ -39,7 +39,7 @@
     <PackageReference Include="EvoPdf.HtmlToPdf.NetCore.x64" Version="10.0.0" />
     <PackageReference Include="FluentFTP" Version="50.0.1" />
     <PackageReference Include="GoogleAuthenticator" Version="3.2.0" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.60" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
     <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" />
     <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
     <PackageReference Include="Magick.NET-Q8-x64" Version="13.6.0" />
