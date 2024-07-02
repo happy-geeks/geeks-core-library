@@ -176,7 +176,7 @@ namespace GeeksCoreLibrary.Core.Services
                     return await wiserItemsService.GetUserQueryPermissionsAsync(queryId, userId);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }
-        
+
         /// <inheritdoc />
         public async Task<AccessRights> GetUserDataSelectorPermissionsAsync(int dataSelectorId, ulong userId)
         {
@@ -232,7 +232,7 @@ namespace GeeksCoreLibrary.Core.Services
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
                     return await wiserItemsService.GetEntityTypeSettingsAsync(entityType, moduleId);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }
@@ -244,7 +244,7 @@ namespace GeeksCoreLibrary.Core.Services
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;                    
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
                     return await wiserItemsService.GetFieldOptionsForLinkFieldsAsync(linkType);
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
         }
@@ -298,25 +298,25 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task RemoveItemLinksByIdAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task RemoveItemLinksByIdAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
             await RemoveItemLinksByIdAsync(this, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveItemLinksByIdAsync(IWiserItemsService service, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task RemoveItemLinksByIdAsync(IWiserItemsService service, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
             await wiserItemsService.RemoveItemLinksByIdAsync(service, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveParentLinkOfItemsAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task RemoveParentLinkOfItemsAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
             await RemoveParentLinkOfItemsAsync(this, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveParentLinkOfItemsAsync(IWiserItemsService service, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task RemoveParentLinkOfItemsAsync(IWiserItemsService service, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
             await wiserItemsService.RemoveParentLinkOfItemsAsync(service, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory, skipPermissionsCheck);
         }
@@ -430,7 +430,7 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 throw new ArgumentException($"You must enter a value in at least one of the following parameters: {nameof(linkType)}, {nameof(sourceEntityType)}, {nameof(destinationEntityType)}");
             }
-            
+
             IEnumerable<LinkSettingsModel> result = await GetAllLinkTypeSettingsAsync();
             if (linkType > 0)
             {
@@ -446,7 +446,7 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 result = result.Where(t => String.Equals(t.DestinationEntityType, destinationEntityType, StringComparison.OrdinalIgnoreCase));
             }
-            
+
             return result.FirstOrDefault() ?? new LinkSettingsModel();
         }
 
@@ -456,7 +456,7 @@ namespace GeeksCoreLibrary.Core.Services
             var cacheName = $"all_link_type_settings_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
-                {                    
+                {
                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
                     return await wiserItemsService.GetAllLinkTypeSettingsAsync();
                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
@@ -528,7 +528,7 @@ namespace GeeksCoreLibrary.Core.Services
             var cacheName = $"aggregation_settings_{(String.IsNullOrWhiteSpace(entityType) ? linkType.ToString() : entityType)}_{databaseConnection.GetDatabaseNameForCaching()}_{branchesService.GetDatabaseNameFromCookie()}";
             return await cache.GetOrAddAsync(cacheName,
                  async cacheEntry =>
-                 {                    
+                 {
                      cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWiserItemsCacheDuration;
                      return await wiserItemsService.GetAggregationSettingsAsync(service, entityType);
                  }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.WiserItems));
@@ -553,7 +553,7 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task SaveItemDetailAsync(WiserItemDetailModel itemDetail, ulong itemId = 0, ulong itemLinkId = 0, string entityType = null, string username = "JCL", bool saveHistory = true)
+        public async Task SaveItemDetailAsync(WiserItemDetailModel itemDetail, ulong itemId = 0, ulong itemLinkId = 0, string entityType = null, string username = "GCL", bool saveHistory = true)
         {
             await wiserItemsService.SaveItemDetailAsync(itemDetail, itemId, itemLinkId, entityType, username, saveHistory);
         }

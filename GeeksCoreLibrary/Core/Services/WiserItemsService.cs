@@ -229,12 +229,12 @@ namespace GeeksCoreLibrary.Core.Services
             {
                 wiserItem.ModuleId = entityTypeSettings.ModuleId;
             }
-            
+
             if (!entityTypeSettings!.SaveHistory)
             {
                 saveHistory = false;
             }
-      
+
             var retries = 0;
             var transactionCompleted = false;
 
@@ -645,7 +645,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
             // Get the settings of the entity type.
             var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType, wiserItem.ModuleId);
             var tablePrefix = wiserItemsService.GetTablePrefixForEntity(entityTypeSettings);
-            
+
             if (!entityTypeSettings!.SaveHistory)
             {
                 saveHistory = false;
@@ -882,7 +882,7 @@ UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET {String.Join(",", updateQuer
                     }
 
                     // Check previous values, so that we can skip fields that haven't changed.
-                    // This is only for Wiser. If you save items via custom code or the JCL, then the Changed property of ItemModel and ItemDetailModel will be used.
+                    // This is only for Wiser. If you save items via custom code or the GCL, then the Changed property of ItemModel and ItemDetailModel will be used.
                     var previousItemDetails = new List<WiserItemDetailModel>();
                     if (!alwaysSaveValues && !isNewlyCreatedItem)
                     {
@@ -3189,13 +3189,13 @@ WHERE {String.Join(" AND ", where)}";
         }
 
         /// <inheritdoc />
-        public async Task RemoveItemLinksByIdAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task RemoveItemLinksByIdAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
             await RemoveItemLinksByIdAsync(this, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveItemLinksByIdAsync(IWiserItemsService wiserItemsService, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task RemoveItemLinksByIdAsync(IWiserItemsService wiserItemsService, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
             if (!skipPermissionsCheck)
             {
@@ -3278,13 +3278,13 @@ WHERE {String.Join(" AND ", where)}";
         }
 
         /// <inheritdoc />
-        public async Task RemoveParentLinkOfItemsAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task RemoveParentLinkOfItemsAsync(List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
             await RemoveParentLinkOfItemsAsync(this, ids, sourceEntityType, sourceIds, destinationEntityType, destinationIds, username, userId, saveHistory, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
-        public async Task RemoveParentLinkOfItemsAsync(IWiserItemsService wiserItemsService, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "JCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
+        public async Task RemoveParentLinkOfItemsAsync(IWiserItemsService wiserItemsService, List<ulong> ids, string sourceEntityType, List<ulong> sourceIds, string destinationEntityType, List<ulong> destinationIds, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false)
         {
             if (!skipPermissionsCheck)
             {
@@ -4280,7 +4280,7 @@ WHERE {String.Join(" AND ", where)}";
                 await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("parent_item_id", MySqlDbType.UInt64));
 
                 var settingsForThisTable = settings.Where(setting => setting.TableName == tableName).ToList();
-                
+
                 if (settingsForThisTable.First().LinkType > 0)
                 {
                     await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("source_item_id", MySqlDbType.UInt64));
@@ -4492,7 +4492,7 @@ WHERE {String.Join(" AND ", where)}";
         }
 
         /// <inheritdoc />
-        public async Task SaveItemDetailAsync(WiserItemDetailModel itemDetail, ulong itemId = 0, ulong itemLinkId = 0, string entityType = null, string username = "JCL", bool saveHistory = true)
+        public async Task SaveItemDetailAsync(WiserItemDetailModel itemDetail, ulong itemId = 0, ulong itemLinkId = 0, string entityType = null, string username = "GCL", bool saveHistory = true)
         {
             var hasTransactionFromOuterScope = databaseConnection.HasActiveTransaction();
 
