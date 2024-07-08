@@ -1,6 +1,4 @@
-﻿using EvoPdf;
-
-namespace GeeksCoreLibrary.Modules.GclConverters.Models
+﻿namespace GeeksCoreLibrary.Modules.GclConverters.Models
 {
     /// <summary>
     /// A model for a request to convert HTML to a PDF.

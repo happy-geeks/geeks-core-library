@@ -1,5 +1,4 @@
-﻿using EvoPdf;
-using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+﻿using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
@@ -19,6 +18,8 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using PuppeteerSharp;
+using PuppeteerSharp.Media;
 
 namespace GeeksCoreLibrary.Modules.GclConverters.Services
 {
@@ -53,10 +54,13 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
         public async Task<FileContentResult> ConvertHtmlStringToPdfAsync(HtmlToPdfRequestModel settings)
         {
             var httpContext = httpContextAccessor?.HttpContext;
-            var converter = new HtmlToPdfConverter
+            await new BrowserFetcher().DownloadAsync();
+            var browser = await Puppeteer.LaunchAsync(new LaunchOptions
             {
-                LicenseKey = gclSettings.EvoPdfLicenseKey
-            };
+                Headless = true
+            });
+
+            var pdfOptions = new PdfOptions();
 
             if (!settings.Orientation.HasValue)
             {
@@ -64,57 +68,74 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                 settings.Orientation = orientationValue.Equals("landscape", StringComparison.OrdinalIgnoreCase) ? PdfPageOrientation.Landscape : PdfPageOrientation.Portrait;
             }
 
-            converter.PdfDocumentOptions.PdfPageOrientation = settings.Orientation.Value;
+            pdfOptions.Landscape = settings.Orientation == PdfPageOrientation.Landscape;
 
             Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_html_viewer_width"), out var htmlViewerWidth);
             Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_html_viewer_height"), out var htmlViewerHeight);
             Single.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_margins"), out var margins);
 
             // Main document options.
-            converter.PdfDocumentOptions.FitHeight = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_fit_height")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            var margin = $"{margins}px";
+            pdfOptions.MarginOptions = new MarginOptions
+            {
+                Top = margin,
+                Bottom = margin,
+                Left = margin,
+                Right = margin
+            };
+
+            /*converter.PdfDocumentOptions.FitHeight = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_fit_height")).Equals("true", StringComparison.OrdinalIgnoreCase);
             converter.PdfDocumentOptions.AvoidImageBreak = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_avoid_image_break", "true")).Equals("true", StringComparison.OrdinalIgnoreCase);
             converter.PdfDocumentOptions.AvoidTextBreak = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_avoid_text_break")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            converter.PdfDocumentOptions.EmbedFonts = true;
-            converter.PdfDocumentOptions.BottomMargin = margins;
-            converter.PdfDocumentOptions.LeftMargin = margins;
-            converter.PdfDocumentOptions.RightMargin = margins;
-            converter.PdfDocumentOptions.TopMargin = margins;
-            converter.PdfDocumentOptions.PdfCompressionLevel = PdfCompressionLevel.Best;
+            converter.PdfDocumentOptions.EmbedFonts = true;*/
 
             // Page size.
             var pageSize = await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize", "A4");
             if (pageSize == "CUSTOM")
             {
-                Single.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize_width"), out var pageSizeWidth);
-                Single.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize_height"), out var pageSizeHeight);
-
-                converter.PdfDocumentOptions.PdfPageSize = new PdfPageSize(pageSizeWidth, pageSizeHeight);
-                converter.PdfDocumentOptions.AutoSizePdfPage = true;
+                if (Decimal.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize_width"), out var pageSizeWidth)
+                    && Decimal.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize_height"), out var pageSizeHeight))
+                {
+                    pdfOptions.Format = new PaperFormat(pageSizeWidth, pageSizeHeight);
+                }
+                else
+                {
+                    pdfOptions.Format = PaperFormat.A4;
+                }
             }
             else
             {
-                converter.PdfDocumentOptions.PdfPageSize = pageSize switch
+                pdfOptions.Format = pageSize switch
                 {
-                    "A0" => PdfPageSize.A0,
-                    "A1" => PdfPageSize.A1,
-                    "A2" => PdfPageSize.A2,
-                    "A3" => PdfPageSize.A3,
-                    "A4" => PdfPageSize.A4,
-                    "A5" => PdfPageSize.A5,
-                    "A6" => PdfPageSize.A6,
-                    "A7" => PdfPageSize.A7,
-                    "A8" => PdfPageSize.A8,
-                    "A9" => PdfPageSize.A9,
-                    "A10" => PdfPageSize.A10,
-                    _ => PdfPageSize.A4
+                    "A0" => PaperFormat.A0,
+                    "A1" => PaperFormat.A1,
+                    "A2" => PaperFormat.A2,
+                    "A3" => PaperFormat.A3,
+                    "A4" => PaperFormat.A4,
+                    "A5" => PaperFormat.A5,
+                    "A6" => PaperFormat.A6,
+                    _ => PaperFormat.A4
                 };
             }
 
-            if (htmlViewerWidth > 0) converter.HtmlViewerWidth = htmlViewerWidth;
-            if (htmlViewerHeight > 0) converter.HtmlViewerHeight = htmlViewerHeight;
+            /*if (htmlViewerWidth > 0) converter.HtmlViewerWidth = htmlViewerWidth;
+            if (htmlViewerHeight > 0) converter.HtmlViewerHeight = htmlViewerHeight;*/
 
+            var showHeader = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_header_show")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            var showFooter = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_show")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            pdfOptions.DisplayHeaderFooter = showHeader || showFooter;
+
+            if (showHeader)
+            {
+                pdfOptions.HeaderTemplate = String.IsNullOrWhiteSpace(settings.Header) ? await objectsService.FindSystemObjectByDomainNameAsync("pdf_header_text") : settings.Header;
+            }
+            if (showFooter)
+            {
+                pdfOptions.FooterTemplate = String.IsNullOrWhiteSpace(settings.Footer) ? await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_text") : settings.Footer;
+            }
+
+            /*
             // Header settings.
-            converter.PdfDocumentOptions.ShowHeader = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_header_show")).Equals("true", StringComparison.OrdinalIgnoreCase);
             if (String.IsNullOrWhiteSpace(settings.Header))
             {
                 settings.Header = await objectsService.FindSystemObjectByDomainNameAsync("pdf_header_text");
@@ -146,7 +167,6 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             }
 
             // Footer settings.
-            converter.PdfDocumentOptions.ShowFooter = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_show")).Equals("true", StringComparison.OrdinalIgnoreCase);
             if (String.IsNullOrWhiteSpace(settings.Footer))
             {
                 settings.Footer = await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_text");
@@ -175,7 +195,7 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                     converter.PdfDocumentOptions.DocumentObject.Footer.Height = footerHeight;
                 };
                 converter.PdfFooterOptions.AddElement(footerElem);
-            }
+            }*/
 
             // Security settings.
             converter.PdfSecurityOptions.CanEditContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_edit_content", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
@@ -243,9 +263,12 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                 p.SetValue(converter.PdfDocumentOptions, Convert.ChangeType(options[p.Name], p.PropertyType), null);
             }
 
+            var outputFile = @"C:\temp\output.pdf";
+            await using var page = await browser.NewPageAsync();
             var baseUri = httpContext == null ? "/" : HttpContextHelpers.GetBaseUri(httpContext).ToString();
-            var output = converter.ConvertHtml(settings.Html, baseUri);
-            var fileResult = new FileContentResult(output, "application/pdf")
+            await page.SetContentAsync($"<base href='{baseUri}' />{settings.Html}");
+            await page.PdfAsync(outputFile, pdfOptions);
+            var fileResult = new FileContentResult(await File.ReadAllBytesAsync(outputFile), "application/pdf")
             {
                 FileDownloadName = EnsureCorrectFileName(settings.FileName)
             };
@@ -274,9 +297,9 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             {
                 ItemId = templateItemId
             };
-            
+
             pdfSettings.BackgroundPropertyName = await objectsService.FindSystemObjectByDomainNameAsync("pdf_backgroundpropertyname");
-            
+
             var query = $"SELECT `key`, CONCAT_WS('', `value`, `long_value`) AS value, language_code FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?templateItemId";
             databaseConnection.AddParameter("templateItemId", templateItemId);
             var dataTable = await databaseConnection.GetAsync(query);
