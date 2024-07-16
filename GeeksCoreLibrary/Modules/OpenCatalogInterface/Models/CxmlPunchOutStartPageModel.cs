@@ -1,10 +1,10 @@
 using System.Xml.Serialization;
 
-namespace GeeksCoreLibrary.Components.Account.Models;
+namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
 [XmlRoot(ElementName = "StartPage")]
 public class CxmlPunchOutStartPageModel
 {
     [XmlElement(ElementName = "URL")]
-    public string URL { get; set; }
+    public string Url { get; set; }
 }
