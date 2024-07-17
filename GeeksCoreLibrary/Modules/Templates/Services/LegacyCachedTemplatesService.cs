@@ -37,7 +37,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IBranchesService branchesService;
         private readonly IObjectsService objectsService;
         private readonly IHttpContextAccessor httpContextAccessor;
-        
+
         public LegacyCachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger,
             ITemplatesService templatesService,
             IAppCache cache,
@@ -133,7 +133,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             // Cache the template settings in memory.
             var cacheName = $"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}_{branchesService.GetDatabaseNameFromCookie()}{await GetContentCachingCookieDeviationSuffixAsync()}";
-            
+
             var template = await cache.GetOrAddAsync(cacheName.ToString(),
                 async cacheEntry =>
                 {
@@ -183,6 +183,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             return template;
+        }
+
+        /// <inheritdoc />
+        public async Task<Template> GetTemplateContentAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "")
+        {
+            var cacheKey = $"GetTemplateContent_{id}_{name}_{type}_{parentId}_{parentName}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetTemplateContentAsync(id, name, type, parentId, parentName);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />
@@ -525,7 +538,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private async Task<string> GetContentCachingCookieDeviationSuffixAsync()
         {
             var result = new StringBuilder();
-            
+
             // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
             var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (cookieCacheDeviation.Length > 0)

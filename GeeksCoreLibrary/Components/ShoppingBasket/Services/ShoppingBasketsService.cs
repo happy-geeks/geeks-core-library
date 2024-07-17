@@ -323,7 +323,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
             if (settings.MultipleBasketsPossible && itemId == 0 && String.IsNullOrWhiteSpace(settings.GetBasketQuery))
             {
-                settings.GetBasketQuery = (await templatesService.GetTemplateAsync(name: "GetBasketQuery", type: TemplateTypes.Query)).Content;
+                settings.GetBasketQuery = (await templatesService.GetTemplateContentAsync(name: "GetBasketQuery", type: TemplateTypes.Query)).Content;
             }
 
             if (settings.MultipleBasketsPossible && itemId == 0 && !String.IsNullOrWhiteSpace(settings.GetBasketQuery))
@@ -364,7 +364,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
                 if (settings.BasketLineStockAction)
                 {
-                    var basketLineStockActionQuery = (await templatesService.GetTemplateAsync(0, "BasketLineStockAction", TemplateTypes.Query)).Content;
+                    var basketLineStockActionQuery = (await templatesService.GetTemplateContentAsync(0, "BasketLineStockAction", TemplateTypes.Query)).Content;
                     if (!String.IsNullOrWhiteSpace(basketLineStockActionQuery))
                     {
                         logger.LogTrace("UpdateLineDetailsViaLineStockActionQuery");
@@ -415,7 +415,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                         // Get extra details on line level, overwrite existing details.
                         if (String.IsNullOrWhiteSpace(settings.ExtraLineFieldsQuery) && allowGeneralQueries)
                         {
-                            settings.ExtraLineFieldsQuery = (await templatesService.GetTemplateAsync(name: "BasketExtraLineFields", type: TemplateTypes.Query)).Content;
+                            settings.ExtraLineFieldsQuery = (await templatesService.GetTemplateContentAsync(name: "BasketExtraLineFields", type: TemplateTypes.Query)).Content;
                         }
 
                         await UpdateLineDetailsViaExtraQueryAsync(shoppingBasket, basketLines, settings, settings.ExtraLineFieldsQuery);
@@ -424,14 +424,14 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                         if (String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) && allowGeneralQueries)
                         {
                             // See if there's a template in the QUERY folder called "BasketExtraMainFields".
-                            settings.ExtraMainFieldsQuery = (await templatesService.GetTemplateAsync(name: "BasketExtraMainFields", type: TemplateTypes.Query)).Content;
+                            settings.ExtraMainFieldsQuery = (await templatesService.GetTemplateContentAsync(name: "BasketExtraMainFields", type: TemplateTypes.Query)).Content;
                         }
 
                         await UpdateMainDetailsViaExtraQueryAsync(shoppingBasket, basketLines, settings, settings.ExtraMainFieldsQuery);
 
                         if (settings.BasketLineValidityCheck && allowGeneralQueries)
                         {
-                            var basketLineValidityCheckQuery = (await templatesService.GetTemplateAsync(0, "BasketLineValidityCheck", TemplateTypes.Query)).Content;
+                            var basketLineValidityCheckQuery = (await templatesService.GetTemplateContentAsync(0, "BasketLineValidityCheck", TemplateTypes.Query)).Content;
                             if (!String.IsNullOrWhiteSpace(basketLineValidityCheckQuery))
                             {
                                 logger.LogTrace("UpdateLineDetailsViaLineValidityCheckQuery");
@@ -754,7 +754,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 newLines.Add(conceptLine);
             }
 
-            var createConceptOrderQuery = (await templatesService.GetTemplateAsync(0, "AfterCreateConceptOrder", TemplateTypes.Query)).Content;
+            var createConceptOrderQuery = (await templatesService.GetTemplateContentAsync(0, "AfterCreateConceptOrder", TemplateTypes.Query)).Content;
             if (!String.IsNullOrWhiteSpace(createConceptOrderQuery))
             {
                 var query = stringReplacementsService.DoSessionReplacements(createConceptOrderQuery, true);
@@ -883,7 +883,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     await wiserItemsService.ChangeEntityTypeAsync(conceptOrder.Id, OrderProcess.Models.Constants.ConceptOrderEntityType, OrderProcess.Models.Constants.OrderEntityType, skipPermissionsCheck: true, resetAddedOnDate: true);
 
                     // Check if there is a AfterCreateConceptOrder query in the templates module and execute this query if present.
-                    var afterConvertToOrderQuery = (await templatesService.GetTemplateAsync(0, "AfterConvertToOrder", TemplateTypes.Query)).Content;
+                    var afterConvertToOrderQuery = (await templatesService.GetTemplateContentAsync(0, "AfterConvertToOrder", TemplateTypes.Query)).Content;
                     if (!String.IsNullOrWhiteSpace(afterConvertToOrderQuery))
                     {
                         var query = stringReplacementsService.DoSessionReplacements(afterConvertToOrderQuery, true);
@@ -947,11 +947,11 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             if (isForConfirmationEmail)
             {
                 // Get extra details on basket line level, overwrite existing details.
-                var query = (await templatesService.GetTemplateAsync(name: "BasketExtraLineFieldsForConfirmationEmail", type: TemplateTypes.Query)).Content;
+                var query = (await templatesService.GetTemplateContentAsync(name: "BasketExtraLineFieldsForConfirmationEmail", type: TemplateTypes.Query)).Content;
                 await UpdateLineDetailsViaExtraQueryAsync(shoppingBasket, basketLines, settings, query);
 
                 // Get extra details on basket level, overwrite existing details.
-                query = (await templatesService.GetTemplateAsync(name: "BasketExtraMainFieldsForConfirmationEmail", type: TemplateTypes.Query)).Content;
+                query = (await templatesService.GetTemplateContentAsync(name: "BasketExtraMainFieldsForConfirmationEmail", type: TemplateTypes.Query)).Content;
                 await UpdateMainDetailsViaExtraQueryAsync(shoppingBasket, basketLines, settings, query);
             }
 
@@ -3010,7 +3010,7 @@ WHERE coupon.entity_type = 'coupon'", true);
                     {
                         continue;
                     }
-                    
+
                     var originalPrice = line.GetDetailValue(Constants.OriginalPricePropertyName);
                     if (String.IsNullOrEmpty(originalPrice))
                     {
@@ -3394,7 +3394,7 @@ WHERE coupon.entity_type = 'coupon'", true);
                 return output.ToString();
             }
 
-            var template = (await templatesService.GetTemplateAsync(0, templateName)).Content;
+            var template = (await templatesService.GetTemplateContentAsync(0, templateName)).Content;
             var queryResult = await databaseConnection.GetAsync(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, methodsQuery, true, forQuery: true), true);
 
             foreach (DataRow dataRow in queryResult.Rows)
