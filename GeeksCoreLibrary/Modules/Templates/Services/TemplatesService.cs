@@ -201,8 +201,23 @@ LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = pa
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN (
+	SELECT cssTemplate.template_id
+	FROM {WiserTableNames.WiserTemplate} AS cssTemplate
+	LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = cssTemplate.template_id AND otherVersion.version > cssTemplate.version
+	WHERE cssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})
+	AND cssTemplate.removed = 0
+	AND otherVersion.id IS NULL
+) AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates)
+
+LEFT JOIN (
+	SELECT javascriptTemplate.template_id
+	FROM {WiserTableNames.WiserTemplate} AS javascriptTemplate
+	LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = javascriptTemplate.template_id AND otherVersion.version > javascriptTemplate.version
+	WHERE javascriptTemplate.template_type = {(int)TemplateTypes.Js}
+	AND javascriptTemplate.removed = 0
+	AND otherVersion.id IS NULL
+) AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates)
 LEFT JOIN {WiserTableNames.WiserTemplateExternalFiles} AS externalFiles ON externalFiles.template_id = template.id
 
 WHERE {String.Join(" AND ", whereClause)}
@@ -472,8 +487,23 @@ LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = pa
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN (
+	SELECT cssTemplate.template_id
+	FROM {WiserTableNames.WiserTemplate} AS cssTemplate
+	LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = cssTemplate.template_id AND otherVersion.version > cssTemplate.version
+	WHERE cssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})
+	AND cssTemplate.removed = 0
+	AND otherVersion.id IS NULL
+) AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates)
+
+LEFT JOIN (
+	SELECT javascriptTemplate.template_id
+	FROM {WiserTableNames.WiserTemplate} AS javascriptTemplate
+	LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = javascriptTemplate.template_id AND otherVersion.version > javascriptTemplate.version
+	WHERE javascriptTemplate.template_type = {(int)TemplateTypes.Js}
+	AND javascriptTemplate.removed = 0
+	AND otherVersion.id IS NULL
+) AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates)
 LEFT JOIN {WiserTableNames.WiserTemplateExternalFiles} AS externalFiles ON externalFiles.template_id = template.id
 
 WHERE {String.Join(" AND ", whereClause)}
@@ -555,8 +585,23 @@ LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = pa
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN (
+	SELECT cssTemplate.template_id
+	FROM {WiserTableNames.WiserTemplate} AS cssTemplate
+	LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = cssTemplate.template_id AND otherVersion.version > cssTemplate.version
+	WHERE cssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})
+	AND cssTemplate.removed = 0
+	AND otherVersion.id IS NULL
+) AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates)
+
+LEFT JOIN (
+	SELECT javascriptTemplate.template_id
+	FROM {WiserTableNames.WiserTemplate} AS javascriptTemplate
+	LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = javascriptTemplate.template_id AND otherVersion.version > javascriptTemplate.version
+	WHERE javascriptTemplate.template_type = {(int)TemplateTypes.Js}
+	AND javascriptTemplate.removed = 0
+	AND otherVersion.id IS NULL
+) AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates)
 LEFT JOIN {WiserTableNames.WiserTemplateExternalFiles} AS externalFiles ON externalFiles.template_id = template.id
 
 WHERE {String.Join(" AND ", whereClause)}
