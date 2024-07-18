@@ -9,7 +9,7 @@ public class TelephoneNumberModel
     public CountryCodeModel CountryCode { get; set; }
 
     [XmlElement(ElementName="AreaOrCityCode")]
-    public object AreaOrCityCode { get; set; }
+    public string AreaOrCityCode { get; set; }
 
     [XmlElement(ElementName="Number")]
     public string Number { get; set; }

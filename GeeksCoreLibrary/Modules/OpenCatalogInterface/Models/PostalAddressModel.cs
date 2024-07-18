@@ -25,5 +25,5 @@ public class PostalAddressModel
     public CountryModel Country { get; set; }
 
     [XmlAttribute(AttributeName="name")]
-    public object Name { get; set; }
+    public string Name { get; set; }
 }

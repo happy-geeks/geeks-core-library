@@ -31,7 +31,7 @@ public class ItemOutModel
     public int LineNumber { get; set; }
 
     [XmlAttribute(AttributeName="requestedDeliveryDate")]
-    public DateTime RequestedDeliveryDate { get; set; }
+    public string RequestedDeliveryDate { get; set; }
 
     [XmlAttribute(AttributeName="quantity")]
     public decimal Quantity { get; set; }

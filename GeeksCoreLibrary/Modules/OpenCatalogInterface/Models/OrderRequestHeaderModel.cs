@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Xml.Serialization;
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
@@ -41,7 +40,7 @@ public class OrderRequestHeaderModel
     public int OrderVersion { get; set; }
 
     [XmlAttribute(AttributeName="orderDate")]
-    public DateTime OrderDate { get; set; }
+    public string OrderDate { get; set; }
 
     [XmlAttribute(AttributeName="type")]
     public string Type { get; set; }

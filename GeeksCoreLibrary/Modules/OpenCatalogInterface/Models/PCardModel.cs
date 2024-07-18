@@ -6,8 +6,8 @@ namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 public class PCardModel
 {
     [XmlAttribute(AttributeName="expiration")]
-    public object Expiration { get; set; }
+    public string Expiration { get; set; }
 
     [XmlAttribute(AttributeName="number")]
-    public object Number { get; set; }
+    public string Number { get; set; }
 }

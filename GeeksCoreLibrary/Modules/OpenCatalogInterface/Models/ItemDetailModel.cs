@@ -18,11 +18,11 @@ public class ItemDetailModel
     public ClassificationModel Classification { get; set; }
 
     [XmlElement(ElementName="ManufacturerPartID")]
-    public object ManufacturerPartId { get; set; }
+    public string ManufacturerPartId { get; set; }
 
     [XmlElement(ElementName="ManufacturerName")]
     public string ManufacturerName { get; set; }
 
     [XmlElement(ElementName="URL")]
-    public object Url { get; set; }
+    public string Url { get; set; }
 }
