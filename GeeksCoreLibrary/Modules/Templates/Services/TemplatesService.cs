@@ -201,8 +201,23 @@ LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = pa
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN (
+	SELECT cssTemplate.template_id
+	FROM {WiserTableNames.WiserTemplate} AS cssTemplate
+	LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = cssTemplate.template_id AND otherVersion.version > cssTemplate.version
+	WHERE cssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})
+	AND cssTemplate.removed = 0
+	AND otherVersion.id IS NULL
+) AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates)
+
+LEFT JOIN (
+	SELECT javascriptTemplate.template_id
+	FROM {WiserTableNames.WiserTemplate} AS javascriptTemplate
+	LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = javascriptTemplate.template_id AND otherVersion.version > javascriptTemplate.version
+	WHERE javascriptTemplate.template_type = {(int)TemplateTypes.Js}
+	AND javascriptTemplate.removed = 0
+	AND otherVersion.id IS NULL
+) AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates)
 LEFT JOIN {WiserTableNames.WiserTemplateExternalFiles} AS externalFiles ON externalFiles.template_id = template.id
 
 WHERE {String.Join(" AND ", whereClause)}
@@ -245,6 +260,88 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             }
 
             return result;
+        }
+
+        /// <inheritdoc />
+        public async Task<Template> GetTemplateContentAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "")
+        {
+            if (id <= 0 && String.IsNullOrEmpty(name))
+            {
+                throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
+            }
+
+            var joinPart = "";
+            var whereClause = new List<string>();
+            if (gclSettings.Environment == Environments.Development)
+            {
+                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+            }
+            else
+            {
+                whereClause.Add($"(template.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}");
+            }
+
+            var useTypeFilter = false;
+
+            if (id > 0)
+            {
+                databaseConnection.AddParameter("id", id);
+                whereClause.Add("template.template_id = ?id");
+            }
+            else
+            {
+                databaseConnection.AddParameter("name", name);
+                whereClause.Add("template.template_name = ?name");
+                useTypeFilter = type.HasValue;
+            }
+
+            if (parentId > 0)
+            {
+                databaseConnection.AddParameter("parentId", parentId);
+                whereClause.Add("template.parent_id = ?parentId");
+            }
+            else if (!String.IsNullOrWhiteSpace(parentName))
+            {
+                databaseConnection.AddParameter("parentName", parentName);
+                whereClause.Add("parent1.template_name = ?parentName");
+            }
+
+            if (useTypeFilter)
+            {
+                databaseConnection.AddParameter("templateType", (int)type.Value);
+                whereClause.Add("template.template_type = ?templateType");
+            }
+
+            whereClause.Add("template.removed = 0");
+
+            var query = $@"SELECT
+    template.parent_id,
+    template.template_name,
+    template.template_id,
+    template.template_data_minified, 
+    template.template_data
+FROM {WiserTableNames.WiserTemplate} AS template
+{joinPart}
+LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
+
+WHERE {String.Join(" AND ", whereClause)}
+GROUP BY template.template_id";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count == 0)
+            {
+                return new Template();
+            }
+
+            var firstRow = dataTable.Rows[0];
+            var contentMinified = firstRow.Field<string>("template_data_minified");
+            var content = firstRow.Field<string>("template_data");
+            return new Template
+            {
+                Id = firstRow.Field<int>("template_id"),
+                Name = firstRow.Field<string>("template_name"),
+                Content = String.IsNullOrEmpty(contentMinified) ? content : contentMinified
+            };
         }
 
         /// <inheritdoc />
@@ -416,8 +513,6 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
         public async Task<List<Template>> GetTemplatesAsync(ICollection<int> templateIds, bool includeContent)
         {
             var results = new List<Template>();
-            databaseConnection.AddParameter("includeContent", includeContent);
-
             var joinPart = "";
             var whereClause = new List<string> { $"template.template_id IN ({String.Join(",", templateIds)})", "template.removed = 0" };
             if (gclSettings.Environment == Environments.Development)
@@ -472,8 +567,23 @@ LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = pa
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
+LEFT JOIN (
+	SELECT cssTemplate.template_id
+	FROM {WiserTableNames.WiserTemplate} AS cssTemplate
+	LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = cssTemplate.template_id AND otherVersion.version > cssTemplate.version
+	WHERE cssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss})
+	AND cssTemplate.removed = 0
+	AND otherVersion.id IS NULL
+) AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates)
+
+LEFT JOIN (
+	SELECT javascriptTemplate.template_id
+	FROM {WiserTableNames.WiserTemplate} AS javascriptTemplate
+	LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = javascriptTemplate.template_id AND otherVersion.version > javascriptTemplate.version
+	WHERE javascriptTemplate.template_type = {(int)TemplateTypes.Js}
+	AND javascriptTemplate.removed = 0
+	AND otherVersion.id IS NULL
+) AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates)
 LEFT JOIN {WiserTableNames.WiserTemplateExternalFiles} AS externalFiles ON externalFiles.template_id = template.id
 
 WHERE {String.Join(" AND ", whereClause)}
@@ -514,16 +624,16 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             whereClause.Add($"template.insert_mode = {(int)byInsertMode}");
 
             var query = $@"SELECT
-    IFNULL(parent5.template_name, IFNULL(parent4.template_name, IFNULL(parent3.template_name, IFNULL(parent2.template_name, parent1.template_name)))) as root_name, 
-    parent1.template_name AS parent_name, 
+    COALESCE(parent5.template_name, parent4.template_name, parent3.template_name, parent2.template_name, parent1.template_name) AS root_name,
+    parent1.template_name AS parent_name,
     template.parent_id,
     template.template_name,
     template.template_type,
     template.ordering,
     parent1.ordering AS parent_ordering,
     template.template_id,
-    GROUP_CONCAT(DISTINCT linkedCssTemplate.template_id) AS css_templates, 
-    GROUP_CONCAT(DISTINCT linkedJavascriptTemplate.template_id) AS javascript_templates,
+    '' AS css_templates, 
+    '' AS javascript_templates,
     template.load_always,
     template.changed_on,
     template.external_files,
@@ -541,11 +651,6 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
     template.cache_regex,
     0 AS use_obfuscate,
     template.insert_mode,
-    template.grouping_create_object_instead_of_array,
-    template.grouping_key_column_name,
-    template.grouping_value_column_name,
-    template.grouping_key,
-    template.grouping_prefix,
     template.version
 FROM {WiserTableNames.WiserTemplate} AS template
 {joinPart}
@@ -555,8 +660,6 @@ LEFT JOIN {WiserTableNames.WiserTemplate} AS parent3 ON parent3.template_id = pa
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent4 ON parent4.template_id = parent3.parent_id AND parent4.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent3.parent_id)
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent5 ON parent5.template_id = parent4.parent_id AND parent5.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent4.parent_id)
 
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedCssTemplate ON FIND_IN_SET(linkedCssTemplate.template_id, template.linked_templates) AND linkedCssTemplate.template_type IN ({(int)TemplateTypes.Css}, {(int)TemplateTypes.Scss}) AND linkedCssTemplate.removed = 0
-LEFT JOIN {WiserTableNames.WiserTemplate} AS linkedJavascriptTemplate ON FIND_IN_SET(linkedJavascriptTemplate.template_id, template.linked_templates) AND linkedJavascriptTemplate.template_type = {(int)TemplateTypes.Js} AND linkedJavascriptTemplate.removed = 0
 LEFT JOIN {WiserTableNames.WiserTemplateExternalFiles} AS externalFiles ON externalFiles.template_id = template.id
 
 WHERE {String.Join(" AND ", whereClause)}
@@ -1012,7 +1115,7 @@ ORDER BY id ASC");
                     {
                         // Contains a parent
                         var split = templateName.Split('\\');
-                        var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
+                        var template = await templatesService.GetTemplateContentAsync(name: split[1], type: templateType, parentName: split[0]);
                         var templateContent = template.Content;
                         if (handleStringReplacements)
                         {
@@ -1023,7 +1126,7 @@ ORDER BY id ASC");
                     }
                     else
                     {
-                        var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
+                        var template = await templatesService.GetTemplateContentAsync(name: templateName, type: templateType);
                         var templateContent = template.Content;
                         if (handleStringReplacements)
                         {
@@ -1050,7 +1153,7 @@ ORDER BY id ASC");
                     {
                         // Contains a parent
                         var split = templateName.Split('\\');
-                        var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
+                        var template = await templatesService.GetTemplateContentAsync(name: split[1], type: templateType, parentName: split[0]);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
                         var content = replacementsMediator.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)
@@ -1067,7 +1170,7 @@ ORDER BY id ASC");
                     }
                     else
                     {
-                        var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
+                        var template = await templatesService.GetTemplateContentAsync(name: templateName, type: templateType);
                         var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
                         var content = replacementsMediator.DoReplacements(template.Content, values, forQuery);
                         if (handleStringReplacements)

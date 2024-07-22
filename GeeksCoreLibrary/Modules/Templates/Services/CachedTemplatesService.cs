@@ -221,6 +221,19 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public async Task<Template> GetTemplateContentAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "")
+        {
+            var cacheKey = $"GetTemplateContent_{id}_{name}_{type}_{parentId}_{parentName}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheKey,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetTemplateContentAsync(id, name, type, parentId, parentName);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+        }
+
+        /// <inheritdoc />
         public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             var cacheName = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}_{branchesService.GetDatabaseNameFromCookie()}";

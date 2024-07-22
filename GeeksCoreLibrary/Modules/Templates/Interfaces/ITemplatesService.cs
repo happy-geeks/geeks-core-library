@@ -25,6 +25,17 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces
         Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true);
 
         /// <summary>
+        /// Get only the contents and ID of a template. Must supply either an ID or a name.
+        /// </summary>
+        /// <param name="id">Optional: The ID of the template to get.</param>
+        /// <param name="name">Optional: The name of the template to get.</param>
+        /// <param name="type">Optional: The type of template that is being searched for. Only used in combination with name. Default value is null, which is all template types.</param>
+        /// <param name="parentId">Optional: The ID of the parent of the template to get.</param>
+        /// <param name="parentName">Optional: The name of the parent of template to get.</param>
+        /// <returns></returns>
+        Task<Template> GetTemplateContentAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "");
+
+        /// <summary>
         /// Gets the caching settings for a template.
         /// </summary>
         /// <param name="id">Optional: The ID of the template to get.</param>

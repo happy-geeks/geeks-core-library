@@ -231,6 +231,104 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
+        public async Task<Template> GetTemplateContentAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "")
+        {
+            if (id <= 0 && String.IsNullOrEmpty(name))
+            {
+                throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
+            }
+
+            var joinPart = gclSettings.Environment switch
+            {
+                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+                Environments.Acceptance => " AND t.isacceptance=1 ",
+                Environments.Test => " AND t.istest=1 ",
+                Environments.Live => " AND t.islive=1 ",
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+            };
+
+            var whereClause = new List<string>();
+
+            var useTypeFilter = false;
+
+            if (id > 0)
+            {
+                databaseConnection.AddParameter("id", id);
+                whereClause.Add("i.id = ?id");
+            }
+            else
+            {
+                databaseConnection.AddParameter("name", name);
+                whereClause.Add("i.name = ?name");
+                useTypeFilter = type.HasValue;
+            }
+
+            if (parentId > 0)
+            {
+                databaseConnection.AddParameter("parentId", parentId);
+                whereClause.Add(" AND ip.id = ?parentId");
+            }
+            else if (!String.IsNullOrWhiteSpace(parentName))
+            {
+                databaseConnection.AddParameter("parentName", parentName);
+                whereClause.Add(" AND ip.name = ?parentName");
+            }
+
+            if (useTypeFilter && type.Value != TemplateTypes.Unknown)
+            {
+                switch (type.Value)
+                {
+                    case TemplateTypes.Query:
+                        // Query templates don't have a type.
+                        whereClause.Add("(t.templatetype IS NULL OR t.templatetype = '')");
+                        whereClause.Add("COALESCE(ippppp.`name`, ipppp.`name`, ippp.`name`, ipp.`name`, ip.`name`) = 'QUERY'");
+                        break;
+                    case TemplateTypes.Routine:
+                        databaseConnection.AddParameter("templateType1", "FUNCTION");
+                        databaseConnection.AddParameter("templateType2", "PROCEDURE");
+                        whereClause.Add("t.templatetype IN (?templateType1, ?templateType2)");
+                        break;
+                    default:
+                        databaseConnection.AddParameter("templateType", type.Value.ToString("G").ToLowerInvariant());
+                        whereClause.Add("t.templatetype = ?templateType");
+                        break;
+                }
+            }
+
+            var query = $@"SELECT
+                            i.`name` AS template_name,
+                            i.id AS template_id,
+                            t.html_minified AS template_data_minified, 
+                            t.html AS template_data, 
+                            t.template
+                        FROM easy_items i 
+                        JOIN easy_templates t ON t.itemid = i.id
+                        {joinPart}
+                        LEFT JOIN easy_items ip ON ip.id = i.parent_id
+                        WHERE i.moduleid = 143 
+                        AND i.published = 1
+                        AND i.deleted <= 0
+                        AND t.deleted <= 0
+                        AND {String.Join(" AND ", whereClause)}";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            if (dataTable.Rows.Count == 0)
+            {
+                return new Template();
+            }
+
+            var firstRow = dataTable.Rows[0];
+            var contentMinified = firstRow.Field<string>("template_data_minified");
+            var content = firstRow.Field<string>("template_data");
+            return new Template
+            {
+                Id = firstRow.Field<int>("template_id"),
+                Name = firstRow.Field<string>("template_name"),
+                Content = String.IsNullOrEmpty(contentMinified) ? content : contentMinified
+            };
+        }
+
+        /// <inheritdoc />
         public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
         {
             if (id <= 0 && String.IsNullOrEmpty(name))
