@@ -3080,30 +3080,6 @@ WHERE {String.Join(" AND ", where)}";
         }
         
         /// <inheritdoc />
-        public async Task<List<string>>GetDedicatedTablePrefixesAsync()
-        {
-            List<string> prefixes = new List<string>();
-
-            var query = $@"SELECT DISTINCT dedicated_table_prefix FROM {WiserTableNames.WiserEntity} WHERE dedicated_table_prefix IS NOT NULL AND dedicated_table_prefix != ''";
-            var dataTable = await databaseConnection.GetAsync(query);
-
-            if (dataTable.Rows.Count > 0)
-            {
-                foreach (DataRow dataRow in dataTable.Rows)
-                {
-                    var tablePrefix = dataRow.Field<string>("dedicated_table_prefix");
-                    if (!tablePrefix!.EndsWith("_"))
-                    {
-                        tablePrefix += "_";
-                    }
-
-                    prefixes.Add(tablePrefix);
-                }
-            }
-            return prefixes;
-        }
-        
-        /// <inheritdoc />
         public async Task<int> GetLinkTypeAsync(string destinationEntityType, string connectedEntityType)
         {
             databaseConnection.AddParameter("destinationEntityType", destinationEntityType);
@@ -3784,6 +3760,30 @@ WHERE {String.Join(" AND ", where)}";
             }
 
             return result;
+        }
+        
+        /// <inheritdoc />
+        public async Task<List<string>>GetDedicatedTablePrefixesAsync()
+        {
+            List<string> prefixes = new List<string>();
+
+            var query = $@"SELECT DISTINCT dedicated_table_prefix FROM {WiserTableNames.WiserEntity} WHERE dedicated_table_prefix IS NOT NULL AND dedicated_table_prefix != ''";
+            var dataTable = await databaseConnection.GetAsync(query);
+
+            if (dataTable.Rows.Count > 0)
+            {
+                foreach (DataRow dataRow in dataTable.Rows)
+                {
+                    var tablePrefix = dataRow.Field<string>("dedicated_table_prefix");
+                    if (!tablePrefix!.EndsWith("_"))
+                    {
+                        tablePrefix += "_";
+                    }
+
+                    prefixes.Add(tablePrefix);
+                }
+            }
+            return prefixes;
         }
 
         /// <inheritdoc />
