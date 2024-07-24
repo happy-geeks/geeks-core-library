@@ -453,7 +453,13 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="entityType">Optional: The entity type of the item that you're getting the template of. This is needed for entities that have a dedicated table.</param>
         /// <returns>A Tuple containing the HTML template and DataRow.</returns>
         Task<(string template, DataRow dataRow)> GetTemplateAndDataForItemAsync(IWiserItemsService wiserItemsService, ulong itemId, string entityType = null);
-
+        
+        /// <summary>
+        /// Get a list of all dedicated prefixes used on the server
+        /// </summary>
+        /// <returns>a list of dedicated prefixes strings, or an empty list none have been found.</returns>
+        Task<int> GetDedicatedTablePrefixesAsync(string destinationEntityType, string connectedEntityType);
+        
         /// <summary>
         /// Get the link type number for wiser_itemlink based on 2 connecting entity types.
         /// This will look in the table wiser_link, so make sure that table contains the correct data.
