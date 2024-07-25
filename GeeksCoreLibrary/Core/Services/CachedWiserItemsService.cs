@@ -406,6 +406,12 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
+        public async Task<List<string>>GetDedicatedTablePrefixesAsync()
+        {
+            return await wiserItemsService.GetDedicatedTablePrefixesAsync();
+        }
+        
+        /// <inheritdoc />
         public async Task<string> GetTablePrefixForEntityAsync(string entityType)
         {
             return await GetTablePrefixForEntityAsync(this, entityType);

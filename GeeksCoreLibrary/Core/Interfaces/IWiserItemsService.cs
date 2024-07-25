@@ -453,7 +453,7 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="entityType">Optional: The entity type of the item that you're getting the template of. This is needed for entities that have a dedicated table.</param>
         /// <returns>A Tuple containing the HTML template and DataRow.</returns>
         Task<(string template, DataRow dataRow)> GetTemplateAndDataForItemAsync(IWiserItemsService wiserItemsService, ulong itemId, string entityType = null);
-
+        
         /// <summary>
         /// Get the link type number for wiser_itemlink based on 2 connecting entity types.
         /// This will look in the table wiser_link, so make sure that table contains the correct data.
@@ -746,6 +746,12 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
         Task<List<WiserItemFileModel>> GetItemFilesAsync(IWiserItemsService wiserItemsService, ulong[] ids, string field = "id", string propertyName = null, string entityType = null, int linkType = 0);
 
+        /// <summary>
+        /// Get a list of all dedicated prefixes used on the server
+        /// </summary>
+        /// <returns>a list of dedicated prefixes strings, or an empty list none have been found.</returns>
+        Task<List<string>> GetDedicatedTablePrefixesAsync();
+        
         /// <summary>
         /// Gets the prefix for the wiser_item and wiser_itemdetail tables for a specific entity type.
         /// Certain entity types can have dedicated tables, they won't use wiser_item and wiser_itemdetail, but something like basket_wiser_item and basket_wiser_itemdetail instead.
