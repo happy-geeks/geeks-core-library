@@ -3763,7 +3763,7 @@ WHERE {String.Join(" AND ", where)}";
         }
         
         /// <inheritdoc />
-        public async Task<List<string>>GetDedicatedTablePrefixesAsync()
+        public async Task<List<string>> GetDedicatedTablePrefixesAsync()
         {
             List<string> prefixes = new List<string>();
 
