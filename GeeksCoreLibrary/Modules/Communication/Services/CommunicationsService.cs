@@ -9,6 +9,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web;
 using CM.Text;
 using CM.Text.BusinessMessaging;
 using CM.Text.BusinessMessaging.Model;
@@ -576,7 +577,21 @@ WHERE id = ?id";
             {
                 foreach (var attachmentUrl in communication.AttachmentUrls)
                 {
-                    attachments.Add((Path.GetFileName(attachmentUrl), await webClient.DownloadDataTaskAsync(attachmentUrl)));
+                    var data = await webClient.DownloadDataTaskAsync(attachmentUrl);
+                    var uri = new Uri(attachmentUrl);
+                    var fileName = Path.GetFileName(uri.AbsolutePath);
+                    if (webClient.ResponseHeaders?["Content-Disposition"] != null)
+                    {
+                        // Extract the filename from the Content-Disposition header
+                        if (ContentDisposition.TryParse(webClient.ResponseHeaders["Content-Disposition"], out var contentDisposition))
+                        {
+                            fileName = Path.GetFileName(contentDisposition.FileName);
+                        }
+                    }
+
+                    fileName = HttpUtility.UrlDecode(fileName);
+                    attachments.Add((fileName, data));
+                    webClient.ResponseHeaders?.Clear();
                 }
             }
 
