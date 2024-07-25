@@ -4,12 +4,12 @@ namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
 public class SegmentModel
 {
-    [XmlAttribute(AttributeName="description")]
+    [XmlAttribute(AttributeName = "description")]
     public string Description { get; set; }
 
-    [XmlAttribute(AttributeName="id")]
+    [XmlAttribute(AttributeName = "id")]
     public string Id { get; set; }
 
-    [XmlAttribute(AttributeName="type")]
+    [XmlAttribute(AttributeName = "type")]
     public string Type { get; set; }
 }

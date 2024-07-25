@@ -3,45 +3,45 @@ using System.Xml.Serialization;
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="OrderRequestHeader")]
+[XmlRoot(ElementName = "OrderRequestHeader")]
 public class OrderRequestHeaderModel
 {
-    [XmlElement(ElementName="Total")]
+    [XmlElement(ElementName = "Total")]
     public TotalModel Total { get; set; }
 
-    [XmlElement(ElementName="ShipTo")]
+    [XmlElement(ElementName = "ShipTo")]
     public ShipToModel ShipTo { get; set; }
 
-    [XmlElement(ElementName="BillTo")]
+    [XmlElement(ElementName = "BillTo")]
     public BillToModel BillTo { get; set; }
 
-    [XmlElement(ElementName="Shipping")]
+    [XmlElement(ElementName = "Shipping")]
     public ShippingModel Shipping { get; set; }
 
-    [XmlElement(ElementName="Tax")]
+    [XmlElement(ElementName = "Tax")]
     public TaxModel Tax { get; set; }
 
-    [XmlElement(ElementName="Payment")]
+    [XmlElement(ElementName = "Payment")]
     public PaymentModel Payment { get; set; }
 
-    [XmlElement(ElementName="Contact")]
+    [XmlElement(ElementName = "Contact")]
     public List<ContactModel> Contact { get; set; }
 
-    [XmlElement(ElementName="Comments")]
+    [XmlElement(ElementName = "Comments")]
     public Comments Comments { get; set; }
 
-    [XmlElement(ElementName="Extrinsic")]
+    [XmlElement(ElementName = "Extrinsic")]
     public ExtrinsicModel Extrinsic { get; set; }
 
-    [XmlAttribute(AttributeName="orderID")]
+    [XmlAttribute(AttributeName = "orderID")]
     public string OrderId { get; set; }
 
-    [XmlAttribute(AttributeName="orderVersion")]
+    [XmlAttribute(AttributeName = "orderVersion")]
     public int OrderVersion { get; set; }
 
-    [XmlAttribute(AttributeName="orderDate")]
+    [XmlAttribute(AttributeName = "orderDate")]
     public string OrderDate { get; set; }
 
-    [XmlAttribute(AttributeName="type")]
+    [XmlAttribute(AttributeName = "type")]
     public string Type { get; set; }
 }

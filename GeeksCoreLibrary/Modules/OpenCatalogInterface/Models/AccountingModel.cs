@@ -3,12 +3,12 @@
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
 
-[XmlRoot(ElementName="Accounting")]
+[XmlRoot(ElementName = "Accounting")]
 public class AccountingModel
 {
-    [XmlElement(ElementName="Segment")]
+    [XmlElement(ElementName = "Segment")]
     public SegmentModel Segment { get; set; }
 
-    [XmlAttribute(AttributeName="name")]
+    [XmlAttribute(AttributeName = "name")]
     public string Name { get; set; }
 }

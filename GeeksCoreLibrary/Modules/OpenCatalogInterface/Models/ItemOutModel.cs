@@ -1,41 +1,40 @@
-﻿using System;
-using System.Xml.Serialization;
+﻿using System.Xml.Serialization;
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="ItemOut")]
+[XmlRoot(ElementName = "ItemOut")]
 public class ItemOutModel
 {
-    [XmlElement(ElementName="ItemID")]
+    [XmlElement(ElementName = "ItemID")]
     public ItemIdModel ItemId { get; set; }
 
-    [XmlElement(ElementName="ItemDetail")]
+    [XmlElement(ElementName = "ItemDetail")]
     public ItemDetailModel ItemDetail { get; set; }
 
-    [XmlElement(ElementName="ShipTo")]
+    [XmlElement(ElementName = "ShipTo")]
     public ShipToModel ShipTo { get; set; }
 
-    [XmlElement(ElementName="Shipping")]
+    [XmlElement(ElementName = "Shipping")]
     public ShippingModel Shipping { get; set; }
 
-    [XmlElement(ElementName="Tax")]
+    [XmlElement(ElementName = "Tax")]
     public TaxModel Tax { get; set; }
 
-    [XmlElement(ElementName="Distribution")]
+    [XmlElement(ElementName = "Distribution")]
     public DistributionModel Distribution { get; set; }
 
-    [XmlElement(ElementName="Comment")]
+    [XmlElement(ElementName = "Comment")]
     public string Comment { get; set; }
 
-    [XmlAttribute(AttributeName="lineNumber")]
+    [XmlAttribute(AttributeName = "lineNumber")]
     public int LineNumber { get; set; }
 
-    [XmlAttribute(AttributeName="requestedDeliveryDate")]
+    [XmlAttribute(AttributeName = "requestedDeliveryDate")]
     public string RequestedDeliveryDate { get; set; }
 
-    [XmlAttribute(AttributeName="quantity")]
+    [XmlAttribute(AttributeName = "quantity")]
     public decimal Quantity { get; set; }
 
-    [XmlAttribute(AttributeName="requisitionID")]
+    [XmlAttribute(AttributeName = "requisitionID")]
     public string RequisitionId { get; set; }
 }

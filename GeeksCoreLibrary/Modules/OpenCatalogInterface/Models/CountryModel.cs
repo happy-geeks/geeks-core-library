@@ -2,10 +2,10 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Country")]
+[XmlRoot(ElementName = "Country")]
 public class CountryModel
 {
-    [XmlAttribute(AttributeName="isoCountryCode")]
+    [XmlAttribute(AttributeName = "isoCountryCode")]
     public string IsoCountryCode { get; set; }
 
     [XmlText]

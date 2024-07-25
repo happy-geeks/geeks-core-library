@@ -2,10 +2,10 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Money")]
+[XmlRoot(ElementName = "Money")]
 public class MoneyModel
 {
-    [XmlAttribute(AttributeName="currency")]
+    [XmlAttribute(AttributeName = "currency")]
     public string Currency { get; set; }
 
     [XmlText]

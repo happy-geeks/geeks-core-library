@@ -2,12 +2,12 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="PCard")]
+[XmlRoot(ElementName = "PCard")]
 public class PCardModel
 {
-    [XmlAttribute(AttributeName="expiration")]
+    [XmlAttribute(AttributeName = "expiration")]
     public string Expiration { get; set; }
 
-    [XmlAttribute(AttributeName="number")]
+    [XmlAttribute(AttributeName = "number")]
     public string Number { get; set; }
 }

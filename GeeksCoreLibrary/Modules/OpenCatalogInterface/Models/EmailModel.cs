@@ -2,10 +2,10 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Email")]
+[XmlRoot(ElementName = "Email")]
 public class EmailModel
 {
-    [XmlAttribute(AttributeName="name")]
+    [XmlAttribute(AttributeName = "name")]
     public string Name { get; set; }
 
     [XmlText]

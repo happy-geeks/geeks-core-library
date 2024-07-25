@@ -2,9 +2,9 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Comments")]
+[XmlRoot(ElementName = "Comments")]
 public class Comments
 {
-    [XmlAttribute(AttributeName="lang")]
+    [XmlAttribute(AttributeName = "lang")]
     public string Lang { get; set; }
 }

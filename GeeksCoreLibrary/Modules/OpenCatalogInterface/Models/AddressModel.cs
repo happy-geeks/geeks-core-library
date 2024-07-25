@@ -2,24 +2,24 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Address")]
+[XmlRoot(ElementName = "Address")]
 public class AddressModel
 {
-    [XmlElement(ElementName="Name")]
+    [XmlElement(ElementName = "Name")]
     public NameModel Name { get; set; }
 
-    [XmlElement(ElementName="PostalAddress")]
+    [XmlElement(ElementName = "PostalAddress")]
     public PostalAddressModel PostalAddress { get; set; }
 
-    [XmlElement(ElementName="Email")]
+    [XmlElement(ElementName = "Email")]
     public string Email { get; set; }
 
-    [XmlElement(ElementName="Phone")]
+    [XmlElement(ElementName = "Phone")]
     public PhoneModel Phone { get; set; }
 
-    [XmlAttribute(AttributeName="isoCountryCode")]
+    [XmlAttribute(AttributeName = "isoCountryCode")]
     public string IsoCountryCode { get; set; }
 
-    [XmlAttribute(AttributeName="addressID")]
+    [XmlAttribute(AttributeName = "addressID")]
     public string AddressId { get; set; }
 }

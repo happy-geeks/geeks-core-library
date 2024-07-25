@@ -2,10 +2,10 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Description")]
+[XmlRoot(ElementName = "Description")]
 public class DescriptionModel
 {
-    [XmlAttribute(AttributeName="lang")]
+    [XmlAttribute(AttributeName = "lang")]
     public string Lang { get; set; }
 
     [XmlText]

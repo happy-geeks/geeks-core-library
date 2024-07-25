@@ -2,10 +2,10 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Extrinsic")]
+[XmlRoot(ElementName = "Extrinsic")]
 public class ExtrinsicModel
 {
-    [XmlAttribute(AttributeName="name")]
+    [XmlAttribute(AttributeName = "name")]
     public string Name { get; set; }
 
     [XmlText]

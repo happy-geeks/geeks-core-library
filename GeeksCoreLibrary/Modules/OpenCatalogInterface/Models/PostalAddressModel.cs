@@ -3,27 +3,27 @@ using System.Xml.Serialization;
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="PostalAddress")]
+[XmlRoot(ElementName = "PostalAddress")]
 public class PostalAddressModel
 {
-    [XmlElement(ElementName="DeliverTo")]
+    [XmlElement(ElementName = "DeliverTo")]
     public List<string> DeliverTo { get; set; }
 
-    [XmlElement(ElementName="Street")]
+    [XmlElement(ElementName = "Street")]
     public List<string> Street { get; set; }
 
-    [XmlElement(ElementName="City")]
+    [XmlElement(ElementName = "City")]
     public string City { get; set; }
 
-    [XmlElement(ElementName="State")]
+    [XmlElement(ElementName = "State")]
     public string State { get; set; }
 
-    [XmlElement(ElementName="PostalCode")]
+    [XmlElement(ElementName = "PostalCode")]
     public string PostalCode { get; set; }
 
-    [XmlElement(ElementName="Country")]
+    [XmlElement(ElementName = "Country")]
     public CountryModel Country { get; set; }
 
-    [XmlAttribute(AttributeName="name")]
+    [XmlAttribute(AttributeName = "name")]
     public string Name { get; set; }
 }
