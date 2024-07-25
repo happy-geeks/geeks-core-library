@@ -2,7 +2,6 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-
 [XmlRoot(ElementName = "Accounting")]
 public class AccountingModel
 {
