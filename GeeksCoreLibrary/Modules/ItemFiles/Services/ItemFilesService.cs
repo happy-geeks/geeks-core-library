@@ -99,7 +99,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             {
                 return (null, DateTime.MinValue);
             }
-            
+
             var tablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType);
 
             databaseConnection.ClearParameters();
@@ -553,6 +553,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                     {
                         imageQuality = 80;
                     }
+                    break;
+                case ".tif":
+                    imageFormat = MagickFormat.Tif;
+                    break;
+                case ".tiff":
+                    imageFormat = MagickFormat.Tiff;
                     break;
                 default:
                     throw new NotSupportedException("Unsupported file type.");
