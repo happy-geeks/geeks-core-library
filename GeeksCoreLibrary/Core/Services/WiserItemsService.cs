@@ -245,6 +245,7 @@ namespace GeeksCoreLibrary.Core.Services
                 try
                 {
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
+                    if (wiserItem.Id > 0) databaseConnection.AddParameter("id", wiserItem.Id);
                     databaseConnection.AddParameter("moduleId", wiserItem.ModuleId);
                     databaseConnection.AddParameter("ordering", wiserItem.Ordering);
                     databaseConnection.AddParameter("title", wiserItem.Title ?? "");
@@ -263,8 +264,8 @@ namespace GeeksCoreLibrary.Core.Services
                     var query = $@"SET @saveHistory = ?saveHistoryGcl;
 SET @_userId = ?userId;
 SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {tablePrefix}{WiserTableNames.WiserItem} (moduleid, title, entity_type, added_by, published_environment, json, json_last_processed_date)
-VALUES (?moduleId, ?title, ?entityType, ?username, ?publishedEnvironment, ?json, ?jsonLastProcessedDate);
+INSERT INTO {tablePrefix}{WiserTableNames.WiserItem} ({(wiserItem.Id > 0 ? "id," : "")} moduleid, title, entity_type, added_by, published_environment, json, json_last_processed_date)
+VALUES ({(wiserItem.Id > 0 ? "?id," : "")} ?moduleId, ?title, ?entityType, ?username, ?publishedEnvironment, ?json, ?jsonLastProcessedDate);
 SELECT LAST_INSERT_ID() AS newId;";
                     var queryResult = await databaseConnection.GetAsync(query, true);
 
