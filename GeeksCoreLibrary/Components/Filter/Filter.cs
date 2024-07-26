@@ -19,6 +19,7 @@ using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Components.Filter
@@ -652,77 +653,62 @@ namespace GeeksCoreLibrary.Components.Filter
         {
             try
             {
-                var parameterList = new SortedList<string, string>();
+                var parameterList = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 const string valueSplit = ",";
 
-                foreach (var f in filterGroups.Values.Where(group => group.SelectedValueString != ""))
+                foreach (var filterGroup in filterGroups.Values.Where(group => !String.IsNullOrWhiteSpace(group.SelectedValueString)))
                 {
                     string nameStr;
-                    if (!String.IsNullOrEmpty(f.QueryString))
+                    if (!String.IsNullOrEmpty(filterGroup.QueryString))
                     {
-                        nameStr = f.QueryString;
+                        nameStr = filterGroup.QueryString;
                     }
-                    else if (!String.IsNullOrEmpty(f.NameSeo))
+                    else if (!String.IsNullOrEmpty(filterGroup.NameSeo))
                     {
-                        nameStr = f.NameSeo;
+                        nameStr = filterGroup.NameSeo;
                     }
                     else
                     {
-                        nameStr = f.Name.ToLower();
+                        nameStr = filterGroup.Name.ToLowerInvariant();
                     }
 
                     // Check existing selected filters and add value to it or remove value from it
-                    if (nameStr == groupName.ToLower())
+                    if (String.Equals(nameStr, groupName, StringComparison.OrdinalIgnoreCase))
                     {
                         if (singleSelect)
                         {
-                            WriteToTrace($"1 - adding item to parameter list, key = {groupName.ToLower()}, value = {filter.ToLower()}");
-                            parameterList.Add(groupName.ToLower(), filter.ToLower());
+                            WriteToTrace($"1 - adding item to parameter list, key = {groupName.ToLowerInvariant()}, value = {filter.ToLowerInvariant()}");
+                            parameterList.Add(groupName.ToLowerInvariant(), filter.ToLowerInvariant());
                         }
                         else
                         {
-                            WriteToTrace($"2 - adding item to parameter list, key = {groupName.ToLower()}, value = {f.SelectedValueString}{valueSplit}{filter.ToLower()}");
-                            parameterList.Add(groupName.ToLower(), f.SelectedValueString + valueSplit + filter.ToLower());
+                            WriteToTrace($"2 - adding item to parameter list, key = {groupName.ToLowerInvariant()}, value = {filterGroup.SelectedValueString}{valueSplit}{filter.ToLower()}");
+                            parameterList.Add(groupName.ToLowerInvariant(), filterGroup.SelectedValueString + valueSplit + filter.ToLowerInvariant());
                         }
                     }
                     else
                     {
                         // Add selected filterGroup to URL
-                        WriteToTrace($"3 - adding item to parameter list, key = {nameStr}, value = {f.SelectedValueString}");
-                        parameterList.Add(nameStr, f.SelectedValueString);
+                        WriteToTrace($"3 - adding item to parameter list, key = {nameStr}, value = {filterGroup.SelectedValueString}");
+                        parameterList.Add(nameStr.ToLowerInvariant(), filterGroup.SelectedValueString.ToLowerInvariant());
                     }
                 }
 
-                if (!filterGroups.Values.Any(group => group.SelectedValueString != "" && group.NameSeo == groupName.ToLower()))
+                if (!filterGroups.Values.Any(group => !String.IsNullOrWhiteSpace(group.SelectedValueString) && String.Equals(group.NameSeo, groupName, StringComparison.OrdinalIgnoreCase)))
                 {
-                    if (!parameterList.ContainsKey(groupName.ToLower()))
+                    if (!parameterList.ContainsKey(groupName))
                     {
-                        WriteToTrace($"4 - adding item to parameter list, key = {groupName.ToLower()}, value = {filter.ToLower()}");
-                        parameterList.Add(groupName.ToLower(), filter.ToLower());
+                        WriteToTrace($"4 - adding item to parameter list, key = {groupName.ToLowerInvariant()}, value = {filter.ToLowerInvariant()}");
+                        parameterList.Add(groupName.ToLowerInvariant(), filter.ToLowerInvariant());
                     }
                 }
 
                 // Generate URL
-                var tr = new StringBuilder();
-                if (parameterList.Keys.Count > 0)
-                {
-                    tr.Append('?');
+                var queryBuilder = new QueryBuilder(parameterList);
+                
+                WriteToTrace($"ADD: {groupName}-{filter}-{queryBuilder}");
 
-                    foreach (var p in parameterList.Keys)
-                    {
-                        if (tr.Length > 1)
-                        {
-                            tr.Append('&');
-                        }
-                        tr.Append(p.UrlEncode());
-                        tr.Append('=');
-                        tr.Append(parameterList[p]?.HtmlDecode().UrlEncode());
-                    }
-                }
-
-                WriteToTrace($"ADD: {groupName}-{filter}-{tr}");
-
-                return tr.ToString();
+                return queryBuilder.ToString();
             }
             catch (Exception ex)
             {

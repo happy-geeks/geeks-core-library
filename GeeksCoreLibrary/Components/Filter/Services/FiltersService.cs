@@ -83,7 +83,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                     }
                 }
                 
-                if (String.IsNullOrEmpty(filterParameter) | filterParameterMixedMode)
+                if (String.IsNullOrEmpty(filterParameter) || filterParameterMixedMode)
                 {
                     foreach (var key in httpContext.Request.Query.Keys)
                     {
