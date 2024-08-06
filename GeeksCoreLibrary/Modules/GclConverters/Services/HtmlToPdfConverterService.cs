@@ -70,8 +70,8 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
 
             pdfOptions.Landscape = settings.Orientation == PdfPageOrientation.Landscape;
 
-            Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_html_viewer_width"), out var htmlViewerWidth);
-            Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_html_viewer_height"), out var htmlViewerHeight);
+            /*Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_html_viewer_width"), out var htmlViewerWidth);
+            Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_html_viewer_height"), out var htmlViewerHeight);*/
             Single.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_margins"), out var margins);
 
             // Main document options.
@@ -198,7 +198,7 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             }*/
 
             // Security settings.
-            converter.PdfSecurityOptions.CanEditContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_edit_content", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            /*converter.PdfSecurityOptions.CanEditContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_edit_content", "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
             converter.PdfSecurityOptions.CanCopyContent = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_can_copy_content", "true")).Equals("true", StringComparison.OrdinalIgnoreCase);
             converter.PdfSecurityOptions.OwnerPassword = await objectsService.FindSystemObjectByDomainNameAsync("pdf_password");
 
@@ -209,9 +209,9 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             else
             {
                 converter.PdfSecurityOptions.OwnerPassword = await stringReplacementsService.DoAllReplacementsAsync(converter.PdfSecurityOptions.OwnerPassword);
-            }
+            }*/
 
-            if (settings.ItemId > 0UL && !String.IsNullOrWhiteSpace(settings.BackgroundPropertyName))
+            /*if (settings.ItemId > 0UL && !String.IsNullOrWhiteSpace(settings.BackgroundPropertyName))
             {
                 var backgroundImage = await RetrieveBackgroundImageAsync(settings.ItemId, settings.BackgroundPropertyName);
 
@@ -238,10 +238,10 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                         logger.LogWarning(exception, "An error occurred while adding a background to a PDF in ConvertHtmlStringToPdfAsync()");
                     }
                 }
-            }
+            }*/
 
             // Set additional document options.
-            var options = String.IsNullOrWhiteSpace(settings.DocumentOptions) ? new Dictionary<string, string>() : settings.DocumentOptions.Split(';').Where(o => o.Contains(":")).ToDictionary(o => o.Split(':')[0], o => o.Split(':')[1], StringComparer.OrdinalIgnoreCase);
+            /*var options = String.IsNullOrWhiteSpace(settings.DocumentOptions) ? new Dictionary<string, string>() : settings.DocumentOptions.Split(';').Where(o => o.Contains(":")).ToDictionary(o => o.Split(':')[0], o => o.Split(':')[1], StringComparer.OrdinalIgnoreCase);
 
             foreach (var p in typeof(HtmlToPdfConverter).GetProperties())
             {
@@ -261,7 +261,7 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                 }
 
                 p.SetValue(converter.PdfDocumentOptions, Convert.ChangeType(options[p.Name], p.PropertyType), null);
-            }
+            }*/
 
             var outputFile = @"C:\temp\output.pdf";
             await using var page = await browser.NewPageAsync();
