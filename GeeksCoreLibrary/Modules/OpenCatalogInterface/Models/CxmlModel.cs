@@ -14,7 +14,7 @@ public class CxmlModel
     [XmlAttribute(AttributeName = "timestamp")]
     public string Timestamp { get; set; }
 
-    [XmlAttribute(AttributeName = "lang")]
+    [XmlAttribute(AttributeName = "lang", Namespace = "http://www.w3.org/XML/1998/namespace")]
     public string Lang { get; set; }
 
     [XmlElement(ElementName = "Header")]
