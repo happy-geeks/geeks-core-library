@@ -430,7 +430,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                 if (Settings.EnableOciLogin && !String.IsNullOrWhiteSpace(ociHookUrl))
                 {
-                    HttpContextHelpers.WriteCookie(httpContext, Constants.OciHookUrlCookieName, ociHookUrl);
+                    HttpContextHelpers.WriteCookie(httpContext, Constants.OciHookUrlCookieName, ociHookUrl, isEssential: true);
                 }
 
                 if (Settings.EnableOciLogin && !String.IsNullOrWhiteSpace(ociUsername) && !String.IsNullOrWhiteSpace(ociPassword))
@@ -1909,7 +1909,7 @@ namespace GeeksCoreLibrary.Components.Account
             var googleClientId = String.Join(".", clientIdSplit.Skip(2));
 
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Settings.EntityType);
-            
+
             var detail = new WiserItemDetailModel()
             {
                 Key = String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? Constants.DefaultGoogleCidFieldName : Settings.GoogleClientIdFieldName,

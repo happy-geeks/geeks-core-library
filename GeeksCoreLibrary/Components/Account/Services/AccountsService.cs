@@ -119,7 +119,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
                 databaseConnection.AddParameter("selector", cookieValueParts[0]);
                 databaseConnection.AddParameter("entityType", cookieValueParts[2]);
-                
+
                 // Writing connection is used because sometimes the sync to a read database is not instant and then the cookie cannot be found immediately after creating it.
                 var result = await databaseConnection.GetAsync(query, true, useWritingConnectionIfAvailable: true);
 
@@ -264,7 +264,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             databaseConnection.AddParameter("main_user_entity_type", mainUserEntityType);
             databaseConnection.AddParameter("ip_address", HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext));
             databaseConnection.AddParameter("user_agent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, HeaderNames.UserAgent));
-            databaseConnection.AddParameter("expires", DateTime.Now.AddDays(amountOfDaysToRememberCookie));
+            databaseConnection.AddParameter("expires", DateTime.Now.AddDays(amountOfDaysToRememberCookie <= 0 ? 1 : amountOfDaysToRememberCookie));
             databaseConnection.AddParameter("login_date", DateTime.Now);
             databaseConnection.AddParameter("role", role);
             await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(Constants.AuthenticationTokensTableName, 0UL);
