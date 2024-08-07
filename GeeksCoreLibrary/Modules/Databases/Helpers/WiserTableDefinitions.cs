@@ -1055,6 +1055,28 @@ public class WiserTableDefinitions
                 new(WiserTableNames.GclRequestLog, "idx_host", IndexTypes.Normal, new List<string> {"host", "path", "method"}),
                 new(WiserTableNames.GclRequestLog, "idx_path", IndexTypes.Normal, new List<string> {"path", "method"})
             }
+        },
+
+        // wiser_history
+        new WiserTableDefinitionModel
+        {
+            Name = WiserTableNames.WiserHistory,
+            LastUpdate = new DateTime(2024, 7, 18),
+            Columns = new List<ColumnSettingsModel>
+            {
+                new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                new("action", MySqlDbType.VarChar, 255, notNull: true),
+                new("tablename", MySqlDbType.VarChar, 255, notNull: true),
+                new("item_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                new("changed_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                new("changed_by", MySqlDbType.VarChar, 50, notNull: true, defaultValue: ""),
+                new("field", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
+                new("oldvalue", MySqlDbType.MediumText),
+                new("newvalue", MySqlDbType.MediumText),
+                new("language_code", MySqlDbType.VarChar, 5, notNull: true, defaultValue: ""),
+                new("groupname", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
+                new("target_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0")
+            }
         }
     };
 }
