@@ -204,11 +204,6 @@ namespace GeeksCoreLibrary.Core.Models
         public TimeSpan DefaultWiserItemsCacheDuration { get; set; } = new(1, 0, 0);
 
         /// <summary>
-        /// The amount of time to cache Configurators.
-        /// </summary>
-        public TimeSpan DefaultConfiguratorsCacheDuration { get; set; } = new(1, 0, 0);
-
-        /// <summary>
         /// The amount of time to cache various aspects of the ShoppingBasket.
         /// </summary>
         public TimeSpan DefaultShoppingBasketsCacheDuration { get; set; } = new(1, 0, 0);
