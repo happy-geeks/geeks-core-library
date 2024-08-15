@@ -65,7 +65,7 @@
     <PackageReference Include="System.Runtime.Extensions" Version="4.3.1" />
     <PackageReference Include="System.Threading" Version="4.3.0" />
     <PackageReference Include="Twilio" Version="7.0.0" />
-    <PackageReference Include="WebMarkupMin.AspNetCore7" Version="2.16.0" />
+    <PackageReference Include="WebMarkupMin.AspNetCore7" Version="2.17.0" />
     <PackageReference Include="ZXing.Net" Version="0.16.9" />
     <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.14" />
   </ItemGroup>
