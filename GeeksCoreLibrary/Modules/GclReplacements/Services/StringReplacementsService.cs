@@ -101,7 +101,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 {
                     var value = m.Groups[1].Value;
                     
-                    // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as translation.
+                    // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as a system variable.
                     var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}", defaultFormatter: defaultFormatter);
                     foreach (var variable in replacementVariables)
                     {
