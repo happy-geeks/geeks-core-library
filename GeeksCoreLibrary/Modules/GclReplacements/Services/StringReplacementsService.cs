@@ -100,6 +100,17 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 foreach (Match m in regex.Matches(input))
                 {
                     var value = m.Groups[1].Value;
+                    
+                    // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as a system variable.
+                    var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}", defaultFormatter: defaultFormatter);
+                    foreach (var variable in replacementVariables)
+                    {
+                        if (variable.Formatters.All(f => replacementsMediator.GetFormatterMethod(f) != null))
+                        {
+                            value = variable.VariableName;
+                        }
+                    }
+
                     if (dataDictionary.ContainsKey(value))
                     {
                         continue;
@@ -141,10 +152,6 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                     foreach (Match m in regex.Matches(input))
                     {
                         var value = m.Groups[1].Value;
-                        if (dataDictionary.ContainsKey(value))
-                        {
-                            continue;
-                        }
 
                         // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as translation.
                         var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}", defaultFormatter: defaultFormatter);
@@ -154,6 +161,11 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                             {
                                 value = variable.VariableName;
                             }
+                        }
+
+                        if (dataDictionary.ContainsKey(value))
+                        {
+                            continue;
                         }
 
                         dataDictionary.Add(value, await languagesService.GetTranslationAsync(value));
