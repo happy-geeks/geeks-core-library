@@ -271,6 +271,6 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// List of rules defining which cache-control headers to apply to specific file paths.
         /// </summary>
-        public List<CacheControlRuleSettingsModel> CacheControlRules { get; set; } = [];
+        public List<CacheControlRuleSettingsModel> CacheControlRules { get; set; } = new List<CacheControlRuleSettingsModel>();
     }
 }
