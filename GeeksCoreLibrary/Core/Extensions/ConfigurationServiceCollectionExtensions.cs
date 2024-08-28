@@ -105,6 +105,7 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             builder.UseMiddleware<AddAntiForgeryMiddleware>();
             builder.UseMiddleware<OutputCachingMiddleware>();
+            builder.UseMiddleware<AddCacheHeaderValueMiddleware>();
             builder.UseStaticFiles();
 
             builder.UseRouting();

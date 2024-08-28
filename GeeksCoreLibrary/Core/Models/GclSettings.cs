@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
@@ -266,5 +267,10 @@ namespace GeeksCoreLibrary.Core.Models
         /// Settings for request logging.
         /// </summary>
         public RequestLoggingOptions RequestLoggingOptions { get; set; } = new();
+
+        /// <summary>
+        /// List of rules defining which cache-control headers to apply to specific file paths.
+        /// </summary>
+        public List<CacheControlRuleSettingsModel> CacheControlRules { get; set; } = new List<CacheControlRuleSettingsModel>();
     }
 }
