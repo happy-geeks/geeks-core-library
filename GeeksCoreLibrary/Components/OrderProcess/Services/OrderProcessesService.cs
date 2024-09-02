@@ -503,7 +503,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
 
                             # Payment method
                             JOIN {WiserTableNames.WiserItemLink} AS paymentMethodLink ON paymentMethodLink.destination_item_id = orderProcess.id AND paymentMethodLink.type = {Constants.PaymentMethodToOrderProcessLinkType}
-                            JOIN {WiserTableNames.WiserItem} AS paymentMethod ON paymentMethod.id = paymentMethodLink.item_id AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'
+                            JOIN {WiserTableNames.WiserItem} AS paymentMethod ON paymentMethod.id = paymentMethodLink.item_id AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}' AND paymentMethod.published_environment & ?environment != 0
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
@@ -524,6 +524,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'";
 
             databaseConnection.AddParameter("id", orderProcessId);
+            databaseConnection.AddParameter("environment", (int)gclSettings.Environment);
             var dataTable = await databaseConnection.GetAsync(query);
             var results = new List<PaymentMethodSettingsModel>();
             foreach (DataRow dataRow in dataTable.Rows)
