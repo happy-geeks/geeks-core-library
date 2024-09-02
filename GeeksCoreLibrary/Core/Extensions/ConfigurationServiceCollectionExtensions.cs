@@ -181,7 +181,8 @@ namespace GeeksCoreLibrary.Core.Extensions
                 }
                 catch (Exception exception)
                 {
-                    builder.ApplicationServices.GetService<ILogger>().LogError(exception, "Error while updating tables.");
+                    var logger = builder.ApplicationServices.GetService<ILogger>();
+                    logger?.LogError(exception, "Error while updating tables.");
                 }
             });
 
