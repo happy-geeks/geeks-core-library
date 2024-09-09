@@ -572,26 +572,26 @@ WHERE id = ?id";
                 attachments.Add((communication.UploadedFileName, communication.UploadedFile));
             }
 
-            using var webClient = new WebClient();
+            using var httpClient = new HttpClient();
             if (communication.AttachmentUrls?.Count > 0)
             {
                 foreach (var attachmentUrl in communication.AttachmentUrls)
                 {
-                    var data = await webClient.DownloadDataTaskAsync(attachmentUrl);
+                    var response = await httpClient.GetAsync(attachmentUrl);
+                    response.EnsureSuccessStatusCode();
+                    var data = await response.Content.ReadAsByteArrayAsync();
+            
                     var uri = new Uri(attachmentUrl);
                     var fileName = Path.GetFileName(uri.AbsolutePath);
-                    if (webClient.ResponseHeaders?["Content-Disposition"] != null)
+            
+                    if (response.Content.Headers.ContentDisposition != null)
                     {
                         // Extract the filename from the Content-Disposition header
-                        if (ContentDisposition.TryParse(webClient.ResponseHeaders["Content-Disposition"], out var contentDisposition))
-                        {
-                            fileName = Path.GetFileName(contentDisposition.FileName);
-                        }
+                        fileName = Path.GetFileName(response.Content.Headers.ContentDisposition.FileName?.Trim('"'));
                     }
 
                     fileName = HttpUtility.UrlDecode(fileName);
                     attachments.Add((fileName, data));
-                    webClient.ResponseHeaders?.Clear();
                 }
             }
 
@@ -606,12 +606,15 @@ WHERE id = ?id";
                 byte[] fileBytes;
                 if (!String.IsNullOrWhiteSpace(wiserItemFile.ContentUrl))
                 {
-                    fileBytes = await webClient.DownloadDataTaskAsync(wiserItemFile.ContentUrl);
+                    var response = await httpClient.GetAsync(wiserItemFile.ContentUrl);
+                    response.EnsureSuccessStatusCode();
+                    fileBytes = await response.Content.ReadAsByteArrayAsync();
                 }
                 else
                 {
                     fileBytes = wiserItemFile.Content;
                 }
+                
                 attachments.Add((Path.GetFileName(wiserItemFile.FileName), fileBytes));
             }
 
