@@ -1488,9 +1488,6 @@ SET @saveHistory = ?saveHistoryGcl;
                     }
                     else
                     {
-                        var linkTypeSettingsWithDedicatedTablesForSource = allLinkTypeSettings.Where(x => x.UseDedicatedTable && String.Equals(x.SourceEntityType, entityType, StringComparison.OrdinalIgnoreCase)).ToList();
-                        var linkTypeSettingsWithDedicatedTablesForDestination = allLinkTypeSettings.Where(x => x.UseDedicatedTable && String.Equals(x.DestinationEntityType, entityType, StringComparison.OrdinalIgnoreCase)).ToList();
-
                         /*
                          * NOTE: In all queries below we have hard-coded all columns. This is on purpose and should stay this way.
                          * It's the only way we can be 100% sure that we're inserting the correct data into the correct columns.
@@ -1621,192 +1618,6 @@ WHERE item_id IN({formattedItemIds});";
                             }
                         }
 
-                        var copyItemLinkFilesQuery = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {tablePrefix}{WiserTableNames.WiserItemFile}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
-(
-    id,
-    item_id,
-    content_type,
-    content,
-    content_url,
-    width,
-    height,
-    file_name,
-    extension,
-    added_on,
-    added_by,
-    title,
-    property_name,
-    itemlink_id,
-    protected,
-    ordering
-)
-SELECT
-    file.id,
-    file.item_id,
-    file.content_type,
-    file.content,
-    file.content_url,
-    file.width,
-    file.height,
-    file.file_name,
-    file.extension,
-    file.added_on,
-    file.added_by,
-    file.title,
-    file.property_name,
-    file.itemlink_id,
-    file.protected,
-    file.ordering
-FROM {{0}}{WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS file
-JOIN {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link ON link.id = file.itemlink_id AND {{1}}";
-
-                        var deleteItemLinkFilesQuery = $@"DELETE file.* FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link 
-JOIN {{0}}{WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS file ON file.itemlink_id = link.id 
-WHERE {{1}};";
-
-                        var copyItemLinksQuery = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-INSERT IGNORE INTO {{0}}{WiserTableNames.WiserItemLink}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
-(
-    id,
-    item_id,
-    destination_item_id,
-    ordering,
-    type,
-    added_on
-)
-SELECT
-    id,
-    item_id,
-    destination_item_id,
-    ordering,
-    type,
-    added_on
-FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
-WHERE {{1}}";
-
-                        var copyItemLinkDetailsQuery = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {{0}}{WiserTableNames.WiserItemLinkDetail}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
-(
-    id,
-    language_code,
-    itemlink_id,
-    groupname,
-    `key`,
-    value,
-    long_value
-)
-SELECT
-    detail.id,
-    detail.language_code,
-    detail.itemlink_id,
-    detail.groupname,
-    detail.`key`,
-    detail.value,
-    detail.long_value
-FROM {{0}}{WiserTableNames.WiserItemLinkDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS detail
-JOIN {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link ON link.id = detail.itemlink_id AND {{1}}";
-
-                        var deleteItemLinksQuery = $@"SET @saveHistory = FALSE; # Don't save the history when deleting the item details, otherwise we will get UPDATE_ITEM lines in the history and that will cause problems for branches.
-DELETE detail.* FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link 
-JOIN {{0}}{WiserTableNames.WiserItemLinkDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS detail ON detail.itemlink_id = link.id 
-WHERE {{1}};
-SET @saveHistory = ?saveHistoryGcl;
-DELETE FROM {{0}}{WiserTableNames.WiserItemLink}{(undelete ? WiserTableNames.ArchiveSuffix : "")} AS link WHERE {{1}};";
-
-                        // If there are not dedicated link tables for this entity type, then copy from the base table.
-                        if (!linkTypeSettingsWithDedicatedTablesForSource.Any() && !linkTypeSettingsWithDedicatedTablesForDestination.Any())
-                        {
-                            if (entityTypeSettings.DeleteAction == EntityDeletionTypes.Archive)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(copyItemLinkFilesQuery, "", $"(link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))"));
-                            }
-
-                            if (entityTypeSettings.DeleteAction is EntityDeletionTypes.Archive or EntityDeletionTypes.Permanent)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(deleteItemLinkFilesQuery, "", $"(link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))"));
-                            }
-
-                            if (entityTypeSettings.DeleteAction == EntityDeletionTypes.Archive)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(copyItemLinksQuery, "", $"(item_id IN({formattedItemIds}) OR destination_item_id IN({formattedItemIds}))"));
-                                await databaseConnection.ExecuteAsync(String.Format(copyItemLinkDetailsQuery, "", $"(link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))"));
-                            }
-
-                            if (entityTypeSettings.DeleteAction is EntityDeletionTypes.Archive or EntityDeletionTypes.Permanent)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(deleteItemLinksQuery, "", $"(link.item_id IN({formattedItemIds}) OR link.destination_item_id IN({formattedItemIds}))"));
-                            }
-                        }
-
-                        // Copy from dedicated link table, where the current entity type is the source.
-                        foreach (var linkSettings in linkTypeSettingsWithDedicatedTablesForSource)
-                        {
-                            var tablePrefixForLink = wiserItemsService.GetTablePrefixForLink(linkSettings);
-                            if (!await databaseHelpersService.TableExistsAsync($"{tablePrefixForLink}{WiserTableNames.WiserItemFile}"))
-                            {
-                                continue;
-                            }
-
-                            if (entityTypeSettings.DeleteAction == EntityDeletionTypes.Archive)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(copyItemLinkFilesQuery, tablePrefixForLink, $"link.item_id IN({formattedItemIds})"));
-                            }
-
-                            if (entityTypeSettings.DeleteAction is EntityDeletionTypes.Archive or EntityDeletionTypes.Permanent)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(deleteItemLinkFilesQuery, tablePrefixForLink, $"link.item_id IN({formattedItemIds})"));
-                            }
-
-                            if (entityTypeSettings.DeleteAction == EntityDeletionTypes.Archive)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(copyItemLinksQuery, tablePrefixForLink, $"item_id IN({formattedItemIds})"));
-                                await databaseConnection.ExecuteAsync(String.Format(copyItemLinkDetailsQuery, tablePrefixForLink, $"link.item_id IN({formattedItemIds})"));
-                            }
-
-                            if (entityTypeSettings.DeleteAction is EntityDeletionTypes.Archive or EntityDeletionTypes.Permanent)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(deleteItemLinksQuery, tablePrefixForLink, $"link.item_id IN({formattedItemIds})"));
-                            }
-                        }
-
-                        // Copy from dedicated link table, where the current entity type is the destination.
-                        foreach (var linkSettings in linkTypeSettingsWithDedicatedTablesForDestination)
-                        {
-                            var tablePrefixForLink = wiserItemsService.GetTablePrefixForLink(linkSettings);
-                            if (!await databaseHelpersService.TableExistsAsync($"{tablePrefixForLink}{WiserTableNames.WiserItemFile}"))
-                            {
-                                continue;
-                            }
-
-                            if (entityTypeSettings.DeleteAction == EntityDeletionTypes.Archive)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(copyItemLinkFilesQuery, tablePrefixForLink, $"link.destination_item_id IN({formattedItemIds})"));
-                            }
-
-                            if (entityTypeSettings.DeleteAction is EntityDeletionTypes.Archive or EntityDeletionTypes.Permanent)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(deleteItemLinkFilesQuery, tablePrefixForLink, $"link.destination_item_id IN({formattedItemIds})"));
-                            }
-
-                            if (entityTypeSettings.DeleteAction == EntityDeletionTypes.Archive)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(copyItemLinksQuery, tablePrefixForLink, $"destination_item_id IN({formattedItemIds})"));
-                                await databaseConnection.ExecuteAsync(String.Format(copyItemLinkDetailsQuery, tablePrefixForLink, $"link.destination_item_id IN({formattedItemIds})"));
-                            }
-
-                            if (entityTypeSettings.DeleteAction is EntityDeletionTypes.Archive or EntityDeletionTypes.Permanent)
-                            {
-                                await databaseConnection.ExecuteAsync(String.Format(deleteItemLinksQuery, tablePrefixForLink, $"link.destination_item_id IN({formattedItemIds})"));
-                            }
-                        }
-
                         // And then delete the item from the original table (or vice versa, when undeleting).
                         if (entityTypeSettings.DeleteAction is EntityDeletionTypes.Archive or EntityDeletionTypes.Permanent)
                         {
@@ -1853,7 +1664,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                         {
                             var linkTablePrefix = GetTablePrefixForLink(linkSettings);
                             var archiveSuffix = undelete ? WiserTableNames.ArchiveSuffix : "";
-                            query = $@"SELECT item_id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink}{archiveSuffix} WHERE destination_item_id IN ({formattedItemIds})";
+                            query = $"SELECT item_id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink}{archiveSuffix} WHERE destination_item_id IN ({formattedItemIds})";
                             var dataTable = await databaseConnection.GetAsync(query);
                             var children = dataTable.Rows.Cast<DataRow>().Select(dataRow => Convert.ToUInt64(dataRow["item_id"])).ToList();
                             await DeleteAsync(wiserItemsService, children, undelete, username, userId, saveHistory, linkSettings.SourceEntityType, false, skipPermissionsCheck);
@@ -3079,7 +2890,7 @@ WHERE {String.Join(" AND ", where)}";
                 return ($"<!-- An error occurred while rendering template for item '{itemId}': {exception} -->", null);
             }
         }
-        
+
         /// <inheritdoc />
         public async Task<int> GetLinkTypeAsync(string destinationEntityType, string connectedEntityType)
         {
@@ -3762,7 +3573,7 @@ WHERE {String.Join(" AND ", where)}";
 
             return result;
         }
-        
+
         /// <inheritdoc />
         public async Task<List<string>> GetDedicatedTablePrefixesAsync()
         {
