@@ -2,7 +2,6 @@
 using System.Data;
 using System.IO;
 using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
@@ -411,11 +410,8 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                         if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
                         {
                             var requestUri = new Uri(contentUrl);
-                            using var httpClient = new HttpClient();
-                            var response = await httpClient.GetAsync(requestUri);
-                            response.EnsureSuccessStatusCode();
-
-                            fileBytes = await response.Content.ReadAsByteArrayAsync();
+                            using var webClient = new WebClient();
+                            fileBytes = webClient.DownloadData(requestUri);
                         }
                         else
                         {
@@ -491,11 +487,8 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                     if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
                     {
                         var requestUri = new Uri(contentUrl);
-                        using var httpClient = new HttpClient();
-                        var response = await httpClient.GetAsync(requestUri);
-                        response.EnsureSuccessStatusCode();
-
-                        fileBytes = await response.Content.ReadAsByteArrayAsync();
+                        using var webClient = new WebClient();
+                        fileBytes = webClient.DownloadData(requestUri);
                     }
                     else
                     {
@@ -508,7 +501,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 }
             }
 
-            // Final check to see if the file bytes were retrieved.
+            // Final check to see if a the image bytes were retrieved.
             if (fileBytes == null || fileBytes.Length == 0)
             {
                 return (null, DateTime.MinValue);
