@@ -4,7 +4,6 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
@@ -710,8 +709,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             var resultBuilder = new StringBuilder();
-            using var httpClient = new HttpClient();
-            
+            using var webClient = new WebClient();
             foreach (var fileName in enumerable.Where(fileName => !String.IsNullOrWhiteSpace(fileName)))
             {
                 var extension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -730,12 +728,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var fileLocation = Path.Combine(localDirectory, fileName);
                 if (!File.Exists(fileLocation))
                 {
-                    var fileUri = new Uri($"https://app.wiser.nl/{directory}/cdn/{fileName}");
-                    var response = await httpClient.GetAsync(fileUri);
-                    response.EnsureSuccessStatusCode();
-
-                    var fileBytes = await response.Content.ReadAsByteArrayAsync();
-                    await File.WriteAllBytesAsync(fileLocation, fileBytes);
+                    await webClient.DownloadFileTaskAsync(new Uri($"https://app.wiser.nl/{directory}/cdn/{fileName}"), fileLocation);
                 }
 
                 resultBuilder.AppendLine(await File.ReadAllTextAsync(fileLocation));

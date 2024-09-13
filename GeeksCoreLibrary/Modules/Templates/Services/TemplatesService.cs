@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
@@ -789,8 +788,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             }
 
             var resultBuilder = new StringBuilder();
-            using var httpClient = new HttpClient();
-            
+            using var webClient = new WebClient();
             foreach (var fileName in enumerable.Where(fileName => !String.IsNullOrWhiteSpace(fileName)))
             {
                 var extension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -809,13 +807,7 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 var fileLocation = Path.Combine(localDirectory, fileName);
                 if (!File.Exists(fileLocation))
                 {
-                    var fileUri = new Uri($"https://app.wiser.nl/{directory}/cdn/{fileName}");
-                    var response = await httpClient.GetAsync(fileUri);
-                    response.EnsureSuccessStatusCode();
-                    
-                    await using var stream = await response.Content.ReadAsStreamAsync();
-                    await using var fileStream = new FileStream(fileLocation, FileMode.Create, FileAccess.Write, FileShare.None);
-                    await stream.CopyToAsync(fileStream);
+                    await webClient.DownloadFileTaskAsync(new Uri($"https://app.wiser.nl/{directory}/cdn/{fileName}"), fileLocation);
                 }
 
                 resultBuilder.AppendLine(await File.ReadAllTextAsync(fileLocation));
