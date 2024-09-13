@@ -40,17 +40,19 @@ namespace GeeksCoreLibrary.Modules.Communication.Services
         private readonly IWiserItemsService wiserItemsService;
         private readonly IDatabaseConnection databaseConnection;
         private readonly IDatabaseHelpersService databaseHelpersService;
+        private readonly IHttpClientService httpClientService;
 
         /// <summary>
         /// Creates a new instance of <see cref="CommunicationsService"/>.
         /// </summary>
-        public CommunicationsService(IOptions<GclSettings> gclSettings, ILogger<CommunicationsService> logger, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService)
+        public CommunicationsService(IOptions<GclSettings> gclSettings, ILogger<CommunicationsService> logger, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection, IDatabaseHelpersService databaseHelpersService, IHttpClientService httpClientService)
         {
             this.gclSettings = gclSettings.Value;
             this.logger = logger;
             this.wiserItemsService = wiserItemsService;
             this.databaseConnection = databaseConnection;
             this.databaseHelpersService = databaseHelpersService;
+            this.httpClientService = httpClientService;
         }
 
         /// <inheritdoc />
@@ -572,26 +574,26 @@ WHERE id = ?id";
                 attachments.Add((communication.UploadedFileName, communication.UploadedFile));
             }
 
-            using var webClient = new WebClient();
             if (communication.AttachmentUrls?.Count > 0)
             {
                 foreach (var attachmentUrl in communication.AttachmentUrls)
                 {
-                    var data = await webClient.DownloadDataTaskAsync(attachmentUrl);
+                    var data = await httpClientService.Client.GetAsync(attachmentUrl);
                     var uri = new Uri(attachmentUrl);
                     var fileName = Path.GetFileName(uri.AbsolutePath);
-                    if (webClient.ResponseHeaders?["Content-Disposition"] != null)
+
+                    if (data.Headers.Contains("Content-Disposition") && data.Headers.GetValues("Content-Disposition").Any())
                     {
                         // Extract the filename from the Content-Disposition header
-                        if (ContentDisposition.TryParse(webClient.ResponseHeaders["Content-Disposition"], out var contentDisposition))
+                        if (ContentDisposition.TryParse(data.Headers.GetValues("Content-Disposition").First(), out var contentDisposition))
                         {
                             fileName = Path.GetFileName(contentDisposition.FileName);
                         }
                     }
 
                     fileName = HttpUtility.UrlDecode(fileName);
-                    attachments.Add((fileName, data));
-                    webClient.ResponseHeaders?.Clear();
+                    attachments.Add((fileName, await data.Content.ReadAsByteArrayAsync()));
+                    data.Headers.Clear();
                 }
             }
 
@@ -606,7 +608,7 @@ WHERE id = ?id";
                 byte[] fileBytes;
                 if (!String.IsNullOrWhiteSpace(wiserItemFile.ContentUrl))
                 {
-                    fileBytes = await webClient.DownloadDataTaskAsync(wiserItemFile.ContentUrl);
+                    fileBytes = await httpClientService.Client.GetByteArrayAsync(wiserItemFile.ContentUrl);
                 }
                 else
                 {
@@ -881,7 +883,7 @@ WHERE id = ?id";
             }
             else if (!receiverPhoneNumber.StartsWith("00"))
             {
-            throw new ArgumentException("Phone number is missing the country code.");
+                throw new ArgumentException("Phone number is missing the country code.");
             }
 
             // Now "sanitize" the phone number by removing all non-digit characters.
@@ -900,96 +902,94 @@ WHERE id = ?id";
             {
                 return;
             }
-            else
+
+            var metaConnection = new RestClient();
+            var request = new RestRequest(resource, Method.Post);
+            request.AddHeader("Authorization", $"Bearer {apiToken}");
+
+            request.AddJsonBody(new WhatsAppSendMessageRequestModel
             {
-                var metaConnection = new RestClient();
-                var request = new RestRequest(resource, Method.Post);
-                request.AddHeader("Authorization", $"Bearer {apiToken}");
-
-                request.AddJsonBody(new WhatsAppSendMessageRequestModel
+                MessagingProduct = "whatsapp",
+                RecipientType = "individual",
+                Receiver = receiverPhoneNumber,
+                TypeMessage = "text",
+                Body = new WhatsappBodyContentModel
                 {
-                    MessagingProduct = "whatsapp",
-                    RecipientType = "individual",
-                    Receiver = receiverPhoneNumber,
-                    TypeMessage = "text",
-                    Body = new WhatsappBodyContentModel
-                    {
-                        PreviewUrl = false,
-                        BodyContent = communication.Content
-                    }
-                });
+                    PreviewUrl = false,
+                    BodyContent = communication.Content
+                }
+            });
 
-                var response = await metaConnection.ExecuteAsync(request);
+            var response = await metaConnection.ExecuteAsync(request);
 
-                foreach (var url in communication.AttachmentUrls)
+            foreach (var url in communication.AttachmentUrls)
+            {
+                var typeUrl = "";
+                switch (url)
                 {
-                    var typeUrl = "";
-                    switch (url)
-                    {
-                        case string a when a.Contains(".jpeg"):
-                        case string b when b.Contains(".png"):
-                        case string c when c.Contains(".jpg"):
-                            typeUrl = "image";
-                            break;
-                        case string d when d.Contains(".pdf"):
-                        case string e when e.Contains(".csv"):
-                        case string f when f.Contains(".txt"):
-                        case string g when g.Contains(".xls"):
-                        case string h when h.Contains(".xlsx"):
-                        case string i when i.Contains(".doc"):
-                        case string j when j.Contains(".docx"):
-                        case string k when k.Contains(".pptx"):
-                        case string l when l.Contains(".ppt"):
-                        case string m when m.Contains(".xml"):
-                            typeUrl = "document";
-                            break;
-                        case string n when n.Contains(".mp3"):
-                            typeUrl = "audio";
-                            break;
-                        case string o when o.Contains(".mp4"):
-                            typeUrl = "video";
-                            break;
-                    }
+                    case string a when a.Contains(".jpeg"):
+                    case string b when b.Contains(".png"):
+                    case string c when c.Contains(".jpg"):
+                        typeUrl = "image";
+                        break;
+                    case string d when d.Contains(".pdf"):
+                    case string e when e.Contains(".csv"):
+                    case string f when f.Contains(".txt"):
+                    case string g when g.Contains(".xls"):
+                    case string h when h.Contains(".xlsx"):
+                    case string i when i.Contains(".doc"):
+                    case string j when j.Contains(".docx"):
+                    case string k when k.Contains(".pptx"):
+                    case string l when l.Contains(".ppt"):
+                    case string m when m.Contains(".xml"):
+                        typeUrl = "document";
+                        break;
+                    case string n when n.Contains(".mp3"):
+                        typeUrl = "audio";
+                        break;
+                    case string o when o.Contains(".mp4"):
+                        typeUrl = "video";
+                        break;
+                }
 
-                    if (!String.IsNullOrEmpty(typeUrl))
+                if (!String.IsNullOrEmpty(typeUrl))
+                {
+                    request = new RestRequest(resource, Method.Post);
+                    request.AddHeader("Authorization", $"Bearer {apiToken}");
+                    request.AddJsonBody(new WhatsAppSendMessageRequestModel
                     {
-                        request = new RestRequest(resource, Method.Post);
-                        request.AddHeader("Authorization", $"Bearer {apiToken}");
-                        request.AddJsonBody(new WhatsAppSendMessageRequestModel
-                        {
-                            MessagingProduct = "whatsapp",
-                            RecipientType = "individual",
-                            Receiver = receiverPhoneNumber,
-                            TypeMessage = typeUrl,
-                            TypeUrlImage = typeUrl != "image" ? null : new AttachmentUrlsModel
+                        MessagingProduct = "whatsapp",
+                        RecipientType = "individual",
+                        Receiver = receiverPhoneNumber,
+                        TypeMessage = typeUrl,
+                        TypeUrlImage = typeUrl != "image" ? null : new AttachmentUrlsModel
                             { Url = url },
-                            TypeUrlDocument = typeUrl != "document" ? null : new AttachmentUrlsModel
+                        TypeUrlDocument = typeUrl != "document" ? null : new AttachmentUrlsModel
                             { Url = url },
-                            TypeUrlAudio = typeUrl != "audio" ? null : new AttachmentUrlsModel
+                        TypeUrlAudio = typeUrl != "audio" ? null : new AttachmentUrlsModel
                             { Url = url},
-                            TypeUrlVideo = typeUrl != "video" ? null : new AttachmentUrlsModel
+                        TypeUrlVideo = typeUrl != "video" ? null : new AttachmentUrlsModel
                             { Url = url }
-                        });
+                    });
 
-                        response = await metaConnection.ExecuteAsync(request);
-                    }
-
-                    if (response.StatusCode == HttpStatusCode.OK)
-                    {
-                        return;
-                    }
-
-                    // If request (image/document/audio/video) was not success throw the status message as an exception.
-                    throw new Exception($"image/document/audio/video has not been sent... {response.ErrorMessage}");
+                    response = await metaConnection.ExecuteAsync(request);
                 }
 
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     return;
                 }
-                //If request (communication.Content) was not success throw the status message as an exception.
-                throw new Exception($"message content has not been sent... {response.ErrorMessage}");
-             }
+
+                // If request (image/document/audio/video) was not success throw the status message as an exception.
+                throw new Exception($"image/document/audio/video has not been sent... {response.ErrorMessage}");
+            }
+
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                return;
+            }
+            //If request (communication.Content) was not success throw the status message as an exception.
+            throw new Exception($"message content has not been sent... {response.ErrorMessage}");
         }
 
         /// <summary>

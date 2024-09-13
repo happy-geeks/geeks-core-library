@@ -4,7 +4,6 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
@@ -14,6 +13,7 @@ using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -59,6 +59,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IAccountsService accountsService;
         private readonly IDatabaseHelpersService databaseHelpersService;
         private readonly IReplacementsMediator replacementsMediator;
+        private readonly IHttpClientService httpClientService;
 
         /// <summary>
         /// Initializes a new instance of <see cref="TemplatesService"/>.
@@ -73,6 +74,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IAccountsService accountsService,
             IDatabaseHelpersService databaseHelpersService,
             IReplacementsMediator replacementsMediator,
+            IHttpClientService httpClientService,
             IHttpContextAccessor httpContextAccessor = null,
             IActionContextAccessor actionContextAccessor = null,
             IViewComponentHelper viewComponentHelper = null,
@@ -94,6 +96,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.accountsService = accountsService;
             this.databaseHelpersService = databaseHelpersService;
             this.replacementsMediator = replacementsMediator;
+            this.httpClientService = httpClientService;
         }
 
         /// <inheritdoc />
@@ -788,7 +791,6 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
             }
 
             var resultBuilder = new StringBuilder();
-            using var webClient = new WebClient();
             foreach (var fileName in enumerable.Where(fileName => !String.IsNullOrWhiteSpace(fileName)))
             {
                 var extension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -807,7 +809,9 @@ ORDER BY parent5.ordering ASC, parent4.ordering ASC, parent3.ordering ASC, paren
                 var fileLocation = Path.Combine(localDirectory, fileName);
                 if (!File.Exists(fileLocation))
                 {
-                    await webClient.DownloadFileTaskAsync(new Uri($"https://app.wiser.nl/{directory}/cdn/{fileName}"), fileLocation);
+                    await using var readStream = await httpClientService.Client.GetStreamAsync(new Uri($"https://app.wiser.nl/{directory}/cdn/{fileName}"));
+                    await using var writeStream = File.Create(fileLocation);
+                    await readStream.CopyToAsync(writeStream);
                 }
 
                 resultBuilder.AppendLine(await File.ReadAllTextAsync(fileLocation));
