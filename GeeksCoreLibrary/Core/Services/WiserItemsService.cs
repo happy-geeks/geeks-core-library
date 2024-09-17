@@ -669,7 +669,6 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                     databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
                     databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
-
                     // The word "update" at the end of the query is to force the GCL to use the write database (for customers that use multiple databases).
                     // Otherwise the GCL might throw the exception that the item doesn't exist, if it has just been created and not synchronised to the slave database(s) yet.
                     var dataTable = await databaseConnection.GetAsync($"SELECT readonly, entity_type, parent_item_id FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE id = ?itemId #UPDATE", true);
@@ -708,7 +707,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                     var deleteQueryBuilder = new List<string>();
 
                     // Local function for adding the query to update or insert a wiserItem so the correct list.
-                    void AddItemDetailInsertOrUpdateQuery(string parameterSuffix)
+                    async Task AddItemDetailInsertOrUpdateQueryAsync(string parameterSuffix)
                     {
                         var isNewDetail = true;
                         if (!isNewlyCreatedItem)
@@ -719,12 +718,12 @@ WHERE item_id = ?itemId
 AND `key` = ?key{parameterSuffix} 
 AND language_code = ?languageCode{parameterSuffix}
 LIMIT 1";
-                            var data = databaseConnection.GetAsync(addItemInsertOrUpdateQuery);
+                            var data = await databaseConnection.GetAsync(addItemInsertOrUpdateQuery, true);
 
-                            if (data.Result.Rows.Count > 0)
+                            if (data.Rows.Count > 0)
                             {
                                 isNewDetail = false;
-                                databaseConnection.AddParameter($"detailId{parameterSuffix}", data.Result.Rows[0]["id"]);
+                                databaseConnection.AddParameter($"detailId{parameterSuffix}", data.Rows[0]["id"]);
                                 updateQueryBuilder.Add($"UPDATE {tablePrefix}{WiserTableNames.WiserItemDetail} SET `value` = ?value{parameterSuffix}, `long_value` = ?longValue{parameterSuffix}, `groupname` = ?groupName{parameterSuffix}, language_code = ?languageCode{parameterSuffix} WHERE id = ?detailId{parameterSuffix};");
                             }
                         }
@@ -766,7 +765,7 @@ GROUP BY ep.property_name";
                             databaseConnection.AddParameter($"value{AutoIncrementPropertySuffix}{fieldCounter}", previousValue + 1);
                             databaseConnection.AddParameter($"longValue{AutoIncrementPropertySuffix}{fieldCounter}", "");
 
-                            AddItemDetailInsertOrUpdateQuery($"{AutoIncrementPropertySuffix}{fieldCounter}");
+                            await AddItemDetailInsertOrUpdateQueryAsync($"{AutoIncrementPropertySuffix}{fieldCounter}");
 
                             var itemDetail = wiserItem.Details.FirstOrDefault(d => d.Key.Equals(propertyName, StringComparison.OrdinalIgnoreCase));
                             if (itemDetail == null)
@@ -870,7 +869,7 @@ UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET {String.Join(",", updateQuer
                             databaseConnection.AddParameter("key_title", CoreConstants.SeoTitlePropertyName);
                             databaseConnection.AddParameter("value_title", useLongValueColumn ? "" : seoTitle);
                             databaseConnection.AddParameter("longValue_title", !useLongValueColumn ? "" : seoTitle);
-                            AddItemDetailInsertOrUpdateQuery("_title");
+                            await AddItemDetailInsertOrUpdateQueryAsync("_title");
                         }
 
                         wiserItem.Changed = false;
@@ -4736,7 +4735,7 @@ WHERE id = ?saveDetailId";
                                                         WHERE itemlink_id = ?itemLinkId{counter} 
                                                         AND `key` = ?key{counter} 
                                                         AND language_code = ?languageCode{counter}
-                                                        LIMIT 1");
+                                                        LIMIT 1", true);
                 }
                 else
                 {
@@ -4745,7 +4744,7 @@ WHERE id = ?saveDetailId";
                                                         WHERE item_id = ?itemId 
                                                         AND `key` = ?key{counter} 
                                                         AND language_code = ?languageCode{counter}
-                                                        LIMIT 1");
+                                                        LIMIT 1", true);
                 }
 
                 if (queryResult.Rows.Count > 0)
@@ -4933,7 +4932,7 @@ FROM {WiserTableNames.WiserItemLinkDetail}
 WHERE itemlink_id = ?itemLinkId{counter} 
 AND `key` = ?key{SeoPropertySuffix}{counter}
 AND language_code = ?languageCode{counter}
-LIMIT 1");
+LIMIT 1", true);
                 }
                 else
                 {
@@ -4942,7 +4941,7 @@ FROM {tablePrefix}{WiserTableNames.WiserItemDetail}
 WHERE item_id = ?itemId 
 AND `key` = ?key{SeoPropertySuffix}{counter}
 AND language_code = ?languageCode{counter}
-LIMIT 1");
+LIMIT 1", true);
                 }
 
                 if (queryResult.Rows.Count > 0)
