@@ -35,14 +35,13 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns></returns>
         public static T GetValueIfColumnExists<T>(this DataRow dataRow, string columnName, T defaultValue = default)
         {
-            return !dataRow.Table.Columns.Contains(columnName) ? defaultValue : dataRow.Field<T>(columnName);
+            return !dataRow.Table.Columns.Contains(columnName) ? defaultValue : dataRow.Field<T>(columnName) ?? defaultValue;
         }
 
         /// <summary>
         /// Gets a value from a <see cref="DataRow" />, if the columns exists.
         /// If the column does not exist, the default value will be returned.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
         /// <param name="dataRow">The <see cref="DataRow"/> to get the value from.</param>
         /// <param name="columnName">The name of the column to get the value of.</param>
         /// <param name="defaultValue">Optional: The value to return if the column does not exist. The default value is default(T).</param>

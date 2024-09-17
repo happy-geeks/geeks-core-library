@@ -2,6 +2,8 @@ namespace GeeksCoreLibrary.Components.Filter.Models;
 
  public static class Constants
 {
+    internal const string ValueSplitter = ",";
+
     internal const string TemplateFull = @"<section>
 	    <div class=""container"">
             <div class=""row"">
@@ -23,7 +25,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models;
             </div>
         </div>
     </section>";
-    
+
     internal const string TemplateFilterGroup = @"<div class=""filter-widget multi-filter"">
         <input type=""checkbox"" id=""filter-{name}"" class=""hidden"">
         <label for=""filter-{name}"">
@@ -39,15 +41,15 @@ namespace GeeksCoreLibrary.Components.Filter.Models;
             {items:Raw}
         </select>
     </div>";
-    
+
     internal const string TemplateSingleSelectItem = @"<option value=""1"" data-initially-set=""false"" data-filterurl="""" data-imageurl="""" data-hexcolor="""" data-colorimageurl="""" href=""{url}"">{filtername} ({count})</option>";
-    
+
     internal const string TemplateSingleSelectItemSelected = @"<option value=""1"" data-initially-set=""false"" data-filterurl="""" data-imageurl="""" data-hexcolor="""" data-colorimageurl="""" href=""{url}"" selected>{filtername} ({count})</option>";
-   
+
     internal const string TemplateMultiSelectItem = @"<option value=""1"" data-initially-set=""false"" data-filterurl="""" data-imageurl="""" data-hexcolor="""" data-colorimageurl="""" href=""{url}"">{filtername} ({count})</option>";
-    
+
     internal const string TemplateMultiSelectItemSelected = @"<option value=""1"" data-initially-set=""false"" data-filterurl="""" data-imageurl="""" data-hexcolor="""" data-colorimageurl="""" href=""{url}"" selected>{filtername} ({count})</option>";
-    
+
     internal const string TemplateSlider = @"<div class=""filter-widget price-filter"" data-name=""{filtergroup}"" data-min=""{minValue}"" data-max=""{maxValue}"" data-currentmin=""{selectedMin}"" data-currentmax=""{selectedMax}"">
         <input type=""checkbox"" id=""filter-{filtergroup}"" class=""hidden"">
         <label for=""filter-{filtergroup}"">
@@ -73,7 +75,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models;
             </div>
         </div>
     </div>";
-    
+
     internal const string TemplateSummary = @"<div class=""filter-results"">
         <!-- <a href=""{url}"">Wis alle</a> -->
         {items:Raw}
