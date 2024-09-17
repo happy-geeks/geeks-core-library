@@ -14,10 +14,10 @@
         internal const string MainAccountIdColumn = "mainAccountId";
         internal const string PropertyNameColumn = "property_name";
         internal const string RoleIdColumn = "roleId";
-        
+
         // Table names.
         internal const string AuthenticationTokensTableName = "gcl_user_auth_token";
-        
+
         // Query string keys.
         internal const string LogoutQueryStringKey = "logoutUser";
         internal const string UserIdQueryStringKey = "user";
@@ -30,7 +30,7 @@
         internal const string GoogleAuthenticationPinFieldName = "googleAuthenticationPin";
         internal const string GoogleAuthenticationVerificationIdFieldName = "googleAuthenticationVerificationId";
         internal const string ExternalLoginButtonOrFieldName = "externalLogin";
-        
+
         // Cookies and sessions.
         public const string CookieName = "gcl_user_cookie";
         internal const string GoogleAnalyticsCookieName = "_ga";
@@ -107,9 +107,9 @@ ON DUPLICATE KEY UPDATE `value` = IF(?success, 0, `value` + 1);
 INSERT INTO wiser_itemdetail (item_id, `key`, `value`)
 VALUES (?userId, ?lastLoginAttemptFieldName, NOW())
 ON DUPLICATE KEY UPDATE `value` = NOW();";
-        
+
         internal const string DefaultLoginJavascript = @"function setupHttpRequest{contentId}(container, method, extraQueryStringParameters) {
-    var url = '/GclComponent.gcl?contentId={contentId}&callMethod=' + method + '&trace=false&ombouw=false&type=Account' + (extraQueryStringParameters || '');
+    var url = '/GclComponent.gcl?contentId={contentId}&callMethod=' + method + '&ombouw=false&type=Account' + (extraQueryStringParameters || '');
     
     var xhr = new XMLHttpRequest();
     xhr.open('POST', url);

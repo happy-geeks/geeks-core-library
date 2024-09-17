@@ -87,7 +87,7 @@ namespace GeeksCoreLibrary.Components.Account.Models
 	let selectedSubAccount = 0;
 	
 	function setupHttpRequest(container, method, extraQueryStringParameters, selector) {
-		const url = '/GclComponent.gcl?contentId={contentId}&callMethod=' + method + '&trace=false&ombouw=false&type=Account' + (extraQueryStringParameters || '');
+		const url = '/GclComponent.gcl?contentId={contentId}&callMethod=' + method + '&ombouw=false&type=Account' + (extraQueryStringParameters || '');
 		
 		const xhr = new XMLHttpRequest();
 		xhr.open('POST', url);
