@@ -7,6 +7,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.ItemFiles.Models;
+using Constants = GeeksCoreLibrary.Modules.ItemFiles.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 {

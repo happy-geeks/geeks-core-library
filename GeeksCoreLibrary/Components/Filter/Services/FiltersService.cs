@@ -27,13 +27,13 @@ namespace GeeksCoreLibrary.Components.Filter.Services
         private readonly IObjectsService objectsService;
         private readonly ILogger<FiltersService> logger;
         private readonly ILanguagesService languagesService;
-        private readonly IWiserItemsService wiserItemsService;
+        private readonly IEntityTypesService entityTypesService;
 
         public FiltersService(IDatabaseConnection databaseConnection,
             IObjectsService objectsService,
             ILogger<FiltersService> logger,
             ILanguagesService languagesService,
-            IWiserItemsService wiserItemsService,
+            IEntityTypesService entityTypesService,
             IHttpContextAccessor httpContextAccessor = null)
         {
             this.databaseConnection = databaseConnection;
@@ -41,7 +41,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
             this.objectsService = objectsService;
             this.logger = logger;
             this.languagesService = languagesService;
-            this.wiserItemsService = wiserItemsService;
+            this.entityTypesService = entityTypesService;
         }
 
         /// <inheritdoc />
@@ -174,8 +174,8 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                             continue;
                         }
 
-                        var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(filterGroup.EntityName);
-                        var connectedEntityTablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(filterGroup.ConnectedEntity);
+                        var tablePrefix = await entityTypesService.GetTablePrefixForEntityAsync(filterGroup.EntityName);
+                        var connectedEntityTablePrefix = await entityTypesService.GetTablePrefixForEntityAsync(filterGroup.ConnectedEntity);
 
                         if (!String.IsNullOrEmpty(filterGroup.AdvancedFilter))
                         {
@@ -655,9 +655,9 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 filterGroup.ConnectedEntity = row.GetValueIfColumnExists("connectedentity", filterGroup.ConnectedEntity);
                 filterGroup.ConnectedEntityProperty = row.GetValueIfColumnExists("connectedentityproperty", filterGroup.ConnectedEntityProperty);
                 filterGroup.ConnectedEntityLinkType = row.GetValueIfColumnExists("connectedentitylinktype", filterGroup.ConnectedEntityLinkType);
-                filterGroup.IsMultiLanguage = row.GetValueIfColumnExists("ismultilanguage", filterGroup.IsMultiLanguage);
+                filterGroup.IsMultiLanguage = row.GetValueIfColumnExists("ismultilanguage", filterGroup.IsMultiLanguage ? "1" : "0") == "1";
                 filterGroup.QueryString = row.GetValueIfColumnExists("querystring", filterGroup.QueryString);
-                filterGroup.MinimumItemsRequired = row.GetValueIfColumnExists("minimumitemsrequired", filterGroup.MinimumItemsRequired);
+                filterGroup.MinimumItemsRequired = Int32.Parse(row.GetValueIfColumnExists("minimumitemsrequired", filterGroup.MinimumItemsRequired.ToString()));
                 filterGroup.UseAggregationTable = row.GetValueIfColumnExists("useaggregationtable", filterGroup.UseAggregationTable ? "1" : "0") == "1";
                 filterGroup.GroupTemplate = row.GetValueIfColumnExists("grouptemplate", filterGroup.GroupTemplate);
                 filterGroup.ItemTemplate = row.GetValueIfColumnExists("itemtemplate", filterGroup.ItemTemplate);

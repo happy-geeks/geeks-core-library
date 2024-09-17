@@ -53,13 +53,17 @@
         }
         if (!String.IsNullOrWhiteSpace(Model?.Javascript?.GeneralInlineHeadJavaScript))
         {
-            <script>@Html.Raw(Model.Javascript.GeneralInlineHeadJavaScript)</script>
+            <script>
+                @Html.Raw(Model.Javascript.GeneralInlineHeadJavaScript)
+            </script>
         }
         if (Model?.Javascript?.PageInlineHeadJavascript != null)
         {
             foreach (var javascript in Model.Javascript.PageInlineHeadJavascript)
             {
-                <script>@Html.Raw(javascript)</script>
+                <script>
+                    @Html.Raw(javascript)
+                </script>
             }
         }
     }
@@ -111,7 +115,9 @@
         {
             foreach (var javascript in Model.Javascript.PagePluginInlineJavascriptSnippets)
             {
-                <script>@Html.Raw(javascript)</script>
+                <script>
+                    @Html.Raw(javascript)
+                </script>
             }
         }
     }
@@ -163,7 +169,9 @@
         }
         if (!String.IsNullOrWhiteSpace(Model?.GoogleAnalytics?.InlineHeadJavaScript))
         {
-            <script>@Html.Raw(Model.GoogleAnalytics.InlineHeadJavaScript)</script>
+            <script>
+                @Html.Raw(Model.GoogleAnalytics.InlineHeadJavaScript)
+            </script>
         }
     }
 }

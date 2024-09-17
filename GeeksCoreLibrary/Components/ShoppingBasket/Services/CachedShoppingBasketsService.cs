@@ -9,6 +9,7 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using LazyCache;
 using Microsoft.Extensions.Options;
+using Constants = GeeksCoreLibrary.Components.ShoppingBasket.Models.Constants;
 using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
@@ -92,7 +93,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             return await shoppingBasketsService.MakeConceptOrderFromBasketAsync(shoppingBasket, basketLines, settings, basketToConceptOrderMethod);
         }
-        
+
         /// <inheritdoc />
         public async Task RevertConceptOrderToBasketAsync(WiserItemModel conceptOrder, List<WiserItemModel> conceptOrderLines)
         {
@@ -104,7 +105,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         {
             await shoppingBasketsService.ConvertConceptOrderToOrderAsync(conceptOrder, settings);
         }
-        
+
         /// <inheritdoc />
         public async Task<string> ReplaceBasketInTemplateAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string template, bool replaceUserAccountVariables = false, bool stripNotExistingVariables = true, IDictionary<string, string> userDetails = null, bool isForConfirmationEmail = false, IDictionary<string, object> additionalReplacementData = null, bool forQuery = false)
         {

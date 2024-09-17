@@ -410,17 +410,11 @@ namespace GeeksCoreLibrary.Core.Services
         {
             return await wiserItemsService.GetDedicatedTablePrefixesAsync();
         }
-        
+
         /// <inheritdoc />
         public async Task<string> GetTablePrefixForEntityAsync(string entityType)
         {
-            return await GetTablePrefixForEntityAsync(this, entityType);
-        }
-
-        /// <inheritdoc />
-        public async Task<string> GetTablePrefixForEntityAsync(IWiserItemsService service, string entityType)
-        {
-            return await wiserItemsService.GetTablePrefixForEntityAsync(service, entityType);
+            return await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
         }
 
         /// <inheritdoc />
@@ -489,13 +483,7 @@ namespace GeeksCoreLibrary.Core.Services
         /// <inheritdoc />
         public async Task<string> GetTablePrefixForLinkAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null)
         {
-            return await GetTablePrefixForLinkAsync(this, linkType, sourceEntityType, destinationEntityType);
-        }
-
-        /// <inheritdoc />
-        public async Task<string> GetTablePrefixForLinkAsync(IWiserItemsService service, int linkType = 0, string sourceEntityType = null, string destinationEntityType = null)
-        {
-            return await wiserItemsService.GetTablePrefixForLinkAsync(service, linkType, sourceEntityType, destinationEntityType);
+            return await wiserItemsService.GetTablePrefixForLinkAsync(linkType, sourceEntityType, destinationEntityType);
         }
 
         /// <inheritdoc />

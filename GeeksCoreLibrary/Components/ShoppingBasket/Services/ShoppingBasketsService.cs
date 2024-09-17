@@ -28,6 +28,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
+using Constants = GeeksCoreLibrary.Components.ShoppingBasket.Models.Constants;
 using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Services

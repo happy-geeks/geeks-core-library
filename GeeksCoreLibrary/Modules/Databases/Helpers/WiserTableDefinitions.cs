@@ -4,6 +4,7 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Enums;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using MySqlConnector;
+using Constants = GeeksCoreLibrary.Modules.Databases.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.Databases.Helpers;
 

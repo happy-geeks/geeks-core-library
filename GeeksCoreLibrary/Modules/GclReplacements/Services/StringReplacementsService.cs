@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
+using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 {
@@ -100,7 +101,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
                 foreach (Match m in regex.Matches(input))
                 {
                     var value = m.Groups[1].Value;
-                    
+
                     // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as a system variable.
                     var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}", defaultFormatter: defaultFormatter);
                     foreach (var variable in replacementVariables)
