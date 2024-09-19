@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
@@ -13,6 +12,7 @@ using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -56,6 +56,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly ILanguagesService languagesService;
         private readonly IFiltersService filtersService;
         private readonly IAccountsService accountsService;
+        private readonly IHttpClientService httpClientService;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
@@ -68,6 +69,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IObjectsService objectsService,
             ILanguagesService languagesService,
             IAccountsService accountsService,
+            IHttpClientService httpClientService,
             IHttpContextAccessor httpContextAccessor = null,
             IActionContextAccessor actionContextAccessor = null,
             IWebHostEnvironment webHostEnvironment = null,
@@ -87,6 +89,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.objectsService = objectsService;
             this.languagesService = languagesService;
             this.accountsService = accountsService;
+            this.httpClientService = httpClientService;
         }
 
         /// <inheritdoc />
@@ -709,7 +712,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             var resultBuilder = new StringBuilder();
-            using var webClient = new WebClient();
             foreach (var fileName in enumerable.Where(fileName => !String.IsNullOrWhiteSpace(fileName)))
             {
                 var extension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -728,7 +730,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var fileLocation = Path.Combine(localDirectory, fileName);
                 if (!File.Exists(fileLocation))
                 {
-                    await webClient.DownloadFileTaskAsync(new Uri($"https://app.wiser.nl/{directory}/cdn/{fileName}"), fileLocation);
+                    await using var readStream = await httpClientService.Client.GetStreamAsync(new Uri($"https://app.wiser.nl/{directory}/cdn/{fileName}"));
+                    await using var writeStream = File.Create(fileLocation);
+                    await readStream.CopyToAsync(writeStream);
                 }
 
                 resultBuilder.AppendLine(await File.ReadAllTextAsync(fileLocation));

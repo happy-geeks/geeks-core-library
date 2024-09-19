@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Data;
 using System.IO;
-using System.Net;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
@@ -29,11 +28,13 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly IWiserItemsService wiserItemsService;
+        private readonly IHttpClientService httpClientService;
 
         public ItemFilesService(ILogger<ItemFilesService> logger,
             IDatabaseConnection databaseConnection,
             IObjectsService objectsService,
             IWiserItemsService wiserItemsService,
+            IHttpClientService httpClientService,
             IHttpContextAccessor httpContextAccessor = null,
             IWebHostEnvironment webHostEnvironment = null)
         {
@@ -43,6 +44,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             this.httpContextAccessor = httpContextAccessor;
             this.webHostEnvironment = webHostEnvironment;
             this.wiserItemsService = wiserItemsService;
+            this.httpClientService = httpClientService;
         }
 
         /// <inheritdoc />
@@ -410,8 +412,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                         if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
                         {
                             var requestUri = new Uri(contentUrl);
-                            using var webClient = new WebClient();
-                            fileBytes = webClient.DownloadData(requestUri);
+                            fileBytes = await httpClientService.Client.GetByteArrayAsync(requestUri);
                         }
                         else
                         {
@@ -487,8 +488,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                     if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
                     {
                         var requestUri = new Uri(contentUrl);
-                        using var webClient = new WebClient();
-                        fileBytes = webClient.DownloadData(requestUri);
+                        fileBytes = await httpClientService.Client.GetByteArrayAsync(requestUri);
                     }
                     else
                     {
