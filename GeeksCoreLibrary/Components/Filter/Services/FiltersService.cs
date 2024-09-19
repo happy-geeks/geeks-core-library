@@ -608,10 +608,10 @@ namespace GeeksCoreLibrary.Components.Filter.Services
 
                 FilterGroup filterGroup;
                 var filterName = row.Field<string>("filtername");
-                if (dataTable.Columns.Contains("filtergroupnameseo"))
+                var filterGroupNameSeo = !dataTable.Columns.Contains("filtergroupnameseo") ? "" : row.Field<string>("filtergroupnameseo");
+                if (!String.IsNullOrWhiteSpace(filterGroupNameSeo))
                 {
-                    var filterGroupNameSeo = row.Field<string>("filtergroupnameseo");
-                    filterGroup = !String.IsNullOrEmpty(filterGroupNameSeo) ? new FilterGroup(filterName, filterGroupNameSeo) : new FilterGroup(filterName);
+                    filterGroup = new FilterGroup(filterName, filterGroupNameSeo);
                     filterGroup.IsGroupFilter = true;
                 }
                 else
