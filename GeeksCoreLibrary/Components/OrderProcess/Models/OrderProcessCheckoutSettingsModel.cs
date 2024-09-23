@@ -57,14 +57,14 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         internal string TemplateFieldError { get; }
 
         [DefaultValue(@"<div id='container_{fieldId}' class='field {errorClass} {fieldClass}'>
-    <input type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern} value='{value}' {tabindex} />
+    <input type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern:Raw} value='{value}' {tabindex} />
     [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
     {error}
 </div>")]
         internal string TemplateInputField { get; }
 
         [DefaultValue(@"<div id='container_{fieldId}' class='field multi-line {errorClass} {fieldClass}'>
-    <textarea type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern} {tabindex}>{value}</textarea>
+    <textarea type='{inputType}' id='{fieldId}' name='{fieldId}' placeholder='{placeholder}' {required} {pattern:Raw} {tabindex}>{value}</textarea>
     [if({label}!)]<label for='{fieldId}'>{label}</label>[endif]
     {error}
 </div>")]
