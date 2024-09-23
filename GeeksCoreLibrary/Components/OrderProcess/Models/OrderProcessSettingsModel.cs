@@ -1,5 +1,4 @@
-﻿using EvoPdf;
-using GeeksCoreLibrary.Components.OrderProcess.Enums;
+﻿using GeeksCoreLibrary.Components.OrderProcess.Enums;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Models
 {

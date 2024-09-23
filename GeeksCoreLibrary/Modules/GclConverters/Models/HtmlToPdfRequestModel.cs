@@ -1,4 +1,4 @@
-﻿using EvoPdf;
+﻿using EvoPdf.Chromium;
 
 namespace GeeksCoreLibrary.Modules.GclConverters.Models
 {
