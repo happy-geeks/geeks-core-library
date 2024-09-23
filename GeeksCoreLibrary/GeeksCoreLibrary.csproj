@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
+    <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -17,6 +18,11 @@
 	<PackageLicenseFile>LICENSE</PackageLicenseFile>
 	<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
 	<LangVersion>default</LangVersion>
+  </PropertyGroup>
+
+  <!-- When debugging, set the runtime identifier to win-x64, so that the IDE knows which settings to use for conditional NuGet packages. -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
@@ -69,6 +75,16 @@
     <PackageReference Include="WebMarkupMin.AspNetCore7" Version="2.17.0" />
     <PackageReference Include="ZXing.Net" Version="0.16.9" />
     <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.14" />
+  </ItemGroup>
+
+  <!-- Windows-specific settings -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.0.1" />
+  </ItemGroup>
+
+  <!-- Linux-specific settings -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
+    <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.0.1" />
   </ItemGroup>
 
   <ItemGroup>
