@@ -415,14 +415,13 @@ public static class HttpContextHelpers
     /// </para>
     /// </summary>
     /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
-    /// <param name="alwaysHttps">Give true to always return the https scheme.</param>
     /// <returns>A <see cref="Uri"/> containing the base URL.</returns>
-    public static Uri GetBaseUri(HttpContext httpContext, bool alwaysHttps = false)
+    public static Uri GetBaseUri(HttpContext httpContext)
     {
         
         return httpContext?.Request == null
             ? new Uri("https://localhost/")
-            : new Uri($"{(alwaysHttps ? "https" : httpContext.Request.Scheme)}://{httpContext.Request.Host.Value}{httpContext.Request.PathBase.Value}");
+            : new Uri($"https://{httpContext.Request.Host.Value}{httpContext.Request.PathBase.Value}");
     }
 
     public static ActionContext CreateActionContext(HttpContext httpContext)
