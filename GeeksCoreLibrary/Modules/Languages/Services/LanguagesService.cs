@@ -13,6 +13,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Models;
+using Constants = GeeksCoreLibrary.Modules.Languages.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.Languages.Services
 {
@@ -42,14 +43,14 @@ namespace GeeksCoreLibrary.Modules.Languages.Services
             this.httpContextAccessor = httpContextAccessor;
             this.gclSettings = gclSettings.Value;
         }
-        
+
         /// <inheritdoc />
         public async Task<string> GetTranslationAsync(string original, string languageCode = null, string defaultValue = null)
         {
             try
             {
                 languageCode ??= await GetLanguageCodeAsync();
-                
+
                 databaseConnection.AddParameter("gcl_languageCode", languageCode);
                 databaseConnection.AddParameter("gcl_original", original);
                 databaseConnection.AddParameter("gcl_groupName", Constants.TranslationsGroupName);

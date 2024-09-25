@@ -9,6 +9,7 @@ using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Moq;
 using NUnit.Framework;
 using FluentAssertions;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,6 +27,8 @@ public class WiserItemsServiceTests
     private Mock<IDatabaseHelpersService> databaseHelpersServiceMock;
     private IOptions<GclSettings> gclSettingsMock;
     private Mock<ILogger<WiserItemsService>> loggerMock;
+    private Mock<IEntityTypesService> entityTypesServiceMock;
+    private Mock<ILinkTypesService> linkTypesServiceMock;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
     [SetUp]
@@ -39,9 +42,11 @@ public class WiserItemsServiceTests
         databaseHelpersServiceMock = new Mock<IDatabaseHelpersService>();
         gclSettingsMock = Options.Create(new GclSettings());
         loggerMock = new Mock<ILogger<WiserItemsService>>();
+        entityTypesServiceMock = new Mock<IEntityTypesService>();
+        linkTypesServiceMock = new Mock<ILinkTypesService>();
 
         // Create the service that we're testing.
-        wiserItemsService = new WiserItemsService(databaseConnectionMock.Object, objectsServiceMock.Object, stringReplacementsServiceMock.Object, dataSelectorsServiceMock.Object, databaseHelpersServiceMock.Object, gclSettingsMock, loggerMock.Object);
+        wiserItemsService = new WiserItemsService(databaseConnectionMock.Object, objectsServiceMock.Object, stringReplacementsServiceMock.Object, dataSelectorsServiceMock.Object, databaseHelpersServiceMock.Object, gclSettingsMock, loggerMock.Object, entityTypesServiceMock.Object, linkTypesServiceMock.Object);
 
         // Setup the mocks.
         databaseConnectionMock.Setup(x => x.GetAsync(It.Is<string>(query => query.Contains("SELECT permission.permissions")), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))

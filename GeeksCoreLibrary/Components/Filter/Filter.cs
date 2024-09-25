@@ -352,7 +352,7 @@ namespace GeeksCoreLibrary.Components.Filter
                                 filterItemsQueryNew += " UNION ALL ";
                             }
 
-                            filterItemsQueryNew += $"({filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart).Replace("{filterGroup}", $"AND f.filtergroup='{filterGroup.Value.GetParamKey().ToMySqlSafeValue(false)}'")})";
+                            filterItemsQueryNew += $"({filterItemsQuery.Replace("{filters}", $"{queryPart.JoinPart}{searchPart}").Replace("{filterGroup}", $"AND f.filtergroup='{filterGroup.Value.GetParamKey().ToMySqlSafeValue(false)}'")})";
                         }
                         else
                         {
@@ -367,7 +367,7 @@ namespace GeeksCoreLibrary.Components.Filter
                     else if (!String.IsNullOrEmpty(notActiveFilters)) //Active and no active filters combined
                     {
                         var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
-                        filterItemsQueryNew += $" UNION ALL ({filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart).Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
+                        filterItemsQueryNew += $" UNION ALL ({filterItemsQuery.Replace("{filters}", $"{queryPart.JoinPart}{searchPart}").Replace("{filterGroup}", "AND f.filtergroup IN (" + notActiveFilters.TrimEnd(',') + ")")})";
                     }
 
                     filterItemsQuery = filterItemsQueryNew;
@@ -376,10 +376,10 @@ namespace GeeksCoreLibrary.Components.Filter
                 {
                     var queryPart = await filterService.GetFilterQueryPartAsync(true, filterGroups);
 
-                    filterItemsQuery = filterItemsQuery.Replace("{filters}", queryPart.JoinPart + searchPart);
-                    filterItemsQuery = filterItemsQuery.Replace("{filtersWhere}", queryPart.WherePart);
-                    filterItemsQuery = filterItemsQuery.Replace("{filtersSelectStart}", queryPart.SelectPartStart);
-                    filterItemsQuery = filterItemsQuery.Replace("{filtersSelectEnd}", queryPart.SelectPartEnd);
+                    filterItemsQuery = filterItemsQuery.Replace("{filters}", $"{queryPart.JoinPart}{searchPart}");
+                    filterItemsQuery = filterItemsQuery.Replace("{filtersWhere}", queryPart.WherePart.ToString());
+                    filterItemsQuery = filterItemsQuery.Replace("{filtersSelectStart}", queryPart.SelectPartStart.ToString());
+                    filterItemsQuery = filterItemsQuery.Replace("{filtersSelectEnd}", queryPart.SelectPartEnd.ToString());
                 }
             }
 

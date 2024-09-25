@@ -15,6 +15,7 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.PostalServices.PostNL.Interfaces;
 using GeeksCoreLibrary.Modules.PostalServices.PostNL.Models;
+using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
 {

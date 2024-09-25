@@ -298,11 +298,11 @@ namespace GeeksCoreLibrary.Components.Repeater
                     // Replace the {filters} variable by the joins from the filter component
                     if (query.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
                     {
-                        query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart, StringComparison.OrdinalIgnoreCase);
+                        query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart.ToString(), StringComparison.OrdinalIgnoreCase);
                     }
                     if (query.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
                     {
-                        query = Regex.Replace(query, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart);
+                        query = Regex.Replace(query, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart.ToString());
                     }
 
                     // Replace the {page_limit} variable for paging.
@@ -320,7 +320,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                             {
                                 pageNumber = 1;
                             }
-                            
+
                             var itemsPerPage = Settings.ItemsPerPage;
                             if (UInt32.TryParse(httpContextAccessor?.HttpContext?.Request.Query["itemsPerPage"].ToString(), out var itemsPerPageOverrule))
                             {
@@ -587,7 +587,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                 };
                 string templateHtml;
 
-                // Add the header template. 
+                // Add the header template.
                 if ((Settings.LegacyMode && depth < templateCollection.Keys.Count - 1) || index == 0)
                 {
                     templateHtml = templateCollection[currentIdentifier].HeaderTemplate;

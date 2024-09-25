@@ -453,7 +453,7 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="entityType">Optional: The entity type of the item that you're getting the template of. This is needed for entities that have a dedicated table.</param>
         /// <returns>A Tuple containing the HTML template and DataRow.</returns>
         Task<(string template, DataRow dataRow)> GetTemplateAndDataForItemAsync(IWiserItemsService wiserItemsService, ulong itemId, string entityType = null);
-        
+
         /// <summary>
         /// Get the link type number for wiser_itemlink based on 2 connecting entity types.
         /// This will look in the table wiser_link, so make sure that table contains the correct data.
@@ -751,7 +751,7 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// </summary>
         /// <returns>a list of dedicated prefixes strings, or an empty list none have been found.</returns>
         Task<List<string>> GetDedicatedTablePrefixesAsync();
-        
+
         /// <summary>
         /// Gets the prefix for the wiser_item and wiser_itemdetail tables for a specific entity type.
         /// Certain entity types can have dedicated tables, they won't use wiser_item and wiser_itemdetail, but something like basket_wiser_item and basket_wiser_itemdetail instead.
@@ -761,17 +761,6 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="entityType">The entity type name.</param>
         /// <returns>The table prefix for the given entity type. Returns an empty string if the entity type uses the default tables.</returns>
         Task<string> GetTablePrefixForEntityAsync(string entityType);
-
-        /// <summary>
-        /// Gets the prefix for the wiser_item and wiser_itemdetail tables for a specific entity type.
-        /// Certain entity types can have dedicated tables, they won't use wiser_item and wiser_itemdetail, but something like basket_wiser_item and basket_wiser_itemdetail instead.
-        /// This function checks wiser_entity if the entity type has dedicated tables and returns the prefix for those tables.
-        /// If it doesn't have a dedicated table, an empty string will be returned.
-        /// </summary>
-        /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
-        /// <param name="entityType">The entity type name.</param>
-        /// <returns>The table prefix for the given entity type. Returns an empty string if the entity type uses the default tables.</returns>
-        Task<string> GetTablePrefixForEntityAsync(IWiserItemsService wiserItemsService, string entityType);
 
         /// <summary>
         /// Gets the prefix for the wiser_item and wiser_itemdetail tables for a specific entity type.
@@ -807,14 +796,6 @@ namespace GeeksCoreLibrary.Core.Interfaces
         Task<LinkSettingsModel> GetLinkTypeSettingsByIdAsync(int linkId);
 
         /// <summary>
-        /// Gets the settings for a link type by id. These settings will be cached for 1 hour.
-        /// </summary>
-        /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
-        /// <param name="linkId">The id of the link type</param>
-        /// <returns>A <see cref="EntitySettingsModel"/> containing all settings of the entity type.</returns>
-        Task<LinkSettingsModel> GetLinkTypeSettingsByIdAsync(IWiserItemsService wiserItemsService, int linkId);
-
-        /// <summary>
         /// Gets the prefix for the wiser_itemlink and wiser_itemlinkdetail tables for a specific link type.
         /// Certain link types can have dedicated tables, they won't use wiser_itemlink and wiser_itemlinkdetail, but something like 123_wiser_itemlink and 123_wiser_itemlinkdetail instead.
         /// This function checks wiser_link if the entity type has dedicated tables and returns the prefix for those tables.
@@ -826,20 +807,6 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <exception cref="ArgumentException">If linkType, sourceEntityType and destinationEntityType are all empty.</exception>
         /// <returns>The table prefix for the given link type. Returns an empty string if the link type uses the default tables.</returns>
         Task<string> GetTablePrefixForLinkAsync(int linkType = 0, string sourceEntityType = null, string destinationEntityType = null);
-
-        /// <summary>
-        /// Gets the prefix for the wiser_itemlink and wiser_itemlinkdetail tables for a specific link type.
-        /// Certain link types can have dedicated tables, they won't use wiser_itemlink and wiser_itemlinkdetail, but something like 123_wiser_itemlink and 123_wiser_itemlinkdetail instead.
-        /// This function checks wiser_link if the entity type has dedicated tables and returns the prefix for those tables.
-        /// If it doesn't have a dedicated table, an empty string will be returned.
-        /// </summary>
-        /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
-        /// <param name="linkType">Optional: The type number of the link type.</param>
-        /// <param name="sourceEntityType">Optional: The entity type of the source item.</param>
-        /// <param name="destinationEntityType">Optional: The entity type of the destination item.</param>
-        /// <exception cref="ArgumentException">If linkType, sourceEntityType and destinationEntityType are all empty.</exception>
-        /// <returns>The table prefix for the given link type. Returns an empty string if the link type uses the default tables.</returns>
-        Task<string> GetTablePrefixForLinkAsync(IWiserItemsService wiserItemsService, int linkType = 0, string sourceEntityType = null, string destinationEntityType = null);
 
         /// <summary>
         /// Gets the prefix for the wiser_itemlink and wiser_itemlinkdetail tables for a specific link type.

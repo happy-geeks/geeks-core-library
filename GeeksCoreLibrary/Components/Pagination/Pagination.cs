@@ -151,11 +151,11 @@ namespace GeeksCoreLibrary.Components.Pagination
                 // Replace the {filters} variable by the joins from the filter component
                 if (parsedQuery.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
                 {
-                    parsedQuery = parsedQuery.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart);
+                    parsedQuery = parsedQuery.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart.ToString());
                 }
                 if (parsedQuery.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
                 {
-                    parsedQuery = Regex.Replace(parsedQuery, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart);
+                    parsedQuery = Regex.Replace(parsedQuery, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart.ToString());
                 }
 
                 // Perform replacements on the query.

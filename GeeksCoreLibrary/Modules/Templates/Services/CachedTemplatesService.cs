@@ -28,6 +28,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services
 {

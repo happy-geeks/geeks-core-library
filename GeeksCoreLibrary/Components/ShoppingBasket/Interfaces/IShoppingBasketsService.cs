@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.Models;
+using Constants = GeeksCoreLibrary.Components.ShoppingBasket.Models.Constants;
 using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
@@ -384,7 +385,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketLineStockActionMessage">A message that it shown if there isn't enough stock for a product.</param>
         /// <returns>The rendered HTML that can be printed.</returns>
         Task<(string Html, string PdfDocumentOptions)> RenderBasketHtmlAsync(ulong templateId, WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string basketLineValidityMessage = "", string basketLineStockActionMessage = "");
-        
+
         /// <summary>
         /// Gets the HTML template from database, based on template ID, and render/parse it so that it can be printed.
         /// </summary>
