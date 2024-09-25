@@ -57,7 +57,6 @@ namespace GeeksCoreLibrary.Components.Filter.Services
             try
             {
                 var output = new QueryPartModel();
-                var queryJoinPart = new StringBuilder();
                 var filters = new SortedList<string, string>();
                 var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring");
                 var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2", defaultResult: "0")).Equals("1");
@@ -181,7 +180,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                         {
                             foreach (var filter in filterGroup.GetAdvancedFilters.Where(filter => filterValues.Split(Constants.ValueSplitter).Contains(filter.Key, StringComparer.OrdinalIgnoreCase)))
                             {
-                                queryJoinPart.AppendLine(filter.Value);
+                                output.JoinPart.AppendLine(filter.Value);
                             }
 
                             isAdvancedFilter = true;
@@ -192,20 +191,20 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                             {
                                 if (filterValues == "LEFT JOIN")
                                 {
-                                    queryJoinPart.Append("LEFT ");
+                                    output.JoinPart.Append("LEFT ");
                                 }
 
                                 if (!String.IsNullOrEmpty(filterGroup.CustomSelect))
                                 {
                                     var customSelectSplit = filterGroup.CustomSelect.Split("{select}");
-                                    output.SelectPartStart += customSelectSplit[0];
+                                    output.SelectPartStart.Append(customSelectSplit[0]);
                                     if (customSelectSplit.Length > 1)
                                     {
-                                        output.SelectPartEnd += filterGroup.CustomSelect.Split("{select}")[1];
+                                        output.SelectPartEnd.Append(filterGroup.CustomSelect.Split("{select}")[1]);
                                     }
                                 }
                             }
-                            queryJoinPart.AppendLine(filterGroup.CustomJoin);
+                            output.JoinPart.AppendLine(filterGroup.CustomJoin);
                             isAdvancedFilter = true;
                         }
                         else
@@ -224,15 +223,15 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                 {
                                     if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
                                     {
-                                        queryJoinPart.Append("LEFT ");
+                                        output.JoinPart.Append("LEFT ");
 
                                         if (!String.IsNullOrEmpty(filterGroup.QueryString))
                                         {
-                                            output.WherePart += $"AND (fi{filterCounter}.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}";
+                                            output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
                                         }
                                         else
                                         {
-                                            output.WherePart += $"AND (fi{filterCounter}.id IS NOT NULL OR filterName.`value`={filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}";
+                                            output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR filterName.`value`={filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
                                         }
                                     }
 
@@ -240,30 +239,30 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                     {
                                         if (filterGroup.IsMultiLanguage)
                                         {
-                                            queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                            output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                         }
                                         else
                                         {
-                                            queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                            output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                         }
                                     }
                                     else if (filterGroup.IsMultiLanguage)
                                     {
-                                        queryJoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
+                                        output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
                                     }
                                     else
                                     {
-                                        queryJoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
+                                        output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
                                     }
 
                                     var joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValue, filterGroup, false);
                                     if (joinPart != "")
                                     {
-                                        queryJoinPart.Append($"AND {joinPart}");
+                                        output.JoinPart.Append($"AND {joinPart}");
                                     }
-                                    queryJoinPart.AppendLine();
+                                    output.JoinPart.AppendLine();
 
-                                    filterCounter += 1;
+                                    filterCounter++;
                                     // So the AppendFilterJoinPart will not be called and the filterCounter will not be increased.
                                     isAdvancedFilter = true;
                                 }
@@ -274,7 +273,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                 {
                                     if (!filterGroup.UseAggregationTable)
                                     {
-                                        queryJoinPart.Append("LEFT ");
+                                        output.JoinPart.Append("LEFT ");
                                     }
                                     if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity))
                                     {
@@ -282,33 +281,33 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         {
                                             if (!String.IsNullOrEmpty(filterGroup.QueryString))
                                             {
-                                                output.WherePart += $"AND (fi{filterCounter}d.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}";
+                                                output.WherePart.Append($"AND (fi{filterCounter}d.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
                                             }
                                             else
                                             {
-                                                output.WherePart += $"AND (fi{filterCounter}d.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}";
+                                                output.WherePart.Append($"AND (fi{filterCounter}d.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
                                             }
 
                                         }
                                         else if (!String.IsNullOrEmpty(filterGroup.QueryString))
                                         {
-                                            output.WherePart += $"AND (fi{filterCounter}i.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}";
+                                            output.WherePart.Append($"AND (fi{filterCounter}i.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
                                         }
 
                                         else
                                         {
-                                            output.WherePart += $"AND (fi{filterCounter}i.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}";
+                                            output.WherePart.Append($"AND (fi{filterCounter}i.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
                                         }
 
                                     }
                                     else if (!String.IsNullOrEmpty(filterGroup.QueryString))
                                     {
-                                        output.WherePart += $"AND (fi{filterCounter}.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}";
+                                        output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
                                     }
 
                                     else
                                     {
-                                        output.WherePart += $"AND (fi{filterCounter}.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}";
+                                        output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
                                     }
 
                                 }
@@ -320,43 +319,43 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                         if (filterGroup.GetParamKey() != forActiveFilter) //Don't include the JOIN of the filter for which the query - part is requested
                                         {
                                             // Join to table with alias "f" in FilterItemsQuery
-                                            queryJoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : $"_{languagesService.CurrentLanguageCode.ToMySqlSafeValue(false)}")}` f{filterCounter} ON f{filterCounter}.category_id = f.category_id AND f{filterCounter}.product_id = f.product_id ");
+                                            output.JoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : $"_{languagesService.CurrentLanguageCode.ToMySqlSafeValue(false)}")}` f{filterCounter} ON f{filterCounter}.category_id = f.category_id AND f{filterCounter}.product_id = f.product_id ");
                                         }
                                     }
                                     else
                                     {
                                         // Join to product-part and category-part given to function (from variable in overview query)
-                                        queryJoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : $"_{languagesService.CurrentLanguageCode.ToMySqlSafeValue(false)}")}` f{filterCounter} ON f{filterCounter}.category_id = {categoryJoinPart} AND f{filterCounter}.product_id = {productJoinPart} ");
+                                        output.JoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : $"_{languagesService.CurrentLanguageCode.ToMySqlSafeValue(false)}")}` f{filterCounter} ON f{filterCounter}.category_id = {categoryJoinPart} AND f{filterCounter}.product_id = {productJoinPart} ");
                                     }
 
                                 }
                                 else if (String.Equals(filterNameFromGroup, "itemtitle", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    queryJoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItem} fi{filterCounter} ON fi{filterCounter}.id = {filterConnectionPart} ");
+                                    output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItem} fi{filterCounter} ON fi{filterCounter}.id = {filterConnectionPart} ");
                                 }
                                 else if (filterConnectionPartIsLinkType)
                                 {
                                     if (filterGroup.IsMultiLanguage)
                                     {
-                                        queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                        output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                     }
                                     else
                                     {
-                                        queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                        output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                     }
 
                                 }
                                 else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
                                 {
-                                    queryJoinPart.Append($"JOIN {WiserTableNames.WiserItemLink} fi{filterCounter}l ON fi{filterCounter}l.destination_item_id = {filterConnectionPart} "); // AND fi{filterCounter}l.type=800
+                                    output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLink} fi{filterCounter}l ON fi{filterCounter}l.destination_item_id = {filterConnectionPart} "); // AND fi{filterCounter}l.type=800
                                 }
                                 else if (filterGroup.IsMultiLanguage)
                                 {
-                                    queryJoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
+                                    output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
                                 }
                                 else
                                 {
-                                    queryJoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
+                                    output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
                                 }
                             }
                         }
@@ -369,64 +368,64 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                 joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValues, filterGroup, false, filterGroup.UseAggregationTable);
                                 if (joinPart != "")
                                 {
-                                    queryJoinPart.Append($"AND {joinPart}");
+                                    output.JoinPart.Append($"AND {joinPart}");
                                 }
                             }
 
-                            queryJoinPart.AppendLine();
+                            output.JoinPart.AppendLine();
 
                             // Handle join and join part if detail value is item-id.
                             if (filterGroup != null && !String.IsNullOrEmpty(filterGroup.ConnectedEntity) && !filterGroup.UseAggregationTable)
                             {
                                 if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
                                 {
-                                    queryJoinPart.Append("LEFT ");
+                                    output.JoinPart.Append("LEFT ");
                                 }
 
-                                queryJoinPart.Append($"JOIN {connectedEntityTablePrefix}{WiserTableNames.WiserItem} fi{filterCounter}i ON fi{filterCounter}i.entity_type = {filterGroup.ConnectedEntity.ToMySqlSafeValue(true)} ");
+                                output.JoinPart.Append($"JOIN {connectedEntityTablePrefix}{WiserTableNames.WiserItem} fi{filterCounter}i ON fi{filterCounter}i.entity_type = {filterGroup.ConnectedEntity.ToMySqlSafeValue(true)} ");
 
                                 if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
                                 {
-                                    queryJoinPart.Append($"AND fi{filterCounter}i.id = fi{filterCounter}l.item_id ");
+                                    output.JoinPart.Append($"AND fi{filterCounter}i.id = fi{filterCounter}l.item_id ");
                                 }
                                 else if (filterGroup.SingleConnectedItem)
                                 {
                                     // For singleselect inputtypes, single id in wiser_itemdetail.
-                                    queryJoinPart.Append($"AND fi{filterCounter}i.id = fi{filterCounter}.`value` ");
+                                    output.JoinPart.Append($"AND fi{filterCounter}i.id = fi{filterCounter}.`value` ");
                                 }
                                 else
                                 {
                                     // For multiselect inputtypes, multiple id's in wiser_itemdetail.
-                                    queryJoinPart.Append($"AND FIND_IN_SET(fi{filterCounter}i.id, fi{filterCounter}.`value`) ");
+                                    output.JoinPart.Append($"AND FIND_IN_SET(fi{filterCounter}i.id, fi{filterCounter}.`value`) ");
                                 }
 
                                 if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityProperty))
                                 {
                                     if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
                                     {
-                                        queryJoinPart.Append("LEFT ");
+                                        output.JoinPart.Append("LEFT ");
                                     }
 
-                                    queryJoinPart.Append($"JOIN {connectedEntityTablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter}d ON fi{filterCounter}d.item_id = fi{filterCounter}i.id AND fi{filterCounter}d.`key` = '{filterGroup.ConnectedEntityProperty.ToMySqlSafeValue(false)}{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}' ");
+                                    output.JoinPart.Append($"JOIN {connectedEntityTablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter}d ON fi{filterCounter}d.item_id = fi{filterCounter}i.id AND fi{filterCounter}d.`key` = '{filterGroup.ConnectedEntityProperty.ToMySqlSafeValue(false)}{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}' ");
                                     if (filterGroup.IsMultiLanguage)
                                     {
-                                        queryJoinPart.Append($"AND fi{filterCounter}d.language_code = ?sql_currentLanguageCode ");
+                                        output.JoinPart.Append($"AND fi{filterCounter}d.language_code = ?sql_currentLanguageCode ");
                                     }
                                     else
                                     {
-                                        queryJoinPart.Append($"AND fi{filterCounter}d.language_code = '' ");
+                                        output.JoinPart.Append($"AND fi{filterCounter}d.language_code = '' ");
                                     }
                                 }
 
                                 joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValues, filterGroup, true);
                                 if (joinPart != "")
                                 {
-                                    queryJoinPart.Append($"AND {joinPart}");
+                                    output.JoinPart.Append($"AND {joinPart}");
                                 }
-                                queryJoinPart.AppendLine();
+                                output.JoinPart.AppendLine();
                             }
 
-                            filterCounter += 1;
+                            filterCounter++;
                         }
 
                         if (filterCount == 0)
@@ -434,8 +433,6 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                             filterCount = 1;
                         }
                     }
-
-                    output.JoinPart = queryJoinPart.ToString();
                 }
                 catch (Exception exception)
                 {
@@ -564,15 +561,15 @@ namespace GeeksCoreLibrary.Components.Filter.Services
             // Add extra joins and select-parts if extra properties are necessary for use in template
             if (!String.IsNullOrEmpty(extraFilterProperties))
             {
-                var selectPart = ",";
-                var joinPart = "";
+                var selectPart = new StringBuilder(",");
+                var joinPart = new StringBuilder();
                 foreach (var extraFilterProperty in extraFilterProperties.Split(',').Where(String.IsNullOrWhiteSpace).Select(p => p.Trim()))
                 {
-                    selectPart += $"`{extraFilterProperty}`.`value` AS `{extraFilterProperty}`,";
-                    joinPart += $"LEFT JOIN {WiserTableNames.WiserItemDetail} AS `{extraFilterProperty}` ON `{extraFilterProperty}`.item_id = filters.id AND `{extraFilterProperty}`.`key` = '{extraFilterProperty}' {GetLanguageQueryPart(extraFilterProperty, languageCode)}{Environment.NewLine}";
+                    selectPart.Append($"`{extraFilterProperty}`.`value` AS `{extraFilterProperty}`,");
+                    joinPart.AppendLine($"LEFT JOIN {WiserTableNames.WiserItemDetail} AS `{extraFilterProperty}` ON `{extraFilterProperty}`.item_id = filters.id AND `{extraFilterProperty}`.`key` = '{extraFilterProperty}' {GetLanguageQueryPart(extraFilterProperty, languageCode)}");
                 }
-                w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", selectPart.TrimEnd(','));
-                w2FiltersQuery = w2FiltersQuery.Replace("{joinPart}", joinPart);
+                w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", selectPart.ToString().TrimEnd(','));
+                w2FiltersQuery = w2FiltersQuery.Replace("{joinPart}", joinPart.ToString());
             }
             else
             {

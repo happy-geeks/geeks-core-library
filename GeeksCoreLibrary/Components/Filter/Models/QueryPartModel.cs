@@ -1,4 +1,6 @@
-﻿namespace GeeksCoreLibrary.Components.Filter.Models
+﻿using System.Text;
+
+namespace GeeksCoreLibrary.Components.Filter.Models
 {
     /// <summary>
     /// A model with all query parts for replacing variables in the filter items query
@@ -8,21 +10,21 @@
         /// <summary>
         /// The 'select' part (start) replacement
         /// </summary>
-        public string SelectPartStart { get; set; }
+        public StringBuilder SelectPartStart { get; set; } = new();
 
         /// <summary>
         /// The 'select' part (end) replacement
         /// </summary>
-        public string SelectPartEnd { get; set; }
+        public StringBuilder SelectPartEnd { get; set; } = new();
 
         /// <summary>
         /// The 'join' replacement
         /// </summary>
-        public string JoinPart { get; set; }
+        public StringBuilder JoinPart { get; set; } = new();
 
         /// <summary>
         /// The 'where' replacement
         /// </summary>
-        public string WherePart { get; set; }
+        public StringBuilder WherePart { get; set; } = new();
     }
 }
