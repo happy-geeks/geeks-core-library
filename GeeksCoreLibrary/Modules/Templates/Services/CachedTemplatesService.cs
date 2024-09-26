@@ -203,7 +203,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     case TemplateCachingLocations.InMemory:
                         if (!String.IsNullOrWhiteSpace(contentCacheKey))
                         {
-                            cache.Add(contentCacheKey, template.Content, DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes));
+                            cache.GetOrAdd(contentCacheKey,
+                                cacheEntry =>
+                                {
+                                    cacheEntry.AbsoluteExpirationRelativeToNow = cacheSettings.CachingMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(cacheSettings.CachingMinutes);
+                                    return template.Content;
+                                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
                         }
 
                         break;
@@ -586,7 +591,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         async cacheEntry =>
                         {
                             addedToCache = true;
-                            cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes <= 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
+                            cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
                             return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
                         },
                         cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
@@ -645,7 +650,12 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             if (addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
             {
-                cache.Add(cacheName.ToString(), componentSeoData);
+                cache.GetOrAdd(cacheName.ToString(),
+                    cacheEntry =>
+                    {
+                        cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes == 0 ? gclSettings.DefaultSeoModuleCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
+                        return componentSeoData;
+                    }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Seo));
             }
             else if (!addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] == null)
             {
