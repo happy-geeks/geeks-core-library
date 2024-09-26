@@ -93,7 +93,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         }
 
         /// <inheritdoc />
-        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true)
+        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true, bool skipPermissions = false)
         {
             if (id <= 0 && String.IsNullOrEmpty(name))
             {
@@ -1515,6 +1515,102 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         {
             // Return an empty result here. This functionality is not made for legacy templates.
             return Task.FromResult(new List<PageWidgetModel>());
+        }
+
+        /// <inheritdoc />
+        public async Task<Template> CheckTemplatePermissionsAsync(Template template)
+        {
+            if (!template.LoginRequired)
+            {
+                return template;
+            }
+            
+            var emptyTemplate = new Template
+            {
+                Type = template.Type,
+                LoginRequired = true,
+                LoginRedirectUrl = template.LoginRedirectUrl,
+                LoginRoles = template.LoginRoles
+            };
+            
+            var userData = await accountsService.GetUserDataFromCookieAsync();
+
+            return userData is { UserId: > 0 } ? template : emptyTemplate;
+        }
+
+        /// <inheritdoc />
+        public async Task<Template> GetTemplatePermissionSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+        {
+            if (id <= 0 && String.IsNullOrEmpty(name))
+            {
+                throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
+            }
+
+            var joinPart = gclSettings.Environment switch
+            {
+                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+                Environments.Acceptance => " AND t.isacceptance=1 ",
+                Environments.Test => " AND t.istest=1 ",
+                Environments.Live => " AND t.islive=1 ",
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+            };
+
+            string whereClause;
+            if (id > 0)
+            {
+                databaseConnection.AddParameter("id", id);
+                whereClause = "i.id = ?id";
+            }
+            else
+            {
+                databaseConnection.AddParameter("name", name);
+                whereClause = "i.name = ?name";
+            }
+
+            if (parentId > 0)
+            {
+                databaseConnection.AddParameter("parentId", parentId);
+                whereClause += " AND ip.id = ?parentId";
+            }
+            else if (!String.IsNullOrWhiteSpace(parentName))
+            {
+                databaseConnection.AddParameter("parentName", parentName);
+                whereClause = " AND ip.name = ?parentName";
+            }
+
+            var query = $@"SELECT
+                            i.`name` AS template_name,
+                            i.id AS template_id,
+                            t.issecure,
+                            CASE t.templatetype
+                                WHEN 'html' THEN 1
+                                WHEN 'css' THEN 2
+                                WHEN 'scss' THEN 3
+                                WHEN 'js' THEN 4
+                                ELSE 0
+                            END AS template_type
+                        FROM easy_items i 
+                        JOIN easy_templates t ON i.id=t.itemid
+                        {joinPart}
+                        WHERE i.moduleid = 143 
+                        AND i.published = 1
+                        AND i.deleted <= 0
+                        AND t.deleted <= 0
+                        AND {whereClause}
+                        LIMIT 1";
+
+            var dataTable = await databaseConnection.GetAsync(query);
+            var result = dataTable.Rows.Count == 0 ? new Template() : new Template
+            {
+                Id = dataTable.Rows[0].Field<int>("template_id"),
+                Name = dataTable.Rows[0].Field<string>("template_name"),
+                LoginRequired = dataTable.Rows[0].Field<bool>("issecure"),
+                LoginRoles = new List<int>(),
+                LoginRedirectUrl = String.Empty,
+                Type = (TemplateTypes)Convert.ToInt32(dataTable.Rows[0]["template_type"])
+            };
+
+            return result;
         }
 
         /// <summary>
