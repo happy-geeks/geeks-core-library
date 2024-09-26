@@ -144,8 +144,13 @@ public class LegacyCachedTemplatesService(
                 case TemplateCachingLocations.InMemory:
                     if (!String.IsNullOrWhiteSpace(contentCacheKey))
                     {
-                        cache.Add(contentCacheKey, template.Content, DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes));
-                    }
+                        cache.GetOrAdd(contentCacheKey,
+                                cacheEntry =>
+                                {
+                                    cacheEntry.AbsoluteExpirationRelativeToNow = cacheSettings.CachingMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(cacheSettings.CachingMinutes);
+                                    return template.Content;
+                                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                        }
 
                     break;
                 case TemplateCachingLocations.OnDisk:
