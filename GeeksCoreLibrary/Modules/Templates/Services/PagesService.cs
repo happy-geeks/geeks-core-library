@@ -472,7 +472,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             foreach (var externalScript in externalScripts.Where(externalScript => !externalScript.Uri.IsAbsoluteUri))
             {
                 // Turn relative URI into absolute.
-                externalScript.Uri = new Uri($"{HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)}{externalScript.Uri.OriginalString.TrimStart('/')}");
+                externalScript.Uri = new Uri($"{HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext, true)}{externalScript.Uri.OriginalString.TrimStart('/')}");
             }
 
             if (httpContextAccessor?.HttpContext?.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] is List<JavaScriptResourceModel> componentExternalJavaScriptLibraries)
