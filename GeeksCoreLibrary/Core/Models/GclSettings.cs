@@ -282,6 +282,11 @@ namespace GeeksCoreLibrary.Core.Models
         /// Connection string for redis cache
         /// </summary>
         public string RedisConnectionString { get; set; }
+        
+        /// <summary>
+        /// Name used for the distributed redis cache
+        /// </summary>
+        public string RedisInstanceName { get; set; }
 
         /// <summary>
         /// Settings for request logging.

@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Helpers;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
+using StackExchange.Redis;
 
 namespace GeeksCoreLibrary.Core.Services
 {
@@ -17,14 +19,16 @@ namespace GeeksCoreLibrary.Core.Services
     {
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly ILogger<CacheService> logger;
+        private readonly IConnectionMultiplexer connectionMultiplexer;
 
         /// <inheritdoc />
         public ConcurrentDictionary<CacheAreas, CancellationTokenSource> CancellationTokenSources { get; }
 
-        public CacheService(ILogger<CacheService> logger, IWebHostEnvironment webHostEnvironment = null)
+        public CacheService(ILogger<CacheService> logger, IConnectionMultiplexer connectionMultiplexer, IWebHostEnvironment webHostEnvironment = null)
         {
             this.webHostEnvironment = webHostEnvironment;
             this.logger = logger;
+            this.connectionMultiplexer = connectionMultiplexer;
 
             // The default concurrency of a concurrent dictionary if the processor count.
             CancellationTokenSources = new ConcurrentDictionary<CacheAreas, CancellationTokenSource>(Environment.ProcessorCount, Enum.GetNames<CacheAreas>().Length);
@@ -161,12 +165,24 @@ namespace GeeksCoreLibrary.Core.Services
         }
 
         /// <inheritdoc />
-        public void ClearAllCache()
+        public async Task ClearAllCacheAsync()
         {
             ClearMemoryCache();
             ClearOutputCache();
             ClearFilesCache();
+            await ClearDistributedCacheAsync();
         }
+
+        /// <inheritdoc />
+       public async Task ClearDistributedCacheAsync()
+       {
+           if (connectionMultiplexer is null)
+           {
+               return;
+           }
+           var cache = connectionMultiplexer.GetDatabase();
+           await cache.ExecuteAsync("FLUSHALL");
+       }
 
         /// <inheritdoc />
         public MemoryCacheEntryOptions CreateMemoryCacheEntryOptions(CacheAreas cacheArea)

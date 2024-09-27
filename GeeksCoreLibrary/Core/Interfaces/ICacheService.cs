@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using LazyCache;
 using Microsoft.Extensions.Caching.Memory;
@@ -47,9 +48,9 @@ namespace GeeksCoreLibrary.Core.Interfaces
         void ClearFilesCache();
 
         /// <summary>
-        /// Clear all memory cache and file cache.
+        /// Clear all memory, file and distributed cache.
         /// </summary>
-        void ClearAllCache();
+        Task ClearAllCacheAsync();
 
         /// <summary>
         /// Creates a <see cref="MemoryCacheEntryOptions"/> object that can be used in LazyCache's GetOrAdd function.
@@ -57,5 +58,10 @@ namespace GeeksCoreLibrary.Core.Interfaces
         /// <param name="cacheArea"></param>
         /// <returns></returns>
         MemoryCacheEntryOptions CreateMemoryCacheEntryOptions(CacheAreas cacheArea);
+
+        /// <summary>
+        /// Clear all distributed cache
+        /// </summary>
+        Task ClearDistributedCacheAsync();
     }
 }

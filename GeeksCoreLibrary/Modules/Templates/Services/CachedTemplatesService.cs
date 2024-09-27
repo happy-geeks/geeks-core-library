@@ -112,13 +112,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 switch (cacheSettings.CachingLocation)
                 {
                     case TemplateCachingLocations.Distributed:
+                        logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache in distributed cache with key: {contentCacheKey}.");
                         contentCacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
-                        var templateBytes = await distributedCache.GetAsync(contentCacheKey);
-                        if (templateBytes is not null)
-                        {
-                            templateContent = Encoding.UTF8.GetString(templateBytes);
-                            foundInOutputCache = !String.IsNullOrEmpty(templateContent);
-                        }
+                        templateContent = await distributedCache.GetStringAsync(contentCacheKey);
+                        foundInOutputCache = !String.IsNullOrEmpty(templateContent);
                         break;
                     case TemplateCachingLocations.InMemory:
                     {
@@ -216,7 +213,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     case TemplateCachingLocations.Distributed:
                         if (!String.IsNullOrWhiteSpace(contentCacheKey))
                         {
-                            await distributedCache.SetAsync(contentCacheKey, Encoding.UTF8.GetBytes(template.Content));
+                            await distributedCache.SetStringAsync(contentCacheKey, template.Content, new DistributedCacheEntryOptions()
+                            {
+                                AbsoluteExpiration = DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes)
+                            });
                         }
                         break;
                     case TemplateCachingLocations.InMemory:
@@ -610,6 +610,24 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         },
                         cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
                     break;
+                case TemplateCachingLocations.Distributed:
+                {
+                    cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
+                    var cacheNameString = cacheName.ToString();
+                    var contentBytes = await distributedCache.GetStringAsync(cacheName.ToString());
+                    if (contentBytes is not null)
+                    {
+                        return contentBytes;
+                    }
+                    html = (string)await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+
+                    await distributedCache.SetStringAsync(cacheNameString, html, new DistributedCacheEntryOptions()
+                    {
+                        AbsoluteExpiration = DateTimeOffset.UtcNow.AddMinutes(settings.CacheMinutes)
+                    });
+                    addedToCache = true;
+                    break;
+                }
                 case TemplateCachingLocations.OnDisk:
                 {
                     var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);

@@ -71,8 +71,11 @@ namespace GeeksCoreLibrary.Core.Middlewares
                 case "clearfilescache":
                     cacheService.ClearFilesCache();
                     break;
+                case "cleardistributedcache":
+                    await cacheService.ClearDistributedCacheAsync();
+                    break;
                 case "clearallcache":
-                    cacheService.ClearAllCache();
+                    await cacheService.ClearAllCacheAsync();
                     break;
                 default:
                     cacheService.ClearCacheInArea(cacheArea);

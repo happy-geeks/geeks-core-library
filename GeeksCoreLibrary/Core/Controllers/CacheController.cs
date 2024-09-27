@@ -1,4 +1,5 @@
-﻿using GeeksCoreLibrary.Core.Enums;
+﻿using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -56,12 +57,20 @@ namespace GeeksCoreLibrary.Core.Controllers
             return Ok();
         }
         
+        [Route("cleardistributedcache.gcl")]
+        [HttpGet]
+        public async Task<IActionResult> ClearDistributedCacheAsync()
+        {
+            await cacheService.ClearDistributedCacheAsync();
+            return Ok();
+        }
+        
         [Route("clearallcache.gcl")]
         [Route("clearallcache.jcl")]
         [HttpGet]
-        public IActionResult ClearAllCache()
+        public async Task<IActionResult> ClearAllCacheAsync()
         {
-            cacheService.ClearAllCache();
+            await cacheService.ClearAllCacheAsync();
             return Ok();
         }
     }

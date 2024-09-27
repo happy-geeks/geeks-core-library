@@ -53,6 +53,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 using WebMarkupMin.AspNetCore7;
 using WebMarkupMin.Core;
 
@@ -279,11 +280,20 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             // Enable caching.
             services.AddLazyCache();
-            services.AddStackExchangeRedisCache(options =>
+
+            if (!String.IsNullOrEmpty(gclSettings.RedisConnectionString))
             {
-                options.Configuration = gclSettings.RedisConnectionString;
-                options.InstanceName = "GCL-TEST";
-            });
+                services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = gclSettings.RedisConnectionString;
+                    options.InstanceName = gclSettings.RedisInstanceName;
+                });
+                services.AddSingleton<IConnectionMultiplexer>(cfg => ConnectionMultiplexer.Connect(gclSettings.RedisConnectionString));
+            }
+            else
+            {
+                services.AddSingleton<IConnectionMultiplexer>(cfg => null);
+            }
 
             // Enable session.
             if (isWeb)
