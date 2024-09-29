@@ -1,11 +1,10 @@
 ﻿using System;
 using System.IO;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Amazon;
 using Amazon.SecretsManager;
-using Amazon.SecretsManager.Extensions.Caching;
+using Amazon.SecretsManager.Model;
 using Microsoft.Extensions.Configuration;
 
 namespace GeeksCoreLibrary.Core.Extensions
@@ -14,63 +13,51 @@ namespace GeeksCoreLibrary.Core.Extensions
     {
         /// <summary>
         /// Retrieves a secret from AWS Secrets Manager and adds it to the configuration builder.
-        /// It assumes the secret is stored in a JSON format and adds it directly to the configuration.
-        /// The secret is retrieved asynchronously and added as a configuration source to the provided IConfigurationBuilder.
+        /// Assumes the secret is stored in a JSON format and adds it directly to the configuration.
+        /// Caches the secret to improve performance and reduce AWS API calls.
         /// </summary>
         /// <param name="builder">The configuration builder to which the secret will be added.</param>
-        /// <param name="secretName">The name of the secret (or app-setting) stored in AWS Secrets Manager. Defaults to the assembly name + launch environment.</param>
-        /// <param name="region">The AWS region where the Secrets Manager is located. Defaults to "eu-central-1".</param>
-        /// <returns>Returns the updated IConfigurationBuilder with the secret added to the configuration.</returns>
-        public static async Task<IConfigurationBuilder> AddAppSettingsFromAwsAsync(
+        /// <param name="secretName">The name of the secret stored in AWS Secrets Manager.</param>
+        /// <param name="region">The AWS region where Secrets Manager is located (defaults to "eu-central-1").</param>
+        /// <returns>The updated IConfigurationBuilder with the secret added to the configuration.</returns>
+        public static async Task<IConfigurationBuilder> GetAppSecretsFromAwsAsync(
             this IConfigurationBuilder builder,
-            string secretName = null,
+            string secretName,
             string region = "eu-central-1")
         {
-            // If no secret name is provided, construct a default one using assembly information
-            if (String.IsNullOrEmpty(secretName))
+            if (string.IsNullOrEmpty(secretName))
             {
-                var assemblyName = Assembly.GetEntryAssembly()?.GetName().Name;
-                if (String.IsNullOrEmpty(assemblyName))
-                {
-                    throw new Exception("Assembly name could not be determined.");
-                }
-
-                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-                if (String.IsNullOrEmpty(environment))
-                {
-                    throw new Exception("Environment could not be determined.");
-                }
-
-                // Construct the default secret name based on assembly name and environment
-                secretName = $"{assemblyName}/{environment}";
+                throw new ArgumentException("Secret name cannot be null or empty.", nameof(secretName));
             }
 
-            // Create an AmazonSecretsManager client with the specified region
-            using var client = new AmazonSecretsManagerClient(RegionEndpoint.GetBySystemName(region));
+            var client = new AmazonSecretsManagerClient(RegionEndpoint.GetBySystemName(region));
 
-            // Use the Secrets Manager Cache to cache secrets
-            var cache = new SecretsManagerCache(client);
-
-            // Retrieve the secret value from the cache
-            string secretValue;
             try
             {
-                secretValue = await cache.GetSecretString(secretName);
+                // Retrieve the secret from AWS Secrets Manager
+                var secretResponse = await client.GetSecretValueAsync(new GetSecretValueRequest
+                {
+                    SecretId = secretName
+                });
+
+                // Check if the secret has a valid string value
+                if (string.IsNullOrEmpty(secretResponse.SecretString))
+                {
+                    throw new InvalidOperationException($"The secret '{secretName}' does not contain a string value.");
+                }
+
+                // Add the secret's JSON content to the configuration
+                var secretStream = new MemoryStream(Encoding.UTF8.GetBytes(secretResponse.SecretString));
+                builder.AddJsonStream(secretStream);
+
+                return builder;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to retrieve secret: {ex.Message}", ex);
+                // Log the error and provide context for easier debugging
+                throw new InvalidOperationException(
+                    $"Failed to retrieve or parse secret '{secretName}' from AWS Secrets Manager: {ex.Message}", ex);
             }
-
-            if (string.IsNullOrEmpty(secretValue))
-            {
-                throw new Exception($"Secret {secretName} is empty or not in a string format.");
-            }
-
-            // Add the secret to the configuration as a JSON
-            builder.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(secretValue)));
-
-            return builder;
         }
     }
 }
