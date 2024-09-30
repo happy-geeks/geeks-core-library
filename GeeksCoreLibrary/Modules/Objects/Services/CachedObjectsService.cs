@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
@@ -68,10 +69,17 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
 
                 var objects = new Dictionary<string, SettingObject>(StringComparer.OrdinalIgnoreCase);
 
-                await using var reader = await databaseConnection.GetReaderAsync(@"SELECT `key`, `value`, `description`, `typenr` FROM easy_objects WHERE active = 1");
-                while (await reader.ReadAsync())
+                var dataTable = await databaseConnection.GetAsync("SELECT `key`, `value`, `description`, `typenr` FROM easy_objects WHERE active = 1");
+                foreach (DataRow dataRow in dataTable.Rows)
                 {
-                    objects.Add($"{reader.GetString(reader.GetOrdinal("key"))}{reader.GetInt32(reader.GetOrdinal("typenr"))}", reader.ToObjectModel());
+                    objects.Add($"{dataRow["key"]}{dataRow["typenr"]}",
+                    new SettingObject
+                    {
+                        Key = dataRow.Field<string>("key"),
+                        Value = dataRow.Field<string>("value"),
+                        Description = dataRow.Field<string>("description"),
+                        TypeNumber = Convert.ToInt32(dataRow["typenr"])
+                    });
                 }
 
                 return objects;
