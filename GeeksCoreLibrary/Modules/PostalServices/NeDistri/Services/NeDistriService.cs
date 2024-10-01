@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using EvoPdf;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
@@ -43,8 +46,8 @@ public class NeDistriService : INeDistriService, IScopedService
         this.logger = logger;
     }
 
-    public async Task<string> GenerateShippingLabelAsync(string encryptedOrderIds, string labelType, int colliAmount,
-        int? userCode, OrderType orderType)
+    /// <inheritdoc />
+    public async Task<string> GenerateShippingLabelAsync(string encryptedOrderIds, IEnumerable<LabelRule> labels, int? userCode, OrderType orderType)
     {
         // Decrypt all order ids
         var orderIds = DecryptOrderIds(encryptedOrderIds);
@@ -63,7 +66,7 @@ public class NeDistriService : INeDistriService, IScopedService
         {
             var orderItem = await wiserItemsService.GetItemDetailsAsync(orderId, entityType: OrderProcessConstants.OrderEntityType, skipPermissionsCheck: true);
             
-            var createOrderResponse = await CreateOrderAsync(orderItem, userCode, colliAmount, labelType, orderType, restClient);
+            var createOrderResponse = await CreateOrderAsync(orderItem, userCode, labels, orderType, restClient);
 
             if (createOrderResponse.Response is null)
             {
@@ -79,6 +82,8 @@ public class NeDistriService : INeDistriService, IScopedService
                 results.AppendLine(createOrderResponse.Message);
                 continue;
             }
+
+            Document mergedLabels = null;
             
             foreach (var barcodeResponse in barcodeResponses.Responses)
             {
@@ -86,18 +91,39 @@ public class NeDistriService : INeDistriService, IScopedService
                 orderItem.SetDetail("NeDistri_ruleId", barcodeResponse.RuleId, append: true);
                 orderItem.SetDetail("NeDistri_coliNumber", barcodeResponse.ColiNumber, append: true);
 
-                await wiserItemsService.SaveAsync(orderItem);
+                var pdfStream = new MemoryStream(Convert.FromBase64String(barcodeResponse.Attachment));
+                Document responseDocument = new Document(pdfStream);
+                
+                if (mergedLabels is null)
+                {
+                    mergedLabels = responseDocument;
+                    mergedLabels.LicenseKey = gclSettings.EvoPdfLicenseKey;
+                }
+                else
+                {
+                    mergedLabels.AppendDocument(responseDocument);
+                }
+            }
+
+            if (mergedLabels is not null)
+            {
+                using var mergedStream = new MemoryStream();
+                mergedLabels.Save(mergedStream);
+                
                 await wiserItemsService.AddItemFileAsync(new WiserItemFileModel
                 {
                     ItemId = orderId,
-                    Content = Convert.FromBase64String(barcodeResponse.Attachment),
+                    Content = mergedStream.GetBuffer(),
                     Extension = ".pdf",
-                    FileName = $"NeDistri-{createOrderResponse.Response.Id}-{labelType}.pdf",
+                    FileName = $"NeDistri-{createOrderResponse.Response.Id}.pdf",
                     ContentType = "application/pdf",
                     PropertyName = "NeDistri_label",
-                    Title = barcodeResponse.Barcode
+                    Title = $"NeDistri-Label-{createOrderResponse.Response.Id}"
                 }, skipPermissionsCheck: true);
+                mergedLabels.Close();
             }
+
+            await wiserItemsService.SaveAsync(orderItem);
 
             results.AppendLine($"Label aanmaken was succesvol voor order {orderId}");
         }
@@ -148,9 +174,28 @@ public class NeDistriService : INeDistriService, IScopedService
         return orderIds;
     }
 
-    private async Task<(CreateOrderResponse Response, string Message)> CreateOrderAsync(WiserItemModel orderItem, int? userCode, int colliAmount,
-        string labelType, OrderType orderType, IRestClient restClient)
+    /// <summary>
+    /// Create an order at NE Distri.
+    /// </summary>
+    /// <param name="orderItem">The wiser order item to create to NE Distri order from</param>
+    /// <param name="userCode">The usercode to use. Only needed if the account used has multiple users that can be used.</param>
+    /// <param name="labels">The coli information for the labels, like labelType and the amoung of collies. Multiple labels can be created for a single order.</param>
+    /// <param name="orderType">The order type, this is either a shipment or return Shipment</param>
+    /// <param name="restClient">The restclient instance to use for the </param>
+    /// <returns>Tuple containing the response to creating the order or an error message.</returns>
+    private async Task<(CreateOrderResponse Response, string Message)> CreateOrderAsync(WiserItemModel orderItem, int? userCode, IEnumerable<LabelRule> labels, OrderType orderType, IRestClient restClient)
     {
+        var ruleModelList = new List<RuleModel>();
+
+        foreach (var label in labels.Where(label => label.ColiAmount >= 1))
+        {
+            ruleModelList.Add(new RuleModel()
+            {
+                Unit = label.LabelType,
+                Amount = label.ColiAmount
+            });
+        }
+        
         var requestModel = new CreateOrderModel
         {
             Address = await CreateAddressModelAsync(orderItem),
@@ -160,14 +205,7 @@ public class NeDistriService : INeDistriService, IScopedService
                 orderItem.Id.ToString()
             },
             OrderType = orderType,
-            Rules = new List<RuleModel>
-            {
-                new()
-                {
-                    Amount = colliAmount,
-                    Unit = labelType
-                }
-            }
+            Rules = ruleModelList
         };
         var createOrderRequestBody = JsonConvert.SerializeObject(requestModel, jsonSettings);
 

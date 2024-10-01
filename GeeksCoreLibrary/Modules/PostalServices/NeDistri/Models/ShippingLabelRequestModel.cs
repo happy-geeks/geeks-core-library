@@ -16,9 +16,9 @@ public class ShippingLabelRequestModel
     public string LabelType { get; set; }
     
     /// <summary>
-    /// Colli amount
+    /// Colli amount in a comma seperated string
     /// </summary>
-    public int ColliAmount { get; set; }
+    public string ColliAmount { get; set; }
     
     /// <summary>
     /// User code to use in case a login has multiple users attached to it
