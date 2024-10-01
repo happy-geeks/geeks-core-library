@@ -46,6 +46,7 @@ public class NeDistriService : INeDistriService, IScopedService
         this.logger = logger;
     }
 
+    /// <inheritdoc />
     public async Task<string> GenerateShippingLabelAsync(string encryptedOrderIds, IEnumerable<LabelRule> labels, int? userCode, OrderType orderType)
     {
         // Decrypt all order ids
@@ -65,7 +66,7 @@ public class NeDistriService : INeDistriService, IScopedService
         {
             var orderItem = await wiserItemsService.GetItemDetailsAsync(orderId, entityType: OrderProcessConstants.OrderEntityType, skipPermissionsCheck: true);
             
-            var createOrderResponse = await CreateOrderAsync(orderItem, userCode, labels,orderType, restClient);
+            var createOrderResponse = await CreateOrderAsync(orderItem, userCode, labels, orderType, restClient);
 
             if (createOrderResponse.Response is null)
             {
@@ -90,7 +91,7 @@ public class NeDistriService : INeDistriService, IScopedService
                 orderItem.SetDetail("NeDistri_ruleId", barcodeResponse.RuleId, append: true);
                 orderItem.SetDetail("NeDistri_coliNumber", barcodeResponse.ColiNumber, append: true);
 
-                Stream pdfStream = new MemoryStream(Convert.FromBase64String(barcodeResponse.Attachment));
+                var pdfStream = new MemoryStream(Convert.FromBase64String(barcodeResponse.Attachment));
                 Document responseDocument = new Document(pdfStream);
                 
                 if (mergedLabels is null)
@@ -106,7 +107,7 @@ public class NeDistriService : INeDistriService, IScopedService
 
             if (mergedLabels is not null)
             {
-                using MemoryStream mergedStream = new MemoryStream();
+                using var mergedStream = new MemoryStream();
                 mergedLabels.Save(mergedStream);
                 
                 await wiserItemsService.AddItemFileAsync(new WiserItemFileModel
@@ -173,6 +174,15 @@ public class NeDistriService : INeDistriService, IScopedService
         return orderIds;
     }
 
+    /// <summary>
+    /// Create an order at NE Distri.
+    /// </summary>
+    /// <param name="orderItem">The wiser order item to create to NE Distri order from</param>
+    /// <param name="userCode">The usercode to use. Only needed if the account used has multiple users that can be used.</param>
+    /// <param name="labels">The coli information for the labels, like labelType and the amoung of collies. Multiple labels can be created for a single order.</param>
+    /// <param name="orderType">The order type, this is either a shipment or return Shipment</param>
+    /// <param name="restClient">The restclient instance to use for the </param>
+    /// <returns>Tuple containing the response to creating the order or an error message.</returns>
     private async Task<(CreateOrderResponse Response, string Message)> CreateOrderAsync(WiserItemModel orderItem, int? userCode, IEnumerable<LabelRule> labels, OrderType orderType, IRestClient restClient)
     {
         var ruleModelList = new List<RuleModel>();

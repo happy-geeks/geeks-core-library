@@ -42,9 +42,7 @@ public class NeDistriController : Controller
         
         for (var i = 0; i < types.Length; i++)
         {
-            var parseSuccess = Int32.TryParse(coliAmounts[i], out var coliAmount);
-
-            if (!parseSuccess)
+            if (!Int32.TryParse(coliAmounts[i], out var coliAmount))
             {
                 return BadRequest($"The coliAmount in position {i+1} is invalid.");
             }
