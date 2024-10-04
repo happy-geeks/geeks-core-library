@@ -30,13 +30,12 @@ namespace GeeksCoreLibrary.Core.Extensions
             if (String.IsNullOrEmpty(secretName))
             {
                 var assemblyName = Assembly.GetEntryAssembly()?.GetName().Name;
-                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-
                 if (String.IsNullOrEmpty(assemblyName))
                 {
                     throw new Exception("Assembly name could not be determined.");
                 }
 
+                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
                 if (String.IsNullOrEmpty(environment))
                 {
                     throw new Exception("Environment could not be determined.");
@@ -47,7 +46,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             }
 
             // Create an AmazonSecretsManager client with the specified region
-            var client = new AmazonSecretsManagerClient(RegionEndpoint.GetBySystemName(region));
+            using var client = new AmazonSecretsManagerClient(RegionEndpoint.GetBySystemName(region));
 
             // Use the Secrets Manager Cache to cache secrets
             var cache = new SecretsManagerCache(client);
