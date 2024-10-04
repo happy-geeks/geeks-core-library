@@ -182,7 +182,7 @@ public class RedirectMiddleWare
         // Do the actual redirect.
         if (!String.IsNullOrEmpty(redirectToUrl))
         {
-            context.Response.Headers.Add("gclredirect", "true");
+            context.Response.Headers["gclredirect"] = "true";
             context.Response.Redirect(redirectToUrl, redirectPermanent);
         }
         else

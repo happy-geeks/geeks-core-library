@@ -406,7 +406,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
             if (!String.IsNullOrWhiteSpace(ociUrl))
             {
-                currentContext.Response.Headers.Add($"x-{settings.OciHookUrlKey}", ociUrl);
+                currentContext.Response.Headers[$"x-{settings.OciHookUrlKey}"] = ociUrl;
 
                 if (settings.EnableOciLogin && !isAutoLogout)
                 {
