@@ -31,8 +31,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             }
 
             var javascriptContent = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js, mode);
-            Response.Headers.Add("Last-Modified", javascriptContent.LastChangeDate.ToUniversalTime().ToString("R"));
-            Response.Headers.Add("Expires", DateTime.Now.AddDays(7).ToUniversalTime().ToString("R"));
+            Response.Headers.LastModified = javascriptContent.LastChangeDate.ToUniversalTime().ToString("R");
+            Response.Headers.Expires = DateTime.Now.AddDays(7).ToUniversalTime().ToString("R");
             return Content(javascriptContent.Content, "application/javascript", Encoding.UTF8);
         }
         
@@ -47,8 +47,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 return StatusCode((int) HttpStatusCode.NotModified);
             }
             
-            Response.Headers.Add("Last-Modified", javascriptContent.LastChangeDate.ToUniversalTime().ToString("R"));
-            Response.Headers.Add("Expires", DateTime.Now.AddDays(7).ToUniversalTime().ToString("R"));
+            Response.Headers.LastModified = javascriptContent.LastChangeDate.ToUniversalTime().ToString("R");
+            Response.Headers.Expires = DateTime.Now.AddDays(7).ToUniversalTime().ToString("R");
             return Content(javascriptContent.Content, "application/javascript", Encoding.UTF8);
         }
     }

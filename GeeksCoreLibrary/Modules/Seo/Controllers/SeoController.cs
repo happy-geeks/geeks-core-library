@@ -39,7 +39,7 @@ namespace GeeksCoreLibrary.Modules.Seo.Controllers
                 return NotFound();
             }
 
-            Response.Headers.Add("Accept-Ranges", "bytes");
+            Response.Headers.AcceptRanges = "bytes";
             return Content(robotsTxt, "text/plain", Encoding.UTF8);
         }
 
