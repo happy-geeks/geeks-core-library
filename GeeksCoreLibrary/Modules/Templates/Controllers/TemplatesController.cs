@@ -27,6 +27,8 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 
+
+
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
 {
     [Area("Templates")]
@@ -95,7 +97,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 {
                     stopWatch.Start();
                 }
-
+                
                 javascriptTemplates.AddRange(contentTemplate.JavascriptTemplates);
                 cssTemplates.AddRange(contentTemplate.CssTemplates);
 

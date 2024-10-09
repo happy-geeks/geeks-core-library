@@ -9,6 +9,7 @@ using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Middlewares;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Core.Services;
+using GeeksCoreLibrary.Modules.HealthChecks.Services;
 using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
 using GeeksCoreLibrary.Modules.ItemFiles.Services;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
@@ -50,6 +51,7 @@ using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.HealthChecks.Services;
 using GeeksCoreLibrary.Modules.ItemFiles.Middlewares;
 using JetBrains.Annotations;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -87,7 +89,6 @@ namespace GeeksCoreLibrary.Core.Extensions
             }
 
             builder.UseMiddleware<RequestLoggingMiddleware>();
-
             builder.UseStatusCodePagesWithReExecute("/webpage.gcl", "?errorCode={0}");
 
             builder.UseSession();
@@ -126,13 +127,19 @@ namespace GeeksCoreLibrary.Core.Extensions
                     Predicate = healthCheck => healthCheck.Tags.Contains("WTS"),
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 });
+                
+                endpoints.MapHealthChecks("/health/database", new HealthCheckOptions()
+                {
+                    Predicate = healthCheck => healthCheck.Tags.Contains("databaseConnection"),
+                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+                }); 
             });
-
+        
             builder.HandleStartupFunctions();
-
+            
             return builder;
         }
-
+        
         /// <summary>
         /// Handle and execute some functions that are needed to be done during startup of the application.
         /// Don't call this method if you're already calling UseGclMiddleware, because this is called inside that.
@@ -151,7 +158,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                     var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
 
                     var gclSettings = scope.ServiceProvider.GetRequiredService<IOptions<GclSettings>>();
-                    var tablesToUpdate = new List<string>
+                    var tablesToUpdate = new List<string>      
                     {
                         WiserTableNames.WiserEntity,
                         WiserTableNames.WiserPermission,
@@ -183,7 +190,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                     var logger = builder.ApplicationServices.GetService<ILogger>();
                     logger?.LogError(exception, "Error while updating tables.");
                 }
-            });
+            }); 
 
             return builder;
         }
@@ -199,6 +206,7 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns>The <see cref="IServiceCollection"/> of the startup.</returns>
         public static IServiceCollection AddGclServices(this IServiceCollection services, IConfiguration configuration, bool useCaching = true, bool isApi = false, bool isWeb = true)
         {
+            
             // MVC looks in the directory "Areas" by default, but we use the directory "Modules", so we have to tell MC that.
             if (isWeb)
             {
@@ -224,7 +232,8 @@ namespace GeeksCoreLibrary.Core.Extensions
             {
                 services.AddHealthChecks()
                     .AddMySql(gclSettings.ConnectionString, name: "MySqlRead")
-                    .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, new []{"WTS", "Wiser Task Scheduler"});
+                    .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, new []{"WTS", "Wiser Task Scheduler"})
+                    .AddCheck<DatabaseHealthService>("Database Health Check", tags: new[] { "databaseConnection", "database" });
                 if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
                 {
                     services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite");
