@@ -24,7 +24,8 @@ public static class HttpContextHelpers
         $"/{Components.OrderProcess.Models.Constants.PaymentInPage}",
         $"/{Components.OrderProcess.Models.Constants.PaymentOutPage}",
         "/health",
-        "/health/wts"
+        "/health/wts",
+        "/health/database"
     };
 
     /// <summary>

@@ -26,8 +26,8 @@ public class StringExtensionsTests
             DefaultEncryptionSalt = TestEncryptionSalt
         };
     }
-
-    [Test]
+    
+    [Test] 
     [TestCase("", "a", "b", "")]
     [TestCase(TestValue, "value", "string", "This is a test string")]
     [TestCase("This is a TEST Value", "value", "string", "This is a TEST string")]

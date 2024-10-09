@@ -12,3 +12,4 @@ public interface ICsvService
     /// <returns>csv formatted string</returns>
     string JsonArrayToCsv(JArray data, string delimiter = ";");
 }
+
