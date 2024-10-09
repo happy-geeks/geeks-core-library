@@ -17,6 +17,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Controllers
             this.dataSelectorsService = dataSelectorsService;
         }
 
+        [IgnoreAntiforgeryToken]
         [Route("/GetItems.gcl")]
         [Route("/get_items.gcl")]
         [Route("/get_items.jcl")]

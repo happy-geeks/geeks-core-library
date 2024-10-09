@@ -57,7 +57,7 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             var httpContext = httpContextAccessor?.HttpContext;
             var converter = new HtmlToPdfConverter
             {
-                LicenseKey = gclSettings.EvoPdfLicenseKey,
+                //LicenseKey = gclSettings.EvoPdfLicenseKey,
                 ConversionDelay = 2
             };
 
@@ -423,7 +423,8 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                 return null;
             }
 
-            return FileSystemHelpers.SaveFileToContentFilesFolder(webHostEnvironment, filename, content);
+            var filePath = FileSystemHelpers.SaveFileToContentFilesFolder(webHostEnvironment, filename, content);
+            return filePath.Replace(webHostEnvironment.WebRootPath, "").Replace(@"\", "/");
         }
     }
 }

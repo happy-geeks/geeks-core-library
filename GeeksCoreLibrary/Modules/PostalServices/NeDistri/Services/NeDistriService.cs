@@ -17,6 +17,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using PdfSharp.Pdf;
+using PdfSharp.Pdf.IO;
 using RestSharp;
 using RestSharp.Authenticators;
 
@@ -61,11 +63,11 @@ public class NeDistriService : INeDistriService, IScopedService
         };
         using var restClient = new RestClient(options);
 
-        StringBuilder results = new StringBuilder();
+        var results = new StringBuilder();
         foreach (var orderId in orderIds)
         {
             var orderItem = await wiserItemsService.GetItemDetailsAsync(orderId, entityType: OrderProcessConstants.OrderEntityType, skipPermissionsCheck: true);
-            
+
             var createOrderResponse = await CreateOrderAsync(orderItem, userCode, labels, orderType, restClient);
 
             if (createOrderResponse.Response is null)
@@ -73,7 +75,7 @@ public class NeDistriService : INeDistriService, IScopedService
                 results.AppendLine(createOrderResponse.Message);
                 continue;
             }
-            
+
             orderItem.SetDetail("NeDistri_orderId", createOrderResponse.Response.Id);
 
             var barcodeResponses = await GetBarcodeAsync(createOrderResponse.Response.Id, orderId, restClient);
@@ -83,33 +85,29 @@ public class NeDistriService : INeDistriService, IScopedService
                 continue;
             }
 
-            Document mergedLabels = null;
-            
+            using var mergeResultPdfDocument = new PdfDocument();
+
             foreach (var barcodeResponse in barcodeResponses.Responses)
             {
                 orderItem.SetDetail("NeDistri_barcode", barcodeResponse.Barcode, append: true);
                 orderItem.SetDetail("NeDistri_ruleId", barcodeResponse.RuleId, append: true);
                 orderItem.SetDetail("NeDistri_coliNumber", barcodeResponse.ColiNumber, append: true);
 
-                var pdfStream = new MemoryStream(Convert.FromBase64String(barcodeResponse.Attachment));
-                Document responseDocument = new Document(pdfStream);
-                
-                if (mergedLabels is null)
+                using var pdfStream = new MemoryStream(Convert.FromBase64String(barcodeResponse.Attachment));
+                using var inputDocument = PdfReader.Open(pdfStream, PdfDocumentOpenMode.Import);
+
+                // Copy all pages from the input document to the output document.
+                for (var i = inputDocument.PageCount - 1; i >= 0; i--)
                 {
-                    mergedLabels = responseDocument;
-                    mergedLabels.LicenseKey = gclSettings.EvoPdfLicenseKey;
-                }
-                else
-                {
-                    mergedLabels.AppendDocument(responseDocument);
+                    mergeResultPdfDocument.AddPage(inputDocument.Pages[i]);
                 }
             }
 
-            if (mergedLabels is not null)
+            if (mergeResultPdfDocument.PageCount > 0)
             {
                 using var mergedStream = new MemoryStream();
-                mergedLabels.Save(mergedStream);
-                
+                mergeResultPdfDocument.Save(mergedStream);
+
                 await wiserItemsService.AddItemFileAsync(new WiserItemFileModel
                 {
                     ItemId = orderId,
@@ -120,7 +118,6 @@ public class NeDistriService : INeDistriService, IScopedService
                     PropertyName = "NeDistri_label",
                     Title = $"NeDistri-Label-{createOrderResponse.Response.Id}"
                 }, skipPermissionsCheck: true);
-                mergedLabels.Close();
             }
 
             await wiserItemsService.SaveAsync(orderItem);
@@ -167,7 +164,7 @@ public class NeDistriService : INeDistriService, IScopedService
             {
                 throw new ArgumentException(encryptedOrderIds);
             }
-            
+
             orderIds.Add(parsedOrderId);
         }
 
@@ -195,7 +192,7 @@ public class NeDistriService : INeDistriService, IScopedService
                 Amount = label.ColiAmount
             });
         }
-        
+
         var requestModel = new CreateOrderModel
         {
             Address = await CreateAddressModelAsync(orderItem),
@@ -219,7 +216,7 @@ public class NeDistriService : INeDistriService, IScopedService
             logger.LogError($"Request to recreate order in NeDistriService was rejected. The given error was: ${createOrderResponse.Content}");
             return (null, "Het maken van de order");
         }
-        
+
         return (JsonConvert.DeserializeObject<CreateOrderResponse>(createOrderResponse.Content!, jsonSettings), null);
     }
 
@@ -234,9 +231,9 @@ public class NeDistriService : INeDistriService, IScopedService
 
         var authenticationBody = JsonConvert.SerializeObject(authenticationModel, jsonSettings);
         var key = gclSettings.NeDistriSecretKey;
-        
+
         // To authenticate we need create a signature
-        // To do this we create a SHA515 hash of the body 
+        // To do this we create a SHA515 hash of the body
         string signature;
         using (RSA rsa = RSA.Create())
         {
@@ -245,11 +242,11 @@ public class NeDistriService : INeDistriService, IScopedService
             var hashBytes = rsa.SignData(authenticationBodyBytes, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
             signature = Convert.ToBase64String(hashBytes);
         }
-        
+
         var options = new RestClientOptions(gclSettings.NeDistriApiBaseUrl);
         using var restClient = new RestClient(options);
         var request = new RestRequest("/api/v1/auth", Method.Post);
-        
+
         // Add the authentication signature to our request
         request.AddHeaders(new List<KeyValuePair<string, string>>()
         {
@@ -292,7 +289,7 @@ public class NeDistriService : INeDistriService, IScopedService
             Zipcode = zipcode
         };
     }
-    
+
     /// <summary>
     /// Function for getting the country short name code based on the specified Wiser item
     /// </summary>
