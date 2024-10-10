@@ -15,6 +15,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
@@ -61,6 +62,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IDatabaseHelpersService databaseHelpersService;
         private readonly IReplacementsMediator replacementsMediator;
         private readonly IHttpClientService httpClientService;
+        private readonly IBranchesService branchesService;
 
         /// <summary>
         /// Initializes a new instance of <see cref="TemplatesService"/>.
@@ -76,6 +78,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IDatabaseHelpersService databaseHelpersService,
             IReplacementsMediator replacementsMediator,
             IHttpClientService httpClientService,
+            IBranchesService branchesService,
             IHttpContextAccessor httpContextAccessor = null,
             IActionContextAccessor actionContextAccessor = null,
             IViewComponentHelper viewComponentHelper = null,
@@ -98,6 +101,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.databaseHelpersService = databaseHelpersService;
             this.replacementsMediator = replacementsMediator;
             this.httpClientService = httpClientService;
+            this.branchesService = branchesService;
         }
 
         /// <inheritdoc />
@@ -1583,7 +1587,7 @@ ORDER BY ORDINAL_POSITION ASC";
         }
 
         /// <inheritdoc />
-        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
+        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html", bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
         {
             if (contentTemplate == null || contentTemplate.CachingMinutes < 0)
             {
@@ -1664,6 +1668,16 @@ ORDER BY ORDINAL_POSITION ASC";
             {
                 cacheUrl.Append(originalUri.Query.ToLowerInvariant());
             }
+            
+            if (useAbsoluteImageUrls && !originalUri.Query.Contains("useAbsoluteImageUrls=true", StringComparison.OrdinalIgnoreCase))
+            {
+                cacheUrl.Append("useAbsoluteImageUrls");
+            }
+
+            if (removeSvgUrlsFromIcons && !originalUri.Query.Contains("removeSvgUrlsFromIcons=true", StringComparison.OrdinalIgnoreCase))
+            {
+                cacheUrl.Append("removeSvgUrlsFromIcons");
+            }
 
             cacheFileName.Append(Uri.EscapeDataString(cacheUrl.ToString().ToSha512Simple()));
 
@@ -1709,6 +1723,8 @@ ORDER BY ORDINAL_POSITION ASC";
             {
                 cacheFileName.Append($"_permission-{permissionTemplate.Id > 0}");
             }
+
+            cacheFileName.Append($"_{branchesService.GetDatabaseNameFromCookie()}");
 
             if (String.IsNullOrEmpty(extension))
             {

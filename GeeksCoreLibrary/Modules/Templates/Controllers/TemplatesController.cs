@@ -59,12 +59,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         [Route("template.jcl")]
         public async Task<IActionResult> Template()
         {
-            var error = "";
-            var startTime = DateTime.Now;
-            var stopWatch = new Stopwatch();
-            var logRenderingOfTemplate = false;
             var templateId = 0;
-            var templateVersion = 0;
 
             try
             {
@@ -82,20 +77,17 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     return NotFound();
                 }
 
+                var useAbsoluteImageUrls = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "absoluteImageUrls"), "true", StringComparison.OrdinalIgnoreCase);
+                var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
+
                 var javascriptTemplates = new List<int>();
                 var cssTemplates = new List<int>();
                 var externalJavascript = new List<PageResourceModel>();
                 var externalCss = new List<PageResourceModel>();
-                var contentTemplate = await templatesService.GetTemplateAsync(templateId, templateName);
+                var contentTemplate = await pagesService.GetRenderedTemplateAsync(templateId, templateName, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons);
 
                 templateId = contentTemplate.Id;
-                templateVersion = contentTemplate.Version;
-                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Start();
-                }
-
+                
                 javascriptTemplates.AddRange(contentTemplate.JavascriptTemplates);
                 cssTemplates.AddRange(contentTemplate.CssTemplates);
 
@@ -173,7 +165,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 // Header template.
                 if (useGeneralLayout)
                 {
-                    contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates));
+                    contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons));
                 }
 
                 // Content template.
@@ -182,35 +174,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 // Footer template.
                 if (useGeneralLayout)
                 {
-                    contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates));
+                    contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons));
                 }
 
-                var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString(), templateType: contentTemplate.Type);
-                newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
-                newBodyHtml = await wiserItemsService.ReplaceAllEntityBlocksAsync(newBodyHtml);
-
-                // Make relative image URls absolute to allow the template to show images when the HTML is placed inside another website.
-                var useAbsoluteImageUrls = String.Equals(HttpContextHelpers.GetRequestValue(context, "absoluteImageUrls"), "true", StringComparison.OrdinalIgnoreCase);
-                if (useAbsoluteImageUrls)
-                {
-                    var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
-                    newBodyHtml = await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(newBodyHtml, imagesDomain);
-                }
-
-                // Remove the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website.
-                // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
-                var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(context, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
-                if (removeSvgUrlsFromIcons)
-                {
-                    var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                    foreach (Match match in regex.Matches(newBodyHtml))
-                    {
-                        if (!String.IsNullOrEmpty(match.Groups[1].Value))
-                        {
-                            newBodyHtml = newBodyHtml.Replace(match.Groups[1].Value, "");
-                        }
-                    }
-                }
+                var newBodyHtml = contentToWrite.ToString();
 
                 var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml, templateId, useGeneralLayout);
 
@@ -251,7 +218,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
             catch (Exception exception)
             {
                 logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
-                error = exception.ToString();
 
                 if (gclSettings.Environment == Environments.Live)
                 {
@@ -265,15 +231,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                     Content = $"<pre>{exception}</pre>",
                     ContentType = "text/html"
                 };
-            }
-            finally
-            {
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Stop();
-                    var endTime = DateTime.Now;
-                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
-                }
             }
         }
 
