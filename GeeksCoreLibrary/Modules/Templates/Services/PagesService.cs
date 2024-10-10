@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -12,9 +13,11 @@ using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
+using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Redirect.Interfaces;
 using GeeksCoreLibrary.Modules.Seo.Interfaces;
@@ -45,7 +48,81 @@ public class PagesService(
     private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
-    public async Task<string> GetGlobalHeader(string url, List<int> javascriptTemplates, List<int> cssTemplates)
+        public async Task<Template> GetRenderedTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool skipPermissions = false, string templateContent = null, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
+        {
+            var template = await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, templateContent == null, skipPermissions);
+
+            // If a content is provided, we don't need to do any replacements.
+            if (templateContent != null)
+            {
+                template.Content = templateContent;
+                return template;
+            }
+
+            var error = "";
+            var startTime = DateTime.Now;
+            var stopWatch = new Stopwatch();
+            var logRenderingOfTemplate = false;
+
+            try
+            {
+                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(template.Id);
+                if (logRenderingOfTemplate)
+                {
+                    stopWatch.Start();
+                }
+
+                template.Content = await templatesService.DoReplacesAsync(template.Content, templateType: template.Type);
+                template.Content = await dataSelectorsService.ReplaceAllDataSelectorsAsync(template.Content);
+                template.Content = await wiserItemsService.ReplaceAllEntityBlocksAsync(template.Content);
+
+                // Make relative image URls absolute to allow the template to show images when the HTML is placed inside another website.
+                if (useAbsoluteImageUrls)
+                {
+                    var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
+                    template.Content = await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(template.Content, imagesDomain);
+                }
+
+                // Remove the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website.
+                // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
+                if (removeSvgUrlsFromIcons)
+                {
+                    var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                    foreach (Match match in regex.Matches(template.Content))
+                    {
+                        if (!String.IsNullOrEmpty(match.Groups[1].Value))
+                        {
+                            template.Content = template.Content.Replace(match.Groups[1].Value, "");
+                        }
+                    }
+                }
+
+                return template;
+            }
+            catch (Exception exception)
+            {
+                error = exception.ToString();
+                throw;
+            }
+            finally
+            {
+                if (logRenderingOfTemplate)
+                {
+                    stopWatch.Stop();
+                    var endTime = DateTime.Now;
+                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, template.Id, template.Version, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+                }
+            }
+        }
+
+        /// <inheritdoc />
+    public async Task<string> GetGlobalHeader(string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
+        {
+            return await GetGlobalHeader(this, url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls, removeSvgUrlsFromIcons);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetGlobalHeader(IPagesService service, string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
     {
         int headerTemplateId;
         string headerRegexCheck;
@@ -87,7 +164,7 @@ public class PagesService(
                 }
 
                 headerTemplateId = globalHeaderDataRow.IsNull("template_id") ? 0 : globalHeaderDataRow.Field<int>("template_id");
-                template = await templatesService.GetTemplateAsync(headerTemplateId);
+                template = await service.GetRenderedTemplateAsync(headerTemplateId, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons);
                 javascriptTemplates.AddRange(template.JavascriptTemplates);
                 cssTemplates.AddRange(template.CssTemplates);
                 logger.LogDebug($"Default header template loaded: '{headerTemplateId}'");
@@ -107,7 +184,7 @@ public class PagesService(
             return "";
         }
 
-        template = await templatesService.GetTemplateAsync(headerTemplateId);
+        template = await service.GetRenderedTemplateAsync(headerTemplateId, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons);
         javascriptTemplates.AddRange(template.JavascriptTemplates);
         cssTemplates.AddRange(template.CssTemplates);
         logger.LogDebug($"Default header template loaded: '{headerTemplateId}'");
@@ -115,7 +192,13 @@ public class PagesService(
     }
 
     /// <inheritdoc />
-    public async Task<string> GetGlobalFooter(string url, List<int> javascriptTemplates, List<int> cssTemplates)
+    public async Task<string> GetGlobalFooter(string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
+        {
+            return await GetGlobalFooter(this, url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls, removeSvgUrlsFromIcons);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetGlobalFooter(IPagesService service, string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
     {
         int footerTemplateId;
         string headerRegexCheck;
@@ -157,7 +240,7 @@ public class PagesService(
                 }
 
                 footerTemplateId = globalFooterDataRow.IsNull("template_id") ? 0 : globalFooterDataRow.Field<int>("template_id");
-                template = await templatesService.GetTemplateAsync(footerTemplateId);
+                template = await service.GetRenderedTemplateAsync(footerTemplateId, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons);
                 javascriptTemplates.AddRange(template.JavascriptTemplates);
                 cssTemplates.AddRange(template.CssTemplates);
                 logger.LogDebug($"Default footer template loaded: '{footerTemplateId}'");
@@ -177,7 +260,7 @@ public class PagesService(
             return "";
         }
 
-        template = await templatesService.GetTemplateAsync(footerTemplateId);
+        template = await service.GetRenderedTemplateAsync(footerTemplateId, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons);
         javascriptTemplates.AddRange(template.JavascriptTemplates);
         cssTemplates.AddRange(template.CssTemplates);
         logger.LogDebug($"Default footer template loaded: '{footerTemplateId}'");

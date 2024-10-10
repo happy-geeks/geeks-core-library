@@ -15,6 +15,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
@@ -61,6 +62,7 @@ public class TemplatesService : ITemplatesService
     private readonly IDatabaseHelpersService databaseHelpersService;
     private readonly IReplacementsMediator replacementsMediator;
     private readonly IHttpClientService httpClientService;
+        private readonly IBranchesService branchesService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="TemplatesService"/>.
@@ -76,29 +78,31 @@ public class TemplatesService : ITemplatesService
         IDatabaseHelpersService databaseHelpersService,
         IReplacementsMediator replacementsMediator,
         IHttpClientService httpClientService,
-        IHttpContextAccessor httpContextAccessor = null,
-        IActionContextAccessor actionContextAccessor = null,
-        IViewComponentHelper viewComponentHelper = null,
-        IWebHostEnvironment webHostEnvironment = null,
-        ITempDataProvider tempDataProvider = null)
-    {
-        this.gclSettings = gclSettings.Value;
-        this.logger = logger;
-        this.databaseConnection = databaseConnection;
-        this.stringReplacementsService = stringReplacementsService;
-        this.httpContextAccessor = httpContextAccessor;
-        this.viewComponentHelper = viewComponentHelper;
-        this.tempDataProvider = tempDataProvider;
-        this.actionContextAccessor = actionContextAccessor;
-        this.webHostEnvironment = webHostEnvironment;
-        this.filtersService = filtersService;
-        this.objectsService = objectsService;
-        this.languagesService = languagesService;
-        this.accountsService = accountsService;
-        this.databaseHelpersService = databaseHelpersService;
-        this.replacementsMediator = replacementsMediator;
-        this.httpClientService = httpClientService;
-    }
+        IBranchesService branchesService,
+            IHttpContextAccessor httpContextAccessor = null,
+            IActionContextAccessor actionContextAccessor = null,
+            IViewComponentHelper viewComponentHelper = null,
+            IWebHostEnvironment webHostEnvironment = null,
+            ITempDataProvider tempDataProvider = null)
+        {
+            this.gclSettings = gclSettings.Value;
+            this.logger = logger;
+            this.databaseConnection = databaseConnection;
+            this.stringReplacementsService = stringReplacementsService;
+            this.httpContextAccessor = httpContextAccessor;
+            this.viewComponentHelper = viewComponentHelper;
+            this.tempDataProvider = tempDataProvider;
+            this.actionContextAccessor = actionContextAccessor;
+            this.webHostEnvironment = webHostEnvironment;
+            this.filtersService = filtersService;
+            this.objectsService = objectsService;
+            this.languagesService = languagesService;
+            this.accountsService = accountsService;
+            this.databaseHelpersService = databaseHelpersService;
+            this.replacementsMediator = replacementsMediator;
+            this.httpClientService = httpClientService;
+            this.branchesService = branchesService;
+        }
 
     /// <inheritdoc />
     public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true, bool skipPermissions = false)
@@ -1613,7 +1617,7 @@ public class TemplatesService : ITemplatesService
     }
 
     /// <inheritdoc />
-    public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
+    public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html", bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
     {
         if (contentTemplate == null || contentTemplate.CachingMinutes < 0)
         {
@@ -1695,7 +1699,17 @@ public class TemplatesService : ITemplatesService
             cacheUrl.Append(originalUri.Query.ToLowerInvariant());
         }
 
-        cacheFileName.Append(Uri.EscapeDataString(cacheUrl.ToString().ToSha512Simple()));
+            if (useAbsoluteImageUrls && !originalUri.Query.Contains("useAbsoluteImageUrls=true", StringComparison.OrdinalIgnoreCase))
+            {
+                cacheUrl.Append("useAbsoluteImageUrls");
+            }
+
+        if (removeSvgUrlsFromIcons && !originalUri.Query.Contains("removeSvgUrlsFromIcons=true", StringComparison.OrdinalIgnoreCase))
+            {
+                cacheUrl.Append("removeSvgUrlsFromIcons");
+            }
+
+            cacheFileName.Append(Uri.EscapeDataString(cacheUrl.ToString().ToSha512Simple()));
 
         // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
         var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -1740,10 +1754,12 @@ public class TemplatesService : ITemplatesService
             cacheFileName.Append($"_permission-{permissionTemplate.Id > 0}");
         }
 
-        if (String.IsNullOrEmpty(extension))
-        {
-            return cacheFileName.ToString();
-        }
+        cacheFileName.Append($"_{branchesService.GetDatabaseNameFromCookie()}");
+
+            if (String.IsNullOrEmpty(extension))
+            {
+                return cacheFileName.ToString();
+            }
 
         if (!extension.StartsWith("."))
         {

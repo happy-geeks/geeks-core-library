@@ -12,7 +12,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces;
 public interface ITemplatesService
 {
     /// <summary>
-    /// Search for a template and returns it. Must supply either an ID or a name.
+    /// Search for a template and returns it. Must supply either an ID or a name.<br/>
+        /// This will return the unrendered template, with the content as it is in the database. Use <see cref="IPagesService.GetRenderedTemplateAsync"/> for the rendered version.
     /// </summary>
     /// <param name="id">Optional: The ID of the template to get.</param>
     /// <param name="name">Optional: The name of the template to get.</param>
@@ -294,7 +295,7 @@ public interface ITemplatesService
     /// <param name="contentTemplate">The <see cref="Template"/>.</param>
     /// <param name="extension">Optional: The extension to use for the file name. Default is ".html".</param>
     /// <returns>The name for the file to cache the contents of the template to.</returns>
-    Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html");
+    Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html", bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
 
     /// <summary>
     /// Gets all templates that have an URL regex setup.

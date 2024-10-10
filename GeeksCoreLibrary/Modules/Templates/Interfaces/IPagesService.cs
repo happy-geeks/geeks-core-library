@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.ViewModels;
 
@@ -8,13 +9,36 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces;
 public interface IPagesService
 {
     /// <summary>
+    /// Get the rendered template. Must supply either an ID or a name.
+    /// </summary>
+    /// <param name="id">Optional: The ID of the template to get.</param>
+    /// <param name="name">Optional: The name of the template to get.</param>
+    /// <param name="type">Optional: The type of template that is being searched for. Only used in combination with name. Default value is null, which is all template types.</param>
+    /// <param name="parentId">Optional: The ID of the parent of the template to get.</param>
+    /// <param name="parentName">Optional: The name of the parent of template to get.</param>
+    /// <param name="skipPermissions">Optional: Whether to skip the check if the user has the permissions to see the template</param>
+    /// <param name="templateContent">The content of the template to use instead of retrieving it. If a value has been given, no replacements will be done.</param>
+    /// <returns></returns>
+    Task<Template> GetRenderedTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool skipPermissions = false, string templateContent = null, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
+
+    /// <summary>
     /// Gets the header template from Wiser that should be loaded on every page.
     /// </summary>
     /// <param name="url">The current URL of the page, to check the header regex and see if the header might need to be skipped for this page.</param>
     /// <param name="javascriptTemplates">A list of javascript templates. Any javascript templates that are linked to the header, will be added to this list.</param>
     /// <param name="cssTemplates">A list of css templates. Any css templates that are linked to the header, will be added to this list.</param>
     /// <returns>The string with the entire header HTML.</returns>
-    Task<string> GetGlobalHeader(string url, List<int> javascriptTemplates, List<int> cssTemplates);
+    Task<string> GetGlobalHeader(string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
+
+    /// <summary>
+    /// Gets the header template from Wiser that should be loaded on every page.
+    /// </summary>
+    /// <param name="service">The <see cref="IPagesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetRenderedTemplateAsync() in this method.</param>
+    /// <param name="url">The current URL of the page, to check the header regex and see if the header might need to be skipped for this page.</param>
+    /// <param name="javascriptTemplates">A list of javascript templates. Any javascript templates that are linked to the header, will be added to this list.</param>
+    /// <param name="cssTemplates">A list of css templates. Any css templates that are linked to the header, will be added to this list.</param>
+    /// <returns>The string with the entire header HTML.</returns>
+    Task<string> GetGlobalHeader(IPagesService service, string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
 
     /// <summary>
     /// Gets the footer template from Wiser that should be loaded on every page.
@@ -23,7 +47,17 @@ public interface IPagesService
     /// <param name="javascriptTemplates">A list of javascript templates. Any javascript templates that are linked to the footer, will be added to this list.</param>
     /// <param name="cssTemplates">A list of css templates. Any css templates that are linked to the footer, will be added to this list.</param>
     /// <returns>The string with the entire footer HTML.</returns>
-    Task<string> GetGlobalFooter(string url, List<int> javascriptTemplates, List<int> cssTemplates);
+    Task<string> GetGlobalFooter(string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
+
+    /// <summary>
+    /// Gets the footer template from Wiser that should be loaded on every page.
+    /// </summary>
+    /// <param name="service">The <see cref="IPagesService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to GetRenderedTemplateAsync() in this method.</param>
+    /// <param name="url">The current URL of the page, to check the footer regex and see if the footer might need to be skipped for this page.</param>
+    /// <param name="javascriptTemplates">A list of javascript templates. Any javascript templates that are linked to the footer, will be added to this list.</param>
+    /// <param name="cssTemplates">A list of css templates. Any css templates that are linked to the footer, will be added to this list.</param>
+    /// <returns>The string with the entire footer HTML.</returns>
+    Task<string> GetGlobalFooter(IPagesService service, string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
 
     /// <summary>
     /// Creates a <see cref="PageViewModel"/> to use in views for building the HTML for the page.
