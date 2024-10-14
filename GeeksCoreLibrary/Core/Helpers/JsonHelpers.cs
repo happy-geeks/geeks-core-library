@@ -54,24 +54,21 @@ public class JsonHelpers
                     continue;
                 }
 
+                // Create a new flattened object.
+                var flattenedObject = new JObject();
+                foreach (var nonArrayProperty in otherProperties)
+                {
+                    flattenedObject.Add(nonArrayProperty.Name, nonArrayProperty.Value);
+                }
+
+                // Process each array property independently and create combinations.
+                var combinations = new List<JObject> {flattenedObject};
                 foreach (var property in arrayProperties)
                 {
                     var array = FlattenJsonArray((JArray) property.Value);
+                    var newCombinations = new List<JObject>();
 
-                    if (!array.Any())
-                    {
-                        // Create a new flattened object.
-                        var flattenedObject = new JObject();
-
-                        // Copy the non-array properties to the flattened object.
-                        foreach (var nonArrayProperty in otherProperties)
-                        {
-                            flattenedObject.Add(nonArrayProperty.Name, nonArrayProperty.Value);
-                        }
-
-                        output.Add(flattenedObject);
-                    }
-                    else
+                    foreach (var combination in combinations)
                     {
                         foreach (var arrayItem in array)
                         {
@@ -80,24 +77,26 @@ public class JsonHelpers
                                 continue;
                             }
 
-                            // Create a new flattened object.
-                            var flattenedObject = new JObject();
+                            // Create a copy of the combination object to add array properties.
+                            var tempObject = new JObject(combination);
 
-                            // Copy the non-array properties to the flattened object.
-                            foreach (var nonArrayProperty in otherProperties)
-                            {
-                                flattenedObject.Add(nonArrayProperty.Name, nonArrayProperty.Value);
-                            }
-
-                            // Add the properties from the current array item to the flattened object.
+                            // Add the properties from the current array item to the temp object.
                             foreach (var arrayProperty in subItemAsObject.Properties())
                             {
-                                flattenedObject.Add($"{property.Name}_{arrayProperty.Name}", arrayProperty.Value);
+                                var propertyName = $"{property.Name}_{arrayProperty.Name}";
+                                tempObject[propertyName] = arrayProperty.Value;
                             }
 
-                            output.Add(flattenedObject);
+                            newCombinations.Add(tempObject);
                         }
                     }
+
+                    combinations = newCombinations;
+                }
+
+                foreach (var combination in combinations)
+                {
+                    output.Add(combination);
                 }
             }
         }
