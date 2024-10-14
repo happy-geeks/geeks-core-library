@@ -34,7 +34,14 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
             [FromQuery] string fileType = null, [FromQuery] string type = null,
             [FromQuery] string encryptedId = null)
         {
-            if (itemId == 0 || String.IsNullOrWhiteSpace(propertyName))
+            if (String.Equals(fileType, "name", StringComparison.OrdinalIgnoreCase))
+            {
+                if (String.IsNullOrWhiteSpace(fileName))
+                {
+                    return NotFound();
+                }
+            }
+            else if (itemId == 0 || String.IsNullOrWhiteSpace(propertyName))
             {
                 return NotFound();
             }
@@ -52,6 +59,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
                     break;
                 case "DIRECT":
                     (fileBytes, lastModified) = await itemFilesService.GetWiserDirectImageAsync(itemId, preferredWidth, preferredHeight, fileName, resizeMode, anchorPosition, encryptedId, entityType: type);
+                    break;
+                case "NAME":
+                    (fileBytes, lastModified) = await itemFilesService.GetWiserImageByFileNameAsync(propertyName, preferredWidth, preferredHeight, fileName, resizeMode, anchorPosition, encryptedId, entityType: type);
                     break;
                 default:
                     (fileBytes, lastModified) = await itemFilesService.GetWiserItemImageAsync(itemId, propertyName, preferredWidth, preferredHeight, fileName, fileNumber, resizeMode, anchorPosition, encryptedId, entityType: type);

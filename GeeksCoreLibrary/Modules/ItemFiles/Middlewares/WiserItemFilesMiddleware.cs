@@ -30,7 +30,7 @@ public class WiserItemFilesMiddleware
         if (HttpContextHelpers.IsGclMiddleWarePage(context))
         {
             // If this happens, it means that another middleware has already found something and we don't need to do this again.
-            await this.next.Invoke(context);
+            await next.Invoke(context);
             return;
         }
 
@@ -51,9 +51,9 @@ public class WiserItemFilesMiddleware
             context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
         }
 
-        await HandleRewritesAsync(context, path, queryString);
+        HandleRewrites(context, path, queryString);
 
-        await this.next.Invoke(context);
+        await next.Invoke(context);
     }
 
     /// <summary>
@@ -63,13 +63,23 @@ public class WiserItemFilesMiddleware
     /// <param name="context">The current <see cref="HttpContext"/>.</param>
     /// <param name="path">The path of the current URI.</param>
     /// <param name="queryStringFromUrl">The query string from the URI.</param>
-    private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
+    private void HandleRewrites(HttpContext context, string path, QueryString queryStringFromUrl)
     {
+        string requestPath;
+
         // Check if the current URL is that of an image or a file.
-        var urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+        // First check if it's being matched on a file name.
+        var urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+))?(?:\/(?<fileType>name))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         var matchResult = urlRegex.Match(path);
         if (!matchResult.Success)
         {
+            urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            matchResult = urlRegex.Match(path);
+        }
+
+        if (!matchResult.Success)
+        {
+            // If the URL is not an image, check if it's a file.
             urlRegex = new Regex(@"(?:file\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>.+?)(?:\/(?<fileNumber>\d+))?(?:\/)(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             matchResult = urlRegex.Match(path);
             if (!matchResult.Success)
@@ -77,12 +87,14 @@ public class WiserItemFilesMiddleware
                 return;
             }
 
-            context.Request.Path = "/wiser-file.gcl";
+            requestPath = "/wiser-file.gcl";
         }
         else
         {
-            context.Request.Path = "/wiser-image.gcl";
+            requestPath = "/wiser-image.gcl";
         }
+
+        context.Request.Path = requestPath;
 
         // Add all values from the regex to the query string for the controller.
         foreach (Group group in matchResult.Groups)

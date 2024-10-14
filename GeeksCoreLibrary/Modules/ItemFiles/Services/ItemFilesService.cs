@@ -85,13 +85,11 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
-            var localFilename = $"image_wiser2{entityTypePart}_{finalItemId}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
+            var localFilename = $"image_wiser{entityTypePart}_{finalItemId}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
-            return getImageResult.Rows.Count == 0
-                ? await HandleImage(null, fileLocation, propertyName, preferredWidth, preferredHeight, resizeMode, anchorPosition)
-                : await HandleImage(getImageResult.Rows[0], fileLocation, propertyName, preferredWidth, preferredHeight, resizeMode, anchorPosition);
+            return await HandleImage(getImageResult.Rows.Count == 0 ? null : getImageResult.Rows[0], fileLocation, propertyName, preferredWidth, preferredHeight, resizeMode, anchorPosition);
         }
 
         /// <inheritdoc />
@@ -128,13 +126,11 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
-            var localFilename = $"image_wiser2_{finalItemLinkId}_itemlink{linkTypePart}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{filename}";
+            var localFilename = $"image_wiser_{finalItemLinkId}_itemlink{linkTypePart}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
-            return getImageResult.Rows.Count == 0
-                ? await HandleImage(null, fileLocation, propertyName, preferredWidth, preferredHeight, resizeMode, anchorPosition)
-                : await HandleImage(getImageResult.Rows[0], fileLocation, propertyName, preferredWidth, preferredHeight, resizeMode, anchorPosition);
+            return await HandleImage(getImageResult.Rows.Count == 0 ? null : getImageResult.Rows[0], fileLocation, propertyName, preferredWidth, preferredHeight, resizeMode, anchorPosition);
         }
 
         /// <inheritdoc />
@@ -168,13 +164,47 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 return (null, DateTime.MinValue);
             }
 
-            var localFilename = $"image_wiser2{entityTypePart}_{finalItemId}_direct_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
+            var localFilename = $"image_wiser{entityTypePart}_{finalItemId}_direct_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
             var fileLocation = Path.Combine(localDirectory, localFilename);
 
             // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
-            return getImageResult.Rows.Count == 0
-                ? await HandleImage(null, fileLocation, "", preferredWidth, preferredHeight, resizeMode, anchorPosition)
-                : await HandleImage(getImageResult.Rows[0], fileLocation, "", preferredWidth, preferredHeight, resizeMode, anchorPosition);
+            return await HandleImage(getImageResult.Rows.Count == 0 ? null : getImageResult.Rows[0], fileLocation, "", preferredWidth, preferredHeight, resizeMode, anchorPosition);
+        }
+
+        /// <inheritdoc />
+        public async Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+        {
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("filename", Path.GetFileNameWithoutExtension(filename));
+            databaseConnection.AddParameter("propertyName", propertyName);
+            var getImageResult = await databaseConnection.GetAsync($@"
+                SELECT content_type, content, content_url, protected
+                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
+                WHERE REPLACE(file_name, extension, '') = ?fileName AND property_name = ?propertyName
+                ORDER BY ordering ASC, id ASC
+                LIMIT 1", skipCache: true);
+
+            if (!ValidateQueryResult(getImageResult, encryptedItemId))
+            {
+                // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
+                return (null, DateTime.MinValue);
+            }
+
+            var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
+            var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+            if (String.IsNullOrWhiteSpace(localDirectory))
+            {
+                logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+                return (null, DateTime.MinValue);
+            }
+
+            var localFilename = $"image_wiser{entityTypePart}_filename_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
+            var fileLocation = Path.Combine(localDirectory, localFilename);
+
+            // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
+            return await HandleImage(getImageResult.Rows.Count == 0 ? null : getImageResult.Rows[0], fileLocation, propertyName, preferredWidth, preferredHeight, resizeMode, anchorPosition);
         }
 
         /// <inheritdoc />
@@ -348,7 +378,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <summary>
-        /// Convers the data into an image of the given size, format, and quality, and will return the bytes of that image.
+        /// Converts the data into an image of the given size, format, and quality, and will return the bytes of that image.
         /// </summary>
         /// <param name="dataRow"></param>
         /// <param name="saveLocation"></param>
