@@ -80,5 +80,52 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <param name="includePermissions">Optional: Whether to include all permissions that each role has. Default is <see langword="false"/>.</param>
         /// <returns></returns>
         Task<List<RoleModel>> GetUserRolesAsync(ulong userId, bool includePermissions = false);
+
+        /// <summary>
+        /// NOTE: This method was moved from Accounts component and it should NOT be exposed to users.
+        /// Automatically logs in the user via ID. This function should never be made available publicly, only for internal usage to login after creating an account for example.
+        /// </summary>
+        /// <param name="userId">The ID of the user to login.</param>
+        /// <param name="mainUserId">The ID of the main user, if the user is logging in with a sub account.</param>
+        /// <param name="role">Used to set a custom role for the user separate of the Wiser role system</param>
+        Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role, Dictionary<string,string> ExtraDataForReplacements);
+
+        /// <summary>
+        /// Gets the Google Client ID from the Google Analytics cookie and saved it.
+        /// </summary>
+        /// <param name="userIdForGoogleCid">The ID of the user to save the CID for.</param>
+        Task SaveGoogleClientIdAsync(ulong userIdForGoogleCid);
+
+        /// <summary>
+        /// Saves a login attempt in the details of the user. This will use the query in <see cref="JsonFormatter.Settings.SaveLoginAttemptQuery"/>.
+        /// </summary>
+        /// <param name="success">Whether the login attempt was successful or not.</param>
+        /// <param name="userId">The ID of the user that is attempting to login.</param>
+        Task SaveLoginAttemptAsync(bool success, ulong userId, Dictionary<string,string> ExtraDataForReplacements);
+
+        /// <summary>
+        /// Do all default login replacements on a SQL template and adds the variables to the <see cproperty="SystemConnection"/>.
+        /// </summary>
+        /// <param name="template"></param>
+        /// <param name="userId"></param>
+        /// <param name="loginValue"></param>
+        /// <param name="emailAddress"></param>
+        /// <param name="token"></param>
+        /// <param name="success"></param>
+        /// <param name="passwordHash"></param>
+        /// <param name="subAccountId"></param>
+        /// <param name="role"></param>
+        /// <returns></returns>
+        string SetupAccountQuery(string template,
+            ulong userId = 0,
+            string loginValue = null,
+            string emailAddress = null,
+            string token = null,
+            bool success = true,
+            string passwordHash = null,
+            ulong subAccountId = 0,
+            string role = "");
+
+        int? GetAmountOfDaysToRememberCookie();
     }
 }

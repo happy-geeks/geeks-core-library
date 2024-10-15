@@ -618,7 +618,7 @@ namespace GeeksCoreLibrary.Components.Account
                 // If we have a user ID and a main query, replace the results from the query into the results HTML.
                 if (userId > 0 && !String.IsNullOrWhiteSpace(Settings.MainQuery))
                 {
-                    var query = SetupAccountQuery(Settings.MainQuery, userId);
+                    var query = AccountsService.SetupAccountQuery(Settings.MainQuery, userId);
                     var queryResult = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                     if (queryResult.Rows.Count > 0)
@@ -679,7 +679,7 @@ namespace GeeksCoreLibrary.Components.Account
                 var userLogin = "";
                 if (userIdFromQueryString > 0)
                 {
-                    var query = SetupAccountQuery(Settings.ValidateResetPasswordTokenQuery, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
+                    var query = AccountsService.SetupAccountQuery(Settings.ValidateResetPasswordTokenQuery, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
                     var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                     if (dataTable == null || dataTable.Rows.Count == 0)
@@ -783,7 +783,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 var userData = await AccountsService.GetUserDataFromCookieAsync(Settings.CookieName);
-                var query = SetupAccountQuery(Settings.MainQuery, userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreatedAccountId());
+                var query = AccountsService.SetupAccountQuery(Settings.MainQuery, userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreatedAccountId());
                 var accountDataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 var availableFields = new List<string>();
 
@@ -915,7 +915,7 @@ namespace GeeksCoreLibrary.Components.Account
                     }
                     else if (userData.UserId == 0 && createOrUpdateAccountResult.Result == CreateOrUpdateAccountResults.Success && changePasswordResult == ResetOrChangePasswordResults.Success && Settings.AutoLoginUserAfterAction)
                     {
-                        await AutoLoginUserAsync(createOrUpdateAccountResult.SubAccountId > 0 ? createOrUpdateAccountResult.SubAccountId : createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.Role);
+                        await AccountsService.AutoLoginUserAsync(createOrUpdateAccountResult.SubAccountId > 0 ? createOrUpdateAccountResult.SubAccountId : createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.Role, ExtraDataForReplacements);
                         isLoggedIn = true;
                     }
 
@@ -996,7 +996,7 @@ namespace GeeksCoreLibrary.Components.Account
                 UInt64.TryParse(request.Query[$"{Constants.SelectedSubAccountQueryStringKey}{ComponentId}"], out selectedSubAccount);
 
                 // Add fields to the page.
-                var query = SetupAccountQuery(Settings.GetSubAccountQuery, userData.MainUserId, subAccountId: selectedSubAccount);
+                var query = AccountsService.SetupAccountQuery(Settings.GetSubAccountQuery, userData.MainUserId, subAccountId: selectedSubAccount);
                 var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 var availableFields = new List<string> { Settings.PasswordFieldName, Settings.NewPasswordFieldName, Settings.NewPasswordConfirmationFieldName, Settings.LoginFieldName, Settings.EmailAddressFieldName, Settings.RoleFieldName };
 
@@ -1038,7 +1038,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                 if (UInt64.TryParse(request.Query[$"{Constants.DeleteSubAccountQueryStringKey}{ComponentId}"].ToString(), out var deleteSubAccountId) && deleteSubAccountId > 0)
                 {
-                    query = SetupAccountQuery(Settings.DeleteAccountQuery, userData.MainUserId, subAccountId: deleteSubAccountId);
+                    query = AccountsService.SetupAccountQuery(Settings.DeleteAccountQuery, userData.MainUserId, subAccountId: deleteSubAccountId);
                     await RenderAndExecuteQueryAsync(query, skipCache: true);
                     resultHtml = !resultHtml.Contains("{success}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateSuccess : resultHtml.Replace("{error}", "", StringComparison.OrdinalIgnoreCase).Replace("{success}", Settings.TemplateSuccess, StringComparison.OrdinalIgnoreCase);
                 }
@@ -1087,7 +1087,7 @@ namespace GeeksCoreLibrary.Components.Account
                     resultHtml = resultHtml.Replace("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "", StringComparison.OrdinalIgnoreCase);
 
                     // Execute the GetSubAccountQuery again, so that have can show the new values in the HTML.
-                    query = SetupAccountQuery(Settings.GetSubAccountQuery, userData.MainUserId, subAccountId: selectedSubAccount);
+                    query = AccountsService.SetupAccountQuery(Settings.GetSubAccountQuery, userData.MainUserId, subAccountId: selectedSubAccount);
                     dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                     fieldsDataRows = dataTable.Rows;
                 }
@@ -1116,7 +1116,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 // List of sub accounts.
-                query = SetupAccountQuery(Settings.MainQuery, userData.MainUserId, subAccountId: selectedSubAccount);
+                query = AccountsService.SetupAccountQuery(Settings.MainQuery, userData.MainUserId, subAccountId: selectedSubAccount);
                 dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 resultHtml = resultHtml.Replace("{amountOfSubAccounts}", dataTable.Rows.Count.ToString(), StringComparison.OrdinalIgnoreCase);
 
@@ -1209,32 +1209,6 @@ namespace GeeksCoreLibrary.Components.Account
         }
 
         /// <summary>
-        /// Automatically logs in the user via ID. This function should never be made available publicly, only for internal usage to login after creating an account for example.
-        /// </summary>
-        /// <param name="userId">The ID of the user to login.</param>
-        /// <param name="mainUserId">The ID of the main user, if the user is logging in with a sub account.</param>
-        /// <param name="role">Used to set a custom role for the user separate of the Wiser role system</param>
-        private async Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role)
-        {
-            // Make sure we have a valid user ID.
-            if (userId <= 0)
-            {
-                WriteToTrace("AutoLoginUser called with invalid user ID.", true);
-                return;
-            }
-
-            // Everything succeeded, so generate a cookie for the user and reset any failed login attempts.
-            var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
-            var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
-            await SaveGoogleClientIdAsync(userId);
-
-            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
-            HttpContextHelpers.WriteCookie(HttpContext, Settings.CookieName, cookieValue, offset, isEssential: true);
-
-            await SaveLoginAttemptAsync(true, userId);
-        }
-
-        /// <summary>
         /// Creates a new account if the user is not logged in, or updates an existing account if they are logged in.
         /// </summary>
         /// <param name="userId">The ID of the logged in user, or 0 if they're not logged in.</param>
@@ -1283,7 +1257,7 @@ namespace GeeksCoreLibrary.Components.Account
                     var emailAddress = request.Form[Settings.EmailAddressFieldName];
                     var loginValue = request.Form[Settings.LoginFieldName];
                     userRole = request.Form[Settings.RoleFieldName];
-                    var query = SetupAccountQuery(Settings.CheckIfAccountExistsQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue);
+                    var query = AccountsService.SetupAccountQuery(Settings.CheckIfAccountExistsQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue);
                     foreach (var field in availableFields)
                     {
                         var formValue = GetFormValue(field);
@@ -1308,11 +1282,11 @@ namespace GeeksCoreLibrary.Components.Account
 
                     if ((Settings.ComponentMode == ComponentModes.SubAccountsManagement && subAccountId > 0) || (Settings.ComponentMode != ComponentModes.SubAccountsManagement && userId > 0))
                     {
-                        query = SetupAccountQuery(Settings.UpdateAccountQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
+                        query = AccountsService.SetupAccountQuery(Settings.UpdateAccountQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
                     }
                     else
                     {
-                        query = SetupAccountQuery(Settings.CreateAccountQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
+                        query = AccountsService.SetupAccountQuery(Settings.CreateAccountQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
                     }
 
                     // Add fields to main query, for creating or updating an account.
@@ -1450,7 +1424,7 @@ namespace GeeksCoreLibrary.Components.Account
                     }
 
                     // Save the Google Analytics client ID. Make sure to always save it, even if the required settings don't contain a value.
-                    await SaveGoogleClientIdAsync(createdNewAccount ? userId : (await AccountsService.GetUserDataFromCookieAsync(Settings.CookieName)).UserId);
+                    await AccountsService.SaveGoogleClientIdAsync(createdNewAccount ? userId : (await AccountsService.GetUserDataFromCookieAsync(Settings.CookieName)).UserId);
 
                     if (useTransaction)
                     {
@@ -1761,7 +1735,7 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             // Get user information.
-            var query = decryptedUserId > 0 ? SetupAccountQuery(Settings.AutoLoginQuery, decryptedUserId) : SetupAccountQuery(Settings.LoginQuery, loginValue: loginValue);
+            var query = decryptedUserId > 0 ? AccountsService.SetupAccountQuery(Settings.AutoLoginQuery, decryptedUserId) : AccountsService.SetupAccountQuery(Settings.LoginQuery, loginValue: loginValue);
             var accountResult = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
             // User doesn't exist.
@@ -1825,7 +1799,7 @@ namespace GeeksCoreLibrary.Components.Account
                 if (!usingGoogleAuthentication && !password.VerifySha512(passwordHash))
                 {
                     WriteToTrace("The password hash validation failed.");
-                    await SaveLoginAttemptAsync(false, loggedInUserId);
+                    await AccountsService.SaveLoginAttemptAsync(false, loggedInUserId, ExtraDataForReplacements);
                     return (Result: (actualComponentMode == ComponentModes.LoginMultipleSteps ? LoginResults.InvalidPassword : LoginResults.InvalidUsernameOrPassword), UserId: 0, EmailAddress: userEmail);
                 }
 
@@ -1861,11 +1835,11 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             // Everything succeeded, so generate a cookie for the user and reset any failed login attempts.
-            var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
+            var amountOfDaysToRememberCookie = AccountsService.GetAmountOfDaysToRememberCookie();
             var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(loggedInUserId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
             if (decryptedUserId == 0)
             {
-                await SaveGoogleClientIdAsync(loggedInUserId);
+                await AccountsService.SaveGoogleClientIdAsync(loggedInUserId);
             }
 
             var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
@@ -1873,50 +1847,10 @@ namespace GeeksCoreLibrary.Components.Account
 
             if (decryptedUserId == 0)
             {
-                await SaveLoginAttemptAsync(true, loggedInUserId);
+                await AccountsService.SaveLoginAttemptAsync(true, loggedInUserId, ExtraDataForReplacements);
             }
 
             return (Result: LoginResults.Success, UserId: loggedInUserId, EmailAddress: userEmail);
-        }
-
-        /// <summary>
-        /// Gets the Google Client ID from the Google Analytics cookie and saved it.
-        /// </summary>
-        /// <param name="userIdForGoogleCid">The ID of the user to save the CID for.</param>
-        private async Task SaveGoogleClientIdAsync(ulong userIdForGoogleCid)
-        {
-            var googleClientIdCookieValue = Request.Cookies[Constants.GoogleAnalyticsCookieName];
-            if (String.IsNullOrWhiteSpace(googleClientIdCookieValue))
-            {
-                return;
-            }
-
-            // GA1.2.1248174149.1587127355
-            var clientIdSplit = googleClientIdCookieValue.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-
-            if (clientIdSplit.Length != 4)
-            {
-                WriteToTrace($"Google Analytics cookie found ({Constants.GoogleAnalyticsCookieName}: {googleClientIdCookieValue}), but is not a valid format. Expected to have 3 dots, but it has {clientIdSplit.Length - 1}", true);
-                return;
-            }
-
-            if (userIdForGoogleCid <= 0)
-            {
-                WriteToTrace($"Google Analytics cookie found ({Constants.GoogleAnalyticsCookieName}: {googleClientIdCookieValue}), but the user is not logged in and we did not create a new account (successfully).", true);
-                return;
-            }
-
-            var googleClientId = String.Join(".", clientIdSplit.Skip(2));
-
-            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Settings.EntityType);
-
-            var detail = new WiserItemDetailModel()
-            {
-                Key = String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? Constants.DefaultGoogleCidFieldName : Settings.GoogleClientIdFieldName,
-                Value = googleClientId
-            };
-
-            await wiserItemsService.SaveItemDetailAsync(detail, userIdForGoogleCid, 0, Settings.EntityType);
         }
 
         /// <summary>
@@ -1939,7 +1873,7 @@ namespace GeeksCoreLibrary.Components.Account
                 emailAddress = Request.Form[Settings.EmailAddressFieldName].ToString();
             }
 
-            var query = SetupAccountQuery(Settings.GetUserIdViaEmailAddressQuery, emailAddress: emailAddress);
+            var query = AccountsService.SetupAccountQuery(Settings.GetUserIdViaEmailAddressQuery, emailAddress: emailAddress);
             var result = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
             if (result.Rows.Count == 0)
@@ -2062,22 +1996,6 @@ namespace GeeksCoreLibrary.Components.Account
         }
 
         /// <summary>
-        /// Saves a login attempt in the details of the user. This will use the query in <see cref="JsonFormatter.Settings.SaveLoginAttemptQuery"/>.
-        /// </summary>
-        /// <param name="success">Whether the login attempt was successful or not.</param>
-        /// <param name="userId">The ID of the user that is attempting to login.</param>
-        private async Task SaveLoginAttemptAsync(bool success, ulong userId)
-        {
-            var query = SetupAccountQuery(Settings.SaveLoginAttemptQuery, userId, success: success);
-            if (String.IsNullOrWhiteSpace(query))
-            {
-                return;
-            }
-
-            await RenderAndExecuteQueryAsync(query, skipCache: true);
-        }
-
-        /// <summary>
         /// Changes a user's password.
         /// </summary>
         /// <param name="userId">The ID of the user or sub account to change the password of.</param>
@@ -2104,7 +2022,7 @@ namespace GeeksCoreLibrary.Components.Account
             // Then validate the old password, if the user is changing the password in their account.
             if (Settings.ComponentMode != ComponentModes.ResetPassword && Settings.ComponentMode != ComponentModes.SubAccountsManagement && userId > 0 && !isMakingNewAccount && Settings.RequireCurrentPasswordForChangingPassword)
             {
-                query = SetupAccountQuery(Settings.ValidatePasswordQuery, userId);
+                query = AccountsService.SetupAccountQuery(Settings.ValidatePasswordQuery, userId);
                 var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 if (dataTable == null || dataTable.Rows.Count == 0)
                 {
@@ -2142,7 +2060,7 @@ namespace GeeksCoreLibrary.Components.Account
             if (userId > 0 && !String.IsNullOrWhiteSpace(newPassword))
             {
                 var newPasswordHash = newPassword.ToSha512ForPasswords();
-                query = SetupAccountQuery(Settings.ChangePasswordQuery, userId, passwordHash: newPasswordHash);
+                query = AccountsService.SetupAccountQuery(Settings.ChangePasswordQuery, userId, passwordHash: newPasswordHash);
                 await RenderAndExecuteQueryAsync(query, skipCache: true);
             }
 
@@ -2150,92 +2068,6 @@ namespace GeeksCoreLibrary.Components.Account
         }
 
         #endregion
-
-        /// <summary>
-        /// Do all default login replacements on a SQL template and adds the variables to the <see cproperty="SystemConnection"/>.
-        /// </summary>
-        /// <param name="template"></param>
-        /// <param name="userId"></param>
-        /// <param name="loginValue"></param>
-        /// <param name="emailAddress"></param>
-        /// <param name="token"></param>
-        /// <param name="success"></param>
-        /// <param name="passwordHash"></param>
-        /// <param name="subAccountId"></param>
-        /// <param name="role"></param>
-        /// <returns></returns>
-        private string SetupAccountQuery(string template,
-            ulong userId = 0,
-            string loginValue = null,
-            string emailAddress = null,
-            string token = null,
-            bool success = true,
-            string passwordHash = null,
-            ulong subAccountId = 0,
-            string role = "")
-        {
-            if (String.IsNullOrWhiteSpace(template))
-            {
-                return template;
-            }
-
-            DatabaseConnection.ClearParameters();
-            DatabaseConnection.AddParameter("entityType", Settings.EntityType);
-            DatabaseConnection.AddParameter("subAccountEntityType", Settings.SubAccountEntityType);
-            DatabaseConnection.AddParameter("loginFieldName", Settings.LoginFieldName);
-            DatabaseConnection.AddParameter("passwordFieldName", Settings.PasswordFieldName);
-            DatabaseConnection.AddParameter("emailAddressFieldName", Settings.EmailAddressFieldName);
-            DatabaseConnection.AddParameter("failedLoginAttemptsFieldName", Settings.FailedLoginAttemptsFieldName);
-            DatabaseConnection.AddParameter("lastLoginAttemptFieldName", Settings.LastLoginAttemptFieldName);
-            DatabaseConnection.AddParameter("resetPasswordTokenFieldName", Settings.ResetPasswordTokenFieldName);
-            DatabaseConnection.AddParameter("resetPasswordExpireDateFieldName", Settings.ResetPasswordExpireDateFieldName);
-            DatabaseConnection.AddParameter("subAccountLinkTypeNumber", Settings.SubAccountLinkTypeNumber);
-            DatabaseConnection.AddParameter("roleFieldName", Settings.RoleFieldName);
-            DatabaseConnection.AddParameter("userId", userId);
-            DatabaseConnection.AddParameter("login", loginValue);
-            DatabaseConnection.AddParameter("emailAddress", emailAddress);
-            DatabaseConnection.AddParameter("token", token);
-            DatabaseConnection.AddParameter("success", success);
-            DatabaseConnection.AddParameter("newPasswordHash", passwordHash);
-            DatabaseConnection.AddParameter("subAccountId", subAccountId);
-            DatabaseConnection.AddParameter("role", role);
-
-            // Check if the encrypted values are requested in the query template before adding them to the parameters.
-            if (template.Contains("{emailAddressGclAesEncrypted}") || template.Contains("?emailAddressGclAesEncrypted"))
-            {
-                var value = String.IsNullOrWhiteSpace(emailAddress) ? "" : emailAddress.EncryptWithAes();
-                DatabaseConnection.AddParameter("emailAddressGclAesEncrypted", value);
-            }
-            else if (template.Contains("{emailAddressAesEncrypted}") || template.Contains("?emailAddressAesEncrypted"))
-            {
-                var value = String.IsNullOrWhiteSpace(emailAddress) ? "" : emailAddress.EncryptWithAes();
-                DatabaseConnection.AddParameter("emailAddressAesEncrypted", value);
-            }
-
-            // Check if the template contains a basket id variable
-            if (template.Contains("{basketId}") || template.Contains("?basketId"))
-            {
-                // TODO: In toekomst de cookiename variabel maken door deze toe te voegen aan de variabele naam en er een regex overheen te gooien
-                throw new NotImplementedException("TODO: {basketId}");
-                //SystemConnection.AddParameter("basketId", ShoppingBasket.GetBasketItemId("winkelmandje"));
-            }
-
-            return template.Replace("'{userId}'", "?userId", StringComparison.OrdinalIgnoreCase).Replace("{userId}", "?userId", StringComparison.OrdinalIgnoreCase).Replace("'{token}'", "?token", StringComparison.OrdinalIgnoreCase).Replace("{token}", "?token", StringComparison.OrdinalIgnoreCase)
-                .Replace("'{resetPasswordTokenFieldName}'", "?resetPasswordTokenFieldName", StringComparison.OrdinalIgnoreCase).Replace("{resetPasswordTokenFieldName}", "?resetPasswordTokenFieldName", StringComparison.OrdinalIgnoreCase)
-                .Replace("'{resetPasswordExpireDateFieldName}'", "?resetPasswordExpireDateFieldName", StringComparison.OrdinalIgnoreCase).Replace("{resetPasswordExpireDateFieldName}", "?resetPasswordExpireDateFieldName", StringComparison.OrdinalIgnoreCase)
-                .Replace("'{loginFieldName}'", "?loginFieldName", StringComparison.OrdinalIgnoreCase).Replace("{loginFieldName}", "?loginFieldName", StringComparison.OrdinalIgnoreCase).Replace("'{entityType}'", "?entityType", StringComparison.OrdinalIgnoreCase)
-                .Replace("{entityType}", "?entityType", StringComparison.OrdinalIgnoreCase).Replace("'{failedLoginAttemptsFieldName}'", "?failedLoginAttemptsFieldName")
-                .Replace("{failedLoginAttemptsFieldName}", "?failedLoginAttemptsFieldName", StringComparison.OrdinalIgnoreCase).Replace("'{lastLoginAttemptFieldName}'", "?lastLoginAttemptFieldName", StringComparison.OrdinalIgnoreCase)
-                .Replace("{lastLoginAttemptFieldName}", "?failedLoginAttemptsFieldName", StringComparison.OrdinalIgnoreCase).Replace("'{roleFieldName}'", "?roleFieldName", StringComparison.OrdinalIgnoreCase).Replace("{roleFieldName}", "?roleFieldName", StringComparison.OrdinalIgnoreCase)
-                .Replace("'{success}'", "?success", StringComparison.OrdinalIgnoreCase).Replace("{success}", "?success", StringComparison.OrdinalIgnoreCase).Replace("'{emailAddress}'", "?emailAddress").Replace("{emailAddress}", "?emailAddress", StringComparison.OrdinalIgnoreCase)
-                .Replace("'{emailAddressGclAesEncrypted}'", "?emailAddressGclAesEncrypted", StringComparison.OrdinalIgnoreCase).Replace("{emailAddressGclAesEncrypted}", "?emailAddressGclAesEncrypted", StringComparison.OrdinalIgnoreCase)
-                .Replace("'{emailAddressAesEncrypted}'", "?emailAddressAesEncrypted", StringComparison.OrdinalIgnoreCase).Replace("{emailAddressAesEncrypted}", "?emailAddressAesEncrypted", StringComparison.OrdinalIgnoreCase)
-                .Replace("'{emailAddressFieldName}'", "?emailAddressFieldName", StringComparison.OrdinalIgnoreCase).Replace("{emailAddressFieldName}", "?emailAddressFieldName").Replace("'{newPasswordHash}'", "?newPasswordHash", StringComparison.OrdinalIgnoreCase)
-                .Replace("{newPasswordHash}", "?newPasswordHash", StringComparison.OrdinalIgnoreCase).Replace("'{passwordFieldName}'", "?passwordFieldName", StringComparison.OrdinalIgnoreCase).Replace("{passwordFieldName}", "?passwordFieldName", StringComparison.OrdinalIgnoreCase)
-                .Replace("'{subAccountLinkTypeNumber}'", "?subAccountLinkTypeNumber", StringComparison.OrdinalIgnoreCase).Replace("{subAccountLinkTypeNumber}", "?subAccountLinkTypeNumber", StringComparison.OrdinalIgnoreCase)
-                .Replace("{subAccountEntityType}", "?subAccountEntityType", StringComparison.OrdinalIgnoreCase).Replace("'{subAccountId}'", "?subAccountId", StringComparison.OrdinalIgnoreCase).Replace("{subAccountId}", "?subAccountId", StringComparison.OrdinalIgnoreCase)
-                .Replace("'{role}'", "?role", StringComparison.OrdinalIgnoreCase).Replace("{role}", "?role", StringComparison.OrdinalIgnoreCase).Replace("'{basketId}'", "?basketId", StringComparison.OrdinalIgnoreCase).Replace("{basketId}", "?basketId", StringComparison.OrdinalIgnoreCase);
-        }
 
         /// <summary>
         /// Do default replacements, such as field names, on a string.
@@ -2255,17 +2087,6 @@ namespace GeeksCoreLibrary.Components.Account
                 Replace("{emailAddressFieldName}", Settings.EmailAddressFieldName, StringComparison.OrdinalIgnoreCase).
                 Replace("<jform", "<form", StringComparison.OrdinalIgnoreCase).
                 Replace("</jform", "</form", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private int? GetAmountOfDaysToRememberCookie()
-        {
-            if (HttpContext == null || String.IsNullOrWhiteSpace(Settings.RememberMeCheckboxName))
-            {
-                return Settings.AmountOfDaysToRememberCookie;
-            }
-
-            var formValue = Request.HasFormContentType ? Request.Form[Settings.RememberMeCheckboxName] : StringValues.Empty;
-            return String.IsNullOrWhiteSpace(formValue) || formValue == "0" ? null : Settings.AmountOfDaysToRememberCookie;
         }
     }
 }
