@@ -63,13 +63,13 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+        public async Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
         {
             var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-            var localFilename = $"image_wiser{entityTypePart}_filename_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
+            var localFilename = $"image_wiser{entityTypePart}_{itemId}_filename_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
             if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0 || !ValidateItemFile(localFilename))
             {
-                return await itemFilesService.GetWiserImageByFileNameAsync(propertyName, preferredWidth, preferredHeight, filename, resizeMode, anchorPosition, encryptedItemId, entityType);
+                return await itemFilesService.GetWiserImageByFileNameAsync(itemId, propertyName, preferredWidth, preferredHeight, filename, resizeMode, anchorPosition, encryptedItemId, entityType);
             }
 
             return await GetFileBytesAsync(localFilename);

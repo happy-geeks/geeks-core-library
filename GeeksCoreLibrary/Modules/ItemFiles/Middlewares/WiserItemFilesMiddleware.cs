@@ -65,21 +65,11 @@ public class WiserItemFilesMiddleware
     /// <param name="queryStringFromUrl">The query string from the URI.</param>
     private void HandleRewrites(HttpContext context, string path, QueryString queryStringFromUrl)
     {
-        string requestPath;
-
         // Check if the current URL is that of an image or a file.
-        // First check if it's being matched on a file name.
-        var urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+))?(?:\/(?<fileType>name))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+        var urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct|name))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         var matchResult = urlRegex.Match(path);
         if (!matchResult.Success)
         {
-            urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            matchResult = urlRegex.Match(path);
-        }
-
-        if (!matchResult.Success)
-        {
-            // If the URL is not an image, check if it's a file.
             urlRegex = new Regex(@"(?:file\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>.+?)(?:\/(?<fileNumber>\d+))?(?:\/)(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             matchResult = urlRegex.Match(path);
             if (!matchResult.Success)
@@ -87,14 +77,12 @@ public class WiserItemFilesMiddleware
                 return;
             }
 
-            requestPath = "/wiser-file.gcl";
+            context.Request.Path = "/wiser-file.gcl";
         }
         else
         {
-            requestPath = "/wiser-image.gcl";
+            context.Request.Path = "/wiser-image.gcl";
         }
-
-        context.Request.Path = requestPath;
 
         // Add all values from the regex to the query string for the controller.
         foreach (Group group in matchResult.Groups)

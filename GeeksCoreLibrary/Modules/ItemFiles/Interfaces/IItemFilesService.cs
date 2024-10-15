@@ -41,7 +41,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Interfaces
         /// <summary>
         /// Attempts to retrieve an image directly, via file ID. Will return a no-image if no image was found. A 404 status will be returned if a no-image file could not be found either.
         /// </summary>
-        /// <param name="itemId"></param>
+        /// <param name="itemId">The Wiser item file ID of the image.</param>
         /// <param name="preferredWidth">The preferred width the image should be resized to. Based on the resize mode and height the width might end up smaller than the preferred width.</param>
         /// <param name="preferredHeight">The preferred height the image should be resized to. Based on the resize mode and height the width might end up smaller than the preferred height.</param>
         /// <param name="filename">The filename of the image as it's saved in Wiser. It is not case-sensitive.</param>
@@ -55,6 +55,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Interfaces
         /// <summary>
         /// Attempts to retrieve an image based on the image's filename. Will return a no-image if no image was found. A 404 status will be returned if a no-image file could not be found either.
         /// </summary>
+        /// <param name="itemId">The Wiser item ID the image is linked to.</param>
         /// <param name="propertyName">The property name the image is linked to.</param>
         /// <param name="preferredWidth">The preferred width the image should be resized to. Based on the resize mode and height the width might end up smaller than the preferred width.</param>
         /// <param name="preferredHeight">The preferred height the image should be resized to. Based on the resize mode and height the width might end up smaller than the preferred height.</param>
@@ -64,7 +65,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Interfaces
         /// <param name="encryptedItemId">Optional: When the image is protected, the encrypted item ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
         /// <param name="entityType">Optional: If there is a separate wiser_itemfile table for the specified item, then enter the entity type here so that we can find it.</param>
         /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-        Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
+        Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
 
         /// <summary>
         /// Attempts to retrieve a file linked to an item. A 404 status will be returned if no file was found.
