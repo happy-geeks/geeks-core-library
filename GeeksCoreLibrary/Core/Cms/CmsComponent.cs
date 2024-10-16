@@ -33,7 +33,7 @@ namespace GeeksCoreLibrary.Core.Cms
         protected ITemplatesService TemplatesService;
         protected IDatabaseConnection DatabaseConnection;
         protected IAccountsService AccountsService;
-        protected IComponentsService componentsService;
+        protected IComponentsService ComponentsService;
 
         /// <summary>
         /// Whether the component should be ran in legacy mode. This reads and writes the old Wiser1 JSON settings.
@@ -233,7 +233,33 @@ namespace GeeksCoreLibrary.Core.Cms
         /// <returns>A <see cref="DataTable" /> with the result(s), or NULL if the query was empty.</returns>
         protected async Task<DataTable> RenderAndExecuteQueryAsync(string queryToUse, DataRow dataRowForReplacements = null, bool doVariablesCheck = false, bool skipCache = false)
         {
-            return await componentsService.RenderAndExecuteQueryAsync(queryToUse, ExtraDataForReplacements, dataRowForReplacements, doVariablesCheck, skipCache);
+            //return await ComponentsService.RenderAndExecuteQueryAsync(queryToUse, ExtraDataForReplacements, dataRowForReplacements, doVariablesCheck, skipCache);
+            if (String.IsNullOrWhiteSpace(queryToUse))
+            {
+                WriteToTrace("Query for component is empty!");
+                return new DataTable();
+            }
+        
+            if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
+            {
+                
+                queryToUse = StringReplacementsService.DoReplacements(queryToUse, ExtraDataForReplacements, true);
+            }
+            
+            queryToUse = await TemplatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false, 
+                dataRow: dataRowForReplacements, forQuery: true);
+            if (doVariablesCheck)
+            {
+                var expression = new Regex("{.*?}", RegexOptions.Compiled | RegexOptions.IgnoreCase,
+                    TimeSpan.FromMilliseconds(2000));
+                if (expression.IsMatch(queryToUse))
+                {
+                    // Don't proceed, query from data selector contains variables, this gives syntax errors.
+                    return new DataTable();
+                }
+            }
+
+            return await DatabaseConnection.GetAsync(queryToUse, skipCache);
         }
 
         /// <summary>

@@ -6,30 +6,42 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Services;
 using GeeksCoreLibrary.Components.Base.Interfaces;
+using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Components.Base.Services;
 
-public class ComponentsService(ILogger<AccountsService> logger, IDatabaseConnection databaseConnection)
-    : IComponentsService
+public class ComponentsService : IComponentsService, IScopedService
 {
-    private readonly IStringReplacementsService StringReplacementsService;
-    private readonly ITemplatesService TemplatesService;
+    private readonly ILogger<AccountsService> logger;
+    private readonly IDatabaseConnection databaseConnection;
+    private readonly IServiceProvider serviceProvider;
+
+    public ComponentsService(ILogger<AccountsService> logger,
+        IDatabaseConnection databaseConnection,
+        IServiceProvider serviceProvider)
+    {
+        this.logger = logger;
+        this.databaseConnection = databaseConnection;
+        this.serviceProvider = serviceProvider;
+    }
 
     /// <summary>
     /// Renders the query from the <see param="queryToUse"/> parameter, by replacing all variables with their corresponding values,
     /// then executes that rendered query and lastly returns the <see cref="DataTable" /> with the result(s).
     /// </summary>
     /// <param name="queryToUse">The query to render and execute.</param>
+    /// <param name="extraDataForReplacements"></param>
     /// <param name="dataRowForReplacements">Optional: A <see cref="DataRow"/> to use for replacements from the result of a query.</param>
     /// <param name="doVariablesCheck">Optional: If this is set to true and the query still contains unhandled replacements after doing all of the replacements, then the query will not be executed. Default value is <see langword="false" />.</param>
     /// <param name="skipCache">Optional: Set to true to ensure the caching is never used for the query. Default value is <see langword="false" />.</param>
     /// <returns>A <see cref="DataTable" /> with the result(s), or NULL if the query was empty.</returns>
     public async Task<DataTable> RenderAndExecuteQueryAsync(string queryToUse,
-        Dictionary<string, string> ExtraDataForReplacements, DataRow dataRowForReplacements = null,
+        Dictionary<string, string> extraDataForReplacements, DataRow dataRowForReplacements = null,
         bool doVariablesCheck = false, bool skipCache = false)
     {
         if (String.IsNullOrWhiteSpace(queryToUse))
@@ -37,13 +49,17 @@ public class ComponentsService(ILogger<AccountsService> logger, IDatabaseConnect
             logger.LogTrace("Query for component is empty!");
             return new DataTable();
         }
-
-        if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
+        
+        if (extraDataForReplacements != null && extraDataForReplacements.Any())
         {
-            queryToUse = StringReplacementsService.DoReplacements(queryToUse, ExtraDataForReplacements, true);
+            await using var stringReplacementScope = serviceProvider.CreateAsyncScope();
+            var stringReplacementsService = stringReplacementScope.ServiceProvider.GetRequiredService<IStringReplacementsService>();
+            queryToUse = stringReplacementsService.DoReplacements(queryToUse, extraDataForReplacements, true);
         }
-
-        queryToUse = await TemplatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false,
+        
+        await using var templatesScope = serviceProvider.CreateAsyncScope();
+        var templatesService = templatesScope.ServiceProvider.GetRequiredService<ITemplatesService>();
+        queryToUse = await templatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false, 
             dataRow: dataRowForReplacements, forQuery: true);
         if (doVariablesCheck)
         {

@@ -48,8 +48,7 @@ namespace GeeksCoreLibrary.Components.Account
         private readonly GclSettings gclSettings;
         private readonly IObjectsService objectsService;
         private readonly ICommunicationsService communicationsService;
-        private readonly IWiserItemsService wiserItemsService;
-
+        
         #region Enums
 
         public enum ComponentModes
@@ -242,12 +241,11 @@ namespace GeeksCoreLibrary.Components.Account
 
         #region Constructor
 
-        public Account(IOptions<GclSettings> gclSettings, ILogger<Account> logger, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, ICommunicationsService communicationsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IAntiforgery antiForgery, IWiserItemsService wiserItemsService)
+        public Account(IOptions<GclSettings> gclSettings, ILogger<Account> logger, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, ICommunicationsService communicationsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IAntiforgery antiForgery)
         {
             this.gclSettings = gclSettings.Value;
             this.objectsService = objectsService;
             this.communicationsService = communicationsService;
-            this.wiserItemsService = wiserItemsService;
 
             Logger = logger;
             StringReplacementsService = stringReplacementsService;
@@ -618,7 +616,7 @@ namespace GeeksCoreLibrary.Components.Account
                 // If we have a user ID and a main query, replace the results from the query into the results HTML.
                 if (userId > 0 && !String.IsNullOrWhiteSpace(Settings.MainQuery))
                 {
-                    var query = AccountsService.SetupAccountQuery(Settings.MainQuery, userId);
+                    var query = AccountsService.SetupAccountQuery(Settings.MainQuery, Settings, userId);
                     var queryResult = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                     if (queryResult.Rows.Count > 0)
@@ -679,7 +677,7 @@ namespace GeeksCoreLibrary.Components.Account
                 var userLogin = "";
                 if (userIdFromQueryString > 0)
                 {
-                    var query = AccountsService.SetupAccountQuery(Settings.ValidateResetPasswordTokenQuery, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
+                    var query = AccountsService.SetupAccountQuery(Settings.ValidateResetPasswordTokenQuery, Settings, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
                     var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                     if (dataTable == null || dataTable.Rows.Count == 0)
@@ -783,7 +781,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 var userData = await AccountsService.GetUserDataFromCookieAsync(Settings.CookieName);
-                var query = AccountsService.SetupAccountQuery(Settings.MainQuery, userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreatedAccountId());
+                var query = AccountsService.SetupAccountQuery(Settings.MainQuery, Settings, userData.UserId > 0 ? userData.UserId : AccountsService.GetRecentlyCreatedAccountId());
                 var accountDataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 var availableFields = new List<string>();
 
@@ -915,7 +913,7 @@ namespace GeeksCoreLibrary.Components.Account
                     }
                     else if (userData.UserId == 0 && createOrUpdateAccountResult.Result == CreateOrUpdateAccountResults.Success && changePasswordResult == ResetOrChangePasswordResults.Success && Settings.AutoLoginUserAfterAction)
                     {
-                        await AccountsService.AutoLoginUserAsync(createOrUpdateAccountResult.SubAccountId > 0 ? createOrUpdateAccountResult.SubAccountId : createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.Role, ExtraDataForReplacements);
+                        await AccountsService.AutoLoginUserAsync(createOrUpdateAccountResult.SubAccountId > 0 ? createOrUpdateAccountResult.SubAccountId : createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.UserId, createOrUpdateAccountResult.Role, ExtraDataForReplacements, Settings);
                         isLoggedIn = true;
                     }
 
@@ -996,7 +994,7 @@ namespace GeeksCoreLibrary.Components.Account
                 UInt64.TryParse(request.Query[$"{Constants.SelectedSubAccountQueryStringKey}{ComponentId}"], out selectedSubAccount);
 
                 // Add fields to the page.
-                var query = AccountsService.SetupAccountQuery(Settings.GetSubAccountQuery, userData.MainUserId, subAccountId: selectedSubAccount);
+                var query = AccountsService.SetupAccountQuery(Settings.GetSubAccountQuery, Settings, userData.MainUserId, subAccountId: selectedSubAccount);
                 var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 var availableFields = new List<string> { Settings.PasswordFieldName, Settings.NewPasswordFieldName, Settings.NewPasswordConfirmationFieldName, Settings.LoginFieldName, Settings.EmailAddressFieldName, Settings.RoleFieldName };
 
@@ -1038,7 +1036,7 @@ namespace GeeksCoreLibrary.Components.Account
 
                 if (UInt64.TryParse(request.Query[$"{Constants.DeleteSubAccountQueryStringKey}{ComponentId}"].ToString(), out var deleteSubAccountId) && deleteSubAccountId > 0)
                 {
-                    query = AccountsService.SetupAccountQuery(Settings.DeleteAccountQuery, userData.MainUserId, subAccountId: deleteSubAccountId);
+                    query = AccountsService.SetupAccountQuery(Settings.DeleteAccountQuery, Settings, userData.MainUserId, subAccountId: deleteSubAccountId);
                     await RenderAndExecuteQueryAsync(query, skipCache: true);
                     resultHtml = !resultHtml.Contains("{success}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateSuccess : resultHtml.Replace("{error}", "", StringComparison.OrdinalIgnoreCase).Replace("{success}", Settings.TemplateSuccess, StringComparison.OrdinalIgnoreCase);
                 }
@@ -1087,7 +1085,7 @@ namespace GeeksCoreLibrary.Components.Account
                     resultHtml = resultHtml.Replace("{errorType}", changePasswordResult != ResetOrChangePasswordResults.Success ? changePasswordResult.ToString() : "", StringComparison.OrdinalIgnoreCase);
 
                     // Execute the GetSubAccountQuery again, so that have can show the new values in the HTML.
-                    query = AccountsService.SetupAccountQuery(Settings.GetSubAccountQuery, userData.MainUserId, subAccountId: selectedSubAccount);
+                    query = AccountsService.SetupAccountQuery(Settings.GetSubAccountQuery, Settings, userData.MainUserId, subAccountId: selectedSubAccount);
                     dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                     fieldsDataRows = dataTable.Rows;
                 }
@@ -1116,7 +1114,7 @@ namespace GeeksCoreLibrary.Components.Account
                 }
 
                 // List of sub accounts.
-                query = AccountsService.SetupAccountQuery(Settings.MainQuery, userData.MainUserId, subAccountId: selectedSubAccount);
+                query = AccountsService.SetupAccountQuery(Settings.MainQuery, Settings, userData.MainUserId, subAccountId: selectedSubAccount);
                 dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 resultHtml = resultHtml.Replace("{amountOfSubAccounts}", dataTable.Rows.Count.ToString(), StringComparison.OrdinalIgnoreCase);
 
@@ -1257,7 +1255,7 @@ namespace GeeksCoreLibrary.Components.Account
                     var emailAddress = request.Form[Settings.EmailAddressFieldName];
                     var loginValue = request.Form[Settings.LoginFieldName];
                     userRole = request.Form[Settings.RoleFieldName];
-                    var query = AccountsService.SetupAccountQuery(Settings.CheckIfAccountExistsQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue);
+                    var query = AccountsService.SetupAccountQuery(Settings.CheckIfAccountExistsQuery, Settings, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue);
                     foreach (var field in availableFields)
                     {
                         var formValue = GetFormValue(field);
@@ -1282,11 +1280,11 @@ namespace GeeksCoreLibrary.Components.Account
 
                     if ((Settings.ComponentMode == ComponentModes.SubAccountsManagement && subAccountId > 0) || (Settings.ComponentMode != ComponentModes.SubAccountsManagement && userId > 0))
                     {
-                        query = AccountsService.SetupAccountQuery(Settings.UpdateAccountQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
+                        query = AccountsService.SetupAccountQuery(Settings.UpdateAccountQuery, Settings, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
                     }
                     else
                     {
-                        query = AccountsService.SetupAccountQuery(Settings.CreateAccountQuery, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
+                        query = AccountsService.SetupAccountQuery(Settings.CreateAccountQuery, Settings, userId, subAccountId: subAccountId, emailAddress: emailAddress, loginValue: loginValue, role: userRole);
                     }
 
                     // Add fields to main query, for creating or updating an account.
@@ -1424,7 +1422,7 @@ namespace GeeksCoreLibrary.Components.Account
                     }
 
                     // Save the Google Analytics client ID. Make sure to always save it, even if the required settings don't contain a value.
-                    await AccountsService.SaveGoogleClientIdAsync(createdNewAccount ? userId : (await AccountsService.GetUserDataFromCookieAsync(Settings.CookieName)).UserId);
+                    await AccountsService.SaveGoogleClientIdAsync(createdNewAccount ? userId : (await AccountsService.GetUserDataFromCookieAsync(Settings.CookieName)).UserId, Settings);
 
                     if (useTransaction)
                     {
@@ -1735,7 +1733,7 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             // Get user information.
-            var query = decryptedUserId > 0 ? AccountsService.SetupAccountQuery(Settings.AutoLoginQuery, decryptedUserId) : AccountsService.SetupAccountQuery(Settings.LoginQuery, loginValue: loginValue);
+            var query = decryptedUserId > 0 ? AccountsService.SetupAccountQuery(Settings.AutoLoginQuery, Settings, decryptedUserId) : AccountsService.SetupAccountQuery(Settings.LoginQuery, Settings, loginValue: loginValue);
             var accountResult = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
             // User doesn't exist.
@@ -1799,7 +1797,7 @@ namespace GeeksCoreLibrary.Components.Account
                 if (!usingGoogleAuthentication && !password.VerifySha512(passwordHash))
                 {
                     WriteToTrace("The password hash validation failed.");
-                    await AccountsService.SaveLoginAttemptAsync(false, loggedInUserId, ExtraDataForReplacements);
+                    await AccountsService.SaveLoginAttemptAsync(false, loggedInUserId, ExtraDataForReplacements, Settings);
                     return (Result: (actualComponentMode == ComponentModes.LoginMultipleSteps ? LoginResults.InvalidPassword : LoginResults.InvalidUsernameOrPassword), UserId: 0, EmailAddress: userEmail);
                 }
 
@@ -1835,11 +1833,11 @@ namespace GeeksCoreLibrary.Components.Account
             }
 
             // Everything succeeded, so generate a cookie for the user and reset any failed login attempts.
-            var amountOfDaysToRememberCookie = AccountsService.GetAmountOfDaysToRememberCookie();
+            var amountOfDaysToRememberCookie = AccountsService.GetAmountOfDaysToRememberCookie(Settings);
             var cookieValue = await AccountsService.GenerateNewCookieTokenAsync(loggedInUserId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
             if (decryptedUserId == 0)
             {
-                await AccountsService.SaveGoogleClientIdAsync(loggedInUserId);
+                await AccountsService.SaveGoogleClientIdAsync(loggedInUserId, Settings);
             }
 
             var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
@@ -1847,7 +1845,7 @@ namespace GeeksCoreLibrary.Components.Account
 
             if (decryptedUserId == 0)
             {
-                await AccountsService.SaveLoginAttemptAsync(true, loggedInUserId, ExtraDataForReplacements);
+                await AccountsService.SaveLoginAttemptAsync(true, loggedInUserId, ExtraDataForReplacements, Settings);
             }
 
             return (Result: LoginResults.Success, UserId: loggedInUserId, EmailAddress: userEmail);
@@ -1873,7 +1871,7 @@ namespace GeeksCoreLibrary.Components.Account
                 emailAddress = Request.Form[Settings.EmailAddressFieldName].ToString();
             }
 
-            var query = AccountsService.SetupAccountQuery(Settings.GetUserIdViaEmailAddressQuery, emailAddress: emailAddress);
+            var query = AccountsService.SetupAccountQuery(Settings.GetUserIdViaEmailAddressQuery, Settings, emailAddress: emailAddress);
             var result = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
             if (result.Rows.Count == 0)
@@ -2022,7 +2020,7 @@ namespace GeeksCoreLibrary.Components.Account
             // Then validate the old password, if the user is changing the password in their account.
             if (Settings.ComponentMode != ComponentModes.ResetPassword && Settings.ComponentMode != ComponentModes.SubAccountsManagement && userId > 0 && !isMakingNewAccount && Settings.RequireCurrentPasswordForChangingPassword)
             {
-                query = AccountsService.SetupAccountQuery(Settings.ValidatePasswordQuery, userId);
+                query = AccountsService.SetupAccountQuery(Settings.ValidatePasswordQuery, Settings, userId);
                 var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
                 if (dataTable == null || dataTable.Rows.Count == 0)
                 {
@@ -2060,7 +2058,7 @@ namespace GeeksCoreLibrary.Components.Account
             if (userId > 0 && !String.IsNullOrWhiteSpace(newPassword))
             {
                 var newPasswordHash = newPassword.ToSha512ForPasswords();
-                query = AccountsService.SetupAccountQuery(Settings.ChangePasswordQuery, userId, passwordHash: newPasswordHash);
+                query = AccountsService.SetupAccountQuery(Settings.ChangePasswordQuery, Settings, userId, passwordHash: newPasswordHash);
                 await RenderAndExecuteQueryAsync(query, skipCache: true);
             }
 

@@ -36,8 +36,6 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly IRolesService rolesService;
         private readonly IServiceProvider serviceProvider;
         private readonly IReplacementsMediator replacementsMediator;
-        private readonly AccountCmsSettingsModel Settings;
-        private readonly IWiserItemsService wiserItemsService;
         private readonly IComponentsService componentsService;
 
         public AccountsService(IOptions<GclSettings> gclSettings,
@@ -48,7 +46,6 @@ namespace GeeksCoreLibrary.Components.Account.Services
                                IRolesService rolesService,
                                IServiceProvider serviceProvider,
                                IReplacementsMediator replacementsMediator,
-                               IWiserItemsService wiserItemsService,
                                IComponentsService componentsService,
                                IHttpContextAccessor httpContextAccessor = null)
         {
@@ -61,10 +58,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             this.rolesService = rolesService;
             this.serviceProvider = serviceProvider;
             this.replacementsMediator = replacementsMediator;
-            this.wiserItemsService = wiserItemsService;
             this.componentsService = componentsService;
-            
-            Settings = new AccountCmsSettingsModel();
         }
 
         /// <inheritdoc />
@@ -458,7 +452,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             // Filter the roles based on the user's role IDs and return a List of the remaining rows.
             return roles.Where(role => userRoleIds.Contains(role.Id)).ToList();
         }
-        
+
         /// <summary>
         /// NOTE: This method was moved from Accounts component and it should NOT be exposed to users.
         /// Automatically logs in the user via ID. This function should never be made available publicly, only for internal usage to login after creating an account for example.
@@ -466,7 +460,9 @@ namespace GeeksCoreLibrary.Components.Account.Services
         /// <param name="userId">The ID of the user to login.</param>
         /// <param name="mainUserId">The ID of the main user, if the user is logging in with a sub account.</param>
         /// <param name="role">Used to set a custom role for the user separate of the Wiser role system</param>
-        public async Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role, Dictionary<string,string> ExtraDataForReplacements)
+        /// <param name="extraDataForReplacements"></param>
+        /// <param name="settings"></param>
+        public async Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role, Dictionary<string,string> extraDataForReplacements, AccountCmsSettingsModel settings)
         {
             // Make sure we have a valid user ID.
             if (userId <= 0)
@@ -476,22 +472,23 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             // Everything succeeded, so generate a cookie for the user and reset any failed login attempts.
-            var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie();
-            var cookieValue = await GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, Settings.EntityType, Settings.SubAccountEntityType, role);
-            await SaveGoogleClientIdAsync(userId);
+            var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie(settings);
+            var cookieValue = await GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, settings.EntityType, settings.SubAccountEntityType, role);
+            await SaveGoogleClientIdAsync(userId, settings);
 
             var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
             var currentContext = httpContextAccessor.HttpContext;
-            HttpContextHelpers.WriteCookie(currentContext, Settings.CookieName, cookieValue, offset, isEssential: true);
+            HttpContextHelpers.WriteCookie(currentContext, settings.CookieName, cookieValue, offset, isEssential: true);
 
-            await SaveLoginAttemptAsync(true, userId, ExtraDataForReplacements);
+            await SaveLoginAttemptAsync(true, userId, extraDataForReplacements, settings);
         }
-        
+
         /// <summary>
         /// Gets the Google Client ID from the Google Analytics cookie and saved it.
         /// </summary>
         /// <param name="userIdForGoogleCid">The ID of the user to save the CID for.</param>
-        public async Task SaveGoogleClientIdAsync(ulong userIdForGoogleCid)
+        /// <param name="settings"></param>
+        public async Task SaveGoogleClientIdAsync(ulong userIdForGoogleCid, AccountCmsSettingsModel settings)
         {
             var request = httpContextAccessor.HttpContext?.Request;
             var googleClientIdCookieValue = request?.Cookies[Constants.GoogleAnalyticsCookieName];
@@ -517,37 +514,41 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
             var googleClientId = String.Join(".", clientIdSplit.Skip(2));
 
-            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Settings.EntityType);
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var wiserItemsService = scope.ServiceProvider.GetRequiredService<IWiserItemsService>();
+            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(settings.EntityType);
 
             var detail = new WiserItemDetailModel()
             {
-                Key = String.IsNullOrWhiteSpace(Settings.GoogleClientIdFieldName) ? Constants.DefaultGoogleCidFieldName : Settings.GoogleClientIdFieldName,
+                Key = String.IsNullOrWhiteSpace(settings.GoogleClientIdFieldName) ? Constants.DefaultGoogleCidFieldName : settings.GoogleClientIdFieldName,
                 Value = googleClientId
             };
 
-            await wiserItemsService.SaveItemDetailAsync(detail, userIdForGoogleCid, 0, Settings.EntityType);
+            await wiserItemsService.SaveItemDetailAsync(detail, userIdForGoogleCid, 0, settings.EntityType);
         }
-        
+
         /// <summary>
         /// Saves a login attempt in the details of the user. This will use the query in <see cref="JsonFormatter.Settings.SaveLoginAttemptQuery"/>.
         /// </summary>
         /// <param name="success">Whether the login attempt was successful or not.</param>
         /// <param name="userId">The ID of the user that is attempting to login.</param>
-        public async Task SaveLoginAttemptAsync(bool success, ulong userId,  Dictionary<string,string> ExtraDataForReplacements)
+        /// <param name="extraDataForReplacements"></param>
+        public async Task SaveLoginAttemptAsync(bool success, ulong userId,  Dictionary<string,string> extraDataForReplacements, AccountCmsSettingsModel settings)
         {
-            var query = SetupAccountQuery(Settings.SaveLoginAttemptQuery, userId, success: success);
+            var query = SetupAccountQuery(settings.SaveLoginAttemptQuery, settings, userId, success: success);
             if (String.IsNullOrWhiteSpace(query))
             {
                 return;
             }
 
-            await componentsService.RenderAndExecuteQueryAsync(query, ExtraDataForReplacements, skipCache: true);
+            await componentsService.RenderAndExecuteQueryAsync(query, extraDataForReplacements, skipCache: true);
         }
-        
+
         /// <summary>
         /// Do all default login replacements on a SQL template and adds the variables to the <see cproperty="SystemConnection"/>.
         /// </summary>
         /// <param name="template"></param>
+        /// <param name="settings"></param>
         /// <param name="userId"></param>
         /// <param name="loginValue"></param>
         /// <param name="emailAddress"></param>
@@ -558,6 +559,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         /// <param name="role"></param>
         /// <returns></returns>
         public string SetupAccountQuery(string template,
+            AccountCmsSettingsModel settings,
             ulong userId = 0,
             string loginValue = null,
             string emailAddress = null,
@@ -573,17 +575,17 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             databaseConnection.ClearParameters();
-            databaseConnection.AddParameter("entityType", Settings.EntityType);
-            databaseConnection.AddParameter("subAccountEntityType", Settings.SubAccountEntityType);
-            databaseConnection.AddParameter("loginFieldName", Settings.LoginFieldName);
-            databaseConnection.AddParameter("passwordFieldName", Settings.PasswordFieldName);
-            databaseConnection.AddParameter("emailAddressFieldName", Settings.EmailAddressFieldName);
-            databaseConnection.AddParameter("failedLoginAttemptsFieldName", Settings.FailedLoginAttemptsFieldName);
-            databaseConnection.AddParameter("lastLoginAttemptFieldName", Settings.LastLoginAttemptFieldName);
-            databaseConnection.AddParameter("resetPasswordTokenFieldName", Settings.ResetPasswordTokenFieldName);
-            databaseConnection.AddParameter("resetPasswordExpireDateFieldName", Settings.ResetPasswordExpireDateFieldName);
-            databaseConnection.AddParameter("subAccountLinkTypeNumber", Settings.SubAccountLinkTypeNumber);
-            databaseConnection.AddParameter("roleFieldName", Settings.RoleFieldName);
+            databaseConnection.AddParameter("entityType", settings.EntityType);
+            databaseConnection.AddParameter("subAccountEntityType", settings.SubAccountEntityType);
+            databaseConnection.AddParameter("loginFieldName", settings.LoginFieldName);
+            databaseConnection.AddParameter("passwordFieldName", settings.PasswordFieldName);
+            databaseConnection.AddParameter("emailAddressFieldName", settings.EmailAddressFieldName);
+            databaseConnection.AddParameter("failedLoginAttemptsFieldName", settings.FailedLoginAttemptsFieldName);
+            databaseConnection.AddParameter("lastLoginAttemptFieldName", settings.LastLoginAttemptFieldName);
+            databaseConnection.AddParameter("resetPasswordTokenFieldName", settings.ResetPasswordTokenFieldName);
+            databaseConnection.AddParameter("resetPasswordExpireDateFieldName", settings.ResetPasswordExpireDateFieldName);
+            databaseConnection.AddParameter("subAccountLinkTypeNumber", settings.SubAccountLinkTypeNumber);
+            databaseConnection.AddParameter("roleFieldName", settings.RoleFieldName);
             databaseConnection.AddParameter("userId", userId);
             databaseConnection.AddParameter("login", loginValue);
             databaseConnection.AddParameter("emailAddress", emailAddress);
@@ -630,16 +632,16 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 .Replace("'{role}'", "?role", StringComparison.OrdinalIgnoreCase).Replace("{role}", "?role", StringComparison.OrdinalIgnoreCase).Replace("'{basketId}'", "?basketId", StringComparison.OrdinalIgnoreCase).Replace("{basketId}", "?basketId", StringComparison.OrdinalIgnoreCase);
         }
         
-        public int? GetAmountOfDaysToRememberCookie()
+        public int? GetAmountOfDaysToRememberCookie(AccountCmsSettingsModel settings)
         {
-            if (httpContextAccessor.HttpContext == null || String.IsNullOrWhiteSpace(Settings.RememberMeCheckboxName))
+            if (httpContextAccessor.HttpContext == null || String.IsNullOrWhiteSpace(settings.RememberMeCheckboxName))
             {
-                return Settings.AmountOfDaysToRememberCookie;
+                return settings.AmountOfDaysToRememberCookie;
             }
 
             var request = httpContextAccessor.HttpContext.Request;
-            var formValue = request.HasFormContentType ? request.Form[Settings.RememberMeCheckboxName] : StringValues.Empty;
-            return String.IsNullOrWhiteSpace(formValue) || formValue == "0" ? null : Settings.AmountOfDaysToRememberCookie;
+            var formValue = request.HasFormContentType ? request.Form[settings.RememberMeCheckboxName] : StringValues.Empty;
+            return String.IsNullOrWhiteSpace(formValue) || formValue == "0" ? null : settings.AmountOfDaysToRememberCookie;
         }
     }
 }
