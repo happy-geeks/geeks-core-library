@@ -50,7 +50,9 @@ namespace GeeksCoreLibrary.Modules.Redirect.Middlewares
                 var redirectRule = await redirectService.GetRedirectAsync(oldUrl);
                 if (!String.IsNullOrEmpty(redirectRule.NewUrl))
                 {
-                    redirectToUrl = redirectRule.NewUrl;
+                    var baseUri = HttpContextHelpers.GetBaseUri(context);
+                    // If the NewUrl is relative the baseUri is used to turn it into an absolute url.
+                    redirectToUrl = new Uri(baseUri, redirectRule.NewUrl).AbsoluteUri;
                     redirectPermanent = redirectRule.Permanent;
                     logger.LogDebug($"Handle redirect module, redirect from  '{redirectRule.OldUrl}' to '{redirectRule.NewUrl}'.");
                 }
