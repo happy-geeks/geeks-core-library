@@ -23,7 +23,6 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using LazyCache;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -145,7 +144,7 @@ public class CachedTemplatesService(
             await languagesService.GetLanguageCodeAsync();
         }
 
-        var cacheName = $"GeneralTemplateValue_{languagesService.CurrentLanguageCode ?? ""}_{templateType}_{byInsertMode:G}_{branchesService.GetDatabaseNameFromCookie()}";
+        var cacheName = $"GeneralTemplateValue_{languagesService.CurrentLanguageCode}_{templateType}_{byInsertMode:G}_{branchesService.GetDatabaseNameFromCookie()}";
         return await cache.GetOrAddAsync(cacheName,
             async cacheEntry =>
             {
@@ -242,91 +241,24 @@ public class CachedTemplatesService(
             cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
     }
 
-    /// <summary>
-    /// Gets all dynamic content data so that they can be cached.
-    /// </summary>
-    /// <param name="cacheEntry"></param>
-    /// <returns></returns>
-    private async Task<Dictionary<int, DynamicContent>> GetDynamicContentForCachingAsync(ICacheEntry cacheEntry)
-    {
-        var dynamicContent = new Dictionary<int, DynamicContent>();
-        var query = gclSettings.Environment == Environments.Development
-            ? $"""
-               SELECT 
-                                   component.content_id,
-                                   component.settings,
-                                   component.component,
-                                   component.component_mode,
-                                   component.version,
-                                   component.title
-                               FROM {WiserTableNames.WiserDynamicContent} AS component
-                               LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
-                               WHERE otherVersion.id IS NULL
-               """
-            : $"""
-               SELECT 
-                                   component.content_id,
-                                   component.settings,
-                                   component.component,
-                                   component.component_mode,
-                                   component.version,
-                                   component.title
-                               FROM {WiserTableNames.WiserDynamicContent} AS component
-                               WHERE (component.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}
-               """;
-
-        var dataTable = await databaseConnection.GetAsync(query);
-        if (dataTable.Rows.Count == 0)
+        /// <inheritdoc />
+        public async Task<DynamicContent> GetDynamicContentData(int contentId)
         {
-            return dynamicContent;
-        }
+            if (contentId <= 0)
+            {
+                throw new ArgumentNullException($"The parameter {nameof(contentId)} must contain a value");
+            }
 
-        foreach (DataRow dataRow in dataTable.Rows)
-        {
-            var contentId = dataRow.Field<int>("content_id");
-            dynamicContent.Add(contentId,
-                new DynamicContent
+            var cacheName = $"DynamicContentData_{contentId}_{branchesService.GetDatabaseNameFromCookie()}";
+
+            return await cache.GetOrAddAsync(cacheName,
+                async cacheEntry =>
                 {
-                    Id = contentId,
-                    Name = dataRow.Field<string>("component"),
-                    SettingsJson = dataRow.Field<string>("settings"),
-                    ComponentMode = dataRow.Field<string>("component_mode"),
-                    Version = dataRow.Field<int>("version"),
-                    Title = dataRow.Field<string>("title")
-                });
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetDynamicContentData(contentId);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
-
-        cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-
-        return dynamicContent;
-    }
-
-    /// <summary>
-    /// GetAsync templates from database and write them to the MemoryCache if they are not yet there.
-    /// </summary>
-    private async Task<Dictionary<int, DynamicContent>> CacheDynamicContentAsync()
-    {
-        var cacheName = $"DynamicContent_{branchesService.GetDatabaseNameFromCookie()}";
-        return await cache.GetOrAddAsync(cacheName, GetDynamicContentForCachingAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
-    }
-
-    /// <inheritdoc />
-    public async Task<DynamicContent> GetDynamicContentData(int contentId)
-    {
-        if (contentId <= 0)
-        {
-            throw new ArgumentNullException($"The parameter {nameof(contentId)} must contain a value");
-        }
-
-        var cachedDynamicContent = await CacheDynamicContentAsync();
-
-        if (!cachedDynamicContent.ContainsKey(contentId))
-        {
-            return null;
-        }
-
-        return cachedDynamicContent[contentId];
-    }
 
     /// <inheritdoc />
     public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
@@ -349,19 +281,12 @@ public class CachedTemplatesService(
             return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
         }
 
-        switch (this.gclSettings.Environment)
-        {
-            case Environments.Development when !(await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
-            case Environments.Test when !(await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_test_enabled")).Equals("true"):
-                return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-        }
-
-        // Make sure the language code has a value.
-        if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
-        {
-            // This function fills the property "CurrentLanguageCode".
-            await languagesService.GetLanguageCodeAsync();
-        }
+            // Make sure the language code has a value.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+            {
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
 
         var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
         var cacheName = new StringBuilder($"dynamicContent_{languagesService.CurrentLanguageCode ?? ""}_{dynamicContent.Id}_");
@@ -431,32 +356,32 @@ public class CachedTemplatesService(
             }
         }
 
-        string html = null;
-        var addedToCache = false;
-        switch (settings.CachingLocation)
-        {
-            case TemplateCachingLocations.InMemory:
-            case TemplateCachingLocations.OnDisk when !String.IsNullOrWhiteSpace(callMethod):
-                cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
-                html = (string) await cache.GetOrAddAsync(cacheName.ToString(),
-                    async cacheEntry =>
-                    {
-                        addedToCache = true;
-                        cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
-                        return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-                    },
-                    cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
-                break;
-            case TemplateCachingLocations.OnDisk:
+        cacheName.Append($"_{branchesService.GetDatabaseNameFromCookie()}");
+            cacheName.Append($"_{callMethod}");
+
+            string html = null;
+            var addedToCache = false;
+            switch (settings.CachingLocation)
             {
-                var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
-                if (String.IsNullOrWhiteSpace(cacheFolder))
+                case TemplateCachingLocations.InMemory:
+                    html = (string)await cache.GetOrAddAsync(cacheName.ToString(),
+                        async cacheEntry =>
+                        {
+                            addedToCache = true;
+                            cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
+                            return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                        },
+                        cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                    break;
+                case TemplateCachingLocations.OnDisk:
                 {
-                    logger.LogWarning($"Content cache enabled for component '{dynamicContent.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website (on Windows / IIS, this is the user 'IIS_IUSRS' bij default).");
-                }
-                else
-                {
-                    cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
+                    var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
+                    if (String.IsNullOrWhiteSpace(cacheFolder))
+                    {
+                        logger.LogWarning($"Content cache enabled for component '{dynamicContent.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website (on Windows / IIS, this is the user 'IIS_IUSRS' bij default).");
+                    }
+                    else
+                    {
                     var fileName = $"{cacheName}.html";
                     var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 

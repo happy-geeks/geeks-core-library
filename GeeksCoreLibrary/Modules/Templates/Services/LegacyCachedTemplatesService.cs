@@ -189,119 +189,24 @@ public class LegacyCachedTemplatesService(
         return templatesService.HandleImageTemplating(input);
     }
 
-    /// <summary>
-    /// Gets all dynamic content data so that they can be cached.
-    /// </summary>
-    /// <param name="cacheEntry"></param>
-    /// <returns></returns>
-    private async Task<Dictionary<int, DynamicContent>> GetDynamicContentForCachingAsync(ICacheEntry cacheEntry)
-    {
-        var dynamicContent = new Dictionary<int, DynamicContent>();
-        string query = null;
-        var templateVersionPart = "";
-        switch (gclSettings.Environment)
+        /// <inheritdoc />
+        public async Task<DynamicContent> GetDynamicContentData(int contentId)
         {
-            case Environments.Development:
-                // Always get the latest version on development.
-                query = """
-                        SELECT
-                                                        d.id,
-                                                        d.filledvariables, 
-                                                        d.freefield1,
-                                                        d.type,
-                                                        d.version
-                                                    FROM easy_dynamiccontent d
-                                                    JOIN (SELECT id, MAX(version) AS version FROM easy_dynamiccontent GROUP BY id) d2 ON d2.id = d.id AND d2.version = d.version
-                                                    GROUP BY d.id
-                        """;
-                break;
-            case Environments.Test:
-                templateVersionPart = "AND t.istest = 1";
-                break;
-            case Environments.Acceptance:
-                templateVersionPart = "AND t.isacceptance = 1";
-                break;
-            case Environments.Live:
-                templateVersionPart = "AND t.islive = 1";
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment, null);
-        }
-
-        query ??= $"""
-                   SELECT
-                                               d.id,
-                                               d.filledvariables, 
-                                               d.freefield1,
-                                               d.type,
-                                               d.version
-                                           FROM easy_dynamiccontent d
-                                           JOIN easy_templates t ON t.itemid = d.itemid AND t.version = d.version {templateVersionPart}
-                   
-                                           UNION
-                   
-                                           SELECT
-                                               d.id,
-                                               d.filledvariables, 
-                                               d.freefield1,
-                                               d.type,
-                                               d.version
-                                           FROM easy_dynamiccontent d
-                                           WHERE d.version = 1 
-                                           AND d.itemid = 0
-                   
-                                           GROUP BY id
-                   """;
-
-        var dataTable = await databaseConnection.GetAsync(query);
-        if (dataTable.Rows.Count == 0)
-        {
-            return dynamicContent;
-        }
-
-        foreach (DataRow dataRow in dataTable.Rows)
-        {
-            var contentId = dataRow.Field<int>("id");
-            dynamicContent.Add(contentId, new DynamicContent
+            if (contentId <= 0)
             {
-                Id = contentId,
-                Name = dataRow.Field<string>("freefield1"),
-                SettingsJson = dataRow.Field<string>("filledvariables"),
-                Version = dataRow.Field<int>("version")
-            });
+                throw new ArgumentNullException($"The parameter {nameof(contentId)} must contain a value");
+            }
+
+        var cacheName = $"DynamicContentData_{contentId}_{branchesService.GetDatabaseNameFromCookie()}";
+
+            return await cache.GetOrAddAsync(cacheName,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetDynamicContentData(contentId);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
-
-        cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-
-        return dynamicContent;
-    }
-
-    /// <summary>
-    /// GetAsync templates from database and write them to the MemoryCache if they are not yet there.
-    /// </summary>
-    private async Task<Dictionary<int, DynamicContent>> CacheDynamicContentAsync()
-    {
-        var cacheName = $"DynamicContent_{branchesService.GetDatabaseNameFromCookie()}";
-        return await cache.GetOrAddAsync(cacheName, GetDynamicContentForCachingAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
-    }
-
-    /// <inheritdoc />
-    public async Task<DynamicContent> GetDynamicContentData(int contentId)
-    {
-        if (contentId <= 0)
-        {
-            throw new ArgumentNullException($"The parameter {nameof(contentId)} must contain a value");
-        }
-
-        var cachedDynamicContent = await CacheDynamicContentAsync();
-
-        if (!cachedDynamicContent.ContainsKey(contentId))
-        {
-            return null;
-        }
-
-        return cachedDynamicContent[contentId];
-    }
 
     /// <inheritdoc />
     public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
