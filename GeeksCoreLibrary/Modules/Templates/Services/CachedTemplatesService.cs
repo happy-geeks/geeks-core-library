@@ -23,7 +23,6 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using LazyCache;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -42,7 +41,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ICacheService cacheService;
         private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly IObjectsService objectsService;
         private readonly ILanguagesService languagesService;
         private readonly IBranchesService branchesService;
 
@@ -52,7 +50,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             IOptions<GclSettings> gclSettings,
             IDatabaseConnection databaseConnection,
             ICacheService cacheService,
-            IObjectsService objectsService,
             ILanguagesService languagesService,
             IBranchesService branchesService,
             IHttpContextAccessor httpContextAccessor = null,
@@ -66,7 +63,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             this.httpContextAccessor = httpContextAccessor;
             this.cacheService = cacheService;
             this.webHostEnvironment = webHostEnvironment;
-            this.objectsService = objectsService;
             this.languagesService = languagesService;
             this.branchesService = branchesService;
         }
@@ -168,7 +164,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 await languagesService.GetLanguageCodeAsync();
             }
 
-            var cacheName = $"GeneralTemplateValue_{languagesService.CurrentLanguageCode ?? ""}_{templateType}_{byInsertMode:G}_{branchesService.GetDatabaseNameFromCookie()}";
+            var cacheName = $"GeneralTemplateValue_{languagesService.CurrentLanguageCode}_{templateType}_{byInsertMode:G}_{branchesService.GetDatabaseNameFromCookie()}";
             return await cache.GetOrAddAsync(cacheName,
                 async cacheEntry =>
                 {
@@ -265,70 +261,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
-        /// <summary>
-        /// Gets all dynamic content data so that they can be cached.
-        /// </summary>
-        /// <param name="cacheEntry"></param>
-        /// <returns></returns>
-        private async Task<Dictionary<int, DynamicContent>> GetDynamicContentForCachingAsync(ICacheEntry cacheEntry)
-        {
-            var dynamicContent = new Dictionary<int, DynamicContent>();
-            var query = gclSettings.Environment == Environments.Development
-                ? @$"SELECT 
-                    component.content_id,
-                    component.settings,
-                    component.component,
-                    component.component_mode,
-                    component.version,
-                    component.title
-                FROM {WiserTableNames.WiserDynamicContent} AS component
-                LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
-                WHERE otherVersion.id IS NULL"
-                : @$"SELECT 
-                    component.content_id,
-                    component.settings,
-                    component.component,
-                    component.component_mode,
-                    component.version,
-                    component.title
-                FROM {WiserTableNames.WiserDynamicContent} AS component
-                WHERE (component.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}";
-
-            var dataTable = await databaseConnection.GetAsync(query);
-            if (dataTable.Rows.Count == 0)
-            {
-                return dynamicContent;
-            }
-
-            foreach (DataRow dataRow in dataTable.Rows)
-            {
-                var contentId = dataRow.Field<int>("content_id");
-                dynamicContent.Add(contentId,
-                    new DynamicContent
-                    {
-                        Id = contentId,
-                        Name = dataRow.Field<string>("component"),
-                        SettingsJson = dataRow.Field<string>("settings"),
-                        ComponentMode = dataRow.Field<string>("component_mode"),
-                        Version = dataRow.Field<int>("version"),
-                        Title = dataRow.Field<string>("title")
-                    });
-            }
-
-            cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-
-            return dynamicContent;
-        }
-
-        /// <summary>
-        /// GetAsync templates from database and write them to the MemoryCache if they are not yet there.
-        /// </summary>
-        private async Task<Dictionary<int, DynamicContent>> CacheDynamicContentAsync()
-        {
-            var cacheName = $"DynamicContent_{branchesService.GetDatabaseNameFromCookie()}";
-            return await cache.GetOrAddAsync(cacheName, GetDynamicContentForCachingAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
-        }
-
         /// <inheritdoc />
         public async Task<DynamicContent> GetDynamicContentData(int contentId)
         {
@@ -336,15 +268,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 throw new ArgumentNullException($"The parameter {nameof(contentId)} must contain a value");
             }
-
-            var cachedDynamicContent = await CacheDynamicContentAsync();
-
-            if (!cachedDynamicContent.ContainsKey(contentId))
-            {
-                return null;
-            }
-
-            return cachedDynamicContent[contentId];
+            
+            var cacheName = $"DynamicContentData_{contentId}_{branchesService.GetDatabaseNameFromCookie()}";
+            
+            return await cache.GetOrAddAsync(cacheName,
+                async cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    return await templatesService.GetDynamicContentData(contentId);
+                },
+                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
         }
 
         /// <inheritdoc />
@@ -366,13 +299,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             if (settings == null || settings.CacheMinutes < 0)
             {
                 return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-            }
-
-            switch (this.gclSettings.Environment)
-            {
-                case Environments.Development when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
-                case Environments.Test when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_test_enabled")).Equals("true"):
-                    return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
             }
 
             // Make sure the language code has a value.
@@ -450,13 +376,14 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 }
             }
 
+            cacheName.Append($"_{branchesService.GetDatabaseNameFromCookie()}");
+            cacheName.Append($"_{callMethod}");
+
             string html = null;
             var addedToCache = false;
             switch (settings.CachingLocation)
             {
                 case TemplateCachingLocations.InMemory:
-                case TemplateCachingLocations.OnDisk when !String.IsNullOrWhiteSpace(callMethod):
-                    cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
                     html = (string)await cache.GetOrAddAsync(cacheName.ToString(),
                         async cacheEntry =>
                         {
@@ -475,7 +402,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     }
                     else
                     {
-                        cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
                         var fileName = $"{cacheName}.html";
                         var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
