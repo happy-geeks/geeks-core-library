@@ -4,7 +4,6 @@ using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Net;
-using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -1587,7 +1586,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                     }
                     else
                     {
-                        joinDetailOn = linkSettingsForUp is {UseParentItemId: true}
+                        joinDetailOn = linkSettingsForDown is {UseParentItemId: true}
                             ? $"`{previousLevelTableAlias}`.id"
                             : $"`{tableName}`.item_id";
                     }
