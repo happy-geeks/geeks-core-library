@@ -1,11 +1,11 @@
-﻿using GeeksCoreLibrary.Core.Models;
+﻿using System;
+using System.IO;
+using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.ItemFiles.Enums;
 using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
-using System;
-using System.IO;
-using System.Threading.Tasks;
 using Constants = GeeksCoreLibrary.Modules.ItemFiles.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Services

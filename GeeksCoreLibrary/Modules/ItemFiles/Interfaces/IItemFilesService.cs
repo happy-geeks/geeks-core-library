@@ -1,6 +1,6 @@
 ﻿using System;
-using GeeksCoreLibrary.Modules.ItemFiles.Enums;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Modules.ItemFiles.Enums;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Interfaces
 {
