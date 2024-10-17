@@ -1,4 +1,5 @@
 ﻿using System;
+using GeeksCoreLibrary.Modules.ItemFiles.Models;
 using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Core.Models
