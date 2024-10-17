@@ -504,13 +504,15 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
             if (clientIdSplit.Length != 4)
             {
-                logger.LogTrace($"Google Analytics cookie found ({Constants.GoogleAnalyticsCookieName}: {googleClientIdCookieValue}), but is not a valid format. Expected to have 3 dots, but it has {clientIdSplit.Length - 1}", true);
+                var sanitizedGoogleClientIdCookieValue = googleClientIdCookieValue.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", "");
+                logger.LogTrace($"Google Analytics cookie found ({Constants.GoogleAnalyticsCookieName}: {sanitizedGoogleClientIdCookieValue}), but is not a valid format. Expected to have 3 dots, but it has {clientIdSplit.Length - 1}", true);
                 return;
             }
 
             if (userIdForGoogleCid <= 0)
             {
-                logger.LogTrace($"Google Analytics cookie found ({Constants.GoogleAnalyticsCookieName}: {googleClientIdCookieValue}), but the user is not logged in and we did not create a new account (successfully).", true);
+                var sanitizedGoogleClientIdCookieValue = googleClientIdCookieValue.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", "");
+                logger.LogTrace($"Google Analytics cookie found ({Constants.GoogleAnalyticsCookieName}: {sanitizedGoogleClientIdCookieValue}), but the user is not logged in and we did not create a new account (successfully).", true);
                 return;
             }
 
