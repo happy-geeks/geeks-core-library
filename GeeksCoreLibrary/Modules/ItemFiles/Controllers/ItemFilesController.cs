@@ -38,6 +38,11 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
             {
                 return NotFound();
             }
+            // Also check if fileName is empty when fileType is "name"
+            if (String.Equals(fileType, "name", StringComparison.OrdinalIgnoreCase) && String.IsNullOrWhiteSpace(fileName))
+            {
+                return NotFound();
+            }
 
             logger.LogDebug($"Get image from Wiser, itemId: '{itemId}', propertyName: '{propertyName}', preferredWidth: '{preferredWidth}', preferredHeight: '{preferredHeight}', filename: '{fileName}', resizeMode: '{resizeMode:G}', anchorPosition: '{anchorPosition}', fileNumber: '{fileNumber}'");
 
@@ -52,6 +57,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
                     break;
                 case "DIRECT":
                     (fileBytes, lastModified) = await itemFilesService.GetWiserDirectImageAsync(itemId, preferredWidth, preferredHeight, fileName, resizeMode, anchorPosition, encryptedId, entityType: type);
+                    break;
+                case "NAME":
+                    (fileBytes, lastModified) = await itemFilesService.GetWiserImageByFileNameAsync(itemId, propertyName, preferredWidth, preferredHeight, fileName, resizeMode, anchorPosition, encryptedId, entityType: type);
                     break;
                 default:
                     (fileBytes, lastModified) = await itemFilesService.GetWiserItemImageAsync(itemId, propertyName, preferredWidth, preferredHeight, fileName, fileNumber, resizeMode, anchorPosition, encryptedId, entityType: type);

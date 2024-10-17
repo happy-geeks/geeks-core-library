@@ -30,7 +30,7 @@ public class WiserItemFilesMiddleware
         if (HttpContextHelpers.IsGclMiddleWarePage(context))
         {
             // If this happens, it means that another middleware has already found something and we don't need to do this again.
-            await this.next.Invoke(context);
+            await next.Invoke(context);
             return;
         }
 
@@ -51,9 +51,9 @@ public class WiserItemFilesMiddleware
             context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
         }
 
-        await HandleRewritesAsync(context, path, queryString);
+        HandleRewrites(context, path, queryString);
 
-        await this.next.Invoke(context);
+        await next.Invoke(context);
     }
 
     /// <summary>
@@ -63,10 +63,10 @@ public class WiserItemFilesMiddleware
     /// <param name="context">The current <see cref="HttpContext"/>.</param>
     /// <param name="path">The path of the current URI.</param>
     /// <param name="queryStringFromUrl">The query string from the URI.</param>
-    private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
+    private void HandleRewrites(HttpContext context, string path, QueryString queryStringFromUrl)
     {
         // Check if the current URL is that of an image or a file.
-        var urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+        var urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct|name))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         var matchResult = urlRegex.Match(path);
         if (!matchResult.Success)
         {
