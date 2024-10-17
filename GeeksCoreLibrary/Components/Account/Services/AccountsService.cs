@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using DocumentFormat.OpenXml.Wordprocessing;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Account.Models;
 using GeeksCoreLibrary.Components.Base.Interfaces;
@@ -12,6 +13,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Core.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -513,9 +515,9 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             var googleClientId = String.Join(".", clientIdSplit.Skip(2));
-
-            await using var scope = serviceProvider.CreateAsyncScope();
-            var wiserItemsService = scope.ServiceProvider.GetRequiredService<IWiserItemsService>();
+            
+            
+            var wiserItemsService = ActivatorUtilities.CreateInstance<WiserItemsService>(serviceProvider, databaseConnection);
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(settings.EntityType);
 
             var detail = new WiserItemDetailModel()
@@ -524,15 +526,16 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 Value = googleClientId
             };
 
-            await wiserItemsService.SaveItemDetailAsync(detail, userIdForGoogleCid, 0, settings.EntityType);
+            await wiserItemsService.SaveItemDetailAsync(detail, userIdForGoogleCid, entityType: settings.EntityType);
         }
 
         /// <summary>
-        /// Saves a login attempt in the details of the user. This will use the query in <see cref="JsonFormatter.Settings.SaveLoginAttemptQuery"/>.
+        /// Saves a login attempt in the details of the user. This will use the query in <see cref="Settings.SaveLoginAttemptQuery"/>.
         /// </summary>
         /// <param name="success">Whether the login attempt was successful or not.</param>
         /// <param name="userId">The ID of the user that is attempting to login.</param>
         /// <param name="extraDataForReplacements"></param>
+        /// <param name="settings"></param>
         public async Task SaveLoginAttemptAsync(bool success, ulong userId,  Dictionary<string,string> extraDataForReplacements, AccountCmsSettingsModel settings)
         {
             var query = SetupAccountQuery(settings.SaveLoginAttemptQuery, settings, userId, success: success);
