@@ -169,23 +169,28 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
         }
 
         /// <inheritdoc />
-        public async Task SetObjectValueAsync(string key, string value, int typeNumber)
+        public async Task SetObjectValueAsync(string key, string value, int typeNumber, bool saveHistory = true)
         {
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("key", key);
             databaseConnection.AddParameter("value", value);
             databaseConnection.AddParameter("typeNumber", typeNumber);
-            var query = @"INSERT INTO easy_objects (typenr, `key`, `value`)
-                            VALUES (?typeNumber, ?key, ?value)
-                            ON DUPLICATE KEY UPDATE `value` = ?value";
+            databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+            var query = """
+                        SET @saveHistory = ?saveHistoryGcl;
+                        
+                        INSERT INTO easy_objects (typenr, `key`, `value`)
+                        VALUES (?typeNumber, ?key, ?value)
+                        ON DUPLICATE KEY UPDATE `value` = ?value
+                        """;
 
             await databaseConnection.ExecuteAsync(query);
         }
 
         /// <inheritdoc />
-        public async Task SetSystemObjectValueAsync(string key, string value)
+        public async Task SetSystemObjectValueAsync(string key, string value, bool saveHistory = true)
         {
-            await SetObjectValueAsync(key, value, -1);
+            await SetObjectValueAsync(key, value, -1, saveHistory);
         }
     }
 }

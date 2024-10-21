@@ -22,15 +22,17 @@ namespace GeeksCoreLibrary.Modules.Objects.Interfaces
         /// <param name="key">The key to create or update.</param>
         /// <param name="value">The value to set/</param>
         /// <param name="typeNumber">The type number of the key.</param>
+        /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
         /// <returns></returns>
-        Task SetObjectValueAsync(string key, string value, int typeNumber);
+        Task SetObjectValueAsync(string key, string value, int typeNumber, bool saveHistory = true);
 
         /// <summary>
         /// Set an object value for the specified key.
         /// </summary>
         /// <param name="key">The key to create or update.</param>
         /// <param name="value">The value to set/</param>
+        /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
         /// <returns></returns>
-        Task SetSystemObjectValueAsync(string key, string value);
+        Task SetSystemObjectValueAsync(string key, string value, bool saveHistory = true);
     }
 }

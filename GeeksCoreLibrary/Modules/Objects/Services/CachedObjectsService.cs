@@ -224,15 +224,15 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
         }
 
         /// <inheritdoc />
-        public async Task SetObjectValueAsync(string key, string value, int typeNumber)
+        public async Task SetObjectValueAsync(string key, string value, int typeNumber, bool saveHistory = true)
         {
-            await objectsService.SetObjectValueAsync(key, value, typeNumber);
+            await objectsService.SetObjectValueAsync(key, value, typeNumber, saveHistory);
         }
 
         /// <inheritdoc />
-        public async Task SetSystemObjectValueAsync(string key, string value)
+        public async Task SetSystemObjectValueAsync(string key, string value, bool saveHistory = true)
         {
-            await SetObjectValueAsync(key, value, -1);
+            await SetObjectValueAsync(key, value, -1, saveHistory);
         }
     }
 }

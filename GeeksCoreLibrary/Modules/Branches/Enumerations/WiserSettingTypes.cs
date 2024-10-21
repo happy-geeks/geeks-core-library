@@ -16,6 +16,7 @@
         Query,
         Role,
         UserRole,
-        StyledOutput
+        StyledOutput,
+        EasyObjects
     }
 }
