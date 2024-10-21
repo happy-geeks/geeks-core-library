@@ -21,6 +21,11 @@ namespace GeeksCoreLibrary.Modules.Branches.Models
         /// Gets or sets the settings per entity of what should be merged.
         /// </summary>
         public List<SettingMergeSettingsModel> Settings { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the linktypes too see what should be merged.
+        /// </summary>
+        public List<LinkTypeMergeSettingsModel> LinkTypes { get; set; }
 
         /// <summary>
         /// Gets or sets the settings for how the user wants to handle conflicts.
