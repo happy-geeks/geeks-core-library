@@ -89,8 +89,7 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
         /// <param name="role">Used to set a custom role for the user separate of the Wiser role system</param>
         /// <param name="extraDataForReplacements"></param>
         /// <param name="settings"></param>
-        Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role,
-            Dictionary<string, string> extraDataForReplacements, AccountCmsSettingsModel settings);
+        Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role, Dictionary<string, string> extraDataForReplacements, AccountCmsSettingsModel settings);
 
         /// <summary>
         /// Gets the Google Client ID from the Google Analytics cookie and saved it.
@@ -133,6 +132,10 @@ namespace GeeksCoreLibrary.Components.Account.Interfaces
             ulong subAccountId = 0,
             string role = "");
 
+        /// <summary>
+        /// Get the amount of days to remember the cookie from the incoming settings object or from the form values.
+        /// </summary>
+        /// <param name="settings"></param>
         int? GetAmountOfDaysToRememberCookie(AccountCmsSettingsModel settings);
     }
 }

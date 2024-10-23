@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
-using DocumentFormat.OpenXml.Wordprocessing;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Account.Models;
 using GeeksCoreLibrary.Components.Base.Interfaces;
@@ -455,15 +454,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             return roles.Where(role => userRoleIds.Contains(role.Id)).ToList();
         }
 
-        /// <summary>
-        /// NOTE: This method was moved from Accounts component and it should NOT be exposed to users.
-        /// Automatically logs in the user via ID. This function should never be made available publicly, only for internal usage to login after creating an account for example.
-        /// </summary>
-        /// <param name="userId">The ID of the user to login.</param>
-        /// <param name="mainUserId">The ID of the main user, if the user is logging in with a sub account.</param>
-        /// <param name="role">Used to set a custom role for the user separate of the Wiser role system</param>
-        /// <param name="extraDataForReplacements"></param>
-        /// <param name="settings"></param>
+        /// <inheritdoc />
         public async Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role, Dictionary<string,string> extraDataForReplacements, AccountCmsSettingsModel settings)
         {
             // Make sure we have a valid user ID.
@@ -485,11 +476,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             await SaveLoginAttemptAsync(true, userId, extraDataForReplacements, settings);
         }
 
-        /// <summary>
-        /// Gets the Google Client ID from the Google Analytics cookie and saved it.
-        /// </summary>
-        /// <param name="userIdForGoogleCid">The ID of the user to save the CID for.</param>
-        /// <param name="settings"></param>
+        /// <inheritdoc />
         public async Task SaveGoogleClientIdAsync(ulong userIdForGoogleCid, AccountCmsSettingsModel settings)
         {
             var request = httpContextAccessor.HttpContext?.Request;
@@ -518,9 +505,9 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
             var googleClientId = String.Join(".", clientIdSplit.Skip(2));
             
-            
+            // Here we need to retrieve the WiserItemService in a different way using ActivatorUtilities.
+            // That's because if we use ServiceProvider to retrieve it we gonna lose the database connection scope, and here we need it to be the same
             var wiserItemsService = ActivatorUtilities.CreateInstance<WiserItemsService>(serviceProvider, databaseConnection);
-            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(settings.EntityType);
 
             var detail = new WiserItemDetailModel()
             {
@@ -531,13 +518,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             await wiserItemsService.SaveItemDetailAsync(detail, userIdForGoogleCid, entityType: settings.EntityType);
         }
 
-        /// <summary>
-        /// Saves a login attempt in the details of the user. This will use the query in <see cref="Settings.SaveLoginAttemptQuery"/>.
-        /// </summary>
-        /// <param name="success">Whether the login attempt was successful or not.</param>
-        /// <param name="userId">The ID of the user that is attempting to login.</param>
-        /// <param name="extraDataForReplacements"></param>
-        /// <param name="settings"></param>
+        /// <inheritdoc />
         public async Task SaveLoginAttemptAsync(bool success, ulong userId,  Dictionary<string,string> extraDataForReplacements, AccountCmsSettingsModel settings)
         {
             var query = SetupAccountQuery(settings.SaveLoginAttemptQuery, settings, userId, success: success);
@@ -549,20 +530,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             await componentsService.RenderAndExecuteQueryAsync(query, extraDataForReplacements, skipCache: true);
         }
 
-        /// <summary>
-        /// Do all default login replacements on a SQL template and adds the variables to the <see cproperty="SystemConnection"/>.
-        /// </summary>
-        /// <param name="template"></param>
-        /// <param name="settings"></param>
-        /// <param name="userId"></param>
-        /// <param name="loginValue"></param>
-        /// <param name="emailAddress"></param>
-        /// <param name="token"></param>
-        /// <param name="success"></param>
-        /// <param name="passwordHash"></param>
-        /// <param name="subAccountId"></param>
-        /// <param name="role"></param>
-        /// <returns></returns>
+        /// <inheritdoc />
         public string SetupAccountQuery(string template,
             AccountCmsSettingsModel settings,
             ulong userId = 0,
@@ -637,6 +605,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 .Replace("'{role}'", "?role", StringComparison.OrdinalIgnoreCase).Replace("{role}", "?role", StringComparison.OrdinalIgnoreCase).Replace("'{basketId}'", "?basketId", StringComparison.OrdinalIgnoreCase).Replace("{basketId}", "?basketId", StringComparison.OrdinalIgnoreCase);
         }
         
+        /// <inheritdoc />
         public int? GetAmountOfDaysToRememberCookie(AccountCmsSettingsModel settings)
         {
             if (httpContextAccessor.HttpContext == null || String.IsNullOrWhiteSpace(settings.RememberMeCheckboxName))
