@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
+using GeeksCoreLibrary.Components.Base.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -32,6 +33,7 @@ namespace GeeksCoreLibrary.Core.Cms
         protected ITemplatesService TemplatesService;
         protected IDatabaseConnection DatabaseConnection;
         protected IAccountsService AccountsService;
+        protected IComponentsService ComponentsService;
 
         /// <summary>
         /// Whether the component should be ran in legacy mode. This reads and writes the old Wiser1 JSON settings.
@@ -233,17 +235,17 @@ namespace GeeksCoreLibrary.Core.Cms
         {
             if (String.IsNullOrWhiteSpace(queryToUse))
             {
-                WriteToTrace("Query for component is empty!", true);
+                WriteToTrace("Query for component is empty!");
                 return new DataTable();
             }
-
+        
             if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
             {
+                
                 queryToUse = StringReplacementsService.DoReplacements(queryToUse, ExtraDataForReplacements, true);
             }
-
+            
             queryToUse = await TemplatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false, dataRow: dataRowForReplacements, forQuery: true);
-
             if (doVariablesCheck)
             {
                 var expression = new Regex("{.*?}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));

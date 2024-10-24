@@ -6,11 +6,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Account.Models;
+using GeeksCoreLibrary.Components.Base.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Core.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -18,6 +20,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 using Constants = GeeksCoreLibrary.Components.Account.Models.Constants;
 
@@ -34,6 +37,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         private readonly IRolesService rolesService;
         private readonly IServiceProvider serviceProvider;
         private readonly IReplacementsMediator replacementsMediator;
+        private readonly IComponentsService componentsService;
 
         public AccountsService(IOptions<GclSettings> gclSettings,
                                IDatabaseConnection databaseConnection,
@@ -43,6 +47,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                                IRolesService rolesService,
                                IServiceProvider serviceProvider,
                                IReplacementsMediator replacementsMediator,
+                               IComponentsService componentsService,
                                IHttpContextAccessor httpContextAccessor = null)
         {
             this.gclSettings = gclSettings.Value;
@@ -54,6 +59,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             this.rolesService = rolesService;
             this.serviceProvider = serviceProvider;
             this.replacementsMediator = replacementsMediator;
+            this.componentsService = componentsService;
         }
 
         /// <inheritdoc />
@@ -446,6 +452,170 @@ namespace GeeksCoreLibrary.Components.Account.Services
 
             // Filter the roles based on the user's role IDs and return a List of the remaining rows.
             return roles.Where(role => userRoleIds.Contains(role.Id)).ToList();
+        }
+
+        /// <inheritdoc />
+        public async Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role, Dictionary<string,string> extraDataForReplacements, AccountCmsSettingsModel settings)
+        {
+            // Make sure we have a valid user ID.
+            if (userId <= 0)
+            {
+                logger.LogTrace("AutoLoginUser called with invalid user ID.");
+                return;
+            }
+
+            // Everything succeeded, so generate a cookie for the user and reset any failed login attempts.
+            var amountOfDaysToRememberCookie = GetAmountOfDaysToRememberCookie(settings);
+            var cookieValue = await GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, settings.EntityType, settings.SubAccountEntityType, role);
+            await SaveGoogleClientIdAsync(userId, settings);
+
+            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
+            var currentContext = httpContextAccessor.HttpContext;
+            HttpContextHelpers.WriteCookie(currentContext, settings.CookieName, cookieValue, offset, isEssential: true);
+
+            await SaveLoginAttemptAsync(true, userId, extraDataForReplacements, settings);
+        }
+
+        /// <inheritdoc />
+        public async Task SaveGoogleClientIdAsync(ulong userIdForGoogleCid, AccountCmsSettingsModel settings)
+        {
+            var request = httpContextAccessor.HttpContext?.Request;
+            var googleClientIdCookieValue = request?.Cookies[Constants.GoogleAnalyticsCookieName];
+            if (String.IsNullOrWhiteSpace(googleClientIdCookieValue))
+            {
+                return;
+            }
+
+            // GA1.2.1248174149.1587127355
+            var clientIdSplit = googleClientIdCookieValue.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (clientIdSplit.Length != 4)
+            {
+                var sanitizedGoogleClientIdCookieValue = googleClientIdCookieValue.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", "");
+                logger.LogTrace($"Google Analytics cookie found ({Constants.GoogleAnalyticsCookieName}: {sanitizedGoogleClientIdCookieValue}), but is not a valid format. Expected to have 3 dots, but it has {clientIdSplit.Length - 1}", true);
+                return;
+            }
+
+            if (userIdForGoogleCid <= 0)
+            {
+                var sanitizedGoogleClientIdCookieValue = googleClientIdCookieValue.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", "");
+                logger.LogTrace($"Google Analytics cookie found ({Constants.GoogleAnalyticsCookieName}: {sanitizedGoogleClientIdCookieValue}), but the user is not logged in and we did not create a new account (successfully).", true);
+                return;
+            }
+
+            var googleClientId = String.Join(".", clientIdSplit.Skip(2));
+            
+            // Here we need to retrieve the WiserItemService in a different way using ActivatorUtilities.
+            // That's because if we use ServiceProvider to retrieve it we gonna lose the database connection scope, and here we need it to be the same
+            var wiserItemsService = ActivatorUtilities.CreateInstance<WiserItemsService>(serviceProvider, databaseConnection);
+
+            var detail = new WiserItemDetailModel()
+            {
+                Key = String.IsNullOrWhiteSpace(settings.GoogleClientIdFieldName) ? Constants.DefaultGoogleCidFieldName : settings.GoogleClientIdFieldName,
+                Value = googleClientId
+            };
+
+            await wiserItemsService.SaveItemDetailAsync(detail, userIdForGoogleCid, entityType: settings.EntityType);
+        }
+
+        /// <inheritdoc />
+        public async Task SaveLoginAttemptAsync(bool success, ulong userId,  Dictionary<string,string> extraDataForReplacements, AccountCmsSettingsModel settings)
+        {
+            var query = SetupAccountQuery(settings.SaveLoginAttemptQuery, settings, userId, success: success);
+            if (String.IsNullOrWhiteSpace(query))
+            {
+                return;
+            }
+
+            await componentsService.RenderAndExecuteQueryAsync(query, extraDataForReplacements, skipCache: true);
+        }
+
+        /// <inheritdoc />
+        public string SetupAccountQuery(string template,
+            AccountCmsSettingsModel settings,
+            ulong userId = 0,
+            string loginValue = null,
+            string emailAddress = null,
+            string token = null,
+            bool success = true,
+            string passwordHash = null,
+            ulong subAccountId = 0,
+            string role = "")
+        {
+            if (String.IsNullOrWhiteSpace(template))
+            {
+                return template;
+            }
+
+            databaseConnection.ClearParameters();
+            databaseConnection.AddParameter("entityType", settings.EntityType);
+            databaseConnection.AddParameter("subAccountEntityType", settings.SubAccountEntityType);
+            databaseConnection.AddParameter("loginFieldName", settings.LoginFieldName);
+            databaseConnection.AddParameter("passwordFieldName", settings.PasswordFieldName);
+            databaseConnection.AddParameter("emailAddressFieldName", settings.EmailAddressFieldName);
+            databaseConnection.AddParameter("failedLoginAttemptsFieldName", settings.FailedLoginAttemptsFieldName);
+            databaseConnection.AddParameter("lastLoginAttemptFieldName", settings.LastLoginAttemptFieldName);
+            databaseConnection.AddParameter("resetPasswordTokenFieldName", settings.ResetPasswordTokenFieldName);
+            databaseConnection.AddParameter("resetPasswordExpireDateFieldName", settings.ResetPasswordExpireDateFieldName);
+            databaseConnection.AddParameter("subAccountLinkTypeNumber", settings.SubAccountLinkTypeNumber);
+            databaseConnection.AddParameter("roleFieldName", settings.RoleFieldName);
+            databaseConnection.AddParameter("userId", userId);
+            databaseConnection.AddParameter("login", loginValue);
+            databaseConnection.AddParameter("emailAddress", emailAddress);
+            databaseConnection.AddParameter("token", token);
+            databaseConnection.AddParameter("success", success);
+            databaseConnection.AddParameter("newPasswordHash", passwordHash);
+            databaseConnection.AddParameter("subAccountId", subAccountId);
+            databaseConnection.AddParameter("role", role);
+
+            // Check if the encrypted values are requested in the query template before adding them to the parameters.
+            if (template.Contains("{emailAddressGclAesEncrypted}") || template.Contains("?emailAddressGclAesEncrypted"))
+            {
+                var value = String.IsNullOrWhiteSpace(emailAddress) ? "" : emailAddress.EncryptWithAes();
+                databaseConnection.AddParameter("emailAddressGclAesEncrypted", value);
+            }
+            else if (template.Contains("{emailAddressAesEncrypted}") || template.Contains("?emailAddressAesEncrypted"))
+            {
+                var value = String.IsNullOrWhiteSpace(emailAddress) ? "" : emailAddress.EncryptWithAes();
+                databaseConnection.AddParameter("emailAddressAesEncrypted", value);
+            }
+
+            // Check if the template contains a basket id variable
+            if (template.Contains("{basketId}") || template.Contains("?basketId"))
+            {
+                // TODO: In toekomst de cookiename variabel maken door deze toe te voegen aan de variabele naam en er een regex overheen te gooien
+                throw new NotImplementedException("TODO: {basketId}");
+                //SystemConnection.AddParameter("basketId", ShoppingBasket.GetBasketItemId("winkelmandje"));
+            }
+
+            return template.Replace("'{userId}'", "?userId", StringComparison.OrdinalIgnoreCase).Replace("{userId}", "?userId", StringComparison.OrdinalIgnoreCase).Replace("'{token}'", "?token", StringComparison.OrdinalIgnoreCase).Replace("{token}", "?token", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{resetPasswordTokenFieldName}'", "?resetPasswordTokenFieldName", StringComparison.OrdinalIgnoreCase).Replace("{resetPasswordTokenFieldName}", "?resetPasswordTokenFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{resetPasswordExpireDateFieldName}'", "?resetPasswordExpireDateFieldName", StringComparison.OrdinalIgnoreCase).Replace("{resetPasswordExpireDateFieldName}", "?resetPasswordExpireDateFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{loginFieldName}'", "?loginFieldName", StringComparison.OrdinalIgnoreCase).Replace("{loginFieldName}", "?loginFieldName", StringComparison.OrdinalIgnoreCase).Replace("'{entityType}'", "?entityType", StringComparison.OrdinalIgnoreCase)
+                .Replace("{entityType}", "?entityType", StringComparison.OrdinalIgnoreCase).Replace("'{failedLoginAttemptsFieldName}'", "?failedLoginAttemptsFieldName")
+                .Replace("{failedLoginAttemptsFieldName}", "?failedLoginAttemptsFieldName", StringComparison.OrdinalIgnoreCase).Replace("'{lastLoginAttemptFieldName}'", "?lastLoginAttemptFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("{lastLoginAttemptFieldName}", "?failedLoginAttemptsFieldName", StringComparison.OrdinalIgnoreCase).Replace("'{roleFieldName}'", "?roleFieldName", StringComparison.OrdinalIgnoreCase).Replace("{roleFieldName}", "?roleFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{success}'", "?success", StringComparison.OrdinalIgnoreCase).Replace("{success}", "?success", StringComparison.OrdinalIgnoreCase).Replace("'{emailAddress}'", "?emailAddress").Replace("{emailAddress}", "?emailAddress", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{emailAddressGclAesEncrypted}'", "?emailAddressGclAesEncrypted", StringComparison.OrdinalIgnoreCase).Replace("{emailAddressGclAesEncrypted}", "?emailAddressGclAesEncrypted", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{emailAddressAesEncrypted}'", "?emailAddressAesEncrypted", StringComparison.OrdinalIgnoreCase).Replace("{emailAddressAesEncrypted}", "?emailAddressAesEncrypted", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{emailAddressFieldName}'", "?emailAddressFieldName", StringComparison.OrdinalIgnoreCase).Replace("{emailAddressFieldName}", "?emailAddressFieldName").Replace("'{newPasswordHash}'", "?newPasswordHash", StringComparison.OrdinalIgnoreCase)
+                .Replace("{newPasswordHash}", "?newPasswordHash", StringComparison.OrdinalIgnoreCase).Replace("'{passwordFieldName}'", "?passwordFieldName", StringComparison.OrdinalIgnoreCase).Replace("{passwordFieldName}", "?passwordFieldName", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{subAccountLinkTypeNumber}'", "?subAccountLinkTypeNumber", StringComparison.OrdinalIgnoreCase).Replace("{subAccountLinkTypeNumber}", "?subAccountLinkTypeNumber", StringComparison.OrdinalIgnoreCase)
+                .Replace("{subAccountEntityType}", "?subAccountEntityType", StringComparison.OrdinalIgnoreCase).Replace("'{subAccountId}'", "?subAccountId", StringComparison.OrdinalIgnoreCase).Replace("{subAccountId}", "?subAccountId", StringComparison.OrdinalIgnoreCase)
+                .Replace("'{role}'", "?role", StringComparison.OrdinalIgnoreCase).Replace("{role}", "?role", StringComparison.OrdinalIgnoreCase).Replace("'{basketId}'", "?basketId", StringComparison.OrdinalIgnoreCase).Replace("{basketId}", "?basketId", StringComparison.OrdinalIgnoreCase);
+        }
+        
+        /// <inheritdoc />
+        public int? GetAmountOfDaysToRememberCookie(AccountCmsSettingsModel settings)
+        {
+            if (httpContextAccessor.HttpContext == null || String.IsNullOrWhiteSpace(settings.RememberMeCheckboxName))
+            {
+                return settings.AmountOfDaysToRememberCookie;
+            }
+
+            var request = httpContextAccessor.HttpContext.Request;
+            var formValue = request.HasFormContentType ? request.Form[settings.RememberMeCheckboxName] : StringValues.Empty;
+            return String.IsNullOrWhiteSpace(formValue) || formValue == "0" ? null : settings.AmountOfDaysToRememberCookie;
         }
     }
 }
