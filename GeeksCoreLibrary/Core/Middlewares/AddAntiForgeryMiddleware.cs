@@ -11,7 +11,6 @@ namespace GeeksCoreLibrary.Core.Middlewares
     {
         private readonly RequestDelegate next;
         private readonly ILogger<AddAntiForgeryMiddleware> logger;
-        private IAntiforgery antiForgery;
 
         public AddAntiForgeryMiddleware(RequestDelegate next, ILogger<AddAntiForgeryMiddleware> logger)
         {
@@ -22,8 +21,6 @@ namespace GeeksCoreLibrary.Core.Middlewares
         public async Task Invoke(HttpContext context, IAntiforgery antiForgery)
         {
             logger.LogDebug("Invoked AddAntiForgeryMiddleware");
-            
-            this.antiForgery = antiForgery;
 
             // Remember the original body.
             var originalBody = context.Response.Body;
@@ -50,7 +47,7 @@ namespace GeeksCoreLibrary.Core.Middlewares
                     // Add anti forgery tokens to all forms.
                     // This needs to be done AFTER content caching, to make sure everyone has a unique token.
                     var pageHtml = await new StreamReader(newBody).ReadToEndAsync();
-                    pageHtml = AddAntiForgeryToForms(context, pageHtml);
+                    pageHtml = AddAntiForgeryToForms(context, pageHtml, antiForgery);
 
                     // Turn the string back into a stream.
                     await using var newStream = new MemoryStream();
@@ -78,8 +75,9 @@ namespace GeeksCoreLibrary.Core.Middlewares
         /// </summary>
         /// <param name="context"></param>
         /// <param name="html"></param>
+        /// <param name="antiForgery"></param>
         /// <returns></returns>
-        private string AddAntiForgeryToForms(HttpContext context, string html)
+        private string AddAntiForgeryToForms(HttpContext context, string html, IAntiforgery antiForgery)
         {
             var antiForgeryData = antiForgery.GetAndStoreTokens(context);
             var antiForgeryInput = $"<input type='hidden' name='{antiForgeryData.FormFieldName}' value='{antiForgeryData.RequestToken}' />";
