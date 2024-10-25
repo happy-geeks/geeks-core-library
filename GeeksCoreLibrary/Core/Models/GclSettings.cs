@@ -239,6 +239,11 @@ namespace GeeksCoreLibrary.Core.Models
         /// The SMTP settings for sending emails.
         /// </summary>
         public SmtpSettings SmtpSettings { get; set; }
+        
+        /// <summary>
+        /// 
+        /// </summary>
+        public HealthChecksSettings HealthChecks { get; set; }
 
         /// <summary>
         /// The license key for the library EvoPdf.
@@ -249,6 +254,8 @@ namespace GeeksCoreLibrary.Core.Models
         /// By default the GCL adds XSRF protection in the form of anti forgery tokens. To disable this functionality, set this option to <see langword="true"/>.
         /// </summary>
         public bool DisableXsrfProtection { get; set; }
+        
+        public bool MaximumLoginAttemptsForUsers { get; set; }
 
         /// <summary>
         /// Specifies whether to suppress the generation of X-Frame-Options header which is used to prevent ClickJacking.
