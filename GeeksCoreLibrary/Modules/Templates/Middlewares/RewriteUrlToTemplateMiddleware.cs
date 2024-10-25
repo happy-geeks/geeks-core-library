@@ -111,9 +111,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         /// <param name="context">The current <see cref="HttpContext"/>.</param>
         /// <param name="path">The path of the current URI.</param>
         /// <param name="queryStringFromUrl">The query string from the URI.</param>
-        /// <param name="templatesService"></param>
-        /// <param name="objectsService"></param>
-        /// <param name="databaseConnection"></param>
+        /// <param name="templatesService">The templates service.</param>
+        /// <param name="objectsService">The objects service.</param>
+        /// <param name="databaseConnection">The database connection.</param>
         private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl, ITemplatesService templatesService, IObjectsService objectsService, IDatabaseConnection databaseConnection)
         {
             logger.LogDebug($"Start HandleRewrites, path: {path}");

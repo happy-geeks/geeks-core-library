@@ -71,6 +71,8 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
         /// <param name="context">The current <see cref="HttpContext"/>.</param>
         /// <param name="path">The path of the current URI.</param>
         /// <param name="queryStringFromUrl">The query string from the URI.</param>
+        /// <param name="objectsService">The objectService used to get the system settings.</param>
+        /// <param name="webPagesService">The webpagesService used to find the webpage based on the url.</param>
         private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl, IObjectsService objectsService, IWebPagesService webPagesService)
         {
             // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
