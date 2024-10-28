@@ -2424,14 +2424,20 @@ WHERE {String.Join(" AND ", where)}";
                 where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
             }
 
+            var tablePrefixItemId = "";
+            if (linkSettings.UseItemParentId && reverse && !string.IsNullOrWhiteSpace(itemIdEntityType))
+            {
+                tablePrefixItemId = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
+            }
+            
             var tablePrefix = "";
-            if (!String.IsNullOrWhiteSpace(entityType))
+            if (!string.IsNullOrWhiteSpace(entityType))
             {
                 tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
                 databaseConnection.AddParameter("entityType", entityType);
                 where.Add("item.entity_type = ?entityType");
             }
-            else if (!String.IsNullOrWhiteSpace(itemIdEntityType))
+            else if (!string.IsNullOrWhiteSpace(itemIdEntityType))
             {
                 tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
             }
@@ -2446,7 +2452,7 @@ WHERE {String.Join(" AND ", where)}";
             {
                 if (reverse)
                 {
-                    itemLinkJoin = $"JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linkedItem ON linkedItem.id = ?itemId AND linkedItem.parent_item_id = item.id";
+                    itemLinkJoin = $"JOIN {tablePrefixItemId}{WiserTableNames.WiserItem} AS linkedItem ON linkedItem.id = ?itemId AND linkedItem.parent_item_id = item.id";
                 }
                 else
                 {
@@ -2498,7 +2504,7 @@ WHERE {String.Join(" AND ", where)}";
                 {
                     if (reverse)
                     {
-                        itemLinkJoin = $"JOIN {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS mainItem ON mainItem.parent_item_id = item.id AND mainItem.id = ?itemId";
+                        itemLinkJoin = $"JOIN {tablePrefixItemId}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS mainItem ON mainItem.parent_item_id = item.id AND mainItem.id = ?itemId";
                     }
                     else
                     {
