@@ -13,7 +13,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
     {
         private readonly RequestDelegate next;
         private readonly ILogger<RewriteUrlToOrderProcessMiddleware> logger;
-        private IOrderProcessesService orderProcessesService;
 
         public RewriteUrlToOrderProcessMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrderProcessMiddleware> logger)
         {
@@ -28,8 +27,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
         public async Task Invoke(HttpContext context, IOrderProcessesService orderProcessesService)
         {
             logger.LogDebug("Invoked RewriteUrlToOrderProcessMiddleware");
-
-            this.orderProcessesService = orderProcessesService;
 
             if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
@@ -55,7 +52,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
                 context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
             }
 
-            await HandleRewritesAsync(context, path, queryString);
+            await HandleRewritesAsync(context, path, queryString, orderProcessesService);
 
             await this.next.Invoke(context);
         }
@@ -67,7 +64,8 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
         /// <param name="context">The current <see cref="HttpContext"/>.</param>
         /// <param name="path">The path of the current URI.</param>
         /// <param name="queryStringFromUrl">The query string from the URI.</param>
-        private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
+        /// <param name="orderProcessesService">The order process service used to g</param>
+        private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl, IOrderProcessesService orderProcessesService)
         {
             // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
             var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));

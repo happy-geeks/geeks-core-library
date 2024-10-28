@@ -24,9 +24,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
     {
         private readonly RequestDelegate next;
         private readonly ILogger<RewriteUrlToTemplateMiddleware> logger;
-        private IObjectsService objectsService;
-        private IDatabaseConnection databaseConnection;
-        private ITemplatesService templatesService;
 
         public RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<RewriteUrlToTemplateMiddleware> logger)
         {
@@ -41,10 +38,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IActionDescriptorCollectionProvider actionDescriptorCollectionProvider)
         {
             logger.LogDebug("Invoked RewriteUrlToTemplateMiddleware");
-
-            this.objectsService = objectsService;
-            this.databaseConnection = databaseConnection;
-            this.templatesService = templatesService;
 
             if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
@@ -106,7 +99,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
                 context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
             }
 
-            await HandleRewritesAsync(context, path, queryString);
+            await HandleRewritesAsync(context, path, queryString, templatesService, objectsService, databaseConnection);
 
             await this.next.Invoke(context);
         }
@@ -118,7 +111,10 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         /// <param name="context">The current <see cref="HttpContext"/>.</param>
         /// <param name="path">The path of the current URI.</param>
         /// <param name="queryStringFromUrl">The query string from the URI.</param>
-        private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl)
+        /// <param name="templatesService">The templates service.</param>
+        /// <param name="objectsService">The objects service.</param>
+        /// <param name="databaseConnection">The database connection.</param>
+        private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl, ITemplatesService templatesService, IObjectsService objectsService, IDatabaseConnection databaseConnection)
         {
             logger.LogDebug($"Start HandleRewrites, path: {path}");
 
@@ -165,7 +161,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
             }
 
             // If we haven't found a matching URL yet, check the old legacy settings.
-            var urlRewrites = (await GetValues("url_syntax_templates")).ToList();
+            var urlRewrites = (await GetValues("url_syntax_templates", objectsService)).ToList();
             var fixedUrlQuery = await objectsService.FindSystemObjectByDomainNameAsync("fixedurl_query");
 
             // If there is a query for fixed URLs, add the results to the urlRewrites list.
@@ -225,7 +221,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
 
                     var newQueryString = String.Join(String.Empty, new[]
                     {
-                        $"?gclcmspagepath={await this.objectsService.FindSystemObjectByDomainNameAsync("cmsprefix")}",
+                        $"?gclcmspagepath={await objectsService.FindSystemObjectByDomainNameAsync("cmsprefix")}",
                         String.Join("/", webpagePath),
                         queryString.Value,
                         queryStringFromUrl.Value
@@ -285,7 +281,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Middlewares
         /// </summary>
         /// <param name="objectName">The name / key of the system object to retreive.</param>
         /// <returns>A list of string values.</returns>
-        private async Task<IEnumerable<string>> GetValues(string objectName)
+        private async Task<IEnumerable<string>> GetValues(string objectName, IObjectsService objectsService)
         {
             var value = await objectsService.FindSystemObjectByDomainNameAsync(objectName);
             var urlRewrites = value.Split(new[] { "\r", "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries)
