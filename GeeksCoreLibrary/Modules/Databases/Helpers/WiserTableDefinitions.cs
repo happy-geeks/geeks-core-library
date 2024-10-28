@@ -22,7 +22,7 @@ public class WiserTableDefinitions
         new WiserTableDefinitionModel
         {
             Name = WiserTableNames.WiserItem,
-            LastUpdate = new DateTime(2024, 2, 2),
+            LastUpdate = new DateTime(2024, 10, 28),
             Columns = new List<ColumnSettingsModel>
             {
                 new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
