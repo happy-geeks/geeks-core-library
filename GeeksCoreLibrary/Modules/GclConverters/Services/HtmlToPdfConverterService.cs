@@ -29,15 +29,13 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
         private readonly IDatabaseConnection databaseConnection;
         private readonly IObjectsService objectsService;
         private readonly IStringReplacementsService stringReplacementsService;
-        private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly ILogger<HtmlToPdfConverterService> logger;
         private readonly GclSettings gclSettings;
+        private readonly IWebHostEnvironment webHostEnvironment;
 
         public HtmlToPdfConverterService(IDatabaseConnection databaseConnection,
             IObjectsService objectsService,
             IStringReplacementsService stringReplacementsService,
             IOptions<GclSettings> gclSettings,
-            ILogger<HtmlToPdfConverterService> logger,
             IHttpContextAccessor httpContextAccessor = null,
             IWebHostEnvironment webHostEnvironment = null)
         {
@@ -45,9 +43,8 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
             this.stringReplacementsService = stringReplacementsService;
-            this.webHostEnvironment = webHostEnvironment;
-            this.logger = logger;
             this.gclSettings = gclSettings.Value;
+            this.webHostEnvironment = webHostEnvironment;
         }
 
         /// <inheritdoc />
@@ -57,7 +54,7 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             var httpContext = httpContextAccessor?.HttpContext;
             var converter = new HtmlToPdfConverter
             {
-                //LicenseKey = gclSettings.EvoPdfLicenseKey,
+                LicenseKey = gclSettings.EvoPdfLicenseKey,
                 ConversionDelay = 2
             };
 
@@ -101,10 +98,10 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                 Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize_height"), out var pageSizeHeight);
 
                 converter.PdfDocumentOptions.PdfPageSize = new PdfPageSize(pageSizeWidth, pageSizeHeight);
-                converter.PdfDocumentOptions.AutoResizePdfPageWidth = true;
             }
             else
             {
+                converter.PdfDocumentOptions.AutoResizePdfPageWidth = false;
                 converter.PdfDocumentOptions.PdfPageSize = pageSize switch
                 {
                     "A0" => PdfPageSize.A0,
@@ -134,28 +131,6 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             if (!String.IsNullOrWhiteSpace(settings.Header))
             {
                 converter.PdfDocumentOptions.HeaderTemplate = settings.Header;
-                /*var headerElem = new HtmlToPdfElement(settings.Header, null) { FitHeight = true };
-                headerElem.NavigationCompletedEvent += delegate(NavigationCompletedParams eventParams)
-                {
-                    var headerHtmlWidth = eventParams.HtmlContentWidthPt;
-                    var headerHtmlHeight = eventParams.HtmlContentHeightPt;
-                    var headerWidth = converter.PdfDocumentOptions.PdfPageSize.Width - converter.PdfDocumentOptions.LeftMargin - converter.PdfDocumentOptions.RightMargin;
-                    float resizeFactor = 1;
-                    if (headerHtmlWidth > headerWidth)
-                    {
-                        resizeFactor = headerWidth / headerHtmlWidth;
-                    }
-
-                    var headerHeight = headerHtmlHeight * resizeFactor;
-
-                    if (!(headerHeight < converter.PdfDocumentOptions.PdfPageSize.Height - converter.PdfDocumentOptions.TopMargin - converter.PdfDocumentOptions.BottomMargin))
-                    {
-                        throw new Exception("The header height cannot be bigger than PDF page height");
-                    }
-
-                    converter.PdfDocumentOptions.DocumentObject.Header.Height = headerHeight;
-                };
-                converter.PdfHeaderOptions.AddElement(headerElem);*/
             }
 
             // Footer settings.
@@ -166,29 +141,6 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             if (!String.IsNullOrWhiteSpace(settings.Footer))
             {
                 converter.PdfDocumentOptions.FooterTemplate = settings.Footer;
-
-                /*var footerElem = new HtmlToPdfElement(settings.Footer, null) { FitHeight = true };
-                footerElem.NavigationCompletedEvent += delegate(NavigationCompletedParams eventParams)
-                {
-                    var footerHtmlWidth = eventParams.HtmlContentWidthPt;
-                    var footerHtmlHeight = eventParams.HtmlContentHeightPt;
-                    var footerWidth = converter.PdfDocumentOptions.PdfPageSize.Width - converter.PdfDocumentOptions.LeftMargin - converter.PdfDocumentOptions.RightMargin;
-                    float resizeFactor = 1;
-                    if (footerHtmlWidth > footerWidth)
-                    {
-                        resizeFactor = footerWidth / footerHtmlWidth;
-                    }
-
-                    var footerHeight = footerHtmlHeight * resizeFactor;
-
-                    if (!(footerHeight < converter.PdfDocumentOptions.PdfPageSize.Height - converter.PdfDocumentOptions.TopMargin - converter.PdfDocumentOptions.BottomMargin))
-                    {
-                        throw new Exception("The footer height cannot be bigger than PDF page height");
-                    }
-
-                    converter.PdfDocumentOptions.DocumentObject.Footer.Height = footerHeight;
-                };
-                converter.PdfFooterOptions.AddElement(footerElem);*/
             }
 
             // Security settings.
@@ -223,27 +175,6 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                                               	}
                                               </style>
                                               """);
-
-                    /*try
-                    {
-                        converter.BeforeRenderPdfPageEvent += parameters =>
-                        {
-                            var pdfPage = parameters.Page;
-                            var pdfPageWidth = pdfPage.ClientRectangle.Width;
-                            var pdfPageHeight = pdfPage.ClientRectangle.Height;
-
-                            var backgroundElement = new ImageElement(0, 0, pdfPageWidth, pdfPageHeight, backgroundImage)
-                            {
-                                KeepAspectRatio = true,
-                                EnlargeEnabled = true
-                            };
-                            pdfPage.AddElement(backgroundElement);
-                        };
-                    }
-                    catch (Exception exception)
-                    {
-                        logger.LogWarning(exception, "An error occurred while adding a background to a PDF in ConvertHtmlStringToPdfAsync()");
-                    }*/
                 }
             }
 
