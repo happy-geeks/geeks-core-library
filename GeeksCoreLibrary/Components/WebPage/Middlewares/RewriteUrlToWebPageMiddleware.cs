@@ -25,12 +25,8 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
 
         /// <summary>
         /// Invoke the middleware.
-        /// IObjectsService and IDatabaseConnection are here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
+        /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
         /// </summary>
-        /// <param name="context"></param>
-        /// <param name="objectsService"></param>
-        /// <param name="webPagesService"></param>
-        /// <returns></returns>
         public async Task Invoke(HttpContext context, IObjectsService objectsService, IWebPagesService webPagesService)
         {
             logger.LogDebug("Invoked RewriteUrlToWebPageMiddleware");

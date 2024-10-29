@@ -21,13 +21,17 @@ public class AddCacheHeaderValueMiddleware
         this.gclSettings = gclSettings.Value;
     }
 
+    /// <summary>
+    /// Invoke the middleware.
+    /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
+    /// </summary>
     public async Task Invoke(HttpContext context)
     {
         logger.LogDebug("Invoked AddCacheHeaderValueMiddleware");
-            
+
         // Get the path of the current HTTP request.
         var requestPath = context.Request.Path.Value;
-            
+
         // Retrieve the list of cache-control rules from the app settings.
         var cacheControlRules = gclSettings.CacheControlRules;
 

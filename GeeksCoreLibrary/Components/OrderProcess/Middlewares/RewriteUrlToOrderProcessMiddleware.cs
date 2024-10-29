@@ -22,7 +22,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
 
         /// <summary>
         /// Invoke the middleware.
-        /// IObjectsService and IDatabaseConnection are here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
+        /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
         /// </summary>
         public async Task Invoke(HttpContext context, IOrderProcessesService orderProcessesService)
         {
