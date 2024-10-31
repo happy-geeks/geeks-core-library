@@ -241,7 +241,7 @@ namespace GeeksCoreLibrary.Core.Models
         public SmtpSettings SmtpSettings { get; set; }
         
         /// <summary>
-        /// 
+        /// The Healthcheck settings for the Database check.
         /// </summary>
         public HealthChecksSettings HealthChecks { get; set; }
 

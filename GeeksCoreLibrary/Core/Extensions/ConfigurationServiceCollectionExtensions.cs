@@ -142,9 +142,8 @@ namespace GeeksCoreLibrary.Core.Extensions
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 }); 
             });
-        
-            builder.HandleStartupFunctions();
             
+            builder.HandleStartupFunctions();
             return builder;
         }
         
@@ -164,7 +163,6 @@ namespace GeeksCoreLibrary.Core.Extensions
                 {
                     using var scope = builder.ApplicationServices.CreateScope();
                     var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
-
                     var gclSettings = scope.ServiceProvider.GetRequiredService<IOptions<GclSettings>>();
                     var tablesToUpdate = new List<string>      
                     {
@@ -198,7 +196,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                     var logger = builder.ApplicationServices.GetService<ILogger>();
                     logger?.LogError(exception, "Error while updating tables.");
                 }
-            }); 
+            });
 
             return builder;
         }
@@ -214,7 +212,6 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// <returns>The <see cref="IServiceCollection"/> of the startup.</returns>
         public static IServiceCollection AddGclServices(this IServiceCollection services, IConfiguration configuration, bool useCaching = true, bool isApi = false, bool isWeb = true)
         {
-            
             // MVC looks in the directory "Areas" by default, but we use the directory "Modules", so we have to tell MC that.
             if (isWeb)
             {
@@ -300,7 +297,11 @@ namespace GeeksCoreLibrary.Core.Extensions
             // Enable session.
             if (isWeb)
             {
-                services.AddSession(options => { options.IdleTimeout = TimeSpan.FromMinutes(30); });
+                services.AddSession(options =>
+                {
+                    options.IdleTimeout = TimeSpan.FromMinutes(30); 
+                    
+                });
             }
 
             // Manual additions.

@@ -27,11 +27,9 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 
-
-
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
 {
-    [Area("Templates")]
+    [Area("Templates")] 
     public class TemplatesController : Controller
     {
         private readonly ILogger<TemplatesController> logger;

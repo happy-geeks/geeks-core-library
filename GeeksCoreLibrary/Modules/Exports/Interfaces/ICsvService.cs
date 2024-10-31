@@ -1,7 +1,6 @@
 using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.Exports.Interfaces;
-
 public interface ICsvService
 {
     /// <summary>
@@ -12,4 +11,3 @@ public interface ICsvService
     /// <returns>csv formatted string</returns>
     string JsonArrayToCsv(JArray data, string delimiter = ";");
 }
-

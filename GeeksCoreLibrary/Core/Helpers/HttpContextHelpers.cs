@@ -373,8 +373,7 @@ public static class HttpContextHelpers
 
         var result = new UriBuilder
         {
-            // fix van gilian om ngrok te laten werken
-            
+            //if the host is empty, go back to localhost
             Host = String.IsNullOrWhiteSpace(httpContext.Request.Host.Host) ? "localhost" : httpContext.Request.Host.Host,
             Scheme = httpContext.Request.Scheme,
             Port = httpContext.Request.Host.Port ?? (httpContext.Request.IsHttps ? 443 : 80)
