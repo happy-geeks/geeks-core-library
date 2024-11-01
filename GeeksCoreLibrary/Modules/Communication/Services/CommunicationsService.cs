@@ -4,10 +4,10 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using CM.Text;
@@ -544,9 +544,10 @@ WHERE id = ?id";
                 }
             }
 
-            httpClientService.Client.Timeout = TimeSpan.FromMilliseconds(timeout);
-            using var response = await httpClientService.Client.PostAsJsonAsync($"https://www.smtpeter.com/v1/send?access_token={smtpSettings.SmtPeterSettings.ApiAccessToken}", requestBody, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            communication.StatusMessage = await response.Content.ReadAsStringAsync();
+            using var cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource.CancelAfter(TimeSpan.FromMilliseconds(timeout));
+            using var response = await httpClientService.Client.PostAsJsonAsync($"https://www.smtpeter.com/v1/send?access_token={smtpSettings.SmtPeterSettings.ApiAccessToken}", requestBody, new JsonSerializerOptions(JsonSerializerDefaults.Web), cancellationTokenSource.Token);
+            communication.StatusMessage = await response.Content.ReadAsStringAsync(cancellationTokenSource.Token);
 
             if (response.IsSuccessStatusCode)
             {
@@ -554,7 +555,7 @@ WHERE id = ?id";
             }
 
             // If request was not success throw the body as an exception.
-            throw new Exception(await response.Content.ReadAsStringAsync());
+            throw new Exception(communication.StatusMessage);
         }
 
         private async Task<List<(string FileName, byte[] FileBytes)>> GetAttachmentsAsync(SingleCommunicationModel communication)
