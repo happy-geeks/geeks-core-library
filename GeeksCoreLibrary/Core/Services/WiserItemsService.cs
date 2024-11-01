@@ -481,7 +481,8 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
 	                                    link.type,
 	                                    link.ordering,
                                         linked_item.entity_type,
-                                        link_settings.use_item_parent_id
+                                        link_settings.use_item_parent_id,
+                                        link_settings.use_dedicated_table
                                     FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
                                     JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.destination_item_id = item.id
                                     JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linked_item ON linked_item.id = link.item_id
@@ -498,7 +499,8 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
 	                                    1 AS type,
 	                                    0 AS ordering,
 	                                    linked_item.entity_type,
-	                                    link_settings.use_item_parent_id
+	                                    link_settings.use_item_parent_id,
+                                        link_settings.use_dedicated_table
                                     FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
                                     JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linked_item ON linked_item.parent_item_id = item.id
                                     JOIN {WiserTableNames.WiserLink} AS link_settings ON link_settings.destination_entity_type = item.entity_type AND link_settings.connected_entity_type = linked_item.entity_type AND link_settings.duplication <> 'none'
