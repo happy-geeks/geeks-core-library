@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -211,16 +212,20 @@ public class NeDistriService : INeDistriService, IScopedService
 
         var restRequest = new RestRequest("/api/v1/order", Method.Post);
         restRequest.AddStringBody(createOrderRequestBody, DataFormat.Json);
-
+        
         var createOrderResponse = await restClient.ExecuteAsync(restRequest);
-
-        if (!createOrderResponse.IsSuccessful)
+        if (createOrderResponse.ErrorException != null)
         {
-            logger.LogError($"Request to recreate order in NeDistriService was rejected. The given error was: ${createOrderResponse.Content}");
-            return (null, "Het maken van de order");
+            throw createOrderResponse.ErrorException;
+        }
+
+        if (!createOrderResponse.IsSuccessStatusCode || !createOrderResponse.IsSuccessful || String.IsNullOrEmpty(createOrderResponse.Content))
+        {
+            logger.LogError($"Request to recreate order in NeDistriService was rejected. {Environment.NewLine}Error message: {createOrderResponse.ErrorMessage},{Environment.NewLine}status code: {createOrderResponse.StatusCode},{Environment.NewLine}status description: {createOrderResponse.StatusDescription},{Environment.NewLine}response: {createOrderResponse.Content}");
+            return (null, "Het maken van de order is mislukt.");
         }
         
-        return (JsonConvert.DeserializeObject<CreateOrderResponse>(createOrderResponse.Content!, jsonSettings), null);
+        return (JsonConvert.DeserializeObject<CreateOrderResponse>(createOrderResponse.Content, jsonSettings), null);
     }
 
     private async Task<AuthenticationResponse> AuthenticateAsync()
@@ -259,6 +264,15 @@ public class NeDistriService : INeDistriService, IScopedService
         // Because this includes formatting like whitespace and newlines
         request.AddStringBody(authenticationBody, ContentType.Json);
         var authResponse = await restClient.ExecuteAsync(request);
+        if (authResponse.ErrorException != null)
+        {
+            throw authResponse.ErrorException;
+        }
+
+        if (!authResponse.IsSuccessStatusCode || !authResponse.IsSuccessful || String.IsNullOrEmpty(authResponse.Content))
+        {
+            throw new AuthenticationException($"Authentication with NeDistri API failed. Error message: {authResponse.ErrorMessage}, status code: {authResponse.StatusCode}, status description: {authResponse.StatusDescription}");
+        }
 
         return JsonConvert.DeserializeObject<AuthenticationResponse>(authResponse.Content);
     }
