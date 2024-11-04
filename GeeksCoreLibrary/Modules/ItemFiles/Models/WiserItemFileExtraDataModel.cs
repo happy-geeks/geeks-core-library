@@ -19,11 +19,6 @@ public class WiserItemFileExtraDataModel
     public Dictionary<string, string> AltTexts { get; set; }
 
     /// <summary>
-    /// Gets or sets the Amazon S3 object model.
-    /// </summary>
-    public AmazonS3ObjectModel AmazonS3Object { get; set; }
-
-    /// <summary>
     /// Gets or sets additional keys and values that are not directly part of the model.
     /// </summary>
     [JsonExtensionData]
