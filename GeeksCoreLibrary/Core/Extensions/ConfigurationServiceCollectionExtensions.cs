@@ -121,7 +121,13 @@ namespace GeeksCoreLibrary.Core.Extensions
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 });
 
-                endpoints.MapHealthChecks("/health/wts", new HealthCheckOptions()
+                endpoints.MapHealthChecks("/health/database", new HealthCheckOptions
+                {
+                    Predicate = healthCheck => healthCheck.Tags.Contains("Database"),
+                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+                });
+
+                endpoints.MapHealthChecks("/health/wts", new HealthCheckOptions
                 {
                     Predicate = healthCheck => healthCheck.Tags.Contains("WTS"),
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
@@ -223,11 +229,11 @@ namespace GeeksCoreLibrary.Core.Extensions
             if (isWeb)
             {
                 services.AddHealthChecks()
-                    .AddMySql(gclSettings.ConnectionString, name: "MySqlRead")
+                    .AddMySql(gclSettings.ConnectionString, name: "MySqlRead", tags: new []{"Database"})
                     .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, new []{"WTS", "Wiser Task Scheduler"});
                 if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
                 {
-                    services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite");
+                    services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite", tags: new []{"Database"});
                 }
 
                 // Set default settings for JSON.NET.
