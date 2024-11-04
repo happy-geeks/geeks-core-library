@@ -594,6 +594,9 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                     imageFormat = MagickFormat.Jpg;
                     imageQuality = 75;
                     break;
+                case ".jxl":
+                    imageFormat = MagickFormat.Jxl;
+                    break;
                 case ".gif":
                     imageFormat = MagickFormat.Gif;
                     break;
@@ -613,6 +616,10 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 case ".tiff":
                     imageFormat = MagickFormat.Tiff;
                     break;
+                case ".avif":
+                case ".avifs":
+                    imageFormat = MagickFormat.Avif;
+                    break;
                 default:
                     throw new NotSupportedException("Unsupported file type.");
             }
@@ -621,7 +628,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             if (preferredWidth > 0 && preferredHeight > 0)
             {
                 var fillColor = MagickColors.Transparent;
-                if (!extension.InList(".gif", ".png", ".webp"))
+                if (!extension.InList(".jxl", ".gif", ".png", ".webp", ".tiff", ".tif", ".avif", ".avifs"))
                 {
                     fillColor = MagickColors.White;
                 }
