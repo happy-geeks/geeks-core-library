@@ -255,8 +255,6 @@ namespace GeeksCoreLibrary.Core.Models
         /// </summary>
         public bool DisableXsrfProtection { get; set; }
         
-        public bool MaximumLoginAttemptsForUsers { get; set; }
-
         /// <summary>
         /// Specifies whether to suppress the generation of X-Frame-Options header which is used to prevent ClickJacking.
         /// By default, the X-Frame-Options header is generated with the value SAMEORIGIN. If this setting is 'true', the X-Frame-Options header will not be generated for the response.

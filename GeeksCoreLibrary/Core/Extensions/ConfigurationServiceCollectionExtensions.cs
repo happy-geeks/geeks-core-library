@@ -50,10 +50,8 @@ using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Services;
-using GeeksCoreLibrary.Modules.HealthChecks.Services;
 using GeeksCoreLibrary.Modules.ItemFiles.Middlewares;
 using JetBrains.Annotations;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -146,7 +144,6 @@ namespace GeeksCoreLibrary.Core.Extensions
             builder.HandleStartupFunctions();
             return builder;
         }
-        
         /// <summary>
         /// Handle and execute some functions that are needed to be done during startup of the application.
         /// Don't call this method if you're already calling UseGclMiddleware, because this is called inside that.
@@ -164,7 +161,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                     using var scope = builder.ApplicationServices.CreateScope();
                     var databaseHelpersService = scope.ServiceProvider.GetRequiredService<IDatabaseHelpersService>();
                     var gclSettings = scope.ServiceProvider.GetRequiredService<IOptions<GclSettings>>();
-                    var tablesToUpdate = new List<string>      
+                    var tablesToUpdate = new List<string>
                     {
                         WiserTableNames.WiserEntity,
                         WiserTableNames.WiserPermission,
@@ -238,7 +235,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 services.AddHealthChecks()
                     .AddMySql(gclSettings.ConnectionString, name: "MySqlRead", tags: new []{"Database"})
                     .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, new []{"WTS", "Wiser Task Scheduler"})
-                    .AddCheck<DatabaseHealthService>("Database Health Check", tags: new[] { "databaseConnection", "database" });
+                    .AddCheck<DatabaseHealthService>("Database Health Check", tags: new[]{ "databaseConnection", "database" });
                 if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
                 {
                     services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite", tags: new []{"Database"});
@@ -299,11 +296,10 @@ namespace GeeksCoreLibrary.Core.Extensions
             {
                 services.AddSession(options =>
                 {
-                    options.IdleTimeout = TimeSpan.FromMinutes(30); 
-                    
+                    options.IdleTimeout = TimeSpan.FromMinutes(30);
                 });
             }
-
+            
             // Manual additions.
             services.AddHttpContextAccessor();
             services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
