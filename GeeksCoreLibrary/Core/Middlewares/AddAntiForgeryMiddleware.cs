@@ -18,6 +18,10 @@ namespace GeeksCoreLibrary.Core.Middlewares
             this.logger = logger;
         }
 
+        /// <summary>
+        /// Invoke the middleware.
+        /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
+        /// </summary>
         public async Task Invoke(HttpContext context, IAntiforgery antiForgery)
         {
             logger.LogDebug("Invoked AddAntiForgeryMiddleware");
@@ -35,7 +39,7 @@ namespace GeeksCoreLibrary.Core.Middlewares
             {
                 // The HTML should be generated at this point; read the entire response body as a string.
                 newBody.Position = 0;
-                
+
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse <--- "context.Response.ContentType" actually is NULL in some cases, I don't know why ReSharper thinks that it can't be.
                 if (context.Response.ContentType == null || !context.Response.ContentType.Contains("text/html"))
                 {
@@ -55,7 +59,7 @@ namespace GeeksCoreLibrary.Core.Middlewares
                     await writer.WriteAsync(pageHtml);
                     await writer.FlushAsync();
                     newStream.Position = 0;
-                    
+
                     // Set the correct content length.
                     context.Response.ContentLength = newStream.Length;
 
@@ -81,7 +85,7 @@ namespace GeeksCoreLibrary.Core.Middlewares
         {
             var antiForgeryData = antiForgery.GetAndStoreTokens(context);
             var antiForgeryInput = $"<input type='hidden' name='{antiForgeryData.FormFieldName}' value='{antiForgeryData.RequestToken}' />";
-            
+
             const int formTagLength = 7;
             var closeFormIndex = html.IndexOf("</form>", StringComparison.Ordinal);
 
@@ -90,7 +94,7 @@ namespace GeeksCoreLibrary.Core.Middlewares
                 var startIndex = closeFormIndex + antiForgeryInput.Length + formTagLength;
                 logger.LogDebug("Place hidden input with anti forgery token.");
                 html = html.Insert(closeFormIndex, antiForgeryInput);
-                
+
                 closeFormIndex = html.IndexOf("</form>", startIndex, StringComparison.Ordinal);
             }
 
