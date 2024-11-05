@@ -563,7 +563,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
             {
                 var selectPart = new StringBuilder(",");
                 var joinPart = new StringBuilder();
-                foreach (var extraFilterProperty in extraFilterProperties.Split(',').Where(String.IsNullOrWhiteSpace).Select(p => p.Trim()))
+                foreach (var extraFilterProperty in extraFilterProperties.Split(',', StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries))
                 {
                     selectPart.Append($"`{extraFilterProperty}`.`value` AS `{extraFilterProperty}`,");
                     joinPart.AppendLine($"LEFT JOIN {WiserTableNames.WiserItemDetail} AS `{extraFilterProperty}` ON `{extraFilterProperty}`.item_id = filters.id AND `{extraFilterProperty}`.`key` = '{extraFilterProperty}' {GetLanguageQueryPart(extraFilterProperty, languageCode)}");
@@ -664,7 +664,7 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                 if (!String.IsNullOrEmpty(extraFilterProperties))
                 {
                     filterGroup.ExtraProperties = new SortedList<string, string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var extraFilterProperty in extraFilterProperties.Split(',').Where(p => !String.IsNullOrWhiteSpace(p) && !filterGroup.ExtraProperties.ContainsKey(p)).Select(p => p.Trim()))
+                    foreach (var extraFilterProperty in extraFilterProperties.Split(',', StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries).Where(p => !filterGroup.ExtraProperties.ContainsKey(p)))
                     {
                         filterGroup.ExtraProperties.Add(extraFilterProperty, row.IsNull(extraFilterProperty) ? "" : row[extraFilterProperty].ToString());
                     }
