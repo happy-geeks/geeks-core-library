@@ -22,6 +22,7 @@ public class WiserItemFilesMiddleware
 
     /// <summary>
     /// Invoke the middleware.
+    /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
     /// </summary>
     public async Task Invoke(HttpContext context)
     {

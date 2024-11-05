@@ -20,6 +20,10 @@ public class IpAccessMiddleware
         this.next = next;
     }
 
+    /// <summary>
+    /// Invoke the middleware.
+    /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
+    /// </summary>
     public async Task Invoke(HttpContext context, IObjectsService objectsService)
     {
         logger.LogDebug("Invoked IpAccessMiddleware");

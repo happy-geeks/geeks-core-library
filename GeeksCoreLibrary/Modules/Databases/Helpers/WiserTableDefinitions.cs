@@ -22,7 +22,7 @@ public class WiserTableDefinitions
         new WiserTableDefinitionModel
         {
             Name = WiserTableNames.WiserItem,
-            LastUpdate = new DateTime(2024, 2, 2),
+            LastUpdate = new DateTime(2024, 10, 28),
             Columns = new List<ColumnSettingsModel>
             {
                 new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -32,7 +32,7 @@ public class WiserTableDefinitions
                 new("ordering", MySqlDbType.Int24, notNull: true, defaultValue: "0"),
                 new("entity_type", MySqlDbType.VarChar, 100, notNull: true, defaultValue: "0"),
                 new("moduleid", MySqlDbType.Int32, 11, notNull: true, defaultValue: "0"),
-                new("published_environment", MySqlDbType.Int16, notNull: true, defaultValue: "15"),
+                new("published_environment", MySqlDbType.Int24, notNull: true, defaultValue: "15"),
                 new("readonly", MySqlDbType.Int16, notNull: true, defaultValue: "0"),
                 new("title", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
                 new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
