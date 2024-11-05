@@ -462,7 +462,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                         if (Uri.TryCreate(contentUrl, UriKind.Absolute, out var contentUri))
                         {
                             // Amazon S3 URLs are handled differently.
-                            if (contentUri.Scheme == "s3")
+                            if (contentUri.Scheme.Equals("s3", StringComparison.OrdinalIgnoreCase))
                             {
                                 var s3Bucket = contentUri.Host;
                                 var s3Object = contentUri.LocalPath.TrimStart('/');
@@ -484,17 +484,21 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                             }
                         }
 
-                        if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
+                        // No image bytes were found, try to retrieve the image from the content URL.
+                        if (fileBytes == null || fileBytes.Length == 0)
                         {
-                            var requestUri = new Uri(contentUrl);
-                            fileBytes = await httpClientService.Client.GetByteArrayAsync(requestUri);
-                        }
-                        else
-                        {
-                            var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
-                            if (File.Exists(localFilePath))
+                            if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
                             {
-                                fileBytes = await File.ReadAllBytesAsync(localFilePath);
+                                var requestUri = new Uri(contentUrl);
+                                fileBytes = await httpClientService.Client.GetByteArrayAsync(requestUri);
+                            }
+                            else
+                            {
+                                var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
+                                if (File.Exists(localFilePath))
+                                {
+                                    fileBytes = await File.ReadAllBytesAsync(localFilePath);
+                                }
                             }
                         }
                     }
