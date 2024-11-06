@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Amazon.Interfaces;
+using GeeksCoreLibrary.Modules.Amazon.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
 
@@ -23,19 +24,19 @@ public class CachedAmazonS3Service : IAmazonS3Service
     }
 
     /// <inheritdoc />
-    public async Task<bool> CreateBucketAsync(string bucketName)
+    public async Task<bool> CreateBucketAsync(string bucketName, AwsSettings awsSettings = null)
     {
-        return await amazonS3Service.CreateBucketAsync(bucketName);
+        return await amazonS3Service.CreateBucketAsync(bucketName, awsSettings);
     }
 
     /// <inheritdoc />
-    public async Task<bool> UploadFileAsync(string bucketName, string objectName, string filePath)
+    public async Task<bool> UploadFileAsync(string bucketName, string objectName, string filePath, AwsSettings awsSettings = null)
     {
-        return await amazonS3Service.UploadFileAsync(bucketName, objectName, filePath);
+        return await amazonS3Service.UploadFileAsync(bucketName, objectName, filePath, awsSettings);
     }
 
     /// <inheritdoc />
-    public async Task<bool> DownloadObjectFromBucketAsync(string bucketName, string objectName, string saveDirectory)
+    public async Task<bool> DownloadObjectFromBucketAsync(string bucketName, string objectName, string saveDirectory, AwsSettings awsSettings = null)
     {
         // First check if local file exists.
         var fileInfo = new FileInfo(Path.Combine(FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment), objectName));
@@ -44,6 +45,12 @@ public class CachedAmazonS3Service : IAmazonS3Service
             return true;
         }
 
-        return await amazonS3Service.DownloadObjectFromBucketAsync(bucketName, objectName, saveDirectory);
+        return await amazonS3Service.DownloadObjectFromBucketAsync(bucketName, objectName, saveDirectory, awsSettings);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteObjectAsync(string bucketName, string objectName, AwsSettings awsSettings = null)
+    {
+        return await amazonS3Service.DeleteObjectAsync(bucketName, objectName, awsSettings);
     }
 }

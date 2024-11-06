@@ -8,6 +8,7 @@ using Amazon.S3.Model;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Amazon.Interfaces;
+using GeeksCoreLibrary.Modules.Amazon.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -17,7 +18,6 @@ public class AmazonS3Service : IAmazonS3Service, IScopedService
 {
     private readonly ILogger<AmazonS3Service> logger;
     private readonly GclSettings gclSettings;
-    private IAmazonS3 client;
 
     public AmazonS3Service(ILogger<AmazonS3Service> logger, IOptions<GclSettings> gclSettings)
     {
@@ -26,7 +26,7 @@ public class AmazonS3Service : IAmazonS3Service, IScopedService
     }
 
     /// <inheritdoc />
-    public async Task<bool> CreateBucketAsync(string bucketName)
+    public async Task<bool> CreateBucketAsync(string bucketName, AwsSettings awsSettings = null)
     {
         try
         {
@@ -36,7 +36,7 @@ public class AmazonS3Service : IAmazonS3Service, IScopedService
                 UseClientRegion = true,
             };
 
-            PrepareClient();
+            using var client = GetAmazonS3Client(awsSettings);
             var response = await client.PutBucketAsync(request);
             return response.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
@@ -48,16 +48,16 @@ public class AmazonS3Service : IAmazonS3Service, IScopedService
     }
 
     /// <inheritdoc />
-    public async Task<bool> UploadFileAsync(string bucketName, string objectName, string filePath)
+    public async Task<bool> UploadFileAsync(string bucketName, string objectName, string filePath, AwsSettings awsSettings = null)
     {
         var request = new PutObjectRequest
         {
             BucketName = bucketName,
             Key = objectName,
-            FilePath = filePath,
+            FilePath = filePath
         };
 
-        PrepareClient();
+        using var client = GetAmazonS3Client(awsSettings);
         var response = await client.PutObjectAsync(request);
         if (response.HttpStatusCode != System.Net.HttpStatusCode.OK)
         {
@@ -70,17 +70,17 @@ public class AmazonS3Service : IAmazonS3Service, IScopedService
     }
 
     /// <inheritdoc />
-    public async Task<bool> DownloadObjectFromBucketAsync(string bucketName, string objectName, string saveDirectory)
+    public async Task<bool> DownloadObjectFromBucketAsync(string bucketName, string objectName, string saveDirectory, AwsSettings awsSettings = null)
     {
         // Create a GetObject request.
         var request = new GetObjectRequest
         {
             BucketName = bucketName,
-            Key = objectName,
+            Key = objectName
         };
 
         // Issue request.
-        PrepareClient();
+        using var client = GetAmazonS3Client(awsSettings);
         using var response = await client.GetObjectAsync(request);
 
         try
@@ -97,14 +97,41 @@ public class AmazonS3Service : IAmazonS3Service, IScopedService
         }
     }
 
-    /// <summary>
-    /// Makes sure the client is prepared for use.
-    /// </summary>
-    private void PrepareClient()
+    /// <inheritdoc />
+    public async Task<bool> DeleteObjectAsync(string bucketName, string objectName, AwsSettings awsSettings = null)
     {
-        if (client != null) return;
+        var request = new DeleteObjectRequest
+        {
+            BucketName = bucketName,
+            Key = objectName
+        };
 
-        var credentials = new BasicAWSCredentials(gclSettings.AwsSettings.AccessKey, gclSettings.AwsSettings.SecretKey);
-        client = new AmazonS3Client(credentials, RegionEndpoint.GetBySystemName(gclSettings.AwsSettings.Region));
+        using var client = GetAmazonS3Client(awsSettings);
+        var response = await client.DeleteObjectAsync(request);
+        return response.HttpStatusCode == System.Net.HttpStatusCode.NoContent;
+    }
+
+    /// <summary>
+    /// Creates a new Amazon S3 client.
+    /// </summary>
+    /// <returns>A newly created Amazon S3 client.</returns>
+    private IAmazonS3 GetAmazonS3Client(AwsSettings awsSettings = null)
+    {
+        AWSCredentials credentials;
+        string region;
+
+        if (awsSettings != null)
+        {
+            credentials = new BasicAWSCredentials(awsSettings.AccessKey, awsSettings.SecretKey);
+            region = awsSettings.Region;
+        }
+        else
+        {
+            credentials = new BasicAWSCredentials(gclSettings.AwsSettings.AccessKey, gclSettings.AwsSettings.SecretKey);
+            region = gclSettings.AwsSettings.Region;
+        }
+
+        // Use GCL settings if no settings are provided.
+        return new AmazonS3Client(credentials, RegionEndpoint.GetBySystemName(region));
     }
 }
