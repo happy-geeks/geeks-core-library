@@ -8,6 +8,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Amazon.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.ItemFiles.Enums;
 using GeeksCoreLibrary.Modules.ItemFiles.Helpers;
@@ -30,12 +31,14 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly IWiserItemsService wiserItemsService;
         private readonly IHttpClientService httpClientService;
+        private readonly IAmazonS3Service amazonS3Service;
 
         public ItemFilesService(ILogger<ItemFilesService> logger,
             IDatabaseConnection databaseConnection,
             IObjectsService objectsService,
             IWiserItemsService wiserItemsService,
             IHttpClientService httpClientService,
+            IAmazonS3Service amazonS3Service,
             IHttpContextAccessor httpContextAccessor = null,
             IWebHostEnvironment webHostEnvironment = null)
         {
@@ -46,6 +49,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
             this.webHostEnvironment = webHostEnvironment;
             this.wiserItemsService = wiserItemsService;
             this.httpClientService = httpClientService;
+            this.amazonS3Service = amazonS3Service;
         }
 
         /// <inheritdoc />
@@ -455,24 +459,46 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
                     if (!String.IsNullOrWhiteSpace(contentUrl))
                     {
-                        var requestUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
-
-                        if (Uri.TryCreate(contentUrl, UriKind.Absolute, out var contentUri) && contentUri.GetLeftPart(UriPartial.Authority).Equals(requestUrl.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
+                        if (Uri.TryCreate(contentUrl, UriKind.Absolute, out var contentUri))
                         {
-                            contentUrl = contentUri.LocalPath;
-                        }
-
-                        if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
-                        {
-                            var requestUri = new Uri(contentUrl);
-                            fileBytes = await httpClientService.Client.GetByteArrayAsync(requestUri);
-                        }
-                        else
-                        {
-                            var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
-                            if (File.Exists(localFilePath))
+                            // Amazon S3 URLs are handled differently.
+                            if (contentUri.Scheme.Equals("s3", StringComparison.OrdinalIgnoreCase))
                             {
-                                fileBytes = await File.ReadAllBytesAsync(localFilePath);
+                                var s3Bucket = contentUri.Host;
+                                var s3Object = contentUri.LocalPath.TrimStart('/');
+
+                                var localPath = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+                                if (await amazonS3Service.DownloadObjectFromBucketAsync(s3Bucket, s3Object, localPath))
+                                {
+                                    fileBytes = await File.ReadAllBytesAsync(Path.Combine(localPath, s3Object));
+                                }
+                            }
+                            else
+                            {
+                                // Check if the content URL is on the same domain as the request. If so, use the local path instead.
+                                var requestUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
+                                if (contentUri.GetLeftPart(UriPartial.Authority).Equals(requestUrl.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
+                                {
+                                    contentUrl = contentUri.LocalPath;
+                                }
+                            }
+                        }
+
+                        // No image bytes were found, try to retrieve the image from the content URL.
+                        if (fileBytes == null || fileBytes.Length == 0)
+                        {
+                            if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
+                            {
+                                var requestUri = new Uri(contentUrl);
+                                fileBytes = await httpClientService.Client.GetByteArrayAsync(requestUri);
+                            }
+                            else
+                            {
+                                var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
+                                if (File.Exists(localFilePath))
+                                {
+                                    fileBytes = await File.ReadAllBytesAsync(localFilePath);
+                                }
                             }
                         }
                     }

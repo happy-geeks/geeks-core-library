@@ -43,6 +43,8 @@ using GeeksCoreLibrary.Components.OrderProcess.Middlewares;
 using GeeksCoreLibrary.Components.OrderProcess.Services;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Services;
+using GeeksCoreLibrary.Modules.Amazon.Interfaces;
+using GeeksCoreLibrary.Modules.Amazon.Services;
 using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Services;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -356,6 +358,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             services.Decorate<IOrderProcessesService, CachedOrderProcessesService>();
             services.Decorate<IRolesService, CachedRolesService>();
             services.Decorate<IBarcodesService, CachedBarcodesService>();
+            services.Decorate<IAmazonS3Service, CachedAmazonS3Service>();
 
             if (gclSettings.UseLegacyWiser1TemplateModule)
             {

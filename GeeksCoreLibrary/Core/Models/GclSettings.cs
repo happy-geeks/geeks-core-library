@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
+using GeeksCoreLibrary.Modules.Amazon.Models;
 using GeeksCoreLibrary.Modules.Communication.Models;
 using Microsoft.AspNetCore.Http;
 
@@ -286,6 +287,11 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// List of rules defining which cache-control headers to apply to specific file paths.
         /// </summary>
-        public List<CacheControlRuleSettingsModel> CacheControlRules { get; set; } = new List<CacheControlRuleSettingsModel>();
+        public List<CacheControlRuleSettingsModel> CacheControlRules { get; set; } = new();
+
+        /// <summary>
+        /// The settings for the Amazon Web Services.
+        /// </summary>
+        public AwsSettings AwsSettings { get; set; }
     }
 }
