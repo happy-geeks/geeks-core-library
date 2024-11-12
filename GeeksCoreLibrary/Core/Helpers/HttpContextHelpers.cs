@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using GeeksCoreLibrary.Core.Models;
-using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -420,7 +419,6 @@ public static class HttpContextHelpers
     /// <returns>A <see cref="Uri"/> containing the base URL.</returns>
     public static Uri GetBaseUri(HttpContext httpContext, bool alwaysHttps = false)
     {
-        
         return httpContext?.Request == null
             ? new Uri("https://localhost/")
             : new Uri($"{(alwaysHttps ? "https" : httpContext.Request.Scheme)}://{httpContext.Request.Host.Value}{httpContext.Request.PathBase.Value}");
