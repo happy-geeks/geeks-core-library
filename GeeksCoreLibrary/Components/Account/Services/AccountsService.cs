@@ -93,7 +93,18 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 defaultAnonymousUserModel.MainUserId = defaultAnonymousUserId;
                 defaultAnonymousUserModel.UserId = defaultAnonymousUserId;
 
-                var cookieValue = httpContext.Request.Cookies[cookieName];
+                string cookieValue;
+                // First try to get the cookie from the http context items, because it could have been added there if we just logged in via the same request.
+                if (httpContext.Items.TryGetValue(cookieName, out var cookie))
+                {
+                    cookieValue = (string) cookie;
+                }
+                else
+                {
+                    // If there is no cookie value in the http context items, try to get it from the request.
+                    cookieValue = httpContext.Request.Cookies[cookieName];
+                }
+
                 if (String.IsNullOrWhiteSpace(cookieValue))
                 {
                     return defaultAnonymousUserModel;
@@ -319,6 +330,11 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 return;
             }
 
+            if (currentContext.Items.ContainsKey(settings.CookieName))
+            {
+                currentContext.Items.Remove(settings.CookieName);
+            }
+
             var cookieValue = currentContext.Request.Cookies[settings.CookieName];
             if (String.IsNullOrWhiteSpace(cookieValue))
             {
@@ -469,9 +485,14 @@ namespace GeeksCoreLibrary.Components.Account.Services
             var cookieValue = await GenerateNewCookieTokenAsync(userId, mainUserId, !amountOfDaysToRememberCookie.HasValue || amountOfDaysToRememberCookie.Value <= 0 ? 0 : amountOfDaysToRememberCookie.Value, settings.EntityType, settings.SubAccountEntityType, role);
             await SaveGoogleClientIdAsync(userId, settings);
 
-            var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
             var currentContext = httpContextAccessor.HttpContext;
-            HttpContextHelpers.WriteCookie(currentContext, settings.CookieName, cookieValue, offset, isEssential: true);
+            if (currentContext != null)
+            {
+                var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?) null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
+                HttpContextHelpers.WriteCookie(currentContext, settings.CookieName, cookieValue, offset, isEssential: true);
+                // Save the cookie in the HttpContext.Items, so that we can use it in the rest of the request, because we can't read the cookie from the response.
+                currentContext.Items[settings.CookieName] = cookieValue;
+            }
 
             await SaveLoginAttemptAsync(true, userId, extraDataForReplacements, settings);
         }
@@ -504,7 +525,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             var googleClientId = String.Join(".", clientIdSplit.Skip(2));
-            
+
             // Here we need to retrieve the WiserItemService in a different way using ActivatorUtilities.
             // That's because if we use ServiceProvider to retrieve it we gonna lose the database connection scope, and here we need it to be the same
             var wiserItemsService = ActivatorUtilities.CreateInstance<WiserItemsService>(serviceProvider, databaseConnection);
@@ -604,7 +625,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 .Replace("{subAccountEntityType}", "?subAccountEntityType", StringComparison.OrdinalIgnoreCase).Replace("'{subAccountId}'", "?subAccountId", StringComparison.OrdinalIgnoreCase).Replace("{subAccountId}", "?subAccountId", StringComparison.OrdinalIgnoreCase)
                 .Replace("'{role}'", "?role", StringComparison.OrdinalIgnoreCase).Replace("{role}", "?role", StringComparison.OrdinalIgnoreCase).Replace("'{basketId}'", "?basketId", StringComparison.OrdinalIgnoreCase).Replace("{basketId}", "?basketId", StringComparison.OrdinalIgnoreCase);
         }
-        
+
         /// <inheritdoc />
         public int? GetAmountOfDaysToRememberCookie(AccountCmsSettingsModel settings)
         {

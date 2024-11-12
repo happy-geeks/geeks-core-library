@@ -48,7 +48,7 @@ namespace GeeksCoreLibrary.Components.Account
         private readonly GclSettings gclSettings;
         private readonly IObjectsService objectsService;
         private readonly ICommunicationsService communicationsService;
-        
+
         #region Enums
 
         public enum ComponentModes
@@ -1842,6 +1842,8 @@ namespace GeeksCoreLibrary.Components.Account
 
             var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
             HttpContextHelpers.WriteCookie(HttpContext, Settings.CookieName, cookieValue, offset, isEssential: true);
+            // Save the cookie in the HttpContext.Items, so that we can use it in the rest of the request, because we can't read the cookie from the response.
+            HttpContext.Items[Settings.CookieName] = cookieValue;
 
             if (decryptedUserId == 0)
             {
