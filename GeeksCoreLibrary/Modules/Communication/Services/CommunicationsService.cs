@@ -293,13 +293,13 @@ WHERE id = ?id";
             var bccAddresses = new List<string>();
             if (!String.IsNullOrWhiteSpace(bcc))
             {
-                bccAddresses.AddRange(bcc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries));
+                bccAddresses.AddRange(bcc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries & StringSplitOptions.TrimEntries));
             }
 
             var ccAddresses = new List<string>();
             if (!String.IsNullOrWhiteSpace(cc))
             {
-                ccAddresses.AddRange(cc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries));
+                ccAddresses.AddRange(cc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries & StringSplitOptions.TrimEntries));
             }
 
             return await SendEmailAsync(receivers, subject, body, ccAddresses, bccAddresses, replyTo, replyToName, sender, senderName, sendDate, attachments);
