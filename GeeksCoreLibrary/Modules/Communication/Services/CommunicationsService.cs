@@ -277,8 +277,8 @@ WHERE id = ?id";
         public async Task<int> SendEmailAsync(string receiver, string subject, string body, string receiverName = null, string cc = null, string bcc = null, string replyTo = null, string replyToName = null, string sender = null, string senderName = null, DateTime? sendDate = null, List<ulong> attachments = null)
         {
             var receivers = new List<CommunicationReceiverModel>();
-            var receiverAddresses = receiver.Split(';');
-            var receiverNames = (receiverName ?? "").Split(";");
+            var receiverAddresses = receiver.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            var receiverNames = (receiverName ?? "").Split(";", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             for (var i = 0; i < receiverAddresses.Length; i++)
             {
                 var receiverModel = new CommunicationReceiverModel { Address = receiverAddresses[i] };
@@ -293,13 +293,13 @@ WHERE id = ?id";
             var bccAddresses = new List<string>();
             if (!String.IsNullOrWhiteSpace(bcc))
             {
-                bccAddresses.AddRange(bcc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries & StringSplitOptions.TrimEntries));
+                bccAddresses.AddRange(bcc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             }
 
             var ccAddresses = new List<string>();
             if (!String.IsNullOrWhiteSpace(cc))
             {
-                ccAddresses.AddRange(cc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries & StringSplitOptions.TrimEntries));
+                ccAddresses.AddRange(cc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             }
 
             return await SendEmailAsync(receivers, subject, body, ccAddresses, bccAddresses, replyTo, replyToName, sender, senderName, sendDate, attachments);
@@ -624,7 +624,7 @@ WHERE id = ?id";
         public async Task<int> SendSmsAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null)
         {
             var receivers = new List<CommunicationReceiverModel>();
-            var receiverAddresses = receiver.Split(';');
+            var receiverAddresses = receiver.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             foreach (var receiverAddress in receiverAddresses)
             {
                 var receiverModel = new CommunicationReceiverModel { Address = receiverAddress };
@@ -767,7 +767,7 @@ WHERE id = ?id";
         public async Task<int> SendWhatsAppAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
         {
             var receivers = new List<CommunicationReceiverModel>();
-            var receiverAddresses = receiver.Split(';');
+            var receiverAddresses = receiver.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             foreach (var receiverAddress in receiverAddresses)
             {
                 var receiverModel = new CommunicationReceiverModel { Address = receiverAddress };
@@ -1086,7 +1086,7 @@ WHERE id = ?id";
             var receivers = dataRow.Field<string>("receiver_list");
             if (!String.IsNullOrWhiteSpace(receivers))
             {
-                result.ReceiversList = receivers.Split(";", StringSplitOptions.TrimEntries & StringSplitOptions.RemoveEmptyEntries).ToList();
+                result.ReceiversList = receivers.Split(";", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
             }
 
             return result;
