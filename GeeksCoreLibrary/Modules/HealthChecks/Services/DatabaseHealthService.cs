@@ -30,7 +30,7 @@ public class DatabaseHealthService : IHealthCheck
        
         // A new query to check the max active connections from the DatabaseHealthCheck
         var query =
-            "SELECT COUNT(*) AS active_connections FROM information_schema.PROCESSLIST;";
+            $"SELECT COUNT(*) AS active_connections FROM information_schema.PROCESSLIST;";
         var datatable = await databaseConnection.GetAsync(query);
 
         if (datatable.Rows.Count == 0)
@@ -58,7 +58,7 @@ public class DatabaseHealthService : IHealthCheck
         if (healthCheckConnectionsTime > 0)
         {    
             // Query to check the max open connections in time from the DatabaseHealthCheck.
-            query =  "SELECT ID, USER, HOST, TIME AS connection_time_in_sec FROM information_schema.PROCESSLIST";
+            query =  $"SELECT ID, USER, HOST, TIME AS connection_time_in_sec FROM information_schema.PROCESSLIST";
             datatable = await databaseConnection.GetAsync(query);
 
             if (datatable.Rows.Count == 0)
