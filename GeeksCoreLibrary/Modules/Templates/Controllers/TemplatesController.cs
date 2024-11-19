@@ -30,7 +30,6 @@ using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
 {
     [Area("Templates")]
-    
     public class TemplatesController : Controller
     {
         private readonly ILogger<TemplatesController> logger;
@@ -96,6 +95,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                 {
                     stopWatch.Start();
                 }
+
                 javascriptTemplates.AddRange(contentTemplate.JavascriptTemplates);
                 cssTemplates.AddRange(contentTemplate.CssTemplates);
 
