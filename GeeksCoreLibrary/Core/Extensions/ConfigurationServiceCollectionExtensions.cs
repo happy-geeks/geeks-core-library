@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using GeeksCoreLibrary.Components.WebPage.Interfaces;
@@ -140,7 +140,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 }); 
             });
-            
+
             builder.HandleStartupFunctions();
             return builder;
         }
@@ -299,7 +299,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                     options.IdleTimeout = TimeSpan.FromMinutes(30);
                 });
             }
-            
+
             // Manual additions.
             services.AddHttpContextAccessor();
             services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
