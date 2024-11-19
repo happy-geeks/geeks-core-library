@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace GeeksCoreLibrary.Modules.HealthChecks.Services;
+
 public class WtsHealthService : IHealthCheck
 {
     private readonly IDatabaseConnection databaseConnection;
