@@ -89,6 +89,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             }
 
             builder.UseMiddleware<RequestLoggingMiddleware>();
+
             builder.UseStatusCodePagesWithReExecute("/webpage.gcl", "?errorCode={0}");
 
             builder.UseSession();
