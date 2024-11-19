@@ -39,31 +39,43 @@ public class DatabaseHealthService : IHealthCheck
         }
          
         var healthCheckConnections = healthChecksSettings.MaximumDatabaseConnections;
-        var activeConnections = Convert.ToInt32(datatable.Rows[0]["active_connections"]); // Retrieve the count of active connections
-        
-        if (activeConnections > healthCheckConnections) // Check if the number of active connections exceeds the limit
-        {
-            return await Task.FromResult(HealthCheckResult.Unhealthy(activeConnections +" databases connected, Too many database connections"));
-        }
-        
-        // A new query to check the max open connections in time from the DatabaseHealthCheck
-         query =
-            "SELECT ID, USER, HOST, TIME AS connection_time_in_sec FROM information_schema.PROCESSLIST";
-         datatable = await databaseConnection.GetAsync(query);
-
-        if (datatable.Rows.Count == 0)
-        {
-            return await Task.FromResult(HealthCheckResult.Unhealthy("No data found"));
-        }
-        
         var healthCheckConnectionsTime = healthChecksSettings.MaximumConnectionsInTime;
-        var connectionTime = Convert.ToInt32(datatable.Rows[0]["connection_time_in_sec"]); //Retrieve the count of open connections in time
 
-        if (connectionTime > healthCheckConnectionsTime)
+        // If no value is set, we are skipping this test.
+        if (healthCheckConnections > 0)
         {
-            return await Task.FromResult(HealthCheckResult.Unhealthy("To many seconds of connection, time is too long")); // Check if the time from open connections exceeds the limit
+            // Retrieve the count of active connections.
+            var activeConnections = Convert.ToInt32(datatable.Rows[0]["active_connections"]); 
+            
+            // Check if the number of active connections exceeds the limit.
+            if (activeConnections > healthCheckConnections) 
+            {
+                return await Task.FromResult(HealthCheckResult.Unhealthy(activeConnections +" databases connected, Too many database connections"));
+            }
         }
         
+        // If no value is set, we are skipping this test.
+        if (healthCheckConnectionsTime > 0)
+        {    
+            // Query to check the max open connections in time from the DatabaseHealthCheck.
+            query =  "SELECT ID, USER, HOST, TIME AS connection_time_in_sec FROM information_schema.PROCESSLIST";
+            datatable = await databaseConnection.GetAsync(query);
+
+            if (datatable.Rows.Count == 0)
+            {
+                return await Task.FromResult(HealthCheckResult.Unhealthy("No data found"));
+            }
+            
+            // Retrieve the count of open connections in time.
+            var connectionTime = Convert.ToInt32(datatable.Rows[0]["connection_time_in_sec"]);
+
+            // Check if the time from open connections exceeds the limit.
+            if (connectionTime > healthCheckConnectionsTime)
+            {
+                return await Task.FromResult(HealthCheckResult.Unhealthy("To many seconds of connection, time is too long")); 
+            }
+        }
+
         return await Task.FromResult(HealthCheckResult.Healthy("status: Healthy"));
     }
 }
