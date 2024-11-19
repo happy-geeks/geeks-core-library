@@ -1,6 +1,7 @@
 using Newtonsoft.Json.Linq;
 
-namespace GeeksCoreLibrary.Modules.Exports.Interfaces; 
+namespace GeeksCoreLibrary.Modules.Exports.Interfaces;
+
 public interface ICsvService
 {
     /// <summary>

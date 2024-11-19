@@ -316,7 +316,7 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             // Configure automatic scanning of classes for dependency injection.
             services.Scan(scan => scan
-                // We start out with all types in the current assembly.
+                // We start out with all types in the current assembly. 
                 .FromApplicationDependencies()
                 // AddClasses starts out with all public, non-abstract types in this assembly.
                 // These types are then filtered by the delegate passed to the method.
