@@ -117,21 +117,36 @@ public class AmazonS3Service : IAmazonS3Service, IScopedService
     /// <returns>A newly created Amazon S3 client.</returns>
     private IAmazonS3 GetAmazonS3Client(AwsSettings awsSettings = null)
     {
-        AWSCredentials credentials;
-        string region;
+        AWSCredentials credentials = null;
+        string region = null;
 
         if (awsSettings != null)
         {
             credentials = new BasicAWSCredentials(awsSettings.AccessKey, awsSettings.SecretKey);
             region = awsSettings.Region;
         }
-        else
+        else if (gclSettings.AwsSettings != null)
         {
-            credentials = new BasicAWSCredentials(gclSettings.AwsSettings.AccessKey, gclSettings.AwsSettings.SecretKey);
+            // Use GCL settings if no settings are provided.
+            if (gclSettings.AwsSettings.AccessKey != null && gclSettings.AwsSettings.SecretKey != null)
+            {
+                credentials = new BasicAWSCredentials(gclSettings.AwsSettings.AccessKey, gclSettings.AwsSettings.SecretKey);
+            }
+
             region = gclSettings.AwsSettings.Region;
         }
 
-        // Use GCL settings if no settings are provided.
-        return new AmazonS3Client(credentials, RegionEndpoint.GetBySystemName(region));
+        if (credentials != null)
+        {
+            // Use provided credentials if available.
+            return !String.IsNullOrWhiteSpace(region)
+                ? new AmazonS3Client(credentials, RegionEndpoint.GetBySystemName(region))
+                : new AmazonS3Client(credentials);
+        }
+
+        // No credentials provided, use default client.
+        return !String.IsNullOrWhiteSpace(region)
+            ? new AmazonS3Client(RegionEndpoint.GetBySystemName(region))
+            : new AmazonS3Client();
     }
 }
