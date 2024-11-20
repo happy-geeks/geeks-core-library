@@ -272,14 +272,14 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true)
+        public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             logger.LogTrace("GCL ShoppingBasket RecalculateVariablesAsync - skipping type: {skipType}", skipType ?? "N/A");
 
             if (!skipType.InList("shipping_costs", "paymentmethod_costs", "coupon", Constants.BasketLineCouponType))
             {
                 await RecalculateCouponsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
-                await CalculateShippingCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
+                await CalculateShippingCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction, basketToUserLinkType);
                 await CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
 
                 // Second pass for coupons; in case prices have changed in the shipping costs and payment costs update.
@@ -289,7 +289,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             // Check if any standardized free product actions are applicable.
             await CheckForFreeProductAsync(shoppingBasket, basketLines, settings, createNewTransaction);
 
-            await SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
+            await SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction, basketToUserLinkType);
         }
 
         /// <inheritdoc />
@@ -464,7 +464,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                                 }
                             }
 
-                            await LinkBasketToUserAsync(settings, userId, shoppingBasket);
+                            await LinkBasketToUserAsync(settings, userId, shoppingBasket, basketToUserLinkType: basketToUserLinkType);
                         }
                     }
                 }
@@ -479,7 +479,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     var basketId = linkedBaskets.FirstOrDefault(id => id > 0);
                     if (basketId > 0)
                     {
-                        (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, basketId, "", false, true);
+                        (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, basketId, "", false, true, basketToUserLinkType: basketToUserLinkType);
                         WriteEncryptedIdToCookie(shoppingBasket, settings);
                     }
                 }
@@ -1339,7 +1339,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
+        public async Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             var shippingCosts = 0M;
 
@@ -1490,7 +1490,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                         ["vatrate"] = vatRate,
                         [OrderProcessConstants.DescriptionProperty] = friendlyName
                     };
-                    await AddLineAsync(shoppingBasket, basketLines, settings, id, type: "shipping_costs", lineDetails: details, createNewTransaction: createNewTransaction);
+                    await AddLineAsync(shoppingBasket, basketLines, settings, id, type: "shipping_costs", lineDetails: details, createNewTransaction: createNewTransaction, basketToUserLinkType: basketToUserLinkType);
                 }
             }
             else
@@ -1545,7 +1545,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task UpdateCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, HandleCouponResultModel couponResult, decimal currentDiscount = 0M, bool divideDiscountOverProducts = false, bool createNewTransaction = true)
+        public async Task UpdateCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, HandleCouponResultModel couponResult, decimal currentDiscount = 0M, bool divideDiscountOverProducts = false, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             var couponDiscount = couponResult.Discount;
             var couponProductId = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_productid");
@@ -1576,7 +1576,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     }
                 }
 
-                await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { couponId });
+                await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { couponId }, basketToUserLinkType: basketToUserLinkType);
                 return;
             }
 
@@ -1591,7 +1591,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     logger.LogTrace("Changed coupon price to: {couponDiscount}", couponDiscount * -1);
                 }
 
-                await SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction);
+                await SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction, basketToUserLinkType: basketToUserLinkType);
             }
             else
             {
@@ -1614,7 +1614,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     details.Add("price", (couponResult.Discount * -1).ToString(CultureInfo.InvariantCulture));
                 }
 
-                await AddLineAsync(shoppingBasket, basketLines, settings, couponId, Convert.ToUInt64(couponId), 1, Constants.BasketLineCouponType, details, createNewTransaction);
+                await AddLineAsync(shoppingBasket, basketLines, settings, couponId, Convert.ToUInt64(couponId), 1, Constants.BasketLineCouponType, details, createNewTransaction, basketToUserLinkType: basketToUserLinkType);
             }
 
             if (divideDiscountOverProducts && couponResult.ValidForItems != null)
@@ -1659,7 +1659,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
+        public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             var paymentMethodCosts = 0M;
 
@@ -1747,7 +1747,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                         ["vatrate"] = vatRate,
                         [OrderProcessConstants.DescriptionProperty] = friendlyName
                     };
-                    await AddLineAsync(shoppingBasket, basketLines, settings, id, type: "paymentmethod_costs", lineDetails: details, createNewTransaction: createNewTransaction);
+                    await AddLineAsync(shoppingBasket, basketLines, settings, id, type: "paymentmethod_costs", lineDetails: details, createNewTransaction: createNewTransaction, basketToUserLinkType: basketToUserLinkType);
                 }
             }
             else
@@ -1760,7 +1760,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds, bool createNewTransaction = true)
+        public async Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             if (itemIdsOrUniqueIds == null || !itemIdsOrUniqueIds.Any())
             {
@@ -1804,13 +1804,13 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
             }
 
-            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, createNewTransaction: createNewTransaction);
+            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, createNewTransaction: createNewTransaction,  basketToUserLinkType: basketToUserLinkType);
 
             return basketLines;
         }
 
         /// <inheritdoc />
-        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null, bool createNewTransaction = true)
+        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             var retries = 0;
             var transactionCompleted = false;
@@ -1845,7 +1845,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     var addItemLine = AddLineInternal(basketLines, settings, uniqueId, itemId, quantity, type, lineDetails);
 
                     // Write changes to database.
-                    await SaveAsync(shoppingBasket, basketLines, settings, false);
+                    await SaveAsync(shoppingBasket, basketLines, settings, false, basketToUserLinkType);
 
                     var alsoCreateItemLink = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_AlsoCreateItemLinkBetweenBasketLineAndProduct")).Equals("true", StringComparison.OrdinalIgnoreCase);
                     if (alsoCreateItemLink)
@@ -1867,10 +1867,10 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     // Reload basket (for getting item details of added item).
                     if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
                     {
-                        (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id);
+                        (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id, basketToUserLinkType: basketToUserLinkType);
                     }
 
-                    await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, type, false);
+                    await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, type, false, basketToUserLinkType);
 
                     if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
@@ -1905,7 +1905,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items, bool createNewTransaction = true)
+        public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             if (items == null || items.Count == 0)
             {
@@ -1950,7 +1950,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     }
 
                     // Write changes to database.
-                    await SaveAsync(shoppingBasket, basketLines, settings, false);
+                    await SaveAsync(shoppingBasket, basketLines, settings, false, basketToUserLinkType);
 
                     if (createLinksFor.Count > 0)
                     {
@@ -1979,7 +1979,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
                     if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
                     {
-                        (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id);
+                        (shoppingBasket, basketLines, _, _) = await LoadAsync(settings, shoppingBasket.Id, basketToUserLinkType: basketToUserLinkType);
                     }
 
                     // Recalculate shipping costs, coupons etc. after getting the extra fields (price can be selected with extra fields query).
@@ -2021,7 +2021,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item)
+        public async Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             if (item == null)
             {
@@ -2072,7 +2072,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             }
 
             // Write changes to database.
-            await SaveAsync(shoppingBasket, basketLines, settings);
+            await SaveAsync(shoppingBasket, basketLines, settings, basketToUserLinkType: basketToUserLinkType);
 
             if (!String.IsNullOrEmpty(settings.ExtraMainFieldsQuery) || !String.IsNullOrEmpty(settings.ExtraLineFieldsQuery))
             {
@@ -2080,11 +2080,11 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             }
 
             // Recalculate sendcosts, coupons etc. after getting the extra fields (price can be selected with extra fields query).
-            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, lineToUpdate.GetDetailValue("type"));
+            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, lineToUpdate.GetDetailValue("type"), basketToUserLinkType: basketToUserLinkType);
         }
 
         /// <inheritdoc />
-        public async Task<HandleCouponResultModel> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true)
+        public async Task<HandleCouponResultModel> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             var httpContext = httpContextAccessor?.HttpContext;
 
@@ -2127,7 +2127,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
             if (handleCouponResult.Valid)
             {
-                await UpdateCouponAsync(shoppingBasket, basketLines, settings, handleCouponResult, 0M, divideDiscountOverProducts, createNewTransaction);
+                await UpdateCouponAsync(shoppingBasket, basketLines, settings, handleCouponResult, 0M, divideDiscountOverProducts, createNewTransaction, basketToUserLinkType);
             }
 
             return handleCouponResult;
@@ -2199,11 +2199,11 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity)
+        public async Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             if (settings.RemoveItemWhenQuantityIsZero && quantity <= 0M)
             {
-                await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { itemIdOrUniqueId });
+                await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { itemIdOrUniqueId }, basketToUserLinkType: basketToUserLinkType);
             }
 
             if (quantity > settings.MaxItemQuantity)
@@ -2216,7 +2216,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 line.SetDetail(settings.QuantityPropertyName, quantity.ToString(CultureInfo.InvariantCulture));
             }
 
-            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings);
+            await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, basketToUserLinkType: basketToUserLinkType);
         }
 
         /// <inheritdoc />
@@ -2245,7 +2245,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = false)
+        public async Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = false, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             var freeProductActions = await GetFreeProductActionsAsync();
             if (freeProductActions.Count == 0)
@@ -2300,7 +2300,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 if (!actionIsValid)
                 {
                     var toRemove = basketLines.Where(line => line.GetDetailValue("wiser2_free_product_action_id") == actionItem.Id.ToString()).Select(line => line.Id.ToString()).ToList();
-                    await RemoveLinesAsync(shoppingBasket, basketLines, settings, toRemove);
+                    await RemoveLinesAsync(shoppingBasket, basketLines, settings, toRemove, basketToUserLinkType: basketToUserLinkType);
                     continue;
                 }
 
@@ -2362,7 +2362,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 details["wiser2_free_action_show_banner"] = String.IsNullOrWhiteSpace(freeActionText) ? "0" : "1";
                 details["wiser2_free_action_banner"] = freeActionText;
 
-                await AddLineAsync(shoppingBasket, basketLines, settings, lineDetails: details, createNewTransaction: createNewTransaction);
+                await AddLineAsync(shoppingBasket, basketLines, settings, lineDetails: details, createNewTransaction: createNewTransaction, basketToUserLinkType: basketToUserLinkType);
             }
         }
 
@@ -2608,14 +2608,14 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         }
 
         /// <inheritdoc />
-        public async Task LinkBasketToUserAsync(ShoppingBasketCmsSettingsModel basketSettings, ulong userId, WiserItemModel shoppingBasket, bool deleteCookieIfBasketIsLinkedToSomeoneElse = true)
+        public async Task LinkBasketToUserAsync(ShoppingBasketCmsSettingsModel basketSettings, ulong userId, WiserItemModel shoppingBasket, bool deleteCookieIfBasketIsLinkedToSomeoneElse = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             if (userId <= 0)
             {
                 return;
             }
 
-            var linkedUsers = await wiserItemsService.GetLinkedItemIdsAsync(wiserItemsService, shoppingBasket.Id, Constants.BasketToUserLinkType, reverse: true, skipPermissionsCheck: true);
+            var linkedUsers = await wiserItemsService.GetLinkedItemIdsAsync(wiserItemsService, shoppingBasket.Id, basketToUserLinkType, reverse: true, skipPermissionsCheck: true);
             if (linkedUsers.Any())
             {
                 if (deleteCookieIfBasketIsLinkedToSomeoneElse && linkedUsers.All(id => id != userId))
@@ -2628,7 +2628,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             }
 
             // Connect this basket to the user.
-            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userId, Constants.BasketToUserLinkType, skipPermissionsCheck: true);
+            await wiserItemsService.AddItemLinkAsync(shoppingBasket.Id, userId, basketToUserLinkType, skipPermissionsCheck: true);
         }
 
         /// <inheritdoc />

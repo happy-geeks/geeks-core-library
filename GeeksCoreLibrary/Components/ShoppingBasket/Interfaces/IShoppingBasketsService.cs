@@ -148,7 +148,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="settings">The settings of the shopping basket.</param>
         /// <param name="skipType">An optional parameter to skip lines of a certain type.</param>
         /// <param name="createNewTransaction">Will be passed to the CalculateShippingCostsAsync, CalculatePaymentMethodCostsAsync, and SaveAsync calls.</param>
-        Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true);
+        /// <param name="basketToUserLinkType">The type number used to link the basket with the user.</param>
+        Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Loads a basket from the database.
@@ -167,8 +168,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketLines">The basket lines items.</param>
         /// <param name="settings">The settings of the shopping basket.</param>
         /// <param name="createNewTransaction">Will be passed to the AddLineAsync call.</param>
+        /// <param name="basketToUserLinkType">The type number used to link the basket with the user.</param>
         /// <returns>The calculated shipping costs.</returns>
-        Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true);
+        Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Calculates the payment method costs based on the payment method costs query defined in the settings module.
@@ -177,8 +179,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketLines">The basket lines items.</param>
         /// <param name="settings">The settings of the shopping basket.</param>
         /// <param name="createNewTransaction">Will be passed to the AddLineAsync call.</param>
+        /// <param name="basketToUserLinkType">The type number used to link the basket with the user.</param>
         /// <returns>The calculated payment method costs.</returns>
-        Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true);
+        Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Recalculates added coupons.
@@ -199,7 +202,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="currentDiscount">Optional: The current discount already added to the basket.</param>
         /// <param name="divideDiscountOverProducts">Optional: Whether the discount of coupons is being divided over all products.</param>
         /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
-        Task UpdateCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, HandleCouponResultModel couponResult, decimal currentDiscount = 0M, bool divideDiscountOverProducts = false, bool createNewTransaction = true);
+        /// <param name="basketToUserLinkType">The type number used to link the basket with the user.</param>
+        Task UpdateCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, HandleCouponResultModel couponResult, decimal currentDiscount = 0M, bool divideDiscountOverProducts = false, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Removes multiple items from the basket.
@@ -209,8 +213,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="settings">The settings of the <see cref="ShoppingBasket"/> component that called this function.</param>
         /// <param name="itemIdsOrUniqueIds">List of unique ID or item IDs to remove.</param>
         /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
+        /// <param name="basketToUserLinkType">The type number used to link the basket with the user.</param>
         /// <returns>The removed lines.</returns>
-        Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds, bool createNewTransaction = true);
+        Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Adds multiple items to the basket.
@@ -224,7 +229,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="type">The type of the item. Defaults to "product".</param>
         /// <param name="lineDetails">Additional properties for the basket line.</param>
         /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
-        Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null, bool createNewTransaction = true);
+        Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Adds multiple items to the basket.
@@ -235,7 +240,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="items">The data of the lines that will be added.</param>
         /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
         /// <returns></returns>
-        Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items, bool createNewTransaction = true);
+        Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Updates an existing line in the basket.
@@ -245,7 +250,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="settings">The settings of the ShoppingBasket component that requested this update.</param>
         /// <param name="item">The data of the line that will be replaced. The <see cref="UpdateItemModel.LineId"/> property of this object will determine which line will be replaced.</param>
         /// <returns></returns>
-        Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item);
+        Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Attempts to update the quantity.
@@ -256,7 +261,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="itemIdOrUniqueId"></param>
         /// <param name="quantity"></param>
         /// <returns></returns>
-        Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity);
+        Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Will attempt to add a coupon to the shopping basket by checking if the request variable "couponcode" is present and using that value to see if it matches with a valid coupon.
@@ -267,7 +272,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="couponCode">The coupon code to check and process.</param>
         /// <param name="createNewTransaction">Will be passed to the SaveAsync call.</param>
         /// <returns></returns>
-        Task<HandleCouponResultModel> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true);
+        Task<HandleCouponResultModel> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Get lines of a specific type.
@@ -284,7 +289,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="basketLines">The current basket lines.</param>
         /// <param name="settings">The settings of the ShoppingBasket component that requested this update.</param>
         /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
-        Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true);
+        Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         ///
@@ -337,7 +342,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Interfaces
         /// <param name="userId">The ID of the user.</param>
         /// <param name="shoppingBasket">The basket.</param>
         /// <param name="deleteCookieIfBasketIsLinkedToSomeoneElse">Optional: Whether to delete the cookie that contains the basket ID, if the basket if linked to a different user. Default value is <see langword="true"/>. You should set this to <see langword="false"/> if you're linking a different basket than the one from the cookie.</param>
-        Task LinkBasketToUserAsync(ShoppingBasketCmsSettingsModel basketSettings, ulong userId, WiserItemModel shoppingBasket, bool deleteCookieIfBasketIsLinkedToSomeoneElse = true);
+        /// <param name="basketToUserLinkType">The type number used to link the basket with the user.</param>
+        Task LinkBasketToUserAsync(ShoppingBasketCmsSettingsModel basketSettings, ulong userId, WiserItemModel shoppingBasket, bool deleteCookieIfBasketIsLinkedToSomeoneElse = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
         /// <summary>
         /// Gets a coupon via it's unique code.
