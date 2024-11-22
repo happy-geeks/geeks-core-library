@@ -236,7 +236,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 services.AddHealthChecks()
                     .AddMySql(gclSettings.ConnectionString, name: "MySqlRead", tags: new []{"Database"})
                     .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, new []{"WTS", "Wiser Task Scheduler"})
-                    .AddCheck<DatabaseHealthService>("Database Health Check", tags: new[]{ "databaseConnection", "database" });
+                    .AddCheck<DatabaseHealthService>("Database Health Check", tags: new[]{ "Database" });
                 if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
                 {
                     services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite", tags: new []{"Database"});
@@ -317,7 +317,7 @@ namespace GeeksCoreLibrary.Core.Extensions
 
             // Configure automatic scanning of classes for dependency injection.
             services.Scan(scan => scan
-                // We start out with all types in the current assembly. 
+                // We start out with all types in the current assembly.
                 .FromApplicationDependencies()
                 // AddClasses starts out with all public, non-abstract types in this assembly.
                 // These types are then filtered by the delegate passed to the method.
