@@ -30,12 +30,7 @@ public class DatabaseHealthService : IHealthCheck
         var query =
             "SELECT COUNT(*) AS active_connections FROM information_schema.PROCESSLIST;";
         var datatable = await databaseConnection.GetAsync(query);
-
-        if (datatable.Rows.Count == 0)
-        {
-            return await Task.FromResult(HealthCheckResult.Unhealthy("No data found"));
-        }
-         
+        
         var healthCheckConnections = healthChecksSettings.MaximumDatabaseConnections;
         var healthCheckConnectionsTime = healthChecksSettings.MaximumConnectionsInTime;
 
