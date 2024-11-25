@@ -2504,7 +2504,7 @@ public class WiserItemsService : IWiserItemsService, IScopedService
         }
 
         var itemIdTablePrefix = ""; // The table prefix for the current open item
-            if (linkSettings.UseItemParentId && reverse && !string.IsNullOrWhiteSpace(itemIdEntityType))
+            if (linkSettings.UseItemParentId && reverse && !string.IsNullOrEmpty(itemIdEntityType))
             {
                 // Get the table prefix based on the entity type of the current open item, because when 'reverse' we need to add a join to the wiser_item table of the current open item
                 itemIdTablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
