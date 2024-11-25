@@ -2503,13 +2503,14 @@ public class WiserItemsService : IWiserItemsService, IScopedService
             where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
         }
 
-        var itemIdTablePrefix = "";
+        var itemIdTablePrefix = ""; // The table prefix for the current open item
             if (linkSettings.UseItemParentId && reverse && !string.IsNullOrWhiteSpace(itemIdEntityType))
             {
+                // Get the table prefix based on the entity type of the current open item, because when 'reverse' we need to add a join to the wiser_item table of the current open item
                 itemIdTablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
             }
 
-            var tablePrefix = "";
+            var tablePrefix = ""; // The table prefix used in the main query
             if (!String.IsNullOrEmpty(entityType))
         {
             tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
