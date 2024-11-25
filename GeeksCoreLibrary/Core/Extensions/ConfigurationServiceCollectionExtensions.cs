@@ -134,12 +134,6 @@ namespace GeeksCoreLibrary.Core.Extensions
                     Predicate = healthCheck => healthCheck.Tags.Contains("WTS"),
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 });
-                
-                endpoints.MapHealthChecks("/health/database", new HealthCheckOptions()
-                {
-                    Predicate = healthCheck => healthCheck.Tags.Contains("databaseConnection"),
-                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-                }); 
             });
 
             builder.HandleStartupFunctions();
