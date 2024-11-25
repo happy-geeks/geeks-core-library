@@ -49,8 +49,7 @@ public class WtsHealthService : IHealthCheck
         }
 
         var query = $"SELECT configuration, time_id, state, next_run FROM wts_services WHERE {String.Join(" AND ", conditions)}";
-        var datatable = await databaseConnection.GetAsync(query);
-
+        var datatable = await databaseConnection.GetAsync(query, skipCache: true);
         if (datatable.Rows.Count == 0)
         {
             return HealthCheckResult.Unhealthy("No data found");
