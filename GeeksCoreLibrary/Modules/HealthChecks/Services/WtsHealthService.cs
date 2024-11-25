@@ -14,23 +14,21 @@ public class WtsHealthService : IHealthCheck
 {
     private readonly IDatabaseConnection databaseConnection;
     private readonly HttpContext httpContext;
-    
+
     public WtsHealthService(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor)
     {
         this.databaseConnection = databaseConnection;
         httpContext = httpContextAccessor.HttpContext;
     }
-    
+
     /// <inheritdoc />
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new CancellationToken())
     {
-        databaseConnection.ClearParameters();
-        
         var configuration = httpContext.Request.Query["configuration"].ToString();
         int? timeId = String.IsNullOrWhiteSpace(httpContext.Request.Query["timeId"].ToString()) ? null : Convert.ToInt32(httpContext.Request.Query["timeId"]);
         var countWarningAsError = !String.IsNullOrWhiteSpace(httpContext.Request.Query["countWarningAsError"].ToString()) && Convert.ToBoolean(httpContext.Request.Query["countWarningAsError"]);
         int? runningLongerThanMinutes = String.IsNullOrWhiteSpace(httpContext.Request.Query["runningLongerThanMinutes"].ToString()) ? null : Convert.ToInt32(httpContext.Request.Query["runningLongerThanMinutes"]);
-        
+
         var conditions = new List<string>()
         {
             "TRUE" // Always add true to the conditions to avoid empty conditions
@@ -42,22 +40,22 @@ public class WtsHealthService : IHealthCheck
             conditions.Add("configuration = ?configuration");
             databaseConnection.AddParameter("configuration", configuration);
         }
-        
+
         // If a timeId has been provided only check that specific timeId.
         if (timeId.HasValue)
         {
             conditions.Add("timeId = ?timeId");
             databaseConnection.AddParameter("timeId", timeId.Value);
         }
-        
+
         var query = $"SELECT configuration, time_id, state, next_run FROM wts_services WHERE {String.Join(" AND ", conditions)}";
         var datatable = await databaseConnection.GetAsync(query);
-        
+
         if (datatable.Rows.Count == 0)
         {
-            return await Task.FromResult(HealthCheckResult.Unhealthy("No data found"));
+            return HealthCheckResult.Unhealthy("No data found");
         }
-        
+
         var errors = new List<string>();
 
         foreach (DataRow row in datatable.Rows)
@@ -120,11 +118,6 @@ public class WtsHealthService : IHealthCheck
             }
         }
 
-        if (errors.Any())
-        {
-            return await Task.FromResult(HealthCheckResult.Unhealthy(String.Join(", ", errors)));
-        }
-        
-        return await Task.FromResult(HealthCheckResult.Healthy());
+        return errors.Any() ? HealthCheckResult.Unhealthy(String.Join(", ", errors)) : HealthCheckResult.Healthy();
     }
 }
