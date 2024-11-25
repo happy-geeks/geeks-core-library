@@ -125,9 +125,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true)
+        public async Task RecalculateVariablesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string skipType = null, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            await shoppingBasketsService.RecalculateVariablesAsync(shoppingBasket, basketLines, settings, skipType, createNewTransaction);
+            await shoppingBasketsService.RecalculateVariablesAsync(shoppingBasket, basketLines, settings, skipType, createNewTransaction, basketToUserLinkType);
         }
 
         /// <inheritdoc />
@@ -143,9 +143,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
+        public async Task<decimal> CalculateShippingCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            return await shoppingBasketsService.CalculateShippingCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
+            return await shoppingBasketsService.CalculateShippingCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction, basketToUserLinkType: basketToUserLinkType);
         }
 
         /// <inheritdoc />
@@ -155,51 +155,51 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task UpdateCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, HandleCouponResultModel couponResult, decimal currentDiscount = 0M, bool divideDiscountOverProducts = false, bool createNewTransaction = true)
+        public async Task UpdateCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, HandleCouponResultModel couponResult, decimal currentDiscount = 0M, bool divideDiscountOverProducts = false, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            await shoppingBasketsService.UpdateCouponAsync(shoppingBasket, basketLines, settings, couponResult, currentDiscount, divideDiscountOverProducts, createNewTransaction);
+            await shoppingBasketsService.UpdateCouponAsync(shoppingBasket, basketLines, settings, couponResult, currentDiscount, divideDiscountOverProducts, createNewTransaction, basketToUserLinkType);
         }
 
         /// <inheritdoc />
-        public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true)
+        public async Task<decimal> CalculatePaymentMethodCostsAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            return await shoppingBasketsService.CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction);
+            return await shoppingBasketsService.CalculatePaymentMethodCostsAsync(shoppingBasket, basketLines, settings, createNewTransaction, basketToUserLinkType);
         }
 
         /// <inheritdoc />
-        public async Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds, bool createNewTransaction = true)
+        public async Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            return await shoppingBasketsService.RemoveLinesAsync(shoppingBasket, basketLines, settings, itemIdsOrUniqueIds, createNewTransaction);
+            return await shoppingBasketsService.RemoveLinesAsync(shoppingBasket, basketLines, settings, itemIdsOrUniqueIds, createNewTransaction, basketToUserLinkType);
         }
 
         /// <inheritdoc />
-        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null, bool createNewTransaction = true)
+        public async Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            await shoppingBasketsService.AddLineAsync(shoppingBasket, basketLines, settings, uniqueId, itemId, quantity, type, lineDetails, createNewTransaction);
+            await shoppingBasketsService.AddLineAsync(shoppingBasket, basketLines, settings, uniqueId, itemId, quantity, type, lineDetails, createNewTransaction, basketToUserLinkType);
         }
 
         /// <inheritdoc />
-        public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items, bool createNewTransaction = true)
+        public async Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            await shoppingBasketsService.AddLinesAsync(shoppingBasket, basketLines, settings, items, createNewTransaction);
+            await shoppingBasketsService.AddLinesAsync(shoppingBasket, basketLines, settings, items, createNewTransaction, basketToUserLinkType);
         }
 
         /// <inheritdoc />
-        public async Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item)
+        public async Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            await shoppingBasketsService.UpdateLineAsync(shoppingBasket, basketLines, settings, item);
+            await shoppingBasketsService.UpdateLineAsync(shoppingBasket, basketLines, settings, item, basketToUserLinkType);
         }
 
         /// <inheritdoc />
-        public async Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity)
+        public async Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            await shoppingBasketsService.UpdateBasketLineQuantityAsync(shoppingBasket, basketLines, settings, itemIdOrUniqueId, quantity);
+            await shoppingBasketsService.UpdateBasketLineQuantityAsync(shoppingBasket, basketLines, settings, itemIdOrUniqueId, quantity, basketToUserLinkType);
         }
 
         /// <inheritdoc />
-        public async Task<HandleCouponResultModel> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true)
+        public async Task<HandleCouponResultModel> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            return await shoppingBasketsService.AddCouponToBasketAsync(shoppingBasket, basketLines, settings, couponCode, createNewTransaction);
+            return await shoppingBasketsService.AddCouponToBasketAsync(shoppingBasket, basketLines, settings, couponCode, createNewTransaction, basketToUserLinkType);
         }
 
         /// <inheritdoc />
@@ -209,9 +209,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = false)
+        public async Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = false, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            await shoppingBasketsService.CheckForFreeProductAsync(shoppingBasket, basketLines, settings, createNewTransaction);
+            await shoppingBasketsService.CheckForFreeProductAsync(shoppingBasket, basketLines, settings, createNewTransaction, basketToUserLinkType);
         }
 
         /// <inheritdoc />
@@ -263,9 +263,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
-        public async Task LinkBasketToUserAsync(ShoppingBasketCmsSettingsModel basketSettings, ulong userId, WiserItemModel shoppingBasket, bool deleteCookieIfBasketIsLinkedToSomeoneElse = true)
+        public async Task LinkBasketToUserAsync(ShoppingBasketCmsSettingsModel basketSettings, ulong userId, WiserItemModel shoppingBasket, bool deleteCookieIfBasketIsLinkedToSomeoneElse = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
-            await shoppingBasketsService.LinkBasketToUserAsync(basketSettings, userId, shoppingBasket, deleteCookieIfBasketIsLinkedToSomeoneElse);
+            await shoppingBasketsService.LinkBasketToUserAsync(basketSettings, userId, shoppingBasket, deleteCookieIfBasketIsLinkedToSomeoneElse, basketToUserLinkType);
         }
 
         /// <inheritdoc />
