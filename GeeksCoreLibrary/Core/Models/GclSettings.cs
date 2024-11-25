@@ -239,6 +239,11 @@ namespace GeeksCoreLibrary.Core.Models
         /// The SMTP settings for sending emails.
         /// </summary>
         public SmtpSettings SmtpSettings { get; set; }
+        
+        /// <summary>
+        /// The Healthcheck settings for the Database check.
+        /// </summary>
+        public HealthChecksSettings HealthChecks { get; set; }
 
         /// <summary>
         /// The license key for the library EvoPdf.
