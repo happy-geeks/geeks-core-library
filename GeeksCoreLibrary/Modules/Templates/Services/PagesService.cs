@@ -274,7 +274,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             syncFooterCssTemplates.Add(template.Id);
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException();
+                            throw new ArgumentOutOfRangeException(nameof(template.InsertMode), template.InsertMode.ToString(), null);
                     }
                 }
 
@@ -383,7 +383,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                             syncFooterJavascriptTemplates.Add(template.Id);
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException();
+                            throw new ArgumentOutOfRangeException(nameof(template.InsertMode), template.InsertMode.ToString(), null);
                     }
                 }
 

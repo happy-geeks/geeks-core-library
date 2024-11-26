@@ -543,7 +543,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                             await DuplicateItemLocalAsync(linkedItemId, newItemId, duplicationLevel, dataRow.Field<string>("entity_type"), entityTypeToDuplicate);
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException(nameof(duplicationType), duplicationType);
+                            throw new ArgumentOutOfRangeException(nameof(duplicationType), duplicationType, null);
                     }
                 }
 
@@ -1822,7 +1822,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 EntityActions.Update => (permissions & AccessRights.Update) == AccessRights.Update,
                 EntityActions.Read => (permissions & AccessRights.Read) == AccessRights.Read,
                 EntityActions.Create => (permissions & AccessRights.Create) == AccessRights.Create,
-                _ => throw new ArgumentOutOfRangeException(nameof(action), action.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(action), action.ToString(), null)
             };
 
             if (!hasPermission)
@@ -4056,7 +4056,7 @@ WHERE {String.Join(" AND ", where)}";
                                 WiserItemPropertyAggregateMethods.Min => allChildren.Min(child => child.Id == wiserItem.Id ? wiserItem.GetDetailValue<decimal>(setting.PropertyName) : child.GetDetailValue<decimal>(setting.PropertyName)),
                                 WiserItemPropertyAggregateMethods.Max => allChildren.Max(child => child.Id == wiserItem.Id ? wiserItem.GetDetailValue<decimal>(setting.PropertyName) : child.GetDetailValue<decimal>(setting.PropertyName)),
                                 WiserItemPropertyAggregateMethods.Average => allChildren.Average(child => child.Id == wiserItem.Id ? wiserItem.GetDetailValue<decimal>(setting.PropertyName) : child.GetDetailValue<decimal>(setting.PropertyName)),
-                                _ => throw new ArgumentOutOfRangeException(nameof(aggregationMethod.Method), aggregationMethod.Method.ToString())
+                                _ => throw new ArgumentOutOfRangeException(nameof(aggregationMethod.Method), aggregationMethod.Method.ToString(), null)
                             };
 
                             databaseConnection.AddParameter("parentId", parentItem.Id);

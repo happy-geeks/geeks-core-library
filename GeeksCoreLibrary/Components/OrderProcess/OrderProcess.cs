@@ -183,7 +183,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 ComponentModes.PaymentOut => await HandlePaymentOutModeAsync(),
                 ComponentModes.PaymentIn => await HandlePaymentInModeAsync(),
                 ComponentModes.PaymentReturn => await HandlePaymentReturnModeAsync(),
-                _ => throw new ArgumentOutOfRangeException(nameof(Settings.ComponentMode), Settings.ComponentMode.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(Settings.ComponentMode), Settings.ComponentMode.ToString(), null)
             };
 
             return new HtmlString(html);
@@ -519,7 +519,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(step.Type), step.Type.ToString());
+                        throw new ArgumentOutOfRangeException(nameof(step.Type), step.Type.ToString(), null);
                 }
 
                 stepHtml = stepHtml.Replace(Constants.GroupsReplacement, groupsBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -675,7 +675,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     httpContextAccessor.HttpContext.Response.Redirect(paymentRequestResult.ActionData);
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(paymentRequestResult.Action), paymentRequestResult.Action.ToString());
+                    throw new ArgumentOutOfRangeException(nameof(paymentRequestResult.Action), paymentRequestResult.Action.ToString(), null);
             }
 
             return "";
@@ -735,7 +735,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     // Do nothing.
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(result.Action), result.Action.ToString());
+                    throw new ArgumentOutOfRangeException(nameof(result.Action), result.Action.ToString(), null);
             }
 
             return "";
@@ -757,7 +757,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
             {
                 OrderProcessGroupTypes.Fields => await RenderGroupFieldsAsync(group, loggedInUser, shoppingBasket, currentItems),
                 OrderProcessGroupTypes.PaymentMethods => await RenderGroupPaymentMethodsAsync(group, paymentMethods, fieldErrorsOccurred),
-                _ => throw new ArgumentOutOfRangeException(nameof(group.Type), group.Type.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(group.Type), group.Type.ToString(), null)
             };
         }
 
@@ -947,7 +947,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonField,
                 OrderProcessFieldTypes.Select => Settings.TemplateSelectField,
                 OrderProcessFieldTypes.Checkbox => Settings.TemplateCheckboxField,
-                _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString(), null)
             };
 
             fieldHtml = StringReplacementsService.DoReplacements(fieldHtml, replaceData);
@@ -989,7 +989,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                 {
                     OrderProcessFieldTypes.Radio => Settings.TemplateRadioButtonFieldOption,
                     OrderProcessFieldTypes.Select => Settings.TemplateSelectFieldOption,
-                    _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString())
+                    _ => throw new ArgumentOutOfRangeException(nameof(field.Type), field.Type.ToString(), null)
                 };
 
                 // Create dictionary for replacements.
@@ -1203,7 +1203,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         break;
                     }
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(group.Type), group.Type.ToString());
+                        throw new ArgumentOutOfRangeException(nameof(group.Type), group.Type.ToString(), null);
                 }
             }
 
@@ -1226,7 +1226,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                     OrderProcessFieldVisibilityTypes.Always => true,
                     OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
                     OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
-                    _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString())
+                    _ => throw new ArgumentOutOfRangeException(nameof(field.Visibility), field.Visibility.ToString(), null)
                 };
             }).ToList();
         }

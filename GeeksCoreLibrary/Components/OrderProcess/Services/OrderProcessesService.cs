@@ -574,7 +574,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                     OrderProcessFieldVisibilityTypes.Always => true,
                     OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
                     OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
-                    _ => throw new ArgumentOutOfRangeException(nameof(paymentMethod.Visibility), paymentMethod.Visibility.ToString())
+                    _ => throw new ArgumentOutOfRangeException(nameof(paymentMethod.Visibility), paymentMethod.Visibility.ToString(), null)
                 };
             }).ToList();
 

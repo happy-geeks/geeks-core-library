@@ -156,7 +156,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         break;
                     }
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
+                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString(), null);
                 }
             }
 
@@ -179,7 +179,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             // We skip permissions in the cached result and check it here to make sure we always check the current permission status
             template = await templatesService.CheckTemplatePermissionsAsync(template);
-            
+
             // Check if a login is required (only for HTML and query templates.
             if (template.Type.InList(TemplateTypes.Html, TemplateTypes.Query) && template.LoginRequired && template.Id == 0)
             {
@@ -217,7 +217,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         break;
                     }
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
+                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString(), null);
                 }
             }
 
@@ -564,7 +564,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 case TemplateCachingModes.NoCaching:
                     return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(settings.CachingMode), settings.CachingMode.ToString());
+                    throw new ArgumentOutOfRangeException(nameof(settings.CachingMode), settings.CachingMode.ToString(), null);
             }
 
             if (extraData != null && extraData.Any())
@@ -632,7 +632,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     break;
                 }
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(settings.CachingLocation), settings.CachingLocation.ToString());
+                    throw new ArgumentOutOfRangeException(nameof(settings.CachingLocation), settings.CachingLocation.ToString(), null);
             }
 
             // Cache page SEO data,

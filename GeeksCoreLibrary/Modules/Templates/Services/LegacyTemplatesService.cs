@@ -106,7 +106,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
             };
 
             var whereClause = new List<string>();
@@ -247,7 +247,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
             };
 
             var whereClause = new List<string>();
@@ -345,7 +345,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
             };
 
             string whereClause;
@@ -424,7 +424,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
             };
 
             var query = $@"SELECT MAX(t.lastchanged) AS lastChanged
@@ -465,7 +465,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
             };
 
             var query = $@"SELECT
@@ -558,7 +558,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
             };
 
             var query = $@"SELECT
@@ -1104,7 +1104,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     templateVersionPart = "AND t.islive = 1";
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null);
             }
 
             query ??= $@"SELECT 
@@ -1420,7 +1420,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 case TemplateCachingModes.NoCaching:
                     return "";
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingMode), contentTemplate.CachingMode.ToString());
+                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingMode), contentTemplate.CachingMode.ToString(), null);
             }
 
             // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
@@ -1524,7 +1524,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             {
                 return template;
             }
-            
+
             var emptyTemplate = new Template
             {
                 Type = template.Type,
@@ -1532,7 +1532,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 LoginRedirectUrl = template.LoginRedirectUrl,
                 LoginRoles = template.LoginRoles
             };
-            
+
             var userData = await accountsService.GetUserDataFromCookieAsync();
 
             return userData is { UserId: > 0 } ? template : emptyTemplate;
@@ -1552,7 +1552,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Environments.Acceptance => " AND t.isacceptance=1 ",
                 Environments.Test => " AND t.istest=1 ",
                 Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
             };
 
             string whereClause;
