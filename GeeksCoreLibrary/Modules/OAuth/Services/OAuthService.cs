@@ -1,31 +1,24 @@
 using System.Threading.Tasks;
-using DocumentFormat.OpenXml.Wordprocessing;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
-using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Modules.OAuth.Interfaces;
+using GeeksCoreLibrary.Modules.OAuth.Models;
+using GeeksCoreLibrary.Modules.Objects.Interfaces;
 
-namespace GeeksCoreLibrary.Modules.OAuth;
+namespace GeeksCoreLibrary.Modules.OAuth.Services;
 
 public class OAuthService : IOAuthService, IScopedService
 {
-    private readonly IDatabaseConnection databaseConnection;
+    private readonly IObjectsService objectsService;
 
-    public OAuthService(IDatabaseConnection databaseConnection)
+    public OAuthService(IObjectsService objectsService)
     {
-        this.databaseConnection = databaseConnection;
+        this.objectsService = objectsService;
     }
 
-    public async Task<int> HandleCallbackAsync(string code)
+    /// <inheritdoc />
+    public async Task HandleCallbackAsync(string apiName, string code)
     {
-        databaseConnection.AddParameter("authorization_code", code);
-        var result = await databaseConnection.ExecuteAsync($"""
-              UPDATE easy_objects 
-              SET value = ?authorization_code 
-              WHERE `key` = 'authorizationCode';
-
-              INSERT INTO easy_objects (`key`, `value`) 
-                SELECT 'authorizationCode', ?authorization_code 
-                WHERE NOT EXISTS (SELECT 1 FROM easy_objects WHERE `key` = 'authorizationCode');
-            """);
-        return result;
+        await objectsService.SetSystemObjectValueAsync($"WTS_{apiName}_{Constants.AuthorizationCodeKey}", code.EncryptWithAes(), false);
     }
 }

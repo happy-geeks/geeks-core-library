@@ -1,26 +1,30 @@
+using System;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Modules.OAuth.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GeeksCoreLibrary.Modules.OAuth;
+namespace GeeksCoreLibrary.Modules.OAuth.Controllers;
 
 [Area("OAuth")]
 [Route("oauth")]
-
 public class OAuthController : Controller
 {
     private readonly IOAuthService oAuthService;
-    
+
     public OAuthController(IOAuthService oAuthService)
     {
         this.oAuthService = oAuthService;
     }
 
-    [Route("handle-callback")]
-    [HttpGet]
-    public async Task<IActionResult> HandleCallbackAsync(string code)
+    [HttpGet("handle-callback")]
+    public async Task<IActionResult> HandleCallbackAsync(string apiName, string code)
     {
-        var success = await oAuthService.HandleCallbackAsync(code);
-        return View(success == 1 ? "AuthorizationSuccessful" : "AuthorizationFailed");
+        if (String.IsNullOrWhiteSpace(code) || String.IsNullOrWhiteSpace(apiName))
+        {
+            return View("AuthorizationFailed");
+        }
+
+        await oAuthService.HandleCallbackAsync(apiName, code);
+        return View("AuthorizationSuccessful");
     }
 }
-
