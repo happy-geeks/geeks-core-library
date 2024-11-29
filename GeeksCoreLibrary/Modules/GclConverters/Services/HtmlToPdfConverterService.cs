@@ -12,13 +12,13 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using EvoPdf.Chromium;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Models;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.GclConverters.Services
@@ -57,6 +57,13 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                 LicenseKey = gclSettings.EvoPdfLicenseKey,
                 ConversionDelay = 2
             };
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                // For some reason the default path doesn't work on Linux.
+                // Note: This also requires the command "chmod +x /app/evopdf_loadhtml" to be run on the server.
+                converter.HtmlLoaderFilePath = "/app/evopdf_loadhtml";
+            }
 
             if (!settings.Orientation.HasValue)
             {
