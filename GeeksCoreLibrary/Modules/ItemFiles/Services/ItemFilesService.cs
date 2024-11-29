@@ -678,7 +678,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                                 ResizeHelpers.Fill(frame, preferredWidth, preferredHeight, anchorPosition, fillColor);
                                 break;
                             default:
-                                throw new ArgumentOutOfRangeException(nameof(resizeMode), "Unknown resize mode.");
+                                throw new ArgumentOutOfRangeException(nameof(resizeMode), resizeMode, null);
                         }
                     }
 
@@ -718,7 +718,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                             ResizeHelpers.Fill(image, preferredWidth, preferredHeight, anchorPosition, fillColor);
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException(nameof(resizeMode), "Unknown resize mode.");
+                            throw new ArgumentOutOfRangeException(nameof(resizeMode), resizeMode, null);
                     }
 
                     outFileBytes = image.ToByteArray(imageFormat);

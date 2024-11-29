@@ -116,7 +116,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                 LegacyComponentMode.SimpleMenu => JsonConvert.DeserializeObject<SimpleMenuLegacySettingsModel>(settingsJson)?.ToSettingsModel(),
                 LegacyComponentMode.MlSimpleMenu => JsonConvert.DeserializeObject<MlSimpleMenuLegacySettingsModel>(settingsJson)?.ToSettingsModel(),
                 LegacyComponentMode.ProductModule => JsonConvert.DeserializeObject<ProductModuleLegacySettingsModel>(settingsJson)?.ToSettingsModel(),
-                _ => throw new ArgumentOutOfRangeException()
+                _ => throw new ArgumentOutOfRangeException(nameof(LegacyMode), LegacyMode, null)
             };
 
             if (forcedComponentMode.HasValue)
@@ -138,7 +138,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                 LegacyComponentMode.SimpleMenu => JsonConvert.SerializeObject(new SimpleMenuLegacySettingsModel().FromSettingModel(Settings)),
                 LegacyComponentMode.MlSimpleMenu => JsonConvert.SerializeObject(new MlSimpleMenuLegacySettingsModel().FromSettingModel(Settings)),
                 LegacyComponentMode.ProductModule => JsonConvert.SerializeObject(new ProductModuleLegacySettingsModel().FromSettingModel(Settings)),
-                _ => throw new ArgumentOutOfRangeException()
+                _ => throw new ArgumentOutOfRangeException(nameof(LegacyMode), LegacyMode, null)
             };
         }
 
@@ -155,7 +155,7 @@ namespace GeeksCoreLibrary.Components.Repeater
                 "JuiceControlLibrary.MLSimpleMenu" => LegacyComponentMode.MlSimpleMenu,
                 "JuiceControlLibrary.SimpleMenu" => LegacyComponentMode.SimpleMenu,
                 "JuiceControlLibrary.ProductModule" => LegacyComponentMode.ProductModule,
-                _ => throw new ArgumentOutOfRangeException(nameof(dynamicContentName)),
+                _ => throw new ArgumentOutOfRangeException(nameof(dynamicContentName), dynamicContentName, null),
             };
         }
 
@@ -369,19 +369,14 @@ namespace GeeksCoreLibrary.Components.Repeater
                     // Do all standard replacements
                     return await RenderAndExecuteQueryAsync(query, skipCache: true);
                 case DataSource.Csv:
-                    throw new NotImplementedException(); // Use Modules->DataParser
                 case DataSource.DataSelector:
-                    throw new NotImplementedException();
                 case DataSource.Xml:
-                    throw new NotImplementedException();
                 case DataSource.Json:
-                    throw new NotImplementedException();
                 case DataSource.Wiser2ParentLinks:
-                    throw new NotImplementedException();
                 case DataSource.DirectoryOutput:
                     throw new NotImplementedException();
                 default:
-                    throw new ArgumentOutOfRangeException("DataSource", Settings.DataSource, "Data source type not supported.");
+                    throw new ArgumentOutOfRangeException(nameof(Settings.DataSource), Settings.DataSource, "Data source type not supported.");
             }
         }
 

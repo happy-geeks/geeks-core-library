@@ -164,7 +164,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
 
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(contentTemplate.Type), contentTemplate.Type.ToString());
+                        throw new ArgumentOutOfRangeException(nameof(contentTemplate.Type), contentTemplate.Type.ToString(), null);
                 }
 
                 var contentToWrite = new StringBuilder();

@@ -153,7 +153,7 @@ public class RewriteUrlToTemplateMiddleware
                     context.Request.Path = "/routine.gcl";
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(template.Type), template.Type.ToString());
+                    throw new ArgumentOutOfRangeException(nameof(template.Type), template.Type.ToString(), null);
             }
 
             context.Request.QueryString = queryString;

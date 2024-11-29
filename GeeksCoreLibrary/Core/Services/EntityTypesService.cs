@@ -140,7 +140,8 @@ public class EntityTypesService : IEntityTypesService, IScopedService
                             "permanent" => EntityDeletionTypes.Permanent,
                             "hide" => EntityDeletionTypes.Hide,
                             "disallow" => EntityDeletionTypes.Disallow,
-                            _ => throw new ArgumentOutOfRangeException("delete_action", dataRow.Field<string>("delete_action"))
+                            // ReSharper disable once NotResolvedInText
+                            _ => throw new ArgumentOutOfRangeException("delete_action", dataRow.Field<string>("delete_action"), null)
                         },
                         StoreType = dataRow.Field<string>("store_type")?.ToLowerInvariant() switch
                         {
@@ -149,7 +150,8 @@ public class EntityTypesService : IEntityTypesService, IScopedService
                             "table" => StoreType.Table,
                             "document_store" => StoreType.DocumentStore,
                             "hybrid" => StoreType.Hybrid,
-                            _ => throw new ArgumentOutOfRangeException("store_type", dataRow.Field<string>("store_type"))
+                            // ReSharper disable once NotResolvedInText
+                            _ => throw new ArgumentOutOfRangeException("store_type", dataRow.Field<string>("store_type"), null)
                         }
                     };
 

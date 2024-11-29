@@ -422,7 +422,7 @@ WHERE id = ?id";
                     await SendSmtPeterEmailDirectlyAsync(communication, smtpSettings, attachments, timeout);
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(smtpSettings.Provider), smtpSettings.Provider.ToString());
+                    throw new ArgumentOutOfRangeException(nameof(smtpSettings.Provider), smtpSettings.Provider.ToString(), null);
             }
         }
 
@@ -670,7 +670,7 @@ WHERE id = ?id";
                         await SendCmSmsDirectlyAsync(communication, smsSettings, receiver.Address);
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(smsSettings.Provider), smsSettings.Provider.ToString());
+                        throw new ArgumentOutOfRangeException(nameof(smsSettings.Provider), smsSettings.Provider.ToString(), null);
                 }
             }
         }
@@ -815,7 +815,7 @@ WHERE id = ?id";
                         await SendMetaWhatsAppDirectlyAsync(communication, smsSettings, receiver.Address);
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(smsSettings.Provider), smsSettings.Provider.ToString());
+                        throw new ArgumentOutOfRangeException(nameof(smsSettings.Provider), smsSettings.Provider.ToString(), null);
                 }
             }
         }

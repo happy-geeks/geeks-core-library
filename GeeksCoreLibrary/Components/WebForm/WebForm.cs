@@ -209,7 +209,7 @@ namespace GeeksCoreLibrary.Components.WebForm
                         updatedHtml = updatedHtml.Replace(regexMatch.Value, $"<input type=\"hidden\" name=\"g-recaptcha-response-v3\" id=\"RecaptchaResponseToken{ComponentId}\" value>");
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException($"Unknown or unsupported reCAPTCHA version: {version}");
+                        throw new ArgumentOutOfRangeException(nameof(version), version, $"Unknown or unsupported reCAPTCHA version: {version}");
                 }
             }
 

@@ -127,7 +127,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         break;
                     }
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
+                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString(), null);
                 }
             }
 
@@ -178,7 +178,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                         break;
                     }
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
+                        throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString(), null);
                 }
             }
 
@@ -346,7 +346,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                     templateVersionPart = "AND t.islive = 1";
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment, null);
             }
 
             query ??= $@"SELECT

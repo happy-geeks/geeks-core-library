@@ -1765,7 +1765,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 }
             }
 
-            throw new ArgumentOutOfRangeException(scopeRow.Operator, $"GCL DataSelector: Unknown operator in scope: {scopeRow.Operator}");
+            throw new ArgumentOutOfRangeException(nameof(scopeRow.Operator), scopeRow.Operator, $"GCL DataSelector: Unknown operator in scope: {scopeRow.Operator}");
         }
 
         private async Task<string> CreateHavingRowQueryPart(HavingRow havingRow, string selectAlias)
@@ -1820,7 +1820,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
                 }
             }
 
-            throw new ArgumentOutOfRangeException(havingRow.Operator, $"GCL DataSelector: Unknown operator in having: {havingRow.Operator}");
+            throw new ArgumentOutOfRangeException(nameof(havingRow.Operator), havingRow.Operator, $"GCL DataSelector: Unknown operator in having: {havingRow.Operator}");
         }
 
         private static string GetConnectionRowSelectAlias(ConnectionRow connectionRow, string fallback, string prefix = "")
