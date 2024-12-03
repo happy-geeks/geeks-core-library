@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
+    <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
     <OutputType>Library</OutputType>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -17,6 +18,11 @@
 	<PackageLicenseFile>LICENSE</PackageLicenseFile>
 	<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
 	<LangVersion>default</LangVersion>
+  </PropertyGroup>
+
+  <!-- When debugging, set the runtime identifier to win-x64, so that the IDE knows which settings to use for conditional NuGet packages. -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
@@ -37,7 +43,6 @@
     <PackageReference Include="CM.Text" Version="2.9.0" />
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.2.0" />
-    <PackageReference Include="EvoPdf.HtmlToPdf.NetCore.x64" Version="10.0.0" />
     <PackageReference Include="FluentFTP" Version="51.0.0" />
     <PackageReference Include="GoogleAuthenticator" Version="3.2.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.71" />
@@ -51,6 +56,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
     <PackageReference Include="MySqlConnector" Version="2.3.7" />
+    <PackageReference Include="PDFsharp" Version="6.1.1" />
     <PackageReference Include="RestSharp" Version="112.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="111.4.1" />
@@ -69,6 +75,16 @@
     <PackageReference Include="WebMarkupMin.AspNetCore7" Version="2.17.0" />
     <PackageReference Include="ZXing.Net" Version="0.16.9" />
     <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.14" />
+  </ItemGroup>
+
+  <!-- Windows-specific settings -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.0.1" />
+  </ItemGroup>
+
+  <!-- Linux-specific settings -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
+    <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.0.1" />
   </ItemGroup>
 
   <ItemGroup>

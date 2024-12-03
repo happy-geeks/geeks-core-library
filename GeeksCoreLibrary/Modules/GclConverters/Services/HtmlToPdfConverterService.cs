@@ -1,5 +1,4 @@
-﻿using EvoPdf;
-using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+﻿using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.GclConverters.Interfaces;
@@ -13,11 +12,13 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
+using EvoPdf.Chromium;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclConverters.Models;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.GclConverters.Services
@@ -28,15 +29,13 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
         private readonly IDatabaseConnection databaseConnection;
         private readonly IObjectsService objectsService;
         private readonly IStringReplacementsService stringReplacementsService;
-        private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly ILogger<HtmlToPdfConverterService> logger;
         private readonly GclSettings gclSettings;
+        private readonly IWebHostEnvironment webHostEnvironment;
 
         public HtmlToPdfConverterService(IDatabaseConnection databaseConnection,
             IObjectsService objectsService,
             IStringReplacementsService stringReplacementsService,
             IOptions<GclSettings> gclSettings,
-            ILogger<HtmlToPdfConverterService> logger,
             IHttpContextAccessor httpContextAccessor = null,
             IWebHostEnvironment webHostEnvironment = null)
         {
@@ -44,19 +43,27 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             this.databaseConnection = databaseConnection;
             this.objectsService = objectsService;
             this.stringReplacementsService = stringReplacementsService;
-            this.webHostEnvironment = webHostEnvironment;
-            this.logger = logger;
             this.gclSettings = gclSettings.Value;
+            this.webHostEnvironment = webHostEnvironment;
         }
 
         /// <inheritdoc />
         public async Task<FileContentResult> ConvertHtmlStringToPdfAsync(HtmlToPdfRequestModel settings)
         {
+            var htmlToConvert = new StringBuilder(settings.Html);
             var httpContext = httpContextAccessor?.HttpContext;
             var converter = new HtmlToPdfConverter
             {
-                LicenseKey = gclSettings.EvoPdfLicenseKey
+                LicenseKey = gclSettings.EvoPdfLicenseKey,
+                ConversionDelay = 2
             };
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                // For some reason the default path doesn't work on Linux.
+                // Note: This also requires the command "chmod +x /app/evopdf_loadhtml" to be run on the server.
+                converter.HtmlLoaderFilePath = "/app/evopdf_loadhtml";
+            }
 
             if (!settings.Orientation.HasValue)
             {
@@ -68,31 +75,40 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
 
             Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_html_viewer_width"), out var htmlViewerWidth);
             Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_html_viewer_height"), out var htmlViewerHeight);
-            Single.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_margins"), out var margins);
+            Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_margins"), out var margins);
 
             // Main document options.
-            converter.PdfDocumentOptions.FitHeight = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_fit_height")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            converter.PdfDocumentOptions.AvoidImageBreak = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_avoid_image_break", "true")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            converter.PdfDocumentOptions.AvoidTextBreak = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_avoid_text_break")).Equals("true", StringComparison.OrdinalIgnoreCase);
-            converter.PdfDocumentOptions.EmbedFonts = true;
+            var avoidTextBreak = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_avoid_text_break")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            var avoidImageBreak = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_avoid_image_break", "true")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            htmlToConvert.Insert(0, $$"""
+                                    <style>
+                                    	* {
+                                    		break-inside: {{(avoidTextBreak ? "avoid" : "auto")}};
+                                    	}
+                                    	
+                                    	img {
+                                            break-inside: {{(avoidImageBreak ? "avoid" : "auto")}};
+                                    	}
+                                    </style>
+                                    """);
+
             converter.PdfDocumentOptions.BottomMargin = margins;
             converter.PdfDocumentOptions.LeftMargin = margins;
             converter.PdfDocumentOptions.RightMargin = margins;
             converter.PdfDocumentOptions.TopMargin = margins;
-            converter.PdfDocumentOptions.PdfCompressionLevel = PdfCompressionLevel.Best;
 
             // Page size.
             var pageSize = await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize", "A4");
             if (pageSize == "CUSTOM")
             {
-                Single.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize_width"), out var pageSizeWidth);
-                Single.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize_height"), out var pageSizeHeight);
+                Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize_width"), out var pageSizeWidth);
+                Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("pdf_pagesize_height"), out var pageSizeHeight);
 
                 converter.PdfDocumentOptions.PdfPageSize = new PdfPageSize(pageSizeWidth, pageSizeHeight);
-                converter.PdfDocumentOptions.AutoSizePdfPage = true;
             }
             else
             {
+                converter.PdfDocumentOptions.AutoResizePdfPageWidth = false;
                 converter.PdfDocumentOptions.PdfPageSize = pageSize switch
                 {
                     "A0" => PdfPageSize.A0,
@@ -114,67 +130,24 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             if (htmlViewerHeight > 0) converter.HtmlViewerHeight = htmlViewerHeight;
 
             // Header settings.
-            converter.PdfDocumentOptions.ShowHeader = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_header_show")).Equals("true", StringComparison.OrdinalIgnoreCase);
+            converter.PdfDocumentOptions.EnableHeaderFooter = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_header_show")).Equals("true", StringComparison.OrdinalIgnoreCase) || (await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_show")).Equals("true", StringComparison.OrdinalIgnoreCase);
             if (String.IsNullOrWhiteSpace(settings.Header))
             {
                 settings.Header = await objectsService.FindSystemObjectByDomainNameAsync("pdf_header_text");
             }
             if (!String.IsNullOrWhiteSpace(settings.Header))
             {
-                var headerElem = new HtmlToPdfElement(settings.Header, null) { FitHeight = true };
-                headerElem.NavigationCompletedEvent += delegate(NavigationCompletedParams eventParams)
-                {
-                    var headerHtmlWidth = eventParams.HtmlContentWidthPt;
-                    var headerHtmlHeight = eventParams.HtmlContentHeightPt;
-                    var headerWidth = converter.PdfDocumentOptions.PdfPageSize.Width - converter.PdfDocumentOptions.LeftMargin - converter.PdfDocumentOptions.RightMargin;
-                    float resizeFactor = 1;
-                    if (headerHtmlWidth > headerWidth)
-                    {
-                        resizeFactor = headerWidth / headerHtmlWidth;
-                    }
-
-                    var headerHeight = headerHtmlHeight * resizeFactor;
-
-                    if (!(headerHeight < converter.PdfDocumentOptions.PdfPageSize.Height - converter.PdfDocumentOptions.TopMargin - converter.PdfDocumentOptions.BottomMargin))
-                    {
-                        throw new Exception("The header height cannot be bigger than PDF page height");
-                    }
-
-                    converter.PdfDocumentOptions.DocumentObject.Header.Height = headerHeight;
-                };
-                converter.PdfHeaderOptions.AddElement(headerElem);
+                converter.PdfDocumentOptions.HeaderTemplate = settings.Header;
             }
 
             // Footer settings.
-            converter.PdfDocumentOptions.ShowFooter = (await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_show")).Equals("true", StringComparison.OrdinalIgnoreCase);
             if (String.IsNullOrWhiteSpace(settings.Footer))
             {
                 settings.Footer = await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_text");
             }
             if (!String.IsNullOrWhiteSpace(settings.Footer))
             {
-                var footerElem = new HtmlToPdfElement(settings.Footer, null) { FitHeight = true };
-                footerElem.NavigationCompletedEvent += delegate(NavigationCompletedParams eventParams)
-                {
-                    var footerHtmlWidth = eventParams.HtmlContentWidthPt;
-                    var footerHtmlHeight = eventParams.HtmlContentHeightPt;
-                    var footerWidth = converter.PdfDocumentOptions.PdfPageSize.Width - converter.PdfDocumentOptions.LeftMargin - converter.PdfDocumentOptions.RightMargin;
-                    float resizeFactor = 1;
-                    if (footerHtmlWidth > footerWidth)
-                    {
-                        resizeFactor = footerWidth / footerHtmlWidth;
-                    }
-
-                    var footerHeight = footerHtmlHeight * resizeFactor;
-
-                    if (!(footerHeight < converter.PdfDocumentOptions.PdfPageSize.Height - converter.PdfDocumentOptions.TopMargin - converter.PdfDocumentOptions.BottomMargin))
-                    {
-                        throw new Exception("The footer height cannot be bigger than PDF page height");
-                    }
-
-                    converter.PdfDocumentOptions.DocumentObject.Footer.Height = footerHeight;
-                };
-                converter.PdfFooterOptions.AddElement(footerElem);
+                converter.PdfDocumentOptions.FooterTemplate = settings.Footer;
             }
 
             // Security settings.
@@ -197,26 +170,18 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
 
                 if (!String.IsNullOrWhiteSpace(backgroundImage))
                 {
-                    try
-                    {
-                        converter.BeforeRenderPdfPageEvent += parameters =>
-                        {
-                            var pdfPage = parameters.Page;
-                            var pdfPageWidth = pdfPage.ClientRectangle.Width;
-                            var pdfPageHeight = pdfPage.ClientRectangle.Height;
-
-                            var backgroundElement = new ImageElement(0, 0, pdfPageWidth, pdfPageHeight, backgroundImage)
-                            {
-                                KeepAspectRatio = true,
-                                EnlargeEnabled = true
-                            };
-                            pdfPage.AddElement(backgroundElement);
-                        };
-                    }
-                    catch (Exception exception)
-                    {
-                        logger.LogWarning(exception, "An error occurred while adding a background to a PDF in ConvertHtmlStringToPdfAsync()");
-                    }
+                    htmlToConvert.Insert(0, $$"""
+                                              <style>
+                                              	body {
+                                              		margin: 0;
+                                              		padding: 0;
+                                              		background-image: url('{{backgroundImage}}');
+                                              		background-size: cover; /* Ensure the image covers the full page */
+                                              		background-repeat: no-repeat;
+                                              		background-position: center;
+                                              	}
+                                              </style>
+                                              """);
                 }
             }
 
@@ -244,7 +209,7 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             }
 
             var baseUri = httpContext == null ? "/" : HttpContextHelpers.GetBaseUri(httpContext).ToString();
-            var output = converter.ConvertHtml(settings.Html, baseUri);
+            var output = converter.ConvertHtml(htmlToConvert.ToString(), baseUri);
             var fileResult = new FileContentResult(output, "application/pdf")
             {
                 FileDownloadName = EnsureCorrectFileName(settings.FileName)
@@ -274,9 +239,9 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
             {
                 ItemId = templateItemId
             };
-            
+
             pdfSettings.BackgroundPropertyName = await objectsService.FindSystemObjectByDomainNameAsync("pdf_backgroundpropertyname");
-            
+
             var query = $"SELECT `key`, CONCAT_WS('', `value`, `long_value`) AS value, language_code FROM {WiserTableNames.WiserItemDetail} WHERE item_id = ?templateItemId";
             databaseConnection.AddParameter("templateItemId", templateItemId);
             var dataTable = await databaseConnection.GetAsync(query);
@@ -396,7 +361,8 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                 return null;
             }
 
-            return FileSystemHelpers.SaveFileToContentFilesFolder(webHostEnvironment, filename, content);
+            var filePath = FileSystemHelpers.SaveFileToContentFilesFolder(webHostEnvironment, filename, content);
+            return filePath.Replace(webHostEnvironment.WebRootPath, "").Replace(@"\", "/");
         }
     }
 }
