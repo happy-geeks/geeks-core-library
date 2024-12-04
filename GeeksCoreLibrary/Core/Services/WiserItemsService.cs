@@ -2427,14 +2427,21 @@ WHERE {String.Join(" AND ", where)}";
                 where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
             }
 
-            var tablePrefix = "";
-            if (!String.IsNullOrWhiteSpace(entityType))
+            var itemIdTablePrefix = ""; // The table prefix for the current open item
+            if (linkSettings.UseItemParentId && reverse && !string.IsNullOrEmpty(itemIdEntityType))
+            {
+                // Get the table prefix based on the entity type of the current open item, because when 'reverse' we need to add a join to the wiser_item table of the current open item
+                itemIdTablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
+            }
+            
+            var tablePrefix = ""; // The table prefix used in the main query
+            if (!String.IsNullOrEmpty(entityType))
             {
                 tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
                 databaseConnection.AddParameter("entityType", entityType);
                 where.Add("item.entity_type = ?entityType");
             }
-            else if (!String.IsNullOrWhiteSpace(itemIdEntityType))
+            else if (!String.IsNullOrEmpty(itemIdEntityType))
             {
                 tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
             }
@@ -2449,7 +2456,7 @@ WHERE {String.Join(" AND ", where)}";
             {
                 if (reverse)
                 {
-                    itemLinkJoin = $"JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linkedItem ON linkedItem.id = ?itemId AND linkedItem.parent_item_id = item.id";
+                    itemLinkJoin = $"JOIN {itemIdTablePrefix}{WiserTableNames.WiserItem} AS linkedItem ON linkedItem.id = ?itemId AND linkedItem.parent_item_id = item.id";
                 }
                 else
                 {
@@ -2501,7 +2508,7 @@ WHERE {String.Join(" AND ", where)}";
                 {
                     if (reverse)
                     {
-                        itemLinkJoin = $"JOIN {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS mainItem ON mainItem.parent_item_id = item.id AND mainItem.id = ?itemId";
+                        itemLinkJoin = $"JOIN {itemIdTablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS mainItem ON mainItem.parent_item_id = item.id AND mainItem.id = ?itemId";
                     }
                     else
                     {
