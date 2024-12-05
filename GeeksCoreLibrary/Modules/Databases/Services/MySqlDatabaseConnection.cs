@@ -6,6 +6,7 @@ using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Unicode;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
@@ -1098,13 +1099,20 @@ SELECT LAST_INSERT_ID();";
             }
 
             // Make sure that the settings are fully set.
-            if (String.IsNullOrEmpty(sshSettings.Password) && String.IsNullOrEmpty(sshSettings.PrivateKeyPath) && (sshSettings.PrivateKeyBytes is null || sshSettings.PrivateKeyBytes.Length == 0))
+            if (String.IsNullOrEmpty(sshSettings.Password) && String.IsNullOrEmpty(sshSettings.PrivateKeyPath) &&
+                (sshSettings.PrivateKeyBytes is null || sshSettings.PrivateKeyBytes.Length == 0))
             {
-                throw new ArgumentException($"One of {nameof(sshSettings.Password)}, {nameof(sshSettings.PrivateKeyPath)} and {nameof(sshSettings.PrivateKeyBytes)} must be specified.");
+                throw new ArgumentException(
+                    $"One of {nameof(sshSettings.Password)}, {nameof(sshSettings.PrivateKeyPath)} and {nameof(sshSettings.PrivateKeyBytes)} must be specified.");
             }
+            // if (String.IsNullOrEmpty(sshSettings.Password) && String.IsNullOrEmpty(sshSettings.PrivateKeyPath) && String.IsNullOrEmpty(sshSettings.PrivateKeyContents))
+            // {
+            //     throw new ArgumentException($"One of {nameof(sshSettings.Password)}, {nameof(sshSettings.PrivateKeyPath)}, or {nameof(sshSettings.PrivateKeyContents)} must be specified.");
+            // }
 
             // Define the authentication methods to use (in order).
             var authenticationMethods = new List<AuthenticationMethod>();
+
             if (!String.IsNullOrEmpty(sshSettings.PrivateKeyPath))
             {
                 authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(sshSettings.PrivateKeyPath, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
@@ -1114,6 +1122,12 @@ SELECT LAST_INSERT_ID();";
                 using var privateKeyStream = new MemoryStream(sshSettings.PrivateKeyBytes);
                 authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(privateKeyStream, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
             }
+
+            // if (!String.IsNullOrEmpty(sshSettings.PrivateKeyContents))
+            // {
+            //     using var privateKeyStream = new MemoryStream(Encoding.UTF8.GetBytes(sshSettings.PrivateKeyContents));
+            //     authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(privateKeyStream, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
+            // }
 
             if (!String.IsNullOrEmpty(sshSettings.Password))
             {
