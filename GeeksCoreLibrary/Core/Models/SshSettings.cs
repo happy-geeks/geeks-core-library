@@ -42,6 +42,12 @@ public class SshSettings
 
     /// <summary>
     /// Gets or sets the passphrase for the private key file, if applicable.
+    /// The contents of the private key file for the SSH connection, if applicable.
+    /// </summary>
+    //public string PrivateKeyContents { get; set; }
+
+    /// <summary>
+    /// The passphrase for the private key file, if applicable.
     /// </summary>
     public string PrivateKeyPassphrase { get; set; }
 
