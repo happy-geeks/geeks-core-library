@@ -140,26 +140,43 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
                         {
                             return NotFound();
                         }
-
+                        
+                        var noIndex = contentTemplate.RobotsNoIndex;
+                        var noFollow = contentTemplate.RobotsNoFollow;
+                            
                         // Set SEO and Open Graph information.
                         if (HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
                         {
                             var dataRow = (DataRow) HttpContext.Items[Constants.TemplatePreLoadQueryResultKey];
+                            
                             if (dataRow != null)
                             {
                                 var seoTitle = dataRow.GetValueIfColumnExists<string>("SEOtitle");
                                 var seoDescription = dataRow.GetValueIfColumnExists<string>("SEOdescription");
                                 var seoKeyWords = dataRow.GetValueIfColumnExists<string>("SEOkeywords");
                                 var seoCanonical = dataRow.GetValueIfColumnExists<string>("SEOcanonical");
-                                var noIndex = Convert.ToBoolean(dataRow.GetValueIfColumnExists("noindex"));
-                                var noFollow = Convert.ToBoolean(dataRow.GetValueIfColumnExists("nofollow"));
                                 var robots = dataRow.GetValueIfColumnExists<string>("SEOrobots");
+
+                                if (dataRow.Table.Columns.Contains("noindex"))
+                                {
+                                    noIndex = Convert.ToBoolean(dataRow.GetValueIfColumnExists("noindex"));
+                                }
+                                
+                                if (dataRow.Table.Columns.Contains("nofollow"))
+                                {
+                                    noFollow = Convert.ToBoolean(dataRow.GetValueIfColumnExists("nofollow"));
+                                }
+                                
                                 pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
 
                                 // Add Open Graph data.
                                 var openGraphValues = dataRow.Table.Columns.Cast<DataColumn>().Where(c => c.ColumnName.StartsWith("opengraph_", StringComparison.OrdinalIgnoreCase)).ToDictionary(c => c.ColumnName, c => Convert.ToString(dataRow[c]));
                                 pagesService.SetOpenGraphData(openGraphValues);
                             }
+                        }
+                        else
+                        {
+                            pagesService.SetPageSeoData("","", "", "", noIndex, noFollow);
                         }
 
                         break;
