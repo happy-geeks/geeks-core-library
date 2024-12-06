@@ -196,7 +196,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
     template.trigger_event,
     template.trigger_table_name,
     template.is_partial,
-    template.version
+    template.version,
+    template.robots_no_index,
+    template.robots_no_follow
 FROM {WiserTableNames.WiserTemplate} AS template
 {joinPart}
 LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)

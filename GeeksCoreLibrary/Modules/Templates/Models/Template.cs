@@ -143,6 +143,16 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// Gets or sets the regular expression that is matched against the URL of the page, to decide whether to use content caching or not.
         /// </summary>
         public string CachingRegex { get; set; }
+        
+        /// <summary>
+        /// Gets or sets whether we should allow robots to index this template.
+        /// </summary>
+        public bool RobotsNoIndex { get; set; }     
+        
+        /// <summary>
+        /// Gets or sets whether we should allow robots to follow this template.
+        /// </summary>
+        public bool RobotsNoFollow { get; set; }     
 
         /// <summary>
         /// Gets or sets the query that should be executed at the start of loading a HTML template on the page.
