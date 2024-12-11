@@ -172,13 +172,22 @@ namespace GeeksCoreLibrary.Modules.GclConverters.Services
                 {
                     htmlToConvert.Insert(0, $$"""
                                               <style>
+                                                html {
+                                                    width: 100%;
+                                                    height: 100%;
+                                                    margin: 0;
+                                                    padding: 0;
+                                                }
+                                                
                                               	body {
+                                                    width: 100%;
+                                                    height: 100%;
                                               		margin: 0;
                                               		padding: 0;
                                               		background-image: url('{{backgroundImage}}');
                                               		background-size: cover; /* Ensure the image covers the full page */
-                                              		background-repeat: no-repeat;
-                                              		background-position: center;
+                                              		background-repeat: repeat-y;
+                                              		background-position: top left;
                                               	}
                                               </style>
                                               """);
