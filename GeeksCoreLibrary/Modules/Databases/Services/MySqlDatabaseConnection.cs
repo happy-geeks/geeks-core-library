@@ -582,7 +582,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var createdNewConnection = false;
             if (ConnectionForReading == null)
             {
-                var (sshClient, localPort, forwardedPortLocal) = ConnectToSsh(sshSettingsForReading, connectionStringForReading.Server, connectionStringForReading.Port);
+                var (sshClient, localPort, forwardedPortLocal) = await ConnectToSsh(sshSettingsForReading, connectionStringForReading.Server, connectionStringForReading.Port);
                 SshClientForReading = sshClient;
                 ForwardedPortLocalForReading = forwardedPortLocal;
                 if (sshClient != null)
@@ -630,7 +630,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var createdNewConnection = false;
             if (ConnectionForWriting == null)
             {
-                var (sshClient, localPort, forwardedPortLocal) = ConnectToSsh(sshSettingsForWriting, connectionStringForWriting.Server, connectionStringForWriting.Port);
+                var (sshClient, localPort, forwardedPortLocal) = await ConnectToSsh(sshSettingsForWriting, connectionStringForWriting.Server, connectionStringForWriting.Port);
                 SshClientForWriting = sshClient;
                 ForwardedPortLocalForWriting = forwardedPortLocal;
                 if (sshClient != null)
@@ -1090,7 +1090,7 @@ SELECT LAST_INSERT_ID();";
         /// <param name="databasePort">The database port to use.</param>
         /// <returns>The <see cref="SshClient"/> and the port of the SSH tunnel.</returns>
         /// <exception cref="ArgumentException">When not all required settings have been set.</exception>
-        private (SshClient sshClient, uint BoundPort, ForwardedPortLocal ForwardedPortLocal) ConnectToSsh(SshSettings sshSettings, string databaseServer, uint databasePort)
+        private async Task<(SshClient sshClient, uint BoundPort, ForwardedPortLocal ForwardedPortLocal)> ConnectToSsh(SshSettings sshSettings, string databaseServer, uint databasePort)
         {
             // Return null if we have no SSH settings.
             if (String.IsNullOrEmpty(sshSettings?.Host) || String.IsNullOrEmpty(sshSettings?.Username))
@@ -1099,16 +1099,13 @@ SELECT LAST_INSERT_ID();";
             }
 
             // Make sure that the settings are fully set.
-            if (String.IsNullOrEmpty(sshSettings.Password) && String.IsNullOrEmpty(sshSettings.PrivateKeyPath) &&
-                (sshSettings.PrivateKeyBytes is null || sshSettings.PrivateKeyBytes.Length == 0))
+            if (String.IsNullOrEmpty(sshSettings.Password) &&
+                String.IsNullOrEmpty(sshSettings.PrivateKeyPath) &&
+                String.IsNullOrEmpty(sshSettings.PrivateKeyContents) &&
+                sshSettings.RetrievePrivateKeyFromAwsSecretsManager == false)
             {
-                throw new ArgumentException(
-                    $"One of {nameof(sshSettings.Password)}, {nameof(sshSettings.PrivateKeyPath)} and {nameof(sshSettings.PrivateKeyBytes)} must be specified.");
+                throw new ArgumentException($"One of {nameof(sshSettings.Password)}, {nameof(sshSettings.PrivateKeyPath)}, {nameof(sshSettings.RetrievePrivateKeyFromAwsSecretsManager)}, or {nameof(sshSettings.PrivateKeyContents)} must be specified.");
             }
-            // if (String.IsNullOrEmpty(sshSettings.Password) && String.IsNullOrEmpty(sshSettings.PrivateKeyPath) && String.IsNullOrEmpty(sshSettings.PrivateKeyContents))
-            // {
-            //     throw new ArgumentException($"One of {nameof(sshSettings.Password)}, {nameof(sshSettings.PrivateKeyPath)}, or {nameof(sshSettings.PrivateKeyContents)} must be specified.");
-            // }
 
             // Define the authentication methods to use (in order).
             var authenticationMethods = new List<AuthenticationMethod>();
@@ -1122,12 +1119,17 @@ SELECT LAST_INSERT_ID();";
                 using var privateKeyStream = new MemoryStream(sshSettings.PrivateKeyBytes);
                 authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(privateKeyStream, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
             }
-
-            // if (!String.IsNullOrEmpty(sshSettings.PrivateKeyContents))
-            // {
-            //     using var privateKeyStream = new MemoryStream(Encoding.UTF8.GetBytes(sshSettings.PrivateKeyContents));
-            //     authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(privateKeyStream, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
-            // }
+            else if (!String.IsNullOrEmpty(sshSettings.PrivateKeyContents))
+            {
+                using var privateKeyStream = new MemoryStream(Encoding.UTF8.GetBytes(sshSettings.PrivateKeyContents));
+                authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(privateKeyStream, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
+            }
+            else if (sshSettings.RetrievePrivateKeyFromAwsSecretsManager)
+            {
+                var privateKey = await AwsSecretsManagerHelpers.GetAppSecretsFromAwsAsync($"{gclSettings.AwsSecretsManagerSettings.BaseDirectory}/rds-proxy-private-key", gclSettings.AwsSecretsManagerSettings);
+                using var privateKeyStream = new MemoryStream(Encoding.UTF8.GetBytes(privateKey));
+                authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(privateKeyStream, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
+            }
 
             if (!String.IsNullOrEmpty(sshSettings.Password))
             {

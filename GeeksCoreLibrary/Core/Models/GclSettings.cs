@@ -124,17 +124,17 @@ namespace GeeksCoreLibrary.Core.Models
         /// Base URL of the PostNL api
         /// </summary>
         public string PostNlApiBaseUrl { get; set; }
-        
+
         /// <summary>
         /// Base URL of the NE DistriService api
         /// </summary>
         public string NeDistriApiBaseUrl { get; set; }
-        
+
         /// <summary>
         /// Secret key to use for the NE DistriService api
         /// </summary>
         public string NeDistriSecretKey { get; set; }
-        
+
         /// <summary>
         /// Login name to use for the NE DistriService api
         /// </summary>
@@ -239,7 +239,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// The SMTP settings for sending emails.
         /// </summary>
         public SmtpSettings SmtpSettings { get; set; }
-        
+
         /// <summary>
         /// The Healthcheck settings for the Database check.
         /// </summary>
@@ -295,8 +295,13 @@ namespace GeeksCoreLibrary.Core.Models
         public List<CacheControlRuleSettingsModel> CacheControlRules { get; set; } = new();
 
         /// <summary>
-        /// The settings for the Amazon Web Services.
+        /// The settings for the Amazon S3 Bucket.
         /// </summary>
         public AwsSettings AwsSettings { get; set; }
+
+        /// <summary>
+        /// The settings for the Amazon Secrets Manager.
+        /// </summary>
+        public AwsSecretsManagerSettings AwsSecretsManagerSettings { get; set; }
     }
 }

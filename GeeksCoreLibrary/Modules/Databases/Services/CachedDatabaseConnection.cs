@@ -10,6 +10,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Amazon.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using LazyCache;
@@ -249,5 +250,16 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             return await databaseConnection.BulkInsertAsync(dataTable, tableName, useWritingConnectionIfAvailable, useInsertIgnore);
         }
+
+        // TODO: Fix private key retrieval caching
+        // public async Task<string> RetrievePrivateKeyFromAwsSecretsManager(AwsSecretsManagerSettings awsSecretsManagerSettings)
+        // {
+        //     // var cacheName = $"CachedDatabaseConnection_RetrievePrivateKeyFromAwsSecretsManager_{awsSecretsManagerSettings.BaseDirectory}_{branchesService.GetDatabaseNameFromCookie()}";
+        //     // return await cache.GetOrAddAsync(cacheName, async cacheEntry =>
+        //     // {
+        //     //     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
+        //     //     return await databaseConnection. (includeViews, databaseName);
+        //     // }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+        // }
     }
 }

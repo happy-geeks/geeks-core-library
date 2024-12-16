@@ -2,9 +2,8 @@
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using Amazon;
-using Amazon.SecretsManager;
-using Amazon.SecretsManager.Model;
+using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Modules.Amazon.Models;
 using Microsoft.Extensions.Configuration;
 
 namespace GeeksCoreLibrary.Core.Extensions
@@ -17,47 +16,24 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// Caches the secret to improve performance and reduce AWS API calls.
         /// </summary>
         /// <param name="builder">The configuration builder to which the secret will be added.</param>
-        /// <param name="secretName">The name of the secret stored in AWS Secrets Manager.</param>
-        /// <param name="region">The AWS region where Secrets Manager is located (defaults to "eu-central-1").</param>
+        /// <param name="awsSecretsManagerSettings"></param>
         /// <returns>The updated IConfigurationBuilder with the secret added to the configuration.</returns>
         public static async Task<IConfigurationBuilder> GetAppSecretsFromAwsAsync(
             this IConfigurationBuilder builder,
-            string secretName,
-            string region = "eu-central-1")
+            AwsSecretsManagerSettings awsSecretsManagerSettings)
         {
-            if (string.IsNullOrEmpty(secretName))
-            {
-                throw new ArgumentException("Secret name cannot be null or empty.", nameof(secretName));
-            }
+            if (builder == null) throw new ArgumentNullException(nameof(builder));
 
-            var client = new AmazonSecretsManagerClient(RegionEndpoint.GetBySystemName(region));
+            // Use the helper method to retrieve the secret content
+            var secretContent = await AwsSecretsManagerHelpers.GetAppSecretsFromAwsAsync($"{awsSecretsManagerSettings.BaseDirectory}/appsettings-secrets", awsSecretsManagerSettings);
 
-            try
-            {
-                // Retrieve the secret from AWS Secrets Manager
-                var secretResponse = await client.GetSecretValueAsync(new GetSecretValueRequest
-                {
-                    SecretId = secretName
-                });
+            // Add the secret's JSON content to the configuration builder
+            var secretStream = new MemoryStream(Encoding.UTF8.GetBytes(secretContent));
 
-                // Check if the secret has a valid string value
-                if (string.IsNullOrEmpty(secretResponse.SecretString))
-                {
-                    throw new InvalidOperationException($"The secret '{secretName}' does not contain a string value.");
-                }
+            // Add the secret's JSON content to the configuration builder
+            builder.AddJsonStream(secretStream);
 
-                // Add the secret's JSON content to the configuration
-                var secretStream = new MemoryStream(Encoding.UTF8.GetBytes(secretResponse.SecretString));
-                builder.AddJsonStream(secretStream);
-
-                return builder;
-            }
-            catch (Exception ex)
-            {
-                // Log the error and provide context for easier debugging
-                throw new InvalidOperationException(
-                    $"Failed to retrieve or parse secret '{secretName}' from AWS Secrets Manager: {ex.Message}", ex);
-            }
+            return builder;
         }
     }
 }
