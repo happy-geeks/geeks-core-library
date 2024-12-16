@@ -608,7 +608,15 @@ WHERE id = ?id";
                 byte[] fileBytes;
                 if (!String.IsNullOrWhiteSpace(wiserItemFile.ContentUrl))
                 {
-                    fileBytes = await httpClientService.Client.GetByteArrayAsync(wiserItemFile.ContentUrl);
+                    var fileResult = await httpClientService.Client.GetAsync(wiserItemFile.ContentUrl);
+                    if (fileResult.StatusCode == HttpStatusCode.OK)
+                    {
+                        fileBytes = await fileResult.Content.ReadAsByteArrayAsync();
+                    }
+                    else
+                    {
+                        throw new Exception($"Could not download the file from the WiserItemFile URL: {wiserItemFile.ContentUrl}");
+                    }
                 }
                 else
                 {
