@@ -129,8 +129,20 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
 
         /// <summary>
         /// If the connection is not open yet, open it.
+        /// <param name="databaseConnection">The <see cref="IDatabaseConnection"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to RetrievePrivateKeyFromAwsSecretsManager() in this method.</param>
+        /// </summary>
+        Task EnsureOpenConnectionForReadingAsync(IDatabaseConnection databaseConnection);
+
+        /// <summary>
+        /// If the connection is not open yet, open it.
         /// </summary>
         Task EnsureOpenConnectionForWritingAsync();
+
+        /// <summary>
+        /// If the connection is not open yet, open it.
+        /// <param name="databaseConnection">The <see cref="IDatabaseConnection"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to RetrievePrivateKeyFromAwsSecretsManager() in this method.</param>
+        /// </summary>
+        Task EnsureOpenConnectionForWritingAsync(IDatabaseConnection databaseConnection);
 
         /// <summary>
         /// Change the connection strings that are used by the connections.
@@ -175,5 +187,11 @@ namespace GeeksCoreLibrary.Modules.Databases.Interfaces
         /// <param name="useWritingConnectionIfAvailable">Optional: Use the writing connection to get information, if there is one available. If we detect that your query contains a database modification, then we will always use the write connection string, no matter what you enter here.</param>
         /// <param name="useInsertIgnore">Optional: Whether to use INSERT IGNORE instead of INSERT, to ignore errors such as duplicate keys.</param>
         Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false);
+
+        /// <summary>
+        /// Get the private key for the SSH connection from AWS Secrets Manager.
+        /// </summary>
+        /// <returns></returns>
+        Task<string> RetrieveSshPrivateKeyFromAwsSecretsManagerAsync();
     }
 }

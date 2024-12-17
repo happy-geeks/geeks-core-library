@@ -6,7 +6,6 @@ using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.Unicode;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
@@ -17,7 +16,6 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.Databases.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -574,15 +572,19 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             AddConnectionCloseLogAsync(true, true);
         }
 
-        /// <summary>
-        /// If the connection is not open yet, open it.
-        /// </summary>
+        /// <inheritdoc />
         public async Task EnsureOpenConnectionForReadingAsync()
+        {
+            await EnsureOpenConnectionForReadingAsync(this);
+        }
+
+        /// <inheritdoc />
+        public async Task EnsureOpenConnectionForReadingAsync(IDatabaseConnection databaseConnection)
         {
             var createdNewConnection = false;
             if (ConnectionForReading == null)
             {
-                var (sshClient, localPort, forwardedPortLocal) = await ConnectToSsh(sshSettingsForReading, connectionStringForReading.Server, connectionStringForReading.Port);
+                var (sshClient, localPort, forwardedPortLocal) = await ConnectToSshAsync(databaseConnection, sshSettingsForReading, connectionStringForReading.Server, connectionStringForReading.Port);
                 SshClientForReading = sshClient;
                 ForwardedPortLocalForReading = forwardedPortLocal;
                 if (sshClient != null)
@@ -615,11 +617,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
         }
 
-        /// <summary>
-        /// If the connection is not open yet, open it.
-        /// </summary>
-        /// <returns></returns>
+        /// <inheritdoc />
         public async Task EnsureOpenConnectionForWritingAsync()
+        {
+            await EnsureOpenConnectionForWritingAsync(this);
+        }
+
+        /// <inheritdoc />
+        public async Task EnsureOpenConnectionForWritingAsync(IDatabaseConnection databaseConnection)
         {
             if (String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
             {
@@ -630,7 +635,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var createdNewConnection = false;
             if (ConnectionForWriting == null)
             {
-                var (sshClient, localPort, forwardedPortLocal) = await ConnectToSsh(sshSettingsForWriting, connectionStringForWriting.Server, connectionStringForWriting.Port);
+                var (sshClient, localPort, forwardedPortLocal) = await ConnectToSshAsync(databaseConnection, sshSettingsForWriting, connectionStringForWriting.Server, connectionStringForWriting.Port);
                 SshClientForWriting = sshClient;
                 ForwardedPortLocalForWriting = forwardedPortLocal;
                 if (sshClient != null)
@@ -773,6 +778,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
 
             return await ExecuteAsync(query.ToString(), useWritingConnectionIfAvailable);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> RetrieveSshPrivateKeyFromAwsSecretsManagerAsync()
+        {
+            var privateKey = await AwsSecretsManagerHelpers.GetAppSecretsFromAwsAsync($"{gclSettings.AwsSecretsManagerSettings.BaseDirectory}/rds-proxy-private-key", gclSettings.AwsSecretsManagerSettings);
+            return privateKey;
         }
 
         /// <summary>
@@ -1085,15 +1097,16 @@ SELECT LAST_INSERT_ID();";
         /// Connect to an SSH tunnel/server and forward the MySQL port through this tunnel.
         /// If no SSH settings are given, then this method will return null and will not setup an SSH tunnel.
         /// </summary>
+        /// <param name="databaseConnection">The <see cref="IDatabaseConnection"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to RetrievePrivateKeyFromAwsSecretsManager() in this method.</param>
         /// <param name="sshSettings">The SSH settings to use.</param>
         /// <param name="databaseServer">The host of the database that requires an SSH tunnel.</param>
         /// <param name="databasePort">The database port to use.</param>
         /// <returns>The <see cref="SshClient"/> and the port of the SSH tunnel.</returns>
         /// <exception cref="ArgumentException">When not all required settings have been set.</exception>
-        private async Task<(SshClient sshClient, uint BoundPort, ForwardedPortLocal ForwardedPortLocal)> ConnectToSsh(SshSettings sshSettings, string databaseServer, uint databasePort)
+        private async Task<(SshClient sshClient, uint BoundPort, ForwardedPortLocal ForwardedPortLocal)> ConnectToSshAsync(IDatabaseConnection databaseConnection, SshSettings sshSettings, string databaseServer, uint databasePort)
         {
             // Return null if we have no SSH settings.
-            if (String.IsNullOrEmpty(sshSettings?.Host) || String.IsNullOrEmpty(sshSettings?.Username))
+            if (String.IsNullOrEmpty(sshSettings?.Host) || String.IsNullOrEmpty(sshSettings.Username))
             {
                 return (null, 0, null);
             }
@@ -1126,7 +1139,7 @@ SELECT LAST_INSERT_ID();";
             }
             else if (sshSettings.RetrievePrivateKeyFromAwsSecretsManager)
             {
-                var privateKey = await AwsSecretsManagerHelpers.GetAppSecretsFromAwsAsync($"{gclSettings.AwsSecretsManagerSettings.BaseDirectory}/rds-proxy-private-key", gclSettings.AwsSecretsManagerSettings);
+                var privateKey = await databaseConnection.RetrieveSshPrivateKeyFromAwsSecretsManagerAsync();
                 using var privateKeyStream = new MemoryStream(Encoding.UTF8.GetBytes(privateKey));
                 authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(privateKeyStream, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
             }

@@ -10,7 +10,6 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
-using GeeksCoreLibrary.Modules.Amazon.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using LazyCache;
@@ -206,13 +205,25 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async Task EnsureOpenConnectionForReadingAsync()
         {
-            await databaseConnection.EnsureOpenConnectionForReadingAsync();
+            await EnsureOpenConnectionForReadingAsync(this);
+        }
+
+        /// <inheritdoc />
+        public async Task EnsureOpenConnectionForReadingAsync(IDatabaseConnection service)
+        {
+            await databaseConnection.EnsureOpenConnectionForReadingAsync(service);
         }
 
         /// <inheritdoc />
         public async Task EnsureOpenConnectionForWritingAsync()
         {
-            await databaseConnection.EnsureOpenConnectionForWritingAsync();
+            await EnsureOpenConnectionForWritingAsync(this);
+        }
+
+        /// <inheritdoc />
+        public async Task EnsureOpenConnectionForWritingAsync(IDatabaseConnection service)
+        {
+            await databaseConnection.EnsureOpenConnectionForWritingAsync(service);
         }
 
         /// <inheritdoc />
@@ -251,15 +262,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             return await databaseConnection.BulkInsertAsync(dataTable, tableName, useWritingConnectionIfAvailable, useInsertIgnore);
         }
 
-        // TODO: Fix private key retrieval caching
-        // public async Task<string> RetrievePrivateKeyFromAwsSecretsManager(AwsSecretsManagerSettings awsSecretsManagerSettings)
-        // {
-        //     // var cacheName = $"CachedDatabaseConnection_RetrievePrivateKeyFromAwsSecretsManager_{awsSecretsManagerSettings.BaseDirectory}_{branchesService.GetDatabaseNameFromCookie()}";
-        //     // return await cache.GetOrAddAsync(cacheName, async cacheEntry =>
-        //     // {
-        //     //     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
-        //     //     return await databaseConnection. (includeViews, databaseName);
-        //     // }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
-        // }
+        /// <inheritdoc />
+        public async Task<string> RetrieveSshPrivateKeyFromAwsSecretsManagerAsync()
+        {
+            var cacheName = $"CachedDatabaseConnection_SshPrivateKey_{gclSettings.AwsSecretsManagerSettings.BaseDirectory}_{branchesService.GetDatabaseNameFromCookie()}";
+            return await cache.GetOrAddAsync(cacheName, async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
+                return await databaseConnection.RetrieveSshPrivateKeyFromAwsSecretsManagerAsync();
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+        }
     }
 }
