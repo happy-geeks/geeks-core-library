@@ -12,16 +12,33 @@ public static class AwsSecretsManagerHelpers
 {
     public static async Task<string> GetAppSecretsFromAwsAsync(string secretName, AwsSecretsManagerSettings awsSecretsManagerSettings)
     {
-        if (String.IsNullOrWhiteSpace(secretName) || !ModelValidationHelpers.IsValid(awsSecretsManagerSettings))
+        if (String.IsNullOrWhiteSpace(secretName))
         {
-            throw new ArgumentException("Secret name, access key, secret key, and region cannot be null, empty, or whitespace.");
+            throw new ArgumentException("Secret name cannot be null, empty, or whitespace.");
         }
 
         // Set up AWS credentials using the provided accessKey and secretKey
-        var credentials = new BasicAWSCredentials(awsSecretsManagerSettings.AccessKey, awsSecretsManagerSettings.SecretKey);
+        // Determine AWS credentials
+        AWSCredentials credentials;
+
+        if (!String.IsNullOrWhiteSpace(awsSecretsManagerSettings?.AccessKey) && !String.IsNullOrWhiteSpace(awsSecretsManagerSettings.SecretKey))
+        {
+            // Use the provided accessKey and secretKey.
+            credentials = new BasicAWSCredentials(awsSecretsManagerSettings.AccessKey, awsSecretsManagerSettings.SecretKey);
+        }
+        else
+        {
+            // Fallback to default credentials from ~/.aws/credentials or environment variables.
+            credentials = FallbackCredentialsFactory.GetCredentials();
+        }
+
+        // Determine the AWS region
+        var region = !String.IsNullOrWhiteSpace(awsSecretsManagerSettings?.Region)
+            ? RegionEndpoint.GetBySystemName(awsSecretsManagerSettings.Region)
+            : FallbackRegionFactory.GetRegionEndpoint() ?? RegionEndpoint.EUCentral1;
 
         // Create the AWS Secrets Manager client with custom credentials
-        var client = new AmazonSecretsManagerClient(credentials, RegionEndpoint.GetBySystemName(awsSecretsManagerSettings.Region));
+        using var client = new AmazonSecretsManagerClient(credentials, region);
 
         try
         {
@@ -32,16 +49,16 @@ public static class AwsSecretsManagerHelpers
             });
 
             // Check if the secret has a valid string value
-            if (string.IsNullOrEmpty(secretResponse.SecretString))
+            if (String.IsNullOrEmpty(secretResponse.SecretString))
             {
                 throw new InvalidOperationException($"The secret '{secretName}' does not contain a string value.");
             }
 
             return secretResponse.SecretString;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            throw new InvalidOperationException($"Failed to retrieve or parse secret '{secretName}' from AWS Secrets Manager: {ex.Message}", ex);
+            throw new InvalidOperationException($"Failed to retrieve or parse secret '{secretName}' from AWS Secrets Manager: {exception.Message}", exception);
         }
     }
 }
