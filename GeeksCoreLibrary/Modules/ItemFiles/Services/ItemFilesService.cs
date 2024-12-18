@@ -650,15 +650,15 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                     throw new NotSupportedException("Unsupported file type.");
             }
 
+            var fillColor = MagickColors.Transparent;
+            if (!imageFormat.InList(MagickFormat.Gif, MagickFormat.Png, MagickFormat.WebP, MagickFormat.Tif, MagickFormat.Tiff, MagickFormat.Avif, MagickFormat.Jxl))
+            {
+                fillColor = MagickColors.White;
+            }
+
             byte[] outFileBytes;
             if (preferredWidth > 0 && preferredHeight > 0)
             {
-                var fillColor = MagickColors.Transparent;
-                if (!extension.InList(".gif", ".png", ".webp"))
-                {
-                    fillColor = MagickColors.White;
-                }
-
                 // GIF images are a bit different because they have multiple frames.
                 if (imageFormat == MagickFormat.Gif)
                 {
@@ -670,6 +670,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 
                     foreach (var frame in collection)
                     {
+                        if (fillColor != MagickColors.Transparent)
+                        {
+                            frame.BackgroundColor = fillColor;
+                            frame.Alpha(AlphaOption.Remove);
+                        }
+
                         switch (resizeMode)
                         {
                             case ResizeModes.Normal:
@@ -697,6 +703,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 else
                 {
                     using var image = new MagickImage(fileBytes);
+
+                    if (fillColor != MagickColors.Transparent)
+                    {
+                        image.BackgroundColor = fillColor;
+                        image.Alpha(AlphaOption.Remove);
+                    }
 
                     if (imageFormat.InList(MagickFormat.Jpg, MagickFormat.WebP))
                     {
@@ -741,6 +753,15 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                     // during the animation. More info here: http://www.imagemagick.org/Usage/anim_basics/#coalesce
                     collection.Coalesce();
 
+                    if (fillColor != MagickColors.Transparent)
+                    {
+                        foreach (var frame in collection)
+                        {
+                            frame.BackgroundColor = fillColor;
+                            frame.Alpha(AlphaOption.Remove);
+                        }
+                    }
+
                     // Now, after removing the original optimizations, optimize the result again.
                     // This can potentially reduce the file size by quite a bit.
                     collection.OptimizePlus();
@@ -751,6 +772,12 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                 else
                 {
                     using var image = new MagickImage(fileBytes);
+
+                    if (fillColor != MagickColors.Transparent)
+                    {
+                        image.BackgroundColor = fillColor;
+                        image.Alpha(AlphaOption.Remove);
+                    }
 
                     if (imageFormat.InList(MagickFormat.Jpg, MagickFormat.WebP))
                     {
