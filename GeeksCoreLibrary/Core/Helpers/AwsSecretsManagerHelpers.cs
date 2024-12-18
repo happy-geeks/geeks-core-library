@@ -17,7 +17,6 @@ public static class AwsSecretsManagerHelpers
             throw new ArgumentException("Secret name cannot be null, empty, or whitespace.");
         }
 
-        // Set up AWS credentials using the provided accessKey and secretKey
         // Determine AWS credentials
         AWSCredentials credentials;
 
