@@ -18,4 +18,5 @@ public class Constants
     public const string LinkTypeNumberKey = "linkTypeNumber";
     public const string DefaultInputType = "text";
     public const string LinkOrderingFieldName = "__ordering";
+    public const int MinimumDefaultAwsSecretsCacheDurationInMinutes = 60;
 }
