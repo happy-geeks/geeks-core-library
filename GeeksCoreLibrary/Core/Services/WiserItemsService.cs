@@ -16,6 +16,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Exceptions;
+using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using GeeksCoreLibrary.Modules.Databases.Services;
@@ -150,7 +151,7 @@ namespace GeeksCoreLibrary.Core.Services
 
                     return wiserItem;
                 }
-                catch (MySqlException mySqlException)
+                catch (GclQueryException queryException)
                 {
                     if (!createNewTransaction)
                     {
@@ -159,7 +160,7 @@ namespace GeeksCoreLibrary.Core.Services
 
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
@@ -318,11 +319,11 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
 
                     return wiserItem;
                 }
-                catch (MySqlException mySqlException)
+                catch (GclQueryException queryException)
                 {
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
@@ -567,7 +568,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
 
                     return result;
                 }
-                catch (MySqlException mySqlException)
+                catch (GclQueryException queryException)
                 {
                     if (!createNewTransaction)
                     {
@@ -576,7 +577,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
 
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
@@ -1304,7 +1305,7 @@ SET @saveHistory = ?saveHistoryGcl;
 
                     return wiserItem;
                 }
-                catch (MySqlException mySqlException)
+                catch (GclQueryException queryException)
                 {
                     if (!createNewTransaction)
                     {
@@ -1313,7 +1314,7 @@ SET @saveHistory = ?saveHistoryGcl;
 
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
@@ -1670,7 +1671,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
 
                     return result;
                 }
-                catch (MySqlException mySqlException)
+                catch (GclQueryException queryException)
                 {
                     if (!createNewTransaction)
                     {
@@ -1679,7 +1680,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
 
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
@@ -4269,11 +4270,11 @@ WHERE id = ?saveDetailId";
 
                     transactionCompleted = true;
                 }
-                catch (MySqlException mySqlException)
+                catch (GclQueryException queryException)
                 {
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;

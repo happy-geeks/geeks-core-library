@@ -16,10 +16,12 @@ using GeeksCoreLibrary.Components.OrderProcess.Interfaces;
 using GeeksCoreLibrary.Components.OrderProcess.Models;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Models;
+using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
@@ -357,11 +359,11 @@ namespace GeeksCoreLibrary.Components.OrderProcess
 
                             transactionCompleted = true;
                         }
-                        catch (MySqlException mySqlException)
+                        catch (GclQueryException queryException)
                         {
                             await DatabaseConnection.RollbackTransactionAsync(false);
 
-                            if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                            if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                             {
                                 // Exception is a deadlock or something similar, retry the transaction.
                                 retries++;
