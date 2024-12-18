@@ -11,6 +11,16 @@ namespace GeeksCoreLibrary.Core.Helpers;
 
 public static class AwsSecretsManagerHelpers
 {
+    /// <summary>
+    /// Get a specific secret from AWS Secrets Manager. This works with credentials from the appsettings.json file, the AWS CLI or in applications that run within AWS ECR.<br/>
+    /// Note: This method does not cache the secret. It is recommended to cache the secret in the application to reduce the number of AWS API calls, if this is called from other places than the Startup/Program class.<br/>
+    /// Note 2: This is a static method and not a service, because this needs to be called when the application starts, before our services are registered with the DI container.
+    /// </summary>
+    /// <param name="secretName"></param>
+    /// <param name="awsSecretsManagerSettings"></param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentException"></exception>
+    /// <exception cref="InvalidOperationException"></exception>
     public static async Task<string> GetAppSecretsFromAwsAsync(string secretName, AwsSecretsManagerSettings awsSecretsManagerSettings)
     {
         if (String.IsNullOrWhiteSpace(secretName))
