@@ -360,6 +360,7 @@ namespace GeeksCoreLibrary.Core.Extensions
             services.Decorate<IRolesService, CachedRolesService>();
             services.Decorate<IBarcodesService, CachedBarcodesService>();
             services.Decorate<IAmazonS3Service, CachedAmazonS3Service>();
+            services.Decorate<IAmazonSecretsManagerService, CachedAmazonSecretsManagerService>();
 
             if (gclSettings.UseLegacyWiser1TemplateModule)
             {

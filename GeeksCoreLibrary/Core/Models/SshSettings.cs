@@ -42,8 +42,19 @@ public class SshSettings
 
     /// <summary>
     /// Gets or sets the passphrase for the private key file, if applicable.
+    /// The contents of the private key file for the SSH connection, if applicable.
+    /// </summary>
+    public string PrivateKeyContents { get; set; }
+
+    /// <summary>
+    /// The passphrase for the private key file, if applicable.
     /// </summary>
     public string PrivateKeyPassphrase { get; set; }
+
+    /// <summary>
+    /// Indicates whether the private key contents should be retrieved from AWS Secrets Manager.
+    /// </summary>
+    public bool RetrievePrivateKeyFromAwsSecretsManager { get; set; }
 
     /// <summary>
     /// Gets or sets the host key fingerprint to expect from the SSH server. This can be left empty to not validate the host fingerprint,
