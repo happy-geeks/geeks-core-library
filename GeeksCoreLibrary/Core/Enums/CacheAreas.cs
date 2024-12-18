@@ -13,5 +13,6 @@ public enum CacheAreas
     ShoppingBaskets,
     DataSelectors,
     Configurators,
-    WebPages
+    WebPages,
+    AwsSecrets
 }

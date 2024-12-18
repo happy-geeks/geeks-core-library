@@ -201,6 +201,11 @@ namespace GeeksCoreLibrary.Core.Models
         public TimeSpan DefaultQueryCacheDuration { get; set; } = new(1, 0, 0);
 
         /// <summary>
+        /// The amount of time to cache AWS secrets.
+        /// </summary>
+        public TimeSpan DefaultAwsSecretsCacheDuration { get; set; } = new(1, 0, 0);
+
+        /// <summary>
         /// The amount of time to cache objects.
         /// </summary>
         public TimeSpan DefaultSeoModuleCacheDuration { get; set; } = new(1, 0, 0);

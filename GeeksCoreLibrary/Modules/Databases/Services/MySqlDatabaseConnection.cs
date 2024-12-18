@@ -13,6 +13,7 @@ using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Amazon.Interfaces;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
@@ -46,6 +47,8 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         private readonly IWebHostEnvironment webHostEnvironment;
         private readonly ILogger<MySqlDatabaseConnection> logger;
         private readonly IBranchesService branchesService;
+        private readonly IAmazonSecretsManagerService amazonSecretsManagerService;
+
         private MySqlConnectionStringBuilder connectionStringForReading;
         private MySqlConnectionStringBuilder connectionStringForWriting;
 
@@ -80,6 +83,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public MySqlDatabaseConnection(IOptions<GclSettings> gclSettings,
             ILogger<MySqlDatabaseConnection> logger,
             IBranchesService branchesService,
+            IAmazonSecretsManagerService amazonSecretsManagerService,
             IHttpContextAccessor httpContextAccessor = null,
             IWebHostEnvironment webHostEnvironment = null)
         {
@@ -87,6 +91,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             this.webHostEnvironment = webHostEnvironment;
             this.logger = logger;
             this.branchesService = branchesService;
+            this.amazonSecretsManagerService = amazonSecretsManagerService;
             this.gclSettings = gclSettings.Value;
 
             instanceId = Guid.NewGuid();
@@ -568,23 +573,17 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         {
             logger.LogTrace($"Disposing instance of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
             dataReader?.Dispose();
-            AddConnectionCloseLogAsync(false, true);
-            AddConnectionCloseLogAsync(true, true);
+            _ = AddConnectionCloseLogAsync(false, true);
+            _ = AddConnectionCloseLogAsync(true, true);
         }
 
         /// <inheritdoc />
         public async Task EnsureOpenConnectionForReadingAsync()
         {
-            await EnsureOpenConnectionForReadingAsync(this);
-        }
-
-        /// <inheritdoc />
-        public async Task EnsureOpenConnectionForReadingAsync(IDatabaseConnection databaseConnection)
-        {
             var createdNewConnection = false;
             if (ConnectionForReading == null)
             {
-                var (sshClient, localPort, forwardedPortLocal) = await ConnectToSshAsync(databaseConnection, sshSettingsForReading, connectionStringForReading.Server, connectionStringForReading.Port);
+                var (sshClient, localPort, forwardedPortLocal) = await ConnectToSshAsync(sshSettingsForReading, connectionStringForReading.Server, connectionStringForReading.Port);
                 SshClientForReading = sshClient;
                 ForwardedPortLocalForReading = forwardedPortLocal;
                 if (sshClient != null)
@@ -620,12 +619,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async Task EnsureOpenConnectionForWritingAsync()
         {
-            await EnsureOpenConnectionForWritingAsync(this);
-        }
-
-        /// <inheritdoc />
-        public async Task EnsureOpenConnectionForWritingAsync(IDatabaseConnection databaseConnection)
-        {
             if (String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
             {
                 ConnectedDatabaseForWriting = null;
@@ -635,7 +628,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             var createdNewConnection = false;
             if (ConnectionForWriting == null)
             {
-                var (sshClient, localPort, forwardedPortLocal) = await ConnectToSshAsync(databaseConnection, sshSettingsForWriting, connectionStringForWriting.Server, connectionStringForWriting.Port);
+                var (sshClient, localPort, forwardedPortLocal) = await ConnectToSshAsync(sshSettingsForWriting, connectionStringForWriting.Server, connectionStringForWriting.Port);
                 SshClientForWriting = sshClient;
                 ForwardedPortLocalForWriting = forwardedPortLocal;
                 if (sshClient != null)
@@ -778,13 +771,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
 
             return await ExecuteAsync(query.ToString(), useWritingConnectionIfAvailable);
-        }
-
-        /// <inheritdoc />
-        public async Task<string> RetrieveSshPrivateKeyFromAwsSecretsManagerAsync()
-        {
-            var privateKey = await AwsSecretsManagerHelpers.GetAppSecretsFromAwsAsync($"{gclSettings.AwsSecretsManagerSettings.BaseDirectory}/rds-proxy-private-key", gclSettings.AwsSecretsManagerSettings);
-            return privateKey;
         }
 
         /// <summary>
@@ -1097,13 +1083,12 @@ SELECT LAST_INSERT_ID();";
         /// Connect to an SSH tunnel/server and forward the MySQL port through this tunnel.
         /// If no SSH settings are given, then this method will return null and will not setup an SSH tunnel.
         /// </summary>
-        /// <param name="databaseConnection">The <see cref="IDatabaseConnection"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to RetrievePrivateKeyFromAwsSecretsManager() in this method.</param>
         /// <param name="sshSettings">The SSH settings to use.</param>
         /// <param name="databaseServer">The host of the database that requires an SSH tunnel.</param>
         /// <param name="databasePort">The database port to use.</param>
         /// <returns>The <see cref="SshClient"/> and the port of the SSH tunnel.</returns>
         /// <exception cref="ArgumentException">When not all required settings have been set.</exception>
-        private async Task<(SshClient sshClient, uint BoundPort, ForwardedPortLocal ForwardedPortLocal)> ConnectToSshAsync(IDatabaseConnection databaseConnection, SshSettings sshSettings, string databaseServer, uint databasePort)
+        private async Task<(SshClient sshClient, uint BoundPort, ForwardedPortLocal ForwardedPortLocal)> ConnectToSshAsync(SshSettings sshSettings, string databaseServer, uint databasePort)
         {
             // Return null if we have no SSH settings.
             if (String.IsNullOrEmpty(sshSettings?.Host) || String.IsNullOrEmpty(sshSettings.Username))
@@ -1139,7 +1124,7 @@ SELECT LAST_INSERT_ID();";
             }
             else if (sshSettings.RetrievePrivateKeyFromAwsSecretsManager)
             {
-                var privateKey = await databaseConnection.RetrieveSshPrivateKeyFromAwsSecretsManagerAsync();
+                var privateKey = await amazonSecretsManagerService.GetSshPrivateKeyFromAwsSecretsManagerAsync();
                 using var privateKeyStream = new MemoryStream(Encoding.UTF8.GetBytes(privateKey));
                 authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(privateKeyStream, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
             }

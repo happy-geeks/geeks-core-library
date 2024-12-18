@@ -205,25 +205,13 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         /// <inheritdoc />
         public async Task EnsureOpenConnectionForReadingAsync()
         {
-            await EnsureOpenConnectionForReadingAsync(this);
-        }
-
-        /// <inheritdoc />
-        public async Task EnsureOpenConnectionForReadingAsync(IDatabaseConnection service)
-        {
-            await databaseConnection.EnsureOpenConnectionForReadingAsync(service);
+            await databaseConnection.EnsureOpenConnectionForReadingAsync();
         }
 
         /// <inheritdoc />
         public async Task EnsureOpenConnectionForWritingAsync()
         {
-            await EnsureOpenConnectionForWritingAsync(this);
-        }
-
-        /// <inheritdoc />
-        public async Task EnsureOpenConnectionForWritingAsync(IDatabaseConnection service)
-        {
-            await databaseConnection.EnsureOpenConnectionForWritingAsync(service);
+            await databaseConnection.EnsureOpenConnectionForWritingAsync();
         }
 
         /// <inheritdoc />
@@ -260,17 +248,6 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
         public async Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false)
         {
             return await databaseConnection.BulkInsertAsync(dataTable, tableName, useWritingConnectionIfAvailable, useInsertIgnore);
-        }
-
-        /// <inheritdoc />
-        public async Task<string> RetrieveSshPrivateKeyFromAwsSecretsManagerAsync()
-        {
-            var cacheName = $"CachedDatabaseConnection_SshPrivateKey_{gclSettings.AwsSecretsManagerSettings.BaseDirectory}_{branchesService.GetDatabaseNameFromCookie()}";
-            return await cache.GetOrAddAsync(cacheName, async cacheEntry =>
-            {
-                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
-                return await databaseConnection.RetrieveSshPrivateKeyFromAwsSecretsManagerAsync();
-            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
         }
     }
 }
