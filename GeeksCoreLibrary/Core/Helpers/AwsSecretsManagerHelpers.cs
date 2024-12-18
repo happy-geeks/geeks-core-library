@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Amazon;
 using Amazon.Runtime;
+using Amazon.Runtime.CredentialManagement;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
 using GeeksCoreLibrary.Modules.Amazon.Models;
@@ -27,8 +28,12 @@ public static class AwsSecretsManagerHelpers
         }
         else
         {
-            // Fallback to default credentials from ~/.aws/credentials or environment variables.
-            credentials = FallbackCredentialsFactory.GetCredentials();
+            var chain = new CredentialProfileStoreChain();
+            if (!chain.TryGetAWSCredentials(awsSecretsManagerSettings?.ProfileName ?? "default", out credentials))
+            {
+                // Fallback to default credentials from ~/.aws/credentials or environment variables.
+                credentials = FallbackCredentialsFactory.GetCredentials();
+            }
         }
 
         // Determine the AWS region
