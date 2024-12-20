@@ -238,7 +238,8 @@ namespace GeeksCoreLibrary.Core.Extensions
                     salt = tempSalt;
                 }
 
-                using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, salt, 2);
+                var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
+                using var deriveBytes = new Rfc2898DeriveBytes(passwordBytes, salt, 2, HashAlgorithmName.SHA1);
                 const int KeySize = 256;
                 const int BlockSize = 128;
                 using var aesManaged = Aes.Create();
@@ -320,9 +321,10 @@ namespace GeeksCoreLibrary.Core.Extensions
                     salt = tempSalt;
                 }
 
+                var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
                 var inputBytes = Convert.FromBase64String(input);
 
-                using var deriveBytes = new Rfc2898DeriveBytes(encryptionKey, salt, 2);
+                using var deriveBytes = new Rfc2898DeriveBytes(passwordBytes, salt, 2, HashAlgorithmName.SHA1);
                 const int KeySize = 256;
                 const int BlockSize = 128;
 
@@ -444,7 +446,8 @@ namespace GeeksCoreLibrary.Core.Extensions
                 aes.Mode = CipherMode.CBC;
 
                 // Derive the key and IV from the password and the salt.
-                var rfc2898DeriveBytes = new Rfc2898DeriveBytes(encryptionKey, saltBytes, 2);
+                var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
+                var rfc2898DeriveBytes = new Rfc2898DeriveBytes(passwordBytes, saltBytes, 2, HashAlgorithmName.SHA1);
                 var keyBytes = rfc2898DeriveBytes.GetBytes(aes.KeySize / 8);
                 var ivBytes = rfc2898DeriveBytes.GetBytes(aes.BlockSize / 8);
 
@@ -532,7 +535,8 @@ namespace GeeksCoreLibrary.Core.Extensions
                 aes.Mode = CipherMode.CBC;
 
                 // Derive the key and IV from the password and the salt.
-                var rfc2898DeriveBytes = new Rfc2898DeriveBytes(encryptionKey, saltBytes, 2);
+                var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
+                var rfc2898DeriveBytes = new Rfc2898DeriveBytes(passwordBytes, saltBytes, 2, HashAlgorithmName.SHA1);
                 var keyBytes = rfc2898DeriveBytes.GetBytes(aes.KeySize / 8);
                 var ivBytes = rfc2898DeriveBytes.GetBytes(aes.BlockSize / 8);
                 aes.Key = keyBytes;

@@ -54,7 +54,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, int preferredWidth, int preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
         {
             if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId))
             {
@@ -99,7 +99,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, int preferredWidth, int preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
+        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
         {
             if (!TryGetFinalId(itemLinkId, encryptedItemLinkId, out var finalItemLinkId))
             {
@@ -140,7 +140,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+        public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
         {
             if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId))
             {
@@ -178,7 +178,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         }
 
         /// <inheritdoc />
-        public async Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+        public async Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
         {
             if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId) || finalItemId == 0 || String.IsNullOrWhiteSpace(filename))
             {
@@ -416,7 +416,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         /// <param name="resizeMode"></param>
         /// <param name="anchorPosition"></param>
         /// <returns></returns>
-        private async Task<(byte[] FileBytes, DateTime LastModified)> HandleImage(DataRow dataRow, string saveLocation, string propertyName, int preferredWidth, int preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+        private async Task<(byte[] FileBytes, DateTime LastModified)> HandleImage(DataRow dataRow, string saveLocation, string propertyName, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
         {
             if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
             {
@@ -613,13 +613,13 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
         /// <param name="resizeMode">The method of resizing.</param>
         /// <param name="anchorPosition">The anchor position that the <see cref="ResizeModes.Crop"/> and <see cref="ResizeModes.Fill"/> resize modes use.</param>
         /// <returns>The byte array of the resized image.</returns>
-        private async Task<byte[]> ResizeImageWithImageMagick(byte[] fileBytes, string saveLocation, bool imageIsProtected, int preferredWidth, int preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+        private async Task<byte[]> ResizeImageWithImageMagick(byte[] fileBytes, string saveLocation, bool imageIsProtected, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
         {
             var extension = Path.GetExtension(saveLocation);
 
             // Determine image format.
             MagickFormat imageFormat;
-            var imageQuality = 100;
+            var imageQuality = 100u;
             switch (extension.ToLowerInvariant())
             {
                 case ".jpg":
@@ -635,7 +635,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services
                     break;
                 case ".webp":
                     imageFormat = MagickFormat.WebP;
-                    if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("image_webp_quality", "80"), out imageQuality))
+                    if (!UInt32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync("image_webp_quality", "80"), out imageQuality))
                     {
                         imageQuality = 80;
                     }

@@ -55,7 +55,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using WebMarkupMin.AspNetCore7;
+using WebMarkupMin.AspNetCoreLatest;
 using WebMarkupMin.Core;
 
 [assembly: AspMvcAreaViewLocationFormat("/Modules/{2}/Views/{1}/{0}.cshtml")]
@@ -199,8 +199,9 @@ namespace GeeksCoreLibrary.Core.Extensions
         /// </summary>
         /// <param name="services">The <see cref="IServiceCollection"/> of the startup.</param>
         /// <param name="configuration">The <see cref="IConfiguration"/> for reading the app settings.</param>
-        /// <param name="useCaching">Whether or not to use caching. Default is true.</param>
-        /// <param name="isApi">Set this to true if you're using the GCL in an API, so that no XSRF protection will be added.</param>
+        /// <param name="useCaching">Optional: Whether to use caching. Default is <c>true</c>.</param>
+        /// <param name="isApi">Optional: Set this to true if you're using the GCL in an API, so that no XSRF protection will be added. Default is <c>false</c>.</param>
+        /// <param name="isWeb">Optional: Whether the app is a web app. Default is <c>true</c>.</param>
         /// <returns>The <see cref="IServiceCollection"/> of the startup.</returns>
         public static IServiceCollection AddGclServices(this IServiceCollection services, IConfiguration configuration, bool useCaching = true, bool isApi = false, bool isWeb = true)
         {
@@ -228,12 +229,12 @@ namespace GeeksCoreLibrary.Core.Extensions
             if (isWeb)
             {
                 services.AddHealthChecks()
-                    .AddMySql(gclSettings.ConnectionString, name: "MySqlRead", tags: new []{"Database"})
-                    .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, new []{"WTS", "Wiser Task Scheduler"})
-                    .AddCheck<DatabaseHealthService>("Database Health Check", tags: new[]{ "Database" });
+                    .AddMySql(gclSettings.ConnectionString, name: "MySqlRead", tags: ["Database"])
+                    .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, ["WTS", "Wiser Task Scheduler"])
+                    .AddCheck<DatabaseHealthService>("Database Health Check", tags: ["Database"]);
                 if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
                 {
-                    services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite", tags: new []{"Database"});
+                    services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite", tags: ["Database"]);
                 }
 
                 // Set default settings for JSON.NET.

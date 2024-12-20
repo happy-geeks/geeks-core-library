@@ -13,7 +13,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Helpers
         /// <param name="sourceBitmap">Source image as an <see cref="MagickImage"/> object.</param>
         /// <param name="width">The desired width in pixels.</param>
         /// <param name="height">The desired height in pixels.</param>
-        public static void Normal(IMagickImage<byte> sourceBitmap, int width, int height)
+        public static void Normal(IMagickImage<byte> sourceBitmap, uint width, uint height)
         {
             var size = new MagickGeometry(width, height);
             sourceBitmap.Resize(size);
@@ -26,7 +26,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Helpers
         /// <param name="sourceBitmap">Source image as an <see cref="MagickImage"/> object.</param>
         /// <param name="width">The desired width in pixels.</param>
         /// <param name="height">The desired height in pixels.</param>
-        public static void Stretch(IMagickImage<byte> sourceBitmap, int width, int height)
+        public static void Stretch(IMagickImage<byte> sourceBitmap, uint width, uint height)
         {
             var size = new MagickGeometry(width, height) { IgnoreAspectRatio = true };
             sourceBitmap.Resize(size);
@@ -40,7 +40,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Helpers
         /// <param name="width">The desired width in pixels.</param>
         /// <param name="height">The desired height in pixels.</param>
         /// <param name="anchorPosition">The position from which the source bitmap will be copied from.</param>
-        public static void Crop(IMagickImage<byte> sourceBitmap, int width, int height, AnchorPositions anchorPosition = AnchorPositions.Center)
+        public static void Crop(IMagickImage<byte> sourceBitmap, uint width, uint height, AnchorPositions anchorPosition = AnchorPositions.Center)
         {
             var biggest = Math.Max(width, height);
 
@@ -55,7 +55,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Helpers
             };
 
             sourceBitmap.Crop(size, ConvertAnchorPositionToGravity(anchorPosition));
-            sourceBitmap.RePage();
+            sourceBitmap.ResetPage();
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Helpers
         /// <param name="height">The desired height in pixels.</param>
         /// <param name="anchorPosition">The position from which the source bitmap will be copied from.</param>
         /// <param name="fillColor">The color that will fill the empty space.</param>
-        public static void Fill(IMagickImage<byte> sourceBitmap, int width, int height, AnchorPositions anchorPosition = AnchorPositions.Center, MagickColor fillColor = null)
+        public static void Fill(IMagickImage<byte> sourceBitmap, uint width, uint height, AnchorPositions anchorPosition = AnchorPositions.Center, MagickColor fillColor = null)
         {
             var smallest = Math.Min(width, height);
 
@@ -80,7 +80,8 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Helpers
                 fillColor = MagickColors.Transparent;
             }
 
-            sourceBitmap.Extent(width, height, ConvertAnchorPositionToGravity(anchorPosition), fillColor);
+            sourceBitmap.BackgroundColor = fillColor;
+            sourceBitmap.Extent(width, height, ConvertAnchorPositionToGravity(anchorPosition));
         }
 
         private static Gravity ConvertAnchorPositionToGravity(AnchorPositions anchorPosition)

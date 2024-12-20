@@ -28,7 +28,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
         [Route("/wiser-image.gcl")]
         [HttpGet]
         public async Task<IActionResult> WiserItemImage([FromQuery] ulong itemId, [FromQuery] string propertyName,
-            [FromQuery] string fileName, [FromQuery] int preferredWidth = 0, [FromQuery] int preferredHeight = 0,
+            [FromQuery] string fileName, [FromQuery] uint preferredWidth = 0, [FromQuery] uint preferredHeight = 0,
             [FromQuery] ResizeModes resizeMode = ResizeModes.Normal,
             [FromQuery] AnchorPositions anchorPosition = AnchorPositions.Center, [FromQuery] int fileNumber = 0,
             [FromQuery] string fileType = null, [FromQuery] string type = null,

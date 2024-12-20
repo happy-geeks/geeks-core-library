@@ -1,6 +1,7 @@
 ﻿using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using ImageMagick;
+using ImageMagick.Factories;
 using ZXing;
 using ZXing.Common;
 

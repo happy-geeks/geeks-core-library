@@ -20,7 +20,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Interfaces
         /// <param name="encryptedItemId">Optional: When the image is protected, the encrypted item ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
         /// <param name="entityType">Optional: If there is a separate wiser_itemfile table for the specified item, then enter the entity type here so that we can find it.</param>
         /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-        Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, int preferredWidth, int preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
+        Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
 
         /// <summary>
         /// Attempts to retrieve an image linked to a link between two items. Will return a no-image if no image was found. A 404 status will be returned if a no-image file could not be found either.
@@ -36,7 +36,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Interfaces
         /// <param name="encryptedItemLinkId">Optional: When the image is protected, the encrypted item link ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
         /// <param name="linkType">Optional: If there is a separate wiser_itemfile table for the specified item link, then enter the link type number here so that we can find it.</param>
         /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-        Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, int preferredWidth, int preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0);
+        Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0);
 
         /// <summary>
         /// Attempts to retrieve an image directly, via file ID. Will return a no-image if no image was found. A 404 status will be returned if a no-image file could not be found either.
@@ -50,7 +50,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Interfaces
         /// <param name="encryptedItemId">Optional: When the image is protected, the encrypted item ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
         /// <param name="entityType">Optional: If there is a separate wiser_itemfile table for the specified item, then enter the entity type here so that we can find it.</param>
         /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-        Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
+        Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
 
         /// <summary>
         /// Attempts to retrieve an image based on the image's filename. Will return a no-image if no image was found. A 404 status will be returned if a no-image file could not be found either.
@@ -65,7 +65,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Interfaces
         /// <param name="encryptedItemId">Optional: When the image is protected, the encrypted item ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
         /// <param name="entityType">Optional: If there is a separate wiser_itemfile table for the specified item, then enter the entity type here so that we can find it.</param>
         /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-        Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, int preferredWidth, int preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
+        Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
 
         /// <summary>
         /// Attempts to retrieve a file linked to an item. A 404 status will be returned if no file was found.
