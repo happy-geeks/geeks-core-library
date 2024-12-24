@@ -31,14 +31,14 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 {
     public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     {
-        public static readonly List<int> MySqlErrorCodesToRetry = new()
+        public static readonly List<MySqlErrorCode> MySqlErrorCodesToRetry = new()
         {
-            (int) MySqlErrorCode.LockDeadlock,
-            (int) MySqlErrorCode.LockWaitTimeout,
-            (int) MySqlErrorCode.UnableToConnectToHost,
-            (int) MySqlErrorCode.TooManyUserConnections,
-            (int) MySqlErrorCode.ConnectionCountError,
-            (int) MySqlErrorCode.TableDefinitionChanged
+            MySqlErrorCode.LockDeadlock,
+            MySqlErrorCode.LockWaitTimeout,
+            MySqlErrorCode.UnableToConnectToHost,
+            MySqlErrorCode.TooManyUserConnections,
+            MySqlErrorCode.ConnectionCountError,
+            MySqlErrorCode.TableDefinitionChanged
         };
 
         private const string Localhost = "127.0.0.1";
@@ -173,7 +173,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             catch (InvalidOperationException invalidOperationException)
             {
-                if (retryCount >= gclSettings.MaximumRetryCountForQueries || !invalidOperationException.Message.Contains("This MySqlConnection is already in use", StringComparison.OrdinalIgnoreCase))
+                if (retryCount >= gclSettings.MaximumRetryCountForQueries || !MySqlHelpers.IsErrorToRetry(invalidOperationException))
                 {
                     logger.LogError(invalidOperationException, "Error trying to run this query: {query}", query);
                     throw new GclQueryException("Error trying to run query", query, invalidOperationException);
@@ -187,22 +187,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // Never retry single queries if we're in a transaction, because transactions will get rolled back when a deadlock occurs,
                 // so retrying a single query in a transaction is not very useful on most/all cases.
                 // Also, if we've reached the maximum number of retries, don't retry anymore.
-                if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries)
+                if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries || !MySqlHelpers.IsErrorToRetry(mySqlException))
                 {
                     logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                     throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
                 // If we're not in a transaction, retry the query if it's a deadlock.
-                if (MySqlErrorCodesToRetry.Contains(mySqlException.Number))
-                {
-                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
-                    return await GetAsync(query, retryCount + 1, cleanUp, useWritingConnectionIfAvailable);
-                }
-
-                // For any other errors, just throw the exception.
-                logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                throw new GclQueryException("Error trying to run query", query, mySqlException);
+                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                return await GetAsync(query, retryCount + 1, cleanUp, useWritingConnectionIfAvailable);
             }
             finally
             {
@@ -263,7 +256,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             catch (InvalidOperationException invalidOperationException)
             {
-                if (retryCount >= gclSettings.MaximumRetryCountForQueries || !invalidOperationException.Message.Contains("This MySqlConnection is already in use", StringComparison.OrdinalIgnoreCase))
+                if (retryCount >= gclSettings.MaximumRetryCountForQueries || !MySqlHelpers.IsErrorToRetry(invalidOperationException))
                 {
                     logger.LogError(invalidOperationException, "Error trying to run this query: {query}", query);
                     throw new GclQueryException("Error trying to run query", query, invalidOperationException);
@@ -277,22 +270,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // Never retry single queries if we're in a transaction, because transactions will get rolled back when a deadlock occurs,
                 // so retrying a single query in a transaction is not very useful on most/all cases.
                 // Also, if we've reached the maximum number of retries, don't retry anymore.
-                if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries)
+                if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries || !MySqlHelpers.IsErrorToRetry(mySqlException))
                 {
                     logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                     throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
                 // If we're not in a transaction, retry the query if it's a deadlock.
-                if (MySqlErrorCodesToRetry.Contains(mySqlException.Number))
-                {
-                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
-                    return await ExecuteAsync(query, retryCount + 1, useWritingConnectionIfAvailable, cleanUp);
-                }
-
-                // For any other errors, just throw the exception.
-                logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                throw new GclQueryException("Error trying to run query", query, mySqlException);
+                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                return await ExecuteAsync(query, retryCount + 1, useWritingConnectionIfAvailable, cleanUp);
             }
             finally
             {
@@ -397,7 +383,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             }
             catch (InvalidOperationException invalidOperationException)
             {
-                if (retryCount >= gclSettings.MaximumRetryCountForQueries || !invalidOperationException.Message.Contains("This MySqlConnection is already in use", StringComparison.OrdinalIgnoreCase))
+                if (retryCount >= gclSettings.MaximumRetryCountForQueries || !MySqlHelpers.IsErrorToRetry(invalidOperationException))
                 {
                     logger.LogError(invalidOperationException, "Error trying to run this query: {query}", query);
                     throw new GclQueryException("Error trying to run query", query, invalidOperationException);
@@ -411,22 +397,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 // Never retry single queries if we're in a transaction, because transactions will get rolled back when a deadlock occurs,
                 // so retrying a single query in a transaction is not very useful on most/all cases.
                 // Also, if we've reached the maximum number of retries, don't retry anymore.
-                if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries)
+                if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries || !MySqlHelpers.IsErrorToRetry(mySqlException))
                 {
                     logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
                     throw new GclQueryException("Error trying to run query", query, mySqlException);
                 }
 
                 // If we're not in a transaction, retry the query if it's a deadlock.
-                if (MySqlErrorCodesToRetry.Contains(mySqlException.Number))
-                {
-                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
-                    return await InsertRecordAsync(query, retryCount + 1, useWritingConnectionIfAvailable);
-                }
-
-                // For any other errors, just throw the exception.
-                logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
-                throw new GclQueryException("Error trying to run query", query, mySqlException);
+                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                return await InsertRecordAsync(query, retryCount + 1, useWritingConnectionIfAvailable);
             }
             finally
             {
@@ -844,7 +823,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             {
                 // Checks if the exception is about the timezone or something else related to MySQL.
                 // Not setting timezones when they are not available should not be logged as en error.
-                if (mySqlException.Number == 1298)
+                if (mySqlException.ErrorCode == MySqlErrorCode.UnknownTimeZone)
                 {
                     logger.LogInformation($"The time zone is not set to '{gclSettings.DatabaseTimeZone}', because that timezone is not available in the database.");
                 }

@@ -12,10 +12,12 @@ using GeeksCoreLibrary.Components.OrderProcess.Enums;
 using GeeksCoreLibrary.Components.ShoppingBasket.Interfaces;
 using GeeksCoreLibrary.Components.ShoppingBasket.Models;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
@@ -551,7 +553,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
                 }
-                catch (MySqlException mySqlException)
+                catch (GclQueryException queryException)
                 {
                     if (!createNewTransaction)
                     {
@@ -560,7 +562,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
@@ -904,11 +906,11 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
                 }
-                catch (MySqlException mySqlException)
+                catch (GclQueryException queryException)
                 {
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
@@ -1875,7 +1877,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
                 }
-                catch (MySqlException mySqlException)
+                catch (GclQueryException queryException)
                 {
                     if (!createNewTransaction)
                     {
@@ -1884,7 +1886,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
@@ -1988,7 +1990,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     if (createNewTransaction) await databaseConnection.CommitTransactionAsync();
                     transactionCompleted = true;
                 }
-                catch (MySqlException mySqlException)
+                catch (GclQueryException queryException)
                 {
                     if (!createNewTransaction)
                     {
@@ -1997,7 +1999,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
                     await databaseConnection.RollbackTransactionAsync(false);
 
-                    if (MySqlDatabaseConnection.MySqlErrorCodesToRetry.Contains(mySqlException.Number) && retries < gclSettings.MaximumRetryCountForQueries)
+                    if (MySqlHelpers.IsErrorToRetry(queryException) && retries < gclSettings.MaximumRetryCountForQueries)
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
@@ -2006,7 +2008,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     else
                     {
                         // Exception is not a deadlock, or we reached the maximum amount of retries, rethrow it.
-                        logger.LogError(mySqlException, "An error occured while trying to add one or more lines to the shopping basket.");
+                        logger.LogError(queryException.InnerException, "An error occured while trying to add one or more lines to the shopping basket.");
                         throw;
                     }
                 }
