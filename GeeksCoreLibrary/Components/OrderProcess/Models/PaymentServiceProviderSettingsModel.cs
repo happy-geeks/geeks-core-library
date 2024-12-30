@@ -1,5 +1,4 @@
-﻿using EvoPdf;
-using GeeksCoreLibrary.Modules.Payments.Enums;
+﻿using GeeksCoreLibrary.Modules.Payments.Enums;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Models
 {

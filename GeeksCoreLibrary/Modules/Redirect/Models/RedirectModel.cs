@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace GeeksCoreLibrary.Modules.Redirect.Models
+﻿namespace GeeksCoreLibrary.Modules.Redirect.Models
 {
     public class RedirectModel
     {

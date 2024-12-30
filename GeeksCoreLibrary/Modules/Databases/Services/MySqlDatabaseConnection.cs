@@ -6,7 +6,6 @@ using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Exceptions;
@@ -132,7 +131,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
             logger.LogTrace($"Called GetReaderAsync of MySqlDatabaseConnection with ID '{instanceId}' on URL {HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext)}");
             await EnsureOpenConnectionForReadingAsync();
             await using var command = new MySqlCommand(query, ConnectionForReading);
-            SetupMySqlCommand(command);
+            await SetupMySqlCommandAsync(command);
             dataReader = await command.ExecuteReaderAsync();
 
             return dataReader;
@@ -160,7 +159,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     commandToUse = new MySqlCommand(query, ConnectionForReading);
                 }
 
-                SetupMySqlCommand(commandToUse);
+                await SetupMySqlCommandAsync(commandToUse);
 
                 var result = new DataTable();
                 commandToUse.CommandText = query;
@@ -179,7 +178,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     throw new GclQueryException("Error trying to run query", query, invalidOperationException);
                 }
 
-                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                 return await GetAsync(query, retryCount + 1, cleanUp, useWritingConnectionIfAvailable);
             }
             catch (MySqlException mySqlException)
@@ -194,7 +193,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
 
                 // If we're not in a transaction, retry the query if it's a deadlock.
-                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                 return await GetAsync(query, retryCount + 1, cleanUp, useWritingConnectionIfAvailable);
             }
             finally
@@ -248,7 +247,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     commandToUse = new MySqlCommand(query, ConnectionForReading);
                 }
 
-                SetupMySqlCommand(commandToUse);
+                await SetupMySqlCommandAsync(commandToUse);
 
                 commandToUse.CommandText = query;
                 logger.LogDebug("Query: {query}", query);
@@ -262,7 +261,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     throw new GclQueryException("Error trying to run query", query, invalidOperationException);
                 }
 
-                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                 return await ExecuteAsync(query, retryCount + 1, useWritingConnectionIfAvailable, cleanUp);
             }
             catch (MySqlException mySqlException)
@@ -277,7 +276,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
 
                 // If we're not in a transaction, retry the query if it's a deadlock.
-                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                 return await ExecuteAsync(query, retryCount + 1, useWritingConnectionIfAvailable, cleanUp);
             }
             finally
@@ -371,7 +370,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     commandToUse = new MySqlCommand(finalQuery.ToString(), ConnectionForReading);
                 }
 
-                SetupMySqlCommand(commandToUse);
+                await SetupMySqlCommandAsync(commandToUse);
 
                 await using var reader = await commandToUse.ExecuteReaderAsync();
                 if (!await reader.ReadAsync())
@@ -389,7 +388,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                     throw new GclQueryException("Error trying to run query", query, invalidOperationException);
                 }
 
-                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                 return await InsertRecordAsync(query, retryCount + 1, useWritingConnectionIfAvailable);
             }
             catch (MySqlException mySqlException)
@@ -404,7 +403,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                 }
 
                 // If we're not in a transaction, retry the query if it's a deadlock.
-                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                 return await InsertRecordAsync(query, retryCount + 1, useWritingConnectionIfAvailable);
             }
             finally
@@ -1024,7 +1023,7 @@ SELECT LAST_INSERT_ID();";
         /// - Wait until the connection is no longer in the state "Connecting".
         /// </summary>
         /// <param name="command">The <see cref="MySqlCommand"/> to copy the parameters to.</param>
-        private void SetupMySqlCommand(MySqlCommand command)
+        private async Task SetupMySqlCommandAsync(MySqlCommand command)
         {
             // Copy all current parameters to the given command.
             foreach (var parameter in parameters)
@@ -1053,7 +1052,7 @@ SELECT LAST_INSERT_ID();";
             var counter = 0;
             while (command.Connection?.State == ConnectionState.Connecting && counter < 100)
             {
-                Thread.Sleep(10);
+                await Task.Delay(10);
                 counter++;
             }
         }

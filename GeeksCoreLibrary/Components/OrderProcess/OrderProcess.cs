@@ -23,7 +23,6 @@ using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
@@ -33,7 +32,6 @@ using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MySqlConnector;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.OrderProcess
@@ -367,7 +365,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                             {
                                 // Exception is a deadlock or something similar, retry the transaction.
                                 retries++;
-                                Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                                await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                             }
                             else
                             {

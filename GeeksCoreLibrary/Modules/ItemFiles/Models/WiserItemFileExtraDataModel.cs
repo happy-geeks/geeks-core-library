@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using GeeksCoreLibrary.Modules.Amazon.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;

@@ -6,7 +6,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using GeeksCoreLibrary.Components.Account.Interfaces;
@@ -16,12 +15,10 @@ using GeeksCoreLibrary.Core.Cms.Attributes;
 using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
-using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -33,8 +30,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
-using MySqlConnector;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.Account.Models.Constants;
 using QueryHelpers = Microsoft.AspNetCore.WebUtilities.QueryHelpers;
@@ -864,7 +859,7 @@ namespace GeeksCoreLibrary.Components.Account
                                 {
                                     // Exception is a deadlock or something similar, retry the transaction.
                                     retries++;
-                                    Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                                    await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                                 }
                                 else
                                 {
@@ -1449,7 +1444,7 @@ namespace GeeksCoreLibrary.Components.Account
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
-                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                        await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     }
                     else
                     {

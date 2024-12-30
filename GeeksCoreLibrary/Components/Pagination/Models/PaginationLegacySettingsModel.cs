@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using GeeksCoreLibrary.Core.Cms;
-using GeeksCoreLibrary.Core.Extensions;
 
 namespace GeeksCoreLibrary.Components.Pagination.Models
 {
