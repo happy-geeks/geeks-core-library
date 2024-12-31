@@ -13,13 +13,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
-using GeeksCoreLibrary.Modules.Databases.Services;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.ItemFiles.Models;
@@ -164,7 +162,7 @@ namespace GeeksCoreLibrary.Core.Services
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
-                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                        await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     }
                     else
                     {
@@ -327,7 +325,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
-                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                        await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     }
                     else
                     {
@@ -581,7 +579,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
-                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                        await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     }
                     else
                     {
@@ -1318,7 +1316,7 @@ SET @saveHistory = ?saveHistoryGcl;
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
-                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                        await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     }
                     else
                     {
@@ -1684,7 +1682,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
-                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                        await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     }
                     else
                     {
@@ -4278,7 +4276,7 @@ WHERE id = ?saveDetailId";
                     {
                         // Exception is a deadlock or something similar, retry the transaction.
                         retries++;
-                        Thread.Sleep(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+                        await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
                     }
                     else
                     {

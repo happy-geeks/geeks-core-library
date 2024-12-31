@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Threading;
 using GeeksCoreLibrary.Core.Enums;
-using LazyCache;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace GeeksCoreLibrary.Core.Interfaces

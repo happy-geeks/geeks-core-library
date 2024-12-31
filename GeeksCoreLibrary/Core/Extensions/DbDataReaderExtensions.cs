@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Data;
 using System.Data.Common;
-using MySqlConnector;
 
 namespace GeeksCoreLibrary.Core.Extensions
 {

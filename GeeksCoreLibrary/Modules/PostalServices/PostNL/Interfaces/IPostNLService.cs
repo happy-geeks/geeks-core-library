@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Modules.PostalServices.PostNL.Models;
-using GeeksCoreLibrary.Modules.PostalServices.PostNL.Services;
 
 namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Interfaces
 {

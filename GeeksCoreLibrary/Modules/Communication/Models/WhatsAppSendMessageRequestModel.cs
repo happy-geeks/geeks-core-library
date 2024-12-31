@@ -1,7 +1,4 @@
-﻿using DocumentFormat.OpenXml.Office2019.Excel.RichData2;
-using DocumentFormat.OpenXml.Wordprocessing;
-using Newtonsoft.Json;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace GeeksCoreLibrary.Modules.Communication.Models
 {

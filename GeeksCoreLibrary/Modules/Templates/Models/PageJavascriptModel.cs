@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using GeeksCoreLibrary.Modules.Templates.Enums;
 
 namespace GeeksCoreLibrary.Modules.Templates.Models
 {
