@@ -32,44 +32,21 @@ using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services
 {
-    public class CachedTemplatesService : ITemplatesService
+    public class CachedTemplatesService(
+        ILogger<LegacyCachedTemplatesService> logger,
+        ITemplatesService templatesService,
+        IAppCache cache,
+        IOptions<GclSettings> gclSettings,
+        IDatabaseConnection databaseConnection,
+        ICacheService cacheService,
+        IObjectsService objectsService,
+        ILanguagesService languagesService,
+        IBranchesService branchesService,
+        IHttpContextAccessor httpContextAccessor = null,
+        IWebHostEnvironment webHostEnvironment = null)
+        : ITemplatesService
     {
-        private readonly ILogger<LegacyCachedTemplatesService> logger;
-        private readonly ITemplatesService templatesService;
-        private readonly IAppCache cache;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly GclSettings gclSettings;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly ICacheService cacheService;
-        private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly IObjectsService objectsService;
-        private readonly ILanguagesService languagesService;
-        private readonly IBranchesService branchesService;
-
-        public CachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger,
-            ITemplatesService templatesService,
-            IAppCache cache,
-            IOptions<GclSettings> gclSettings,
-            IDatabaseConnection databaseConnection,
-            ICacheService cacheService,
-            IObjectsService objectsService,
-            ILanguagesService languagesService,
-            IBranchesService branchesService,
-            IHttpContextAccessor httpContextAccessor = null,
-            IWebHostEnvironment webHostEnvironment = null)
-        {
-            this.logger = logger;
-            this.templatesService = templatesService;
-            this.cache = cache;
-            this.gclSettings = gclSettings.Value;
-            this.databaseConnection = databaseConnection;
-            this.httpContextAccessor = httpContextAccessor;
-            this.cacheService = cacheService;
-            this.webHostEnvironment = webHostEnvironment;
-            this.objectsService = objectsService;
-            this.languagesService = languagesService;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true, bool skipPermissions = false)
@@ -93,8 +70,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             switch (this.gclSettings.Environment)
             {
-                case Environments.Development when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
-                case Environments.Test when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_test_enabled")).Equals("true"):
+                case Environments.Development when !(await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
+                case Environments.Test when !(await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_test_enabled")).Equals("true"):
                     skipCache = true;
                     break;
             }
@@ -495,8 +472,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
             switch (this.gclSettings.Environment)
             {
-                case Environments.Development when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
-                case Environments.Test when !(await this.objectsService.FindSystemObjectByDomainNameAsync("contentcaching_test_enabled")).Equals("true"):
+                case Environments.Development when !(await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_dev_enabled")).Equals("true"):
+                case Environments.Test when !(await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_test_enabled")).Equals("true"):
                     return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
             }
 

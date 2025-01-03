@@ -319,7 +319,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 
                 if (!oldIndexes.ContainsKey(index.TableName))
                 {
-                    oldIndexes.Add(index.TableName, new List<(string Name, List<string> Columns)>());
+                    oldIndexes.Add(index.TableName, []);
                     var dataTable = await databaseConnection.GetAsync($"SHOW INDEX FROM `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}`", true);
                     foreach (var dataRow in dataTable.Rows.Cast<DataRow>().OrderBy(row => row.Field<string>("key_name")).ThenBy(row => Convert.ToInt32(row["seq_in_index"])))
                     {
@@ -327,7 +327,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
                         var oldIndex = oldIndexes[index.TableName].FirstOrDefault(i => i.Name == indexName);
                         if (oldIndex.Name == null)
                         {
-                            oldIndex = (indexName, new List<string>());
+                            oldIndex = (indexName, []);
                             oldIndexes[index.TableName].Add(oldIndex);
                         }
 

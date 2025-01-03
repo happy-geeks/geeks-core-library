@@ -17,24 +17,17 @@ using Newtonsoft.Json.Linq;
 namespace GeeksCoreLibrary.Core.Middlewares;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public class RequestLoggingMiddleware
+public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger, IOptions<GclSettings> gclSettings)
 {
-    protected readonly RequestDelegate Next;
-    protected readonly ILogger<RequestLoggingMiddleware> Logger;
-    protected readonly GclSettings GclSettings;
+    protected readonly RequestDelegate Next = next;
+    protected readonly ILogger<RequestLoggingMiddleware> Logger = logger;
+    protected readonly GclSettings GclSettings = gclSettings.Value;
 
     /// <summary>
     /// The table that should be used to save the logs in.
     /// Default is <see cref="WiserTableNames.GclRequestLog"/>, can be overwritten in overloads.
     /// </summary>
     protected virtual string LogTableName => WiserTableNames.GclRequestLog;
-
-    public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger, IOptions<GclSettings> gclSettings)
-    {
-        Next = next;
-        Logger = logger;
-        GclSettings = gclSettings.Value;
-    }
 
     /// <summary>
     /// Invoke the middleware.

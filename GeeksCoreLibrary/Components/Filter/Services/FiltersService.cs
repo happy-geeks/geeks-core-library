@@ -20,30 +20,15 @@ using Constants = GeeksCoreLibrary.Components.Filter.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.Filter.Services
 {
-    public class FiltersService : IFiltersService, IScopedService
+    public class FiltersService(
+        IDatabaseConnection databaseConnection,
+        IObjectsService objectsService,
+        ILogger<FiltersService> logger,
+        ILanguagesService languagesService,
+        IEntityTypesService entityTypesService,
+        IHttpContextAccessor httpContextAccessor = null)
+        : IFiltersService, IScopedService
     {
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IObjectsService objectsService;
-        private readonly ILogger<FiltersService> logger;
-        private readonly ILanguagesService languagesService;
-        private readonly IEntityTypesService entityTypesService;
-
-        public FiltersService(IDatabaseConnection databaseConnection,
-            IObjectsService objectsService,
-            ILogger<FiltersService> logger,
-            ILanguagesService languagesService,
-            IEntityTypesService entityTypesService,
-            IHttpContextAccessor httpContextAccessor = null)
-        {
-            this.databaseConnection = databaseConnection;
-            this.httpContextAccessor = httpContextAccessor;
-            this.objectsService = objectsService;
-            this.logger = logger;
-            this.languagesService = languagesService;
-            this.entityTypesService = entityTypesService;
-        }
-
         /// <inheritdoc />
         public async Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart = "", string forActiveFilter = "")
         {

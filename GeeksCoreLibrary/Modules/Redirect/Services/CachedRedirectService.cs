@@ -11,22 +11,10 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Redirect.Services
 {
-    public class CachedRedirectService : IRedirectService
+    public class CachedRedirectService(IAppCache cache, IRedirectService redirectService, IOptions<GclSettings> gclSettings, ICacheService cacheService, IBranchesService branchesService)
+        : IRedirectService
     {
-        private readonly IAppCache cache;
-        private readonly IRedirectService redirectService;
-        private readonly ICacheService cacheService;
-        private readonly GclSettings gclSettings;
-        private readonly IBranchesService branchesService;
-
-        public CachedRedirectService(IAppCache cache, IRedirectService redirectService, IOptions<GclSettings> gclSettings, ICacheService cacheService, IBranchesService branchesService)
-        {
-            this.cache = cache;
-            this.redirectService = redirectService;
-            this.cacheService = cacheService;
-            this.gclSettings = gclSettings.Value;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<RedirectModel> GetRedirectAsync(Uri uri)

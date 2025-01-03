@@ -23,36 +23,17 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 {
-    public class ItemFilesService : IItemFilesService, IScopedService
+    public class ItemFilesService(
+        ILogger<ItemFilesService> logger,
+        IDatabaseConnection databaseConnection,
+        IObjectsService objectsService,
+        IWiserItemsService wiserItemsService,
+        IHttpClientService httpClientService,
+        IAmazonS3Service amazonS3Service,
+        IHttpContextAccessor httpContextAccessor = null,
+        IWebHostEnvironment webHostEnvironment = null)
+        : IItemFilesService, IScopedService
     {
-        private readonly ILogger<ItemFilesService> logger;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IObjectsService objectsService;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly IWiserItemsService wiserItemsService;
-        private readonly IHttpClientService httpClientService;
-        private readonly IAmazonS3Service amazonS3Service;
-
-        public ItemFilesService(ILogger<ItemFilesService> logger,
-            IDatabaseConnection databaseConnection,
-            IObjectsService objectsService,
-            IWiserItemsService wiserItemsService,
-            IHttpClientService httpClientService,
-            IAmazonS3Service amazonS3Service,
-            IHttpContextAccessor httpContextAccessor = null,
-            IWebHostEnvironment webHostEnvironment = null)
-        {
-            this.logger = logger;
-            this.databaseConnection = databaseConnection;
-            this.objectsService = objectsService;
-            this.httpContextAccessor = httpContextAccessor;
-            this.webHostEnvironment = webHostEnvironment;
-            this.wiserItemsService = wiserItemsService;
-            this.httpClientService = httpClientService;
-            this.amazonS3Service = amazonS3Service;
-        }
-
         /// <inheritdoc />
         public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
         {

@@ -335,7 +335,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         PreviousStepLinkText = dataRow.Field<string>("previousStepLinkText"),
                         StepRedirectUrl = dataRow.Field<string>("stepRedirectUrl"),
                         HideInProgress = Convert.ToBoolean(dataRow["stepHideInProgress"]),
-                        Groups = new List<OrderProcessGroupModel>()
+                        Groups = []
                     };
 
                     results.Add(step);
@@ -359,7 +359,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         Header = dataRow.Field<string>("groupHeader"),
                         Footer = dataRow.Field<string>("groupFooter"),
                         CssClass = dataRow.Field<string>("groupCssClass"),
-                        Fields = new List<OrderProcessFieldModel>()
+                        Fields = []
                     };
 
                     step.Groups.Add(group);
@@ -1180,7 +1180,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         ReplyToName = replyToName,
                         Sender = senderAddress,
                         SenderName = senderName,
-                        WiserItemFiles = fileId > 0 ? new List<ulong> {fileId} : null
+                        WiserItemFiles = fileId > 0 ? [fileId] : null
                     });
                 }
 
@@ -1196,7 +1196,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                         ReplyToName = merchantReplyToName,
                         Sender = merchantSenderAddress,
                         SenderName = merchantSenderName,
-                        WiserItemFiles = fileId > 0 ? new List<ulong> {fileId} : null
+                        WiserItemFiles = fileId > 0 ? [fileId] : null
                     });
                 }
 
@@ -1345,7 +1345,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Services
                 return null;
             }
 
-            var files = await wiserItemsService.GetItemFilesAsync(new[] { orderId }, "item_id", Constants.InvoicePdfProperty);
+            var files = await wiserItemsService.GetItemFilesAsync([orderId], "item_id", Constants.InvoicePdfProperty);
             return files.MaxBy(file => file.Id);
         }
 

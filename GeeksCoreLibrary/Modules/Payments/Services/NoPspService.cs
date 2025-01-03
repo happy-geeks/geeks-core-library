@@ -14,20 +14,18 @@ using Microsoft.Extensions.Logging;
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
     /// <inheritdoc cref="IPaymentServiceProviderService" />
-    public class NoPspService : PaymentServiceProviderBaseService, IPaymentServiceProviderService, IScopedService
+    public class NoPspService(
+        IDatabaseHelpersService databaseHelpersService,
+        IDatabaseConnection databaseConnection,
+        ILogger<NoPspService> logger,
+        IHttpContextAccessor httpContextAccessor = null)
+        : PaymentServiceProviderBaseService(databaseHelpersService,
+            databaseConnection,
+            logger,
+            httpContextAccessor), IPaymentServiceProviderService, IScopedService
     {
         /// <inheritdoc />
         public bool LogPaymentActions { get; set; }
-
-        public NoPspService(IDatabaseHelpersService databaseHelpersService,
-            IDatabaseConnection databaseConnection,
-            ILogger<NoPspService> logger,
-            IHttpContextAccessor httpContextAccessor = null) : base(databaseHelpersService,
-            databaseConnection,
-            logger,
-            httpContextAccessor)
-        {
-        }
 
         /// <inheritdoc />
         public Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)

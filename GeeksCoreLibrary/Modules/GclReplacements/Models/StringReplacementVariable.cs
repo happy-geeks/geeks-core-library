@@ -22,7 +22,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Models
         /// <summary>
         /// A list of formatters that were found on the variable.
         /// </summary>
-        public List<string> Formatters { get; } = new();
+        public List<string> Formatters { get; } = [];
         
         /// <summary>
         /// The default value of the variable when given.

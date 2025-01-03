@@ -5,15 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace GeeksCoreLibrary.Core.Controllers
 {
     [Area("Cache")]
-    public class CacheController : Controller
+    public class CacheController(ICacheService cacheService) : Controller
     {
-        private readonly ICacheService cacheService;
-
-        public CacheController(ICacheService cacheService)
-        {
-            this.cacheService = cacheService;
-        }
-
         [Route("clear{cacheArea}cache.gcl")]
         [HttpGet]
         public IActionResult ClearCacheInArea(CacheAreas cacheArea)

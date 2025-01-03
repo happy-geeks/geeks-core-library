@@ -20,17 +20,8 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Modules.Templates.Middlewares;
 
-public class RewriteUrlToTemplateMiddleware
+public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<RewriteUrlToTemplateMiddleware> logger)
 {
-    private readonly RequestDelegate next;
-    private readonly ILogger<RewriteUrlToTemplateMiddleware> logger;
-
-    public RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<RewriteUrlToTemplateMiddleware> logger)
-    {
-        this.next = next;
-        this.logger = logger;
-    }
-
     /// <summary>
     /// Invoke the middleware.
     /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
@@ -42,7 +33,7 @@ public class RewriteUrlToTemplateMiddleware
         if (HttpContextHelpers.IsGclMiddleWarePage(context))
         {
             // If this happens, it means that another middleware has already found something and we don't need to do this again.
-            await this.next.Invoke(context);
+            await next.Invoke(context);
             return;
         }
 
@@ -50,7 +41,7 @@ public class RewriteUrlToTemplateMiddleware
         if (endpoint != null)
         {
             // If this happens, it means that another controller would already handle this and we don't need to do this again.
-            await this.next.Invoke(context);
+            await next.Invoke(context);
             return;
         }
 
@@ -101,7 +92,7 @@ public class RewriteUrlToTemplateMiddleware
 
         await HandleRewritesAsync(context, path, queryString, templatesService, objectsService, databaseConnection);
 
-        await this.next.Invoke(context);
+        await next.Invoke(context);
     }
 
     /// <summary>
@@ -284,7 +275,7 @@ public class RewriteUrlToTemplateMiddleware
     private async Task<IEnumerable<string>> GetValues(string objectName, IObjectsService objectsService)
     {
         var value = await objectsService.FindSystemObjectByDomainNameAsync(objectName);
-        var urlRewrites = value.Split(new[] { "\r", "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries)
+        var urlRewrites = value.Split(["\r", "\n", "\r\n"], StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim())
             .Where(s => !String.IsNullOrWhiteSpace(s));
 

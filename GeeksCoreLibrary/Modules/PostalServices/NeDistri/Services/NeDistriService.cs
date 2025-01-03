@@ -26,11 +26,10 @@ using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Co
 
 namespace GeeksCoreLibrary.Modules.PostalServices.NeDistri.Services;
 
-public class NeDistriService : INeDistriService, IScopedService
+public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsService wiserItemsService, ILogger<NeDistriService> logger)
+    : INeDistriService, IScopedService
 {
-    private readonly GclSettings gclSettings;
-    private readonly IWiserItemsService wiserItemsService;
-    private readonly ILogger<NeDistriService> logger;
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     private readonly JsonSerializerSettings jsonSettings = new()
     {
@@ -40,13 +39,6 @@ public class NeDistriService : INeDistriService, IScopedService
         },
         Formatting = Formatting.Indented
     };
-
-    public NeDistriService( IOptions<GclSettings> gclSettings, IWiserItemsService wiserItemsService, ILogger<NeDistriService> logger)
-    {
-        this.gclSettings = gclSettings.Value;
-        this.wiserItemsService = wiserItemsService;
-        this.logger = logger;
-    }
 
     /// <inheritdoc />
     public async Task<string> GenerateShippingLabelAsync(string encryptedOrderIds, IEnumerable<LabelRule> labels, int? userCode, OrderType orderType)
@@ -146,7 +138,7 @@ public class NeDistriService : INeDistriService, IScopedService
     private List<ulong> DecryptOrderIds(string encryptedOrderIds)
     {
         var orderIds = new List<ulong>();
-        foreach (var encryptedId in encryptedOrderIds.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+        foreach (var encryptedId in encryptedOrderIds.Split([','], StringSplitOptions.RemoveEmptyEntries))
         {
             string decryptedOrderId;
             try

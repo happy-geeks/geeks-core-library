@@ -10,17 +10,9 @@ using Microsoft.Extensions.Logging;
 namespace GeeksCoreLibrary.Modules.Branches.Services
 {
     /// <inheritdoc cref="IBranchesService"/>
-    public class BranchesService : IBranchesService, ITransientService
+    public class BranchesService(ILogger<BranchesService> logger, IHttpContextAccessor httpContextAccessor = null)
+        : IBranchesService, ITransientService
     {
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly ILogger<BranchesService> logger;
-
-        public BranchesService(ILogger<BranchesService> logger, IHttpContextAccessor httpContextAccessor = null)
-        {
-            this.httpContextAccessor = httpContextAccessor;
-            this.logger = logger;
-        }
-
         /// <inheritdoc />
         public string GetDatabaseNameFromCookie()
         {

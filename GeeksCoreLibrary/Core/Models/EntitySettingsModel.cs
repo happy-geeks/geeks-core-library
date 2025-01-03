@@ -33,7 +33,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// Gets or sets all fields with auto increment values.
         /// </summary>
-        public List<(string PropertyName, string LanguageCode)> AutoIncrementFields { get; set; } = new();
+        public List<(string PropertyName, string LanguageCode)> AutoIncrementFields { get; set; } = [];
 
         /// <summary>
         /// Gets or sets whether to also save the title as a SEO value in the details.
@@ -74,7 +74,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// Gets or sets what kind of entities items of this type can have as children.
         /// </summary>
-        public List<string> AcceptedChildTypes { get; set; } = new();
+        public List<string> AcceptedChildTypes { get; set; } = [];
 
         /// <summary>
         /// Gets or sets whether items of this type should be shown in the tree view of the corresponding module in Wiser.

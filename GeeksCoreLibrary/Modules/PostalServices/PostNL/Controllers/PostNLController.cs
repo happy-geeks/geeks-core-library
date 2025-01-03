@@ -7,15 +7,8 @@ using GeeksCoreLibrary.Modules.PostalServices.PostNL.Models;
 namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Controllers
 {
     [Route("/postal-services/post-nl")]
-    public class PostNLController : Controller
+    public class PostNLController(IPostNLService postNlService) : Controller
     {
-        private readonly IPostNLService postNlService;
-
-        public PostNLController(IPostNLService postNLService)
-        {
-            postNlService = postNLService;
-        }
-        
         /// <summary>
         /// Generate shipping label for the given order
         /// </summary>

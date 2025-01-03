@@ -47,7 +47,7 @@ internal static class IncrementalHashExtensions
 
     public static byte[] GetHashAndReset(this HashAlgorithm hash)
     {
-        hash.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        hash.TransformFinalBlock([], 0, 0);
         return hash.Hash;
     }
 }
@@ -118,7 +118,7 @@ public static class CryptographyHelpers
         // You may be well-served by prepending a version number byte to this
         // message, but may want to avoid the value 0x30 (the leading byte value for
         // DER-encoded structures such as X.509 certificates and PKCS#7 messages).
-        byte[] algorithmChoices = { (byte)aeCipher, (byte)aeMac };
+        byte[] algorithmChoices = [(byte)aeCipher, (byte)aeMac];
         byte[] iv;
         byte[] cipherText;
         byte[] tag;
@@ -396,7 +396,7 @@ public static class CryptographyHelpers
         using (HMAC hmac = new HMACSHA256(masterKey))
         {
             // i=1, Label=ASCII(cipher)
-            var cipherKey = hmac.ComputeHash(new byte[] { 1, 99, 105, 112, 104, 101, 114 });
+            var cipherKey = hmac.ComputeHash([1, 99, 105, 112, 104, 101, 114]);
 
             // Resize the array to the desired keysize. KeySize is in bits,
             // and Array.Resize wants the length in bytes.
@@ -442,7 +442,7 @@ public static class CryptographyHelpers
         hmac.Key = masterKey;
 
         // i=1, Context=ASCII(MAC)
-        var newKey = hmac.ComputeHash(new byte[] { 1, 77, 65, 67 });
+        var newKey = hmac.ComputeHash([1, 77, 65, 67]);
 
         hmac.Key = newKey;
         return hmac;

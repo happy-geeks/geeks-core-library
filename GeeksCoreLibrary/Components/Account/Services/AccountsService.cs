@@ -26,41 +26,20 @@ using Constants = GeeksCoreLibrary.Components.Account.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.Account.Services
 {
-    public class AccountsService : IAccountsService, IScopedService
+    public class AccountsService(
+        IOptions<GclSettings> gclSettings,
+        IDatabaseConnection databaseConnection,
+        IObjectsService objectsService,
+        ILogger<AccountsService> logger,
+        IDatabaseHelpersService databaseHelpersService,
+        IRolesService rolesService,
+        IServiceProvider serviceProvider,
+        IReplacementsMediator replacementsMediator,
+        IComponentsService componentsService,
+        IHttpContextAccessor httpContextAccessor = null)
+        : IAccountsService, IScopedService
     {
-        private readonly GclSettings gclSettings;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IObjectsService objectsService;
-        private readonly ILogger<AccountsService> logger;
-        private readonly IDatabaseHelpersService databaseHelpersService;
-        private readonly IRolesService rolesService;
-        private readonly IServiceProvider serviceProvider;
-        private readonly IReplacementsMediator replacementsMediator;
-        private readonly IComponentsService componentsService;
-
-        public AccountsService(IOptions<GclSettings> gclSettings,
-                               IDatabaseConnection databaseConnection,
-                               IObjectsService objectsService,
-                               ILogger<AccountsService> logger,
-                               IDatabaseHelpersService databaseHelpersService,
-                               IRolesService rolesService,
-                               IServiceProvider serviceProvider,
-                               IReplacementsMediator replacementsMediator,
-                               IComponentsService componentsService,
-                               IHttpContextAccessor httpContextAccessor = null)
-        {
-            this.gclSettings = gclSettings.Value;
-            this.databaseConnection = databaseConnection;
-            this.httpContextAccessor = httpContextAccessor;
-            this.objectsService = objectsService;
-            this.logger = logger;
-            this.databaseHelpersService = databaseHelpersService;
-            this.rolesService = rolesService;
-            this.serviceProvider = serviceProvider;
-            this.replacementsMediator = replacementsMediator;
-            this.componentsService = componentsService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<UserCookieDataModel> GetUserDataFromCookieAsync(string cookieName = Constants.CookieName)
@@ -118,7 +97,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                     return defaultAnonymousUserModel;
                 }
 
-                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> { Constants.AuthenticationTokensTableName });
+                await databaseHelpersService.CheckAndUpdateTablesAsync([Constants.AuthenticationTokensTableName]);
 
                 var query = $@"SELECT 
                                     user_id, 
@@ -264,7 +243,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 mainUserId = userId;
             }
 
-            await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> { Constants.AuthenticationTokensTableName });
+            await databaseHelpersService.CheckAndUpdateTablesAsync([Constants.AuthenticationTokensTableName]);
 
             // Delete all expired token, there is no point in keeping them.
             await databaseConnection.ExecuteAsync($"DELETE FROM {Constants.AuthenticationTokensTableName} WHERE expires <= NOW()");
@@ -294,7 +273,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
         public async Task RemoveCookieTokenAsync(string selector)
         {
             databaseConnection.AddParameter("selector", selector);
-            await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> { Constants.AuthenticationTokensTableName });
+            await databaseHelpersService.CheckAndUpdateTablesAsync([Constants.AuthenticationTokensTableName]);
             await databaseConnection.ExecuteAsync($"DELETE FROM {Constants.AuthenticationTokensTableName} WHERE selector = ?selector");
         }
 
@@ -357,7 +336,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
                 currentContext.Response.Cookies.Delete(Constants.OciHookUrlCookieName);
             }
 
-            var cookiesToDelete = (settings.CookiesToDeleteAfterLogout ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            var cookiesToDelete = (settings.CookiesToDeleteAfterLogout ?? "").Split(['.'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
             // Get basket cookie name from settings and delete that cookie.
             var basketCookieName = await objectsService.FindSystemObjectByDomainNameAsync("BASKET_cookieName");
@@ -389,7 +368,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             currentContext.Session.Remove($"{punchOutSessionPrefix}duns_sender");
 
             // Remove any session extra values from the setting SessionKeysToDeleteAfterLogout.
-            var sessionsToDelete = (settings.SessionKeysToDeleteAfterLogout ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var sessionsToDelete = (settings.SessionKeysToDeleteAfterLogout ?? "").Split(['.'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             foreach (var sessionToDelete in sessionsToDelete)
             {
                 currentContext.Session.Remove(sessionToDelete);
@@ -457,7 +436,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             var rolesData = await databaseConnection.GetAsync($"SELECT role_id FROM `{WiserTableNames.WiserUserRoles}` WHERE user_id = ?userId");
             if (rolesData.Rows.Count == 0)
             {
-                return new List<RoleModel>(0);
+                return [];
             }
 
             // Turn the retrieved role IDs into a List of integers.
@@ -508,7 +487,7 @@ namespace GeeksCoreLibrary.Components.Account.Services
             }
 
             // GA1.2.1248174149.1587127355
-            var clientIdSplit = googleClientIdCookieValue.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+            var clientIdSplit = googleClientIdCookieValue.Split(['.'], StringSplitOptions.RemoveEmptyEntries);
 
             if (clientIdSplit.Length != 4)
             {

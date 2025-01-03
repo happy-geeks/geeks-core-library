@@ -23,7 +23,7 @@ public class CommunicationSettingsModel
     /// Gets or sets the list of static receivers.
     /// If the receivers come from a different source, this can be empty.
     /// </summary>
-    public List<string> ReceiversList { get; set; } = new();
+    public List<string> ReceiversList { get; set; } = [];
     
     /// <summary>
     /// Gets or sets the ID of the data selector that returns the receivers.
@@ -92,12 +92,12 @@ public class CommunicationSettingsModel
     /// <summary>
     /// Gets or sets the settings for email, sms etc.
     /// </summary>
-    public List<CommunicationContentSettingsModel> Settings { get; set; } = new();
+    public List<CommunicationContentSettingsModel> Settings { get; set; } = [];
 
     /// <summary>
     /// Gets or sets when this communication has been processed last.
     /// </summary>
-    public List<LastProcessedModel> LastProcessed { get; set; } = new();
+    public List<LastProcessedModel> LastProcessed { get; set; } = [];
     
     /// <summary>
     /// Gets or sets the name of the user that added this communication.

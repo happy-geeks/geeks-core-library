@@ -14,24 +14,10 @@ using Microsoft.Extensions.Options;
 namespace GeeksCoreLibrary.Core.Services
 {
     /// <inheritdoc />
-    public class CachedWiserItemsService : IWiserItemsService
+    public class CachedWiserItemsService(IOptions<GclSettings> gclSettings, IAppCache cache, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection, ICacheService cacheService, IBranchesService branchesService)
+        : IWiserItemsService
     {
-        private readonly GclSettings gclSettings;
-        private readonly IAppCache cache;
-        private readonly IWiserItemsService wiserItemsService;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly ICacheService cacheService;
-        private readonly IBranchesService branchesService;
-
-        public CachedWiserItemsService(IOptions<GclSettings> gclSettings, IAppCache cache, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection, ICacheService cacheService, IBranchesService branchesService)
-        {
-            this.gclSettings = gclSettings.Value;
-            this.cache = cache;
-            this.wiserItemsService = wiserItemsService;
-            this.databaseConnection = databaseConnection;
-            this.cacheService = cacheService;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<WiserItemModel> SaveAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 0, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool alwaysSaveValues = false, bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, bool alwaysSaveReadOnly = false)

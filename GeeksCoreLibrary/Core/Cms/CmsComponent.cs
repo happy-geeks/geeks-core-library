@@ -291,7 +291,7 @@ namespace GeeksCoreLibrary.Core.Cms
 
         protected void AddExternalJavaScriptLibrary(string url, bool async = false, bool defer = false)
         {
-            var javaScriptLibraries = HttpContext.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] as List<JavaScriptResourceModel> ?? new List<JavaScriptResourceModel>();
+            var javaScriptLibraries = HttpContext.Items[CmsSettings.ExternalJavaScriptLibrariesFromComponentKey] as List<JavaScriptResourceModel> ?? [];
 
             // Turn the URL into an absolute URL if it isn't already.
             var uri = new Uri(url, UriKind.RelativeOrAbsolute);

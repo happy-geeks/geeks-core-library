@@ -11,19 +11,9 @@ using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Components.DataSelectorParser.Services
 {
-    public class DataSelectorParsersService : IDataSelectorParsersService, IScopedService
+    public class DataSelectorParsersService(ILogger<DataSelectorParsersService> logger, IDataSelectorsService dataSelectorsService, IStringReplacementsService stringReplacementsService)
+        : IDataSelectorParsersService, IScopedService
     {
-        private readonly ILogger<DataSelectorParsersService> logger;
-        private readonly IStringReplacementsService stringReplacementsService;
-        private readonly IDataSelectorsService dataSelectorsService;
-
-        public DataSelectorParsersService(ILogger<DataSelectorParsersService> logger, IDataSelectorsService dataSelectorsService, IStringReplacementsService stringReplacementsService)
-        {
-            this.logger = logger;
-            this.stringReplacementsService = stringReplacementsService;
-            this.dataSelectorsService = dataSelectorsService;
-        }
-
         /// <inheritdoc />
         public async Task<JToken> GetDataSelectorResponseAsync(string dataSelectorId = null, string dataSelectorJson = null)
         {

@@ -11,15 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
 {
     [Area("Templates")]
-    public class JavascriptController : Controller
+    public class JavascriptController(ITemplatesService templatesService) : Controller
     {
-        private readonly ITemplatesService templatesService;
-
-        public JavascriptController(ITemplatesService templatesService)
-        {
-            this.templatesService = templatesService;
-        }
-
         [Route("/scripts/gcl_general.js")]
         [HttpGet]
         public async Task<IActionResult> GeneralJavascript(ResourceInsertModes mode = ResourceInsertModes.Standard)

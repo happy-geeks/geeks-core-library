@@ -15,23 +15,14 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Components.Repeater.Services
 {
-    public class RepeatersService : IRepeatersService, IScopedService
+    public class RepeatersService(
+        IDatabaseConnection databaseConnection,
+        ILanguagesService languagesService,
+        IOptions<GclSettings> gclSettings,
+        IHttpContextAccessor httpContextAccessor = null)
+        : IRepeatersService, IScopedService
     {
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly ILanguagesService languagesService;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly GclSettings gclSettings;
-
-        public RepeatersService(IDatabaseConnection databaseConnection,
-            ILanguagesService languagesService,
-            IOptions<GclSettings> gclSettings,
-            IHttpContextAccessor httpContextAccessor = null)
-        {
-            this.databaseConnection = databaseConnection;
-            this.languagesService = languagesService;
-            this.httpContextAccessor = httpContextAccessor;
-            this.gclSettings = gclSettings.Value;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<List<ProductBannerModel>> GetProductBannersAsync()

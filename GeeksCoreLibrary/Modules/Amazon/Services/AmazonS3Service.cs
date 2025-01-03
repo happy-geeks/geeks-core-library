@@ -14,16 +14,10 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Amazon.Services;
 
-public class AmazonS3Service : IAmazonS3Service, IScopedService
+public class AmazonS3Service(ILogger<AmazonS3Service> logger, IOptions<GclSettings> gclSettings)
+    : IAmazonS3Service, IScopedService
 {
-    private readonly ILogger<AmazonS3Service> logger;
-    private readonly GclSettings gclSettings;
-
-    public AmazonS3Service(ILogger<AmazonS3Service> logger, IOptions<GclSettings> gclSettings)
-    {
-        this.logger = logger;
-        this.gclSettings = gclSettings.Value;
-    }
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
     public async Task<bool> CreateBucketAsync(string bucketName, AwsSettings awsSettings = null)

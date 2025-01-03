@@ -35,6 +35,6 @@ namespace GeeksCoreLibrary.Modules.Templates.ViewModels
         /// Gets or sets any HTML widgets that should be added to this page.
         /// These should be added in the same order as they are in this list.
         /// </summary>
-        public List<PageWidgetModel> Widgets { get; set; } = new();
+        public List<PageWidgetModel> Widgets { get; set; } = [];
     }
 }

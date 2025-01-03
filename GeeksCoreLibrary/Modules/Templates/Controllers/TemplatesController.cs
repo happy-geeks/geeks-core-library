@@ -30,30 +30,10 @@ using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
 {
     [Area("Templates")]
-    public class TemplatesController : Controller
+    public class TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IBranchesService branchesService, IOptions<GclSettings> gclSettings)
+        : Controller
     {
-        private readonly ILogger<TemplatesController> logger;
-        private readonly ITemplatesService templatesService;
-        private readonly IPagesService pagesService;
-        private readonly IDataSelectorsService dataSelectorsService;
-        private readonly IWiserItemsService wiserItemsService;
-        private readonly IStringReplacementsService stringReplacementsService;
-        private readonly IObjectsService objectsService;
-        private readonly IBranchesService branchesService;
-        private readonly GclSettings gclSettings;
-
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IBranchesService branchesService, IOptions<GclSettings> gclSettings)
-        {
-            this.logger = logger;
-            this.templatesService = templatesService;
-            this.pagesService = pagesService;
-            this.dataSelectorsService = dataSelectorsService;
-            this.wiserItemsService = wiserItemsService;
-            this.stringReplacementsService = stringReplacementsService;
-            this.objectsService = objectsService;
-            this.branchesService = branchesService;
-            this.gclSettings = gclSettings.Value;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         [Route("template.gcl")]
         [Route("template.jcl")]
@@ -570,7 +550,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Controllers
         [HttpGet, Route("template/{templateId:int}/")]
         public async Task<TemplateDataModel> TemplateData(int templateId)
         {
-            return await this.templatesService.GetTemplateDataAsync(templateId);
+            return await templatesService.GetTemplateDataAsync(templateId);
         }
     }
 }

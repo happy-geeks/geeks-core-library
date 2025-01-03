@@ -201,7 +201,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             Settings = new ShoppingBasketCmsSettingsModel();
 
             Main = new WiserItemModel();
-            Lines = new List<WiserItemModel>();
+            Lines = [];
         }
 
         [ActivatorUtilitiesConstructor]
@@ -222,7 +222,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             Settings = new ShoppingBasketCmsSettingsModel();
 
             Main = new WiserItemModel();
-            Lines = new List<WiserItemModel>();
+            Lines = [];
         }
 
         #endregion
@@ -248,8 +248,8 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         {
             if (Lines == null)
             {
-                Lines = new List<WiserItemModel>();
-                return new List<WiserItemModel>();
+                Lines = [];
+                return [];
             }
 
             if (!Lines.Any() || String.IsNullOrWhiteSpace(lineType))
@@ -270,14 +270,14 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
 
             // And finally create a new basket.
             Main = new WiserItemModel();
-            Lines = new List<WiserItemModel>();
+            Lines = [];
         }
 
         public async Task ClearContentsAsync()
         {
             var id = Main.Id;
             Main = new WiserItemModel();
-            Lines = new List<WiserItemModel>();
+            Lines = [];
             Main.Id = id;
 
             // Delete all basket lines, so that we won't have floating basket lines in the database that aren't linked to any basket.
@@ -630,7 +630,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             var itemId = HttpContextHelpers.GetRequestValue(HttpContext, "deleteproductbyid");
             if (!String.IsNullOrWhiteSpace(itemId))
             {
-                await shoppingBasketsService.RemoveLinesAsync(Main, Lines, Settings, new[] { itemId });
+                await shoppingBasketsService.RemoveLinesAsync(Main, Lines, Settings, [itemId]);
             }
             else if (Request.HasFormContentType || Request.Method.InList("POST", "DELETE"))
             {

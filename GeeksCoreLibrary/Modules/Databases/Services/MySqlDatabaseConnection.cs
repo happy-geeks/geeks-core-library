@@ -30,15 +30,15 @@ namespace GeeksCoreLibrary.Modules.Databases.Services
 {
     public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     {
-        public static readonly List<MySqlErrorCode> MySqlErrorCodesToRetry = new()
-        {
+        public static readonly List<MySqlErrorCode> MySqlErrorCodesToRetry =
+        [
             MySqlErrorCode.LockDeadlock,
             MySqlErrorCode.LockWaitTimeout,
             MySqlErrorCode.UnableToConnectToHost,
             MySqlErrorCode.TooManyUserConnections,
             MySqlErrorCode.ConnectionCountError,
             MySqlErrorCode.TableDefinitionChanged
-        };
+        ];
 
         private const string Localhost = "127.0.0.1";
 

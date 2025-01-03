@@ -15,20 +15,10 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Components.WebPage.Services
 {
-    public class WebPagesService : IWebPagesService, IScopedService
+    public class WebPagesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, ILanguagesService languagesService, IStringReplacementsService stringReplacementsService)
+        : IWebPagesService, IScopedService
     {
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly ILanguagesService languagesService;
-        private readonly IStringReplacementsService stringReplacementsService;
-        private readonly GclSettings gclSettings;
-
-        public WebPagesService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings, ILanguagesService languagesService, IStringReplacementsService stringReplacementsService)
-        {
-            this.databaseConnection = databaseConnection;
-            this.languagesService = languagesService;
-            this.stringReplacementsService = stringReplacementsService;
-            this.gclSettings = gclSettings.Value;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<(ulong Id, string Title, string FixedUrl, List<string> Path, List<ulong> Parents)?> GetWebPageViaFixedUrlAsync(string fixedUrl)

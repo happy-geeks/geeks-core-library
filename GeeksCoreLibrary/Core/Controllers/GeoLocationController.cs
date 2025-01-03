@@ -8,15 +8,8 @@ using Newtonsoft.Json.Serialization;
 namespace GeeksCoreLibrary.Core.Controllers
 {
     [Area("GeoLocation")]
-    public class GeoLocationController : Controller
+    public class GeoLocationController(IGeoLocationService geoLocationService) : Controller
     {
-        private readonly IGeoLocationService geoLocationService;
-
-        public GeoLocationController(IGeoLocationService geoLocationService)
-        {
-            this.geoLocationService = geoLocationService;
-        }
-
         /// <summary>
         /// Will attempt to retrieve address information based on ZIP code and house number using the Pro6PP API. This only works for Dutch and Belgian addresses.
         /// </summary>

@@ -9,17 +9,8 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
 {
-    public class RewriteUrlToOrderProcessMiddleware
+    public class RewriteUrlToOrderProcessMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrderProcessMiddleware> logger)
     {
-        private readonly RequestDelegate next;
-        private readonly ILogger<RewriteUrlToOrderProcessMiddleware> logger;
-
-        public RewriteUrlToOrderProcessMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrderProcessMiddleware> logger)
-        {
-            this.next = next;
-            this.logger = logger;
-        }
-
         /// <summary>
         /// Invoke the middleware.
         /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
@@ -31,7 +22,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
             if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
                 // If this happens, it means that another middleware has already found something and we don't need to do this again.
-                await this.next.Invoke(context);
+                await next.Invoke(context);
                 return;
             }
 
@@ -54,7 +45,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Middlewares
 
             await HandleRewritesAsync(context, path, queryString, orderProcessesService);
 
-            await this.next.Invoke(context);
+            await next.Invoke(context);
         }
 
         /// <summary>

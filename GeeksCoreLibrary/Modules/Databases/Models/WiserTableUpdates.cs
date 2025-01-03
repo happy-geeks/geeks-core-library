@@ -17,12 +17,12 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
         /// <summary>
         /// Gets or sets all columns for this table.
         /// </summary>
-        public List<ColumnSettingsModel> Columns { get; set; } = new();
+        public List<ColumnSettingsModel> Columns { get; set; } = [];
 
         /// <summary>
         /// Gets or sets all index for this table.
         /// </summary>
-        public List<IndexSettingsModel> Indexes { get; set; } = new();
+        public List<IndexSettingsModel> Indexes { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the date that this table was updated last.

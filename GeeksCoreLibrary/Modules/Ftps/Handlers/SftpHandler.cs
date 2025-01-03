@@ -22,20 +22,20 @@ public class SftpHandler : IFtpHandler, IScopedService
         // Use SSH or username/password if none is set.
         if (!String.IsNullOrWhiteSpace(ftpSettings.SshPrivateKeyPath))
         {
-            authenticationMethods = new AuthenticationMethod[]
-            {
+            authenticationMethods =
+            [
                 new PrivateKeyAuthenticationMethod(ftpSettings.User, new PrivateKeyFile[]
                 {
                     new(ftpSettings.SshPrivateKeyPath, ftpSettings.SshPrivateKeyPassphrase)
                 })
-            };
+            ];
         }
         else
         {
-            authenticationMethods = new AuthenticationMethod[]
-            {
+            authenticationMethods =
+            [
                 new PasswordAuthenticationMethod(ftpSettings.User, ftpSettings.Password)
-            };
+            ];
         }
 
         var connectionInfo = new ConnectionInfo(ftpSettings.Host, ftpSettings.Port, ftpSettings.User, authenticationMethods);

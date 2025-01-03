@@ -7,17 +7,9 @@ namespace GeeksCoreLibrary.Modules.Branches.Controllers
 {
     [Area("Branches")]
     [Route("branches")]
-    public class BranchesController : Controller
+    public class BranchesController(IBranchesService branchesService, IDatabaseHelpersService databaseHelpersService)
+        : Controller
     {
-        private readonly IBranchesService branchesService;
-        private readonly IDatabaseHelpersService databaseHelpersService;
-
-        public BranchesController(IBranchesService branchesService, IDatabaseHelpersService databaseHelpersService)
-        {
-            this.branchesService = branchesService;
-            this.databaseHelpersService = databaseHelpersService;
-        }
-
         [HttpGet("{dataBaseName}")]
         public async Task<IActionResult> SwitchToBranchAsync(string databaseName)
         {

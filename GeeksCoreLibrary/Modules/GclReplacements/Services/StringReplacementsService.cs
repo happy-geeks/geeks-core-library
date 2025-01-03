@@ -24,29 +24,16 @@ using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 namespace GeeksCoreLibrary.Modules.GclReplacements.Services
 {
     /// <inheritdoc cref="IStringReplacementsService" />
-    public class StringReplacementsService : IStringReplacementsService, IScopedService
+    public class StringReplacementsService(
+        IOptions<GclSettings> gclSettings,
+        IObjectsService objectsService,
+        ILanguagesService languagesService,
+        IAccountsService accountsService,
+        IReplacementsMediator replacementsMediator,
+        IHttpContextAccessor httpContextAccessor = null)
+        : IStringReplacementsService, IScopedService
     {
-        private readonly GclSettings gclSettings;
-        private readonly IObjectsService objectsService;
-        private readonly ILanguagesService languagesService;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IAccountsService accountsService;
-        private readonly IReplacementsMediator replacementsMediator;
-
-        public StringReplacementsService(IOptions<GclSettings> gclSettings,
-                                         IObjectsService objectsService,
-                                         ILanguagesService languagesService,
-                                         IAccountsService accountsService,
-                                         IReplacementsMediator replacementsMediator,
-                                         IHttpContextAccessor httpContextAccessor = null)
-        {
-            this.gclSettings = gclSettings.Value;
-            this.objectsService = objectsService;
-            this.languagesService = languagesService;
-            this.httpContextAccessor = httpContextAccessor;
-            this.accountsService = accountsService;
-            this.replacementsMediator = replacementsMediator;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<string> DoAllReplacementsAsync(string input, DataRow dataRow = null, bool handleRequest = true, bool evaluateLogicSnippets = true, bool removeUnknownVariables = true, bool forQuery = false, string defaultFormatter = "HtmlEncode", bool handleVariableDefaults = true)

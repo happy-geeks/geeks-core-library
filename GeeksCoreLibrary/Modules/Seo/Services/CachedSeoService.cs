@@ -12,22 +12,10 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Seo.Services
 {
-    public class CachedSeoService : ISeoService
+    public class CachedSeoService(IAppCache cache, ISeoService seoService, IOptions<GclSettings> gclSettings, ICacheService cacheService, IBranchesService branchesService)
+        : ISeoService
     {
-        private readonly IAppCache cache;
-        private readonly ISeoService seoService;
-        private readonly ICacheService cacheService;
-        private readonly GclSettings gclSettings;
-        private readonly IBranchesService branchesService;
-
-        public CachedSeoService(IAppCache cache, ISeoService seoService, IOptions<GclSettings> gclSettings, ICacheService cacheService, IBranchesService branchesService)
-        {
-            this.cache = cache;
-            this.seoService = seoService;
-            this.cacheService = cacheService;
-            this.gclSettings = gclSettings.Value;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<PageMetaDataModel> GetSeoDataForPageAsync(Uri pageUri)

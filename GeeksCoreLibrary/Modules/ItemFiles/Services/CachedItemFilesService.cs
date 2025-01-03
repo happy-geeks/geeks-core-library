@@ -10,18 +10,10 @@ using Constants = GeeksCoreLibrary.Modules.ItemFiles.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Services
 {
-    public class CachedItemFilesService : IItemFilesService
+    public class CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFilesService itemFilesService, IWebHostEnvironment webHostEnvironment = null)
+        : IItemFilesService
     {
-        private readonly GclSettings gclSettings;
-        private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly IItemFilesService itemFilesService;
-
-        public CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFilesService itemFilesService, IWebHostEnvironment webHostEnvironment = null)
-        {
-            this.gclSettings = gclSettings.Value;
-            this.webHostEnvironment = webHostEnvironment;
-            this.itemFilesService = itemFilesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)

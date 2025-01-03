@@ -69,7 +69,7 @@ namespace GeeksCoreLibrary.Components.Repeater
 
         #region Private fields
 
-        private List<ProductBannerModel> productBanners = new();
+        private List<ProductBannerModel> productBanners = [];
 
         #endregion
 

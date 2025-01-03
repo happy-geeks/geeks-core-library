@@ -13,24 +13,10 @@ using Microsoft.Extensions.Options;
 namespace GeeksCoreLibrary.Modules.Databases.Services
 {
     /// <inheritdoc cref="IDatabaseHelpersService" />.
-    public class CachedDatabaseHelpersService : IDatabaseHelpersService
+    public class CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelpersService, IAppCache cache, IOptions<GclSettings> gclSettings, ICacheService cacheService, IDatabaseConnection databaseConnection, IBranchesService branchesService)
+        : IDatabaseHelpersService
     {
-        private readonly IDatabaseHelpersService databaseHelpersService;
-        private readonly IAppCache cache;
-        private readonly ICacheService cacheService;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly GclSettings gclSettings;
-        private readonly IBranchesService branchesService;
-
-        public CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelpersService, IAppCache cache, IOptions<GclSettings> gclSettings, ICacheService cacheService, IDatabaseConnection databaseConnection, IBranchesService branchesService)
-        {
-            this.databaseHelpersService = databaseHelpersService;
-            this.cache = cache;
-            this.cacheService = cacheService;
-            this.databaseConnection = databaseConnection;
-            this.gclSettings = gclSettings.Value;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         public List<WiserTableDefinitionModel> ExtraWiserTableDefinitions
         {

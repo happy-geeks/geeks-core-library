@@ -13,17 +13,9 @@ using GeeksCoreLibrary.Modules.Seo.Models;
 
 namespace GeeksCoreLibrary.Modules.Seo.Services
 {
-    public class SeoService : ISeoService, IScopedService
+    public class SeoService(IDatabaseConnection databaseConnection, IObjectsService objectsService)
+        : ISeoService, IScopedService
     {
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IObjectsService objectsService;
-
-        public SeoService(IDatabaseConnection databaseConnection, IObjectsService objectsService)
-        {
-            this.databaseConnection = databaseConnection;
-            this.objectsService = objectsService;
-        }
-
         /// <inheritdoc />
         public async Task<PageMetaDataModel> GetSeoDataForPageAsync(Uri pageUri)
         {

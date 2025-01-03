@@ -8,15 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace GeeksCoreLibrary.Modules.DataSelector.Controllers
 {
     [Area("DataSelector")]
-    public class DataSelectorController : Controller
+    public class DataSelectorController(IDataSelectorsService dataSelectorsService) : Controller
     {
-        private readonly IDataSelectorsService dataSelectorsService;
-
-        public DataSelectorController(IDataSelectorsService dataSelectorsService)
-        {
-            this.dataSelectorsService = dataSelectorsService;
-        }
-
         [IgnoreAntiforgeryToken]
         [Route("/GetItems.gcl")]
         [Route("/get_items.gcl")]

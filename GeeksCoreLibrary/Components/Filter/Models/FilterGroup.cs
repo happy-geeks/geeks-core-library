@@ -241,7 +241,7 @@ namespace GeeksCoreLibrary.Components.Filter.Models
             }
         }
 
-        public List<string> SelectedValues { get; set; } = new();
+        public List<string> SelectedValues { get; set; } = [];
 
         public FilterGroup(string newName)
         {

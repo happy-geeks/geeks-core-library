@@ -10,16 +10,10 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace GeeksCoreLibrary.Modules.HealthChecks.Services;
 
-public class WtsHealthService : IHealthCheck
+public class WtsHealthService(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor)
+    : IHealthCheck
 {
-    private readonly IDatabaseConnection databaseConnection;
-    private readonly HttpContext httpContext;
-
-    public WtsHealthService(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor)
-    {
-        this.databaseConnection = databaseConnection;
-        httpContext = httpContextAccessor.HttpContext;
-    }
+    private readonly HttpContext httpContext = httpContextAccessor.HttpContext;
 
     /// <inheritdoc />
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new CancellationToken())

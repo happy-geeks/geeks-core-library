@@ -39,7 +39,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
             this.wiserItemsService = wiserItemsService;
         }
 
-        private static readonly List<string> europeanCountries = new() { "AT", "IT", "BE", "LV", "BG", "LT", "HR", "LU", "CY", "CZ", "DK", "EE", "PL", "FI", "PT", "FR", "RO", "DE", "SK", "SI", "GR", "ES", "HU", "SE", "IE" };
+        private static readonly List<string> europeanCountries = ["AT", "IT", "BE", "LV", "BG", "LT", "HR", "LU", "CY", "CZ", "DK", "EE", "PL", "FI", "PT", "FR", "RO", "DE", "SK", "SI", "GR", "ES", "HU", "SE", "IE"];
         /// <summary>
         /// Cleans the PostNL log table
         /// </summary>
@@ -120,7 +120,7 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
         {
             var result = new List<string>();
 
-            foreach (var encryptedId in encryptedOrderIds.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+            foreach (var encryptedId in encryptedOrderIds.Split([','], StringSplitOptions.RemoveEmptyEntries))
             {
                 var postNlDetailsItemId = UInt64.Parse(await this.objectService.FindSystemObjectByDomainNameAsync("postnl_details_item_id"));
                 var orderId = encryptedId.DecryptWithAesWithSalt(withDateTime: true, minutesValidOverride: 30);
@@ -198,30 +198,30 @@ namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Services
                         MessageTimeStamp = DateTime.Now.ToString("dd-MM-yyyy HH:mm:ss"),
                         Printertype = "GraphicFile|PDF"
                     },
-                    Shipments = new List<ShipmentModel>
+                    Shipments =
+                    [
+                        new ShipmentModel
                         {
-                            new ShipmentModel
-                            {
-                                ProductCodeDelivery = settings.ProductCode,
-                                Addresses = new List<AddressModel> { shippingAddress },
-                                Barcode = barcode,
-                                Contacts = new List<ContactModel>
+                            ProductCodeDelivery = settings.ProductCode,
+                            Addresses = [shippingAddress],
+                            Barcode = barcode,
+                            Contacts =
+                            [
+                                new ContactModel
                                 {
-                                    new ContactModel
-                                    {
-                                        Email = orderDetails.GetDetailValue(Constants.EmailAddressProperty),
-                                        SmsNumber = orderDetails.GetDetailValue(Constants.PhoneNumberProperty)
-                                    }
-                                },
-                                Remark = orderId
-                            }
+                                    Email = orderDetails.GetDetailValue(Constants.EmailAddressProperty),
+                                    SmsNumber = orderDetails.GetDetailValue(Constants.PhoneNumberProperty)
+                                }
+                            ],
+                            Remark = orderId
                         }
+                    ]
                 };
                 if (shippingLocation == ShippingLocations.Global)
                 {
                     postNlRequest.Shipments.First().Customs = new CustomsModel
                     {
-                        Content = new List<CustomsContentModel>(),
+                        Content = [],
                         Currency = "EUR",
                         HandleAsNonDeliverable = "false",
                         Invoice = "true",

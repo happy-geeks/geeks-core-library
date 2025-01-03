@@ -171,7 +171,7 @@ ORDER BY name ASC";
             if (settings.Id <= 0)
             {
                 // Generate empty last processed list, because the WTS needs that.
-                settings.LastProcessed = new List<LastProcessedModel>();
+                settings.LastProcessed = [];
                 foreach (var setting in settings.Settings)
                 {
                     settings.LastProcessed.Add(new LastProcessedModel { Type = setting.Type });
@@ -293,13 +293,13 @@ WHERE id = ?id";
             var bccAddresses = new List<string>();
             if (!String.IsNullOrWhiteSpace(bcc))
             {
-                bccAddresses.AddRange(bcc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                bccAddresses.AddRange(bcc.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             }
 
             var ccAddresses = new List<string>();
             if (!String.IsNullOrWhiteSpace(cc))
             {
-                ccAddresses.AddRange(cc.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                ccAddresses.AddRange(cc.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             }
 
             return await SendEmailAsync(receivers, subject, body, ccAddresses, bccAddresses, replyTo, replyToName, sender, senderName, sendDate, attachments);
@@ -522,7 +522,7 @@ WHERE id = ?id";
             var requestBody = new SmtPeterRequestModel()
             {
                 From = from,
-                To = new List<string>(communication.Receivers.Select(x => String.IsNullOrWhiteSpace(x.DisplayName) ? x.Address : $"{x.DisplayName} <{x.Address}>")),
+                To = [..communication.Receivers.Select(x => String.IsNullOrWhiteSpace(x.DisplayName) ? x.Address : $"{x.DisplayName} <{x.Address}>")],
                 Cc = communication.Cc.ToList(),
                 Recipients = recipients,
                 ReplyTo = String.IsNullOrWhiteSpace(communication.ReplyToName) ? communication.ReplyTo : $"{communication.ReplyToName} <{communication.ReplyTo}>",
@@ -532,7 +532,7 @@ WHERE id = ?id";
 
             if (attachments != null && attachments.Any())
             {
-                requestBody.Attachments = new List<SmtPeterRquestAttachmentModel>();
+                requestBody.Attachments = [];
 
                 foreach (var attachment in attachments)
                 {
@@ -761,7 +761,7 @@ WHERE id = ?id";
                 senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
             }
 
-            var response = await cmConnection.SendMessageAsync(communication.Content, senderName, new[] {receiverPhoneNumber}, null);
+            var response = await cmConnection.SendMessageAsync(communication.Content, senderName, [receiverPhoneNumber], null);
             if (response.statusCode == TextClientStatusCode.Ok)
             {
                 return;
@@ -1014,7 +1014,7 @@ WHERE id = ?id";
                 await databaseHelpersService.RenameTableAsync(WiserTableNames.WiserCommunication, $"_{WiserTableNames.WiserCommunication}_backup_{DateTime.Now:yyyy-MM-dd}");
             }
 
-            await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {WiserTableNames.WiserCommunication});
+            await databaseHelpersService.CheckAndUpdateTablesAsync([WiserTableNames.WiserCommunication]);
         }
 
         /// <summary>

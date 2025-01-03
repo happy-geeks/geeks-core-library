@@ -22,23 +22,9 @@ using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
 {
-    public class MeasurementProtocolService : IMeasurementProtocolService, IScopedService
+    public class MeasurementProtocolService(IShoppingBasketsService shoppingBasketsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ILogger<MeasurementProtocolService> logger)
+        : IMeasurementProtocolService, IScopedService
     {
-        private readonly IShoppingBasketsService shoppingBasketsService;
-        private readonly IWiserItemsService wiserItemsService;
-        private readonly IStringReplacementsService stringReplacementsService;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly ILogger<MeasurementProtocolService> logger;
-
-        public MeasurementProtocolService(IShoppingBasketsService shoppingBasketsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IDatabaseConnection databaseConnection, ILogger<MeasurementProtocolService> logger)
-        {
-            this.shoppingBasketsService = shoppingBasketsService;
-            this.wiserItemsService = wiserItemsService;
-            this.stringReplacementsService = stringReplacementsService;
-            this.databaseConnection = databaseConnection;
-            this.logger = logger;
-        }
-
         /// <inheritdoc />
         public async Task BeginCheckoutEventAsync(OrderProcessSettingsModel orderProcessSettings, WiserItemModel shoppingBasket, List<WiserItemModel> shoppingBasketLines, ShoppingBasketCmsSettingsModel shoppingBasketSettings)
         {
@@ -119,10 +105,7 @@ namespace GeeksCoreLibrary.Modules.MeasurementProtocol.Services
             var requestData = new MeasurementProtocolRequestModel()
             {
                 ClientId = clientId,
-                Events = new List<EventModel>()
-                {
-                    eventModel
-                }
+                Events = [eventModel]
             };
 
             // Use NewtonSoft to serialize instead of RestSharp's serialization.

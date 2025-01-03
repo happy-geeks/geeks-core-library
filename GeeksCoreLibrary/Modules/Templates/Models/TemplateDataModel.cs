@@ -22,11 +22,11 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// <summary>
         /// Gets or sets a collection of URLs for CSS libraries, usually hosted on some CDN.
         /// </summary>
-        public List<PageResourceModel> ExternalCssFiles { get; init; } = new();
+        public List<PageResourceModel> ExternalCssFiles { get; init; } = [];
 
         /// <summary>
         /// Gets or sets a collection of URLs for JavaScript libraries, usually hosted on some CDN.
         /// </summary>
-        public List<PageResourceModel> ExternalJavaScriptFiles { get; init; } = new();
+        public List<PageResourceModel> ExternalJavaScriptFiles { get; init; } = [];
     }
 }

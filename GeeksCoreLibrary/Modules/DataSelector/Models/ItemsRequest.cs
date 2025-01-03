@@ -48,23 +48,23 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Models
         /// </summary>
         internal string Query { get; set; }
 
-        internal List<string> LinkTables { get; } = new();
+        internal List<string> LinkTables { get; } = [];
 
         internal string AutoSortOrder { get; set; }
 
-        internal List<Field> FieldsInternal { get; } = new();
+        internal List<Field> FieldsInternal { get; } = [];
 
-        internal List<string> JoinLink { get; } = new();
+        internal List<string> JoinLink { get; } = [];
 
-        internal List<Field> JoinDetail { get; } = new();
+        internal List<Field> JoinDetail { get; } = [];
 
-        internal List<string> WhereLink { get; } = new();
+        internal List<string> WhereLink { get; } = [];
 
-        internal List<string> FileTypes { get; } = new();
+        internal List<string> FileTypes { get; } = [];
 
         internal Dictionary<string, string> DedicatedTables { get; } = new();
 
-        internal List<LinkTypeSettings> LinkTypeSettings { get; } = new();
+        internal List<LinkTypeSettings> LinkTypeSettings { get; } = [];
 
         #endregion
     }

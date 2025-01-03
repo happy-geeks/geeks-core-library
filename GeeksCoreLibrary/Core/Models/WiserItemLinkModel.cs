@@ -38,7 +38,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// Gets or sets the details for this item link.
         /// </summary>
-        public List<WiserItemDetailModel> Details { get; set; } = new List<WiserItemDetailModel>();
+        public List<WiserItemDetailModel> Details { get; set; } = [];
 
         /// <summary>
         /// Gets or sets whether to use the column parent_item_id from wiser_item to link, instead of using the table wiser_itemlink.

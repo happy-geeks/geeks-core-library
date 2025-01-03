@@ -457,7 +457,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     {
         if (String.IsNullOrWhiteSpace(input))
         {
-            return Array.Empty<StringReplacementVariable>();
+            return [];
         }
 
         prefix = Regex.Escape(prefix);

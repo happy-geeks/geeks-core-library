@@ -11,20 +11,11 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Services
 {
-    public class CachedOrderProcessesService: DecoratorOrderProcessesService
+    public class CachedOrderProcessesService(IAppCache cache, IOptions<GclSettings> gclSettings, IOrderProcessesService orderProcessesService, IBranchesService branchesService)
+        : DecoratorOrderProcessesService(orderProcessesService)
     {
-        private readonly IAppCache cache;
-        private readonly GclSettings gclSettings;
-        private readonly IOrderProcessesService orderProcessesService;
-        private readonly IBranchesService branchesService;
-
-        public CachedOrderProcessesService(IAppCache cache, IOptions<GclSettings> gclSettings, IOrderProcessesService orderProcessesService, IBranchesService branchesService) : base(orderProcessesService)
-        {
-            this.cache = cache;
-            this.gclSettings = gclSettings.Value;
-            this.orderProcessesService = orderProcessesService;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
+        private readonly IOrderProcessesService orderProcessesService = orderProcessesService;
 
         /// <inheritdoc />
         public override async Task<OrderProcessSettingsModel> GetOrderProcessSettingsAsync(ulong orderProcessId)

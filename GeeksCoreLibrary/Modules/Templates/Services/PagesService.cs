@@ -29,35 +29,18 @@ using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services
 {
-    public class PagesService : IPagesService, IScopedService
+    public class PagesService(
+        IOptions<GclSettings> gclSettings,
+        ILogger<PagesService> logger,
+        IObjectsService objectsService,
+        ITemplatesService templatesService,
+        ISeoService seoService,
+        IRedirectService redirectService,
+        IDatabaseConnection databaseConnection,
+        IHttpContextAccessor httpContextAccessor = null)
+        : IPagesService, IScopedService
     {
-        private readonly GclSettings gclSettings;
-        private readonly ILogger<PagesService> logger;
-        private readonly ITemplatesService templatesService;
-        private readonly ISeoService seoService;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IRedirectService redirectService;
-        private readonly IObjectsService objectsService;
-        private readonly IDatabaseConnection databaseConnection;
-
-        public PagesService(IOptions<GclSettings> gclSettings,
-            ILogger<PagesService> logger,
-            IObjectsService objectsService,
-            ITemplatesService templatesService,
-            ISeoService seoService,
-            IRedirectService redirectService,
-            IDatabaseConnection databaseConnection,
-            IHttpContextAccessor httpContextAccessor = null)
-        {
-            this.gclSettings = gclSettings.Value;
-            this.logger = logger;
-            this.templatesService = templatesService;
-            this.seoService = seoService;
-            this.httpContextAccessor = httpContextAccessor;
-            this.redirectService = redirectService;
-            this.databaseConnection = databaseConnection;
-            this.objectsService = objectsService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<string> GetGlobalHeader(string url, List<int> javascriptTemplates, List<int> cssTemplates)
@@ -313,7 +296,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 {
                     if (moveAllJavaScriptToBottom)
                     {
-                        viewModel.Javascript.GeneralSyncFooterJavaScriptFileName ??= new List<string>();
+                        viewModel.Javascript.GeneralSyncFooterJavaScriptFileName ??= [];
                         viewModel.Javascript.GeneralSyncFooterJavaScriptFileName.Add($"/scripts/gcl_general.js?mode=Standard&c={generalStandardJavaScript.LastChangeDate:yyyyMMddHHmmss}");
                     }
                     else
@@ -331,7 +314,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 var generalSyncFooterJavaScript = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js, ResourceInsertModes.SyncFooter);
                 if (!String.IsNullOrWhiteSpace(generalSyncFooterJavaScript.Content))
                 {
-                    viewModel.Javascript.GeneralSyncFooterJavaScriptFileName ??= new List<string>();
+                    viewModel.Javascript.GeneralSyncFooterJavaScriptFileName ??= [];
                     viewModel.Javascript.GeneralSyncFooterJavaScriptFileName.Add($"/scripts/gcl_general.js?mode=SyncFooter&c={generalSyncFooterJavaScript.LastChangeDate:yyyyMMddHHmmss}");
                 }
 
@@ -397,7 +380,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
 
                 if (inlineHeadJavascriptTemplates.Any())
                 {
-                    viewModel.Javascript.PageInlineHeadJavascript ??= new List<string>();
+                    viewModel.Javascript.PageInlineHeadJavascript ??= [];
                     viewModel.Javascript.PageInlineHeadJavascript.AddRange(inlineHeadJavascriptTemplates);
                 }
 
@@ -766,7 +749,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Defer = true
             });
 
-            viewModel.Javascript.PageInlineHeadJavascript ??= new List<string>();
+            viewModel.Javascript.PageInlineHeadJavascript ??= [];
             viewModel.Javascript.PageInlineHeadJavascript.Add($@"function gclExecuteReCaptcha(action) {{
 	return new Promise((resolve, reject) => {{
 		if (!grecaptcha || !grecaptcha.ready) {{
@@ -906,7 +889,7 @@ gclExecuteReCaptcha(""Page_load"")");
 
                     var enabledPart = requestsPercentage <= 0 ? "true" : $"Math.random() <= {(requestsPercentage / 100).ToString("F2", CultureInfo.InvariantCulture)}";
 
-                    viewModel.Javascript.PageInlineHeadJavascript ??= new List<string>();
+                    viewModel.Javascript.PageInlineHeadJavascript ??= [];
                     viewModel.Javascript.PageInlineHeadJavascript.Add($"window.TrackJS && TrackJS.install({{ token: \"{trackJsToken}\", enabled: {enabledPart} }});");
                 }
             }

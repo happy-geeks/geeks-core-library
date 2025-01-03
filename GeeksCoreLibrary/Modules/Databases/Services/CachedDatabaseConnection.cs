@@ -18,30 +18,17 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Databases.Services
 {
-    public class CachedDatabaseConnection : IDatabaseConnection
+    public class CachedDatabaseConnection(
+        IDatabaseConnection databaseConnection,
+        IAppCache cache,
+        IOptions<GclSettings> gclSettings,
+        ICacheService cacheService,
+        IBranchesService branchesService,
+        IHttpContextAccessor httpContextAccessor = null)
+        : IDatabaseConnection
     {
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IAppCache cache;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly ICacheService cacheService;
         private readonly ConcurrentDictionary<string, object> parameters = new();
-        private readonly GclSettings gclSettings;
-        private readonly IBranchesService branchesService;
-
-        public CachedDatabaseConnection(IDatabaseConnection databaseConnection,
-            IAppCache cache,
-            IOptions<GclSettings> gclSettings,
-            ICacheService cacheService,
-            IBranchesService branchesService,
-            IHttpContextAccessor httpContextAccessor = null)
-        {
-            this.databaseConnection = databaseConnection;
-            this.cache = cache;
-            this.httpContextAccessor = httpContextAccessor;
-            this.cacheService = cacheService;
-            this.gclSettings = gclSettings.Value;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async ValueTask DisposeAsync()

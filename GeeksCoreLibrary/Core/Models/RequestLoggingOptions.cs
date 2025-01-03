@@ -14,13 +14,13 @@ public class RequestLoggingOptions
     /// <summary>
     /// The HTTP methods that should be logged.
     /// </summary>
-    public List<HttpMethod> HttpMethods = new() { HttpMethod.Get, HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch, HttpMethod.Delete };
+    public List<HttpMethod> HttpMethods = [HttpMethod.Get, HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch, HttpMethod.Delete];
 
     /// <summary>
     /// The HTTP headers that should be logged. Any headers not in this list will be redacted.
     /// </summary>
-    public List<string> Headers = new()
-    {
+    public List<string> Headers =
+    [
         HeaderNames.Accept,
         HeaderNames.AcceptCharset,
         HeaderNames.AcceptEncoding,
@@ -58,7 +58,7 @@ public class RequestLoggingOptions
         HeaderNames.Warning,
         HeaderNames.XRequestedWith,
         HeaderNames.XUACompatible
-    };
+    ];
 
     /// <summary>
     /// Whether the request body should be logged. Default is false.
@@ -73,8 +73,8 @@ public class RequestLoggingOptions
     /// <summary>
     /// Properties from request or response bodies that should be redacted before they're logged.
     /// </summary>
-    public List<string> SensitiveProperties = new()
-    {
+    public List<string> SensitiveProperties =
+    [
         "password",
         "password_confirmation",
         "client_secret",
@@ -84,5 +84,5 @@ public class RequestLoggingOptions
         "encryptedLoginLogId",
         "totpPin",
         "totpBackupCode"
-    };
+    ];
 }

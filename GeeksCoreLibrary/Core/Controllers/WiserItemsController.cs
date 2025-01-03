@@ -13,19 +13,9 @@ namespace GeeksCoreLibrary.Core.Controllers
 {
     [Area("WiserItems")]
     [Route("wiser-items")]
-    public class WiserItemsController : Controller
+    public class WiserItemsController(IWiserItemsService wiserItemsService, IAccountsService accountsService, ILanguagesService languagesService)
+        : Controller
     {
-        private readonly IWiserItemsService wiserItemsService;
-        private readonly IAccountsService accountsService;
-        private readonly ILanguagesService languagesService;
-
-        public WiserItemsController(IWiserItemsService wiserItemsService, IAccountsService accountsService, ILanguagesService languagesService)
-        {
-            this.wiserItemsService = wiserItemsService;
-            this.accountsService = accountsService;
-            this.languagesService = languagesService;
-        }
-
         /// <summary>
         /// Gets an item from Wiser as an JSON object.
         /// This function will also check the rights of the item. If the user is not allowed to see this item, the function will return a HTTP 403 (Forbidden).

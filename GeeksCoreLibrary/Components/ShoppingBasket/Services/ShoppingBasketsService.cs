@@ -32,46 +32,24 @@ using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Co
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
 {
-    public class ShoppingBasketsService : IShoppingBasketsService, IScopedService
+    public class ShoppingBasketsService(
+        IOptions<GclSettings> gclSettings,
+        ILogger<ShoppingBasketsService> logger,
+        IDatabaseConnection databaseConnection,
+        IObjectsService objectsService,
+        IWiserItemsService wiserItemsService,
+        IAccountsService accountsService,
+        ITemplatesService templatesService,
+        IStringReplacementsService stringReplacementsService,
+        ILanguagesService languagesService,
+        IHttpContextAccessor httpContextAccessor = null,
+        ITempDataDictionaryFactory tempDataDictionaryFactory = null)
+        : IShoppingBasketsService, IScopedService
     {
-        private readonly GclSettings gclSettings;
-        private readonly ILogger<ShoppingBasketsService> logger;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IObjectsService objectsService;
-        private readonly IWiserItemsService wiserItemsService;
-        private readonly IAccountsService accountsService;
-        private readonly ITemplatesService templatesService;
-        private readonly IStringReplacementsService stringReplacementsService;
-        private readonly ITempDataDictionaryFactory tempDataDictionaryFactory;
-        private readonly ILanguagesService languagesService;
+        private readonly GclSettings gclSettings = gclSettings.Value;
+        private readonly ITempDataDictionaryFactory tempDataDictionaryFactory = tempDataDictionaryFactory;
 
         private SortedList<int, decimal> vatFactorsByRate;
-
-        public ShoppingBasketsService(IOptions<GclSettings> gclSettings,
-            ILogger<ShoppingBasketsService> logger,
-            IDatabaseConnection databaseConnection,
-            IObjectsService objectsService,
-            IWiserItemsService wiserItemsService,
-            IAccountsService accountsService,
-            ITemplatesService templatesService,
-            IStringReplacementsService stringReplacementsService,
-            ILanguagesService languagesService,
-            IHttpContextAccessor httpContextAccessor = null,
-            ITempDataDictionaryFactory tempDataDictionaryFactory = null)
-        {
-            this.gclSettings = gclSettings.Value;
-            this.logger = logger;
-            this.databaseConnection = databaseConnection;
-            this.httpContextAccessor = httpContextAccessor;
-            this.objectsService = objectsService;
-            this.wiserItemsService = wiserItemsService;
-            this.accountsService = accountsService;
-            this.templatesService = templatesService;
-            this.stringReplacementsService = stringReplacementsService;
-            this.tempDataDictionaryFactory = tempDataDictionaryFactory;
-            this.languagesService = languagesService;
-        }
 
         /// <inheritdoc />
         public async Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber)
@@ -385,7 +363,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 {
                     if (shoppingBasket.Id == 0 || !includeLines)
                     {
-                        basketLines = new List<WiserItemModel>();
+                        basketLines = [];
                     }
                     else
                     {
@@ -650,7 +628,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             {
                 Id = basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert ? shoppingBasket.Id : 0,
                 EntityType = OrderProcess.Models.Constants.ConceptOrderEntityType,
-                Details = new List<WiserItemDetailModel>(shoppingBasket.Details)
+                Details = [..shoppingBasket.Details]
             };
 
             if (basketToConceptOrderMethod == OrderProcessBasketToConceptOrderMethods.Convert)
@@ -936,7 +914,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             }
 
             shoppingBasket ??= new WiserItemModel();
-            basketLines ??= new List<WiserItemModel>();
+            basketLines ??= [];
 
             var repeatVars = new[] { "<!--{repeat:lines~?(.*?)}-->(.*?)<!--{/repeat:lines.*?}-->", "{repeat:lines~?(.*?)}(.*?){/repeat:lines.*?}" };
             var priceVars = new[] { "{price~(.*?)}", "{singleprice~(.*?)}", "{pricewithoutfactor~(.*?)}", "{singlepricewithoutfactor~(.*?)}" };
@@ -1575,7 +1553,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                     }
                 }
 
-                await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { couponId }, basketToUserLinkType: basketToUserLinkType);
+                await RemoveLinesAsync(shoppingBasket, basketLines, settings, [couponId], basketToUserLinkType: basketToUserLinkType);
                 return;
             }
 
@@ -2137,7 +2115,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         {
             if (basketLines == null)
             {
-                return new List<WiserItemModel>();
+                return [];
             }
 
             if (!basketLines.Any() || String.IsNullOrWhiteSpace(lineType))
@@ -2202,7 +2180,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         {
             if (settings.RemoveItemWhenQuantityIsZero && quantity <= 0M)
             {
-                await RemoveLinesAsync(shoppingBasket, basketLines, settings, new[] { itemIdOrUniqueId }, basketToUserLinkType: basketToUserLinkType);
+                await RemoveLinesAsync(shoppingBasket, basketLines, settings, [itemIdOrUniqueId], basketToUserLinkType: basketToUserLinkType);
             }
 
             if (quantity > settings.MaxItemQuantity)

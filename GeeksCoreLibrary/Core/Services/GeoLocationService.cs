@@ -12,17 +12,9 @@ using RestSharp.Serializers.NewtonsoftJson;
 
 namespace GeeksCoreLibrary.Core.Services
 {
-    public class GeoLocationService : IGeoLocationService, IScopedService
+    public class GeoLocationService(IObjectsService objectsService, ILogger<GeoLocationService> logger)
+        : IGeoLocationService, IScopedService
     {
-        private readonly IObjectsService objectsService;
-        private readonly ILogger<GeoLocationService> logger;
-
-        public GeoLocationService(IObjectsService objectsService, ILogger<GeoLocationService> logger)
-        {
-            this.objectsService = objectsService;
-            this.logger = logger;
-        }
-
         /// <inheritdoc />
         public async Task<AddressInfoModel> GetAddressInfoAsync(string zipCode, string houseNumber, string houseNumberAddition = "", string country = "")
         {

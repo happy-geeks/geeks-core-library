@@ -52,6 +52,6 @@ namespace GeeksCoreLibrary.Core.Models
         /// Gets or sets the aggregation methods for this field/property.
         /// This can be used for executing functions on values, such as calculating the sum of a field of all other children with the same parent.
         /// </summary>
-        public List<WiserItemPropertyAggregateMethodModel> AggregationMethods { get; set; } = new();
+        public List<WiserItemPropertyAggregateMethodModel> AggregationMethods { get; set; } = [];
     }
 }

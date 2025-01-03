@@ -255,7 +255,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                         else if (subRows.Any())
                         {
                             AddArray(groupingSettings.GroupingFieldsPrefix, result, subRows);
-                            subRows = new JArray();
+                            subRows = [];
                         }
                     }
 

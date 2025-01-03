@@ -16,26 +16,10 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Components.WebPage.Services
 {
-    public class CachedWebPagesService : IWebPagesService
+    public class CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSettings, IWebPagesService webPagesService, ILanguagesService languagesService, ICacheService cacheService, IStringReplacementsService stringReplacementsService, IBranchesService branchesService)
+        : IWebPagesService
     {
-        private readonly IAppCache cache;
-        private readonly GclSettings gclSettings;
-        private readonly IWebPagesService webPagesService;
-        private readonly ILanguagesService languagesService;
-        private readonly ICacheService cacheService;
-        private readonly IStringReplacementsService stringReplacementsService;
-        private readonly IBranchesService branchesService;
-
-        public CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSettings, IWebPagesService webPagesService, ILanguagesService languagesService, ICacheService cacheService, IStringReplacementsService stringReplacementsService, IBranchesService branchesService)
-        {
-            this.cache = cache;
-            this.gclSettings = gclSettings.Value;
-            this.webPagesService = webPagesService;
-            this.languagesService = languagesService;
-            this.cacheService = cacheService;
-            this.stringReplacementsService = stringReplacementsService;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<(ulong Id, string Title, string FixedUrl, List<string> Path, List<ulong> Parents)?> GetWebPageViaFixedUrlAsync(string fixedUrl)

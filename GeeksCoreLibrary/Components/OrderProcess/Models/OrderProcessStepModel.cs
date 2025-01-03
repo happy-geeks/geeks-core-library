@@ -16,7 +16,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// <summary>
         /// Gets or sets the list of groups that are contained on this step.
         /// </summary>
-        public List<OrderProcessGroupModel> Groups { get; set; } = new();
+        public List<OrderProcessGroupModel> Groups { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the summary text.

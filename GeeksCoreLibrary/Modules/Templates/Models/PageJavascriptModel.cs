@@ -7,7 +7,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// <summary>
         /// Gets or sets the list of external javascript files.
         /// </summary>
-        public List<JavaScriptResourceModel> ExternalJavascript { get; set; } = new();
+        public List<JavaScriptResourceModel> ExternalJavascript { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the javascript for all pages that should be loaded in the header as an URL.
@@ -53,6 +53,6 @@ namespace GeeksCoreLibrary.Modules.Templates.Models
         /// <summary>
         /// Gets or sets the javascript for the current page that should be loaded in the body as inline script.
         /// </summary>
-        public List<string> PagePluginInlineJavascriptSnippets { get; set; } = new();
+        public List<string> PagePluginInlineJavascriptSnippets { get; set; } = [];
     }
 }

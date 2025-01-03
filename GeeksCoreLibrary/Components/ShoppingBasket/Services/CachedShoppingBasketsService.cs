@@ -17,22 +17,10 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
     /// <summary>
     /// The cached version of the ShoppingBasketsService. There aren't many parts that are cached, so most functions are pass-through functions.
     /// </summary>
-    public class CachedShoppingBasketsService : IShoppingBasketsService
+    public class CachedShoppingBasketsService(IOptions<GclSettings> gclSettings, IAppCache cache, IShoppingBasketsService shoppingBasketsService, ICacheService cacheService, IBranchesService branchesService)
+        : IShoppingBasketsService
     {
-        private readonly GclSettings gclSettings;
-        private readonly IAppCache cache;
-        private readonly IShoppingBasketsService shoppingBasketsService;
-        private readonly ICacheService cacheService;
-        private readonly IBranchesService branchesService;
-
-        public CachedShoppingBasketsService(IOptions<GclSettings> gclSettings, IAppCache cache, IShoppingBasketsService shoppingBasketsService, ICacheService cacheService, IBranchesService branchesService)
-        {
-            this.gclSettings = gclSettings.Value;
-            this.cache = cache;
-            this.shoppingBasketsService = shoppingBasketsService;
-            this.cacheService = cacheService;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<List<(WiserItemModel Order, List<WiserItemModel> OrderLines)>> GetOrdersByUniquePaymentNumberAsync(string uniquePaymentNumber)

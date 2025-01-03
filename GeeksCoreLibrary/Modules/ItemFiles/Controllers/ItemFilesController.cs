@@ -12,19 +12,11 @@ using Microsoft.Extensions.Options;
 namespace GeeksCoreLibrary.Modules.ItemFiles.Controllers
 {
     [Area("ItemFiles")]
-    public class ItemFilesController : Controller
+    public class ItemFilesController(ILogger<ItemFilesController> logger, IOptions<GclSettings> gclSettings, IItemFilesService itemFilesService)
+        : Controller
     {
-        private readonly ILogger<ItemFilesController> logger;
-        private readonly GclSettings gclSettings;
-        private readonly IItemFilesService itemFilesService;
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
-        public ItemFilesController(ILogger<ItemFilesController> logger, IOptions<GclSettings> gclSettings, IItemFilesService itemFilesService)
-        {
-            this.logger = logger;
-            this.gclSettings = gclSettings.Value;
-            this.itemFilesService = itemFilesService;
-        }
-        
         [Route("/wiser-image.gcl")]
         [HttpGet]
         public async Task<IActionResult> WiserItemImage([FromQuery] ulong itemId, [FromQuery] string propertyName,

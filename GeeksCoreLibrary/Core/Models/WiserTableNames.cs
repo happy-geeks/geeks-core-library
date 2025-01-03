@@ -218,31 +218,31 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// All tables that also have an archive.
         /// </summary>
-        public static readonly List<string> TablesWithArchive = new()
-        {
+        public static readonly List<string> TablesWithArchive =
+        [
             WiserItem,
             WiserItemDetail,
             WiserItemFile,
             WiserItemLink,
             WiserItemLinkDetail
-        };
+        ];
         /// <summary>
         /// All tables that can have a dedicated version for certain entity types, such as "basket_wiser_item".
         /// </summary>
-        public static readonly List<string> TablesThatCanHaveEntityPrefix = new()
-        {
+        public static readonly List<string> TablesThatCanHaveEntityPrefix =
+        [
             WiserItem,
             WiserItemDetail,
             WiserItemFile
-        };
+        ];
         /// <summary>
         /// All tables that can have a dedicated version for certain link types, such as "1234_wiser_itemlink".
         /// </summary>
-        public static readonly List<string> TablesThatCanHaveLinkPrefix = new()
-        {
+        public static readonly List<string> TablesThatCanHaveLinkPrefix =
+        [
             WiserItemLink,
             WiserItemLinkDetail,
             WiserItemFile
-        };
+        ];
     }
 }

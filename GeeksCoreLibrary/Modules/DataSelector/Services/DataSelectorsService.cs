@@ -28,28 +28,10 @@ using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.DataSelector.Services
 {
-    public class DataSelectorsService : IDataSelectorsService, IScopedService
+    public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IStringReplacementsService stringReplacementsService, ITemplatesService templatesService, IHtmlToPdfConverterService htmlToPdfConverterService, IExcelService excelService, ILogger<DataSelectorsService> logger, ILanguagesService languagesService)
+        : IDataSelectorsService, IScopedService
     {
-        private readonly GclSettings gclSettings;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IStringReplacementsService stringReplacementsService;
-        private readonly ITemplatesService templatesService;
-        private readonly IHtmlToPdfConverterService htmlToPdfConverterService;
-        private readonly IExcelService excelService;
-        private readonly ILogger<DataSelectorsService> logger;
-        private readonly ILanguagesService languagesService;
-
-        public DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseConnection databaseConnection, IStringReplacementsService stringReplacementsService, ITemplatesService templatesService, IHtmlToPdfConverterService htmlToPdfConverterService, IExcelService excelService, ILogger<DataSelectorsService> logger, ILanguagesService languagesService)
-        {
-            this.gclSettings = gclSettings.Value;
-            this.databaseConnection = databaseConnection;
-            this.stringReplacementsService = stringReplacementsService;
-            this.templatesService = templatesService;
-            this.htmlToPdfConverterService = htmlToPdfConverterService;
-            this.excelService = excelService;
-            this.logger = logger;
-            this.languagesService = languagesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<string> GetDataSelectorJsonAsync(int dataSelectorId)
@@ -1253,7 +1235,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
                         if (row.Value is JArray array)
                         {
-                            var valueArray = array.ToObject<string[]>() ?? Array.Empty<string>();
+                            var valueArray = array.ToObject<string[]>() ?? [];
 
                             if (row.Operator.Equals("is equal to", StringComparison.OrdinalIgnoreCase))
                             {
@@ -1719,7 +1701,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
             var formattedField = GetFormattedField(scopeRow.Key, $"`{scopeRow.Key.TableAlias.ToMySqlSafeValue(false)}`.`value`");
             if (scopeRow.Value is JArray array)
             {
-                var valueArray = array.ToObject<string[]>() ?? Array.Empty<string>();
+                var valueArray = array.ToObject<string[]>() ?? [];
                 var inPart = String.Join(", ", valueArray.Select(v => v.ToMySqlSafeValue(true)));
                 switch (scopeRow.Operator)
                 {
@@ -1774,7 +1756,7 @@ namespace GeeksCoreLibrary.Modules.DataSelector.Services
 
             if (havingRow.Value is JArray array)
             {
-                var valueArray = array.ToObject<string[]>() ?? Array.Empty<string>();
+                var valueArray = array.ToObject<string[]>() ?? [];
                 var inPart = String.Join(", ", valueArray.Select(v => v.ToMySqlSafeValue(true)));
                 switch (havingRow.Operator)
                 {

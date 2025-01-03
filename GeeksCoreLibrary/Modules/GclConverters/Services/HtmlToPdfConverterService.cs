@@ -23,29 +23,16 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.GclConverters.Services
 {
-    public class HtmlToPdfConverterService : IHtmlToPdfConverterService, IScopedService
+    public class HtmlToPdfConverterService(
+        IDatabaseConnection databaseConnection,
+        IObjectsService objectsService,
+        IStringReplacementsService stringReplacementsService,
+        IOptions<GclSettings> gclSettings,
+        IHttpContextAccessor httpContextAccessor = null,
+        IWebHostEnvironment webHostEnvironment = null)
+        : IHtmlToPdfConverterService, IScopedService
     {
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IObjectsService objectsService;
-        private readonly IStringReplacementsService stringReplacementsService;
-        private readonly GclSettings gclSettings;
-        private readonly IWebHostEnvironment webHostEnvironment;
-
-        public HtmlToPdfConverterService(IDatabaseConnection databaseConnection,
-            IObjectsService objectsService,
-            IStringReplacementsService stringReplacementsService,
-            IOptions<GclSettings> gclSettings,
-            IHttpContextAccessor httpContextAccessor = null,
-            IWebHostEnvironment webHostEnvironment = null)
-        {
-            this.httpContextAccessor = httpContextAccessor;
-            this.databaseConnection = databaseConnection;
-            this.objectsService = objectsService;
-            this.stringReplacementsService = stringReplacementsService;
-            this.gclSettings = gclSettings.Value;
-            this.webHostEnvironment = webHostEnvironment;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<FileContentResult> ConvertHtmlStringToPdfAsync(HtmlToPdfRequestModel settings)

@@ -7,17 +7,8 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Core.Middlewares
 {
-    public class AddAntiForgeryMiddleware
+    public class AddAntiForgeryMiddleware(RequestDelegate next, ILogger<AddAntiForgeryMiddleware> logger)
     {
-        private readonly RequestDelegate next;
-        private readonly ILogger<AddAntiForgeryMiddleware> logger;
-
-        public AddAntiForgeryMiddleware(RequestDelegate next, ILogger<AddAntiForgeryMiddleware> logger)
-        {
-            this.next = next;
-            this.logger = logger;
-        }
-
         /// <summary>
         /// Invoke the middleware.
         /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.

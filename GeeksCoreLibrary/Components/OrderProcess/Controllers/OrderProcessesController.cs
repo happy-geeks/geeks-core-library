@@ -26,41 +26,20 @@ using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 namespace GeeksCoreLibrary.Components.OrderProcess.Controllers
 {
     [Area("Templates")]
-    public class OrderProcessesController : Controller
+    public class OrderProcessesController(
+        ILogger<OrderProcessesController> logger,
+        ITemplatesService templatesService,
+        IPagesService pagesService,
+        IDataSelectorsService dataSelectorsService,
+        IOrderProcessesService orderProcessesService,
+        IWiserItemsService wiserItemsService,
+        IActionContextAccessor actionContextAccessor = null,
+        IHttpContextAccessor httpContextAccessor = null,
+        IViewComponentHelper viewComponentHelper = null,
+        ITempDataProvider tempDataProvider = null)
+        : Controller
     {
-        private readonly ILogger<OrderProcessesController> logger;
-        private readonly ITemplatesService templatesService;
-        private readonly IPagesService pagesService;
-        private readonly IActionContextAccessor actionContextAccessor;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly ITempDataProvider tempDataProvider;
-        private readonly IViewComponentHelper viewComponentHelper;
-        private readonly IDataSelectorsService dataSelectorsService;
-        private readonly IOrderProcessesService orderProcessesService;
-        private readonly IWiserItemsService wiserItemsService;
-
-        public OrderProcessesController(ILogger<OrderProcessesController> logger,
-                                        ITemplatesService templatesService,
-                                        IPagesService pagesService,
-                                        IDataSelectorsService dataSelectorsService,
-                                        IOrderProcessesService orderProcessesService,
-                                        IWiserItemsService wiserItemsService,
-                                        IActionContextAccessor actionContextAccessor = null,
-                                        IHttpContextAccessor httpContextAccessor = null,
-                                        IViewComponentHelper viewComponentHelper = null,
-                                        ITempDataProvider tempDataProvider = null)
-        {
-            this.logger = logger;
-            this.templatesService = templatesService;
-            this.pagesService = pagesService;
-            this.actionContextAccessor = actionContextAccessor;
-            this.httpContextAccessor = httpContextAccessor;
-            this.tempDataProvider = tempDataProvider;
-            this.viewComponentHelper = viewComponentHelper;
-            this.dataSelectorsService = dataSelectorsService;
-            this.orderProcessesService = orderProcessesService;
-            this.wiserItemsService = wiserItemsService;
-        }
+        private readonly ILogger<OrderProcessesController> logger = logger;
 
         [Route(Constants.CheckoutPage)]
         public async Task<IActionResult> OrderProcessAsync()

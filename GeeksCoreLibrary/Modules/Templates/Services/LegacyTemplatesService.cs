@@ -1329,7 +1329,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
             }
 
             var dataTable = await databaseConnection.GetAsync(query, skipCache: queryTemplate.CachingMinutes < 0);
-            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
+            var result = dataTable.Rows.Count == 0 ? [] : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
 
             if (pusherMatches.Any())
             {
@@ -1605,7 +1605,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 Id = dataTable.Rows[0].Field<int>("template_id"),
                 Name = dataTable.Rows[0].Field<string>("template_name"),
                 LoginRequired = dataTable.Rows[0].Field<bool>("issecure"),
-                LoginRoles = new List<int>(),
+                LoginRoles = [],
                 LoginRedirectUrl = String.Empty,
                 Type = (TemplateTypes)Convert.ToInt32(dataTable.Rows[0]["template_type"])
             };

@@ -25,41 +25,20 @@ using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services
 {
-    public class LegacyCachedTemplatesService : ITemplatesService
+    public class LegacyCachedTemplatesService(
+        ILogger<LegacyCachedTemplatesService> logger,
+        ITemplatesService templatesService,
+        IAppCache cache,
+        IOptions<GclSettings> gclSettings,
+        IDatabaseConnection databaseConnection,
+        ICacheService cacheService,
+        IBranchesService branchesService,
+        IObjectsService objectsService,
+        IHttpContextAccessor httpContextAccessor = null,
+        IWebHostEnvironment webHostEnvironment = null)
+        : ITemplatesService
     {
-        private readonly ILogger<LegacyCachedTemplatesService> logger;
-        private readonly ITemplatesService templatesService;
-        private readonly IAppCache cache;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly GclSettings gclSettings;
-        private readonly ICacheService cacheService;
-        private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly IBranchesService branchesService;
-        private readonly IObjectsService objectsService;
-        private readonly IHttpContextAccessor httpContextAccessor;
-
-        public LegacyCachedTemplatesService(ILogger<LegacyCachedTemplatesService> logger,
-            ITemplatesService templatesService,
-            IAppCache cache,
-            IOptions<GclSettings> gclSettings,
-            IDatabaseConnection databaseConnection,
-            ICacheService cacheService,
-            IBranchesService branchesService,
-            IObjectsService objectsService,
-            IHttpContextAccessor httpContextAccessor = null,
-            IWebHostEnvironment webHostEnvironment = null)
-        {
-            this.logger = logger;
-            this.templatesService = templatesService;
-            this.cache = cache;
-            this.gclSettings = gclSettings.Value;
-            this.databaseConnection = databaseConnection;
-            this.cacheService = cacheService;
-            this.webHostEnvironment = webHostEnvironment;
-            this.objectsService = objectsService;
-            this.httpContextAccessor = httpContextAccessor;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true, bool skipPermissions = false)

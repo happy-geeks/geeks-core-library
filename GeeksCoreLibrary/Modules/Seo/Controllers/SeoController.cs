@@ -11,18 +11,10 @@ using Microsoft.Extensions.Options;
 namespace GeeksCoreLibrary.Modules.Seo.Controllers
 {
     [Area("Seo")]
-    public class SeoController : Controller
+    public class SeoController(IObjectsService objectsService, ISeoService seoService, IOptions<GclSettings> gclSettings)
+        : Controller
     {
-        private readonly GclSettings gclSettings;
-        private readonly IObjectsService objectsService;
-        private readonly ISeoService seoService;
-
-        public SeoController(IObjectsService objectsService, ISeoService seoService, IOptions<GclSettings> gclSettings)
-        {
-            this.objectsService = objectsService;
-            this.seoService = seoService;
-            this.gclSettings = gclSettings.Value;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         [Route("robots.txt"), HttpGet]
         public async Task<IActionResult> Robots()

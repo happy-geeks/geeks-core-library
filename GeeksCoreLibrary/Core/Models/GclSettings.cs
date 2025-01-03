@@ -275,7 +275,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// A list of domain names that are considered to be test domains. E.g.: my-test-domain.com
         /// </summary>
-        public string[] TestDomains { get; set; } = Array.Empty<string>();
+        public string[] TestDomains { get; set; } = [];
 
         /// <summary>
         /// Whether to log whenever a database connection gets opened and closed.
@@ -297,7 +297,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// List of rules defining which cache-control headers to apply to specific file paths.
         /// </summary>
-        public List<CacheControlRuleSettingsModel> CacheControlRules { get; set; } = new();
+        public List<CacheControlRuleSettingsModel> CacheControlRules { get; set; } = [];
 
         /// <summary>
         /// The settings for the Amazon S3 Bucket.

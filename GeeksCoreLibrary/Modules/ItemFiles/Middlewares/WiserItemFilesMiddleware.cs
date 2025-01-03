@@ -9,17 +9,8 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Middlewares;
 
-public class WiserItemFilesMiddleware
+public class WiserItemFilesMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrderProcessMiddleware> logger)
 {
-    private readonly RequestDelegate next;
-    private readonly ILogger<RewriteUrlToOrderProcessMiddleware> logger;
-
-    public WiserItemFilesMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrderProcessMiddleware> logger)
-    {
-        this.next = next;
-        this.logger = logger;
-    }
-
     /// <summary>
     /// Invoke the middleware.
     /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.

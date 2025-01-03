@@ -1386,13 +1386,13 @@ SET @saveHistory = ?saveHistoryGcl;
         /// <inheritdoc />
         public async Task<int> DeleteAsync(ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await DeleteAsync(this, new List<ulong> { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction, skipPermissionsCheck);
+            return await DeleteAsync(this, [itemId], undelete, username, userId, saveHistory, entityType, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
         public async Task<int> DeleteAsync(IWiserItemsService wiserItemsService, ulong itemId, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
         {
-            return await DeleteAsync(wiserItemsService, new List<ulong> { itemId }, undelete, username, userId, saveHistory, entityType, createNewTransaction, skipPermissionsCheck);
+            return await DeleteAsync(wiserItemsService, [itemId], undelete, username, userId, saveHistory, entityType, createNewTransaction, skipPermissionsCheck);
         }
 
         /// <inheritdoc />
@@ -3404,7 +3404,7 @@ WHERE {String.Join(" AND ", where)}";
         /// <inheritdoc />
         public async Task<WiserItemFileModel> GetItemFileAsync(IWiserItemsService wiserItemsService, ulong id, string field = "Id", string propertyName = null, string entityType = null, int linkType = 0)
         {
-            var list = await wiserItemsService.GetItemFilesAsync(new[] { id }, field, propertyName, entityType, linkType);
+            var list = await wiserItemsService.GetItemFilesAsync([id], field, propertyName, entityType, linkType);
             return list.FirstOrDefault();
         }
 
@@ -3955,8 +3955,8 @@ WHERE {String.Join(" AND ", where)}";
             {
                 if (!columnsForQuery.ContainsKey(setting.TableName))
                 {
-                    columnsForQuery.Add(setting.TableName, new List<string> { "id", "title", "parent_item_id" });
-                    parametersForQuery.Add(setting.TableName, new List<string> { "?id", "?title", "?parent_item_id" });
+                    columnsForQuery.Add(setting.TableName, ["id", "title", "parent_item_id"]);
+                    parametersForQuery.Add(setting.TableName, ["?id", "?title", "?parent_item_id"]);
                 }
 
                 var itemDetail = wiserItem.Details.FirstOrDefault(detail => String.Equals(detail.Key, setting.PropertyName, StringComparison.OrdinalIgnoreCase) && String.Equals(detail.LanguageCode ?? "", setting.LanguageCode ?? "", StringComparison.OrdinalIgnoreCase));

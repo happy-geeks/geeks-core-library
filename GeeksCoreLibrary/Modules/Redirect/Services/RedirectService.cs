@@ -10,17 +10,9 @@ using GeeksCoreLibrary.Modules.Redirect.Models;
 
 namespace GeeksCoreLibrary.Modules.Redirect.Services
 {
-    public class RedirectService : IRedirectService, IScopedService
+    public class RedirectService(IDatabaseConnection databaseConnection, IObjectsService objectsService)
+        : IRedirectService, IScopedService
     {
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IObjectsService objectsService;
-
-        public RedirectService(IDatabaseConnection databaseConnection, IObjectsService objectsService)
-        {
-            this.databaseConnection = databaseConnection;
-            this.objectsService = objectsService;
-        }
-
         /// <inheritdoc />
         public async Task<RedirectModel> GetRedirectAsync(Uri uri)
         {

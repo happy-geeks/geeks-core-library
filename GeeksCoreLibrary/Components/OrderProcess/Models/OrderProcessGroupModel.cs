@@ -26,7 +26,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// <summary>
         /// Gets or sets the fields.
         /// </summary>
-        public List<OrderProcessFieldModel> Fields { get; set; } = new();
+        public List<OrderProcessFieldModel> Fields { get; set; } = [];
 
         /// <summary>
         /// Gets or sets any extra CSS classes for this group.

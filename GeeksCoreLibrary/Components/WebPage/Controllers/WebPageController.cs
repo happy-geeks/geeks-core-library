@@ -23,39 +23,18 @@ using Newtonsoft.Json;
 namespace GeeksCoreLibrary.Components.WebPage.Controllers
 {
     [Area("Templates")]
-    public class WebPageController : Controller
+    public class WebPageController(
+        ILogger<WebPageController> logger,
+        ITemplatesService templatesService,
+        IPagesService pagesService,
+        IDataSelectorsService dataSelectorsService,
+        IWiserItemsService wiserItemsService,
+        IActionContextAccessor actionContextAccessor = null,
+        IHttpContextAccessor httpContextAccessor = null,
+        ITempDataProvider tempDataProvider = null,
+        IViewComponentHelper viewComponentHelper = null)
+        : Controller
     {
-        private readonly ILogger<WebPageController> logger;
-        private readonly ITemplatesService templatesService;
-        private readonly IPagesService pagesService;
-        private readonly IActionContextAccessor actionContextAccessor;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly ITempDataProvider tempDataProvider;
-        private readonly IViewComponentHelper viewComponentHelper;
-        private readonly IDataSelectorsService dataSelectorsService;
-        private readonly IWiserItemsService wiserItemsService;
-
-        public WebPageController(ILogger<WebPageController> logger,
-                                 ITemplatesService templatesService,
-                                 IPagesService pagesService,
-                                 IDataSelectorsService dataSelectorsService,
-                                 IWiserItemsService wiserItemsService,
-                                 IActionContextAccessor actionContextAccessor = null,
-                                 IHttpContextAccessor httpContextAccessor = null,
-                                 ITempDataProvider tempDataProvider = null,
-                                 IViewComponentHelper viewComponentHelper = null)
-        {
-            this.logger = logger;
-            this.templatesService = templatesService;
-            this.pagesService = pagesService;
-            this.actionContextAccessor = actionContextAccessor;
-            this.httpContextAccessor = httpContextAccessor;
-            this.tempDataProvider = tempDataProvider;
-            this.viewComponentHelper = viewComponentHelper;
-            this.dataSelectorsService = dataSelectorsService;
-            this.wiserItemsService = wiserItemsService;
-        }
-
         [Route("webpage.gcl")]
         [Route("cmspage.jcl")]
         public async Task<IActionResult> WebPageAsync()

@@ -1487,7 +1487,7 @@ ORDER BY id ASC");
             }
 
             var dataTable = await databaseConnection.GetAsync(query, skipCache: queryTemplate.CachingMinutes < 0);
-            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
+            var result = dataTable.Rows.Count == 0 ? [] : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
 
             if (pusherMatches.Any())
             {
@@ -1516,7 +1516,7 @@ ORDER BY ORDINAL_POSITION ASC";
             query = $"{queryPrefix} {routineName}({String.Join(", ", parameters)}) {querySuffix};";
             query = await stringReplacementsService.DoAllReplacementsAsync(query, forQuery: true);
             dataTable = await databaseConnection.GetAsync(query);
-            return dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(null, encryptionKey, skipNullValues, allowValueDecryption);
+            return dataTable.Rows.Count == 0 ? [] : dataTable.ToJsonArray(null, encryptionKey, skipNullValues, allowValueDecryption);
         }
 
         /// <inheritdoc />
@@ -1949,7 +1949,7 @@ LIMIT 1";
                 var userData = await accountsService.GetUserDataFromCookieAsync();
 
                 var tableName = componentId > 0 ? WiserTableNames.WiserDynamicContentRenderLog : WiserTableNames.WiserTemplateRenderLog;
-                await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {tableName});
+                await databaseHelpersService.CheckAndUpdateTablesAsync([tableName]);
                 databaseConnection.AddParameter("rendering_content_id", componentId);
                 databaseConnection.AddParameter("rendering_template_id", templateId);
                 databaseConnection.AddParameter("rendering_version", version);

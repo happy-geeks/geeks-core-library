@@ -13,17 +13,8 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Redirect.Middlewares;
 
-public class RedirectMiddleWare
+public class RedirectMiddleWare(RequestDelegate next, ILogger<RedirectMiddleWare> logger)
 {
-    private readonly RequestDelegate next;
-    private readonly ILogger<RedirectMiddleWare> logger;
-
-    public RedirectMiddleWare(RequestDelegate next, ILogger<RedirectMiddleWare> logger)
-    {
-        this.next = next;
-        this.logger = logger;
-    }
-
     /// <summary>
     /// Invoke the middleware.
     /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.

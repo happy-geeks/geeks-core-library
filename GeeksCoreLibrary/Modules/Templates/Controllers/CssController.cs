@@ -11,15 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace GeeksCoreLibrary.Modules.Templates.Controllers
 {
     [Area("Templates")]
-    public class CssController : Controller
+    public class CssController(ITemplatesService templatesService) : Controller
     {
-        private readonly ITemplatesService templatesService;
-
-        public CssController(ITemplatesService templatesService)
-        {
-            this.templatesService = templatesService;
-        }
-        
         [Route("/css/gcl_general.css")]
         [HttpGet]
         public async Task<IActionResult> GeneralCss(ResourceInsertModes mode = ResourceInsertModes.Standard)

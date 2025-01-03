@@ -76,7 +76,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Models
         /// <summary>
         /// Gets or sets the entity type(s) and property/properties where this field should be saved to.
         /// </summary>
-        public List<OrderProcessFieldSaveToSettingsModel> SaveTo { get; set; } = new();
+        public List<OrderProcessFieldSaveToSettingsModel> SaveTo { get; set; } = [];
 
         /// <summary>
         /// Gets or sets whether this field requires the user to enter a unique value that doesn't exist in the database yet.

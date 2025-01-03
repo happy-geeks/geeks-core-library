@@ -51,21 +51,21 @@ public static class FileSystemHelpers
 
         // These are the byte arrays that determine the magic numbers.
         // Source: https://en.wikipedia.org/wiki/List_of_file_signatures.
-        byte[] bmpMagicNumber = { 0x42, 0x4D };
-        byte[] jpegMagcicNumberStart = { 0xFF, 0xD8 };
-        byte[] jpegMagicNumberEnd = { 0xFF, 0xD9 };
-        byte[] pngMagicNumber = { 0x89, 0x50, 0x4E, 0x47, 0xD, 0xA, 0x1A, 0xA };
-        byte[] gifMagicNumberA = { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61 };
-        byte[] gifMagicNumberB = { 0x47, 0x49, 0x46, 0x38, 0x37, 0x61 };
-        byte[] tiffMagicNumberA = { 0x49, 0x49, 0x2A, 0x0 };
-        byte[] tiffMagicNumberB = { 0x4D, 0x4D, 0x0, 0x2A };
-        byte[] flifMagicNumber = { 0x46, 0x4, 0x49, 0x46 };
-        byte[] icoMagicNumber = { 0x0, 0x0, 0x1, 0x0 };
+        byte[] bmpMagicNumber = [0x42, 0x4D];
+        byte[] jpegMagcicNumberStart = [0xFF, 0xD8];
+        byte[] jpegMagicNumberEnd = [0xFF, 0xD9];
+        byte[] pngMagicNumber = [0x89, 0x50, 0x4E, 0x47, 0xD, 0xA, 0x1A, 0xA];
+        byte[] gifMagicNumberA = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61];
+        byte[] gifMagicNumberB = [0x47, 0x49, 0x46, 0x38, 0x37, 0x61];
+        byte[] tiffMagicNumberA = [0x49, 0x49, 0x2A, 0x0];
+        byte[] tiffMagicNumberB = [0x4D, 0x4D, 0x0, 0x2A];
+        byte[] flifMagicNumber = [0x46, 0x4, 0x49, 0x46];
+        byte[] icoMagicNumber = [0x0, 0x0, 0x1, 0x0];
 
         // WebP's header is a bit more complex. The first 4 bytes are the ASCII characters "RIFF", followed by 4 bytes that represent the file size
         // which are followed by 4 characters that are the ASCII characters "WEBP". Bytes 5 through 8 are ignored as they could be anything.
-        byte[] webpMagicNumberA = { 0x52, 0x49, 0x46, 0x46 };
-        byte[] webpMagicNumberB = { 0x57, 0x45, 0x42, 0x50 };
+        byte[] webpMagicNumberA = [0x52, 0x49, 0x46, 0x46];
+        byte[] webpMagicNumberB = [0x57, 0x45, 0x42, 0x50];
 
         string mimeType;
         if (fileBytes.Take(4).SequenceEqual(webpMagicNumberA) && fileBytes.Skip(8).Take(4).SequenceEqual(webpMagicNumberB))

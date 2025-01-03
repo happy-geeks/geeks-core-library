@@ -215,7 +215,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 // Salt of at least 8 bytes is required to derive key.
                 // If no salt is set in the appsettings, a basic 0-salt will be used.
                 var saltString = GclSettings.Current.DefaultEncryptionSalt;
-                var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : Array.Empty<byte>();
+                var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : [];
 
                 var keyBytes = KeyDerivation.Pbkdf2(encryptionKey, salt, KeyDerivationPrf.HMACSHA512, 100000, 256 / 8);
                 var inputBytes = Encoding.UTF8.GetBytes(stringToEncrypt.ToString());
@@ -300,7 +300,7 @@ namespace GeeksCoreLibrary.Core.Extensions
                 // Salt of at least 8 bytes is required to derive key.
                 // If no salt is set in the appsettings, a basic 0-salt will be used.
                 var saltString = GclSettings.Current.DefaultEncryptionSalt;
-                var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : Array.Empty<byte>();
+                var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : [];
                 var inputBytes = Convert.FromBase64String(input);
                 var keyBytes = KeyDerivation.Pbkdf2(encryptionKey, salt, KeyDerivationPrf.HMACSHA512, 100000, 256 / 8);
                 var decryptedBytes = CryptographyHelpers.Decrypt(keyBytes, inputBytes);

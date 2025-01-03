@@ -13,22 +13,10 @@ using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Components.DataSelectorParser.Services
 {
-    public class CachedDataSelectorParsersService : IDataSelectorParsersService
+    public class CachedDataSelectorParsersService(IOptions<GclSettings> gclSettings, IDataSelectorParsersService dataSelectorParsersService, IAppCache cache, ICacheService cacheService, IBranchesService branchesService)
+        : IDataSelectorParsersService
     {
-        private readonly GclSettings gclSettings;
-        private readonly IDataSelectorParsersService dataSelectorParsersService;
-        private readonly IAppCache cache;
-        private readonly ICacheService cacheService;
-        private readonly IBranchesService branchesService;
-
-        public CachedDataSelectorParsersService(IOptions<GclSettings> gclSettings, IDataSelectorParsersService dataSelectorParsersService, IAppCache cache, ICacheService cacheService, IBranchesService branchesService)
-        {
-            this.gclSettings = gclSettings.Value;
-            this.dataSelectorParsersService = dataSelectorParsersService;
-            this.cache = cache;
-            this.cacheService = cacheService;
-            this.branchesService = branchesService;
-        }
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
         /// <inheritdoc />
         public async Task<JToken> GetDataSelectorResponseAsync(string dataSelectorId = null, string dataSelectorJson = null)

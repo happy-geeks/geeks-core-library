@@ -12,17 +12,8 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Components.WebPage.Middlewares
 {
-    public class RewriteUrlToWebPageMiddleware
+    public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<RewriteUrlToWebPageMiddleware> logger)
     {
-        private readonly RequestDelegate next;
-        private readonly ILogger<RewriteUrlToWebPageMiddleware> logger;
-
-        public RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<RewriteUrlToWebPageMiddleware> logger)
-        {
-            this.next = next;
-            this.logger = logger;
-        }
-
         /// <summary>
         /// Invoke the middleware.
         /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
@@ -34,7 +25,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
             if (HttpContextHelpers.IsGclMiddleWarePage(context))
             {
                 // If this happens, it means that another middleware has already found something and we don't need to do this again.
-                await this.next.Invoke(context);
+                await next.Invoke(context);
                 return;
             }
 
@@ -57,7 +48,7 @@ namespace GeeksCoreLibrary.Components.WebPage.Middlewares
 
             await HandleRewritesAsync(context, path, queryString, objectsService, webPagesService);
 
-            await this.next.Invoke(context);
+            await next.Invoke(context);
         }
 
         /// <summary>

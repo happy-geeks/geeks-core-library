@@ -2,21 +2,14 @@
 
 namespace GeeksCoreLibrary.Components.Filter.Models
 {
-    public class FilterItem
+    public class FilterItem(string value, int count, SortedList<string, string> itemDetails = null)
     {
-        public FilterItem(string value, int count, SortedList<string, string> itemDetails = null)
-        {
-            Value = value;
-            Count = count;
-            ItemDetails = itemDetails;
-        }
-
-        public string Value { get; set; }
+        public string Value { get; set; } = value;
 
         public string ValueSEO { get; set; }
 
-        public int Count { get; set; }
+        public int Count { get; set; } = count;
 
-        public SortedList<string, string> ItemDetails { get; set; }
+        public SortedList<string, string> ItemDetails { get; set; } = itemDetails;
     }
 }

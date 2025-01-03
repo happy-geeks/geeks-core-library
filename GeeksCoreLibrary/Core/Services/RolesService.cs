@@ -76,7 +76,7 @@ ORDER BY role_name ASC";
                 continue;
             }
 
-            role.Permissions ??= new List<PermissionModel>();
+            role.Permissions ??= [];
             role.Permissions.Add(new PermissionModel
             {
                 ItemId = Convert.ToUInt64(dataRow["item_id"]),

@@ -14,7 +14,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
             Name = name;
             Type = type;
             TableName = tableName;
-            Fields = fields ?? new List<string>();
+            Fields = fields ?? [];
             Comment = comment;
         }
 
@@ -36,7 +36,7 @@ namespace GeeksCoreLibrary.Modules.Databases.Models
         /// <summary>
         /// Gets or sets the fields that are part of this index.
         /// </summary>
-        public List<string> Fields { get; set; } = new();
+        public List<string> Fields { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the comment describing the index.

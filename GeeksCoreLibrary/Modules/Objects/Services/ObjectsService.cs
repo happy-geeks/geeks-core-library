@@ -42,7 +42,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
             if (searchFromSpecificToGeneral)
             {
                 // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true, includePort: false)}");
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, [], true, includePort: false)}");
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
@@ -117,7 +117,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                 if (String.IsNullOrEmpty(finalResult))
                 {
                     // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true, includePort: false)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, [], true, includePort: false)}");
                 }
             }
 

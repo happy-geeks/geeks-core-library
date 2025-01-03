@@ -511,7 +511,7 @@ namespace GeeksCoreLibrary.Components.OrderProcess
                         {
                             var id = shoppingBasket.Id;
                             shoppingBasket = new WiserItemModel();
-                            shoppingBasketLines = new List<WiserItemModel>();
+                            shoppingBasketLines = [];
                             shoppingBasket.Id = id;
 
                             await shoppingBasketsService.SaveAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings);

@@ -103,7 +103,7 @@ public class PaymentServiceProviderBaseService
     {
         try
         {
-            await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {Constants.PaymentServiceProviderLogTableName});
+            await databaseHelpersService.CheckAndUpdateTablesAsync([Constants.PaymentServiceProviderLogTableName]);
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("payment_service_provider", paymentServiceProvider.ToString("G"));

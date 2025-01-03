@@ -18,40 +18,21 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Objects.Services
 {
-    public class CachedObjectsService : IObjectsService
+    public class CachedObjectsService(
+        IObjectsService objectsService,
+        IAppCache cache,
+        IOptions<GclSettings> gclSettings,
+        IDatabaseConnection databaseConnection,
+        ICacheService cacheService,
+        IBranchesService branchesService,
+        IHttpContextAccessor httpContextAccessor = null)
+        : IObjectsService
     {
-        private readonly IObjectsService objectsService;
-        private readonly IAppCache cache;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly ICacheService cacheService;
-        private readonly GclSettings gclSettings;
-        private readonly IBranchesService branchesService;
+        private readonly GclSettings gclSettings = gclSettings.Value;
 
-        private readonly string hostName;
-        private readonly string hostNameIncludingTestWww;
-        private readonly string urlPrefix;
-
-        public CachedObjectsService(IObjectsService objectsService,
-            IAppCache cache,
-            IOptions<GclSettings> gclSettings,
-            IDatabaseConnection databaseConnection,
-            ICacheService cacheService,
-            IBranchesService branchesService,
-            IHttpContextAccessor httpContextAccessor = null)
-        {
-            this.objectsService = objectsService;
-            this.cache = cache;
-            this.databaseConnection = databaseConnection;
-            this.httpContextAccessor = httpContextAccessor;
-            this.cacheService = cacheService;
-            this.gclSettings = gclSettings.Value;
-            this.branchesService = branchesService;
-
-            hostName = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false);
-            hostNameIncludingTestWww = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true, includePort: false);
-            urlPrefix = HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.Value.IndexOfLanguagePartInUrl);
-        }
+        private readonly string hostName = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false);
+        private readonly string hostNameIncludingTestWww = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true, includePort: false);
+        private readonly string urlPrefix = HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.Value.IndexOfLanguagePartInUrl);
 
         /// <summary>
         /// Get all objects from the database and load them into the caching object
@@ -92,7 +73,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
             if (searchFromSpecificToGeneral)
             {
                 // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true)}");
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, [], true)}");
 
                 if (String.IsNullOrEmpty(finalResult))
                 {
@@ -167,7 +148,7 @@ namespace GeeksCoreLibrary.Modules.Objects.Services
                 if (String.IsNullOrEmpty(finalResult))
                 {
                     // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, [], true)}");
                 }
             }
 

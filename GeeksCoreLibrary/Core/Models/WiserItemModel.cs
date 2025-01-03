@@ -372,7 +372,7 @@ namespace GeeksCoreLibrary.Core.Models
         /// <summary>
         /// Gets or sets the item details.
         /// </summary>
-        public List<WiserItemDetailModel> Details { get; set; } = new List<WiserItemDetailModel>();
+        public List<WiserItemDetailModel> Details { get; set; } = [];
 
         /// <summary>
         /// Gets an <see cref="WiserItemDetailModel"/> with the given key.

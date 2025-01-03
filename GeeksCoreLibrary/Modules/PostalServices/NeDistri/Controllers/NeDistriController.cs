@@ -9,17 +9,9 @@ using Microsoft.Extensions.Logging;
 namespace GeeksCoreLibrary.Modules.PostalServices.NeDistri.Controllers;
 
 [Route("/postal-services/ne-distri")]
-public class NeDistriController : Controller
+public class NeDistriController(INeDistriService neDistriService, ILogger<NeDistriController> logger)
+    : Controller
 {
-    private readonly INeDistriService neDistriService;
-    private readonly ILogger<NeDistriController> logger;
-
-    public NeDistriController(INeDistriService neDistriService, ILogger<NeDistriController> logger)
-    {
-        this.neDistriService = neDistriService;
-        this.logger = logger;
-    }
-    
     /// <summary>
     /// Generate shipping label for the given order
     /// </summary>

@@ -7,15 +7,8 @@ using System.Linq;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services
 {
-    public class PaymentServiceProviderServiceFactory : IPaymentServiceProviderServiceFactory, IScopedService
+    public class PaymentServiceProviderServiceFactory(IServiceProvider serviceProvider) : IPaymentServiceProviderServiceFactory, IScopedService
     {
-        private readonly IServiceProvider serviceProvider;
-
-        public PaymentServiceProviderServiceFactory(IServiceProvider serviceProvider)
-        {
-            this.serviceProvider = serviceProvider;
-        }
-
         public IPaymentServiceProviderService GetPaymentServiceProviderService(PaymentServiceProviders paymentServiceProvider)
         {
             var paymentServiceProviderName = paymentServiceProvider.ToString("G");

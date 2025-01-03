@@ -9,17 +9,8 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Core.Middlewares;
 
-public class IpAccessMiddleware
+public class IpAccessMiddleware(ILogger<IpAccessMiddleware> logger, RequestDelegate next)
 {
-    private readonly RequestDelegate next;
-    private readonly ILogger<IpAccessMiddleware> logger;
-
-    public IpAccessMiddleware(ILogger<IpAccessMiddleware> logger, RequestDelegate next)
-    {
-        this.logger = logger;
-        this.next = next;
-    }
-
     /// <summary>
     /// Invoke the middleware.
     /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
