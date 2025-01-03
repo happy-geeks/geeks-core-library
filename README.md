@@ -1,7 +1,7 @@
 # GeeksCoreLibrary (GCL)
 [![Build and test](https://github.com/happy-geeks/geeks-core-library/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/happy-geeks/geeks-core-library/actions/workflows/build-and-test.yml)
 ## Requirements
-1. Install .NET Hosting bundle on the server that is running the GCL: https://dotnet.microsoft.com/download/dotnet/6.0
+1. Install .NET Hosting bundle on the server that is running the GCL: https://dotnet.microsoft.com/download/dotnet/9.0
 
 ## Using the GCL in a project 
 If you're creating a new project, we recommend using the [template](https://github.com/happy-geeks/Gcl-Template) for that. Simply click the green button "Use this template" to create a new repository that will be a copy of the template.
