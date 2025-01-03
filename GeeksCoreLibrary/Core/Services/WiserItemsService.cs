@@ -425,22 +425,22 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                                     WHERE id = ?itemId
                                 );
 
-                                SET @newItemId = (SELECT LAST_INSERT_ID());
+                                SET @lastInsertedId = (SELECT LAST_INSERT_ID());
 
                                 {addItemLinkQuery}
 
                                 #Duplicate values
                                 INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (language_code, item_id, groupname, `key`, `value`, long_value)
-                                (SELECT language_code, @newItemId, groupname, `key`, `value`, long_value FROM {tablePrefix}{WiserTableNames.WiserItemDetail} WHERE item_id = ?itemId);
+                                (SELECT language_code, @lastInsertedId, groupname, `key`, `value`, long_value FROM {tablePrefix}{WiserTableNames.WiserItemDetail} WHERE item_id = ?itemId);
 
                                 #Duplicate files
                                 INSERT INTO {tablePrefix}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, title, property_name, added_on, added_by)
-                                (SELECT @newItemId, content_type, content, content_url, width, height, file_name, extension, title, property_name, NOW(), ?username FROM {tablePrefix}{WiserTableNames.WiserItemFile} WHERE item_id = ?itemId);
+                                (SELECT @lastInsertedId, content_type, content, content_url, width, height, file_name, extension, title, property_name, NOW(), ?username FROM {tablePrefix}{WiserTableNames.WiserItemFile} WHERE item_id = ?itemId);
 
-                                SELECT @newItemId AS newItemId, we.icon, {(useItemParentId ? "0" : "@newLinkId")} AS newLinkId, i.title
+                                SELECT @lastInsertedId AS newItemId, we.icon, {(useItemParentId ? "0" : "@newLinkId")} AS newLinkId, i.title
                                 FROM {tablePrefix}{WiserTableNames.WiserItem} i
                                 LEFT JOIN {WiserTableNames.WiserEntity} we ON we.name = i.entity_type
-                                WHERE i.id = @newItemId
+                                WHERE i.id = @lastInsertedId
                                 LIMIT 1;";
 
                 var dataTable = await databaseConnection.GetAsync(query, true);
