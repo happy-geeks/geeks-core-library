@@ -284,6 +284,7 @@ public static class ConfigurationServiceCollectionExtensions
 
         // Enable caching.
         services.AddLazyCache();
+            services.AddDistributedMemoryCache();
 
         // Enable session.
         if (isWeb)
