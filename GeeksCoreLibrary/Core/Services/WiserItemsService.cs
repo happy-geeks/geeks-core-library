@@ -3377,6 +3377,7 @@ WHERE {String.Join(" AND ", where)}";
             databaseConnection.AddParameter("extension", wiserItemFile.Extension);
             databaseConnection.AddParameter("title", wiserItemFile.Title);
             databaseConnection.AddParameter("propertyName", wiserItemFile.PropertyName);
+            databaseConnection.AddParameter("protected", wiserItemFile.Protected);
             databaseConnection.AddParameter("extraData", wiserItemFile.ExtraData == null ? null : JsonConvert.SerializeObject(wiserItemFile.ExtraData));
             databaseConnection.AddParameter("username", username);
             databaseConnection.AddParameter("userId", userId);
@@ -3387,8 +3388,8 @@ WHERE {String.Join(" AND ", where)}";
                 SET @_username = ?username;
                 SET @_userId = ?userId;
                 SET @saveHistory = ?saveHistoryGcl;
-                INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, added_by, title, property_name, itemlink_id, extra_data) 
-                VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?width, ?height, ?fileName, ?extension, ?username, ?title, ?propertyName, ?itemLinkId, ?extraData);
+                INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, added_by, title, property_name, protected, itemlink_id, extra_data) 
+                VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?width, ?height, ?fileName, ?extension, ?username, ?title, ?propertyName, ?protected, ?itemLinkId, ?extraData);
                 SELECT LAST_INSERT_ID();", true);
 
             return Convert.ToUInt64(addItemFileResult.Rows[0][0]);
@@ -3445,7 +3446,7 @@ WHERE {String.Join(" AND ", where)}";
 
             databaseConnection.AddParameter("Ids", String.Join(",", ids));
             var queryResult = await databaseConnection.GetAsync($@"
-                SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `itemlink_id`, extra_data
+                SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `protected`, `itemlink_id`, extra_data
                 FROM {tablePrefix}{WiserTableNames.WiserItemFile}
                 WHERE {columnName} IN ({String.Join(",", ids)})
                 {propertyNameClause}", true);
@@ -4432,6 +4433,7 @@ WHERE id = ?saveDetailId";
                 Extension = dataRow.Field<string>("extension"),
                 Title = dataRow.Field<string>("title"),
                 PropertyName = dataRow.Field<string>("property_name"),
+                Protected = dataRow.Field<bool>("protected"),
                 ExtraData = dataRow.IsNull("extra_data") ? null : JsonConvert.DeserializeObject<WiserItemFileExtraDataModel>(dataRow.Field<string>("extra_data")!)
             };
         }
