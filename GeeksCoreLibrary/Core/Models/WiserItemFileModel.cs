@@ -35,6 +35,8 @@ namespace GeeksCoreLibrary.Core.Models
 
         public string AddedBy { get; set; }
         
+        public bool Protected { get; set; }
+        
         /// <summary>
         /// Gets or sets the object for storing extra data, such as alt texts in multiple languages for images.
         /// </summary>
