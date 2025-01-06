@@ -71,14 +71,28 @@ public class WiserItemFilesMiddleware
         var matchResult = urlRegex.Match(path);
         if (!matchResult.Success)
         {
-            urlRegex = new Regex(@"(?:file\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>.+?)(?:\/(?<fileNumber>\d+))?(?:\/)(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            urlRegex =  new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<encryptedId>.+?)(?:\/(?<fileType>itemlink|direct|name))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             matchResult = urlRegex.Match(path);
             if (!matchResult.Success)
             {
-                return;
+                urlRegex = new Regex(@"(?:file\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<itemId>\d+)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>.+?)(?:\/(?<fileNumber>\d+))?(?:\/)(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                matchResult = urlRegex.Match(path);
+                if (!matchResult.Success)
+                {
+                    urlRegex = new Regex(@"(?:file\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<encryptedId>.+?)(?:\/(?<fileType>itemlink|direct))?\/(?<propertyName>.+?)(?:\/(?<fileNumber>\d+))?(?:\/)(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                    matchResult = urlRegex.Match(path);
+                    if (!matchResult.Success)
+                    {
+                        return;
+                    }
+                }
+                
+                context.Request.Path = "/wiser-file.gcl";    
             }
-
-            context.Request.Path = "/wiser-file.gcl";
+            else
+            {
+                context.Request.Path = "/wiser-image.gcl";    
+            }
         }
         else
         {
