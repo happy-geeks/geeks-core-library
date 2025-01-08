@@ -401,6 +401,12 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services
             {
                 return inputString;
             }
+            
+            if (input.Type == JTokenType.String)
+            {
+                // Parse JValue string value into a JObject
+                input = JObject.Parse((string)input);
+            }
 
             var regexRepeats = new Regex(@"{repeat:([^\.]+?)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
 
