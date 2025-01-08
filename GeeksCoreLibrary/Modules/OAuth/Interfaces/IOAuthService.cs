@@ -14,5 +14,5 @@ public interface IOAuthService
     /// </summary>
     /// <param name="apiName">The name of the API as it's set in the WTS OAUTH configuration.</param>
     /// <param name="code">The authentication code from the external service.</param>
-    public Task HandleCallbackAsync(string apiName, string code);
+    public Task<bool> HandleCallbackAsync(string apiName, string code);
 }

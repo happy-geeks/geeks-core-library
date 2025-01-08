@@ -24,7 +24,7 @@ public class OAuthController : Controller
             return View("AuthorizationFailed");
         }
 
-        await oAuthService.HandleCallbackAsync(apiName, code);
-        return View("AuthorizationSuccessful");
+        var result = await oAuthService.HandleCallbackAsync(apiName, code);
+        return View(result ? "AuthorizationSuccessful" : "AuthorizationFailed");
     }
 }
