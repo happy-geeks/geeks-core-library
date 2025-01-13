@@ -118,7 +118,13 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             /// For JCL baskets that should run with the GCL code.
             /// </summary>
             [CmsEnum(HideInCms = true)]
-            Legacy = 10
+            Legacy = 10,
+            
+            /// <summary>
+            /// Add property description.
+            /// </summary>
+            [CmsEnum(PrettyName = "Products Count")]
+            ProductsCount = 13
         }
 
         public enum PriceTypes
@@ -459,6 +465,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
                     break;
                 case ComponentModes.Legacy:
                     resultHtml.Append(await HandleLegacyModeAsync());
+                    break;
+                case ComponentModes.ProductsCount:
+                    resultHtml.Append(await HandleProductsCountModeAsync());
                     break;
                 default:
                     throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'InvokeAsync'.");
@@ -825,6 +834,24 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             await shoppingBasketsService.RecalculateVariablesAsync(Main, Lines, Settings);
 
             return await GetRenderedBasketAsync();
+        }
+
+        /// <summary>
+        /// Handles the ProductsCount mode, this mode calculates the total amount of products (totalProducts) and the total amount of products including their quantities (totalProductsQuantity).
+        /// </summary>
+        /// <returns></returns>
+        public async Task<string> HandleProductsCountModeAsync()
+        {
+            int totalProductsQuantity = Lines.Where(line => line.EntityType == "Product").Sum(line => Convert.ToInt32(line.GetDetail("quantity")));
+            int totalProducts = Lines.Count(line => line.EntityType == "Product");
+            
+            var replacementData = new Dictionary<string, object>
+            {
+                { "totalProducts", totalProducts },
+                { "totalProductsQuantity", totalProductsQuantity }
+            };
+            
+            return await GetRenderedBasketAsync(replacementData);
         }
 
         private string DoDefaultShoppingBasketHtmlReplacements(string template)
