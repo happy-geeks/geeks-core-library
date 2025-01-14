@@ -15,7 +15,6 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
-using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Seo.Models;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -364,7 +363,8 @@ public class CachedTemplatesService(
             switch (settings.CachingLocation)
             {
                 case TemplateCachingLocations.InMemory:
-                    html = (string)await cache.GetOrAddAsync(cacheName.ToString(),
+                {
+                    html = (string) await cache.GetOrAddAsync(cacheName.ToString(),
                         async cacheEntry =>
                         {
                             addedToCache = true;
@@ -373,6 +373,7 @@ public class CachedTemplatesService(
                         },
                         cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
                     break;
+                }
                 case TemplateCachingLocations.OnDisk:
                 {
                     var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);

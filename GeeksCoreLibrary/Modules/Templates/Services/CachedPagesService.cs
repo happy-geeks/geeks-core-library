@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
@@ -32,9 +31,7 @@ public class CachedPagesService : IPagesService
     private readonly IAppCache cache;
     private readonly GclSettings gclSettings;
     private readonly ICacheService cacheService;
-    private readonly IBranchesService branchesService;
     private readonly ILanguagesService languagesService;
-    private readonly IHttpContextAccessor httpContextAccessor;
     private readonly IWebHostEnvironment webHostEnvironment;
 
     public CachedPagesService(ILogger<CachedPagesService> logger,
@@ -43,9 +40,7 @@ public class CachedPagesService : IPagesService
         IAppCache cache,
         IOptions<GclSettings> gclSettings,
         ICacheService cacheService,
-        IBranchesService branchesService,
         ILanguagesService languagesService,
-        IHttpContextAccessor httpContextAccessor = null,
         IWebHostEnvironment webHostEnvironment = null)
     {
         this.logger = logger;
@@ -54,12 +49,10 @@ public class CachedPagesService : IPagesService
         this.cache = cache;
         this.gclSettings = gclSettings.Value;
         this.cacheService = cacheService;
-        this.branchesService = branchesService;
         this.languagesService = languagesService;
-        this.httpContextAccessor = httpContextAccessor;
         this.webHostEnvironment = webHostEnvironment;
     }
-    
+
     /// <inheritdoc />
     public async Task<Template> GetRenderedTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool skipPermissions = false, string templateContent = null, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
     {
@@ -100,7 +93,7 @@ public class CachedPagesService : IPagesService
                     contentCacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
                     logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache in memory with key: {contentCacheKey}.");
                     var cachedTemplate = await cache.GetAsync<Template>(contentCacheKey);
-                    
+
                     if (cachedTemplate is {Id: > 0})
                     {
                         return ObjectCloner.ObjectCloner.DeepClone(await templatesService.CheckTemplatePermissionsAsync(cachedTemplate));
@@ -146,7 +139,7 @@ public class CachedPagesService : IPagesService
                     break;
                 }
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
+                    throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString(), null);
             }
         }
 
@@ -167,6 +160,7 @@ public class CachedPagesService : IPagesService
         switch (cacheSettings.CachingLocation)
         {
             case TemplateCachingLocations.InMemory:
+            {
                 if (!String.IsNullOrWhiteSpace(contentCacheKey))
                 {
                     cache.GetOrAdd(contentCacheKey,
@@ -178,6 +172,7 @@ public class CachedPagesService : IPagesService
                 }
 
                 break;
+            }
             case TemplateCachingLocations.OnDisk:
             {
                 if (!String.IsNullOrEmpty(fullCachePath))
@@ -188,7 +183,7 @@ public class CachedPagesService : IPagesService
                 break;
             }
             default:
-                throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString());
+                throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString(), null);
         }
 
         return ObjectCloner.ObjectCloner.DeepClone(await templatesService.CheckTemplatePermissionsAsync(template));
