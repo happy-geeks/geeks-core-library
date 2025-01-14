@@ -279,11 +279,14 @@ public class RequestLoggingMiddleware
                 headers.Add($"{header.Key}: {(currentOptions.Headers.Any(h => String.Equals(h, header.Key, StringComparison.OrdinalIgnoreCase)) ? header.Value : "[Redacted]")}");
             }
 
+            // Note: We have to get the user ID before calling ClearParameters, because the GetUserIdAsync method might also add parameters, which will mess up the InsertOrUpdateRecordBasedOnParametersAsync method, if we don't clear them first.
+            var userId = await GetUserIdAsync(context, serviceProvider);
+
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("response_headers", String.Join(Environment.NewLine, headers));
             databaseConnection.AddParameter("response_body", responseBody);
             databaseConnection.AddParameter("status_code", context.Response.StatusCode);
-            databaseConnection.AddParameter("user_id", await GetUserIdAsync(context, serviceProvider));
+            databaseConnection.AddParameter("user_id", userId);
             databaseConnection.AddParameter("end_datetime", DateTime.Now);
             await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(LogTableName, logId);
         }
