@@ -300,6 +300,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             var basketLineValidityMessage = "";
             var basketLineStockActionMessage = "";
 
+            // TODO: Need this for ProductsCount.
             if (itemId == 0UL)
             {
                 if (String.IsNullOrWhiteSpace(encryptedItemId) && !String.IsNullOrWhiteSpace(settings.CookieName))
@@ -316,16 +317,19 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
             }
 
+            // TODO: Need this for ProductsCount.
             var user = await accountsService.GetUserDataFromCookieAsync();
 
             var loadBasketFromUser = false;
             var loadedBasketFromCookie = false;
 
+            // TODO: Need this for ProductsCount.
             if (settings.MultipleBasketsPossible && itemId == 0 && String.IsNullOrWhiteSpace(settings.GetBasketQuery))
             {
                 settings.GetBasketQuery = (await templatesService.GetTemplateContentAsync(name: "GetBasketQuery", type: TemplateTypes.Query)).Content;
             }
 
+            // TODO: Need this for ProductsCount.
             if (settings.MultipleBasketsPossible && itemId == 0 && !String.IsNullOrWhiteSpace(settings.GetBasketQuery))
             {
                 var extraReplacements = new Dictionary<string, object>
@@ -345,6 +349,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             }
             else
             {
+                // TODO: Need this for ProductsCount.
                 if (itemId == 0 && !String.IsNullOrWhiteSpace(settings.CookieName))
                 {
                     itemId = GetBasketItemId(settings.CookieName);
@@ -357,6 +362,9 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
             }
 
+            // TODO: We don't need most of the code in this block for ProductsCount.
+            // TODO: Instead, we just need the basketId (which we should already have from the code above) and the following information from the lines:
+            // TODO: ID, quantity and type
             if (!loadBasketFromUser && itemId > 0)
             {
                 // Get details on basket level.
@@ -447,6 +455,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                             tempData[dataKey] = 1;
                         }
 
+                        // TODO: Need this for ProductsCount.
                         if (connectToAccount)
                         {
                             var userId = user.MainUserId;
@@ -469,6 +478,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
             }
 
+            // TODO: Need this for ProductsCount.
             if (loadBasketFromUser)
             {
                 // Check if the user is logged in and has basket from account.

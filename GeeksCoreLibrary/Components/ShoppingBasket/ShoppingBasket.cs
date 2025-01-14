@@ -119,7 +119,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             /// </summary>
             [CmsEnum(HideInCms = true)]
             Legacy = 10,
-            
+
             /// <summary>
             /// Add property description.
             /// </summary>
@@ -421,11 +421,18 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             }
 
             // Load the current basket.
-            var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, Settings.ForcedBasketId);
-            Main = shoppingBasket;
-            Lines = basketLines;
-            basketLineValidityMessage = validityMessage;
-            basketLineStockActionMessage = stockActionMessage;
+            if (Settings.ComponentMode == ComponentModes.ProductsCount)
+            {
+                // TODO: Call shoppingBasketsService.LoadAsync with the new parameter.
+            }
+            else
+            {
+                var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, Settings.ForcedBasketId);
+                Main = shoppingBasket;
+                Lines = basketLines;
+                basketLineValidityMessage = validityMessage;
+                basketLineStockActionMessage = stockActionMessage;
+            }
 
             var resultHtml = new StringBuilder();
             switch (Settings.ComponentMode)
@@ -842,16 +849,21 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         /// <returns></returns>
         public async Task<string> HandleProductsCountModeAsync()
         {
+            // TODO: String.Equals(Lines.First().GetDetailValue<string>("type"), "product", StringComparison.OrdinalIgnoreCase);
             int totalProductsQuantity = Lines.Where(line => line.EntityType == "Product").Sum(line => Convert.ToInt32(line.GetDetail("quantity")));
             int totalProducts = Lines.Count(line => line.EntityType == "Product");
-            
+
             var replacementData = new Dictionary<string, object>
             {
                 { "totalProducts", totalProducts },
                 { "totalProductsQuantity", totalProductsQuantity }
             };
-            
-            return await GetRenderedBasketAsync(replacementData);
+
+            var outputHtml = Settings.Template ?? "";
+            outputHtml = StringReplacementsService.DoReplacements(outputHtml, replacementData);
+            outputHtml = DoDefaultShoppingBasketHtmlReplacements(outputHtml);
+
+            return await TemplatesService.DoReplacesAsync(outputHtml, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
         }
 
         private string DoDefaultShoppingBasketHtmlReplacements(string template)
