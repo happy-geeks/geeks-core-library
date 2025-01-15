@@ -137,6 +137,12 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket.Services
         }
 
         /// <inheritdoc />
+        public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)> LoadAsync(ShoppingBasketCmsSettingsModel settings, bool fillSpecificDetails, ulong itemId = 0, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, int basketToUserLinkType = Constants.BasketToUserLinkType)
+        {
+            return await shoppingBasketsService.LoadAsync(settings, fillSpecificDetails, itemId, encryptedItemId, connectToAccount, recursiveCall, basketToUserLinkType);
+        }
+
+        /// <inheritdoc />
         public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
         {
             return await shoppingBasketsService.SaveAsync(shoppingBasket, basketLines, settings, createNewTransaction, basketToUserLinkType);

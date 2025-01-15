@@ -423,7 +423,9 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             // Load the current basket.
             if (Settings.ComponentMode == ComponentModes.ProductsCount)
             {
-                // TODO: Call shoppingBasketsService.LoadAsync with the new parameter.
+                var (shoppingBasket, basketLines) = await shoppingBasketsService.LoadAsync(Settings, false, Settings.ForcedBasketId);
+                Main = shoppingBasket;
+                Lines = basketLines;
             }
             else
             {
@@ -849,14 +851,17 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         /// <returns></returns>
         public async Task<string> HandleProductsCountModeAsync()
         {
-            // TODO: String.Equals(Lines.First().GetDetailValue<string>("type"), "product", StringComparison.OrdinalIgnoreCase);
-            int totalProductsQuantity = Lines.Where(line => line.EntityType == "Product").Sum(line => Convert.ToInt32(line.GetDetail("quantity")));
-            int totalProducts = Lines.Count(line => line.EntityType == "Product");
+            var totalProductsQuantity = Lines.Where(line => String.Equals(line.GetDetailValue<string>("type"), "product", StringComparison.OrdinalIgnoreCase)).Sum(line => Convert.ToInt32(line.GetDetailValue<string>("quantity")));
+            var totalProducts = Lines.Count(line => String.Equals(line.GetDetailValue<string>("type"), "product", StringComparison.OrdinalIgnoreCase));
+            var totalQuantities = Lines.Sum(line => Convert.ToInt32(line.GetDetailValue<string>("quantity")));
+            var totalLines = Lines.Count();
 
             var replacementData = new Dictionary<string, object>
             {
-                { "totalProducts", totalProducts },
-                { "totalProductsQuantity", totalProductsQuantity }
+                { "totalProducts", totalProducts.ToString() },
+                { "totalProductsQuantity", totalProductsQuantity.ToString() },
+                { "totalLines", totalLines.ToString() },
+                { "totalQuantities", totalQuantities.ToString() }
             };
 
             var outputHtml = Settings.Template ?? "";

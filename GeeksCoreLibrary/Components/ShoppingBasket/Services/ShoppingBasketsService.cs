@@ -300,7 +300,6 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             var basketLineValidityMessage = "";
             var basketLineStockActionMessage = "";
 
-            // TODO: Need this for ProductsCount.
             if (itemId == 0UL)
             {
                 if (String.IsNullOrWhiteSpace(encryptedItemId) && !String.IsNullOrWhiteSpace(settings.CookieName))
@@ -317,19 +316,16 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
             }
 
-            // TODO: Need this for ProductsCount.
             var user = await accountsService.GetUserDataFromCookieAsync();
 
             var loadBasketFromUser = false;
             var loadedBasketFromCookie = false;
 
-            // TODO: Need this for ProductsCount.
             if (settings.MultipleBasketsPossible && itemId == 0 && String.IsNullOrWhiteSpace(settings.GetBasketQuery))
             {
                 settings.GetBasketQuery = (await templatesService.GetTemplateContentAsync(name: "GetBasketQuery", type: TemplateTypes.Query)).Content;
             }
 
-            // TODO: Need this for ProductsCount.
             if (settings.MultipleBasketsPossible && itemId == 0 && !String.IsNullOrWhiteSpace(settings.GetBasketQuery))
             {
                 var extraReplacements = new Dictionary<string, object>
@@ -349,7 +345,6 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             }
             else
             {
-                // TODO: Need this for ProductsCount.
                 if (itemId == 0 && !String.IsNullOrWhiteSpace(settings.CookieName))
                 {
                     itemId = GetBasketItemId(settings.CookieName);
@@ -362,12 +357,9 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
             }
 
-            // TODO: We don't need most of the code in this block for ProductsCount.
-            // TODO: Instead, we just need the basketId (which we should already have from the code above) and the following information from the lines:
-            // TODO: ID, quantity and type
             if (!loadBasketFromUser && itemId > 0)
             {
-                // Get details on basket level.
+               
                 shoppingBasket = await wiserItemsService.GetItemDetailsAsync(itemId, entityType: Constants.BasketEntityType, skipPermissionsCheck: true);
 
                 if (settings.BasketLineStockAction)
@@ -454,8 +446,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                         {
                             tempData[dataKey] = 1;
                         }
-
-                        // TODO: Need this for ProductsCount.
+                    
                         if (connectToAccount)
                         {
                             var userId = user.MainUserId;
@@ -478,7 +469,6 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 }
             }
 
-            // TODO: Need this for ProductsCount.
             if (loadBasketFromUser)
             {
                 // Check if the user is logged in and has basket from account.
@@ -497,6 +487,111 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             logger.LogTrace("GCL ShoppingBasket: Finished loading basket");
 
             return (shoppingBasket, basketLines, basketLineValidityMessage, basketLineStockActionMessage);
+        }
+
+        /// <inheritdoc />
+        public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)> LoadAsync(ShoppingBasketCmsSettingsModel settings, bool fillSpecificDetails, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, int basketToUserLinkType = Constants.BasketToUserLinkType)
+        {
+            var shoppingBasket = new WiserItemModel();
+            var basketLines = new List<WiserItemModel>();
+
+            if (itemId == 0UL)
+            {
+                if (String.IsNullOrWhiteSpace(encryptedItemId) && !String.IsNullOrWhiteSpace(settings.CookieName))
+                {
+                    encryptedItemId = httpContextAccessor?.HttpContext?.Request.Cookies[settings.CookieName];
+                }
+
+                if (!String.IsNullOrWhiteSpace(encryptedItemId))
+                {
+                    if (DecryptBasketItemId(encryptedItemId) == 0)
+                    {
+                        return (shoppingBasket, basketLines);
+                    }
+                }
+            }
+            
+            var user = await accountsService.GetUserDataFromCookieAsync();
+
+            var loadBasketFromUser = false;
+
+            if (settings.MultipleBasketsPossible && itemId == 0 && String.IsNullOrWhiteSpace(settings.GetBasketQuery))
+            {
+                settings.GetBasketQuery = (await templatesService.GetTemplateContentAsync(name: "GetBasketQuery", type: TemplateTypes.Query)).Content;
+            }
+
+            if (settings.MultipleBasketsPossible && itemId == 0 && !String.IsNullOrWhiteSpace(settings.GetBasketQuery))
+            {
+                var extraReplacements = new Dictionary<string, object>
+                {
+                    { "Account_MainUserId", user.MainUserId },
+                    { "Account_UserId", user.UserId },
+                    { "AccountWiser2_MainUserId", user.MainUserId },
+                    { "AccountWiser2_UserId", user.UserId }
+                };
+                var query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(settings.GetBasketQuery, extraReplacements, forQuery: true)), stripNotExistingVariables: false, forQuery: true), true);
+                var queryResult = await databaseConnection.GetAsync(query, true);
+
+                if (queryResult.Rows.Count > 0 && UInt64.TryParse(Convert.ToString(queryResult.Rows[0][0]), NumberStyles.Integer, CultureInfo.InvariantCulture, out var tempItemId))
+                {
+                    itemId = tempItemId;
+                }
+            }
+            else
+            {
+                if (itemId == 0 && !String.IsNullOrWhiteSpace(settings.CookieName))
+                {
+                    itemId = GetBasketItemId(settings.CookieName);
+                }
+
+                if (itemId == 0 && !recursiveCall)
+                {
+                    loadBasketFromUser = true;
+                }
+            }
+
+            if (!loadBasketFromUser && itemId > 0)
+            {
+                basketLines = await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, Constants.BasketLineToBasketLinkType, Constants.BasketLineEntityType, itemIdEntityType: Constants.BasketEntityType, skipPermissionsCheck: true);
+
+                if (connectToAccount)
+                {
+                    var userId = user.MainUserId;
+                    if (userId == 0)
+                    {
+                        userId = accountsService.GetRecentlyCreatedAccountId();
+                    }
+
+                    if (userId > 0 && !settings.MultipleBasketsPossible && shoppingBasket.EntityType == Constants.BasketEntityType)
+                    {
+                        foreach (var basketItemId in (await wiserItemsService.GetLinkedItemIdsAsync(userId, basketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true)).Where(basketItemId => basketItemId != shoppingBasket.Id))
+                        {
+                            await DeleteAsync(basketItemId);
+                        }
+                    }
+
+                    await LinkBasketToUserAsync(settings, userId, shoppingBasket, basketToUserLinkType: basketToUserLinkType);
+                }
+            }
+            
+            if (loadBasketFromUser)
+            {
+                // Check if the user is logged in and has basket from account.
+                if (user is { MainUserId: > 0 } && !settings.MultipleBasketsPossible)
+                {
+                    var linkedBaskets = await wiserItemsService.GetLinkedItemIdsAsync(user.MainUserId, basketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true);
+                    var basketId = linkedBaskets.FirstOrDefault(id => id > 0);
+                    if (basketId > 0)
+                    {
+                        (shoppingBasket, basketLines) = await LoadAsync(settings, false, basketId, "", false, true, basketToUserLinkType: basketToUserLinkType);
+                        WriteEncryptedIdToCookie(shoppingBasket, settings);
+                    }
+                }
+            }
+
+            logger.LogTrace("GCL ShoppingBasket: Finished loading basket");
+            
+            return (shoppingBasket, basketLines);
         }
 
         /// <inheritdoc />
