@@ -118,7 +118,7 @@ public static class CryptographyHelpers
         // You may be well-served by prepending a version number byte to this
         // message, but may want to avoid the value 0x30 (the leading byte value for
         // DER-encoded structures such as X.509 certificates and PKCS#7 messages).
-        byte[] algorithmChoices = [(byte)aeCipher, (byte)aeMac];
+        byte[] algorithmChoices = [(byte) aeCipher, (byte) aeMac];
         byte[] iv;
         byte[] cipherText;
         byte[] tag;
@@ -249,8 +249,8 @@ public static class CryptographyHelpers
         // MAC algorithm are going to be used. Since the same Key Derivation
         // Functions (KDFs) are being used in Decrypt as Encrypt, the keys are also
         // the same.
-        var aeCipher = (AeCipher)cipherText[0];
-        var aeMac = (AeMac)cipherText[1];
+        var aeCipher = (AeCipher) cipherText[0];
+        var aeMac = (AeMac) cipherText[1];
 
         using (var cipher = GetCipher(aeCipher, masterKey))
         using (var tagGenerator = GetMac(aeMac, masterKey))

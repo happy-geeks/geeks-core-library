@@ -207,6 +207,7 @@ public class WiserItemsService : IWiserItemsService, IScopedService
                 };
             }
         }
+
         var storeType = storeTypeOverride;
         var entityTypeSettings = await wiserItemsService.GetEntityTypeSettingsAsync(wiserItem.EntityType);
         storeType ??= entityTypeSettings.StoreType;
@@ -253,12 +254,14 @@ public class WiserItemsService : IWiserItemsService, IScopedService
                 databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
                 databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
-                var query = $@"SET @saveHistory = ?saveHistoryGcl;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {tablePrefix}{WiserTableNames.WiserItem} ({(wiserItem.Id > 0 ? "id," : "")} moduleid, title, entity_type, added_by, published_environment, json, json_last_processed_date)
-VALUES ({(wiserItem.Id > 0 ? "?id," : "")} ?moduleId, ?title, ?entityType, ?username, ?publishedEnvironment, ?json, ?jsonLastProcessedDate);
-SELECT {(wiserItem.Id > 0 ? "?id" : "LAST_INSERT_ID()")} AS newId;";
+                var query = $"""
+                             SET @saveHistory = ?saveHistoryGcl;
+                             SET @_userId = ?userId;
+                             SET @saveHistory = ?saveHistoryGcl;
+                             INSERT INTO {tablePrefix}{WiserTableNames.WiserItem} ({(wiserItem.Id > 0 ? "id," : "")} moduleid, title, entity_type, added_by, published_environment, json, json_last_processed_date)
+                             VALUES ({(wiserItem.Id > 0 ? "?id," : "")} ?moduleId, ?title, ?entityType, ?username, ?publishedEnvironment, ?json, ?jsonLastProcessedDate);
+                             SELECT {(wiserItem.Id > 0 ? "?id" : "LAST_INSERT_ID()")} AS newId;
+                             """;
                 var queryResult = await databaseConnection.GetAsync(query, true);
 
                 if (queryResult.Rows.Count == 0)
@@ -308,8 +311,10 @@ SELECT {(wiserItem.Id > 0 ? "?id" : "LAST_INSERT_ID()")} AS newId;";
 
                     databaseConnection.AddParameter("newId", wiserItem.Id);
                     databaseConnection.AddParameter("newOrderNumber", newOrderNumber);
-                    await databaseConnection.ExecuteAsync($@"INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering, type)
-VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
+                    await databaseConnection.ExecuteAsync($"""
+                                                           INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering, type)
+                                                           VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)
+                                                           """);
                 }
 
                 if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
@@ -411,37 +416,43 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                 linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkTypeSettings);
             }
 
-            var addItemLinkQuery = useItemParentId ? "" : $@"#Duplicate item into current node
-                                                                    SET @new_order = (SELECT IFNULL(MAX(ordering), 0) + 1 FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE destination_item_id = ?parentId);
-                                                                    INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering) VALUES (LAST_INSERT_ID(), ?parentId, @new_order);
-                                                                    SET @newLinkId = (SELECT LAST_INSERT_ID());";
+            var addItemLinkQuery = useItemParentId
+                ? ""
+                : $"""
+                   #Duplicate item into current node
+                   SET @new_order = (SELECT IFNULL(MAX(ordering), 0) + 1 FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE destination_item_id = ?parentId);
+                   INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering) VALUES (LAST_INSERT_ID(), ?parentId, @new_order);
+                   SET @newLinkId = (SELECT LAST_INSERT_ID());
+                   """;
 
             // TODO: Duplicate item link details.
-            var query = $@"#Duplicate item
-                                INSERT INTO {tablePrefix}{WiserTableNames.WiserItem} (entity_type, moduleid, published_environment, readonly, title, added_on, added_by, parent_item_id)
-                                (
-                                    SELECT i.entity_type, i.moduleid, i.published_environment, i.readonly, {(duplicationLevel == 1 ? "CONCAT(i.title, '_duplicate')" : "i.title")}, NOW(), ?username AS added_by, {(useItemParentId ? "?parentId" : "0")}
-                                    FROM {tablePrefix}{WiserTableNames.WiserItem} i
-                                    WHERE id = ?itemId
-                                );
+            var query = $"""
+                         #Duplicate item
+                         INSERT INTO {tablePrefix}{WiserTableNames.WiserItem} (entity_type, moduleid, published_environment, readonly, title, added_on, added_by, parent_item_id)
+                         (
+                             SELECT i.entity_type, i.moduleid, i.published_environment, i.readonly, {(duplicationLevel == 1 ? "CONCAT(i.title, '_duplicate')" : "i.title")}, NOW(), ?username AS added_by, {(useItemParentId ? "?parentId" : "0")}
+                             FROM {tablePrefix}{WiserTableNames.WiserItem} i
+                             WHERE id = ?itemId
+                         );
 
-                                SET @lastInsertedId = (SELECT LAST_INSERT_ID());
+                         SET @lastInsertedId = (SELECT LAST_INSERT_ID());
 
-                                {addItemLinkQuery}
+                         {addItemLinkQuery}
 
-                                #Duplicate values
-                                INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (language_code, item_id, groupname, `key`, `value`, long_value)
-                                (SELECT language_code, @lastInsertedId, groupname, `key`, `value`, long_value FROM {tablePrefix}{WiserTableNames.WiserItemDetail} WHERE item_id = ?itemId);
+                         #Duplicate values
+                         INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (language_code, item_id, groupname, `key`, `value`, long_value)
+                         (SELECT language_code, @lastInsertedId, groupname, `key`, `value`, long_value FROM {tablePrefix}{WiserTableNames.WiserItemDetail} WHERE item_id = ?itemId);
 
-                                #Duplicate files
-                                INSERT INTO {tablePrefix}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, title, property_name, added_on, added_by)
-                                (SELECT @lastInsertedId, content_type, content, content_url, width, height, file_name, extension, title, property_name, NOW(), ?username FROM {tablePrefix}{WiserTableNames.WiserItemFile} WHERE item_id = ?itemId);
+                         #Duplicate files
+                         INSERT INTO {tablePrefix}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, title, property_name, added_on, added_by)
+                         (SELECT @lastInsertedId, content_type, content, content_url, width, height, file_name, extension, title, property_name, NOW(), ?username FROM {tablePrefix}{WiserTableNames.WiserItemFile} WHERE item_id = ?itemId);
 
-                                SELECT @lastInsertedId AS newItemId, we.icon, {(useItemParentId ? "0" : "@newLinkId")} AS newLinkId, i.title
-                                FROM {tablePrefix}{WiserTableNames.WiserItem} i
-                                LEFT JOIN {WiserTableNames.WiserEntity} we ON we.name = i.entity_type
-                                WHERE i.id = @lastInsertedId
-                                LIMIT 1;";
+                         SELECT @lastInsertedId AS newItemId, we.icon, {(useItemParentId ? "0" : "@newLinkId")} AS newLinkId, i.title
+                         FROM {tablePrefix}{WiserTableNames.WiserItem} i
+                         LEFT JOIN {WiserTableNames.WiserEntity} we ON we.name = i.entity_type
+                         WHERE i.id = @lastInsertedId
+                         LIMIT 1;
+                         """;
 
             var dataTable = await databaseConnection.GetAsync(query, true);
             var firstRow = dataTable.Rows[0];
@@ -472,40 +483,42 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                 linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(0, entityTypeToDuplicate, parentEntityTypeInner);
             }
 
-            var query = $@"(
-                                    SELECT 
-	                                    link_settings.duplication,
-	                                    link.item_id,
-	                                    link.destination_item_id,
-	                                    link.type,
-	                                    link.ordering,
-                                        linked_item.entity_type,
-                                        link_settings.use_item_parent_id,
-                                        link_settings.use_dedicated_table
-                                    FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                    JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.destination_item_id = item.id
-                                    JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linked_item ON linked_item.id = link.item_id
-                                    JOIN {WiserTableNames.WiserLink} AS link_settings ON link_settings.destination_entity_type = item.entity_type AND link_settings.connected_entity_type = linked_item.entity_type AND link_settings.duplication <> 'none'
-                                    WHERE item.id = ?oldItemId
-                                    ORDER BY link.ordering ASC
-                                )
-                                UNION
-                                (
-                                    SELECT 
-	                                    link_settings.duplication,
-	                                    linked_item.id AS item_id,
-	                                    item.id AS destination_item_id,
-	                                    1 AS type,
-	                                    0 AS ordering,
-	                                    linked_item.entity_type,
-	                                    link_settings.use_item_parent_id,
-                                        link_settings.use_dedicated_table
-                                    FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                    JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linked_item ON linked_item.parent_item_id = item.id
-                                    JOIN {WiserTableNames.WiserLink} AS link_settings ON link_settings.destination_entity_type = item.entity_type AND link_settings.connected_entity_type = linked_item.entity_type AND link_settings.duplication <> 'none'
-                                    WHERE item.id = ?oldItemId
-                                    ORDER BY item.title ASC
-                                )";
+            var query = $"""
+                         (
+                             SELECT 
+                         	    link_settings.duplication,
+                         	    link.item_id,
+                         	    link.destination_item_id,
+                         	    link.type,
+                         	    link.ordering,
+                                 linked_item.entity_type,
+                                 link_settings.use_item_parent_id,
+                                 link_settings.use_dedicated_table
+                             FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                             JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.destination_item_id = item.id
+                             JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linked_item ON linked_item.id = link.item_id
+                             JOIN {WiserTableNames.WiserLink} AS link_settings ON link_settings.destination_entity_type = item.entity_type AND link_settings.connected_entity_type = linked_item.entity_type AND link_settings.duplication <> 'none'
+                             WHERE item.id = ?oldItemId
+                             ORDER BY link.ordering ASC
+                         )
+                         UNION
+                         (
+                             SELECT 
+                         	    link_settings.duplication,
+                         	    linked_item.id AS item_id,
+                         	    item.id AS destination_item_id,
+                         	    1 AS type,
+                         	    0 AS ordering,
+                         	    linked_item.entity_type,
+                         	    link_settings.use_item_parent_id,
+                                 link_settings.use_dedicated_table
+                             FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                             JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linked_item ON linked_item.parent_item_id = item.id
+                             JOIN {WiserTableNames.WiserLink} AS link_settings ON link_settings.destination_entity_type = item.entity_type AND link_settings.connected_entity_type = linked_item.entity_type AND link_settings.duplication <> 'none'
+                             WHERE item.id = ?oldItemId
+                             ORDER BY item.title ASC
+                         )
+                         """;
             var dataTable = await databaseConnection.GetAsync(query, true);
 
             if (dataTable.Rows.Count == 0)
@@ -533,9 +546,11 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                         databaseConnection.AddParameter("linkedItemId", linkedItemId);
                         databaseConnection.AddParameter("linkType", linkType);
 
-                        query = $@"SET @new_order = (SELECT IFNULL(MAX(ordering), 0) + 1 FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE destination_item_id = ?newItemId);
-                                    INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering, type) 
-                                    VALUES (?linkedItemId, ?newItemId, @new_order, ?linkType);";
+                        query = $"""
+                                 SET @new_order = (SELECT IFNULL(MAX(ordering), 0) + 1 FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE destination_item_id = ?newItemId);
+                                                                     INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering, type) 
+                                                                     VALUES (?linkedItemId, ?newItemId, @new_order, ?linkType);
+                                 """;
                         await databaseConnection.ExecuteAsync(query);
                         break;
                     case "COPY-ITEM":
@@ -689,6 +704,7 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                 {
                     wiserItem.EntityType = entityTypeInDatabase;
                 }
+
                 if (wiserItem.ParentItemId == 0) // ParentItemId is necessary for use in the aggregate functionality
                 {
                     wiserItem.ParentItemId = dataTable.Rows[0].Field<ulong>("parent_item_id");
@@ -706,12 +722,14 @@ VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)");
                     var isNewDetail = true;
                     if (!isNewlyCreatedItem)
                     {
-                        var addItemInsertOrUpdateQuery = $@"SELECT id 
-FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
-WHERE item_id = ?itemId 
-AND `key` = ?key{parameterSuffix} 
-AND language_code = ?languageCode{parameterSuffix}
-LIMIT 1";
+                        var addItemInsertOrUpdateQuery = $"""
+                                                          SELECT id 
+                                                          FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
+                                                          WHERE item_id = ?itemId 
+                                                          AND `key` = ?key{parameterSuffix} 
+                                                          AND language_code = ?languageCode{parameterSuffix}
+                                                          LIMIT 1
+                                                          """;
                         var data = await databaseConnection.GetAsync(addItemInsertOrUpdateQuery, true);
 
                         if (data.Rows.Count > 0)
@@ -738,14 +756,16 @@ LIMIT 1";
                     foreach (var (fieldName, languageCode) in entityTypeSettings.AutoIncrementFields)
                     {
                         fieldCounter++;
-                        var findAutoIncrementValuesQuery = $@"SELECT IFNULL(MAX(d.`value`), IFNULL(ep.default_value, 0)) AS maximumValue
-FROM {WiserTableNames.WiserEntityProperty} ep
-LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.key = ep.property_name AND d.language_code = ep.language_code AND d.item_id <> ?itemId
-WHERE ep.entity_name = i.entity_type 
-AND ep.inputtype = 'auto-increment' 
-AND ep.property_name = ?propertyName{Constants.AutoIncrementPropertySuffix}{fieldCounter}
-AND ((?languageCode{Constants.AutoIncrementPropertySuffix}{fieldCounter} IS NULL AND ep.language_code IS NULL) OR (?languageCode{Constants.AutoIncrementPropertySuffix}{fieldCounter} IS NOT NULL AND ep.language_code IS NOT NULL AND ep.language_code = ?languageCode{Constants.AutoIncrementPropertySuffix}{fieldCounter}))
-GROUP BY ep.property_name";
+                        var findAutoIncrementValuesQuery = $"""
+                                                            SELECT IFNULL(MAX(d.`value`), IFNULL(ep.default_value, 0)) AS maximumValue
+                                                            FROM {WiserTableNames.WiserEntityProperty} ep
+                                                            LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.key = ep.property_name AND d.language_code = ep.language_code AND d.item_id <> ?itemId
+                                                            WHERE ep.entity_name = i.entity_type 
+                                                            AND ep.inputtype = 'auto-increment' 
+                                                            AND ep.property_name = ?propertyName{Constants.AutoIncrementPropertySuffix}{fieldCounter}
+                                                            AND ((?languageCode{Constants.AutoIncrementPropertySuffix}{fieldCounter} IS NULL AND ep.language_code IS NULL) OR (?languageCode{Constants.AutoIncrementPropertySuffix}{fieldCounter} IS NOT NULL AND ep.language_code IS NOT NULL AND ep.language_code = ?languageCode{Constants.AutoIncrementPropertySuffix}{fieldCounter}))
+                                                            GROUP BY ep.property_name
+                                                            """;
                         databaseConnection.AddParameter($"propertyName{Constants.AutoIncrementPropertySuffix}{fieldCounter}", fieldName);
                         databaseConnection.AddParameter($"languageCode{Constants.AutoIncrementPropertySuffix}{fieldCounter}", languageCode);
                         dataTable = await databaseConnection.GetAsync(findAutoIncrementValuesQuery, true);
@@ -846,10 +866,12 @@ GROUP BY ep.property_name";
 
                     databaseConnection.AddParameter("changed_on", DateTime.Now);
                     updateQueryParts.Add("changed_on = ?changed_on");
-                    var query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET {String.Join(",", updateQueryParts)} WHERE id = ?itemId";
+                    var query = $"""
+                                 SET @_username = ?username;
+                                 SET @_userId = ?userId;
+                                 SET @saveHistory = ?saveHistoryGcl;
+                                 UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET {String.Join(",", updateQueryParts)} WHERE id = ?itemId
+                                 """;
                     await databaseConnection.ExecuteAsync(query);
 
                     // Save SEO value of title, if required.
@@ -880,16 +902,18 @@ UPDATE {tablePrefix}{WiserTableNames.WiserItem} SET {String.Join(",", updateQuer
                 var previousItemDetails = new List<WiserItemDetailModel>();
                 if (!alwaysSaveValues && !isNewlyCreatedItem)
                 {
-                    var previousValuesQuery = $@"SELECT 
-    d.id,
-	d.key,
-	d.language_code,
-	d.value,
-	d.long_value,
-    d.groupname
-FROM {tablePrefix}{WiserTableNames.WiserItem} i
-JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.item_id = i.id
-WHERE i.id = ?itemId";
+                    var previousValuesQuery = $"""
+                                               SELECT 
+                                                   d.id,
+                                               	d.key,
+                                               	d.language_code,
+                                               	d.value,
+                                               	d.long_value,
+                                                   d.groupname
+                                               FROM {tablePrefix}{WiserTableNames.WiserItem} i
+                                               JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.item_id = i.id
+                                               WHERE i.id = ?itemId
+                                               """;
 
                     dataTable = await databaseConnection.GetAsync(previousValuesQuery, true);
                     if (dataTable.Rows.Count > 0)
@@ -919,36 +943,40 @@ WHERE i.id = ?itemId";
                     var linksWithDedicatedTables = allLinkTypeSettings.Where(x => x.UseDedicatedTable && String.Equals(x.SourceEntityType, wiserItem.EntityType, StringComparison.OrdinalIgnoreCase)).ToList();
                     if (!linksWithDedicatedTables.Any())
                     {
-                        previousValuesQueryBuilder.Add($@"SELECT 
-    detail.id,
-	detail.key,
-	detail.language_code,
-	detail.value,
-	detail.long_value,
-    detail.itemlink_id,
-    detail.groupname
-FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id
-JOIN {WiserTableNames.WiserItemLinkDetail} AS detail ON detail.itemlink_id = link.id
-WHERE item.id = ?itemId");
+                        previousValuesQueryBuilder.Add($"""
+                                                        SELECT 
+                                                            detail.id,
+                                                        	detail.key,
+                                                        	detail.language_code,
+                                                        	detail.value,
+                                                        	detail.long_value,
+                                                            detail.itemlink_id,
+                                                            detail.groupname
+                                                        FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                                        JOIN {WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id
+                                                        JOIN {WiserTableNames.WiserItemLinkDetail} AS detail ON detail.itemlink_id = link.id
+                                                        WHERE item.id = ?itemId
+                                                        """);
                     }
                     else
                     {
                         foreach (var linkTypeSettings in linksWithDedicatedTables)
                         {
                             var linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkTypeSettings);
-                            previousValuesQueryBuilder.Add($@"SELECT 
-    detail.id,
-	detail.key,
-	detail.language_code,
-	detail.value,
-	detail.long_value,
-    detail.itemlink_id,
-    detail.groupname
-FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id
-JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS detail ON detail.itemlink_id = link.id
-WHERE item.id = ?itemId");
+                            previousValuesQueryBuilder.Add($"""
+                                                            SELECT 
+                                                                detail.id,
+                                                            	detail.key,
+                                                            	detail.language_code,
+                                                            	detail.value,
+                                                            	detail.long_value,
+                                                                detail.itemlink_id,
+                                                                detail.groupname
+                                                            FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                                            JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id
+                                                            JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS detail ON detail.itemlink_id = link.id
+                                                            WHERE item.id = ?itemId
+                                                            """);
                         }
                     }
 
@@ -1065,8 +1093,10 @@ WHERE item.id = ?itemId");
                                 foreach (var destinationId in destinationIds)
                                 {
                                     databaseConnection.AddParameter("destinationId", destinationId);
-                                    await databaseConnection.ExecuteAsync($@"INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} ({(currentItemIsDestinationId ? "destination_item_id, item_id" : "item_id, destination_item_id")}, type)
-                                                                        VALUES (?itemId, ?destinationId, ?linkTypeNumber);");
+                                    await databaseConnection.ExecuteAsync($"""
+                                                                           INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} ({(currentItemIsDestinationId ? "destination_item_id, item_id" : "item_id, destination_item_id")}, type)
+                                                                                                                                                   VALUES (?itemId, ?destinationId, ?linkTypeNumber);
+                                                                           """);
                                 }
 
                                 // Continue the foreach, so that we don't save the field normally in wiser_itemdetail.
@@ -1131,31 +1161,37 @@ WHERE item.id = ?itemId");
 
                 if (deleteQueryBuilder.Any())
                 {
-                    var query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-DELETE FROM {tablePrefix}{WiserTableNames.WiserItemDetail} WHERE item_id = ?itemId AND ({String.Join(" OR ", deleteQueryBuilder)});";
+                    var query = $"""
+                                 SET @_username = ?username;
+                                 SET @_userId = ?userId;
+                                 SET @saveHistory = ?saveHistoryGcl;
+                                 DELETE FROM {tablePrefix}{WiserTableNames.WiserItemDetail} WHERE item_id = ?itemId AND ({String.Join(" OR ", deleteQueryBuilder)});
+                                 """;
                     await databaseConnection.ExecuteAsync(query);
                     deleteQueryBuilder.Clear();
                 }
 
                 if (insertQueryBuilder.Any())
                 {
-                    var query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (`language_code`, `item_id`, `groupname`, `key`, `value`, `long_value`)
-VALUES {String.Join(", ", insertQueryBuilder)}";
+                    var query = $"""
+                                 SET @_username = ?username;
+                                 SET @_userId = ?userId;
+                                 SET @saveHistory = ?saveHistoryGcl;
+                                 INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (`language_code`, `item_id`, `groupname`, `key`, `value`, `long_value`)
+                                 VALUES {String.Join(", ", insertQueryBuilder)}
+                                 """;
                     await databaseConnection.ExecuteAsync(query);
                     insertQueryBuilder.Clear();
                 }
 
                 if (updateQueryBuilder.Any())
                 {
-                    var query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-{String.Join(Environment.NewLine, updateQueryBuilder)}";
+                    var query = $"""
+                                 SET @_username = ?username;
+                                 SET @_userId = ?userId;
+                                 SET @saveHistory = ?saveHistoryGcl;
+                                 {String.Join(Environment.NewLine, updateQueryBuilder)}
+                                 """;
                     await databaseConnection.ExecuteAsync(query);
                     updateQueryBuilder.Clear();
                 }
@@ -1261,21 +1297,25 @@ SET @saveHistory = ?saveHistoryGcl;
 
                     if (deleteQueryBuilder.Any())
                     {
-                        var query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} WHERE {String.Join(" OR ", deleteQueryBuilder)}";
+                        var query = $"""
+                                     SET @_username = ?username;
+                                     SET @_userId = ?userId;
+                                     SET @saveHistory = ?saveHistoryGcl;
+                                     DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} WHERE {String.Join(" OR ", deleteQueryBuilder)}
+                                     """;
                         await databaseConnection.ExecuteAsync(query);
                         deleteQueryBuilder.Clear();
                     }
 
                     if (insertQueryBuilder.Any())
                     {
-                        var query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} (`language_code`, `itemlink_id`, `groupname`, `key`, `value`, `long_value`)
-VALUES {String.Join(", ", insertQueryBuilder)}";
+                        var query = $"""
+                                     SET @_username = ?username;
+                                     SET @_userId = ?userId;
+                                     SET @saveHistory = ?saveHistoryGcl;
+                                     INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} (`language_code`, `itemlink_id`, `groupname`, `key`, `value`, `long_value`)
+                                     VALUES {String.Join(", ", insertQueryBuilder)}
+                                     """;
                         await databaseConnection.ExecuteAsync(query);
                         insertQueryBuilder.Clear();
                     }
@@ -1283,10 +1323,12 @@ VALUES {String.Join(", ", insertQueryBuilder)}";
 
                 if (updateQueryBuilder.Any())
                 {
-                    var query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-{String.Join(Environment.NewLine, updateQueryBuilder)}";
+                    var query = $"""
+                                 SET @_username = ?username;
+                                 SET @_userId = ?userId;
+                                 SET @saveHistory = ?saveHistoryGcl;
+                                 {String.Join(Environment.NewLine, updateQueryBuilder)}
+                                 """;
 
                     await databaseConnection.ExecuteAsync(query);
                     updateQueryBuilder.Clear();
@@ -1324,7 +1366,7 @@ SET @saveHistory = ?saveHistoryGcl;
                     throw;
                 }
             }
-            catch
+            catch (Exception exp)
             {
                 if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.RollbackTransactionAsync();
                 throw;
@@ -1376,10 +1418,12 @@ SET @saveHistory = ?saveHistoryGcl;
 
         var addedOnResetPart = !resetAddedOnDate ? "" : ", added_on = ?now, added_by = ?username";
 
-        var query = $@"SET @_username = ?username;
-                        SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryGcl; 
-                        UPDATE {newEntityTypeTablePrefix}{WiserTableNames.WiserItem} SET entity_type = ?entityType, changed_by = ?username{addedOnResetPart} WHERE id = ?itemId LIMIT 1;";
+        var query = $"""
+                     SET @_username = ?username;
+                                             SET @_userId = ?userId;
+                                             SET @saveHistory = ?saveHistoryGcl; 
+                                             UPDATE {newEntityTypeTablePrefix}{WiserTableNames.WiserItem} SET entity_type = ?entityType, changed_by = ?username{addedOnResetPart} WHERE id = ?itemId LIMIT 1;
+                     """;
         return await databaseConnection.ExecuteAsync(query);
     }
 
@@ -1491,68 +1535,72 @@ SET @saveHistory = ?saveHistoryGcl;
                     if (entityTypeSettings.DeleteAction == EntityDeletionTypes.Archive)
                     {
                         // Copy the item itself to the archive (or vice versa, when undeleting).
-                        query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? "" : WiserTableNames.ArchiveSuffix)} 
-(
-    id, 
-    original_item_id, 
-    parent_item_id, 
-    unique_uuid, 
-    entity_type, 
-    moduleid, 
-    published_environment, 
-    readonly, 
-    title, 
-    added_on, 
-    added_by, 
-    changed_on, 
-    changed_by
-)
-SELECT
-    id, 
-    original_item_id, 
-    parent_item_id, 
-    unique_uuid, 
-    entity_type, 
-    moduleid, 
-    published_environment, 
-    readonly, 
-    title, 
-    added_on, 
-    added_by, 
-    ?now AS changed_on, 
-    ?username AS changed_by
-FROM {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
-WHERE id IN({formattedItemIds})";
+                        query = $"""
+                                 SET @_username = ?username;
+                                 SET @_userId = ?userId;
+                                 SET @saveHistory = ?saveHistoryGcl;
+                                 INSERT INTO {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? "" : WiserTableNames.ArchiveSuffix)} 
+                                 (
+                                     id, 
+                                     original_item_id, 
+                                     parent_item_id, 
+                                     unique_uuid, 
+                                     entity_type, 
+                                     moduleid, 
+                                     published_environment, 
+                                     readonly, 
+                                     title, 
+                                     added_on, 
+                                     added_by, 
+                                     changed_on, 
+                                     changed_by
+                                 )
+                                 SELECT
+                                     id, 
+                                     original_item_id, 
+                                     parent_item_id, 
+                                     unique_uuid, 
+                                     entity_type, 
+                                     moduleid, 
+                                     published_environment, 
+                                     readonly, 
+                                     title, 
+                                     added_on, 
+                                     added_by, 
+                                     ?now AS changed_on, 
+                                     ?username AS changed_by
+                                 FROM {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
+                                 WHERE id IN({formattedItemIds})
+                                 """;
 
                         await databaseConnection.ExecuteAsync(query);
 
                         // Copy the item details to the archive (or vice versa, when undeleting).
-                        query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
-(
-    id,
-    language_code,
-    item_id,
-    groupname,
-    `key`,
-    value,
-    long_value
-)
-SELECT
-    id,
-    language_code,
-    item_id,
-    groupname,
-    `key`,
-    value,
-    long_value
-FROM {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
-WHERE item_id IN({formattedItemIds})";
+                        query = $"""
+                                 SET @_username = ?username;
+                                 SET @_userId = ?userId;
+                                 SET @saveHistory = ?saveHistoryGcl;
+                                 INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
+                                 (
+                                     id,
+                                     language_code,
+                                     item_id,
+                                     groupname,
+                                     `key`,
+                                     value,
+                                     long_value
+                                 )
+                                 SELECT
+                                     id,
+                                     language_code,
+                                     item_id,
+                                     groupname,
+                                     `key`,
+                                     value,
+                                     long_value
+                                 FROM {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
+                                 WHERE item_id IN({formattedItemIds})
+                                 """;
                         await databaseConnection.ExecuteAsync(query);
                     }
 
@@ -1561,47 +1609,49 @@ WHERE item_id IN({formattedItemIds})";
                     {
                         if (entityTypeSettings.DeleteAction == EntityDeletionTypes.Archive)
                         {
-                            query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-INSERT INTO {tablePrefix}{WiserTableNames.WiserItemFile}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
-(
-    id,
-    item_id,
-    content_type,
-    content,
-    content_url,
-    width,
-    height,
-    file_name,
-    extension,
-    added_on,
-    added_by,
-    title,
-    property_name,
-    itemlink_id,
-    protected,
-    ordering
-)
-SELECT
-    id,
-    item_id,
-    content_type,
-    content,
-    content_url,
-    width,
-    height,
-    file_name,
-    extension,
-    added_on,
-    added_by,
-    title,
-    property_name,
-    itemlink_id,
-    protected,
-    ordering
-FROM {tablePrefix}{WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
-WHERE item_id IN({formattedItemIds});";
+                            query = $"""
+                                     SET @_username = ?username;
+                                     SET @_userId = ?userId;
+                                     SET @saveHistory = ?saveHistoryGcl;
+                                     INSERT INTO {tablePrefix}{WiserTableNames.WiserItemFile}{(undelete ? "" : WiserTableNames.ArchiveSuffix)}
+                                     (
+                                         id,
+                                         item_id,
+                                         content_type,
+                                         content,
+                                         content_url,
+                                         width,
+                                         height,
+                                         file_name,
+                                         extension,
+                                         added_on,
+                                         added_by,
+                                         title,
+                                         property_name,
+                                         itemlink_id,
+                                         protected,
+                                         ordering
+                                     )
+                                     SELECT
+                                         id,
+                                         item_id,
+                                         content_type,
+                                         content,
+                                         content_url,
+                                         width,
+                                         height,
+                                         file_name,
+                                         extension,
+                                         added_on,
+                                         added_by,
+                                         title,
+                                         property_name,
+                                         itemlink_id,
+                                         protected,
+                                         ordering
+                                     FROM {tablePrefix}{WiserTableNames.WiserItemFile}{(undelete ? WiserTableNames.ArchiveSuffix : "")}
+                                     WHERE item_id IN({formattedItemIds});
+                                     """;
                             await databaseConnection.ExecuteAsync(query);
                         }
 
@@ -1614,18 +1664,22 @@ WHERE item_id IN({formattedItemIds});";
                     // And then delete the item from the original table (or vice versa, when undeleting).
                     if (entityTypeSettings.DeleteAction is EntityDeletionTypes.Archive or EntityDeletionTypes.Permanent)
                     {
-                        query = $@"SET @_username = ?username;
-SET @_userId = ?userId;
-SET @saveHistory = ?saveHistoryGcl;
-DELETE FROM {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE id IN({formattedItemIds});
-SET @saveHistory = FALSE; # Don't save the history when deleting the item details, otherwise we will get UPDATE_ITEM lines in the history and that will cause problems for branches.
-DELETE FROM {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE item_id IN({formattedItemIds});
-SET @saveHistory = ?saveHistoryGcl;";
+                        query = $"""
+                                 SET @_username = ?username;
+                                 SET @_userId = ?userId;
+                                 SET @saveHistory = ?saveHistoryGcl;
+                                 DELETE FROM {tablePrefix}{WiserTableNames.WiserItem}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE id IN({formattedItemIds});
+                                 SET @saveHistory = FALSE; # Don't save the history when deleting the item details, otherwise we will get UPDATE_ITEM lines in the history and that will cause problems for branches.
+                                 DELETE FROM {tablePrefix}{WiserTableNames.WiserItemDetail}{(undelete ? WiserTableNames.ArchiveSuffix : "")} WHERE item_id IN({formattedItemIds});
+                                 SET @saveHistory = ?saveHistoryGcl;
+                                 """;
                         if (undelete)
                         {
                             databaseConnection.AddParameter("entityType", entityType);
-                            query += $@" INSERT INTO {WiserTableNames.WiserHistory} (action, tablename, item_id, changed_by, field, oldvalue, newvalue)
-VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?entityType, '', '');";
+                            query += $"""
+                                       INSERT INTO {WiserTableNames.WiserHistory} (action, tablename, item_id, changed_by, field, oldvalue, newvalue)
+                                      VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?entityType, '', '');
+                                      """;
                         }
 
                         result = await databaseConnection.ExecuteAsync(query);
@@ -1707,6 +1761,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         {
             throw new ArgumentException("Id must be greater than zero.");
         }
+
         if (entitySettingsModel == null)
         {
             throw new ArgumentNullException(nameof(entitySettingsModel));
@@ -1722,13 +1777,13 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         // When adding an item, make sure the argument of the constructor of the dictionary reflects the amount of entries!
         var replacements = new Dictionary<string, string>(6)
         {
-            { "id", itemId.ToString() },
-            { "itemId", itemId.ToString() },
-            { "title", "?workFlowItemTitle" },
-            { "moduleId", wiserItem?.ModuleId.ToString() },
-            { "userId", userId.ToString() },
-            { "username", "?username" },
-            { "ordering", wiserItem?.Ordering.ToString() },
+            {"id", itemId.ToString()},
+            {"itemId", itemId.ToString()},
+            {"title", "?workFlowItemTitle"},
+            {"moduleId", wiserItem?.ModuleId.ToString()},
+            {"userId", userId.ToString()},
+            {"username", "?username"},
+            {"ordering", wiserItem?.Ordering.ToString()},
         };
 
         foreach (var replacement in replacements)
@@ -1768,10 +1823,12 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         databaseConnection.AddParameter("userId", userId);
         databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
-        await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
-                                                        SET @_userId = ?userId;
-                                                        SET @saveHistory = ?saveHistoryGcl;
-                                                        {workFlowQuery}");
+        await databaseConnection.ExecuteAsync($"""
+                                               SET @_username = ?username;
+                                                                                                       SET @_userId = ?userId;
+                                                                                                       SET @saveHistory = ?saveHistoryGcl;
+                                                                                                       {workFlowQuery}
+                                               """);
 
         return true;
     }
@@ -1797,9 +1854,11 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(String.IsNullOrWhiteSpace(entityType) ? wiserItem?.EntityType : entityType);
         databaseConnection.AddParameter("itemId", itemId);
 
-        var query = $@"SELECT readonly
-                        FROM {tablePrefix}{WiserTableNames.WiserItem}
-                        WHERE id = ?itemId";
+        var query = $"""
+                     SELECT readonly
+                                             FROM {tablePrefix}{WiserTableNames.WiserItem}
+                                             WHERE id = ?itemId
+                     """;
 
         var queryResult = await databaseConnection.GetAsync(query, true);
         var readOnly = queryResult.Rows.Count > 0 && Convert.ToBoolean(queryResult.Rows[0]["readonly"]);
@@ -1918,12 +1977,14 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 return (true, "", permissions);
         }
 
-        query = $@"SELECT e.{columnName} AS `query`
-                    FROM {tablePrefix}{WiserTableNames.WiserItem} i
-                    JOIN {WiserTableNames.WiserEntity} e ON e.name = i.entity_type
-                    WHERE i.id = ?itemId
-                    ORDER BY IF(e.module_id = i.moduleid, 1, 0) DESC
-                    LIMIT 1";
+        query = $"""
+                 SELECT e.{columnName} AS `query`
+                                     FROM {tablePrefix}{WiserTableNames.WiserItem} i
+                                     JOIN {WiserTableNames.WiserEntity} e ON e.name = i.entity_type
+                                     WHERE i.id = ?itemId
+                                     ORDER BY IF(e.module_id = i.moduleid, 1, 0) DESC
+                                     LIMIT 1
+                 """;
 
         queryResult = await databaseConnection.GetAsync(query, true);
         if (queryResult.Rows.Count == 0)
@@ -1983,11 +2044,13 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
 
         // First check permissions based on module ID.
-        var permissionsQuery = $@"SELECT permission.permissions
-                                    FROM {WiserTableNames.WiserUserRoles} AS user_role
-                                    JOIN {tablePrefix}{WiserTableNames.WiserItem} AS item ON item.id = ?itemId AND item.moduleid > 0
-                                    LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.module_id = item.moduleid
-                                    WHERE user_role.user_id = ?userId";
+        var permissionsQuery = $"""
+                                SELECT permission.permissions
+                                                                    FROM {WiserTableNames.WiserUserRoles} AS user_role
+                                                                    JOIN {tablePrefix}{WiserTableNames.WiserItem} AS item ON item.id = ?itemId AND item.moduleid > 0
+                                                                    LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.module_id = item.moduleid
+                                                                    WHERE user_role.user_id = ?userId
+                                """;
 
         databaseConnection.AddParameter("itemId", itemId);
         databaseConnection.AddParameter("userId", userId);
@@ -2006,7 +2069,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
 
                 modulePermissionsFound = true;
-                var currentPermissions = (AccessRights)dataRow.Field<int>("permissions");
+                var currentPermissions = (AccessRights) dataRow.Field<int>("permissions");
                 if ((currentPermissions & AccessRights.Read) == AccessRights.Read)
                 {
                     userItemPermissions |= AccessRights.Read;
@@ -2030,10 +2093,12 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         }
 
         // Then check the permissions for the specific item, they overwrite permissions of the module.
-        permissionsQuery = $@"SELECT permission.permissions
-                                FROM {WiserTableNames.WiserUserRoles} AS user_role
-                                LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.item_id = ?itemId
-                                WHERE user_role.user_id = ?userId";
+        permissionsQuery = $"""
+                            SELECT permission.permissions
+                                                            FROM {WiserTableNames.WiserUserRoles} AS user_role
+                                                            LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.item_id = ?itemId
+                                                            WHERE user_role.user_id = ?userId
+                            """;
         dataTable = await databaseConnection.GetAsync(permissionsQuery, true);
 
         if (dataTable.Rows.Count == 0)
@@ -2070,7 +2135,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 }
             }
 
-            var currentPermissions = (AccessRights)dataRow.Field<int>("permissions");
+            var currentPermissions = (AccessRights) dataRow.Field<int>("permissions");
             if ((currentPermissions & AccessRights.Read) == AccessRights.Read)
             {
                 userItemPermissions |= AccessRights.Read;
@@ -2099,10 +2164,12 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
     public async Task<AccessRights> GetUserModulePermissions(int moduleId, ulong userId)
     {
         // First check permissions based on module ID.
-        var permissionsQuery = $@"SELECT permission.permissions
-                                    FROM {WiserTableNames.WiserUserRoles} user_role
-                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.module_id = ?moduleId
-                                    WHERE user_role.user_id = ?userId";
+        var permissionsQuery = $"""
+                                SELECT permission.permissions
+                                                                    FROM {WiserTableNames.WiserUserRoles} user_role
+                                                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.module_id = ?moduleId
+                                                                    WHERE user_role.user_id = ?userId
+                                """;
 
         databaseConnection.AddParameter("moduleId", moduleId);
         databaseConnection.AddParameter("userId", userId);
@@ -2124,7 +2191,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 break;
             }
 
-            var currentPermissions = (AccessRights)dataRow.Field<int>("permissions");
+            var currentPermissions = (AccessRights) dataRow.Field<int>("permissions");
             if ((currentPermissions & AccessRights.Read) == AccessRights.Read)
             {
                 userItemPermissions |= AccessRights.Read;
@@ -2154,10 +2221,12 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
     {
         databaseConnection.AddParameter("queryId", queryId);
         // First check permissions based on module ID.
-        var permissionsQuery = $@"SELECT permission.permissions
-                                    FROM {WiserTableNames.WiserUserRoles} user_role
-                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.query_id = ?queryId
-                                    WHERE user_role.user_id = ?userId";
+        var permissionsQuery = $"""
+                                SELECT permission.permissions
+                                                                    FROM {WiserTableNames.WiserUserRoles} user_role
+                                                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.query_id = ?queryId
+                                                                    WHERE user_role.user_id = ?userId
+                                """;
 
         databaseConnection.AddParameter("userId", userId);
         var dataTable = await databaseConnection.GetAsync(permissionsQuery);
@@ -2178,7 +2247,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 break;
             }
 
-            var currentPermissions = (AccessRights)dataRow.Field<int>("permissions");
+            var currentPermissions = (AccessRights) dataRow.Field<int>("permissions");
             if ((currentPermissions & AccessRights.Read) == AccessRights.Read)
             {
                 userItemPermissions |= AccessRights.Read;
@@ -2208,10 +2277,12 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
     {
         databaseConnection.AddParameter("dataSelectorId", dataSelectorId);
         // First check permissions based on module ID.
-        var permissionsQuery = $@"SELECT permission.permissions
-                                    FROM {WiserTableNames.WiserUserRoles} user_role
-                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.data_selector_id = ?dataSelectorId
-                                    WHERE user_role.user_id = ?userId";
+        var permissionsQuery = $"""
+                                SELECT permission.permissions
+                                                                    FROM {WiserTableNames.WiserUserRoles} user_role
+                                                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.data_selector_id = ?dataSelectorId
+                                                                    WHERE user_role.user_id = ?userId
+                                """;
 
         databaseConnection.AddParameter("userId", userId);
         var dataTable = await databaseConnection.GetAsync(permissionsQuery);
@@ -2232,7 +2303,7 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
                 break;
             }
 
-            var currentPermissions = (AccessRights)dataRow.Field<int>("permissions");
+            var currentPermissions = (AccessRights) dataRow.Field<int>("permissions");
             if ((currentPermissions & AccessRights.Read) == AccessRights.Read)
             {
                 userItemPermissions |= AccessRights.Read;
@@ -2345,31 +2416,35 @@ VALUES ('UNDELETE_ITEM', 'wiser_item', ?itemId, IFNULL(@_username, USER()), ?ent
         databaseConnection.AddParameter("itemId", itemId);
         databaseConnection.AddParameter("uniqueId", uniqueId);
         databaseConnection.AddParameter("languageCode", languageCode);
-        var query = $@"SELECT 
-	item.*,
-	details.groupname,
-	details.`key`,	
-	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-    details.language_code
-FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-{join}
-LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id                                        
-WHERE {String.Join(" AND ", where)}";
+        var query = $"""
+                     SELECT 
+                     	item.*,
+                     	details.groupname,
+                     	details.`key`,	
+                     	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+                         details.language_code
+                     FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                     {join}
+                     LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id                                        
+                     WHERE {String.Join(" AND ", where)}
+                     """;
 
         if (!returnNullIfDeleted)
         {
-            query += $@"
-UNION
-SELECT 
-	item.*,
-    details.groupname,
-	details.`key`,	
-	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-    details.language_code
-FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
-{joinDeleted}
-LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id                                        
-WHERE {String.Join(" AND ", where)}";
+            query += $"""
+
+                      UNION
+                      SELECT 
+                      	item.*,
+                          details.groupname,
+                      	details.`key`,	
+                      	CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+                          details.language_code
+                      FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+                      {joinDeleted}
+                      LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id                                        
+                      WHERE {String.Join(" AND ", where)}
+                      """;
         }
 
         var dataTable = await databaseConnection.GetAsync(query, true);
@@ -2416,13 +2491,15 @@ WHERE {String.Join(" AND ", where)}";
         var linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkSettings);
         var permissionsQueryPart = "";
         var linkTypePart = linkType > -1 ? " AND link.type = ?linkType" : "";
-        var where = new List<string> { "TRUE" };
+        var where = new List<string> {"TRUE"};
         if (!skipPermissionsCheck)
         {
             databaseConnection.AddParameter("userId", userId);
-            permissionsQueryPart = $@"# Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
-	                                    LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-	                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id";
+            permissionsQueryPart = $"""
+                                    # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
+                                    	                                    LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
+                                    	                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
+                                    """;
             where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
         }
 
@@ -2461,38 +2538,42 @@ WHERE {String.Join(" AND ", where)}";
                 ? $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.destination_item_id = item.id AND link.item_id = ?itemId{linkTypePart}"
                 : $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId{linkTypePart}";
 
-            itemLinkDetailsPart = $@"
-                    UNION ALL
-
-                    # Item link details.
-                    SELECT 
-	                    item.*,
-                        details.groupname,
-	                    details.`key`,	
-	                    CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                        details.language_code,
-                        link.id AS itemLinkId
-                    FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                    {itemLinkJoin}
-                    LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS details ON details.itemlink_id = link.id
-                    {permissionsQueryPart}
-                    WHERE {String.Join(" AND ", where)}";
+            itemLinkDetailsPart = $"""
+                                   
+                                                       UNION ALL
+                                   
+                                                       # Item link details.
+                                                       SELECT 
+                                   	                    item.*,
+                                                           details.groupname,
+                                   	                    details.`key`,	
+                                   	                    CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+                                                           details.language_code,
+                                                           link.id AS itemLinkId
+                                                       FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                                       {itemLinkJoin}
+                                                       LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS details ON details.itemlink_id = link.id
+                                                       {permissionsQueryPart}
+                                                       WHERE {String.Join(" AND ", where)}
+                                   """;
         }
 
-        var query = $@"# Item details.
-                        SELECT 
-	                        item.*,
-                            details.groupname,
-	                        details.`key`,	
-	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                            details.language_code,
-                            0 AS itemLinkId
-                        FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                        {itemLinkJoin}
-                        LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id
-                        {permissionsQueryPart}
-                        WHERE {String.Join(" AND ", where)}
-                        {itemLinkDetailsPart}";
+        var query = $"""
+                     # Item details.
+                                             SELECT 
+                     	                        item.*,
+                                                 details.groupname,
+                     	                        details.`key`,	
+                     	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+                                                 details.language_code,
+                                                 0 AS itemLinkId
+                                             FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                             {itemLinkJoin}
+                                             LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id
+                                             {permissionsQueryPart}
+                                             WHERE {String.Join(" AND ", where)}
+                                             {itemLinkDetailsPart}
+                     """;
 
         if (includeDeletedItems)
         {
@@ -2513,39 +2594,43 @@ WHERE {String.Join(" AND ", where)}";
                     ? $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.destination_item_id = item.id AND link.item_id = ?itemId{linkTypePart}"
                     : $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId{linkTypePart}";
 
-                itemLinkDetailsPart = $@"
-                        UNION ALL
-
-                        # Item link details.
-                        SELECT 
-	                        item.*,
-                            details.groupname,
-	                        details.`key`,
-	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                            details.language_code,
-                            link.id AS itemLinkId
-                        FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
-                        {itemLinkJoin}
-                        LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.itemlink_id = link.id
-                        {permissionsQueryPart}
-                        WHERE {String.Join(" AND ", where)}";
+                itemLinkDetailsPart = $"""
+                                       
+                                                               UNION ALL
+                                       
+                                                               # Item link details.
+                                                               SELECT 
+                                       	                        item.*,
+                                                                   details.groupname,
+                                       	                        details.`key`,
+                                       	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+                                                                   details.language_code,
+                                                                   link.id AS itemLinkId
+                                                               FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+                                                               {itemLinkJoin}
+                                                               LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.itemlink_id = link.id
+                                                               {permissionsQueryPart}
+                                                               WHERE {String.Join(" AND ", where)}
+                                       """;
             }
 
-            query += $@"
-                            UNION
-                            SELECT 
-	                            item.*,
-                                details.groupname,
-	                            details.`key`,	
-	                            CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                                details.language_code,
-                                0 AS itemLinkId
-                            FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
-                            {itemLinkJoin}
-                            LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id
-                            {permissionsQueryPart}
-                            WHERE {String.Join(" AND ", where)}
-                            {itemLinkDetailsPart}";
+            query += $"""
+                      
+                                                  UNION
+                                                  SELECT 
+                      	                            item.*,
+                                                      details.groupname,
+                      	                            details.`key`,	
+                      	                            CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+                                                      details.language_code,
+                                                      0 AS itemLinkId
+                                                  FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+                                                  {itemLinkJoin}
+                                                  LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id
+                                                  {permissionsQueryPart}
+                                                  WHERE {String.Join(" AND ", where)}
+                                                  {itemLinkDetailsPart}
+                      """;
         }
 
         var dataTable = await databaseConnection.GetAsync(query, true);
@@ -2589,9 +2674,11 @@ WHERE {String.Join(" AND ", where)}";
         if (!skipPermissionsCheck)
         {
             databaseConnection.AddParameter("userId", userId);
-            permissionsQueryPart = $@"# Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
-	                                    LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-	                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id";
+            permissionsQueryPart = $"""
+                                    # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
+                                    	                                    LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
+                                    	                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
+                                    """;
             where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
         }
 
@@ -2631,12 +2718,14 @@ WHERE {String.Join(" AND ", where)}";
 
         databaseConnection.AddParameter("itemId", itemId);
         databaseConnection.AddParameter("linkType", linkType);
-        var query = $@"SELECT item.id
-                        FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                        {itemLinkJoin}
-                        {permissionsQueryPart}
-                        {wherePart}
-                        ORDER BY item.id DESC;";
+        var query = $"""
+                     SELECT item.id
+                                             FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                             {itemLinkJoin}
+                                             {permissionsQueryPart}
+                                             {wherePart}
+                                             ORDER BY item.id DESC;
+                     """;
 
         if (includeDeletedItems)
         {
@@ -2654,13 +2743,15 @@ WHERE {String.Join(" AND ", where)}";
                     : $"JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix} AS link ON link.item_id = item.id AND link.destination_item_id = ?itemId AND link.type = ?linkType";
             }
 
-            query += $@"UNION
-                            SELECT item.id
-                            FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
-                            {itemLinkJoin}
-                            {permissionsQueryPart}
-                            WHERE {String.Join(" AND ", where)}
-                            ORDER BY item.id DESC;";
+            query += $"""
+                      UNION
+                                                  SELECT item.id
+                                                  FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+                                                  {itemLinkJoin}
+                                                  {permissionsQueryPart}
+                                                  WHERE {String.Join(" AND ", where)}
+                                                  ORDER BY item.id DESC;
+                      """;
         }
 
         var dataTable = await databaseConnection.GetAsync(query, true);
@@ -2685,17 +2776,19 @@ WHERE {String.Join(" AND ", where)}";
     {
         var results = new Dictionary<string, Dictionary<string, object>>();
         databaseConnection.AddParameter("linkType", linkType);
-        var query = $@"SELECT 
-                                property.id AS property_id,
-                                IF(property.property_name IS NULL OR property.property_name = '', property.display_name, property.property_name) AS property_name, 
-                                property.inputtype,
-                                property.language_code,
-                                property.options,
-                                property.also_save_seo_value,
-                                property.readonly
-                            FROM {WiserTableNames.WiserEntityProperty} AS property
-                            WHERE property.link_type = ?linkType
-                            ORDER BY property.ordering ASC";
+        var query = $"""
+                     SELECT 
+                                                     property.id AS property_id,
+                                                     IF(property.property_name IS NULL OR property.property_name = '', property.display_name, property.property_name) AS property_name, 
+                                                     property.inputtype,
+                                                     property.language_code,
+                                                     property.options,
+                                                     property.also_save_seo_value,
+                                                     property.readonly
+                                                 FROM {WiserTableNames.WiserEntityProperty} AS property
+                                                 WHERE property.link_type = ?linkType
+                                                 ORDER BY property.ordering ASC
+                     """;
 
         var dataTable = await databaseConnection.GetAsync(query);
         if (dataTable.Rows.Count <= 0)
@@ -2747,13 +2840,15 @@ WHERE {String.Join(" AND ", where)}";
             var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
 
             databaseConnection.AddParameter("itemId", itemId);
-            var dataTable = await databaseConnection.GetAsync($@"SELECT
-                                                                            item.entity_type,
-	                                                                        entity.template_query,
-	                                                                        entity.template_html
-                                                                        FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                                                        JOIN {WiserTableNames.WiserEntity} AS entity ON entity.`name` = item.entity_type
-                                                                        WHERE item.id = ?itemId", true);
+            var dataTable = await databaseConnection.GetAsync($"""
+                                                               SELECT
+                                                                                                                                           item.entity_type,
+                                                               	                                                                        entity.template_query,
+                                                               	                                                                        entity.template_html
+                                                                                                                                       FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                                                                                                                       JOIN {WiserTableNames.WiserEntity} AS entity ON entity.`name` = item.entity_type
+                                                                                                                                       WHERE item.id = ?itemId
+                                                               """, true);
 
             var query = "";
             var template = "";
@@ -2812,6 +2907,7 @@ WHERE {String.Join(" AND ", where)}";
                     UserId = userId
                 };
             }
+
             isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
             if (!isPossible.ok)
             {
@@ -2841,12 +2937,14 @@ WHERE {String.Join(" AND ", where)}";
             return Convert.ToUInt64(dataTable.Rows[0]["id"]);
         }
 
-        dataTable = await databaseConnection.GetAsync($@"SET @_username = ?username;
-                                                        SET @_userId = ?userId;
-                                                        SET @saveHistory = ?saveHistoryGcl; 
-                                                        INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, type, ordering) 
-                                                        VALUES (?itemId, ?destinationItemId, ?type, ?ordering);
-                                                        SELECT LAST_INSERT_ID();", true);
+        dataTable = await databaseConnection.GetAsync($"""
+                                                       SET @_username = ?username;
+                                                                                                               SET @_userId = ?userId;
+                                                                                                               SET @saveHistory = ?saveHistoryGcl; 
+                                                                                                               INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, type, ordering) 
+                                                                                                               VALUES (?itemId, ?destinationItemId, ?type, ?ordering);
+                                                                                                               SELECT LAST_INSERT_ID();
+                                                       """, true);
         return Convert.ToUInt64(dataTable.Rows[0][0]);
     }
 
@@ -2882,12 +2980,14 @@ WHERE {String.Join(" AND ", where)}";
         databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
-        await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
-                                                        SET @_userId = ?userId;
-                                                        SET @saveHistory = ?saveHistoryGcl; 
-                                                        DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} 
-                                                        WHERE destination_item_id = ?destinationItemId 
-                                                        AND type = ?type");
+        await databaseConnection.ExecuteAsync($"""
+                                               SET @_username = ?username;
+                                                                                                       SET @_userId = ?userId;
+                                                                                                       SET @saveHistory = ?saveHistoryGcl; 
+                                                                                                       DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} 
+                                                                                                       WHERE destination_item_id = ?destinationItemId 
+                                                                                                       AND type = ?type
+                                               """);
     }
 
     /// <inheritdoc />
@@ -2922,60 +3022,66 @@ WHERE {String.Join(" AND ", where)}";
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
         // Copy the item links to the archive.
-        var query = $@"SET @_username = ?username;
-                        SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryGcl;
-                        INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix}
-                        (
-                            id,
-                            item_id,
-                            destination_item_id,
-                            ordering,
-                            type,
-                            added_on
-                        )
-                        SELECT
-                            id,
-                            item_id,
-                            destination_item_id,
-                            ordering,
-                            type,
-                            added_on
-                        FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} AS itemLink
-                        WHERE itemLink.id IN({String.Join(",", ids)})";
+        var query = $"""
+                     SET @_username = ?username;
+                                             SET @_userId = ?userId;
+                                             SET @saveHistory = ?saveHistoryGcl;
+                                             INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink}{WiserTableNames.ArchiveSuffix}
+                                             (
+                                                 id,
+                                                 item_id,
+                                                 destination_item_id,
+                                                 ordering,
+                                                 type,
+                                                 added_on
+                                             )
+                                             SELECT
+                                                 id,
+                                                 item_id,
+                                                 destination_item_id,
+                                                 ordering,
+                                                 type,
+                                                 added_on
+                                             FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} AS itemLink
+                                             WHERE itemLink.id IN({String.Join(",", ids)})
+                     """;
         await databaseConnection.ExecuteAsync(query);
 
         // Copy the item links details to the archive.
-        query = $@"SET @_username = ?username;
-                        SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryGcl;
-                        INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix}
-                        (
-                            id,
-                            language_code,
-                            itemlink_id,
-                            groupname,
-                            `key`,
-                            value,
-                            long_value
-                        )
-                        SELECT
-                            detail.id,
-                            detail.language_code,
-                            detail.itemlink_id,
-                            detail.groupname,
-                            detail.`key`,
-                            detail.value,
-                            detail.long_value
-                        FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS detail
-                        WHERE detail.itemlink_id IN({String.Join(",", ids)})";
+        query = $"""
+                 SET @_username = ?username;
+                                         SET @_userId = ?userId;
+                                         SET @saveHistory = ?saveHistoryGcl;
+                                         INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix}
+                                         (
+                                             id,
+                                             language_code,
+                                             itemlink_id,
+                                             groupname,
+                                             `key`,
+                                             value,
+                                             long_value
+                                         )
+                                         SELECT
+                                             detail.id,
+                                             detail.language_code,
+                                             detail.itemlink_id,
+                                             detail.groupname,
+                                             detail.`key`,
+                                             detail.value,
+                                             detail.long_value
+                                         FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS detail
+                                         WHERE detail.itemlink_id IN({String.Join(",", ids)})
+                 """;
         await databaseConnection.ExecuteAsync(query);
 
-        query = $@"SET @_username = ?username;
-                        SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryGcl;
-                        DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} WHERE itemlink_id IN({String.Join(",", ids)});
-                        DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE id IN({String.Join(",", ids)})";
+        query = $"""
+                 SET @_username = ?username;
+                                         SET @_userId = ?userId;
+                                         SET @saveHistory = ?saveHistoryGcl;
+                                         DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} WHERE itemlink_id IN({String.Join(",", ids)});
+                                         DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE id IN({String.Join(",", ids)})
+                 """;
         await databaseConnection.ExecuteAsync(query);
     }
 
@@ -3011,21 +3117,25 @@ WHERE {String.Join(" AND ", where)}";
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
         // Save the change to the history.
-        var query = $@"SET @_username = ?username;
-                        SET @_userId = ?userId;
-                        SET @saveHistory = ?saveHistoryGcl;
-                        INSERT INTO {WiserTableNames.WiserHistory} (action, tablename, item_id, changed_by, field, oldvalue, newvalue)
-                        SELECT 'REMOVE_LINK', '{sourceTablePrefix}{WiserTableNames.WiserItem}', id, @_username, 'parent_item_id', 0, parent_item_id
-			            FROM {sourceTablePrefix}{WiserTableNames.WiserItem}
-                        WHERE id IN({String.Join(",", ids)})";
+        var query = $"""
+                     SET @_username = ?username;
+                                             SET @_userId = ?userId;
+                                             SET @saveHistory = ?saveHistoryGcl;
+                                             INSERT INTO {WiserTableNames.WiserHistory} (action, tablename, item_id, changed_by, field, oldvalue, newvalue)
+                                             SELECT 'REMOVE_LINK', '{sourceTablePrefix}{WiserTableNames.WiserItem}', id, @_username, 'parent_item_id', 0, parent_item_id
+                     			            FROM {sourceTablePrefix}{WiserTableNames.WiserItem}
+                                             WHERE id IN({String.Join(",", ids)})
+                     """;
         await databaseConnection.ExecuteAsync(query);
 
-        query = $@"SET @_username = ?username;
-                    SET @_userId = ?userId;
-                    SET @saveHistory = ?saveHistoryGcl;
-                    UPDATE {sourceTablePrefix}{WiserTableNames.WiserItem}
-                    SET parent_item_id = 0
-                    WHERE id IN({String.Join(",", ids)})";
+        query = $"""
+                 SET @_username = ?username;
+                                     SET @_userId = ?userId;
+                                     SET @saveHistory = ?saveHistoryGcl;
+                                     UPDATE {sourceTablePrefix}{WiserTableNames.WiserItem}
+                                     SET parent_item_id = 0
+                                     WHERE id IN({String.Join(",", ids)})
+                 """;
         await databaseConnection.ExecuteAsync(query);
     }
 
@@ -3086,33 +3196,43 @@ WHERE {String.Join(" AND ", where)}";
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
         // Query for removing links in the table wiser_itemlinks.
-        var wiserItemLinkQueryBuilder = new StringBuilder($@"SET @_username = ?username;
-                                                                SET @_userId = ?userId;
-                                                                SET @saveHistory = ?saveHistoryGcl;
-                                                                SELECT item.id, item.entity_type 
-                                                                FROM {tablePrefix}{WiserTableNames.WiserItem} AS item 
-                                                                JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id AND link.destination_item_id = ?destinationItemId");
+        var wiserItemLinkQueryBuilder = new StringBuilder($"""
+                                                           SET @_username = ?username;
+                                                                                                                           SET @_userId = ?userId;
+                                                                                                                           SET @saveHistory = ?saveHistoryGcl;
+                                                                                                                           SELECT item.id, item.entity_type 
+                                                                                                                           FROM {tablePrefix}{WiserTableNames.WiserItem} AS item 
+                                                                                                                           JOIN {linkTablePrefix}{WiserTableNames.WiserItemLink} AS link ON link.item_id = item.id AND link.destination_item_id = ?destinationItemId
+                                                           """);
 
         // Query for removing links of the column parent_item_id from the table wiser_item.
-        var parentItemIdQueryBuilder = new StringBuilder($@"SELECT item.id, item.entity_type
-                                                                FROM {tablePrefix}{WiserTableNames.WiserItem} AS item");
+        var parentItemIdQueryBuilder = new StringBuilder($"""
+                                                          SELECT item.id, item.entity_type
+                                                                                                                          FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                                          """);
 
         if (type > 0)
         {
             databaseConnection.AddParameter("type", type);
             wiserItemLinkQueryBuilder.Append(" AND link.type = ?type");
-            parentItemIdQueryBuilder.Append($@" JOIN {tablePrefix}{WiserTableNames.WiserItem} AS parent ON parent.id = ?destinationItemId 
-                                                    JOIN {linkTablePrefix}{WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1");
+            parentItemIdQueryBuilder.Append($"""
+                                              JOIN {tablePrefix}{WiserTableNames.WiserItem} AS parent ON parent.id = ?destinationItemId 
+                                                                                                 JOIN {linkTablePrefix}{WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1
+                                             """);
         }
 
         if (!skipPermissionsCheck)
         {
-            wiserItemLinkQueryBuilder.Append($@" # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
-	                                                LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-	                                                LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id");
-            parentItemIdQueryBuilder.Append($@" # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
-	                                                LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-	                                                LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id");
+            wiserItemLinkQueryBuilder.Append($"""
+                                               # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
+                                              	                                                LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
+                                              	                                                LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
+                                              """);
+            parentItemIdQueryBuilder.Append($"""
+                                              # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
+                                             	                                                LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
+                                             	                                                LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
+                                             """);
         }
 
         parentItemIdQueryBuilder.Append(@" WHERE item.parent_item_id = ?destinationItemId");
@@ -3169,6 +3289,7 @@ WHERE {String.Join(" AND ", where)}";
                     UserId = userId
                 };
             }
+
             isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(newDestinationItemId, EntityActions.Update, userId, entityType: entityType);
             if (!isPossible.ok)
             {
@@ -3192,20 +3313,22 @@ WHERE {String.Join(" AND ", where)}";
         databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
-        await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
-                                                        SET @_userId = ?userId;
-                                                        SET @saveHistory = ?saveHistoryGcl;
-                                                        # Update links via {WiserTableNames.WiserItemLink}.
-                                                        UPDATE {linkTablePrefix}{WiserTableNames.WiserItemLink} SET destination_item_id = ?newDestinationItemId 
-                                                        WHERE destination_item_id = ?oldDestinationItemId 
-                                                        AND (?type = 0 OR type = ?type);
-
-                                                        # Update links via parent_item_id from {WiserTableNames.WiserItem}.
-                                                        UPDATE {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                                        JOIN {tablePrefix}{WiserTableNames.WiserItem} AS parent ON parent.id = ?oldDestinationItemId
-                                                        JOIN {linkTablePrefix}{WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1
-                                                        SET item.parent_item_id = ?newDestinationItemId
-                                                        WHERE item.parent_item_id = ?oldDestinationItemId");
+        await databaseConnection.ExecuteAsync($"""
+                                               SET @_username = ?username;
+                                                                                                       SET @_userId = ?userId;
+                                                                                                       SET @saveHistory = ?saveHistoryGcl;
+                                                                                                       # Update links via {WiserTableNames.WiserItemLink}.
+                                                                                                       UPDATE {linkTablePrefix}{WiserTableNames.WiserItemLink} SET destination_item_id = ?newDestinationItemId 
+                                                                                                       WHERE destination_item_id = ?oldDestinationItemId 
+                                                                                                       AND (?type = 0 OR type = ?type);
+                                               
+                                                                                                       # Update links via parent_item_id from {WiserTableNames.WiserItem}.
+                                                                                                       UPDATE {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                                                                                       JOIN {tablePrefix}{WiserTableNames.WiserItem} AS parent ON parent.id = ?oldDestinationItemId
+                                                                                                       JOIN {linkTablePrefix}{WiserTableNames.WiserLink} AS linkSettings ON linkSettings.destination_entity_type = parent.entity_type AND linkSettings.connected_entity_type = item.entity_type AND linkSettings.use_item_parent_id = 1
+                                                                                                       SET item.parent_item_id = ?newDestinationItemId
+                                                                                                       WHERE item.parent_item_id = ?oldDestinationItemId
+                                               """);
     }
 
     /// <inheritdoc />
@@ -3246,11 +3369,13 @@ WHERE {String.Join(" AND ", where)}";
         databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
-        await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
-                                                        SET @_userId = ?userId;
-                                                        SET @saveHistory = ?saveHistoryGcl;
-                                                        UPDATE {newLinkTablePrefix}{WiserTableNames.WiserItemLink} SET type = ?newLinkType 
-                                                        WHERE destination_item_id = ?destinationItemId AND type = ?oldLinkType");
+        await databaseConnection.ExecuteAsync($"""
+                                               SET @_username = ?username;
+                                                                                                       SET @_userId = ?userId;
+                                                                                                       SET @saveHistory = ?saveHistoryGcl;
+                                                                                                       UPDATE {newLinkTablePrefix}{WiserTableNames.WiserItemLink} SET type = ?newLinkType 
+                                                                                                       WHERE destination_item_id = ?destinationItemId AND type = ?oldLinkType
+                                               """);
     }
 
     /// <inheritdoc />
@@ -3274,6 +3399,7 @@ WHERE {String.Join(" AND ", where)}";
                     UserId = userId
                 };
             }
+
             isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(sourceItemId, EntityActions.Update, userId);
             if (!isPossible.ok)
             {
@@ -3302,11 +3428,13 @@ WHERE {String.Join(" AND ", where)}";
         databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
-        await databaseConnection.ExecuteAsync($@"SET @_username = ?username;
-                                                        SET @_userId = ?userId;
-                                                        SET @saveHistory = ?saveHistoryGcl;
-                                                        UPDATE {newLinkTablePrefix}{WiserTableNames.WiserItemLink} SET type = ?newLinkType 
-                                                        WHERE destination_item_id = ?destinationItemId AND type = ?oldLinkType AND item_id = ?sourceItemId");
+        await databaseConnection.ExecuteAsync($"""
+                                               SET @_username = ?username;
+                                                                                                       SET @_userId = ?userId;
+                                                                                                       SET @saveHistory = ?saveHistoryGcl;
+                                                                                                       UPDATE {newLinkTablePrefix}{WiserTableNames.WiserItemLink} SET type = ?newLinkType 
+                                                                                                       WHERE destination_item_id = ?destinationItemId AND type = ?oldLinkType AND item_id = ?sourceItemId
+                                               """);
     }
 
     /// <inheritdoc />
@@ -3384,13 +3512,15 @@ WHERE {String.Join(" AND ", where)}";
         databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
 
-        var addItemFileResult = await databaseConnection.GetAsync($@"
-                SET @_username = ?username;
-                SET @_userId = ?userId;
-                SET @saveHistory = ?saveHistoryGcl;
-                INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, added_by, title, property_name, protected, itemlink_id, extra_data) 
-                VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?width, ?height, ?fileName, ?extension, ?username, ?title, ?propertyName, ?protected, ?itemLinkId, ?extraData);
-                SELECT LAST_INSERT_ID();", true);
+        var addItemFileResult = await databaseConnection.GetAsync($"""
+                                                                   
+                                                                                   SET @_username = ?username;
+                                                                                   SET @_userId = ?userId;
+                                                                                   SET @saveHistory = ?saveHistoryGcl;
+                                                                                   INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, added_by, title, property_name, protected, itemlink_id, extra_data) 
+                                                                                   VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?width, ?height, ?fileName, ?extension, ?username, ?title, ?propertyName, ?protected, ?itemLinkId, ?extraData);
+                                                                                   SELECT LAST_INSERT_ID();
+                                                                   """, true);
 
         return Convert.ToUInt64(addItemFileResult.Rows[0][0]);
     }
@@ -3445,11 +3575,13 @@ WHERE {String.Join(" AND ", where)}";
         }
 
         databaseConnection.AddParameter("Ids", String.Join(",", ids));
-        var queryResult = await databaseConnection.GetAsync($@"
-                SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `protected`, `itemlink_id`, extra_data
-                FROM {tablePrefix}{WiserTableNames.WiserItemFile}
-                WHERE {columnName} IN ({String.Join(",", ids)})
-                {propertyNameClause}", true);
+        var queryResult = await databaseConnection.GetAsync($"""
+                                                             
+                                                                             SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `protected`, `itemlink_id`, extra_data
+                                                                             FROM {tablePrefix}{WiserTableNames.WiserItemFile}
+                                                                             WHERE {columnName} IN ({String.Join(",", ids)})
+                                                                             {propertyNameClause}
+                                                             """, true);
 
         if (queryResult.Rows.Count == 0)
         {
@@ -3525,7 +3657,7 @@ WHERE {String.Join(" AND ", where)}";
 
         // Fix form tags, multiple form tags are not allowed on the page, thus the editor will throw an exception.
         // FIX: Replace the form tag with JFORM and replace it back later
-        var tags = new[] { "html", "body", "head", "title", "form", "textarea" }; // , "iframe"
+        var tags = new[] {"html", "body", "head", "title", "form", "textarea"}; // , "iframe"
         foreach (var tag in tags)
         {
             output = output.Replace($"<j{tag}", $"<{tag}");
@@ -3566,6 +3698,7 @@ WHERE {String.Join(" AND ", where)}";
             output = Regex.Replace(output, $@"srcset=""https?://{Regex.Escape(mainDomain)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             output = Regex.Replace(output, $@"srcset=""//{Regex.Escape(mainDomain)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         }
+
         if (!allowAbsoluteImageUrls && !String.IsNullOrWhiteSpace(mainDomainForWiser) && saveImagesRelative)
         {
             output = Regex.Replace(output, $@"src=""https?://{Regex.Escape(mainDomainForWiser)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
@@ -3578,13 +3711,28 @@ WHERE {String.Join(" AND ", where)}";
         output = Regex.Replace(output, @"src=""http://.+?\.juicedev\.nl", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         output = Regex.Replace(output, @"srcset=""http://.+?\.juicedev\.nl", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
 
+        Regex regex;
+        if (gclSettings.UseLegacyWiser1TemplateModule)
+        {
+            regex = new Regex("""<table[^>]*?(?:data=['"](?<data>.*?)['"][^>]*?)?(contentid|pageid|item-id)=['"](?<contentId>\d+)['"][^>]*?>.+<\/table>""", RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            var matchResults = regex.Match(output);
+            while (matchResults.Success)
+            {
+                var contentId = Int32.Parse(matchResults.Groups[3].Value);
+                var type = matchResults.Groups[1].Value;
+                output = output.Replace(GetFullTableHtml(matchResults.Value, matchResults), $"<img src=\"/preview_image.aspx?{type}={contentId}\" {type}=\"{contentId}\" />");
+
+                matchResults = regex.Match(output);
+            }
+        }
+
         output = output.Replace("~~table", "<table");
 
         // Replace Office Word HTML XML.
         output = Regex.Replace(output, @"<\!--\[if.*?mso.*?\]>.*?<\!\[endif\]-->", "", RegexOptions.IgnoreCase | RegexOptions.Singleline, TimeSpan.FromMilliseconds(2000));
 
         // Replace data selectors.
-        var regex = new Regex(@"<!-- Start data selector with id (?<dataSelectorId>\d+) and template (?<templateId>\d+) -->.+?<!-- End data selector with id \d+ and template \d+ -->", RegexOptions.IgnoreCase | RegexOptions.Singleline, TimeSpan.FromMilliseconds(2000));
+        regex = new Regex(@"<!-- Start data selector with id (?<dataSelectorId>\d+) and template (?<templateId>\d+) -->.+?<!-- End data selector with id \d+ and template \d+ -->", RegexOptions.IgnoreCase | RegexOptions.Singleline, TimeSpan.FromMilliseconds(2000));
         var matches = regex.Matches(output);
         foreach (Match match in matches)
         {
@@ -3628,7 +3776,7 @@ WHERE {String.Join(" AND ", where)}";
         var output = input;
         // Fix form tags, multiple form tags are not allowed on the page, thus the editor will throw an exception.
         // FIX: Replace the form tag with JFORM and replace it back later
-        var tags = new[] { "html", "body", "head", "title", "form", "textarea" }; // , "iframe"
+        var tags = new[] {"html", "body", "head", "title", "form", "textarea"}; // , "iframe"
         foreach (var tag in tags)
         {
             output = output.Replace($"<{tag}", $"<j{tag}");
@@ -3651,7 +3799,7 @@ WHERE {String.Join(" AND ", where)}";
     }
 
     /// <inheritcDoc />
-    public Task<string> ReplaceRelativeImagesToAbsoluteAsync(string input, string imagesDomain)
+    public async Task<string> ReplaceRelativeImagesToAbsoluteAsync(string input, string imagesDomain)
     {
         var output = input;
 
@@ -3673,16 +3821,17 @@ WHERE {String.Join(" AND ", where)}";
         }
 
         // Replace with HTTPS
-        foreach (Match imageMatch in Regex.Matches(output, @"<img.*?src=[""'](http:\/\/.*?)[""']", RegexOptions.Singleline | RegexOptions.IgnoreCase))
-        {
-            output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
-        }
-        foreach (Match imageMatch in Regex.Matches(output, @"<source.*?srcset=[""'](http:\/\/.*?)[""']", RegexOptions.Singleline | RegexOptions.IgnoreCase))
+        foreach (Match imageMatch in Regex.Matches(output, """<img.*?src=["'](http:\/\/.*?)["']""", RegexOptions.Singleline | RegexOptions.IgnoreCase))
         {
             output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
         }
 
-        return Task.FromResult(output);
+        foreach (Match imageMatch in Regex.Matches(output, """<source.*?srcset=["'](http:\/\/.*?)["']""", RegexOptions.Singleline | RegexOptions.IgnoreCase))
+        {
+            output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
+        }
+
+        return output;
     }
 
     /// <inheritdoc />
@@ -3888,7 +4037,7 @@ WHERE {String.Join(" AND ", where)}";
                 continue;
             }
 
-            await databaseHelpersService.CreateTableAsync(tableName, new List<ColumnSettingsModel> { new("id", MySqlDbType.UInt64) });
+            await databaseHelpersService.CreateTableAsync(tableName, new List<ColumnSettingsModel> {new("id", MySqlDbType.UInt64)});
             await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("title", MySqlDbType.VarChar, 255));
             await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("parent_item_id", MySqlDbType.UInt64));
 
@@ -3919,7 +4068,7 @@ WHERE {String.Join(" AND ", where)}";
                 }
 
                 var options = fieldOptionsToUse[key];
-                if (!(bool)options[Constants.SaveSeoValueKey])
+                if (!(bool) options[Constants.SaveSeoValueKey])
                 {
                     continue;
                 }
@@ -3999,9 +4148,11 @@ WHERE {String.Join(" AND ", where)}";
         }
 
         var query = String.Join(";", columnsForQuery.Select(x =>
-            $@"INSERT INTO `{x.Key}` ({String.Join(",", x.Value)})
-                VALUES ({String.Join(",", parametersForQuery[x.Key])})
-                ON DUPLICATE KEY UPDATE {String.Join(",", x.Value.Select(column => $"{column} = VALUES({column})"))}"));
+            $"""
+             INSERT INTO `{x.Key}` ({String.Join(",", x.Value)})
+                             VALUES ({String.Join(",", parametersForQuery[x.Key])})
+                             ON DUPLICATE KEY UPDATE {String.Join(",", x.Value.Select(column => $"{column} = VALUES({column})"))}
+             """));
 
         await databaseConnection.ExecuteAsync(query);
 
@@ -4063,7 +4214,7 @@ WHERE {String.Join(" AND ", where)}";
         }
 
         // Entity blocks with templates.
-        var regEx = new Regex(@"<div[^<>]*?(?:class=['""]dynamic-content['""][^<>]*?)?(entity-block-item-id)=['""](?<itemId>\d+)['""]([^<>]*?)?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
+        var regEx = new Regex("""<div[^<>]*?(?:class=['"]dynamic-content['"][^<>]*?)?(entity-block-item-id)=['"](?<itemId>\d+)['"]([^<>]*?)?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>""", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
 
         var matches = regEx.Matches(template);
         foreach (Match match in matches)
@@ -4081,7 +4232,6 @@ WHERE {String.Join(" AND ", where)}";
 
             try
             {
-
                 await databaseConnection.EnsureOpenConnectionForReadingAsync();
                 var (entityTemplate, dataRow) = await GetTemplateAndDataForItemAsync(itemId);
                 var html = await stringReplacementsService.DoAllReplacementsAsync(entityTemplate, dataRow, removeUnknownVariables: false);
@@ -4148,21 +4298,25 @@ WHERE {String.Join(" AND ", where)}";
                 {
                     if (itemId > 0)
                     {
-                        query = $@"SELECT id 
-FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
-WHERE item_id = ?saveDetailItemId 
-AND `key` = ?saveDetailKey 
-AND language_code = ?saveDetailLanguageCode
-LIMIT 1";
+                        query = $"""
+                                 SELECT id 
+                                 FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
+                                 WHERE item_id = ?saveDetailItemId 
+                                 AND `key` = ?saveDetailKey 
+                                 AND language_code = ?saveDetailLanguageCode
+                                 LIMIT 1
+                                 """;
                     }
                     else
                     {
-                        query = $@"SELECT id 
-FROM {WiserTableNames.WiserItemLinkDetail} 
-WHERE itemlink_id = ?saveDetailItemLinkId 
-AND `key` = ?saveDetailKey
-AND language_code = ?saveDetailLanguageCode
-LIMIT 1";
+                        query = $"""
+                                 SELECT id 
+                                 FROM {WiserTableNames.WiserItemLinkDetail} 
+                                 WHERE itemlink_id = ?saveDetailItemLinkId 
+                                 AND `key` = ?saveDetailKey
+                                 AND language_code = ?saveDetailLanguageCode
+                                 LIMIT 1
+                                 """;
                     }
 
                     if (!hasTransactionFromOuterScope)
@@ -4186,19 +4340,23 @@ LIMIT 1";
                 {
                     if (!isEmpty && itemId > 0)
                     {
-                        query = $@"SET @_username = ?saveDetailUsername;
-SET @saveHistory = ?saveDetailSaveHistory;
-INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (`language_code`, `item_id`, `groupname`, `key`, `value`, `long_value`)
-VALUES (?saveDetailLanguageCode, ?saveDetailItemId, ?saveDetailGroupName, ?saveDetailKey, ?saveDetailValue, ?saveDetailLongValue);
-SELECT LAST_INSERT_ID() AS newDetailId;";
+                        query = $"""
+                                 SET @_username = ?saveDetailUsername;
+                                 SET @saveHistory = ?saveDetailSaveHistory;
+                                 INSERT INTO {tablePrefix}{WiserTableNames.WiserItemDetail} (`language_code`, `item_id`, `groupname`, `key`, `value`, `long_value`)
+                                 VALUES (?saveDetailLanguageCode, ?saveDetailItemId, ?saveDetailGroupName, ?saveDetailKey, ?saveDetailValue, ?saveDetailLongValue);
+                                 SELECT LAST_INSERT_ID() AS newDetailId;
+                                 """;
                     }
                     else if (!isEmpty && itemLinkId > 0)
                     {
-                        query = $@"SET @_username = ?saveDetailUsername;
-SET @saveHistory = ?saveDetailSaveHistory;
-INSERT INTO {WiserTableNames.WiserItemLinkDetail} (`language_code`, `itemlink_id`, `groupname`, `key`, `value`, `long_value`)
-VALUES (?saveDetailLanguageCode, ?saveDetailItemLinkId, ?saveDetailGroupName, ?saveDetailKey, ?saveDetailValue, ?saveDetailLongValue);
-SELECT LAST_INSERT_ID() AS newDetailId;";
+                        query = $"""
+                                 SET @_username = ?saveDetailUsername;
+                                 SET @saveHistory = ?saveDetailSaveHistory;
+                                 INSERT INTO {WiserTableNames.WiserItemLinkDetail} (`language_code`, `itemlink_id`, `groupname`, `key`, `value`, `long_value`)
+                                 VALUES (?saveDetailLanguageCode, ?saveDetailItemLinkId, ?saveDetailGroupName, ?saveDetailKey, ?saveDetailValue, ?saveDetailLongValue);
+                                 SELECT LAST_INSERT_ID() AS newDetailId;
+                                 """;
                     }
 
                     if (!String.IsNullOrEmpty(query))
@@ -4212,33 +4370,41 @@ SELECT LAST_INSERT_ID() AS newDetailId;";
                     databaseConnection.AddParameter("saveDetailId", itemDetail.Id);
                     if (isEmpty && itemId > 0)
                     {
-                        query = $@"SET @_username = ?saveDetailUsername;
-SET @saveHistory = ?saveDetailSaveHistory;
-DELETE FROM {tablePrefix}{WiserTableNames.WiserItemDetail}
-WHERE id = ?saveDetailId";
+                        query = $"""
+                                 SET @_username = ?saveDetailUsername;
+                                 SET @saveHistory = ?saveDetailSaveHistory;
+                                 DELETE FROM {tablePrefix}{WiserTableNames.WiserItemDetail}
+                                 WHERE id = ?saveDetailId
+                                 """;
                     }
                     else if (!isEmpty && itemId > 0)
                     {
-                        query = $@"SET @_username = ?saveDetailUsername;
-SET @saveHistory = ?saveDetailSaveHistory;
-UPDATE {tablePrefix}{WiserTableNames.WiserItemDetail}
-SET `groupname` = ?saveDetailGroupName, `value` = ?saveDetailValue, `long_value` = ?saveDetailLongValue
-WHERE id = ?saveDetailId";
+                        query = $"""
+                                 SET @_username = ?saveDetailUsername;
+                                 SET @saveHistory = ?saveDetailSaveHistory;
+                                 UPDATE {tablePrefix}{WiserTableNames.WiserItemDetail}
+                                 SET `groupname` = ?saveDetailGroupName, `value` = ?saveDetailValue, `long_value` = ?saveDetailLongValue
+                                 WHERE id = ?saveDetailId
+                                 """;
                     }
                     else if (isEmpty && itemLinkId > 0)
                     {
-                        query = $@"SET @_username = ?saveDetailUsername;
-SET @saveHistory = ?saveDetailSaveHistory;
-DELETE FROM {WiserTableNames.WiserItemLinkDetail}
-WHERE id = ?saveDetailId";
+                        query = $"""
+                                 SET @_username = ?saveDetailUsername;
+                                 SET @saveHistory = ?saveDetailSaveHistory;
+                                 DELETE FROM {WiserTableNames.WiserItemLinkDetail}
+                                 WHERE id = ?saveDetailId
+                                 """;
                     }
                     else if (!isEmpty && itemLinkId > 0)
                     {
-                        query = $@"SET @_username = ?saveDetailUsername;
-SET @saveHistory = ?saveDetailSaveHistory;
-UPDATE {WiserTableNames.WiserItemLinkDetail}
-SET `groupname` = ?saveDetailGroupName, `value` = ?saveDetailValue, `long_value` = ?saveDetailLongValue
-WHERE id = ?saveDetailId";
+                        query = $"""
+                                 SET @_username = ?saveDetailUsername;
+                                 SET @saveHistory = ?saveDetailSaveHistory;
+                                 UPDATE {WiserTableNames.WiserItemLinkDetail}
+                                 SET `groupname` = ?saveDetailGroupName, `value` = ?saveDetailValue, `long_value` = ?saveDetailLongValue
+                                 WHERE id = ?saveDetailId
+                                 """;
                     }
 
                     if (!String.IsNullOrEmpty(query))
@@ -4371,10 +4537,12 @@ WHERE id = ?saveDetailId";
         {
             wiserItem.OriginalItemId = Convert.ToUInt64(dataRow["original_item_id"]);
         }
+
         if (dataRow.Table.Columns.Contains("parent_item_id"))
         {
             wiserItem.ParentItemId = Convert.ToUInt64(dataRow["parent_item_id"]);
         }
+
         wiserItem.AddedBy = dataRow.Field<string>("added_by");
         wiserItem.AddedOn = dataRow.Field<DateTime>("added_on");
         wiserItem.ChangedBy = dataRow.Field<string>("changed_by");
@@ -4386,7 +4554,7 @@ WHERE id = ?saveDetailId";
         wiserItem.EntityType = dataRow.Field<string>("entity_type");
         wiserItem.ModuleId = dataRow.Field<int>("moduleid");
         wiserItem.Ordering = dataRow.Field<int>("ordering");
-        wiserItem.PublishedEnvironment = (Environments)dataRow.Field<int>("published_environment");
+        wiserItem.PublishedEnvironment = (Environments) dataRow.Field<int>("published_environment");
         wiserItem.ReadOnly = Convert.ToInt32(dataRow["readonly"]) > 0;
         wiserItem.Removed = dataRow.Table.Columns.Contains("removed") && Convert.ToInt32(dataRow["removed"]) > 0;
         wiserItem.Title = dataRow.Field<string>("title");
@@ -4509,21 +4677,25 @@ WHERE id = ?saveDetailId";
 
             if (wiserItemDetail.IsLinkProperty && wiserItemDetail.ItemLinkId > 0)
             {
-                queryResult = await databaseConnection.GetAsync($@"SELECT id 
-                                                        FROM {WiserTableNames.WiserItemLinkDetail} 
-                                                        WHERE itemlink_id = ?itemLinkId{counter} 
-                                                        AND `key` = ?key{counter} 
-                                                        AND language_code = ?languageCode{counter}
-                                                        LIMIT 1", true);
+                queryResult = await databaseConnection.GetAsync($"""
+                                                                 SELECT id 
+                                                                                                                         FROM {WiserTableNames.WiserItemLinkDetail} 
+                                                                                                                         WHERE itemlink_id = ?itemLinkId{counter} 
+                                                                                                                         AND `key` = ?key{counter} 
+                                                                                                                         AND language_code = ?languageCode{counter}
+                                                                                                                         LIMIT 1
+                                                                 """, true);
             }
             else
             {
-                queryResult = await databaseConnection.GetAsync($@"SELECT id 
-                                                        FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
-                                                        WHERE item_id = ?itemId 
-                                                        AND `key` = ?key{counter} 
-                                                        AND language_code = ?languageCode{counter}
-                                                        LIMIT 1", true);
+                queryResult = await databaseConnection.GetAsync($"""
+                                                                 SELECT id 
+                                                                 FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
+                                                                 WHERE item_id = ?itemId 
+                                                                 AND `key` = ?key{counter} 
+                                                                 AND language_code = ?languageCode{counter}
+                                                                 LIMIT 1
+                                                                 """, true);
             }
 
             if (queryResult.Rows.Count > 0)
@@ -4706,21 +4878,25 @@ WHERE id = ?saveDetailId";
 
             if (wiserItemDetail.IsLinkProperty && wiserItemDetail.ItemLinkId > 0)
             {
-                queryResult = await databaseConnection.GetAsync($@"SELECT id 
-FROM {WiserTableNames.WiserItemLinkDetail} 
-WHERE itemlink_id = ?itemLinkId{counter} 
-AND `key` = ?key{Constants.SeoPropertySuffix}{counter}
-AND language_code = ?languageCode{counter}
-LIMIT 1", true);
+                queryResult = await databaseConnection.GetAsync($"""
+                                                                 SELECT id 
+                                                                 FROM {WiserTableNames.WiserItemLinkDetail} 
+                                                                 WHERE itemlink_id = ?itemLinkId{counter} 
+                                                                 AND `key` = ?key{Constants.SeoPropertySuffix}{counter}
+                                                                 AND language_code = ?languageCode{counter}
+                                                                 LIMIT 1
+                                                                 """, true);
             }
             else
             {
-                queryResult = await databaseConnection.GetAsync($@"SELECT id 
-FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
-WHERE item_id = ?itemId 
-AND `key` = ?key{Constants.SeoPropertySuffix}{counter}
-AND language_code = ?languageCode{counter}
-LIMIT 1", true);
+                queryResult = await databaseConnection.GetAsync($"""
+                                                                 SELECT id 
+                                                                 FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
+                                                                 WHERE item_id = ?itemId 
+                                                                 AND `key` = ?key{Constants.SeoPropertySuffix}{counter}
+                                                                 AND language_code = ?languageCode{counter}
+                                                                 LIMIT 1
+                                                                 """, true);
             }
 
             if (queryResult.Rows.Count > 0)

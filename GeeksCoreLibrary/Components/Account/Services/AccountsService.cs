@@ -99,20 +99,22 @@ public class AccountsService(
 
             await databaseHelpersService.CheckAndUpdateTablesAsync([Constants.AuthenticationTokensTableName]);
 
-            var query = $@"SELECT 
-                                    user_id, 
-                                    main_user_id,
-                                    hashed_validator,
-                                    login_date,
-                                    expires,
-                                    ip_address,
-                                    user_agent,
-                                    role,
-                                    main_user_entity_type
-                                FROM {Constants.AuthenticationTokensTableName}
-                                WHERE selector = ?selector
-                                AND entity_type = ?entityType
-                                AND expires > NOW()";
+            var query = $"""
+                         SELECT 
+                                                             user_id, 
+                                                             main_user_id,
+                                                             hashed_validator,
+                                                             login_date,
+                                                             expires,
+                                                             ip_address,
+                                                             user_agent,
+                                                             role,
+                                                             main_user_entity_type
+                                                         FROM {Constants.AuthenticationTokensTableName}
+                                                         WHERE selector = ?selector
+                                                         AND entity_type = ?entityType
+                                                         AND expires > NOW()
+                         """;
 
             databaseConnection.AddParameter("selector", cookieValueParts[0]);
             databaseConnection.AddParameter("entityType", cookieValueParts[2]);
@@ -450,7 +452,7 @@ public class AccountsService(
     }
 
     /// <inheritdoc />
-    public async Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role, Dictionary<string,string> extraDataForReplacements, AccountCmsSettingsModel settings)
+    public async Task AutoLoginUserAsync(ulong userId, ulong mainUserId, string role, Dictionary<string, string> extraDataForReplacements, AccountCmsSettingsModel settings)
     {
         // Make sure we have a valid user ID.
         if (userId <= 0)
@@ -519,7 +521,7 @@ public class AccountsService(
     }
 
     /// <inheritdoc />
-    public async Task SaveLoginAttemptAsync(bool success, ulong userId,  Dictionary<string,string> extraDataForReplacements, AccountCmsSettingsModel settings)
+    public async Task SaveLoginAttemptAsync(bool success, ulong userId, Dictionary<string, string> extraDataForReplacements, AccountCmsSettingsModel settings)
     {
         var query = SetupAccountQuery(settings.SaveLoginAttemptQuery, settings, userId, success: success);
         if (String.IsNullOrWhiteSpace(query))

@@ -168,14 +168,16 @@ public class PaginationCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Full template",
         Description = "The full template that will determine the containing HTML of the entire Pagination component.",
-        DeveloperRemarks = @"<p>The following replacements can be used in this template:</p>
-                                <ul>
-                                    <li><strong{pagination}:</strong> This will be replaced with the generated pagination links.</li>
-                                    <li><strong>{summary}:</strong> This will be replaced with the summary of the pagination, which is a collection of all selected filters.</li>
-                                    <li><strong>{pagenr}:</strong> The current page number.</li>
-                                    <li><strong>{lastpagenr}:</strong> The number of the last page. Can be used to determine how many pages there are total.</li>
-                                    <li><strong>{totalitems}:</strong> The total number of items across all pages.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>The following replacements can be used in this template:</p>
+                                                           <ul>
+                                                               <li><strong{pagination}:</strong> This will be replaced with the generated pagination links.</li>
+                                                               <li><strong>{summary}:</strong> This will be replaced with the summary of the pagination, which is a collection of all selected filters.</li>
+                                                               <li><strong>{pagenr}:</strong> The current page number.</li>
+                                                               <li><strong>{lastpagenr}:</strong> The number of the last page. Can be used to determine how many pages there are total.</li>
+                                                               <li><strong>{totalitems}:</strong> The total number of items across all pages.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         DisplayOrder = 10,
@@ -186,17 +188,19 @@ public class PaginationCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Summary template",
         Description = "The summary template that will show the range of items being shown, like 'Showing items 101 to 110 out of 789'.",
-        DeveloperRemarks = @"<p>The following variables can be used:</p>
-                                <ul>
-                                    <li><strong>{firstitemnr}:</strong> The number of the first item of the current page.</li>
-                                    <li><strong>{lastitemnr}:</strong> The number of the last item of the current page.</li>
-                                    <li><strong>{totalitems}:</strong> The total number of items across all pages.</li>
-                                    <li><strong>{totalitemnrs}:</strong> Synonym for {totalitems} (made available for backward compatibility reasons).</li>
-                                </ul>
-                                <p>
-                                    Example:<br />
-                                    Showing items {firstitemnr} to {lastitemnr} out of {totalitems}.
-                                </p>",
+        DeveloperRemarks = """
+                           <p>The following variables can be used:</p>
+                                                           <ul>
+                                                               <li><strong>{firstitemnr}:</strong> The number of the first item of the current page.</li>
+                                                               <li><strong>{lastitemnr}:</strong> The number of the last item of the current page.</li>
+                                                               <li><strong>{totalitems}:</strong> The total number of items across all pages.</li>
+                                                               <li><strong>{totalitemnrs}:</strong> Synonym for {totalitems} (made available for backward compatibility reasons).</li>
+                                                           </ul>
+                                                           <p>
+                                                               Example:<br />
+                                                               Showing items {firstitemnr} to {lastitemnr} out of {totalitems}.
+                                                           </p>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         DisplayOrder = 20,
@@ -207,11 +211,13 @@ public class PaginationCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "First page template",
         Description = "The template for the first page link.",
-        DeveloperRemarks = @"<p>The following variables can be used:</p>
-                                <ul>
-                                    <li><strong>{link}:</strong> The URL generated for the first page.</li>
-                                    <li><strong>{pnr}:</strong> The page number of the first page (which is always 1).</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>The following variables can be used:</p>
+                                                           <ul>
+                                                               <li><strong>{link}:</strong> The URL generated for the first page.</li>
+                                                               <li><strong>{pnr}:</strong> The page number of the first page (which is always 1).</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         DisplayOrder = 30,
@@ -222,11 +228,13 @@ public class PaginationCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Previous page template",
         Description = "The template for the previous page link.",
-        DeveloperRemarks = @"<p>The following variables can be used:</p>
-                                <ul>
-                                    <li><strong>{link}:</strong> The URL generated for the previous page.</li>
-                                    <li><strong>{pnr}:</strong> The page number of the previous page.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>The following variables can be used:</p>
+                                                           <ul>
+                                                               <li><strong>{link}:</strong> The URL generated for the previous page.</li>
+                                                               <li><strong>{pnr}:</strong> The page number of the previous page.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         DisplayOrder = 40,
@@ -237,11 +245,13 @@ public class PaginationCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Page template",
         Description = "The template for a normal page link.",
-        DeveloperRemarks = @"<p>The following variables can be used:</p>
-                                <ul>
-                                    <li><strong>{link}:</strong> The URL generated for the page.</li>
-                                    <li><strong>{pnr}:</strong> The page number of the page.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>The following variables can be used:</p>
+                                                           <ul>
+                                                               <li><strong>{link}:</strong> The URL generated for the page.</li>
+                                                               <li><strong>{pnr}:</strong> The page number of the page.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         DisplayOrder = 50,
@@ -252,11 +262,13 @@ public class PaginationCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Current page template",
         Description = "The template for the current page link.",
-        DeveloperRemarks = @"<p>The following variables can be used:</p>
-                                <ul>
-                                    <li><strong>{link}:</strong> The URL generated for the current page.</li>
-                                    <li><strong>{pnr}:</strong> The page number of the current page.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>The following variables can be used:</p>
+                                                           <ul>
+                                                               <li><strong>{link}:</strong> The URL generated for the current page.</li>
+                                                               <li><strong>{pnr}:</strong> The page number of the current page.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         DisplayOrder = 60,
@@ -267,11 +279,13 @@ public class PaginationCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Next page template",
         Description = "The template for the next page link.",
-        DeveloperRemarks = @"<p>The following variables can be used:</p>
-                                <ul>
-                                    <li><strong>{link}:</strong> The URL generated for the next page.</li>
-                                    <li><strong>{pnr}:</strong> The page number of the next page.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>The following variables can be used:</p>
+                                                           <ul>
+                                                               <li><strong>{link}:</strong> The URL generated for the next page.</li>
+                                                               <li><strong>{pnr}:</strong> The page number of the next page.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         DisplayOrder = 70,
@@ -282,11 +296,13 @@ public class PaginationCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Last page template",
         Description = "The template for the last page link.",
-        DeveloperRemarks = @"<p>The following variables can be used:</p>
-                                <ul>
-                                    <li><strong>{link}:</strong> The URL generated for the last page.</li>
-                                    <li><strong>{pnr}:</strong> The page number of the last page.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>The following variables can be used:</p>
+                                                           <ul>
+                                                               <li><strong>{link}:</strong> The URL generated for the last page.</li>
+                                                               <li><strong>{pnr}:</strong> The page number of the last page.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         DisplayOrder = 80,
@@ -307,11 +323,13 @@ public class PaginationCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Link format",
         Description = "The URL format of the pagination links.",
-        DeveloperRemarks = @"<p>The following variables can be used:</p>
-                                <ul>
-                                    <li><strong>{variablename}:</strong> The page variable name.</li>
-                                    <li><strong>{pnr}:</strong> The page number that this URL will link to.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>The following variables can be used:</p>
+                                                           <ul>
+                                                               <li><strong>{variablename}:</strong> The page variable name.</li>
+                                                               <li><strong>{pnr}:</strong> The page number that this URL will link to.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         DisplayOrder = 100,

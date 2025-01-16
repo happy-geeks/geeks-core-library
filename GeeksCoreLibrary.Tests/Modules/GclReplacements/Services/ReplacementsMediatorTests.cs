@@ -6,7 +6,6 @@ using FluentAssertions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Services;
-using Microsoft.AspNetCore.Http;
 using Moq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
@@ -60,7 +59,6 @@ public class ReplacementsMediatorTests
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     private IReplacementsMediator replacementsMediator;
     private Mock<IDatabaseConnection> databaseConnectionMock;
-    private Mock<IHttpContextAccessor> httpContextAccessorMock;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
     [SetUp]
@@ -68,10 +66,9 @@ public class ReplacementsMediatorTests
     {
         // Create mocks.
         databaseConnectionMock = new Mock<IDatabaseConnection>();
-        httpContextAccessorMock = new Mock<IHttpContextAccessor>();
 
         // Create the service that we're testing.
-        replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object, httpContextAccessorMock.Object);
+        replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object);
     }
 
     [Test]
@@ -127,7 +124,7 @@ public class ReplacementsMediatorTests
     [TestCase("Lowercase", "Lowercase", new object[] {false})]
     [TestCase("Lowercase(true)", "Lowercase", new object[] {true})]
     [TestCase("QrCode(1,1)", "QrCode", new object[] {1, 1})]
-    [TestCase("Replace(1, 2)", "Replace",new object[] {"1", "2"})]
+    [TestCase("Replace(1, 2)", "Replace", new object[] {"1", "2"})]
     public void GetFormatterMethod_DifferentStrings_ReturnsCorrectFormatter(string formatterString, string expectedFormatterName, object[] expectedParameters)
     {
         // Act
@@ -504,7 +501,7 @@ public class ReplacementsMediatorTests
     /// <returns>The values for the parameters of the test methods for DoReplacements.</returns>
     private static IEnumerable<object[]> GetTestCasesForDoReplacementsWithDictionary()
     {
-        return GetTestCasesForDoReplacements(new List<object> {
+        return GetTestCasesForDoReplacements([
             new Dictionary<string, object>(),
             new Dictionary<string, object>(),
             new Dictionary<string, object> {{"test1", "Value1"}},
@@ -523,6 +520,7 @@ public class ReplacementsMediatorTests
                 {"categoryTitle", "T-shirts"}
             },
 
+
             new Dictionary<string, object>
             {
                 {"title", "T-Shirt Green"},
@@ -535,6 +533,7 @@ public class ReplacementsMediatorTests
                 {"categoryTitle", "T-shirts"}
             },
 
+
             new Dictionary<string, object>
             {
                 {"id", 1},
@@ -543,10 +542,12 @@ public class ReplacementsMediatorTests
                 {"categoryId", 1}
             },
 
+
             new Dictionary<string, object>
             {
                 {"id", 1}
             },
+
 
             new Dictionary<string, object>
             {
@@ -555,7 +556,7 @@ public class ReplacementsMediatorTests
                 {"environment", null},
                 {"categoryId", null}
             }
-        });
+        ]);
     }
 
     /// <summary>
@@ -565,7 +566,7 @@ public class ReplacementsMediatorTests
     /// <returns>The values for the parameters of the test methods for DoReplacements.</returns>
     private static IEnumerable<object[]> GetTestCasesForDoReplacementsWithJObject()
     {
-        return GetTestCasesForDoReplacements(new List<object> {
+        return GetTestCasesForDoReplacements([
             new JObject(),
             new JObject(),
             new JObject {{"test1", "Value1"}},
@@ -584,6 +585,7 @@ public class ReplacementsMediatorTests
                 {"categoryTitle", "T-shirts"}
             },
 
+
             new JObject
             {
                 {"title", "T-Shirt Green"},
@@ -596,6 +598,7 @@ public class ReplacementsMediatorTests
                 {"categoryTitle", "T-shirts"}
             },
 
+
             new JObject
             {
                 {"id", 1},
@@ -604,10 +607,12 @@ public class ReplacementsMediatorTests
                 {"categoryId", 1}
             },
 
+
             new JObject
             {
                 {"id", 1}
             },
+
 
             new JObject
             {
@@ -616,7 +621,7 @@ public class ReplacementsMediatorTests
                 {"environment", null},
                 {"categoryId", null}
             }
-        });
+        ]);
     }
 
     /// <summary>
@@ -626,7 +631,7 @@ public class ReplacementsMediatorTests
     /// <returns>The values for the parameters of the test methods for DoReplacements.</returns>
     private static IEnumerable<object[]> GetTestCasesForDoReplacementsWithJArray()
     {
-        return GetTestCasesForDoReplacements(new List<object> {
+        return GetTestCasesForDoReplacements([
             new JArray(),
             new JArray {new JObject()},
             new JArray {new JObject {new JProperty("test1", "Value1")}},
@@ -648,6 +653,7 @@ public class ReplacementsMediatorTests
                 }
             },
 
+
             new JArray
             {
                 new JObject
@@ -663,6 +669,7 @@ public class ReplacementsMediatorTests
                 }
             },
 
+
             new JArray
             {
                 new JObject
@@ -674,6 +681,7 @@ public class ReplacementsMediatorTests
                 }
             },
 
+
             new JArray
             {
                 new JObject
@@ -681,6 +689,7 @@ public class ReplacementsMediatorTests
                     {"id", 1}
                 }
             },
+
 
             new JArray
             {
@@ -692,7 +701,7 @@ public class ReplacementsMediatorTests
                     {"categoryId", null}
                 }
             }
-        });
+        ]);
     }
 
     /// <summary>
@@ -706,40 +715,40 @@ public class ReplacementsMediatorTests
 
         // Test 1.
         var dataTable = new DataTable();
-        dataTable.Columns.AddRange(new DataColumn[] {
+        dataTable.Columns.AddRange([
             new DataColumn("x", typeof(string))
-        });
+        ]);
         dataTable.Rows.Add("y");
         data.Add(new DataSet {Tables = {dataTable}});
 
         // Test 2.
         dataTable = new DataTable();
-        dataTable.Columns.AddRange(new DataColumn[] {
+        dataTable.Columns.AddRange([
             new DataColumn("test0", typeof(string))
-        });
+        ]);
         dataTable.Rows.Add("test0");
         data.Add(new DataSet {Tables = {dataTable}});
 
         // Test 3.
         dataTable = new DataTable();
-        dataTable.Columns.AddRange(new DataColumn[] {
+        dataTable.Columns.AddRange([
             new DataColumn("test1", typeof(string))
-        });
+        ]);
         dataTable.Rows.Add("Value1");
         data.Add(new DataSet {Tables = {dataTable}});
 
         // Test 4.
         dataTable = new DataTable();
-        dataTable.Columns.AddRange(new DataColumn[] {
+        dataTable.Columns.AddRange([
             new DataColumn("test1", typeof(string)),
             new DataColumn("test2", typeof(string))
-        });
+        ]);
         dataTable.Rows.Add("Value1", "Value2");
         data.Add(new DataSet {Tables = {dataTable}});
 
         // Test 5.
         dataTable = new DataTable();
-        dataTable.Columns.AddRange(new DataColumn[] {
+        dataTable.Columns.AddRange([
             new DataColumn("title", typeof(string)),
             new DataColumn("articleNumber", typeof(string)),
             new DataColumn("price", typeof(decimal)),
@@ -749,14 +758,14 @@ public class ReplacementsMediatorTests
             new DataColumn("color", typeof(string)),
             new DataColumn("material", typeof(string)),
             new DataColumn("categoryId", typeof(ulong)),
-            new DataColumn("categoryTitle", typeof(string)),
-        });
+            new DataColumn("categoryTitle", typeof(string))
+        ]);
         dataTable.Rows.Add("T-Shirt Blue", "1337", 19.99, "<p>Short description</p>", 0.5, "XL", "Blue", "Cotton", 1, "T-shirts");
         data.Add(new DataSet {Tables = {dataTable}});
 
         // Test 6.
         dataTable = new DataTable();
-        dataTable.Columns.AddRange(new DataColumn[] {
+        dataTable.Columns.AddRange([
             new DataColumn("title", typeof(string)),
             new DataColumn("price", typeof(decimal)),
             new DataColumn("weight", typeof(decimal)),
@@ -764,38 +773,38 @@ public class ReplacementsMediatorTests
             new DataColumn("color", typeof(string)),
             new DataColumn("material", typeof(string)),
             new DataColumn("categoryId", typeof(ulong)),
-            new DataColumn("categoryTitle", typeof(string)),
-        });
+            new DataColumn("categoryTitle", typeof(string))
+        ]);
         dataTable.Rows.Add("T-Shirt Green", 15.5, 0.5, "L", "Green", null, 1, "T-shirts");
         data.Add(new DataSet {Tables = {dataTable}});
 
         // Test 7.
         dataTable = new DataTable();
-        dataTable.Columns.AddRange(new DataColumn[] {
+        dataTable.Columns.AddRange([
             new DataColumn("id", typeof(ulong)),
             new DataColumn("languageCode", typeof(string)),
             new DataColumn("environment", typeof(int)),
-            new DataColumn("categoryId", typeof(ulong)),
-        });
+            new DataColumn("categoryId", typeof(ulong))
+        ]);
         dataTable.Rows.Add(1, "en-US", 15, 1);
         data.Add(new DataSet {Tables = {dataTable}});
 
         // Test 8.
         dataTable = new DataTable();
-        dataTable.Columns.AddRange(new DataColumn[] {
-            new DataColumn("id", typeof(ulong)),
-        });
+        dataTable.Columns.AddRange([
+            new DataColumn("id", typeof(ulong))
+        ]);
         dataTable.Rows.Add(1);
         data.Add(new DataSet {Tables = {dataTable}});
 
         // Test 9.
         dataTable = new DataTable();
-        dataTable.Columns.AddRange(new DataColumn[] {
+        dataTable.Columns.AddRange([
             new DataColumn("id", typeof(ulong)),
             new DataColumn("languageCode", typeof(string)),
             new DataColumn("environment", typeof(int)),
-            new DataColumn("categoryId", typeof(ulong)),
-        });
+            new DataColumn("categoryId", typeof(ulong))
+        ]);
         dataTable.Rows.Add(1, null, null, null);
         data.Add(new DataSet {Tables = {dataTable}});
 
@@ -813,37 +822,37 @@ public class ReplacementsMediatorTests
         return new object[][]
         {
             // Simple strings with one variable.
-            new object[] {
+            [
                 "This is a {test1} string with a single variable.",
                 replacementData[0],
                 "This is a {test1} string with a single variable.",
                 false,
                 "HtmlEncode"
-            },
-            new object[] {
+            ],
+            [
                 "This is a {test1~DefaultValue} string with a single variable.",
                 replacementData[1],
                 "This is a {test1~DefaultValue} string with a single variable.",
                 false,
                 "HtmlEncode"
-            },
-            new object[] {
+            ],
+            [
                 "This is a {test1} string with a single variable.",
                 replacementData[2],
                 "This is a Value1 string with a single variable.",
                 false,
                 "HtmlEncode"
-            },
-            new object[] {
+            ],
+            [
                 "This is a {test1~DefaultValue1} string with a single variable.",
                 replacementData[3],
                 "This is a Value1 string with a single variable.",
                 false,
                 "HtmlEncode"
-            },
+            ],
 
             // Long HTML strings with multiple variables, default values and formatters.
-            new object[] {
+            [
                 TestHtmlString,
                 replacementData[4],
                 """
@@ -867,8 +876,8 @@ public class ReplacementsMediatorTests
                 """,
                 false,
                 "HtmlEncode"
-            },
-            new object[] {
+            ],
+            [
                 TestHtmlString,
                 replacementData[5],
                 """
@@ -892,10 +901,10 @@ public class ReplacementsMediatorTests
                 """,
                 false,
                 "HtmlEncode"
-            },
+            ],
 
             // Queries with multiple variables, default values and formatters.
-            new object[] {
+            [
                 TestQueryString,
                 replacementData[6],
                 """
@@ -921,10 +930,10 @@ public class ReplacementsMediatorTests
                 """,
                 true,
                 "HtmlEncode"
-            },
+            ],
 
             // Queries with multiple variables, default values and formatters.
-            new object[] {
+            [
                 TestQueryString,
                 replacementData[7],
                 """
@@ -950,10 +959,10 @@ public class ReplacementsMediatorTests
                 """,
                 true,
                 "HtmlEncode"
-            },
+            ],
 
             // Queries with multiple variables, default values and formatters.
-            new object[] {
+            [
                 TestQueryString,
                 replacementData[8],
                 """
@@ -979,7 +988,7 @@ public class ReplacementsMediatorTests
                 """,
                 true,
                 "HtmlEncode"
-            }
+            ]
         };
     }
 }

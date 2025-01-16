@@ -45,7 +45,7 @@ public static class DataTableExtensions
             return;
         }
 
-        var item = (JObject)token;
+        var item = (JObject) token;
         var properties = item.Properties().ToList();
 
         // Determine the groups, which are essentially the keys on which properties will be grouped together.
@@ -78,7 +78,7 @@ public static class DataTableExtensions
                 }
 
                 // Add the object to the sub-array.
-                ((JArray)item[group])?.Add(subObject);
+                ((JArray) item[group])?.Add(subObject);
             }
         }
 
@@ -103,7 +103,7 @@ public static class DataTableExtensions
             return array;
         }
 
-        var jsonMergeSettings = new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Union };
+        var jsonMergeSettings = new JsonMergeSettings {MergeArrayHandling = MergeArrayHandling.Union};
         var newList = new JArray();
         foreach (var token in array)
         {
@@ -130,7 +130,7 @@ public static class DataTableExtensions
             }
 
             // If the new list doesn't contain an item with the same key value, add the item to the list.
-            var existingItem = (JObject)newList.FirstOrDefault(i => i[key]?.ToString() == keyValue);
+            var existingItem = (JObject) newList.FirstOrDefault(i => i[key]?.ToString() == keyValue);
             if (existingItem == null)
             {
                 newList.Add(item);

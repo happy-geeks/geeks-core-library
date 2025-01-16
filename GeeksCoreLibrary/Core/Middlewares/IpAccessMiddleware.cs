@@ -30,7 +30,7 @@ public class IpAccessMiddleware(ILogger<IpAccessMiddleware> logger, RequestDeleg
         if (!String.IsNullOrEmpty(blockedIps) && blockedIps.Split(';').Contains(userIp))
         {
             logger.LogDebug("Ip blocked: found in blacklist");
-            context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+            context.Response.StatusCode = (int) HttpStatusCode.Forbidden;
             return;
         }
 
@@ -38,7 +38,7 @@ public class IpAccessMiddleware(ILogger<IpAccessMiddleware> logger, RequestDeleg
         if (!String.IsNullOrEmpty(whiteListedIps) && !whiteListedIps.Split(';').Contains(userIp))
         {
             logger.LogDebug("Ip blocked: not found in whitelist");
-            context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+            context.Response.StatusCode = (int) HttpStatusCode.Forbidden;
             return;
         }
 

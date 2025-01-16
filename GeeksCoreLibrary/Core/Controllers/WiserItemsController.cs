@@ -40,7 +40,7 @@ public class WiserItemsController(IWiserItemsService wiserItemsService, IAccount
         var (isPossible, _, _) = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Read, onlyCheckAccessRights: true, entityType: entityType, userId: userData.UserId);
         if (!isPossible)
         {
-            return new ObjectResult("Forbidden") { StatusCode = StatusCodes.Status403Forbidden };
+            return new ObjectResult("Forbidden") {StatusCode = StatusCodes.Status403Forbidden};
         }
 
         // Make sure the language code has a value.
@@ -64,7 +64,7 @@ public class WiserItemsController(IWiserItemsService wiserItemsService, IAccount
     /// <param name="linkType">Optional: The link type to use to link the item to it's parent. Default value is 1.</param>
     /// <returns></returns>
     [HttpPost]
-    public async Task<IActionResult> CreateAsync([FromBody]WiserItemModel item, [FromQuery]string parentItemId = null, [FromQuery]int linkType = 1)
+    public async Task<IActionResult> CreateAsync([FromBody] WiserItemModel item, [FromQuery] string parentItemId = null, [FromQuery] int linkType = 1)
     {
         if (item == null)
         {
@@ -81,7 +81,7 @@ public class WiserItemsController(IWiserItemsService wiserItemsService, IAccount
         var (isPossible, _, _) = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Create, entityType: item.EntityType, userId: userData.UserId);
         if (!isPossible)
         {
-            return new ObjectResult("Forbidden") { StatusCode = StatusCodes.Status403Forbidden };
+            return new ObjectResult("Forbidden") {StatusCode = StatusCodes.Status403Forbidden};
         }
 
         // Make sure to set the ID to 0, so that we can't accidentally update an existing item.
@@ -100,7 +100,7 @@ public class WiserItemsController(IWiserItemsService wiserItemsService, IAccount
     /// <param name="item">The item to create.</param>
     /// <returns></returns>
     [HttpPut, Route("{id}")]
-    public async Task<IActionResult> UpdateAsync(string id, [FromBody]WiserItemModel item)
+    public async Task<IActionResult> UpdateAsync(string id, [FromBody] WiserItemModel item)
     {
         if (String.IsNullOrWhiteSpace(id))
         {
@@ -121,7 +121,7 @@ public class WiserItemsController(IWiserItemsService wiserItemsService, IAccount
         var (isPossible, _, _) = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, entityType: item.EntityType, userId: userData.UserId);
         if (!isPossible)
         {
-            return new ObjectResult("Forbidden") { StatusCode = StatusCodes.Status403Forbidden };
+            return new ObjectResult("Forbidden") {StatusCode = StatusCodes.Status403Forbidden};
         }
 
         await wiserItemsService.UpdateAsync(itemId, item, userData.UserId);
@@ -153,7 +153,7 @@ public class WiserItemsController(IWiserItemsService wiserItemsService, IAccount
         var (isPossible, _, _) = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Delete, entityType: entityType, userId: userData.UserId);
         if (!isPossible)
         {
-            return new ObjectResult("Forbidden") { StatusCode = StatusCodes.Status403Forbidden };
+            return new ObjectResult("Forbidden") {StatusCode = StatusCodes.Status403Forbidden};
         }
 
         await wiserItemsService.DeleteAsync(itemId, userId: userData.UserId, entityType: entityType);

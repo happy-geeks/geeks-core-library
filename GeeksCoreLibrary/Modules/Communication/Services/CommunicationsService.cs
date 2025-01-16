@@ -60,33 +60,37 @@ public class CommunicationsService : ICommunicationsService, IScopedService
     {
         await UpdateCommunicationTableAsync();
 
-        var otherColumns = @", 
-receiver_list,
-receivers_data_selector_id,
-receivers_query_id,
-content_data_selector_id,
-content_query_id,
-settings,
-send_trigger_type,
-trigger_start,
-trigger_end,
-trigger_time,
-trigger_period_value,
-trigger_period_type,
-trigger_week_days,
-trigger_day_of_month,
-last_processed,
-added_by,
-added_on,
-changed_by,
-changed_on";
+        var otherColumns = """
+                           , 
+                           receiver_list,
+                           receivers_data_selector_id,
+                           receivers_query_id,
+                           content_data_selector_id,
+                           content_query_id,
+                           settings,
+                           send_trigger_type,
+                           trigger_start,
+                           trigger_end,
+                           trigger_time,
+                           trigger_period_value,
+                           trigger_period_type,
+                           trigger_week_days,
+                           trigger_day_of_month,
+                           last_processed,
+                           added_by,
+                           added_on,
+                           changed_by,
+                           changed_on
+                           """;
 
-        var query = $@"SELECT
-    id,
-    name
-    {(nameOnly ? "" : otherColumns)}
-FROM {WiserTableNames.WiserCommunication}
-WHERE id = ?id";
+        var query = $"""
+                     SELECT
+                         id,
+                         name
+                         {(nameOnly ? "" : otherColumns)}
+                     FROM {WiserTableNames.WiserCommunication}
+                     WHERE id = ?id
+                     """;
 
         databaseConnection.AddParameter("id", id);
         var dataTable = await databaseConnection.GetAsync(query);
@@ -101,37 +105,41 @@ WHERE id = ?id";
         var whereClause = "";
         if (type.HasValue)
         {
-            whereClause = $"WHERE JSON_CONTAINS(JSON_EXTRACT(settings, '$[*].Type'), '{(int)type}')";
+            whereClause = $"WHERE JSON_CONTAINS(JSON_EXTRACT(settings, '$[*].Type'), '{(int) type}')";
         }
 
-        var otherColumns = @", 
-receiver_list,
-receivers_data_selector_id,
-receivers_query_id,
-content_data_selector_id,
-content_query_id,
-settings,
-send_trigger_type,
-trigger_start,
-trigger_end,
-trigger_time,
-trigger_period_value,
-trigger_period_type,
-trigger_week_days,
-trigger_day_of_month,
-last_processed,
-added_by,
-added_on,
-changed_by,
-changed_on";
+        var otherColumns = """
+                           , 
+                           receiver_list,
+                           receivers_data_selector_id,
+                           receivers_query_id,
+                           content_data_selector_id,
+                           content_query_id,
+                           settings,
+                           send_trigger_type,
+                           trigger_start,
+                           trigger_end,
+                           trigger_time,
+                           trigger_period_value,
+                           trigger_period_type,
+                           trigger_week_days,
+                           trigger_day_of_month,
+                           last_processed,
+                           added_by,
+                           added_on,
+                           changed_by,
+                           changed_on
+                           """;
 
-        var query = $@"SELECT
-    id,
-    name
-    {(namesOnly ? "" : otherColumns)}
-FROM {WiserTableNames.WiserCommunication}
-{whereClause}
-ORDER BY name ASC";
+        var query = $"""
+                     SELECT
+                         id,
+                         name
+                         {(namesOnly ? "" : otherColumns)}
+                     FROM {WiserTableNames.WiserCommunication}
+                     {whereClause}
+                     ORDER BY name ASC
+                     """;
 
         var dataTable = await databaseConnection.GetAsync(query);
         var results = dataTable.Rows.Cast<DataRow>().Select(dataRow => DataRowToCommunicationSettingsModel(dataRow, namesOnly));
@@ -163,7 +171,7 @@ ORDER BY name ASC";
         databaseConnection.AddParameter("trigger_time", settings.TriggerTime);
         databaseConnection.AddParameter("trigger_period_value", settings.TriggerPeriodValue);
         databaseConnection.AddParameter("trigger_period_type", settings.TriggerPeriodType?.ToString().ToLowerInvariant());
-        databaseConnection.AddParameter("trigger_week_days", (int?)settings.TriggerWeekDays ?? 0);
+        databaseConnection.AddParameter("trigger_week_days", (int?) settings.TriggerWeekDays ?? 0);
         databaseConnection.AddParameter(settings.Id <= 0 ? "added_on" : "changed_on", DateTime.Now);
         databaseConnection.AddParameter(settings.Id <= 0 ? "added_by" : "changed_by", username);
 
@@ -174,76 +182,80 @@ ORDER BY name ASC";
             settings.LastProcessed = [];
             foreach (var setting in settings.Settings)
             {
-                settings.LastProcessed.Add(new LastProcessedModel { Type = setting.Type });
+                settings.LastProcessed.Add(new LastProcessedModel {Type = setting.Type});
             }
 
             databaseConnection.AddParameter("last_processed", JsonConvert.SerializeObject(settings.LastProcessed));
 
-            var query = $@"{queryPrefix}
-INSERT INTO {WiserTableNames.WiserCommunication}
-(
-    name,
-    receiver_list,
-    receivers_data_selector_id,
-    receivers_query_id,
-    content_data_selector_id,
-    content_query_id,
-    settings,
-    send_trigger_type,
-    trigger_start,
-    trigger_end,
-    trigger_time,
-    trigger_period_value,
-    trigger_period_type,
-    trigger_week_days,
-    last_processed,
-    added_on,
-    added_by
-)
-VALUES
-(
-    ?name,
-    ?receiver_list,
-    ?receivers_data_selector_id,
-    ?receivers_query_id,
-    ?content_data_selector_id,
-    ?content_query_id,
-    ?settings,
-    ?send_trigger_type,
-    ?trigger_start,
-    ?trigger_end,
-    ?trigger_time,
-    ?trigger_period_value,
-    ?trigger_period_type,
-    ?trigger_week_days,
-    ?last_processed,
-    ?added_on,
-    ?added_by
-)";
+            var query = $"""
+                         {queryPrefix}
+                         INSERT INTO {WiserTableNames.WiserCommunication}
+                         (
+                             name,
+                             receiver_list,
+                             receivers_data_selector_id,
+                             receivers_query_id,
+                             content_data_selector_id,
+                             content_query_id,
+                             settings,
+                             send_trigger_type,
+                             trigger_start,
+                             trigger_end,
+                             trigger_time,
+                             trigger_period_value,
+                             trigger_period_type,
+                             trigger_week_days,
+                             last_processed,
+                             added_on,
+                             added_by
+                         )
+                         VALUES
+                         (
+                             ?name,
+                             ?receiver_list,
+                             ?receivers_data_selector_id,
+                             ?receivers_query_id,
+                             ?content_data_selector_id,
+                             ?content_query_id,
+                             ?settings,
+                             ?send_trigger_type,
+                             ?trigger_start,
+                             ?trigger_end,
+                             ?trigger_time,
+                             ?trigger_period_value,
+                             ?trigger_period_type,
+                             ?trigger_week_days,
+                             ?last_processed,
+                             ?added_on,
+                             ?added_by
+                         )
+                         """;
 
-            settings.Id = (int)await databaseConnection.InsertRecordAsync(query);
+            settings.Id = (int) await databaseConnection.InsertRecordAsync(query);
         }
         else
         {
-            var query = $@"{queryPrefix}
-UPDATE {WiserTableNames.WiserCommunication}
-SET name = ?name,
-    receiver_list = ?receiver_list,
-    receivers_data_selector_id = ?receivers_data_selector_id,
-    receivers_query_id = ?receivers_query_id,
-    content_data_selector_id = ?content_data_selector_id,
-    content_query_id = ?content_query_id,
-    settings = ?settings,
-    send_trigger_type = ?send_trigger_type,
-    trigger_start = ?trigger_start,
-    trigger_end = ?trigger_end,
-    trigger_time = ?trigger_time,
-    trigger_period_value = ?trigger_period_value,
-    trigger_period_type = ?trigger_period_type,
-    trigger_week_days = ?trigger_week_days,
-    changed_on = ?changed_on,
-    changed_by = ?changed_by
-WHERE id = ?id";
+            var query = $"""
+                         {queryPrefix}
+                         UPDATE {WiserTableNames.WiserCommunication}
+                         SET name = ?name,
+                             receiver_list = ?receiver_list,
+                             receivers_data_selector_id = ?receivers_data_selector_id,
+                             receivers_query_id = ?receivers_query_id,
+                             content_data_selector_id = ?content_data_selector_id,
+                             content_query_id = ?content_query_id,
+                             settings = ?settings,
+                             send_trigger_type = ?send_trigger_type,
+                             trigger_start = ?trigger_start,
+                             trigger_end = ?trigger_end,
+                             trigger_time = ?trigger_time,
+                             trigger_period_value = ?trigger_period_value,
+                             trigger_period_type = ?trigger_period_type,
+                             trigger_week_days = ?trigger_week_days,
+                             changed_on = ?changed_on,
+                             changed_by = ?changed_by
+                         WHERE id = ?id
+                         """;
 
             await databaseConnection.ExecuteAsync(query);
         }
@@ -281,7 +293,7 @@ WHERE id = ?id";
         var receiverNames = (receiverName ?? "").Split(";", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         for (var i = 0; i < receiverAddresses.Length; i++)
         {
-            var receiverModel = new CommunicationReceiverModel { Address = receiverAddresses[i] };
+            var receiverModel = new CommunicationReceiverModel {Address = receiverAddresses[i]};
             if (receiverNames.Length > i)
             {
                 receiverModel.DisplayName = receiverNames[i];
@@ -622,6 +634,7 @@ WHERE id = ?id";
             {
                 fileBytes = wiserItemFile.Content;
             }
+
             attachments.Add((Path.GetFileName(wiserItemFile.FileName), fileBytes));
         }
 
@@ -635,7 +648,7 @@ WHERE id = ?id";
         var receiverAddresses = receiver.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         foreach (var receiverAddress in receiverAddresses)
         {
-            var receiverModel = new CommunicationReceiverModel { Address = receiverAddress };
+            var receiverModel = new CommunicationReceiverModel {Address = receiverAddress};
             receivers.Add(receiverModel);
         }
 
@@ -778,7 +791,7 @@ WHERE id = ?id";
         var receiverAddresses = receiver.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         foreach (var receiverAddress in receiverAddresses)
         {
-            var receiverModel = new CommunicationReceiverModel { Address = receiverAddress };
+            var receiverModel = new CommunicationReceiverModel {Address = receiverAddress};
             receivers.Add(receiverModel);
         }
 
@@ -796,7 +809,6 @@ WHERE id = ?id";
             SenderName = senderName,
             SendDate = sendDate,
             AttachmentUrls = attachments
-
         });
     }
 
@@ -855,7 +867,8 @@ WHERE id = ?id";
         {
             senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
         }
-        var builder = new MessageBuilder(communication.Content, senderName, new[] { receiverPhoneNumber });
+
+        var builder = new MessageBuilder(communication.Content, senderName, new[] {receiverPhoneNumber});
         builder.WithAllowedChannels(Channel.WhatsApp);
         var message = builder.Build();
 
@@ -970,14 +983,10 @@ WHERE id = ?id";
                     RecipientType = "individual",
                     Receiver = receiverPhoneNumber,
                     TypeMessage = typeUrl,
-                    TypeUrlImage = typeUrl != "image" ? null : new AttachmentUrlsModel
-                        { Url = url },
-                    TypeUrlDocument = typeUrl != "document" ? null : new AttachmentUrlsModel
-                        { Url = url },
-                    TypeUrlAudio = typeUrl != "audio" ? null : new AttachmentUrlsModel
-                        { Url = url},
-                    TypeUrlVideo = typeUrl != "video" ? null : new AttachmentUrlsModel
-                        { Url = url }
+                    TypeUrlImage = typeUrl != "image" ? null : new AttachmentUrlsModel {Url = url},
+                    TypeUrlDocument = typeUrl != "document" ? null : new AttachmentUrlsModel {Url = url},
+                    TypeUrlAudio = typeUrl != "audio" ? null : new AttachmentUrlsModel {Url = url},
+                    TypeUrlVideo = typeUrl != "video" ? null : new AttachmentUrlsModel {Url = url}
                 });
 
                 response = await metaConnection.ExecuteAsync(request);
@@ -996,6 +1005,7 @@ WHERE id = ?id";
         {
             return;
         }
+
         //If request (communication.Content) was not success throw the status message as an exception.
         throw new Exception($"message content has not been sent... {response.ErrorMessage}");
     }

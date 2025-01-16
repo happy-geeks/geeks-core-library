@@ -33,7 +33,7 @@ public class PaymentMethodSettingsModel : OrderProcessBaseModel
     public bool UseMinimalAmountCheck { get; set; }
 
     /// <summary>
-    /// Gets or sets the check for making this payment method unavailable if we go over a certain amount
+    /// Gets or sets the check for making this payment method unavailable if we go over a certain amount 
     /// </summary>
     public bool UseMaximumAmountCheck { get; set; }
 
@@ -43,7 +43,7 @@ public class PaymentMethodSettingsModel : OrderProcessBaseModel
     public decimal MinimalAmountCheck { get; set; }
 
     /// <summary>
-    /// Gets or sets the amount for the maximum check.
+    /// Gets or sets the amount for the maximum check. 
     /// </summary>
     public decimal MaximumAmountCheck { get; set; }
 }

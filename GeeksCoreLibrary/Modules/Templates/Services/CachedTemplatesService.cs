@@ -107,7 +107,7 @@ public class CachedTemplatesService(
 
                         // Check if a cache file already exists and if it hasn't expired yet.
                         var fileInfo = new FileInfo(fullCachePath);
-                        if (fileInfo.Directory is { Exists: false })
+                        if (fileInfo.Directory is {Exists: false})
                         {
                             fileInfo.Directory.Create();
                         }
@@ -376,25 +376,29 @@ public class CachedTemplatesService(
     {
         var dynamicContent = new Dictionary<int, DynamicContent>();
         var query = gclSettings.Environment == Environments.Development
-            ? @$"SELECT 
-                    component.content_id,
-                    component.settings,
-                    component.component,
-                    component.component_mode,
-                    component.version,
-                    component.title
-                FROM {WiserTableNames.WiserDynamicContent} AS component
-                LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
-                WHERE otherVersion.id IS NULL"
-            : @$"SELECT 
-                    component.content_id,
-                    component.settings,
-                    component.component,
-                    component.component_mode,
-                    component.version,
-                    component.title
-                FROM {WiserTableNames.WiserDynamicContent} AS component
-                WHERE (component.published_environment & {(int)gclSettings.Environment}) = {(int)gclSettings.Environment}";
+            ? $"""
+               SELECT 
+                                   component.content_id,
+                                   component.settings,
+                                   component.component,
+                                   component.component_mode,
+                                   component.version,
+                                   component.title
+                               FROM {WiserTableNames.WiserDynamicContent} AS component
+                               LEFT JOIN {WiserTableNames.WiserDynamicContent} AS otherVersion ON otherVersion.content_id = component.content_id AND otherVersion.version > component.version
+                               WHERE otherVersion.id IS NULL
+               """
+            : $"""
+               SELECT 
+                                   component.content_id,
+                                   component.settings,
+                                   component.component,
+                                   component.component_mode,
+                                   component.version,
+                                   component.title
+                               FROM {WiserTableNames.WiserDynamicContent} AS component
+                               WHERE (component.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}
+               """;
 
         var dataTable = await databaseConnection.GetAsync(query);
         if (dataTable.Rows.Count == 0)
@@ -559,7 +563,7 @@ public class CachedTemplatesService(
             case TemplateCachingLocations.InMemory:
             case TemplateCachingLocations.OnDisk when !String.IsNullOrWhiteSpace(callMethod):
                 cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
-                html = (string)await cache.GetOrAddAsync(cacheName.ToString(),
+                html = (string) await cache.GetOrAddAsync(cacheName.ToString(),
                     async cacheEntry =>
                     {
                         addedToCache = true;

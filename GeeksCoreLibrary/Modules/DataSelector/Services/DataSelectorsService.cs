@@ -235,7 +235,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
         }
 
         // Process fields from fields (getting details if field is item id).
-        foreach (var field in itemsRequest.FieldsInternal.Where(field => field.Fields is { Length: > 0 }))
+        foreach (var field in itemsRequest.FieldsInternal.Where(field => field.Fields is {Length: > 0}))
         {
             addFields.AddRange(UpdateFieldsWithInternals(field.TableAlias + ".`value`", $"{field.TableAlias}_", field.Fields, fieldsFromField: true, dedicatedTablePrefix: mainEntityTablePrefix));
         }
@@ -305,6 +305,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
             {
                 itemsRequest.ContainsPath = $"/{itemsRequest.ContainsPath}";
             }
+
             if (!itemsRequest.ContainsPath.EndsWith("/"))
             {
                 itemsRequest.ContainsPath = $"{itemsRequest.ContainsPath}/";
@@ -317,6 +318,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
             {
                 itemsRequest.ContainsUrl = $"/{itemsRequest.ContainsUrl}";
             }
+
             if (!itemsRequest.ContainsUrl.EndsWith("/"))
             {
                 itemsRequest.ContainsUrl = $"{itemsRequest.ContainsUrl}/";
@@ -932,7 +934,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
             var json = await GetDataSelectorJsonAsync(data.DataSelectorId.Value);
             var dataSelector = JsonConvert.DeserializeObject<Models.DataSelector>(json);
 
-            if (!skipSecurity && dataSelector is { Insecure: false })
+            if (!skipSecurity && dataSelector is {Insecure: false})
             {
                 // When trying to load the data selector without security.
                 if (String.IsNullOrWhiteSpace(data.Hash))
@@ -991,7 +993,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
         {
             foreach (var item in data.Fields.Split(','))
             {
-                itemsRequest.FieldsInternal.Add(new Field { FieldName = item, JoinOn = "ilc1.id", TableAliasPrefix = "idv_" });
+                itemsRequest.FieldsInternal.Add(new Field {FieldName = item, JoinOn = "ilc1.id", TableAliasPrefix = "idv_"});
             }
         }
 
@@ -1062,12 +1064,14 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
                 data.LanguageCode = languagesService.CurrentLanguageCode;
             }
 
-            var query = $@"
-                    SELECT `key`, CONCAT_WS('', `value`, `long_value`) AS value, language_code
-                    FROM `{WiserTableNames.WiserItemDetail}`
-                    WHERE item_id = ?contentItemId
-                    AND `key` = ?contentPropertyName
-                    ORDER BY language_code ASC";
+            var query = $"""
+                         
+                                             SELECT `key`, CONCAT_WS('', `value`, `long_value`) AS value, language_code
+                                             FROM `{WiserTableNames.WiserItemDetail}`
+                                             WHERE item_id = ?contentItemId
+                                             AND `key` = ?contentPropertyName
+                                             ORDER BY language_code ASC
+                         """;
 
             databaseConnection.AddParameter("contentItemId", contentItemId);
             databaseConnection.AddParameter("contentPropertyName", data.ContentPropertyName);
@@ -1139,7 +1143,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
         }
 
         // Data selectors with templates.
-        var regEx = new Regex(@"<div[^<>]*?(?:class=['""]dynamic-content['""][^<>]*?)?(data-selector-id)=['""](?<dataSelectorId>\d+)['""]([^<>]*?)?(template-id)=['""](?<templateId>\d+)['""][^>]*?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
+        var regEx = new Regex("""<div[^<>]*?(?:class=['"]dynamic-content['"][^<>]*?)?(data-selector-id)=['"](?<dataSelectorId>\d+)['"]([^<>]*?)?(template-id)=['"](?<templateId>\d+)['"][^>]*?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>""", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
 
         var matches = regEx.Matches(template);
         foreach (Match match in matches)
@@ -1154,6 +1158,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
                 logger.LogWarning($"Found dynamic content with invalid dataSelectorId of '{match.Groups["dataSelectorId"].Value}', so ignoring it.");
                 continue;
             }
+
             if (!Int64.TryParse(match.Groups["templateId"].Value, out var templateId) || templateId <= 0)
             {
                 logger.LogWarning($"Found dynamic content with invalid dataSelectorId of '{match.Groups["templateId"].Value}', so ignoring it.");
@@ -1378,6 +1383,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
                                 queryPart.Append($"{formattedField} {op} {finalValue}");
                                 break;
                         }
+
                         break;
                     }
                     case "link_ordering":
@@ -1478,7 +1484,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
 
                 var tableName = $"{prefix.ToMySqlSafeValue(false)}_{count}";
 
-                if (connectionRow.ItemIds is { Length: > 0 })
+                if (connectionRow.ItemIds is {Length: > 0})
                 {
                     if (connectionRow.Modes.Contains("up"))
                     {
@@ -1527,7 +1533,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
                 });
 
                 // The id of the connected row.
-                if (connectionRow.Fields is { Length: > 0 })
+                if (connectionRow.Fields is {Length: > 0})
                 {
                     itemsRequest.DedicatedTables.TryGetValue(connectionRow.EntityName, out var dedicatedTablePrefix);
                     itemsRequest.FieldsInternal.AddRange(
@@ -1538,7 +1544,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
                 }
 
                 var linkFields = connectionRow.LinkFields?.ToList();
-                if (linkFields is { Count: > 0 })
+                if (linkFields is {Count: > 0})
                 {
                     if (linkFields.Any(lf => lf.FieldName == "id"))
                     {
@@ -1590,7 +1596,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
                 if (connectionRow.Modes.Contains("up"))
                 {
                     var settings = itemsRequest.LinkTypeSettings.FirstOrDefault(l => l.Type == connectionRow.TypeNumber && l.DestinationEntityType.Equals(connectionRow.EntityName, StringComparison.OrdinalIgnoreCase) && l.SourceEntityType.Equals(itemsRequest.EntityTypes?.Split(',').First(), StringComparison.OrdinalIgnoreCase));
-                    if (settings is { UseParentItemId: true })
+                    if (settings is {UseParentItemId: true})
                     {
                         itemsRequest.JoinLink.Add($"LEFT JOIN `{tablePrefix}{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.id = {previousLevelTableAlias}.parent_item_id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
                     }
@@ -1603,7 +1609,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
                 else
                 {
                     var settings = itemsRequest.LinkTypeSettings.FirstOrDefault(l => l.Type == connectionRow.TypeNumber && l.DestinationEntityType.Equals(itemsRequest.EntityTypes?.Split(',').First(), StringComparison.OrdinalIgnoreCase) && l.SourceEntityType.Equals(connectionRow.EntityName, StringComparison.OrdinalIgnoreCase));
-                    if (settings is { UseParentItemId: true })
+                    if (settings is {UseParentItemId: true})
                     {
                         itemsRequest.JoinLink.Add($"LEFT JOIN `{tablePrefix}{WiserTableNames.WiserItem}` AS `{tableName}_item` ON `{tableName}_item`.parent_item_id = {previousLevelTableAlias}.id AND `{tableName}_item`.published_environment & {itemsRequest.Environment} = {itemsRequest.Environment} {queryPartItem}");
                     }
@@ -1633,7 +1639,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
                 queryPartItem.Clear();
 
                 // Recursive part.
-                if (connectionRow.Connections is { Length: > 0 })
+                if (connectionRow.Connections is {Length: > 0})
                 {
                     await ProcessConnectionsAsync(itemsRequest, connectionRow.Connections, connectionRow.Modes.Contains("up") ? $"{tableName}.destination_item_id" : $"{tableName}.item_id", tableName, GetConnectionRowSelectAlias(connectionRow, tableName, selectAliasPrefix), $"{tableName}_item");
                 }
@@ -1866,10 +1872,12 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
             {
                 continue;
             }
+
             if (Nullable.GetUnderlyingType(property.PropertyType) != null && property.GetValue(data) == null)
             {
                 continue;
             }
+
             if (property.Name.Equals("Hash"))
             {
                 continue;

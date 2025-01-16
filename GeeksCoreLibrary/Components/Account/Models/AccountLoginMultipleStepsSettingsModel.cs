@@ -10,81 +10,83 @@ internal class AccountLoginMultipleStepsSettingsModel
     [DefaultValue(Constants.CookieName)]
     internal string CookieName { get; set; }
 
-    [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
-<div id='GclAccountContainer{contentId}'>
-    <jform id='GclLoginForm{contentId}' method='POST'>
-        <div class='formPanel'>
-            <h2>Inloggen</h2>
-            {error}
-            <input type='hidden' name='AccountStepNumber' value='{stepNumber}'>
-            [if({stepNumber}=1)]
-            <div class='formRow'>
-                <label for='email{contentId}'>E-mailadres</label>
-                <input type='email' name='{emailAddressFieldName}' id='email{contentId}'>
-            </div>
-            <div class='formRow'>
-                <button type='submit' class='btn btnSend'>Volgende</button>
-            </div>
-            <div class='formRow center'>
-                <a href='#' id='GclResetPasswordLink{contentId}'>Wachtwoord vergeten?</a>
-            </div>
-            [endif]
-            [if({stepNumber}=2)]
-            <div class='formRow passwordRow'>
-                <label for='password{contentId}'>Wachtwoord</label>
-                <input type='password' name='{passwordFieldName}' class='password' id='password{contentId}'>
-                <ins class='icon-eye-show'></ins>
-            </div>
-            <div class='formRow'>
-                <button type='submit' class='btn btnSend'>Inloggen</button>
-            </div>
-            <div class='formRow center'>
-                <a href='#' id='GclResetPasswordLink{contentId}'>Wachtwoord vergeten?</a>
-            </div>
-            [endif]
-            [if({stepNumber}=3)]
-            <div class='formRow'>
-                <img class='qrCode' alt='AuthenticationCode' src='{googleAuthenticationQrImageUrl}'>
-            </div>
-            <div class='formRow passwordRow'>
-                <label for='googleAuthenticationPin{contentId}'>Scan de QR code met de google authenticator app en toets de code in</label>
-                <input type='password' name='googleAuthenticationPin' id='googleAuthenticationPin{contentId}' class='password'>
-                <ins class='icon-eye-show'></ins>
-                <input type='hidden' name='googleAuthenticationVerificationId' value='{googleAuthenticationVerificationId}' />
-            </div>
-            <div class='formRow'>
-                <button type='submit' class='btn btnSend'>Inloggen</button>
-            </div>
-            [endif]
-            [if({stepNumber}=4)]
-            <div class='formRow passwordRow'>
-                <label for='googleAuthenticationPin{contentId}'>Toets uw pincode in</label>
-                <input type='password' name='googleAuthenticationPin' id='googleAuthenticationPin{contentId}' class='password'>
-                <ins class='icon-eye-show'></ins>
-                <input type='hidden' name='googleAuthenticationVerificationId' value='{googleAuthenticationVerificationId}' />
-            </div>
-            <div class='formRow'>
-                <button type='submit' class='btn btnSend'>Inloggen</button>
-            </div>
-            [endif]
-        </div>
-
-        [if({stepNumber}=1)]
-        <div class='formPanel'>
-            <h2><span>Nieuw bij {siteName}?</span></h2>
-            
-            <div class='formRow'>
-                <button type='button' class='btn btnBack'>Maak een account</button>
-            </div>
-        </div>
-        [endif]
-    </jform>
-    [if({stepNumber}=1)]
-    <jform id='GclExternalLoginForm{contentId}' method='POST'>
-        <button type='submit' name='externalLogin' value='Google'>Inloggen via Google</button>
-    </jform>
-    [endif]
-</div>")]
+    [DefaultValue("""
+                  <!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+                  <div id='GclAccountContainer{contentId}'>
+                      <jform id='GclLoginForm{contentId}' method='POST'>
+                          <div class='formPanel'>
+                              <h2>Inloggen</h2>
+                              {error}
+                              <input type='hidden' name='AccountStepNumber' value='{stepNumber}'>
+                              [if({stepNumber}=1)]
+                              <div class='formRow'>
+                                  <label for='email{contentId}'>E-mailadres</label>
+                                  <input type='email' name='{emailAddressFieldName}' id='email{contentId}'>
+                              </div>
+                              <div class='formRow'>
+                                  <button type='submit' class='btn btnSend'>Volgende</button>
+                              </div>
+                              <div class='formRow center'>
+                                  <a href='#' id='GclResetPasswordLink{contentId}'>Wachtwoord vergeten?</a>
+                              </div>
+                              [endif]
+                              [if({stepNumber}=2)]
+                              <div class='formRow passwordRow'>
+                                  <label for='password{contentId}'>Wachtwoord</label>
+                                  <input type='password' name='{passwordFieldName}' class='password' id='password{contentId}'>
+                                  <ins class='icon-eye-show'></ins>
+                              </div>
+                              <div class='formRow'>
+                                  <button type='submit' class='btn btnSend'>Inloggen</button>
+                              </div>
+                              <div class='formRow center'>
+                                  <a href='#' id='GclResetPasswordLink{contentId}'>Wachtwoord vergeten?</a>
+                              </div>
+                              [endif]
+                              [if({stepNumber}=3)]
+                              <div class='formRow'>
+                                  <img class='qrCode' alt='AuthenticationCode' src='{googleAuthenticationQrImageUrl}'>
+                              </div>
+                              <div class='formRow passwordRow'>
+                                  <label for='googleAuthenticationPin{contentId}'>Scan de QR code met de google authenticator app en toets de code in</label>
+                                  <input type='password' name='googleAuthenticationPin' id='googleAuthenticationPin{contentId}' class='password'>
+                                  <ins class='icon-eye-show'></ins>
+                                  <input type='hidden' name='googleAuthenticationVerificationId' value='{googleAuthenticationVerificationId}' />
+                              </div>
+                              <div class='formRow'>
+                                  <button type='submit' class='btn btnSend'>Inloggen</button>
+                              </div>
+                              [endif]
+                              [if({stepNumber}=4)]
+                              <div class='formRow passwordRow'>
+                                  <label for='googleAuthenticationPin{contentId}'>Toets uw pincode in</label>
+                                  <input type='password' name='googleAuthenticationPin' id='googleAuthenticationPin{contentId}' class='password'>
+                                  <ins class='icon-eye-show'></ins>
+                                  <input type='hidden' name='googleAuthenticationVerificationId' value='{googleAuthenticationVerificationId}' />
+                              </div>
+                              <div class='formRow'>
+                                  <button type='submit' class='btn btnSend'>Inloggen</button>
+                              </div>
+                              [endif]
+                          </div>
+                  
+                          [if({stepNumber}=1)]
+                          <div class='formPanel'>
+                              <h2><span>Nieuw bij {siteName}?</span></h2>
+                              
+                              <div class='formRow'>
+                                  <button type='button' class='btn btnBack'>Maak een account</button>
+                              </div>
+                          </div>
+                          [endif]
+                      </jform>
+                      [if({stepNumber}=1)]
+                      <jform id='GclExternalLoginForm{contentId}' method='POST'>
+                          <button type='submit' name='externalLogin' value='Google'>Inloggen via Google</button>
+                      </jform>
+                      [endif]
+                  </div>
+                  """)]
     internal string Template { get; set; }
 
     [DefaultValue(Constants.DefaultLoginSuccessTemplate)]

@@ -52,6 +52,6 @@ public class NoPspService(
     public Task<string> GetInvoiceNumberFromRequestAsync()
     {
         // Not applicable for "No PSP".
-        return Task.FromResult((string)null);
+        return Task.FromResult((string) null);
     }
 }

@@ -21,7 +21,7 @@ namespace GeeksCoreLibrary.Components.DataSelectorParser;
     Description = "Read and parse a data selector's response",
     DeveloperRemarks = ""
 )]
-public class DataSelectorParser : CmsComponent<DataSelectorParserCmsSettingsModel>
+public class DataSelectorParser : CmsComponent<DataSelectorParserCmsSettingsModel, DataSelectorParser.ComponentModes>
 {
     private readonly IDataSelectorParsersService dataSelectorParsersService;
     private readonly IPagesService pagesService;
@@ -60,7 +60,7 @@ public class DataSelectorParser : CmsComponent<DataSelectorParserCmsSettingsMode
         ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
         else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
         {
@@ -171,7 +171,7 @@ public class DataSelectorParser : CmsComponent<DataSelectorParserCmsSettingsMode
         Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<DataSelectorParserCmsSettingsModel>(settingsJson);
         if (Settings != null && forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
     }
 

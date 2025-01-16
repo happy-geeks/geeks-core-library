@@ -57,5 +57,4 @@ public class WhatsAppSendMessageRequestModel
     /// </summary>
     [JsonPropertyName("video")]
     public AttachmentUrlsModel TypeUrlVideo { get; set; }
-
 }

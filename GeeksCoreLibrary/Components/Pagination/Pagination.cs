@@ -19,7 +19,7 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Components.Pagination;
 
-public class Pagination : CmsComponent<PaginationCmsSettingsModel>
+public class Pagination : CmsComponent<PaginationCmsSettingsModel, Pagination.ComponentModes>
 {
     private readonly IFiltersService filtersService;
     private readonly IPagesService pagesService;
@@ -31,7 +31,13 @@ public class Pagination : CmsComponent<PaginationCmsSettingsModel>
         /// <summary>
         /// For generating and rendering the pagination HTML.
         /// </summary>
-        Normal
+        Normal,
+
+        /// <summary>
+        /// For JCL pagination components that should run with the GCL code.
+        /// </summary>
+        [CmsEnum(HideInCms = true)]
+        Legacy
     }
 
     #endregion
@@ -70,17 +76,31 @@ public class Pagination : CmsComponent<PaginationCmsSettingsModel>
             return;
         }
 
-        Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<PaginationCmsSettingsModel>(settingsJson);
-        if (Settings != null && forcedComponentMode.HasValue)
+        if (Settings.ComponentMode == ComponentModes.Legacy)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<PaginationLegacySettingsModel>(settingsJson)?.ToSettingsModel();
+            // Parsing the settings will set the component mode to Normal, so force it back to Legacy here.
+            if (Settings != null)
+            {
+                Settings.ComponentMode = ComponentModes.Legacy;
+            }
+        }
+        else
+        {
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<PaginationCmsSettingsModel>(settingsJson);
+            if (Settings != null && forcedComponentMode.HasValue)
+            {
+                Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
+            }
         }
     }
 
     /// <inheritdoc />
     public override string GetSettingsJson()
     {
-        return Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
+        return Settings.ComponentMode == ComponentModes.Legacy
+            ? Newtonsoft.Json.JsonConvert.SerializeObject(PaginationLegacySettingsModel.FromSettingsModel(Settings))
+            : Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
     }
 
     #endregion
@@ -92,10 +112,16 @@ public class Pagination : CmsComponent<PaginationCmsSettingsModel>
     {
         ComponentId = dynamicContent.Id;
         ExtraDataForReplacements = extraData;
+        if (dynamicContent.Name == "JuiceControlLibrary.Pagination")
+        {
+            // Force component mode to Legacy mode if it was created through the JCL.
+            Settings.ComponentMode = ComponentModes.Legacy;
+        }
+
         ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
         else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
         {
@@ -128,6 +154,7 @@ public class Pagination : CmsComponent<PaginationCmsSettingsModel>
             {
                 parsedQuery = parsedQuery.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart.ToString());
             }
+
             if (parsedQuery.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
             {
                 parsedQuery = Regex.Replace(parsedQuery, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart.ToString());

@@ -16,25 +16,27 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Template",
         Description = "The main HTML template for the selected mode.",
-        DeveloperRemarks = @"<p>You can use the following variables here:</p>
-                                <ul>
-                                    <li><strong>{error}:</strong> Put this in the position of where you want to show any potential errors, such as invalid credentials. This variable will be replaced by the value of the property 'TemplateError'.</li>
-                                    <li><strong>{success}:</strong> Put this in the position of where you want to show any success message. If you leave out this variable, the GCL will return ONLY the TemplateSuccess after a successful action, otherwise this variable will be replaced by the value of the property 'TemplateSuccess'.</li>
-                                    <li><strong>{step}:</strong> The name of the login step.</li>
-                                    <li><strong>{stepNumber}:</strong> The number of the login step.</li>
-                                    <li><strong>{googleAuthenticationVerificationId}:</strong> Only required if Google 2FA is enabled. If it is, you should add a hidden field with the name 'googleAuthenticationVerificationId' and value '{googleAuthenticationVerificationId}'.</li>
-                                    <li><strong>{googleAuthenticationQrImageUrl}:</strong> Only required if Google 2FA is enabled. If it is, add an image that is only visible if the {step} = 'SetupTwoFactorAuthentication' (or {stepNumber} = 3).</li>
-                                </ul>
-                                <p>If you have a mode that has multiple steps for the user to go through, you can use the variable '{step}' or '{stepNumber}' to check for the step name or number and use if statements to show different HTML for each step. Also always add a hidden input with the name 'accountStepNumber' and a value with the current step number to the form, so that the component knows which step the user is submitting.</p>
-                                <p>Possible steps are:</p>
-                                <ul>
-                                    <li><strong>Initial or 1:</strong> The first / initial step, where the user has to enter their username or e-mail address (and password, if ComponentMode is set to LoginSingleStep).</li>
-                                    <li><strong>Password or 2:</strong> The step where the user has to enter their password. Only used when ComponentMode is set to LoginMultipleSteps).</li>
-                                    <li><strong>SetupTwoFactorAuthentication or 3:</strong>  The step where the user logged in for the first time since enabling 2FA.</li>
-                                    <li><strong>LoginWithTwoFactorAuthentication or 4:</strong>  The step where the user needs to enter their code for 2FA.</li>
-                                </ul>
-                                <p>For creating and updating accounts, it's possible to loop through all the fields that you return from your query by using '{repeat:fields}{/repeat:fields}' and adding the HTML for a single field between those replacements.</p>
-                                <p>For SubAccountsManagement, you can loop through all sub accounts by using '{repeat:subAccounts}{/repeat:subAccounts}' and through all fields of an account by using '{repeat:fields}{/repeat:fields}', and adding the HTML for a single field between those replacements. You can also use the variable '{selectedSubAccount}' if you need to do something with the ID of the selected sub account, or the variable '{amountOfSubAccounts}' if you need to check how many sub accounts the user has..</p>",
+        DeveloperRemarks = """
+                           <p>You can use the following variables here:</p>
+                                                           <ul>
+                                                               <li><strong>{error}:</strong> Put this in the position of where you want to show any potential errors, such as invalid credentials. This variable will be replaced by the value of the property 'TemplateError'.</li>
+                                                               <li><strong>{success}:</strong> Put this in the position of where you want to show any success message. If you leave out this variable, the GCL will return ONLY the TemplateSuccess after a successful action, otherwise this variable will be replaced by the value of the property 'TemplateSuccess'.</li>
+                                                               <li><strong>{step}:</strong> The name of the login step.</li>
+                                                               <li><strong>{stepNumber}:</strong> The number of the login step.</li>
+                                                               <li><strong>{googleAuthenticationVerificationId}:</strong> Only required if Google 2FA is enabled. If it is, you should add a hidden field with the name 'googleAuthenticationVerificationId' and value '{googleAuthenticationVerificationId}'.</li>
+                                                               <li><strong>{googleAuthenticationQrImageUrl}:</strong> Only required if Google 2FA is enabled. If it is, add an image that is only visible if the {step} = 'SetupTwoFactorAuthentication' (or {stepNumber} = 3).</li>
+                                                           </ul>
+                                                           <p>If you have a mode that has multiple steps for the user to go through, you can use the variable '{step}' or '{stepNumber}' to check for the step name or number and use if statements to show different HTML for each step. Also always add a hidden input with the name 'accountStepNumber' and a value with the current step number to the form, so that the component knows which step the user is submitting.</p>
+                                                           <p>Possible steps are:</p>
+                                                           <ul>
+                                                               <li><strong>Initial or 1:</strong> The first / initial step, where the user has to enter their username or e-mail address (and password, if ComponentMode is set to LoginSingleStep).</li>
+                                                               <li><strong>Password or 2:</strong> The step where the user has to enter their password. Only used when ComponentMode is set to LoginMultipleSteps).</li>
+                                                               <li><strong>SetupTwoFactorAuthentication or 3:</strong>  The step where the user logged in for the first time since enabling 2FA.</li>
+                                                               <li><strong>LoginWithTwoFactorAuthentication or 4:</strong>  The step where the user needs to enter their code for 2FA.</li>
+                                                           </ul>
+                                                           <p>For creating and updating accounts, it's possible to loop through all the fields that you return from your query by using '{repeat:fields}{/repeat:fields}' and adding the HTML for a single field between those replacements.</p>
+                                                           <p>For SubAccountsManagement, you can loop through all sub accounts by using '{repeat:subAccounts}{/repeat:subAccounts}' and through all fields of an account by using '{repeat:fields}{/repeat:fields}', and adding the HTML for a single field between those replacements. You can also use the variable '{selectedSubAccount}' if you need to do something with the ID of the selected sub account, or the variable '{amountOfSubAccounts}' if you need to check how many sub accounts the user has..</p>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
@@ -48,8 +50,10 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Template success",
         Description = "The HTML template that will be shown after a successful action.",
-        DeveloperRemarks = @"<p>When using one of the login modes, this template will be used if someone is already logged in. So you can add a logout link in this template.</p>
-                                <p>You can use the variable '{logoutUrl}' for adding a logout link. The variable '{sentActivationMail}' will contain 'true' if the user attempted to login with an account that hasn't been activated yet, then an e-mail will be sent to the user to activate it. You can also use any values from the 'MainQuery' as variables in here.</p>",
+        DeveloperRemarks = """
+                           <p>When using one of the login modes, this template will be used if someone is already logged in. So you can add a logout link in this template.</p>
+                                                           <p>You can use the variable '{logoutUrl}' for adding a logout link. The variable '{sentActivationMail}' will contain 'true' if the user attempted to login with an account that hasn't been activated yet, then an e-mail will be sent to the user to activate it. You can also use any values from the 'MainQuery' as variables in here.</p>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
@@ -63,34 +67,36 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Template error",
         Description = "The HTML template that will be shown after a failed action.",
-        DeveloperRemarks = @"<p>You can use the variable '{errorType}' to check which error was thrown. We have the following error types available, based on the chosen component mode:</p>
-                                <h2>All modes:</h2>
-                                <ul>
-                                    <li><strong>Server:</strong> This is any exception that occurred on the server. The actual exception will be written to the logs.</li>
-                                </ul>
-                                <h2>LoginSingleStep:</h2>
-                                <ul>
-                                    <li>InvalidUsernameOrPassword</li>
-                                    <li>TooManyAttempts</li>
-                                    <li>UserNotActivated</li>
-                                    <li>InvalidValidationToken</li>
-                                    <li>InvalidUserId</li>
-                                </ul>
-                                <h2>LoginMultipleSteps:</h2>
-                                <ul>
-                                    <li>UserDoesNotExist</li>
-                                    <li>InvalidPassword</li>
-                                    <li>TooManyAttempts</li>
-                                    <li>UserNotActivated</li>
-                                </ul>
-                                <h2>ResetPassword:</h2>
-                                <ul>
-                                    <li>InvalidTokenOrUser</li>
-                                    <li>PasswordsNotTheSame</li>
-                                    <li>EmptyPassword</li>
-                                    <li>PasswordNotSecure</li> 
-                                    <li>OldPasswordInvalid</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>You can use the variable '{errorType}' to check which error was thrown. We have the following error types available, based on the chosen component mode:</p>
+                                                           <h2>All modes:</h2>
+                                                           <ul>
+                                                               <li><strong>Server:</strong> This is any exception that occurred on the server. The actual exception will be written to the logs.</li>
+                                                           </ul>
+                                                           <h2>LoginSingleStep:</h2>
+                                                           <ul>
+                                                               <li>InvalidUsernameOrPassword</li>
+                                                               <li>TooManyAttempts</li>
+                                                               <li>UserNotActivated</li>
+                                                               <li>InvalidValidationToken</li>
+                                                               <li>InvalidUserId</li>
+                                                           </ul>
+                                                           <h2>LoginMultipleSteps:</h2>
+                                                           <ul>
+                                                               <li>UserDoesNotExist</li>
+                                                               <li>InvalidPassword</li>
+                                                               <li>TooManyAttempts</li>
+                                                               <li>UserNotActivated</li>
+                                                           </ul>
+                                                           <h2>ResetPassword:</h2>
+                                                           <ul>
+                                                               <li>InvalidTokenOrUser</li>
+                                                               <li>PasswordsNotTheSame</li>
+                                                               <li>EmptyPassword</li>
+                                                               <li>PasswordNotSecure</li> 
+                                                               <li>OldPasswordInvalid</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
@@ -151,9 +157,11 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Query for password forgotten email",
         Description = "The query that returns the subject, body and sender for the password forgotten e-mail.",
-        DeveloperRemarks = @"<p>For this to work, you need to make sure that the query returns the following columns: subject, body, senderName and senderEmail.</p>
-                                <p>You can use the variable '?userId' or '{userId}' if you want to get a template that is based on the user.</p>
-                                <p>Make sure your body contains the variable '{url}', otherwise the user will have no way to actually reset their password.</p>",
+        DeveloperRemarks = """
+                           <p>For this to work, you need to make sure that the query returns the following columns: subject, body, senderName and senderEmail.</p>
+                                                           <p>You can use the variable '?userId' or '{userId}' if you want to get a template that is based on the user.</p>
+                                                           <p>Make sure your body contains the variable '{url}', otherwise the user will have no way to actually reset their password.</p>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.MailTemplate,
         TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
@@ -168,8 +176,10 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Query notification email",
         Description = "The query that returns the subject, body and sender for the notification e-mail.",
-        DeveloperRemarks = @"<p>For this to work, you need to make sure that the query returns the following columns: subject, body, senderName and senderEmail.</p>
-                                 <p>You can use the variable '?userId' or '{userId}' if you want to get a template that is based on the user.</p>",
+        DeveloperRemarks = """
+                           <p>For this to work, you need to make sure that the query returns the following columns: subject, body, senderName and senderEmail.</p>
+                                                            <p>You can use the variable '?userId' or '{userId}' if you want to get a template that is based on the user.</p>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.MailTemplate,
         TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
@@ -461,31 +471,33 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Main query",
         Description = "The main query for the selected component mode.",
-        DeveloperRemarks = @"<p>You can use the variable '?userId' or '{userId}' if you need the ID of the logged in user in the query.</p>
-                                <p>For all login modes, this is the query that gets user information to show in the success template. </p>
-                                <p>For reset password mode, this needs to return the columns 'id', so we can verify that the e-mail address exists. You can use the following variables in this query, for mode ResetPassword:</p>
-                                <ul>
-                                    <li><strong>?email or {email}:</strong> Required: The e-mail address that the user entered in the reset password form.</li>
-                                    <li><strong>?emailAddressFieldName or {emailAddressFieldName}:</strong> Optional: The Wiser field name where the e-mail address is stored.</li>
-                                    <li><strong>?emailAddress or {emailAddress}:</strong> Required: The e-mail address that the user entered.</li>
-                                    <li><strong>?entityType or {entityType}:</strong> Optional: The Wiser entity type that is used for users that login on the website.</li>
-                                </ul>
-                                <p>For CreateOrUpdateAccount, if the query returns one row for each field/property and at least a column with the name 'property_name', it will be secured so that nobody can save custom values. If your query doesn't contain a column with that name, there will be no security, unless you also write a custom create and update query.</p>
-                                <p>You can use all data from this query in the main template and you can use the following variables in this query:</p>
-                                <ul>
-                                    <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser field name where the e-mail address is stored.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
-                                </ul>
-                                <p>For SubAccountsManagement this query should get the list of sub accounts for the logged in user. Please make sure you only get items that are of the correct entity type.</p>
-                                <p> This query should return a column 'id' and 'name' for each sub account and optionally any other values that you want to show on the page. You can use the following variables in this query:</p>
-                                <ul>
-                                    <li><strong>{userId} or ?userId:</strong> The ID of the logged in user.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{subAccountLinkTypeNumber} or ?subAccountLinkTypeNumber:</strong> The value of the property in this component with the same name.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>You can use the variable '?userId' or '{userId}' if you need the ID of the logged in user in the query.</p>
+                                                           <p>For all login modes, this is the query that gets user information to show in the success template. </p>
+                                                           <p>For reset password mode, this needs to return the columns 'id', so we can verify that the e-mail address exists. You can use the following variables in this query, for mode ResetPassword:</p>
+                                                           <ul>
+                                                               <li><strong>?email or {email}:</strong> Required: The e-mail address that the user entered in the reset password form.</li>
+                                                               <li><strong>?emailAddressFieldName or {emailAddressFieldName}:</strong> Optional: The Wiser field name where the e-mail address is stored.</li>
+                                                               <li><strong>?emailAddress or {emailAddress}:</strong> Required: The e-mail address that the user entered.</li>
+                                                               <li><strong>?entityType or {entityType}:</strong> Optional: The Wiser entity type that is used for users that login on the website.</li>
+                                                           </ul>
+                                                           <p>For CreateOrUpdateAccount, if the query returns one row for each field/property and at least a column with the name 'property_name', it will be secured so that nobody can save custom values. If your query doesn't contain a column with that name, there will be no security, unless you also write a custom create and update query.</p>
+                                                           <p>You can use all data from this query in the main template and you can use the following variables in this query:</p>
+                                                           <ul>
+                                                               <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser field name where the e-mail address is stored.</li>
+                                                               <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
+                                                           </ul>
+                                                           <p>For SubAccountsManagement this query should get the list of sub accounts for the logged in user. Please make sure you only get items that are of the correct entity type.</p>
+                                                           <p> This query should return a column 'id' and 'name' for each sub account and optionally any other values that you want to show on the page. You can use the following variables in this query:</p>
+                                                           <ul>
+                                                               <li><strong>{userId} or ?userId:</strong> The ID of the logged in user.</li>
+                                                               <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{subAccountLinkTypeNumber} or ?subAccountLinkTypeNumber:</strong> The value of the property in this component with the same name.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 10,
@@ -499,28 +511,30 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Login Query",
         Description = "The query that gets the ID and hashed password of the user that is trying to login, to check if it can login.",
-        DeveloperRemarks = @"<p>Please make sure to only check for items with the correct entity type and username/e-mail address.</p>
-                                <p>You can use any fields in the query that you add to the HTML.</p>
-                                <p>Also make sure the query returns at least the following columns:</p>
-                                <ul>
-                                    <li><strong>id:</strong> The item ID of the user in wiser_item.</li>
-                                    <li><strong>password:</strong> The password should contain a SHA512 hash with salt, generated by the GCL.</li>
-                                    <li><strong>email:</strong> The e-mail address of the user. This is only required if the mode is 'LoginMultipleSteps', so that we can send an activation link to the user if they're not activated yet.</li>
-                                    <li><strong>failedLoginAttempts:</strong> The amount of times this user has failed to login.</li>
-                                    <li><strong>lastLoginAttempt:</strong> The date and time when the user last had a failed login attempt.</li>
-                                    <li><strong>mainAccountId:</strong> The ID of the main account, if the user is logging in with a sub account. This value should be 0 or the same as the user ID, if the user is logging in as a main account.</li>
-                                    <li><strong>role:</strong> Optional: The role of the user. Only applicable when you do anything with roles.</li>
-                                </ul>
-                                <p>You can also use the following default variables (but they are not mandatory to use, if you use a custom query):<p>
-                                <ul>
-                                    <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser field name where the e-mail address is stored.</li>
-                                    <li><strong>{roleFieldName} or ?roleFieldName:</strong> The Wiser field name where the role of the user is stored.</li>
-                                    <li><strong>{login} or ?login:</strong> The value that the user entered in the HTML field with the same name as the value in the property 'loginFieldName'.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>Please make sure to only check for items with the correct entity type and username/e-mail address.</p>
+                                                           <p>You can use any fields in the query that you add to the HTML.</p>
+                                                           <p>Also make sure the query returns at least the following columns:</p>
+                                                           <ul>
+                                                               <li><strong>id:</strong> The item ID of the user in wiser_item.</li>
+                                                               <li><strong>password:</strong> The password should contain a SHA512 hash with salt, generated by the GCL.</li>
+                                                               <li><strong>email:</strong> The e-mail address of the user. This is only required if the mode is 'LoginMultipleSteps', so that we can send an activation link to the user if they're not activated yet.</li>
+                                                               <li><strong>failedLoginAttempts:</strong> The amount of times this user has failed to login.</li>
+                                                               <li><strong>lastLoginAttempt:</strong> The date and time when the user last had a failed login attempt.</li>
+                                                               <li><strong>mainAccountId:</strong> The ID of the main account, if the user is logging in with a sub account. This value should be 0 or the same as the user ID, if the user is logging in as a main account.</li>
+                                                               <li><strong>role:</strong> Optional: The role of the user. Only applicable when you do anything with roles.</li>
+                                                           </ul>
+                                                           <p>You can also use the following default variables (but they are not mandatory to use, if you use a custom query):<p>
+                                                           <ul>
+                                                               <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser field name where the e-mail address is stored.</li>
+                                                               <li><strong>{roleFieldName} or ?roleFieldName:</strong> The Wiser field name where the role of the user is stored.</li>
+                                                               <li><strong>{login} or ?login:</strong> The value that the user entered in the HTML field with the same name as the value in the property 'loginFieldName'.</li>
+                                                               <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
@@ -535,13 +549,15 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Save login attempt query",
         Description = "The query for saving a login attempt, whether is was successful or not.",
-        DeveloperRemarks = @"<p>You can also use the following default variables (but they are not mandatory to use, except for userId, if you use a custom query):<p>
-                                <ul>
-                                    <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
-                                    <li><strong>{success} or ?success:</strong> This will contain TRUE if the login attempt was successful, or FALSE if it wasn't.</li>
-                                    <li><strong>{failedLoginAttemptsFieldName} or ?failedLoginAttemptsFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{lastLoginAttemptFieldName} or ?lastLoginAttemptFieldName:</strong> The value of the property in this component with the same name.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>You can also use the following default variables (but they are not mandatory to use, except for userId, if you use a custom query):<p>
+                                                           <ul>
+                                                               <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
+                                                               <li><strong>{success} or ?success:</strong> This will contain TRUE if the login attempt was successful, or FALSE if it wasn't.</li>
+                                                               <li><strong>{failedLoginAttemptsFieldName} or ?failedLoginAttemptsFieldName:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{lastLoginAttemptFieldName} or ?lastLoginAttemptFieldName:</strong> The value of the property in this component with the same name.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 30,
@@ -556,14 +572,16 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Save reset password values query",
         Description = "The query for saving information for resetting a user's password.",
-        DeveloperRemarks = @"<p>You can also use the following default variables in your query:<p>
-                                <ul>
-                                    <li><strong>{userId} or ?userId:</strong> Required: The ID of the user.</li>
-                                    <li><strong>{resetPasswordToken} or ?resetPasswordToken:</strong> Required: The newly generated token that will be sent in the e-mail to the user.</li>
-                                    <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> Optional: The Wiser field/property name for the above value.</li>
-                                    <li><strong>{resetPasswordExpireDate} or ?resetPasswordExpireDate:</strong> Required: The date and time that the reset token will expire.</li>
-                                    <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> Optional: The Wiser field/property name for the above value.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>You can also use the following default variables in your query:<p>
+                                                           <ul>
+                                                               <li><strong>{userId} or ?userId:</strong> Required: The ID of the user.</li>
+                                                               <li><strong>{resetPasswordToken} or ?resetPasswordToken:</strong> Required: The newly generated token that will be sent in the e-mail to the user.</li>
+                                                               <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> Optional: The Wiser field/property name for the above value.</li>
+                                                               <li><strong>{resetPasswordExpireDate} or ?resetPasswordExpireDate:</strong> Required: The date and time that the reset token will expire.</li>
+                                                               <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> Optional: The Wiser field/property name for the above value.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 40,
@@ -578,16 +596,18 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Validate reset password token query",
         Description = "The query for validating the reset password token of a user.",
-        DeveloperRemarks = @"<p>The query should return the column 'login' with the username or e-mail address (whichever you use for logging in users). It should return a row if the token is valid or nothing if it's not valid.</p>
-                                <p>You can also use the following default variables:<p>
-                                <ul>
-                                    <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
-                                    <li><strong>{token} or ?token:</strong> The value of the token in the query string.</li>
-                                    <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> The Wiser property name that is used to save the reset password token.</li>
-                                    <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> The Wiser property name that is used to save the expire date of the reset password token.</li>
-                                    <li><strong>{loginFieldName} or ?loginFieldName:</strong> Optional: The Wiser field name where the value is stored that the user logins with (ie username or e-mail).</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The entity type that is set in this component, in the property 'EntityType'.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>The query should return the column 'login' with the username or e-mail address (whichever you use for logging in users). It should return a row if the token is valid or nothing if it's not valid.</p>
+                                                           <p>You can also use the following default variables:<p>
+                                                           <ul>
+                                                               <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
+                                                               <li><strong>{token} or ?token:</strong> The value of the token in the query string.</li>
+                                                               <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> The Wiser property name that is used to save the reset password token.</li>
+                                                               <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> The Wiser property name that is used to save the expire date of the reset password token.</li>
+                                                               <li><strong>{loginFieldName} or ?loginFieldName:</strong> Optional: The Wiser field name where the value is stored that the user logins with (ie username or e-mail).</li>
+                                                               <li><strong>{entityType} or ?entityType:</strong> The entity type that is set in this component, in the property 'EntityType'.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 50,
@@ -602,15 +622,17 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Change password query",
         Description = "The query for changing the user's password",
-        DeveloperRemarks = @"<p>Make sure that this query updates the password and also that it clears the reset password token, so that the reset password link will be invalidated.</p>
-                                <p>You can also use the following default variables:<p>
-                                <ul>
-                                    <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
-                                    <li><strong>{newPasswordHash} or ?newPasswordHash:</strong> The SHA512 hash of the new password.</li>
-                                    <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The Wiser property name that is used to save the password of the user.</li>
-                                    <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> The Wiser property name that is used to save the reset password token.</li>
-                                    <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> The Wiser property name that is used to save the expire date of the reset password token.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>Make sure that this query updates the password and also that it clears the reset password token, so that the reset password link will be invalidated.</p>
+                                                           <p>You can also use the following default variables:<p>
+                                                           <ul>
+                                                               <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
+                                                               <li><strong>{newPasswordHash} or ?newPasswordHash:</strong> The SHA512 hash of the new password.</li>
+                                                               <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The Wiser property name that is used to save the password of the user.</li>
+                                                               <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> The Wiser property name that is used to save the reset password token.</li>
+                                                               <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> The Wiser property name that is used to save the expire date of the reset password token.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 55,
@@ -625,15 +647,17 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Get user id via email address query",
         Description = "The query for getting the user ID from an e-mail address",
-        DeveloperRemarks = @"<p>Make sure that this query returns a column named 'id', which contains the ID of the user, or no results if the user doesn't exist.</p>
-                                <p>You can also use the following default variables:<p>
-                                <ul>
-                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser property name that is used to save the e-mail address of the user.</li>
-                                    <li><strong>{emailAddress} or ?emailAddress:</strong> The e-mail address that the user entered.</li>
-                                    <li><strong>{emailAddressGclAesEncrypted} or ?emailAddressGclAesEncrypted:</strong> The e-mail address that the user entered, encrypted using the AESEncode function.</li>
-                                    <li><strong>{emailAddressAesEncrypted} or ?emailAddressAesEncrypted:</strong> The e-mail address that the user entered, encrypted using the EncryptWithAes function.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The Wiser entity type that is used for users that can login on the website.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>Make sure that this query returns a column named 'id', which contains the ID of the user, or no results if the user doesn't exist.</p>
+                                                           <p>You can also use the following default variables:<p>
+                                                           <ul>
+                                                               <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser property name that is used to save the e-mail address of the user.</li>
+                                                               <li><strong>{emailAddress} or ?emailAddress:</strong> The e-mail address that the user entered.</li>
+                                                               <li><strong>{emailAddressGclAesEncrypted} or ?emailAddressGclAesEncrypted:</strong> The e-mail address that the user entered, encrypted using the AESEncode function.</li>
+                                                               <li><strong>{emailAddressAesEncrypted} or ?emailAddressAesEncrypted:</strong> The e-mail address that the user entered, encrypted using the EncryptWithAes function.</li>
+                                                               <li><strong>{entityType} or ?entityType:</strong> The Wiser entity type that is used for users that can login on the website.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 60,
@@ -649,16 +673,18 @@ public class AccountCmsSettingsModel : CmsSettings
         PrettyName = "Check if account exists query",
         Description = "The query for checking whether an account already exists, while creating or updating an account.",
         DeveloperRemarks =
-            @"<p>Make sure that this query returns anything (this can be NULL, as long as it returns a row) if the user exists, or no results if the user doesn't exist. You can also return a custom error message in any column and use that column as variable in the TemplateError.</p>
-                                <p>Also make sure that you exclude the logged in user in your check, like the default query does, so that they don't get an error when they change something in their account.</p>
-                                <p>You can also use the following default variables:<p>
-                                <ul>
-                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser property name that is used to save the e-mail address of the user.</li>
-                                    <li><strong>{emailAddress} or ?emailAddress:</strong> The e-mail address that the user entered.</li>
-                                    <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{login} or ?login:</strong> The value that the user entered in the HTML field with the same name as the value in the property 'loginFieldName'.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The Wiser entity type that is used for users that can login on the website.</li>
-                                </ul>",
+            """
+            <p>Make sure that this query returns anything (this can be NULL, as long as it returns a row) if the user exists, or no results if the user doesn't exist. You can also return a custom error message in any column and use that column as variable in the TemplateError.</p>
+                                            <p>Also make sure that you exclude the logged in user in your check, like the default query does, so that they don't get an error when they change something in their account.</p>
+                                            <p>You can also use the following default variables:<p>
+                                            <ul>
+                                                <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser property name that is used to save the e-mail address of the user.</li>
+                                                <li><strong>{emailAddress} or ?emailAddress:</strong> The e-mail address that the user entered.</li>
+                                                <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
+                                                <li><strong>{login} or ?login:</strong> The value that the user entered in the HTML field with the same name as the value in the property 'loginFieldName'.</li>
+                                                <li><strong>{entityType} or ?entityType:</strong> The Wiser entity type that is used for users that can login on the website.</li>
+                                            </ul>
+            """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 70,
@@ -673,16 +699,18 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Validate password query",
         Description = "The query for getting the logged in user's password hash, so we can validate it. This is required when the user wants to change their password.",
-        DeveloperRemarks = @"<p>Please make sure to only check for items with the correct entity type and user ID.</p>
-                                <p>Also make sure the query returns at least the following columns:</p>
-                                <ul>
-                                    <li><strong>password:</strong> The password should contain a SHA512 hash with salt, generated by the GCL.</li>
-                                </ul>
-                                <p>You can also use the following default variables (but they are not mandatory to use, if you use a custom query):<p>
-                                <ul>
-                                    <li><strong>{userId} or ?userId:</strong> The ID of the logged in user.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>Please make sure to only check for items with the correct entity type and user ID.</p>
+                                                           <p>Also make sure the query returns at least the following columns:</p>
+                                                           <ul>
+                                                               <li><strong>password:</strong> The password should contain a SHA512 hash with salt, generated by the GCL.</li>
+                                                           </ul>
+                                                           <p>You can also use the following default variables (but they are not mandatory to use, if you use a custom query):<p>
+                                                           <ul>
+                                                               <li><strong>{userId} or ?userId:</strong> The ID of the logged in user.</li>
+                                                               <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 80,
@@ -697,8 +725,10 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Create account query",
         Description = "The query for creating a new (sub) account",
-        DeveloperRemarks = @"<p>Make sure this query returns a column named 'id', which contains the ID of the newly created user. You can also use any value in the submitted form as a variable.<p>
-                                <p>When the mode is set to 'SubAccountsManagement', this query will be used for creating a new sub account.</p>",
+        DeveloperRemarks = """
+                           <p>Make sure this query returns a column named 'id', which contains the ID of the newly created user. You can also use any value in the submitted form as a variable.<p>
+                                                           <p>When the mode is set to 'SubAccountsManagement', this query will be used for creating a new sub account.</p>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 80,
@@ -713,16 +743,18 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Update account query",
         Description = "The query for updating a(n) (sub) account",
-        DeveloperRemarks = @"<p>You can also use any value in the submitted form as a variable and {userId} or ?userId for the ID of the logged in User.<p>
-                                <p>When the mode is set to 'SubAccountsManagement', this query will be used for updating a sub account. <strong>Make sure that you check whether the sub account belongs to the logged in user!</strong></p>
-                                <p>You can also use the following variables then:</p>
-                                <ul>
-                                    <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The entity type that is used for sub accounts.</li>
-                                    <li><strong>{subAccountId} or ?subAccountId:</strong> The ID selected sub account. Will be 0 if no sub account has been selected.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The entity type that is used for sub accounts.</li>
-                                    <li><strong>{userId} or ?userId:</strong> The ID of the logged in user (the main account)</li>
-                                    <li><strong>{subAccountLinkTypeNumber} or ?subAccountLinkTypeNumber:</strong> The value of the component property with the same name.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>You can also use any value in the submitted form as a variable and {userId} or ?userId for the ID of the logged in User.<p>
+                                                           <p>When the mode is set to 'SubAccountsManagement', this query will be used for updating a sub account. <strong>Make sure that you check whether the sub account belongs to the logged in user!</strong></p>
+                                                           <p>You can also use the following variables then:</p>
+                                                           <ul>
+                                                               <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The entity type that is used for sub accounts.</li>
+                                                               <li><strong>{subAccountId} or ?subAccountId:</strong> The ID selected sub account. Will be 0 if no sub account has been selected.</li>
+                                                               <li><strong>{entityType} or ?entityType:</strong> The entity type that is used for sub accounts.</li>
+                                                               <li><strong>{userId} or ?userId:</strong> The ID of the logged in user (the main account)</li>
+                                                               <li><strong>{subAccountLinkTypeNumber} or ?subAccountLinkTypeNumber:</strong> The value of the component property with the same name.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 90,
@@ -737,16 +769,18 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Delete account query",
         Description = "The query for deleting a(n) (sub) account",
-        DeveloperRemarks = @"<p>You can use the variable {userId} or ?userId for the ID of the logged in User.<p>
-                                <p>When the mode is set to 'SubAccountsManagement', this query will be used for updating a sub account. <strong>Make sure that you check whether the sub account belongs to the logged in user!</strong></p>
-                                <p>You can also use the following variables then:</p>
-                                <ul>
-                                    <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The entity type that is used for sub accounts.</li>
-                                    <li><strong>{subAccountId} or ?subAccountId:</strong> The ID selected sub account. Will be 0 if no sub account has been selected.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The entity type that is used for sub accounts.</li>
-                                    <li><strong>{userId} or ?userId:</strong> The ID of the logged in user (the main account)</li>
-                                    <li><strong>{subAccountLinkTypeNumber} or ?subAccountLinkTypeNumber:</strong> The value of the component property with the same name.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>You can use the variable {userId} or ?userId for the ID of the logged in User.<p>
+                                                           <p>When the mode is set to 'SubAccountsManagement', this query will be used for updating a sub account. <strong>Make sure that you check whether the sub account belongs to the logged in user!</strong></p>
+                                                           <p>You can also use the following variables then:</p>
+                                                           <ul>
+                                                               <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The entity type that is used for sub accounts.</li>
+                                                               <li><strong>{subAccountId} or ?subAccountId:</strong> The ID selected sub account. Will be 0 if no sub account has been selected.</li>
+                                                               <li><strong>{entityType} or ?entityType:</strong> The entity type that is used for sub accounts.</li>
+                                                               <li><strong>{userId} or ?userId:</strong> The ID of the logged in user (the main account)</li>
+                                                               <li><strong>{subAccountLinkTypeNumber} or ?subAccountLinkTypeNumber:</strong> The value of the component property with the same name.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 100,
@@ -761,14 +795,16 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Set value in Wiser entity property query",
         Description = "The query for inserting/updating a value for a Wiser property/field. <strong>This query will be executed for every submitted field in the form that was originally on the page.</strong>",
-        DeveloperRemarks = @"<p>Leave this property empty if you're not using the Wiser data model, or if you're using a custom create/update query that already sets all values correctly.<p>
-                                <p>You can use the following variables:</p>
-                                <ul>
-                                    <li><strong>{value} or ?value:</strong> The submitted value</li>
-                                    <li><strong>{name} or ?name:</strong> The name of the property/field</li>
-                                    <li><strong>{userId} or ?userId:</strong> The ID of the logged in or newly created user</li>
-                                    <li><strong>{subAccountId} or ?subAccountId:</strong> (When mode is 'SubAccountsManagement'.) The ID selected sub account. Will be 0 if no sub account has been selected.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>Leave this property empty if you're not using the Wiser data model, or if you're using a custom create/update query that already sets all values correctly.<p>
+                                                           <p>You can use the following variables:</p>
+                                                           <ul>
+                                                               <li><strong>{value} or ?value:</strong> The submitted value</li>
+                                                               <li><strong>{name} or ?name:</strong> The name of the property/field</li>
+                                                               <li><strong>{userId} or ?userId:</strong> The ID of the logged in or newly created user</li>
+                                                               <li><strong>{subAccountId} or ?subAccountId:</strong> (When mode is 'SubAccountsManagement'.) The ID selected sub account. Will be 0 if no sub account has been selected.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 110,
@@ -783,13 +819,15 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Get sub account query",
         Description = "The query for getting all values and fields for a sub account. If you use the default HTML template, this query should return a row for each field that needs to be shown on the page. If you use custom HTML, this query can return whatever you need in that HTML.",
-        DeveloperRemarks = @"<p>You can use the following variables:</p>
-                                <ul>
-                                    <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The entity type that is used for sub accounts.</li>
-                                    <li><strong>{subAccountId} or ?subAccountId:</strong> The ID selected sub account. Will be 0 if no sub account has been selected.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The entity type that is used for sub accounts.</li>
-                                    <li><strong>{userId} or ?userId:</strong> The ID of the logged user</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>You can use the following variables:</p>
+                                                           <ul>
+                                                               <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The entity type that is used for sub accounts.</li>
+                                                               <li><strong>{subAccountId} or ?subAccountId:</strong> The ID selected sub account. Will be 0 if no sub account has been selected.</li>
+                                                               <li><strong>{entityType} or ?entityType:</strong> The entity type that is used for sub accounts.</li>
+                                                               <li><strong>{userId} or ?userId:</strong> The ID of the logged user</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 120,
@@ -804,16 +842,18 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Account roles Query",
         Description = "The query that will determine the roles for a new or existing account.",
-        DeveloperRemarks = @"<p>Please note that any roles returned by this query are absolute, meaning that the account will only receive the roles returned by this query, and any roles it was previously assigned that are not in the result will be removed.</p>
-                                <p>Make sure the query returns at least the following columns:</p>
-                                <ul>
-                                    <li><strong>roleId:</strong> The ID of a role in wiser_roles.</li>
-                                </ul>
-                                <p>In case of updating the roles of an existing user, you can use the following variables:</p>
-                                <ul>
-                                    <li><strong>{userId} or ?userId:</strong> The ID of the account/user being updated.</li>
-                                </ul>
-                                <p>You can use any value in the submitted form as a variable.</p>",
+        DeveloperRemarks = """
+                           <p>Please note that any roles returned by this query are absolute, meaning that the account will only receive the roles returned by this query, and any roles it was previously assigned that are not in the result will be removed.</p>
+                                                           <p>Make sure the query returns at least the following columns:</p>
+                                                           <ul>
+                                                               <li><strong>roleId:</strong> The ID of a role in wiser_roles.</li>
+                                                           </ul>
+                                                           <p>In case of updating the roles of an existing user, you can use the following variables:</p>
+                                                           <ul>
+                                                               <li><strong>{userId} or ?userId:</strong> The ID of the account/user being updated.</li>
+                                                           </ul>
+                                                           <p>You can use any value in the submitted form as a variable.</p>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         DisplayOrder = 130,
@@ -828,22 +868,24 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Auto login Query",
         Description = "The query that validates an ID for auto login via Wiser.",
-        DeveloperRemarks = @"<p>Please make sure to only check for items with the correct entity type(s).</p>
-                                <p>Also make sure the query returns at least the following columns:</p>
-                                <ul>
-                                    <li><strong>id:</strong> The item ID of the user in wiser_item.</li>
-                                    <li><strong>mainAccountId:</strong> The ID of the main account, if the user is logging in with a sub account. This value should be 0 or the same as the user ID, if the user is logging in as a main account.</li>
-                                    <li><strong>role:</strong> Optional: The role of the user. Only applicable when you do anything with roles.</li>
-                                </ul>
-                                <p>You can also use the following default variables (but they are not mandatory to use, if you use a custom query):<p>
-                                <ul>
-                                    <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser field name where the e-mail address is stored.</li>
-                                    <li><strong>{roleFieldName} or ?roleFieldName:</strong> The Wiser field name where the role of the user is stored.</li>
-                                    <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
-                                    <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>Please make sure to only check for items with the correct entity type(s).</p>
+                                                           <p>Also make sure the query returns at least the following columns:</p>
+                                                           <ul>
+                                                               <li><strong>id:</strong> The item ID of the user in wiser_item.</li>
+                                                               <li><strong>mainAccountId:</strong> The ID of the main account, if the user is logging in with a sub account. This value should be 0 or the same as the user ID, if the user is logging in as a main account.</li>
+                                                               <li><strong>role:</strong> Optional: The role of the user. Only applicable when you do anything with roles.</li>
+                                                           </ul>
+                                                           <p>You can also use the following default variables (but they are not mandatory to use, if you use a custom query):<p>
+                                                           <ul>
+                                                               <li><strong>{loginFieldName} or ?loginFieldName:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{passwordFieldName} or ?passwordFieldName:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser field name where the e-mail address is stored.</li>
+                                                               <li><strong>{roleFieldName} or ?roleFieldName:</strong> The Wiser field name where the role of the user is stored.</li>
+                                                               <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
+                                                               <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.Wiser,
         TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
@@ -874,13 +916,13 @@ public class AccountCmsSettingsModel : CmsSettings
     /// The name of the remember me checkbox. Only enter a value if you want to add a checkbox for the user to indicate whether or not they want to stay logged in after closing the browser.
     /// </summary>
     [CmsProperty(
-        PrettyName="Remember me checkbox name",
-        Description="The name of the remember me checkbox. Only enter a value if you want to add a checkbox for the user to indicate whether or not they want to stay logged in after closing the browser.",
-        DeveloperRemarks="You need to add the HTML for the checkbox yourself, to the main template. Example:<br>&lt;input type=&quot;checkbox&quot; name=&quot;rememberMe&quot; id=&quot;rememberMe&quot; value=&quot;0&quot; /&gt;<br>&lt;label for=&quot;rememberMe&quot;&gt;Stay logged in&lt;/label&gt;",
-        TabName=CmsAttributes.CmsTabName.Behavior,
-        GroupName=CmsAttributes.CmsGroupName.Basic,
-        DisplayOrder=15,
-        ComponentMode="LoginSingleStep,LoginMultipleSteps"
+        PrettyName = "Remember me checkbox name",
+        Description = "The name of the remember me checkbox. Only enter a value if you want to add a checkbox for the user to indicate whether or not they want to stay logged in after closing the browser.",
+        DeveloperRemarks = "You need to add the HTML for the checkbox yourself, to the main template. Example:<br>&lt;input type=&quot;checkbox&quot; name=&quot;rememberMe&quot; id=&quot;rememberMe&quot; value=&quot;0&quot; /&gt;<br>&lt;label for=&quot;rememberMe&quot;&gt;Stay logged in&lt;/label&gt;",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 15,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
     )]
     public string RememberMeCheckboxName { get; set; }
 
@@ -934,10 +976,12 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Reset password url",
         Description = "The URL to the reset password page. Leave empty to use the current page.",
-        DeveloperRemarks = @"<p>This will be used in the e-mail that the user received after indicating they want to reset their password.
-                                This can be a relative url such as '/reset-password/' or an absolute URL such as 'https://google.com/reset-password/'.</p>
-                                <p>The required query string parameters will be automatically added to this URL, you don't need to add place holders for them.
-                                That URL will then be used to replace the variable '{url}' in the e-mail body.</p>",
+        DeveloperRemarks = """
+                           <p>This will be used in the e-mail that the user received after indicating they want to reset their password.
+                                                           This can be a relative url such as '/reset-password/' or an absolute URL such as 'https://google.com/reset-password/'.</p>
+                                                           <p>The required query string parameters will be automatically added to this URL, you don't need to add place holders for them.
+                                                           That URL will then be used to replace the variable '{url}' in the e-mail body.</p>
+                           """,
         TabName = CmsAttributes.CmsTabName.Behavior,
         GroupName = CmsAttributes.CmsGroupName.Basic,
         DisplayOrder = 50,
@@ -1023,15 +1067,15 @@ public class AccountCmsSettingsModel : CmsSettings
     /// If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.
     /// </summary>
     [CmsProperty(
-        PrettyName="Allow empty password",
-        Description="If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.",
-        DeveloperRemarks="",
-        TabName=CmsAttributes.CmsTabName.Behavior,
-        GroupName=CmsAttributes.CmsGroupName.Basic,
-        DisplayOrder=95,
-        ComponentMode="CreateOrUpdateAccount"
+        PrettyName = "Allow empty password",
+        Description = "If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 95,
+        ComponentMode = "CreateOrUpdateAccount"
     )]
-    public bool AllowEmptyPassword { get;set; }
+    public bool AllowEmptyPassword { get; set; }
 
     /// <summary>
     /// If this s set to true, a notification will be sent to the e-mail address(es) entered in 'NotificationsReceiver' whenever someone creates a new account via this component.
@@ -1193,7 +1237,7 @@ public class AccountCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Password validation regex",
         Description = "A regex for validating the password of the user. This will be done server side and optionally client side too.",
-        DeveloperRemarks = @"If you want to use this for client side validation in your custom HTML, you can add the property 'pattern=""{PasswordValidationRegex}""' to your password field(s).",
+        DeveloperRemarks = """If you want to use this for client side validation in your custom HTML, you can add the property 'pattern="{PasswordValidationRegex}"' to your password field(s).""",
         TabName = CmsAttributes.CmsTabName.Behavior,
         GroupName = CmsAttributes.CmsGroupName.Advanced,
         DisplayOrder = 10,

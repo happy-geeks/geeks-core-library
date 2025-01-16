@@ -36,7 +36,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     /// <summary>
     /// Creates a new instance of <see cref="ReplacementsMediator"/>.
     /// </summary>
-    public ReplacementsMediator(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor)
+    public ReplacementsMediator(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor = null)
     {
         this.databaseConnection = databaseConnection;
         this.httpContextAccessor = httpContextAccessor;
@@ -639,10 +639,12 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         {
             return Convert.ToDecimal(input, new CultureInfo("en-US"));
         }
+
         if (type == typeof(double))
         {
             return Convert.ToDouble(input, new CultureInfo("en-US"));
         }
+
         if (type == typeof(DateTime))
         {
             return Convert.ToDateTime(input, new CultureInfo("en-US"));
@@ -651,47 +653,47 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         return Convert.ChangeType(input, type);
     }
 
-        /// <inheritdoc />
-        public string DoHttpRequestReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
+    /// <inheritdoc />
+    public string DoHttpRequestReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
+    {
+        if (httpContextAccessor?.HttpContext == null)
         {
-            if (httpContextAccessor?.HttpContext == null)
-            {
-                return input;
-            }
-
-            // GET variables.
-            if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
-            {
-                input = DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: defaultFormatter);
-            }
-            else
-            {
-                input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: defaultFormatter);
-            }
-
-            // POST variables.
-            if (httpContextAccessor.HttpContext.Request.HasFormContentType)
-            {
-                input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: defaultFormatter);
-            }
-
-            // Cookies.
-            input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: defaultFormatter);
-
-            // Request cache.
-            input = DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery, defaultFormatter: defaultFormatter);
-
             return input;
         }
 
-        /// <inheritdoc />
-        public string DoSessionReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
+        // GET variables.
+        if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
         {
-            if (httpContextAccessor?.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
-            {
-                return input;
-            }
-
-            return DoReplacements(input, httpContextAccessor.HttpContext.Session, forQuery, defaultFormatter: defaultFormatter);
+            input = DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: defaultFormatter);
         }
+        else
+        {
+            input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: defaultFormatter);
+        }
+
+        // POST variables.
+        if (httpContextAccessor.HttpContext.Request.HasFormContentType)
+        {
+            input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: defaultFormatter);
+        }
+
+        // Cookies.
+        input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: defaultFormatter);
+
+        // Request cache.
+        input = DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery, defaultFormatter: defaultFormatter);
+
+        return input;
+    }
+
+    /// <inheritdoc />
+    public string DoSessionReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
+    {
+        if (httpContextAccessor?.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
+        {
+            return input;
+        }
+
+        return DoReplacements(input, httpContextAccessor.HttpContext.Session, forQuery, defaultFormatter: defaultFormatter);
+    }
 }

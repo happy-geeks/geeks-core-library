@@ -166,7 +166,7 @@ public class WiserTableDefinitions
                 new("query_after_update", MySqlDbType.MediumText),
                 new("query_before_update", MySqlDbType.MediumText),
                 new("query_before_delete", MySqlDbType.MediumText),
-                new("color", MySqlDbType.Enum, notNull: true, defaultValue: "blue", enumValues: new List<string> { "blue", "orange", "yellow", "green", "red" }),
+                new("color", MySqlDbType.Enum, notNull: true, defaultValue: "blue", enumValues: new List<string> {"blue", "orange", "yellow", "green", "red"}),
                 new("show_in_search", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
                 new("show_overview_tab", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
                 new("save_title_as_seo", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
@@ -177,14 +177,14 @@ public class WiserTableDefinitions
                 new("show_title_field", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
                 new("friendly_name", MySqlDbType.VarChar, 255),
                 new("save_history", MySqlDbType.Int16, 1, notNull: true, defaultValue: "1"),
-                new("default_ordering", MySqlDbType.Enum, notNull: true, defaultValue: "link_ordering", enumValues: new List<string> { "link_ordering", "item_title" }),
+                new("default_ordering", MySqlDbType.Enum, notNull: true, defaultValue: "link_ordering", enumValues: new List<string> {"link_ordering", "item_title"}),
                 new("template_query", MySqlDbType.MediumText),
                 new("template_html", MySqlDbType.MediumText),
-                new("store_type", MySqlDbType.Enum, notNull: true, defaultValue: "table", enumValues: new List<string> { "table", "document_store", "hybrid" }),
+                new("store_type", MySqlDbType.Enum, notNull: true, defaultValue: "table", enumValues: new List<string> {"table", "document_store", "hybrid"}),
                 new("enable_multiple_environments", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new("icon_expanded", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
                 new("dedicated_table_prefix", MySqlDbType.VarChar, 25, notNull: true, defaultValue: ""),
-                new("delete_action", MySqlDbType.Enum, notNull: true, defaultValue: "archive", enumValues: new List<string> { "archive", "permanent", "hide", "disallow" }),
+                new("delete_action", MySqlDbType.Enum, notNull: true, defaultValue: "archive", enumValues: new List<string> {"archive", "permanent", "hide", "disallow"}),
                 new("show_in_dashboard", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0")
             ],
             Indexes =
@@ -212,7 +212,7 @@ public class WiserTableDefinitions
                 new("overview_width", MySqlDbType.Int24, notNull: true, defaultValue: "100"),
                 new("tab_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                 new("group_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
-                new("inputtype", MySqlDbType.Enum, notNull: true, defaultValue: "input", enumValues: new List<string> { "input", "secure-input", "textbox", "radiobutton", "checkbox", "combobox", "multiselect", "numeric-input", "file-upload", "HTMLeditor", "querybuilder", "date-time picker", "grid", "imagecoords", "button", "image-upload", "gpslocation", "daterange", "sub-entities-grid", "item-linker", "color-picker", "auto-increment", "linked-item", "action-button", "data-selector", "chart", "scheduler", "timeline", "empty", "iframe" }),
+                new("inputtype", MySqlDbType.Enum, notNull: true, defaultValue: "input", enumValues: new List<string> {"input", "secure-input", "textbox", "radiobutton", "checkbox", "combobox", "multiselect", "numeric-input", "file-upload", "HTMLeditor", "querybuilder", "date-time picker", "grid", "imagecoords", "button", "image-upload", "gpslocation", "daterange", "sub-entities-grid", "item-linker", "color-picker", "auto-increment", "linked-item", "action-button", "data-selector", "chart", "scheduler", "timeline", "empty", "iframe"}),
                 new("display_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                 new("property_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                 new("explanation", MySqlDbType.MediumText),
@@ -234,16 +234,16 @@ public class WiserTableDefinitions
                 new("grid_insert_query", MySqlDbType.MediumText, comment: "The query to save each record in the grid, always proceeded by the delete query"),
                 new("grid_update_query", MySqlDbType.MediumText, comment: "The query for updating an existing record in a grid"),
                 new("depends_on_field", MySqlDbType.VarChar, 100),
-                new("depends_on_operator", MySqlDbType.Enum, enumValues: new List<string> { "eq", "neq", "contains", "doesnotcontain", "startswith", "doesnotstartwith", "endswith", "doesnotendwith", "isempty", "isnotempty", "gte", "gt", "lte", "lt" }),
+                new("depends_on_operator", MySqlDbType.Enum, enumValues: new List<string> {"eq", "neq", "contains", "doesnotcontain", "startswith", "doesnotstartwith", "endswith", "doesnotendwith", "isempty", "isnotempty", "gte", "gt", "lte", "lt"}),
                 new("depends_on_value", MySqlDbType.VarChar, 255),
-                new("depends_on_action", MySqlDbType.Enum, enumValues: new List<string> { "toggle-visibility", "refresh" }),
+                new("depends_on_action", MySqlDbType.Enum, enumValues: new List<string> {"toggle-visibility", "refresh"}),
                 new("language_code", MySqlDbType.VarChar, 5, notNull: true, defaultValue: ""),
                 new("custom_script", MySqlDbType.MediumText),
                 new("also_save_seo_value", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new("save_on_change", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new("extended_explanation", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
-                new("label_style", MySqlDbType.Enum, enumValues: new List<string> { "normal", "inline", "float" }),
-                new("label_width", MySqlDbType.Enum, enumValues: new List<string> { "0", "10", "20", "30", "40", "50" }),
+                new("label_style", MySqlDbType.Enum, enumValues: new List<string> {"normal", "inline", "float"}),
+                new("label_width", MySqlDbType.Enum, enumValues: new List<string> {"0", "10", "20", "30", "40", "50"}),
                 new("enable_aggregation", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new("aggregate_options", MySqlDbType.MediumText),
                 new("access_key", MySqlDbType.VarChar, 1, notNull: true, defaultValue: ""),
@@ -425,7 +425,7 @@ public class WiserTableDefinitions
                 new("reviewed_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
                 new("reviewed_by", MySqlDbType.Int64, notNull: true, defaultValue: "0", comment: "Negative numbers are IDs of admins"),
                 new("reviewed_by_name", MySqlDbType.VarChar, 255),
-                new("status", MySqlDbType.Enum, enumValues: new List<string> { "Pending", "Approved", "RequestChanges" })
+                new("status", MySqlDbType.Enum, enumValues: new List<string> {"Pending", "Approved", "RequestChanges"})
             ],
             Indexes =
             [
@@ -646,11 +646,11 @@ public class WiserTableDefinitions
                 new("configuration", MySqlDbType.VarChar, 256, notNull: true),
                 new("time_id", MySqlDbType.Int32, notNull: true),
                 new("action", MySqlDbType.VarChar, 256),
-                new("scheme", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "continuous", "daily", "weekly", "monthly" }),
+                new("scheme", MySqlDbType.Enum, notNull: true, enumValues: new List<string> {"continuous", "daily", "weekly", "monthly"}),
                 new("last_run", MySqlDbType.DateTime),
                 new("next_run", MySqlDbType.DateTime),
                 new("run_time", MySqlDbType.Double),
-                new("state", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "active", "success", "warning", "failed", "paused", "stopped", "crashed", "running" }, defaultValue: "active"),
+                new("state", MySqlDbType.Enum, notNull: true, enumValues: new List<string> {"active", "success", "warning", "failed", "paused", "stopped", "crashed", "running"}, defaultValue: "active"),
                 new("paused", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new("extra_run", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new("template_id", MySqlDbType.Int32)
@@ -726,8 +726,8 @@ public class WiserTableDefinitions
                 new("name", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
                 new("show_in_tree_view", MySqlDbType.Int16, notNull: true, defaultValue: "1"),
                 new("show_in_data_selector", MySqlDbType.Int16, notNull: true, defaultValue: "1"),
-                new("relationship", MySqlDbType.Enum, enumValues: new List<string> { "one-to-one", "one-to-many", "many-to-many" }, defaultValue: "one-to-many"),
-                new("relationship", MySqlDbType.Enum, enumValues: new List<string> { "none", "copy-link", "copy-item" }, defaultValue: "none", comment: "What to do with this link, when an item is being duplicated. None means that links of this type will not be copied/duplicatied to the new item. Copy-link means that the linked item will also be linked to the new item. Copy-item means that the linked item will also be duplicated and then that duplicated item will be linked to the new item."),
+                new("relationship", MySqlDbType.Enum, enumValues: new List<string> {"one-to-one", "one-to-many", "many-to-many"}, defaultValue: "one-to-many"),
+                new("relationship", MySqlDbType.Enum, enumValues: new List<string> {"none", "copy-link", "copy-item"}, defaultValue: "none", comment: "What to do with this link, when an item is being duplicated. None means that links of this type will not be copied/duplicatied to the new item. Copy-link means that the linked item will also be linked to the new item. Copy-item means that the linked item will also be duplicated and then that duplicated item will be linked to the new item."),
                 new("use_item_parent_id", MySqlDbType.Int16, notNull: true, defaultValue: "0", comment: "Set this to 1 to use the column \"parent_item_id\" from wiser_item for these links. This will then no longer use or need the table wiser_itemlink for these links."),
                 new("use_dedicated_table", MySqlDbType.Int16, notNull: true, defaultValue: "0", comment: "Set this to 1 to use a dedicated table for links of this type. The GCL and Wiser expect there to be a table \"[linkType]_wiser_itemlink\" to store the links in. So if your link type is \"1\", we will use the table \"1_wiser_itemlink\" instead of \"wiser_itemlink\". This table will not be created automatically. To create this table, make a copy of wiser_itemlink (including triggers, but the the name of the table in the triggers too)."),
                 new("cascade_delete", MySqlDbType.Int16, notNull: true, defaultValue: "0", comment: "Set this to 1 to also delete children when a parent is being deleted.")
@@ -746,7 +746,7 @@ public class WiserTableDefinitions
                 new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                 new("name", MySqlDbType.VarChar, 255, notNull: true),
                 new("branch_id", MySqlDbType.Int32),
-                new("action", MySqlDbType.Enum, notNull: true, enumValues: new List<string> { "create", "merge", "delete" }),
+                new("action", MySqlDbType.Enum, notNull: true, enumValues: new List<string> {"create", "merge", "delete"}),
                 new("data", MySqlDbType.MediumText),
                 new("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
                 new("added_by", MySqlDbType.VarChar, 255, notNull: true),
@@ -877,18 +877,19 @@ public class WiserTableDefinitions
                 new("entity_name", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
                 new("item_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
                 new("entity_property_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
-                new("permissions", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: @"0 = Nothing
-1 = Read
-2 = Create
-4 = Update
-8 = Delete"),
+                new("permissions", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: """
+                                                                                                 0 = Nothing
+                                                                                                 1 = Read
+                                                                                                 2 = Create
+                                                                                                 4 = Update
+                                                                                                 8 = Delete
+                                                                                                 """),
 
                 new("module_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                 new("query_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                 new("data_selector_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                 new("endpoint_url", MySqlDbType.VarChar, 500, notNull: true, defaultValue: ""),
-                new("endpoint_http_method", MySqlDbType.Enum, notNull: true, defaultValue: "GET", enumValues: new List<string> { "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH" })
-
+                new("endpoint_http_method", MySqlDbType.Enum, notNull: true, defaultValue: "GET", enumValues: new List<string> {"GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"})
             ],
             Indexes = [new(WiserTableNames.WiserPermission, "role_id", IndexTypes.Unique, ["role_id", "entity_name", "item_id", "entity_property_id", "module_id", "query_id", "data_selector_id", "endpoint_url", "endpoint_http_method"])]
         },
@@ -913,7 +914,7 @@ public class WiserTableDefinitions
                 new("response_body", MySqlDbType.MediumText, 0),
                 new("error", MySqlDbType.Text, 0),
                 new("url", MySqlDbType.Text, 0),
-                new("type", MySqlDbType.Enum, enumValues: new List<string> { "incoming", "outgoing" })
+                new("type", MySqlDbType.Enum, enumValues: new List<string> {"incoming", "outgoing"})
             ]
         },
 
@@ -933,12 +934,12 @@ public class WiserTableDefinitions
                 new("content_data_selector_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                 new("content_query_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                 new("settings", MySqlDbType.MediumText),
-                new("send_trigger_type", MySqlDbType.Enum, enumValues: new List<string> { "direct", "fixed", "recurring" }),
+                new("send_trigger_type", MySqlDbType.Enum, enumValues: new List<string> {"direct", "fixed", "recurring"}),
                 new("trigger_start", MySqlDbType.Date),
                 new("trigger_end", MySqlDbType.Date),
                 new("trigger_time", MySqlDbType.Time),
                 new("trigger_period_value", MySqlDbType.Int16, 4, notNull: true, defaultValue: "1"),
-                new("trigger_period_type", MySqlDbType.Enum, enumValues: new List<string> { "minute", "hour", "day", "week", "month", "year" }),
+                new("trigger_period_type", MySqlDbType.Enum, enumValues: new List<string> {"minute", "hour", "day", "week", "month", "year"}),
                 new("trigger_week_days", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                 new("trigger_day_of_month", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                 new("last_processed", MySqlDbType.MediumText),
@@ -1018,7 +1019,7 @@ public class WiserTableDefinitions
                 new("url", MySqlDbType.MediumText),
                 new("http_method", MySqlDbType.VarChar, 20),
                 new("database_service_instance_id", MySqlDbType.VarChar, 40),
-                new("type", MySqlDbType.Enum, enumValues: new List<string> { "read", "write" })
+                new("type", MySqlDbType.Enum, enumValues: new List<string> {"read", "write"})
             ],
             Indexes =
             [

@@ -23,7 +23,7 @@ public class PaymentServiceProviderServiceFactory(IServiceProvider serviceProvid
             throw new ArgumentOutOfRangeException(nameof(paymentServiceProviderName), paymentServiceProviderName, $"A payment service provider with the name '{paymentServiceProviderName}Service' was not found.");
         }
 
-        return (IPaymentServiceProviderService)serviceProvider.GetRequiredService(serviceProviderType);
+        return (IPaymentServiceProviderService) serviceProvider.GetRequiredService(serviceProviderType);
     }
 
     private Type FindTypeInLoadedAssemblies(string paymentServiceProviderName)

@@ -21,7 +21,6 @@ using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 using RestSharp;
 using RestSharp.Authenticators;
-
 using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.PostalServices.NeDistri.Services;
@@ -147,7 +146,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
             }
             catch (Exception e)
             {
-                logger.LogError(e,"Something went wrong when decrypting order id in NeDistriService");
+                logger.LogError(e, "Something went wrong when decrypting order id in NeDistriService");
                 throw;
             }
 
@@ -200,7 +199,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
 
         var restRequest = new RestRequest("/api/v1/order", Method.Post);
         restRequest.AddStringBody(createOrderRequestBody, DataFormat.Json);
-        
+
         var createOrderResponse = await restClient.ExecuteAsync(restRequest);
         if (createOrderResponse.ErrorException != null)
         {
@@ -284,6 +283,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
         {
             lastname = $"{lastNamePrefix} {lastname}";
         }
+
         return new AddressModel()
         {
             Address = $"{street} {houseNumber}{houseNumberAddition}",

@@ -90,15 +90,17 @@ public class CmsSettings
     /// </summary>
     [CmsProperty(
          PrettyName = "Caching mode",
-         Description = @"<p>How the component should be cached. Default value is 'ServerSideCaching'. The options are:</p>
-                            <ul>
-                                <li><strong>NoCaching</strong>: Component will not be cached and will always be rendered on-the-fly.</li>
-                                <li><strong>ServerSideCaching</strong>: Component will be cached regardless of URL.</li>
-                                <li><strong>ServerSideCachingPerUrl</strong>: Component will be cached based on the URL, excluding the query string.</li>
-                                <li><strong>ServerSideCachingPerUrlAndQueryString</strong>: Component will be cached based on the URL, including the query string.</li>
-                                <li><strong>ServerSideCachingPerHostNameAndQueryString</strong>: Component will be cached based on the full URL, including domain and the query string.</li>
-                                <li><strong>ServerSideCachingBasedOnUrlRegex</strong>: Component will be cached based on a regular expression. When using this option, you need to enter a regular expression in the corresponding field below.</li>
-                            </ul>",
+         Description = """
+                       <p>How the component should be cached. Default value is 'ServerSideCaching'. The options are:</p>
+                                                   <ul>
+                                                       <li><strong>NoCaching</strong>: Component will not be cached and will always be rendered on-the-fly.</li>
+                                                       <li><strong>ServerSideCaching</strong>: Component will be cached regardless of URL.</li>
+                                                       <li><strong>ServerSideCachingPerUrl</strong>: Component will be cached based on the URL, excluding the query string.</li>
+                                                       <li><strong>ServerSideCachingPerUrlAndQueryString</strong>: Component will be cached based on the URL, including the query string.</li>
+                                                       <li><strong>ServerSideCachingPerHostNameAndQueryString</strong>: Component will be cached based on the full URL, including domain and the query string.</li>
+                                                       <li><strong>ServerSideCachingBasedOnUrlRegex</strong>: Component will be cached based on a regular expression. When using this option, you need to enter a regular expression in the corresponding field below.</li>
+                                                   </ul>
+                       """,
          DeveloperRemarks = "",
          TabName = CmsAttributes.CmsTabName.Developer,
          GroupName = CmsAttributes.CmsGroupName.Caching,
@@ -111,11 +113,13 @@ public class CmsSettings
     /// </summary>
     [CmsProperty(
          PrettyName = "Caching location",
-         Description = @"<p>Where the component should be cached. Default value is 'InMemory'. The options are:</p>
-                            <ul>
-                                <li><strong>InMemory</strong>: Component will be cached in memory. This is much faster than caching it on disk, but caching will be lost if the site is restarted and could cause high memory usage on sites with a lot of pages.</li>
-                                <li><strong>OnDisk</strong>: Component will be cached on disk. This is much slower than caching it in memory, but it will not be lost if the site is restarted and will not use (much) memory.</li>
-                            </ul>",
+         Description = """
+                       <p>Where the component should be cached. Default value is 'InMemory'. The options are:</p>
+                                                   <ul>
+                                                       <li><strong>InMemory</strong>: Component will be cached in memory. This is much faster than caching it on disk, but caching will be lost if the site is restarted and could cause high memory usage on sites with a lot of pages.</li>
+                                                       <li><strong>OnDisk</strong>: Component will be cached on disk. This is much slower than caching it in memory, but it will not be lost if the site is restarted and will not use (much) memory.</li>
+                                                   </ul>
+                       """,
          DeveloperRemarks = "",
          TabName = CmsAttributes.CmsTabName.Developer,
          GroupName = CmsAttributes.CmsGroupName.Caching,
@@ -141,9 +145,11 @@ public class CmsSettings
     /// </summary>
     [CmsProperty(
         PrettyName = "Cache regex",
-        Description = @"<p>The regular expression to use for deciding the unique cache key. The value of each named group will be added to the cache key or file name. This is useful for a main menu for example, to cache the main menu separately for each main category on the site, so that the selected item in the menu will always be correct, even with caching.</p>
-                            <p>Example: If you use the regex ""\/products\/(?&lt;category&gt;.*)\/(?&lt;subCategory&gt;.*)\/(?&lt;product&gt;.*)\/"". This regex has 3 named groups (category, subCategory and product). If the user would then open the URL ""/products/drinks/soda/cola/"", then the key or file name for the cache would be ""dynamicContent_123_drinks_soda_cola"". This way the component will be cached separately for each product on the website.</p>
-                            <p>Example 2: If you use the regex ""\/(?&lt;page&gt;[^\/]*)?(\/.*)?"", then component will only be cached separately for the first segment of the URL. So there will be a separate cache for a product page and for a content page, but not separate for each individual product for example.</p>",
+        Description = """
+                      <p>The regular expression to use for deciding the unique cache key. The value of each named group will be added to the cache key or file name. This is useful for a main menu for example, to cache the main menu separately for each main category on the site, so that the selected item in the menu will always be correct, even with caching.</p>
+                                                  <p>Example: If you use the regex "\/products\/(?&lt;category&gt;.*)\/(?&lt;subCategory&gt;.*)\/(?&lt;product&gt;.*)\/". This regex has 3 named groups (category, subCategory and product). If the user would then open the URL "/products/drinks/soda/cola/", then the key or file name for the cache would be "dynamicContent_123_drinks_soda_cola". This way the component will be cached separately for each product on the website.</p>
+                                                  <p>Example 2: If you use the regex "\/(?&lt;page&gt;[^\/]*)?(\/.*)?", then component will only be cached separately for the first segment of the URL. So there will be a separate cache for a product page and for a content page, but not separate for each individual product for example.</p>
+                      """,
         DeveloperRemarks = "",
         TabName = CmsAttributes.CmsTabName.Developer,
         GroupName = CmsAttributes.CmsGroupName.Caching,

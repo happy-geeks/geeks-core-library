@@ -84,7 +84,7 @@ public class WebPageController(
         var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase);
 
         var contentToWrite = new StringBuilder();
-        var url = (string)context.Items[Constants.OriginalPathAndQueryStringKey];
+        var url = (string) context.Items[Constants.OriginalPathAndQueryStringKey];
 
         // Header template.
         if (ombouw)
@@ -143,7 +143,7 @@ public class WebPageController(
         }
 
         dynamicContent.SettingsJson = JsonConvert.SerializeObject(webPageSettings);
-        var component = await viewComponentHelper.InvokeAsync("WebPage", new { dynamicContent, callMethod = "", forcedComponentMode = (int?)WebPage.ComponentModes.Render });
+        var component = await viewComponentHelper.InvokeAsync("WebPage", new {dynamicContent, callMethod = "", forcedComponentMode = (int?) WebPage.ComponentModes.Render});
         await using (var stringWriter = new StringWriter())
         {
             component.WriteTo(stringWriter, HtmlEncoder.Default);

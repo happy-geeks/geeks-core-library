@@ -27,7 +27,7 @@ public static class EnumHelpers
             return null;
         }
 
-        var enumMemberAttribute = ((EnumMemberAttribute[])enumType.GetField(name)?.GetCustomAttributes(typeof(EnumMemberAttribute), true))?.SingleOrDefault();
+        var enumMemberAttribute = ((EnumMemberAttribute[]) enumType.GetField(name)?.GetCustomAttributes(typeof(EnumMemberAttribute), true))?.SingleOrDefault();
         return enumMemberAttribute == null ? name : enumMemberAttribute.Value;
     }
 
@@ -43,23 +43,23 @@ public static class EnumHelpers
         var enumType = typeof(T);
         foreach (var name in Enum.GetNames(enumType))
         {
-            var enumMemberAttribute = ((EnumMemberAttribute[])enumType.GetField(name)?.GetCustomAttributes(typeof(EnumMemberAttribute), true))?.SingleOrDefault();
+            var enumMemberAttribute = ((EnumMemberAttribute[]) enumType.GetField(name)?.GetCustomAttributes(typeof(EnumMemberAttribute), true))?.SingleOrDefault();
 
             if (enumMemberAttribute != null && String.Equals(enumMemberAttribute.Value, input, StringComparison.OrdinalIgnoreCase))
             {
-                return (T)Enum.Parse(enumType, name);
+                return (T) Enum.Parse(enumType, name);
             }
 
             if (String.Equals(name, input, StringComparison.OrdinalIgnoreCase))
             {
-                return (T)Enum.Parse(enumType, name);
+                return (T) Enum.Parse(enumType, name);
             }
         }
 
         // If we have no parsed value yet, see if the string is actually an int and parse that.
         if (Int32.TryParse(input, out var intValue))
         {
-            return (T)Enum.ToObject(enumType, intValue);
+            return (T) Enum.ToObject(enumType, intValue);
         }
 
         return default;

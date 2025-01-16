@@ -21,7 +21,7 @@ public class GeoLocationService(IObjectsService objectsService, ILogger<GeoLocat
         var authKey = await objectsService.FindSystemObjectByDomainNameAsync("pro6pp_key");
         if (String.IsNullOrWhiteSpace(authKey))
         {
-            return new AddressInfoModel { Success = false, Error = "No auth key set." };
+            return new AddressInfoModel {Success = false, Error = "No auth key set."};
         }
 
         // Create client and request.
@@ -43,8 +43,9 @@ public class GeoLocationService(IObjectsService objectsService, ILogger<GeoLocat
                         restRequest.AddQueryParameter($"{country}_fourpp", zipCode[..4]);
                         break;
                     default:
-                        return new AddressInfoModel { Success = false, Error = $"Incorrect ZIP code format: {zipCode}" };
+                        return new AddressInfoModel {Success = false, Error = $"Incorrect ZIP code format: {zipCode}"};
                 }
+
                 break;
             case "be":
                 if (zipCode.Length >= 4)
@@ -53,11 +54,12 @@ public class GeoLocationService(IObjectsService objectsService, ILogger<GeoLocat
                 }
                 else
                 {
-                    return new AddressInfoModel { Success = false, Error = $"Incorrect ZIP code format: {zipCode}" };
+                    return new AddressInfoModel {Success = false, Error = $"Incorrect ZIP code format: {zipCode}"};
                 }
+
                 break;
             default:
-                return new AddressInfoModel { Success = false, Error = $"Unknown or unsupported country code: {country}. Valid country codes are 'nl' and 'be'." };
+                return new AddressInfoModel {Success = false, Error = $"Unknown or unsupported country code: {country}. Valid country codes are 'nl' and 'be'."};
         }
 
         if (!String.IsNullOrWhiteSpace(houseNumber))
@@ -75,7 +77,7 @@ public class GeoLocationService(IObjectsService objectsService, ILogger<GeoLocat
             var restResult = await restClient.ExecuteAsync<Pro6PPAutoCompleteResultModel>(restRequest);
             if (!restResult.IsSuccessful || restResult.Data == null || !restResult.Data.Status.Equals("ok", StringComparison.OrdinalIgnoreCase) || !restResult.Data.Results.Any())
             {
-                return new AddressInfoModel { Success = false, Error = restResult.Data?.Error?.Message ?? "No matches found, or an unknown error occurred in 6PP API." };
+                return new AddressInfoModel {Success = false, Error = restResult.Data?.Error?.Message ?? "No matches found, or an unknown error occurred in 6PP API."};
             }
 
             return new AddressInfoModel
@@ -92,7 +94,7 @@ public class GeoLocationService(IObjectsService objectsService, ILogger<GeoLocat
         catch (Exception exception)
         {
             logger.LogWarning(exception, "An error occurred while retrieving address information from 6PP API.");
-            return new AddressInfoModel { Success = false, Error = exception.Message };
+            return new AddressInfoModel {Success = false, Error = exception.Message};
         }
     }
 }

@@ -37,7 +37,7 @@ using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 namespace GeeksCoreLibrary.Components.OrderProcess;
 
 [ViewComponent(Name = "OrderProcess")]
-public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
+public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProcess.ComponentModes>
 {
     private readonly GclSettings gclSettings;
     private readonly ILanguagesService languagesService;
@@ -119,7 +119,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
         Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<OrderProcessCmsSettingsModel>(settingsJson) ?? new OrderProcessCmsSettingsModel();
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
 
         HandleDefaultSettingsFromComponentMode();
@@ -143,7 +143,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
         ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
         else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
         {
@@ -203,7 +203,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
         var httpContext = HttpContext;
         var response = httpContext?.Response;
         var request = httpContext?.Request;
-        var isPostBack = request is { HasFormContentType: true } && request.Form.Count > 0 && request.Form[Constants.ComponentIdFormKey].ToString() == ComponentId.ToString();
+        var isPostBack = request is {HasFormContentType: true} && request.Form.Count > 0 && request.Form[Constants.ComponentIdFormKey].ToString() == ComponentId.ToString();
         var fieldErrorsOccurred = false;
         string resultHtml = null;
 
@@ -245,12 +245,12 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
             else
             {
                 var basketUser = (await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBasket.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType, Account.Models.Constants.DefaultEntityType, reverse: true, skipPermissionsCheck: true)).FirstOrDefault();
-                userData = basketUser ?? new WiserItemModel { EntityType = Account.Models.Constants.DefaultEntityType } ;
+                userData = basketUser ?? new WiserItemModel {EntityType = Account.Models.Constants.DefaultEntityType};
                 loggedInUser.UserId = userData.Id;
             }
 
             // Get list of all items that are used in the order process, except basket.
-            var currentItems = new List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> { (new LinkSettingsModel(), userData) };
+            var currentItems = new List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> {(new LinkSettingsModel(), userData)};
             var allLinkTypeSettings = await wiserItemsService.GetAllLinkTypeSettingsAsync();
             foreach (var linkTypeSettings in allLinkTypeSettings)
             {
@@ -407,12 +407,12 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
             // Build the steps HTML.
             var replaceData = new Dictionary<string, object>
             {
-                { "id", step.Id },
-                { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title", defaultValue: step.Title ?? "") },
-                { "confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText", defaultValue: step.ConfirmButtonText) },
-                { "previousStepLinkText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_previousStepLinkText", defaultValue: step.PreviousStepLinkText) },
-                { "previousStepUrl", previousStepUri.ToString() },
-                { "type", step.Type.ToString() }
+                {"id", step.Id},
+                {"title", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_title", defaultValue: step.Title ?? "")},
+                {"confirmButtonText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_confirmButtonText", defaultValue: step.ConfirmButtonText)},
+                {"previousStepLinkText", await languagesService.GetTranslationAsync($"orderProcess_step_{step.Title}_previousStepLinkText", defaultValue: step.PreviousStepLinkText)},
+                {"previousStepUrl", previousStepUri.ToString()},
+                {"type", step.Type.ToString()}
             };
 
             var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
@@ -465,6 +465,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
 
                         groupsBuilder.AppendLine(groupHtml);
                     }
+
                     break;
                 case OrderProcessStepTypes.Summary:
                     var summaryHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, step, steps, paymentMethods);
@@ -580,8 +581,8 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
         // Replace basket data.
         var replaceData = new Dictionary<string, object>
         {
-            { $"{ShoppingBasket.Models.Constants.BasketEntityType}.id", shoppingBasket.Id },
-            { $"{Constants.OrderEntityType}.id", shoppingBasket.Id }
+            {$"{ShoppingBasket.Models.Constants.BasketEntityType}.id", shoppingBasket.Id},
+            {$"{Constants.OrderEntityType}.id", shoppingBasket.Id}
         };
 
         foreach (var basketDetail in shoppingBasket.Details)
@@ -783,9 +784,9 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
         // Create dictionary for replacements.
         var replaceData = new Dictionary<string, object>
         {
-            { "id", group.Id },
-            { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") },
-            { "groupClass", group.CssClass }
+            {"id", group.Id},
+            {"title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "")},
+            {"groupClass", group.CssClass}
         };
 
         var groupHtml = StringReplacementsService.DoReplacements(Settings.TemplateFieldsGroup, replaceData);
@@ -820,9 +821,9 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
         // Create dictionary for replacements.
         var replaceData = new Dictionary<string, object>
         {
-            { "id", group.Id },
-            { "title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "") },
-            { "groupClass", group.CssClass }
+            {"id", group.Id},
+            {"title", await languagesService.GetTranslationAsync($"orderProcess_group_{group.Title}_title", defaultValue: group.Title ?? "")},
+            {"groupClass", group.CssClass}
         };
 
         var errorHtml = "";
@@ -859,11 +860,11 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
         // Create dictionary for replacements.
         var replaceData = new Dictionary<string, object>
         {
-            { "id", paymentMethod.Id },
-            { "title", await languagesService.GetTranslationAsync($"orderProcess_paymentMethod_{paymentMethod.Title}_title", defaultValue: paymentMethod.Title ?? "") },
-            { "logoPropertyName", Constants.PaymentMethodLogoProperty },
-            { "fee", paymentMethod.Fee },
-            { "paymentMethodFieldName", Constants.PaymentMethodProperty }
+            {"id", paymentMethod.Id},
+            {"title", await languagesService.GetTranslationAsync($"orderProcess_paymentMethod_{paymentMethod.Title}_title", defaultValue: paymentMethod.Title ?? "")},
+            {"logoPropertyName", Constants.PaymentMethodLogoProperty},
+            {"fee", paymentMethod.Fee},
+            {"paymentMethodFieldName", Constants.PaymentMethodProperty}
         };
 
         var paymentMethodHtml = StringReplacementsService.DoReplacements(Settings.TemplatePaymentMethod, replaceData);
@@ -927,17 +928,17 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
         // Create dictionary for replacements.
         var replaceData = new Dictionary<string, object>
         {
-            { "id", field.Id },
-            { "title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title ?? "") },
-            { "placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder ?? "") },
-            { "fieldId", field.FieldId },
-            { "inputType", EnumHelpers.ToEnumString(field.InputFieldType).ToLowerInvariant() },
-            { "label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label ?? "") },
-            { "pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'" },
-            { "required", field.Mandatory ? "required" : "" },
-            { "value", fieldValue },
-            { "checked", String.IsNullOrWhiteSpace(fieldValue) ? "" : "checked" },
-            { "fieldClass", field.CssClass }
+            {"id", field.Id},
+            {"title", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_title", defaultValue: field.Title ?? "")},
+            {"placeholder", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_placeholder", defaultValue: field.Placeholder ?? "")},
+            {"fieldId", field.FieldId},
+            {"inputType", EnumHelpers.ToEnumString(field.InputFieldType).ToLowerInvariant()},
+            {"label", await languagesService.GetTranslationAsync($"orderProcess_field_{field.Title}_label", defaultValue: field.Label ?? "")},
+            {"pattern", String.IsNullOrWhiteSpace(field.Pattern) ? "" : $"pattern='{field.Pattern}'"},
+            {"required", field.Mandatory ? "required" : ""},
+            {"value", fieldValue},
+            {"checked", String.IsNullOrWhiteSpace(fieldValue) ? "" : "checked"},
+            {"fieldClass", field.CssClass}
         };
 
         var fieldHtml = field.Type switch
@@ -995,12 +996,12 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
             // Create dictionary for replacements.
             var replaceData = new Dictionary<string, object>
             {
-                { "fieldId", field.FieldId },
-                { "required", field.Mandatory ? "required" : "" },
-                { "optionValue", key },
-                { "optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{value}_text", defaultValue: value ?? "") },
-                { "selected", key == fieldValue ? "selected" : "" },
-                { "checked", key == fieldValue ? "checked" : "" }
+                {"fieldId", field.FieldId},
+                {"required", field.Mandatory ? "required" : ""},
+                {"optionValue", key},
+                {"optionText", await languagesService.GetTranslationAsync($"orderProcess_fieldOption_{value}_text", defaultValue: value ?? "")},
+                {"selected", key == fieldValue ? "selected" : ""},
+                {"checked", key == fieldValue ? "checked" : ""}
             };
 
             optionHtml = StringReplacementsService.DoReplacements(optionHtml, replaceData);
@@ -1031,10 +1032,10 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
             // Create dictionary for replacements.
             var replaceData = new Dictionary<string, object>
             {
-                { "id", progressStep.Id },
-                { "title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title", defaultValue: progressStep.Title ?? "") },
-                { "number", stepNumber },
-                { "active", ActiveStep == stepNumber ? "active" : "" }
+                {"id", progressStep.Id},
+                {"title", await languagesService.GetTranslationAsync($"orderProcess_step_{progressStep.Title}_title", defaultValue: progressStep.Title ?? "")},
+                {"number", stepNumber},
+                {"active", ActiveStep == stepNumber ? "active" : ""}
             };
 
             var progressStepHtml = StringReplacementsService.DoReplacements(Settings.TemplateProgressStep, replaceData);
@@ -1147,9 +1148,9 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel>
                                             throw new NotImplementedException($"Unknown entity type '{saveLocation.EntityType}' for field '{field.Id}' set for saving.");
                                         }
 
-                                        var newItem = await wiserItemsService.CreateAsync(new WiserItemModel { EntityType = saveLocation.EntityType }, parentId > 0 ? parentId : null, linkSettings.Type, userId, createNewTransaction: false, skipPermissionsCheck: true);
+                                        var newItem = await wiserItemsService.CreateAsync(new WiserItemModel {EntityType = saveLocation.EntityType}, parentId > 0 ? parentId : null, linkSettings.Type, userId, createNewTransaction: false, skipPermissionsCheck: true);
                                         newItem.SetDetail(saveLocation.PropertyName, valueForDatabase);
-                                        currentItems.Add((new LinkSettingsModel { Type = saveLocation.LinkType, SourceEntityType = newItem.EntityType, DestinationEntityType = userData.EntityType }, newItem));
+                                        currentItems.Add((new LinkSettingsModel {Type = saveLocation.LinkType, SourceEntityType = newItem.EntityType, DestinationEntityType = userData.EntityType}, newItem));
                                     }
                                 }
                             }

@@ -40,7 +40,7 @@ namespace GeeksCoreLibrary.Components.Account;
     PrettyName = "Account",
     Description = "Component for handling accounts on a website, such as login, logout, change password etc."
 )]
-public class Account : CmsComponent<AccountCmsSettingsModel>
+public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentModes>
 {
     private readonly GclSettings gclSettings;
     private readonly IObjectsService objectsService;
@@ -263,7 +263,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
         Settings = JsonConvert.DeserializeObject<AccountCmsSettingsModel>(settingsJson) ?? new AccountCmsSettingsModel();
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
     }
 
@@ -290,7 +290,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
         ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
         else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
         {
@@ -430,7 +430,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
 
             if (Settings.EnableOciLogin && !String.IsNullOrWhiteSpace(ociUsername) && !String.IsNullOrWhiteSpace(ociPassword))
             {
-                var loginResult = await LoginUserAsync(stepNumber, ociUsername, ociPassword, (int)ComponentModes.LoginSingleStep);
+                var loginResult = await LoginUserAsync(stepNumber, ociUsername, ociPassword, (int) ComponentModes.LoginSingleStep);
                 userId = loginResult.UserId;
 
                 switch (loginResult.Result)
@@ -455,7 +455,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
             else if (Settings.EnableWiserLogin && !String.IsNullOrWhiteSpace(encryptedWiserUserId))
             {
                 await AccountsService.LogoutUserAsync(Settings, true);
-                var loginResult = await LoginUserAsync(stepNumber, overrideComponentMode: (int)ComponentModes.LoginSingleStep, encryptedUserId: encryptedWiserUserId);
+                var loginResult = await LoginUserAsync(stepNumber, overrideComponentMode: (int) ComponentModes.LoginSingleStep, encryptedUserId: encryptedWiserUserId);
                 userId = loginResult.UserId;
 
                 switch (loginResult.Result)
@@ -465,7 +465,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
                         stepNumber += 1;
 
                         // If there have been any extra query string parameters sent via Wiser, add them to the session so that they can be used in other places.
-                        var queryStringValuesToSkip = new List<string> { "templateid", "templatename", Settings.WiserLoginTokenKey, Settings.WiserLoginUserIdKey };
+                        var queryStringValuesToSkip = new List<string> {"templateid", "templatename", Settings.WiserLoginTokenKey, Settings.WiserLoginUserIdKey};
                         foreach (var queryStringKey in Request.Query.Keys)
                         {
                             if (queryStringValuesToSkip.Any(q => q.Equals(queryStringKey, StringComparison.OrdinalIgnoreCase)))
@@ -535,6 +535,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
                 {
                     stepNumber = 1;
                 }
+
                 var loginResult = await LoginUserAsync(stepNumber);
                 userId = loginResult.UserId;
                 switch (loginResult.Result)
@@ -608,7 +609,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
                 }
             }
 
-            resultHtml = resultHtml.Replace("{stepNumber}", stepNumber.ToString(), StringComparison.OrdinalIgnoreCase).Replace("{step}", ((LoginSteps)stepNumber).ToString(), StringComparison.OrdinalIgnoreCase);
+            resultHtml = resultHtml.Replace("{stepNumber}", stepNumber.ToString(), StringComparison.OrdinalIgnoreCase).Replace("{step}", ((LoginSteps) stepNumber).ToString(), StringComparison.OrdinalIgnoreCase);
 
             // If we have a user ID and a main query, replace the results from the query into the results HTML.
             if (userId > 0 && !String.IsNullOrWhiteSpace(Settings.MainQuery))
@@ -716,7 +717,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
                     {
                         if (Settings.ComponentMode == ComponentModes.ResetPassword && Settings.AutoLoginUserAfterAction && !String.IsNullOrWhiteSpace(userLogin))
                         {
-                            var loginResult = await LoginUserAsync(1, userLogin, request.Form[Settings.NewPasswordFieldName], (int)ComponentModes.LoginSingleStep);
+                            var loginResult = await LoginUserAsync(1, userLogin, request.Form[Settings.NewPasswordFieldName], (int) ComponentModes.LoginSingleStep);
                             if (loginResult.Result == LoginResults.Success)
                             {
                                 isLoggedIn = true;
@@ -748,6 +749,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
             resultHtml = resultHtml.Replace("{errorType}", "Server", StringComparison.OrdinalIgnoreCase);
             WriteToTrace(exception.ToString(), true);
         }
+
         return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(DoDefaultAccountHtmlReplacements(resultHtml), handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables), Constants.ComponentIdFormKey);
     }
 
@@ -794,7 +796,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
                 else
                 {
                     // If the results don't contain the column 'property_name', we have one column per field.
-                    var fieldsToIgnore = new List<string> { "id", "error", "success", "entity_type" };
+                    var fieldsToIgnore = new List<string> {"id", "error", "success", "entity_type"};
                     availableFields.AddRange(accountDataTable.Columns.Cast<DataColumn>()
                         .Where(dataColumn => !fieldsToIgnore.Any(f => f.Equals(dataColumn.ColumnName, StringComparison.OrdinalIgnoreCase)))
                         .Select(dataColumn => dataColumn.ColumnName));
@@ -993,7 +995,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
             // Add fields to the page.
             var query = AccountsService.SetupAccountQuery(Settings.GetSubAccountQuery, Settings, userData.MainUserId, subAccountId: selectedSubAccount);
             var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
-            var availableFields = new List<string> { Settings.PasswordFieldName, Settings.NewPasswordFieldName, Settings.NewPasswordConfirmationFieldName, Settings.LoginFieldName, Settings.EmailAddressFieldName, Settings.RoleFieldName };
+            var availableFields = new List<string> {Settings.PasswordFieldName, Settings.NewPasswordFieldName, Settings.NewPasswordConfirmationFieldName, Settings.LoginFieldName, Settings.EmailAddressFieldName, Settings.RoleFieldName};
 
             if (dataTable.Rows.Count > 0)
             {
@@ -1016,7 +1018,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
                 else
                 {
                     // If the results don't contain the column 'property_name', we have one column per field.
-                    var fieldsToIgnore = new List<string> { "id", "error", "success", "entity_type" };
+                    var fieldsToIgnore = new List<string> {"id", "error", "success", "entity_type"};
                     foreach (DataColumn dataColumn in dataTable.Columns)
                     {
                         if (availableFields.Contains(dataColumn.ColumnName) || fieldsToIgnore.Any(f => f.Equals(dataColumn.ColumnName, StringComparison.OrdinalIgnoreCase)))
@@ -1152,7 +1154,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
     /// Handle everything for logging in for cXML punch out (OCI).
     /// </summary>
     /// <returns></returns>
-    private Task HandleCXmlPunchOutLoginModeAsync()
+    private async Task HandleCXmlPunchOutLoginModeAsync()
     {
         throw new NotImplementedException();
         /*var httpContext = HttpContext;
@@ -1200,7 +1202,6 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
         }
 
         var request = httpContext.Request;*/
-
     }
 
     /// <summary>
@@ -1667,7 +1668,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
 
         var request = Request;
         var session = HttpContext.Session;
-        var actualComponentMode = overrideComponentMode > 0 ? (ComponentModes)overrideComponentMode : Settings.ComponentMode;
+        var actualComponentMode = overrideComponentMode > 0 ? (ComponentModes) overrideComponentMode : Settings.ComponentMode;
         var wiserValidationToken = HttpContextHelpers.GetRequestValue(HttpContext, Settings.WiserLoginTokenKey);
 
         // Check if we have enough information to login.
@@ -1837,7 +1838,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
             await AccountsService.SaveGoogleClientIdAsync(loggedInUserId, Settings);
         }
 
-        var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?)null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
+        var offset = (amountOfDaysToRememberCookie ?? 0) <= 0 ? (DateTimeOffset?) null : DateTimeOffset.Now.AddDays(amountOfDaysToRememberCookie.Value);
         HttpContextHelpers.WriteCookie(HttpContext, Settings.CookieName, cookieValue, offset, isEssential: true);
         // Save the cookie in the HttpContext.Items, so that we can use it in the rest of the request, because we can't read the cookie from the response.
         HttpContext.Items[Settings.CookieName] = cookieValue;
@@ -2074,15 +2075,14 @@ public class Account : CmsComponent<AccountCmsSettingsModel>
     private string DoDefaultAccountHtmlReplacements(string template)
     {
         var logoutUrl = QueryHelpers.AddQueryString(HttpContextHelpers.GetOriginalRequestUri(HttpContext).PathAndQuery, $"{Constants.LogoutQueryStringKey}{ComponentId}", "true");
-        return template.Replace("{loginFieldName}", Settings.LoginFieldName, StringComparison.OrdinalIgnoreCase).
-            Replace("{passwordFieldName}", Settings.PasswordFieldName, StringComparison.OrdinalIgnoreCase).
-            Replace("{newPasswordFieldName}", Settings.NewPasswordFieldName, StringComparison.OrdinalIgnoreCase).
-            Replace("{newPasswordConfirmationFieldName}", Settings.NewPasswordConfirmationFieldName, StringComparison.OrdinalIgnoreCase).
-            Replace("{entityType}", Settings.EntityType, StringComparison.OrdinalIgnoreCase).
-            Replace("{contentId}", ComponentId.ToString(), StringComparison.OrdinalIgnoreCase).
-            Replace("{logoutUrl}", logoutUrl, StringComparison.OrdinalIgnoreCase).
-            Replace("{emailAddressFieldName}", Settings.EmailAddressFieldName, StringComparison.OrdinalIgnoreCase).
-            Replace("<jform", "<form", StringComparison.OrdinalIgnoreCase).
-            Replace("</jform", "</form", StringComparison.OrdinalIgnoreCase);
+        return template.Replace("{loginFieldName}", Settings.LoginFieldName, StringComparison.OrdinalIgnoreCase)
+            .Replace("{passwordFieldName}", Settings.PasswordFieldName, StringComparison.OrdinalIgnoreCase)
+            .Replace("{newPasswordFieldName}", Settings.NewPasswordFieldName, StringComparison.OrdinalIgnoreCase)
+            .Replace("{newPasswordConfirmationFieldName}", Settings.NewPasswordConfirmationFieldName, StringComparison.OrdinalIgnoreCase)
+            .Replace("{entityType}", Settings.EntityType, StringComparison.OrdinalIgnoreCase)
+            .Replace("{contentId}", ComponentId.ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{logoutUrl}", logoutUrl, StringComparison.OrdinalIgnoreCase)
+            .Replace("{emailAddressFieldName}", Settings.EmailAddressFieldName, StringComparison.OrdinalIgnoreCase)
+            .Replace("<jform", "<form", StringComparison.OrdinalIgnoreCase).Replace("</jform", "</form", StringComparison.OrdinalIgnoreCase);
     }
 }

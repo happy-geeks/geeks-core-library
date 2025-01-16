@@ -13,9 +13,9 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions;
 
 public static class DbDataReaderExtensions
 {
-    public static async Task<Template> ToTemplateModelAsync(this DbDataReader reader, TemplateTypes? type = null)
+    public static async Task<Template> ToTemplateModelAsync(this DbDataReader reader, TemplateTypes? type = null, bool legacy = false)
     {
-        if (!Enum.TryParse(typeof(TemplateTypes), Convert.ToString(await reader.GetFieldValueAsync<int>("template_type")), true, out var templateType))
+        if (!Enum.TryParse(typeof(TemplateTypes), legacy ? reader.GetStringHandleNull("template_type") : Convert.ToString(await reader.GetFieldValueAsync<int>("template_type")), true, out var templateType))
         {
             if (!Enum.TryParse(typeof(TemplateTypes), reader.GetStringHandleNull("root_name"), true, out templateType))
             {
@@ -37,8 +37,8 @@ public static class DbDataReaderExtensions
         template.RootName = reader.GetStringHandleNull("root_name");
         template.ParentName = reader.GetStringHandleNull("parent_name");
         template.Name = reader.GetStringHandleNull("template_name");
-        template.Type = (TemplateTypes)(templateType ?? TemplateTypes.Unknown);
-        template.InsertMode = (ResourceInsertModes)(insertMode ?? ResourceInsertModes.Standard);
+        template.Type = (TemplateTypes) (templateType ?? TemplateTypes.Unknown);
+        template.InsertMode = (ResourceInsertModes) (insertMode ?? ResourceInsertModes.Standard);
         template.SortOrder = await reader.IsDBNullAsync("ordering") ? 0 : await reader.GetFieldValueAsync<int>("ordering");
         template.ParentSortOrder = await reader.IsDBNullAsync("parent_ordering") ? 0 : await reader.GetFieldValueAsync<int>("parent_ordering");
         template.LoadAlways = Convert.ToBoolean(reader.GetValue("load_always"));
@@ -49,7 +49,7 @@ public static class DbDataReaderExtensions
         template.CachePerUser = reader.HasColumn("cache_per_user") && Convert.ToBoolean(reader.GetValue("cache_per_user"));
         template.CacheUsingRegex = reader.HasColumn("cache_using_regex") && Convert.ToBoolean(reader.GetValue("cache_using_regex"));
         template.CachingMinutes = await reader.IsDBNullAsync("cache_minutes") ? 0 : await reader.GetFieldValueAsync<int>("cache_minutes");
-        template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations)await reader.GetFieldValueAsync<int>("caching_location");
+        template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations) await reader.GetFieldValueAsync<int>("caching_location");
         template.CachingRegex = reader.GetStringHandleNull("cache_regex");
         template.RobotsNoIndex = reader.HasColumn("robots_no_index") && Convert.ToBoolean(reader.GetValue("robots_no_index"));
         template.RobotsNoFollow = reader.HasColumn("robots_no_follow") && Convert.ToBoolean(reader.GetValue("robots_no_follow"));
@@ -179,7 +179,7 @@ public static class DbDataReaderExtensions
 
         if (isQuery)
         {
-            var queryTemplate = (QueryTemplate)template;
+            var queryTemplate = (QueryTemplate) template;
             queryTemplate.GroupingSettings = new QueryGroupingSettings
             {
                 GroupingFieldsPrefix = reader.GetStringHandleNull("grouping_prefix"),
@@ -194,7 +194,7 @@ public static class DbDataReaderExtensions
 
         if (isRoutine)
         {
-            var routineTemplate = (RoutineTemplate)template;
+            var routineTemplate = (RoutineTemplate) template;
             routineTemplate.RoutineType = (RoutineTypes) await reader.GetFieldValueAsync<int>("routine_type");
             routineTemplate.RoutineParameters = reader.GetStringHandleNull("routine_parameters");
             routineTemplate.RoutineReturnType = reader.GetStringHandleNull("routine_return_type");
@@ -204,7 +204,7 @@ public static class DbDataReaderExtensions
 
         if (isTrigger)
         {
-            var triggerTemplate = (TriggerTemplate)template;
+            var triggerTemplate = (TriggerTemplate) template;
             triggerTemplate.TriggerTiming = (TriggerTimings) await reader.GetFieldValueAsync<int>("trigger_timing");
             triggerTemplate.TriggerEvent = (TriggerEvents) await reader.GetFieldValueAsync<int>("trigger_event");
             triggerTemplate.TriggerTableName = reader.GetStringHandleNull("trigger_table_name");

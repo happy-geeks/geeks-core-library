@@ -30,24 +30,25 @@ public class ComponentsService(
             logger.LogTrace("Query for component is empty!");
             return new DataTable();
         }
-        
+
         if (extraDataForReplacements != null && extraDataForReplacements.Any())
         {
             queryToUse = replacementsMediator.DoReplacements(queryToUse, extraDataForReplacements, true);
         }
-        
+
         await using var templatesScope = serviceProvider.CreateAsyncScope();
         var templatesService = templatesScope.ServiceProvider.GetRequiredService<ITemplatesService>();
-        queryToUse = await templatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false, 
-            dataRow: dataRowForReplacements, forQuery: true);
-        if (doVariablesCheck)
+        queryToUse = await templatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false, dataRow: dataRowForReplacements, forQuery: true);
+        if (!doVariablesCheck)
         {
-            var expression = new Regex("{.*?}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            if (expression.IsMatch(queryToUse))
-            {
-                // Don't proceed, query from data selector contains variables, this gives syntax errors.
-                return new DataTable();
-            }
+            return await databaseConnection.GetAsync(queryToUse, skipCache);
+        }
+
+        var expression = new Regex("{.*?}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+        if (expression.IsMatch(queryToUse))
+        {
+            // Don't proceed, query from data selector contains variables, this gives syntax errors.
+            return new DataTable();
         }
 
         return await databaseConnection.GetAsync(queryToUse, skipCache);

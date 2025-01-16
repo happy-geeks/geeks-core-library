@@ -297,6 +297,7 @@ public static class StringReplacementsExtensions
         {
             return input.ToString(format);
         }
+
         return input.ToString(format, new CultureInfo(culture));
     }
 

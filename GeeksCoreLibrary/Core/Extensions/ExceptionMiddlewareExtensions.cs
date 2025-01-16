@@ -15,14 +15,14 @@ public static class ExceptionMiddlewareExtensions
         {
             appError.Run(async context =>
             {
-                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                context.Response.StatusCode = (int) HttpStatusCode.InternalServerError;
                 context.Response.ContentType = "application/json";
                 var contextFeature = context.Features.Get<IExceptionHandlerFeature>();
-                if(contextFeature != null)
-                { 
+                if (contextFeature != null)
+                {
                     logger.LogCritical($"An unhandled exception occurred: {contextFeature.Error}");
 
-                    var response = new { error = contextFeature.Error.Message };
+                    var response = new {error = contextFeature.Error.Message};
                     await context.Response.WriteAsync(JsonConvert.SerializeObject(response));
                 }
             });

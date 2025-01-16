@@ -40,6 +40,7 @@ public class PostNLService : IPostNLService, IScopedService
     }
 
     private static readonly List<string> europeanCountries = ["AT", "IT", "BE", "LV", "BG", "LT", "HR", "LU", "CY", "CZ", "DK", "EE", "PL", "FI", "PT", "FR", "RO", "DE", "SK", "SI", "GR", "ES", "HU", "SE", "IE"];
+
     /// <summary>
     /// Cleans the PostNL log table
     /// </summary>
@@ -345,7 +346,7 @@ public class PostNLService : IPostNLService, IScopedService
         {
             var restClient = new RestClient(gclSettings.PostNlApiBaseUrl);
             var restRequest = new RestRequest("/shipment/v2_2/label?confirm=true", Method.Post);
-            requestString = JsonConvert.SerializeObject(request, Formatting.None, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+            requestString = JsonConvert.SerializeObject(request, Formatting.None, new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore});
             restRequest.AddParameter("application/json", requestString, ParameterType.RequestBody);
             restRequest.AddJsonBody(request);
             restRequest.AddHeader("apiKey", gclSettings.PostNlShippingApiKey);

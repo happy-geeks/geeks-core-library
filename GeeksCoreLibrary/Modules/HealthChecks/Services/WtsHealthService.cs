@@ -68,6 +68,7 @@ public class WtsHealthService(IDatabaseConnection databaseConnection, IHttpConte
                     {
                         errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} should have started more than 5 minutes ago");
                     }
+
                     break;
                 }
                 case "running":
@@ -80,6 +81,7 @@ public class WtsHealthService(IDatabaseConnection databaseConnection, IHttpConte
                             errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} has been running for longer than {runningLongerThanMinutes.Value} minutes");
                         }
                     }
+
                     break;
                 case "stopped":
                     errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} is stopped");
@@ -103,6 +105,7 @@ public class WtsHealthService(IDatabaseConnection databaseConnection, IHttpConte
                     {
                         errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} should have started more than 5 minutes ago");
                     }
+
                     break;
                 }
                 default:

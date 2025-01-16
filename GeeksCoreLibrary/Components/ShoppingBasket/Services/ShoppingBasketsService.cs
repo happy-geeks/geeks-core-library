@@ -64,10 +64,12 @@ public class ShoppingBasketsService(
 
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("uniquePaymentNumber", uniquePaymentNumber);
-        var query = $@"SELECT `order`.id
-FROM `{tablePrefix}{WiserTableNames.WiserItem}` AS `order`
-JOIN `{tablePrefix}{WiserTableNames.WiserItemDetail}` AS uniquepaymentnumber ON uniquepaymentnumber.item_id = `order`.id AND uniquepaymentnumber.`key` = '{OrderProcess.Models.Constants.UniquePaymentNumberProperty}' AND uniquepaymentnumber.`value` = ?uniquePaymentNumber
-WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}', '{OrderProcess.Models.Constants.ConceptOrderEntityType}');";
+        var query = $"""
+                     SELECT `order`.id
+                     FROM `{tablePrefix}{WiserTableNames.WiserItem}` AS `order`
+                     JOIN `{tablePrefix}{WiserTableNames.WiserItemDetail}` AS uniquepaymentnumber ON uniquepaymentnumber.item_id = `order`.id AND uniquepaymentnumber.`key` = '{OrderProcess.Models.Constants.UniquePaymentNumberProperty}' AND uniquepaymentnumber.`value` = ?uniquePaymentNumber
+                     WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}', '{OrderProcess.Models.Constants.ConceptOrderEntityType}');
+                     """;
         var getBasketIdsResult = await databaseConnection.GetAsync(query, true);
 
         if (getBasketIdsResult.Rows.Count == 0)
@@ -108,10 +110,12 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("pspTransactionId", pspTransactionId);
-        var query = $@"SELECT `order`.id
-FROM `{tablePrefix}{WiserTableNames.WiserItem}` AS `order`
-JOIN `{tablePrefix}{WiserTableNames.WiserItemDetail}` AS pspTransactionId ON pspTransactionId.item_id = `order`.id AND pspTransactionId.`key` = '{OrderProcess.Models.Constants.PaymentProviderTransactionId}' AND pspTransactionId.`value` = ?pspTransactionId
-WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}', '{OrderProcess.Models.Constants.ConceptOrderEntityType}');";
+        var query = $"""
+                     SELECT `order`.id
+                     FROM `{tablePrefix}{WiserTableNames.WiserItem}` AS `order`
+                     JOIN `{tablePrefix}{WiserTableNames.WiserItemDetail}` AS pspTransactionId ON pspTransactionId.item_id = `order`.id AND pspTransactionId.`key` = '{OrderProcess.Models.Constants.PaymentProviderTransactionId}' AND pspTransactionId.`value` = ?pspTransactionId
+                     WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}', '{OrderProcess.Models.Constants.ConceptOrderEntityType}');
+                     """;
         var getBasketIdsResult = await databaseConnection.GetAsync(query, true);
 
         if (getBasketIdsResult.Rows.Count == 0)
@@ -243,6 +247,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             var currentUsedCount = coupon.GetDetailValue<int>(CouponConstants.UsedCountKey);
             coupon.SetDetail(CouponConstants.UsedCountKey, (currentUsedCount + 1).ToString());
         }
+
         await wiserItemsService.SaveAsync(coupon, skipPermissionsCheck: true);
 
         return true;
@@ -308,10 +313,10 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         {
             var extraReplacements = new Dictionary<string, object>
             {
-                { "Account_MainUserId", user.MainUserId },
-                { "Account_UserId", user.UserId },
-                { "AccountWiser2_MainUserId", user.MainUserId },
-                { "AccountWiser2_UserId", user.UserId }
+                {"Account_MainUserId", user.MainUserId},
+                {"Account_UserId", user.UserId},
+                {"AccountWiser2_MainUserId", user.MainUserId},
+                {"AccountWiser2_UserId", user.UserId}
             };
             var query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(settings.GetBasketQuery, extraReplacements, forQuery: true)), stripNotExistingVariables: false, forQuery: true), true);
             var queryResult = await databaseConnection.GetAsync(query, true);
@@ -450,7 +455,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         if (loadBasketFromUser)
         {
             // Check if the user is logged in and has basket from account.
-            if (user is { MainUserId: > 0 } && !settings.MultipleBasketsPossible)
+            if (user is {MainUserId: > 0} && !settings.MultipleBasketsPossible)
             {
                 var linkedBaskets = await wiserItemsService.GetLinkedItemIdsAsync(user.MainUserId, basketToUserLinkType, Constants.BasketEntityType, skipPermissionsCheck: true);
                 var basketId = linkedBaskets.FirstOrDefault(id => id > 0);
@@ -710,22 +715,26 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
                 var copyBasketLinesLinkedItems = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_CopyLinkedItemsToConceptOrderLines")).Equals("true", StringComparison.OrdinalIgnoreCase);
                 if (copyBasketLinesLinkedItems)
                 {
-                    await databaseConnection.ExecuteAsync($@"
-                        INSERT INTO `{WiserTableNames.WiserItemLink}` (item_id, destination_item_id, ordering, type)
-                        SELECT item_id, {conceptLine.Id}, ordering, type
-                        FROM `{WiserTableNames.WiserItemLink}`
-                        WHERE destination_item_id = {line.Id} AND type <> {productToBasketLineLinkType}");
+                    await databaseConnection.ExecuteAsync($"""
+                                                           
+                                                                                   INSERT INTO `{WiserTableNames.WiserItemLink}` (item_id, destination_item_id, ordering, type)
+                                                                                   SELECT item_id, {conceptLine.Id}, ordering, type
+                                                                                   FROM `{WiserTableNames.WiserItemLink}`
+                                                                                   WHERE destination_item_id = {line.Id} AND type <> {productToBasketLineLinkType}
+                                                           """);
                 }
 
                 // Check if parent item links of the order lines should be copied over to the concept order.
                 var copyBasketLinesLinkedToItems = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_CopyLinkedToItemsToConceptOrderLines")).Equals("true", StringComparison.OrdinalIgnoreCase);
                 if (copyBasketLinesLinkedToItems)
                 {
-                    await databaseConnection.ExecuteAsync($@"
-                        INSERT INTO `{WiserTableNames.WiserItemLink}` (item_id, destination_item_id, ordering, type)
-                        SELECT {conceptLine.Id}, destination_item_id, ordering, type
-                        FROM `{WiserTableNames.WiserItemLink}`
-                        WHERE item_id = {line.Id} AND type <> {productToBasketLineLinkType}");
+                    await databaseConnection.ExecuteAsync($"""
+                                                           
+                                                                                   INSERT INTO `{WiserTableNames.WiserItemLink}` (item_id, destination_item_id, ordering, type)
+                                                                                   SELECT {conceptLine.Id}, destination_item_id, ordering, type
+                                                                                   FROM `{WiserTableNames.WiserItemLink}`
+                                                                                   WHERE item_id = {line.Id} AND type <> {productToBasketLineLinkType}
+                                                           """);
                 }
             }
 
@@ -739,9 +748,9 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
             var replacementData = new Dictionary<string, object>
             {
-                { "orderId", conceptOrder.Id },
-                { "linkType", linkTypeOrderLineToOrder },
-                { "userId", userId }
+                {"orderId", conceptOrder.Id},
+                {"linkType", linkTypeOrderLineToOrder},
+                {"userId", userId}
             };
 
             query = stringReplacementsService.DoReplacements(query, replacementData, forQuery: true);
@@ -757,22 +766,26 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             var copyBasketLinkedItems = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_CopyLinkedItemsToConceptOrder")).Equals("true", StringComparison.OrdinalIgnoreCase);
             if (copyBasketLinkedItems)
             {
-                await databaseConnection.ExecuteAsync($@"
-                    INSERT INTO `{WiserTableNames.WiserItemLink}` (item_id, destination_item_id, ordering, type)
-                    SELECT item_id, {conceptOrder.Id}, ordering, type
-                    FROM `{WiserTableNames.WiserItemLink}`
-                    WHERE destination_item_id = {shoppingBasket.Id} AND type <> 5002");
+                await databaseConnection.ExecuteAsync($"""
+                                                       
+                                                                           INSERT INTO `{WiserTableNames.WiserItemLink}` (item_id, destination_item_id, ordering, type)
+                                                                           SELECT item_id, {conceptOrder.Id}, ordering, type
+                                                                           FROM `{WiserTableNames.WiserItemLink}`
+                                                                           WHERE destination_item_id = {shoppingBasket.Id} AND type <> 5002
+                                                       """);
             }
 
             // Check if parent item links (except user) should be copied over to the concept order.
             var copyBasketLinkedToItems = (await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_CopyLinkedItemsToConceptOrder")).Equals("true", StringComparison.OrdinalIgnoreCase);
             if (copyBasketLinkedToItems)
             {
-                await databaseConnection.ExecuteAsync($@"
-                    INSERT INTO `{WiserTableNames.WiserItemLink}` (item_id, destination_item_id, ordering, type)
-                    SELECT {conceptOrder.Id}, destination_item_id, ordering, type
-                    FROM `{WiserTableNames.WiserItemLink}`
-                    WHERE item_id = {shoppingBasket.Id} AND type <> {Constants.BasketToUserLinkType}");
+                await databaseConnection.ExecuteAsync($"""
+                                                       
+                                                                           INSERT INTO `{WiserTableNames.WiserItemLink}` (item_id, destination_item_id, ordering, type)
+                                                                           SELECT {conceptOrder.Id}, destination_item_id, ordering, type
+                                                                           FROM `{WiserTableNames.WiserItemLink}`
+                                                                           WHERE item_id = {shoppingBasket.Id} AND type <> {Constants.BasketToUserLinkType}
+                                                       """);
             }
         }
 
@@ -784,7 +797,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
     {
         var user = await accountsService.GetUserDataFromCookieAsync();
         var userId = user.MainUserId;
-        var linkTypeBasketLineToBasket = await wiserItemsService.GetLinkTypeAsync( Constants.BasketEntityType, Constants.BasketLineEntityType);
+        var linkTypeBasketLineToBasket = await wiserItemsService.GetLinkTypeAsync(Constants.BasketEntityType, Constants.BasketLineEntityType);
 
         var userEntityType = user.EntityType;
         if (String.IsNullOrWhiteSpace(userEntityType))
@@ -916,8 +929,8 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         shoppingBasket ??= new WiserItemModel();
         basketLines ??= [];
 
-        var repeatVars = new[] { "<!--{repeat:lines~?(.*?)}-->(.*?)<!--{/repeat:lines.*?}-->", "{repeat:lines~?(.*?)}(.*?){/repeat:lines.*?}" };
-        var priceVars = new[] { "{price~(.*?)}", "{singleprice~(.*?)}", "{pricewithoutfactor~(.*?)}", "{singlepricewithoutfactor~(.*?)}" };
+        var repeatVars = new[] {"<!--{repeat:lines~?(.*?)}-->(.*?)<!--{/repeat:lines.*?}-->", "{repeat:lines~?(.*?)}(.*?){/repeat:lines.*?}"};
+        var priceVars = new[] {"{price~(.*?)}", "{singleprice~(.*?)}", "{pricewithoutfactor~(.*?)}", "{singlepricewithoutfactor~(.*?)}"};
         var cultureName = shoppingBasket.ContainsDetail("valutaCulture") ? shoppingBasket.GetDetailValue("valutaCulture") : "nl-NL";
 
         logger.LogTrace("GCL ShoppingBasket: Start ReplaceBasketInTemplate");
@@ -1018,6 +1031,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         {
             template = template.Replace(countMatch.Value, GetLines(basketLines, countMatch.Groups[1].Value).Count.ToString());
         }
+
         foreach (Match totalCountMatch in Regex.Matches(template, "{totalcount~(.*?)}", RegexOptions.Singleline))
         {
             template = template.Replace(totalCountMatch.Value, GetTotalQuantity(basketLines, totalCountMatch.Groups[1].Value).ToString(CultureInfo.InvariantCulture));
@@ -1137,7 +1151,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         else if (replaceUserAccountVariables)
         {
             var details = await GetUserDetailsAsync();
-            if (details is { Count: > 0 })
+            if (details is {Count: > 0})
             {
                 userDetails = details;
                 template = stringReplacementsService.DoReplacements(template, userDetails, forQuery);
@@ -1163,7 +1177,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         logger.LogTrace("GCL ShoppingBasket: End replacing payment methods");
 
         // Replace additional replacement data, if available.
-        if (additionalReplacementData is { Count: > 0 })
+        if (additionalReplacementData is {Count: > 0})
         {
             template = stringReplacementsService.DoReplacements(template, additionalReplacementData, forQuery: forQuery);
 
@@ -1574,11 +1588,11 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         {
             var details = new Dictionary<string, string>
             {
-                { "includesvat", couponIncludesVat ? "1" : "0" },
-                { "vatrate", couponVatRateSetting },
-                { "code", couponResult.Coupon.GetDetailValue(CouponConstants.Code) },
-                { OrderProcessConstants.DescriptionProperty, "Kortingscode" },
-                { Constants.CouponDividedOverProductsPropertyName, divideDiscountOverProducts ? "1" : "0" }
+                {"includesvat", couponIncludesVat ? "1" : "0"},
+                {"vatrate", couponVatRateSetting},
+                {"code", couponResult.Coupon.GetDetailValue(CouponConstants.Code)},
+                {OrderProcessConstants.DescriptionProperty, "Kortingscode"},
+                {Constants.CouponDividedOverProductsPropertyName, divideDiscountOverProducts ? "1" : "0"}
             };
 
             if (divideDiscountOverProducts)
@@ -1781,7 +1795,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             }
         }
 
-        await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, createNewTransaction: createNewTransaction,  basketToUserLinkType: basketToUserLinkType);
+        await RecalculateVariablesAsync(shoppingBasket, basketLines, settings, createNewTransaction: createNewTransaction, basketToUserLinkType: basketToUserLinkType);
 
         return basketLines;
     }
@@ -2067,7 +2081,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
         if (httpContext == null)
         {
-            return new HandleCouponResultModel { ResultCode = ShoppingBasket.HandleCouponResults.HttpContextUnavailable };
+            return new HandleCouponResultModel {ResultCode = ShoppingBasket.HandleCouponResults.HttpContextUnavailable};
         }
 
         var divideDiscountOverProducts = (await objectsService.FindSystemObjectByDomainNameAsync("BASKET_coupon_divide_discount_over_products")).Equals("true", StringComparison.OrdinalIgnoreCase);
@@ -2082,7 +2096,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             couponCode = HttpContextHelpers.GetRequestValue(httpContext, "couponcode", false);
             if (String.IsNullOrWhiteSpace(couponCode))
             {
-                return new HandleCouponResultModel { ResultCode = ShoppingBasket.HandleCouponResults.InvalidCouponCode };
+                return new HandleCouponResultModel {ResultCode = ShoppingBasket.HandleCouponResults.InvalidCouponCode};
             }
 
             handleCouponResult = await HandleCouponAsync(shoppingBasket, basketLines, settings, couponCode, divideDiscountOverProducts);
@@ -2098,7 +2112,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
             if (nrOfCoupons >= nrOfCouponsAllowed)
             {
                 logger.LogTrace("Reached maximum amount of coupons.");
-                return new HandleCouponResultModel { ResultCode = ShoppingBasket.HandleCouponResults.MaximumCouponsReached };
+                return new HandleCouponResultModel {ResultCode = ShoppingBasket.HandleCouponResults.MaximumCouponsReached};
             }
         }
 
@@ -2134,25 +2148,27 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         try
         {
             databaseConnection.ClearParameters();
-            var getVatRulesResult = await databaseConnection.GetAsync($@"
-                    SELECT
-                        vatrule.id,
-                        IFNULL(country.`value`, '') AS country,
-                        IFNULL(CAST(b2b.value AS SIGNED), 0) AS b2b,
-                        CAST(COALESCE(vatratecode.value, vatrate.value, 0) AS SIGNED) AS vatrate,
-                        IFNULL(CAST(percentage.value AS DECIMAL(65,30)), 0) AS percentage
-                    FROM `{WiserTableNames.WiserItem}` AS vatrule
-                    LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS country ON country.item_id = vatrule.id AND country.`key` = 'country'
-                    LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS b2b ON b2b.item_id = vatrule.id AND b2b.`key` = 'b2b'
-                    LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS vatrate ON vatrate.item_id = vatrule.id AND vatrate.`key` = 'vatrate'
-                    LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS vatratecode ON vatratecode.item_id = vatrate.`value` AND vatratecode.`key` = 'code'
-                    LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS percentage ON percentage.item_id = vatrule.id AND percentage.`key` = 'percentage'
-                    WHERE vatrule.entity_type = 'vatrule'
-                    ORDER BY country.`value` DESC, b2b.`value` DESC", true);
+            var getVatRulesResult = await databaseConnection.GetAsync($"""
+                                                                       
+                                                                                           SELECT
+                                                                                               vatrule.id,
+                                                                                               IFNULL(country.`value`, '') AS country,
+                                                                                               IFNULL(CAST(b2b.value AS SIGNED), 0) AS b2b,
+                                                                                               CAST(COALESCE(vatratecode.value, vatrate.value, 0) AS SIGNED) AS vatrate,
+                                                                                               IFNULL(CAST(percentage.value AS DECIMAL(65,30)), 0) AS percentage
+                                                                                           FROM `{WiserTableNames.WiserItem}` AS vatrule
+                                                                                           LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS country ON country.item_id = vatrule.id AND country.`key` = 'country'
+                                                                                           LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS b2b ON b2b.item_id = vatrule.id AND b2b.`key` = 'b2b'
+                                                                                           LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS vatrate ON vatrate.item_id = vatrule.id AND vatrate.`key` = 'vatrate'
+                                                                                           LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS vatratecode ON vatratecode.item_id = vatrate.`value` AND vatratecode.`key` = 'code'
+                                                                                           LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS percentage ON percentage.item_id = vatrule.id AND percentage.`key` = 'percentage'
+                                                                                           WHERE vatrule.entity_type = 'vatrule'
+                                                                                           ORDER BY country.`value` DESC, b2b.`value` DESC
+                                                                       """, true);
 
             foreach (DataRow row in getVatRulesResult.Rows)
             {
-                var rule = new VatRule { Country = row.Field<string>("country") };
+                var rule = new VatRule {Country = row.Field<string>("country")};
 
                 var ruleB2BValue = row.Field<long>("b2b");
                 var vatRateValue = row.Field<long>("vatrate");
@@ -2298,9 +2314,9 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
 
             var queryReplacements = new Dictionary<string, string>()
             {
-                { "quantity", "1" },
-                { "itemid", freeProductId.ToString() },
-                { "language_code", languagesService.CurrentLanguageCode }
+                {"quantity", "1"},
+                {"itemid", freeProductId.ToString()},
+                {"language_code", languagesService.CurrentLanguageCode}
             };
 
             tempQuery = stringReplacementsService.DoReplacements(tempQuery, queryReplacements, true);
@@ -2347,11 +2363,13 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
     public async Task<IList<WiserItemModel>> GetFreeProductActionsAsync()
     {
         databaseConnection.ClearParameters();
-        databaseConnection.AddParameter("environment", (int)gclSettings.Environment);
-        var getActionsResult = await databaseConnection.GetAsync($@"
-                SELECT id, entity_type
-                FROM `{WiserTableNames.WiserItem}`
-                WHERE entity_type = 'actie' AND published_environment & ?environment = ?environment");
+        databaseConnection.AddParameter("environment", (int) gclSettings.Environment);
+        var getActionsResult = await databaseConnection.GetAsync($"""
+                                                                  
+                                                                                  SELECT id, entity_type
+                                                                                  FROM `{WiserTableNames.WiserItem}`
+                                                                                  WHERE entity_type = 'actie' AND published_environment & ?environment = ?environment
+                                                                  """);
 
         var result = new List<WiserItemModel>(getActionsResult.Rows.Count);
 
@@ -2381,7 +2399,7 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
         var userDetails = await GetUserDetailsAsync();
         if (userDetails.ContainsKey("pay_btw") && userDetails["pay_btw"] == "0")
         {
-            return new VatRule { Percentage = 0M, VatRate = vatRate };
+            return new VatRule {Percentage = 0M, VatRate = vatRate};
         }
 
         var vatRules = await GetVatRulesAsync();
@@ -2613,11 +2631,13 @@ WHERE `order`.entity_type IN ('{OrderProcess.Models.Constants.OrderEntityType}',
     {
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("couponCode", couponCode);
-        var getCouponIdResult = await databaseConnection.GetAsync($@"
-SELECT coupon.id
-FROM `{WiserTableNames.WiserItem}` AS coupon
-JOIN `{WiserTableNames.WiserItemDetail}` AS `code` ON `code`.item_id = coupon.id AND `code`.`key` = 'code' AND `code`.`value` = ?couponCode
-WHERE coupon.entity_type = 'coupon'", true);
+        var getCouponIdResult = await databaseConnection.GetAsync($"""
+
+                                                                   SELECT coupon.id
+                                                                   FROM `{WiserTableNames.WiserItem}` AS coupon
+                                                                   JOIN `{WiserTableNames.WiserItemDetail}` AS `code` ON `code`.item_id = coupon.id AND `code`.`key` = 'code' AND `code`.`value` = ?couponCode
+                                                                   WHERE coupon.entity_type = 'coupon'
+                                                                   """, true);
 
         if (getCouponIdResult.Rows.Count == 0)
         {
@@ -2735,8 +2755,8 @@ WHERE coupon.entity_type = 'coupon'", true);
         // Add messages that were set while loading.
         var additionalReplacementData = new Dictionary<string, object>
         {
-            { "BasketLineStockActionMessage", basketLineStockActionMessage },
-            { "BasketLineValidityMessage", basketLineValidityMessage }
+            {"BasketLineStockActionMessage", basketLineStockActionMessage},
+            {"BasketLineValidityMessage", basketLineValidityMessage}
         };
 
         var html = await templatesService.DoReplacesAsync(htmlTemplate, false, false, false);
@@ -2767,11 +2787,11 @@ WHERE coupon.entity_type = 'coupon'", true);
         var user = await accountsService.GetUserDataFromCookieAsync();
         var extraReplacements = new Dictionary<string, object>
         {
-            { "linktype", 5002 },
-            { "Account_MainUserId", user.MainUserId },
-            { "Account_UserId", user.UserId },
-            { "AccountWiser2_MainUserId", user.MainUserId },
-            { "AccountWiser2_UserId", user.UserId }
+            {"linktype", 5002},
+            {"Account_MainUserId", user.MainUserId},
+            {"Account_UserId", user.UserId},
+            {"AccountWiser2_MainUserId", user.MainUserId},
+            {"AccountWiser2_UserId", user.UserId}
         };
         query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(query, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
 
@@ -2937,7 +2957,7 @@ WHERE coupon.entity_type = 'coupon'", true);
     /// <returns></returns>
     private async Task<HandleCouponResultModel> HandleCouponAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, WiserItemModel coupon, bool divideDiscountOverProducts = false)
     {
-        var result = new HandleCouponResultModel { Coupon = coupon };
+        var result = new HandleCouponResultModel {Coupon = coupon};
 
         if (coupon == null || coupon.Id == 0)
         {
@@ -2966,7 +2986,7 @@ WHERE coupon.entity_type = 'coupon'", true);
                             excludedItemName = dataRow.Field<string>("excluded_item_name");
                         }
 
-                        excludedItems.Add(new CouponExcludedItemModel { ItemId = excludedItemId, Name = excludedItemName });
+                        excludedItems.Add(new CouponExcludedItemModel {ItemId = excludedItemId, Name = excludedItemName});
                     }
                 }
             }
@@ -3322,6 +3342,7 @@ WHERE coupon.entity_type = 'coupon'", true);
                 vatRates.Add(vatRate);
             }
         }
+
         return vatRates;
     }
 
@@ -3419,11 +3440,11 @@ WHERE coupon.entity_type = 'coupon'", true);
         query = stringReplacementsService.DoSessionReplacements(query, true);
         var replacementsData = new Dictionary<string, object>
         {
-            { "linktype", 5002 },
-            { "Account_MainUserId", user.MainUserId },
-            { "Account_UserId", user.UserId },
-            { "AccountWiser2_MainUserId", user.MainUserId },
-            { "AccountWiser2_UserId", user.UserId }
+            {"linktype", 5002},
+            {"Account_MainUserId", user.MainUserId},
+            {"Account_UserId", user.UserId},
+            {"AccountWiser2_MainUserId", user.MainUserId},
+            {"AccountWiser2_UserId", user.UserId}
         };
         query = stringReplacementsService.DoReplacements(query, replacementsData, forQuery: true);
         query = await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, query, stripNotExistingVariables: false, forQuery: true);
@@ -3502,11 +3523,11 @@ WHERE coupon.entity_type = 'coupon'", true);
         query = stringReplacementsService.DoSessionReplacements(query, true);
         var replacementsData = new Dictionary<string, object>
         {
-            { "linktype", 5002 },
-            { "Account_MainUserId", user.MainUserId },
-            { "Account_UserId", user.UserId },
-            { "AccountWiser2_MainUserId", user.MainUserId },
-            { "AccountWiser2_UserId", user.UserId }
+            {"linktype", 5002},
+            {"Account_MainUserId", user.MainUserId},
+            {"Account_UserId", user.UserId},
+            {"AccountWiser2_MainUserId", user.MainUserId},
+            {"AccountWiser2_UserId", user.UserId}
         };
         query = stringReplacementsService.DoReplacements(query, replacementsData, forQuery: true);
         query = await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, query, stripNotExistingVariables: false, forQuery: true);
@@ -3530,11 +3551,11 @@ WHERE coupon.entity_type = 'coupon'", true);
         var user = await accountsService.GetUserDataFromCookieAsync();
         var extraReplacements = new Dictionary<string, object>
         {
-            { "linktype", 5002 },
-            { "Account_MainUserId", user.MainUserId },
-            { "Account_UserId", user.UserId },
-            { "AccountWiser2_MainUserId", user.MainUserId },
-            { "AccountWiser2_UserId", user.UserId }
+            {"linktype", 5002},
+            {"Account_MainUserId", user.MainUserId},
+            {"Account_UserId", user.UserId},
+            {"AccountWiser2_MainUserId", user.MainUserId},
+            {"AccountWiser2_UserId", user.UserId}
         };
         var query = stringReplacementsService.DoHttpRequestReplacements(await ReplaceBasketInTemplateAsync(shoppingBasket, basketLines, settings, stringReplacementsService.DoSessionReplacements(stringReplacementsService.DoReplacements(settings.AddToBasketQuery, extraReplacements, forQuery: true), true), stripNotExistingVariables: false, forQuery: true), true);
         await databaseConnection.ExecuteAsync(query);

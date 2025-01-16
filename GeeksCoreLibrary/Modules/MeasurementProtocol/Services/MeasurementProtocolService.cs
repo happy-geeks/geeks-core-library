@@ -46,7 +46,7 @@ public class MeasurementProtocolService(IShoppingBasketsService shoppingBasketsS
 
         var replaceData = new Dictionary<string, object>()
         {
-            {"payment_method", dataTable.Rows[0].Field<string>("title") }
+            {"payment_method", dataTable.Rows[0].Field<string>("title")}
         };
 
         await SendMeasurement(orderProcessSettings, orderProcessSettings.MeasurementProtocolAddPaymentInfoJson, orderProcessSettings.MeasurementProtocolItemJson, replaceData, shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
@@ -59,8 +59,8 @@ public class MeasurementProtocolService(IShoppingBasketsService shoppingBasketsS
 
         var replaceData = new Dictionary<string, object>()
         {
-            {"tax_price", tax },
-            {"transaction_id", transactionId }
+            {"tax_price", tax},
+            {"transaction_id", transactionId}
         };
 
         await SendMeasurement(orderProcessSettings, orderProcessSettings.MeasurementProtocolPurchaseJson, orderProcessSettings.MeasurementProtocolItemJson, replaceData, shoppingBasket, shoppingBasketLines, shoppingBasketSettings);
@@ -176,7 +176,7 @@ public class MeasurementProtocolService(IShoppingBasketsService shoppingBasketsS
             }
 
             var couponItem = await wiserItemsService.GetItemDetailsAsync(couponItemId, skipPermissionsCheck: true);
-            if (couponItem is not { Id: > 0 })
+            if (couponItem is not {Id: > 0})
             {
                 continue;
             }

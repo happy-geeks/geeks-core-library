@@ -25,7 +25,7 @@ using RestSharp;
 
 namespace GeeksCoreLibrary.Components.WebForm;
 
-public class WebForm : CmsComponent<WebFormCmsSettingsModel>
+public class WebForm : CmsComponent<WebFormCmsSettingsModel, WebForm.ComponentModes>
 {
     private readonly GclSettings gclSettings;
     private readonly IWiserItemsService wiserItemsService;
@@ -33,11 +33,23 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel>
     private readonly ILanguagesService languagesService;
     private readonly IObjectsService objectsService;
 
+    #region Internal variables
+
+    private bool allowLegacyEmailTemplateGeneration;
+
+    #endregion
+
     #region Enums
 
     public enum ComponentModes
     {
-        BasicForm = 1
+        BasicForm = 1,
+
+        /// <summary>
+        /// Legacy support for the JCL Sendform component.
+        /// </summary>
+        [CmsEnum(HideInCms = true)]
+        Legacy = 2
     }
 
     #endregion
@@ -73,10 +85,17 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel>
 
         ComponentId = dynamicContent.Id;
         Settings.Description = dynamicContent.Title;
+        if (dynamicContent.Name is "JuiceControlLibrary.Sendform" && !forcedComponentMode.HasValue)
+        {
+            // Force component mode to Legacy mode if it was created through the JCL.
+            Settings.ComponentMode = ComponentModes.Legacy;
+            allowLegacyEmailTemplateGeneration = true;
+        }
+
         ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
         else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
         {
@@ -243,7 +262,7 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel>
         if (Settings.EmailTemplateItemId > 0)
         {
             var wiserItem = await wiserItemsService.GetItemDetailsAsync(Settings.EmailTemplateItemId, languageCode: languagesService.CurrentLanguageCode, skipPermissionsCheck: true);
-            if (wiserItem is { Id: > 0 })
+            if (wiserItem is {Id: > 0})
             {
                 communication.Content = await StringReplacementsService.DoAllReplacementsAsync(wiserItem.GetDetailValue("template"), handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
                 communication.Subject = await StringReplacementsService.DoAllReplacementsAsync(wiserItem.GetDetailValue("subject"), handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
@@ -252,6 +271,12 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel>
         else if (!String.IsNullOrWhiteSpace(Settings.EmailBodyTemplate))
         {
             communication.Content = await StringReplacementsService.DoAllReplacementsAsync(Settings.EmailBodyTemplate, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
+            communication.Subject = await StringReplacementsService.DoAllReplacementsAsync(Settings.EmailSubjectTemplate, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
+        }
+        else if (allowLegacyEmailTemplateGeneration)
+        {
+            // Legacy allows a mail body to be generated based on details in the Form values.
+            communication.Content = CreateMailBodyFromFormValues();
             communication.Subject = await StringReplacementsService.DoAllReplacementsAsync(Settings.EmailSubjectTemplate, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
         }
 
@@ -263,7 +288,7 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel>
 
         communication.Sender = Settings.SenderAddress;
         communication.SenderName = Settings.SenderName;
-        communication.Receivers = Settings.ReceiverAddresses.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(receiver => new CommunicationReceiverModel { Address = receiver, DisplayName = Settings.SenderName }).ToList();
+        communication.Receivers = Settings.ReceiverAddresses.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(receiver => new CommunicationReceiverModel {Address = receiver, DisplayName = Settings.SenderName}).ToList();
         communication.Bcc = Settings.Bcc.Split(';', StringSplitOptions.RemoveEmptyEntries);
         communication.ReplyTo = Settings.ReplyToAddress;
         communication.ReplyToName = Settings.ReplyToName;
@@ -357,6 +382,36 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel>
     }
 
     /// <summary>
+    /// Creates an email body based on values in the Form collection. This is only for Legacy mode, as the Sendform component in the JCL also did this.
+    /// </summary>
+    /// <returns>A standardized mail body, based purely on the data in the form collection.</returns>
+    private string CreateMailBodyFromFormValues()
+    {
+        var emailBodyBuilder = new StringBuilder();
+
+        emailBodyBuilder.Append("<table>");
+
+        foreach (var formKey in Request.Form.Keys)
+        {
+            if (formKey.StartsWith("__"))
+            {
+                continue;
+            }
+
+            emailBodyBuilder.Append("<tr><td style=\"font-family: Arial; font-size: 11px;\" valign=\"top\">");
+            emailBodyBuilder.Append($"<strong>{formKey}:</strong>");
+            emailBodyBuilder.Append("</td><td width=\"10\"></td>");
+            emailBodyBuilder.Append("<td style=\"font-family: Arial; font-size: 11px;\" valign=\"top\">");
+            emailBodyBuilder.Append(Request.Form[formKey].ToString().Replace("\r", "").Replace("\n", "<br />"));
+            emailBodyBuilder.Append("</td></tr>");
+        }
+
+        emailBodyBuilder.Append("</table>");
+
+        return emailBodyBuilder.ToString();
+    }
+
+    /// <summary>
     /// Saves a submitted form as an item.
     /// </summary>
     /// <returns></returns>
@@ -380,7 +435,9 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel>
     /// <inheritdoc />
     public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
     {
-        Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<WebFormCmsSettingsModel>(settingsJson);
+        Settings = Settings.ComponentMode == ComponentModes.Legacy
+            ? Newtonsoft.Json.JsonConvert.DeserializeObject<WebFormLegacySettingsModel>(settingsJson)?.ToSettingsModel()
+            : Newtonsoft.Json.JsonConvert.DeserializeObject<WebFormCmsSettingsModel>(settingsJson);
 
         if (Settings == null)
         {
@@ -389,7 +446,7 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel>
 
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
 
         HandleDefaultSettingsFromComponentMode();
@@ -398,7 +455,9 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel>
     /// <inheritdoc />
     public override string GetSettingsJson()
     {
-        return Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
+        return Settings.ComponentMode == ComponentModes.Legacy
+            ? Newtonsoft.Json.JsonConvert.SerializeObject(WebFormLegacySettingsModel.FromSettingsModel(Settings))
+            : Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
     }
 
     #endregion

@@ -12,7 +12,7 @@ public class RepeaterTemplateModel
         Description = "This template will be rendered once every time at the start of rendering this layer.",
         DeveloperRemarks = "",
         DisplayOrder = 10,
-        ComponentMode = "Repeater",
+        ComponentMode = "NonLegacy",
         TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor
     )]
     public string HeaderTemplate { get; set; } = "";
@@ -25,7 +25,7 @@ public class RepeaterTemplateModel
         Description = "This template will be rendered for every item/row of this layer.",
         DeveloperRemarks = "",
         DisplayOrder = 20,
-        ComponentMode = "Repeater",
+        ComponentMode = "NonLegacy",
         TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor
     )]
     public string ItemTemplate { get; set; } = "";
@@ -44,7 +44,7 @@ public class RepeaterTemplateModel
         Description = "This template will be rendered if the data source contains no data for this layer.",
         DeveloperRemarks = "",
         DisplayOrder = 30,
-        ComponentMode = "Repeater",
+        ComponentMode = "NonLegacy",
         TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor
     )]
     public string NoDataTemplate { get; set; } = "";
@@ -57,7 +57,7 @@ public class RepeaterTemplateModel
         Description = "This template will be rendered in between every 2 items/rows of this layer.",
         DeveloperRemarks = "",
         DisplayOrder = 40,
-        ComponentMode = "Repeater",
+        ComponentMode = "NonLegacy",
         TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor
     )]
     public string BetweenItemsTemplate { get; set; } = "";
@@ -70,7 +70,7 @@ public class RepeaterTemplateModel
         Description = "This template will be rendered once every time at the end of rendering this layer.",
         DeveloperRemarks = "",
         DisplayOrder = 50,
-        ComponentMode = "Repeater",
+        ComponentMode = "NonLegacy",
         TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor
     )]
     public string FooterTemplate { get; set; } = "";

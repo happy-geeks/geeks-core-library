@@ -9,7 +9,7 @@ public class IndexSettingsModel
     {
     }
 
-    public IndexSettingsModel(string tableName , string name, IndexTypes type = IndexTypes.Normal, List<string> fields = null, string comment = null)
+    public IndexSettingsModel(string tableName, string name, IndexTypes type = IndexTypes.Normal, List<string> fields = null, string comment = null)
     {
         Name = name;
         Type = type;

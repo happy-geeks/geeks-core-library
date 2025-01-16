@@ -14,9 +14,12 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
+using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Services;
 
@@ -63,7 +66,7 @@ public class StringReplacementsService(
         dataDictionary.Add("language_code", languagesService.CurrentLanguageCode);
         dataDictionary.Add("MlJclLanguageCode", languagesService.CurrentLanguageCode); // Legacy key for old library support.
         dataDictionary.Add("Hostname", HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext));
-        dataDictionary.Add("Environment", (int)gclSettings.Environment);
+        dataDictionary.Add("Environment", (int) gclSettings.Environment);
         dataDictionary.Add("IpAddress", HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext));
         dataDictionary.Add("UserAgent", HttpContextHelpers.GetHeaderValueAs<string>(httpContextAccessor?.HttpContext, Microsoft.Net.Http.Headers.HeaderNames.UserAgent) ?? String.Empty);
         dataDictionary.Add("RelativeUrl", HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext).PathAndQuery);
@@ -73,6 +76,7 @@ public class StringReplacementsService(
             dataDictionary.Add("Guid", guid);
             dataDictionary.Add("Uuid", guid);
         }
+
         input = replacementsMediator.DoReplacements(input, dataDictionary, forQuery: forQuery, defaultFormatter: defaultFormatter);
 
         // System object replaces.
@@ -220,13 +224,45 @@ public class StringReplacementsService(
     /// <inheritdoc />
     public string DoHttpRequestReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
     {
-        return replacementsMediator.DoHttpRequestReplacements(input, forQuery, defaultFormatter);
+        if (httpContextAccessor?.HttpContext == null)
+        {
+            return input;
+        }
+
+        // GET variables.
+        if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
+        {
+            input = replacementsMediator.DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: defaultFormatter);
+        }
+        else
+        {
+            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: defaultFormatter);
+        }
+
+        // POST variables.
+        if (httpContextAccessor.HttpContext.Request.HasFormContentType)
+        {
+            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: defaultFormatter);
+        }
+
+        // Cookies.
+        input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: defaultFormatter);
+
+        // Request cache.
+        input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery, defaultFormatter: defaultFormatter);
+
+        return input;
     }
 
     /// <inheritdoc />
     public string DoSessionReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
     {
-        return replacementsMediator.DoSessionReplacements(input, forQuery, defaultFormatter);
+        if (httpContextAccessor?.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
+        {
+            return input;
+        }
+
+        return replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Session, forQuery, defaultFormatter: defaultFormatter);
     }
 
     /// <inheritdoc />
@@ -307,7 +343,7 @@ public class StringReplacementsService(
 
         if (input.Type == JTokenType.Array)
         {
-            var array = (JArray)input;
+            var array = (JArray) input;
 
             var reg = new Regex($"(.*){{{repeatVariableName}}}(.*){{/{repeatVariableName}}}(.*)", RegexOptions.IgnoreCase | RegexOptions.Singleline, TimeSpan.FromSeconds(30));
             var m = reg.Match(inputString);
@@ -353,7 +389,6 @@ public class StringReplacementsService(
         {
             return inputString;
         }
-
 
 
         var regexRepeats = new Regex(@"{repeat:([^\.]+?)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
@@ -422,7 +457,7 @@ public class StringReplacementsService(
                     var index = Convert.ToInt32(m.Groups[1].Value);
                     var template = m.Value.Replace($"{repeaterName}({index}).", "");
 
-                    var result = FillStringByClass(((JArray)((JObject)input)[repeaterName])[index], template, evaluateTemplate);
+                    var result = FillStringByClass(((JArray) ((JObject) input)[repeaterName])[index], template, evaluateTemplate);
 
                     inputString = inputString.Replace(m.Value, result);
                 }
@@ -488,6 +523,7 @@ public class StringReplacementsService(
         {
             output = output[prefix.Length..];
         }
+
         if (output.EndsWith(suffix))
         {
             output = output[..^suffix.Length];
@@ -524,7 +560,7 @@ public class StringReplacementsService(
             }
 
             var newPropertyName = propertyName.Replace(propertyName.Split('.')[0] + ".", "");
-            var value = GetPropertyValue((JToken)propertyInfo.GetValue(input, null), newPropertyName);
+            var value = GetPropertyValue((JToken) propertyInfo.GetValue(input, null), newPropertyName);
             return value != null ? value.ToString() : $"{{{propertyName}}}";
         }
 
@@ -547,19 +583,19 @@ public class StringReplacementsService(
                     return null;
                 }
 
-                var innerArrayValue = ((JArray)innerValue)[Convert.ToInt32(m.Groups[2].Value)];
+                var innerArrayValue = ((JArray) innerValue)[Convert.ToInt32(m.Groups[2].Value)];
                 return GetPropertyValue(innerArrayValue, m.Groups[3].Value.TrimStart('.'));
             }
 
             innerValue = GetPropertyValue(input, m.Groups[1].Value);
             return innerValue.Type == JTokenType.Array
-                ? ((JArray)innerValue)[Convert.ToInt32(m.Groups[2].Value)].ToString()
+                ? ((JArray) innerValue)[Convert.ToInt32(m.Groups[2].Value)].ToString()
                 : $"{{{propertyName}}}";
         }
 
         if (input.Type == JTokenType.Object)
         {
-            var innerObject = (JObject)input;
+            var innerObject = (JObject) input;
             return innerObject[propertyName];
         }
 

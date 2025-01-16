@@ -42,7 +42,7 @@ public class StringReplacementsServiceTests
         databaseConnectionMock = new Mock<IDatabaseConnection>();
 
         // Create the service that we're testing.
-        replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object, httpContextAccessorMock.Object);
+        replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object);
         stringReplacementsService = new StringReplacementsService(gclSettingsMock, objectsServiceMock.Object, languagesServiceMock.Object, accountsServiceMock.Object, replacementsMediator, httpContextAccessorMock.Object);
 
         // Setup the mocks.

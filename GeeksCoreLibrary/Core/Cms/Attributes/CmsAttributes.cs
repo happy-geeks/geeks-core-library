@@ -20,49 +20,65 @@ public class CmsAttributes
         Common,
         Demo,
         Caching,
+
         [CmsEnum(PrettyName = "Data handling")]
         DataHandling,
         Handling,
         Wiser,
+
         [CmsEnum(PrettyName = "Wiser 2")]
         Wiser2,
+
         [CmsEnum(PrettyName = "Custom database")]
         CustomDatabase,
+
         [CmsEnum(PrettyName = "Custom SQL")]
         CustomSql,
         Json,
         Filesystem,
         Validation,
+
         [CmsEnum(PrettyName = "Selected state")]
         SelectedState,
         Seo,
         Templates,
+
         [CmsEnum(PrettyName = "Templates for mobile devices")]
         TemplatesForMobileDevices,
+
         [CmsEnum(PrettyName = "Templates level 1")]
         TemplatesLevel1,
+
         [CmsEnum(PrettyName = "Templates level 2")]
         TemplatesLevel2,
+
         [CmsEnum(PrettyName = "Templates level 3")]
         TemplatesLevel3,
+
         [CmsEnum(PrettyName = "Templates level 4")]
         TemplatesLevel4,
+
         [CmsEnum(PrettyName = "Templates level 5")]
         TemplatesLevel5,
+
         [CmsEnum(PrettyName = "Mail template")]
         MailTemplate,
+
         [CmsEnum(PrettyName = "Advanced templates")]
         AdvancedTemplates,
+
         [CmsEnum(PrettyName = "Custom table")]
         CustomTable,
         Columns,
         Xml,
         Advanced,
+
         [CmsEnum(PrettyName = "Price calculation")]
         PriceCalculation,
         Debugging,
         Misc,
         Obsolete,
+
         [CmsEnum(PrettyName = "Sessions / Cookies")]
         SessionCookie,
         Search
@@ -77,34 +93,42 @@ public class CmsAttributes
         /// Automatically decide which type to use.
         /// </summary>
         Auto,
+
         /// <summary>
         /// A normal single-line text field.
         /// </summary>
         TextField,
+
         /// <summary>
         /// A multi-line text field (textarea).
         /// </summary>
         TextBox,
+
         /// <summary>
         /// A CodeMirror editor with syntax highlighting for SQL.
         /// </summary>
         QueryEditor,
+
         /// <summary>
         /// A CodeMirror editor with syntax highlighting for HTML.
         /// </summary>
         HtmlEditor,
+
         /// <summary>
         /// A CodeMirror editor with syntax highlighting for XML.
         /// </summary>
         XmlEditor,
+
         /// <summary>
         /// A CodeMirror editor with syntax highlighting for JavaScript.
         /// </summary>
         JsEditor,
+
         /// <summary>
         /// A CodeMirror editor with syntax highlighting for JSON.
         /// </summary>
         JsonEditor,
+
         /// <summary>
         /// A CodeMirror editor for plain text.
         /// </summary>

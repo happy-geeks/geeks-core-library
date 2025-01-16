@@ -24,7 +24,9 @@ using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Core.Cms;
 
-public abstract class CmsComponent<T> : ViewComponent where T : CmsSettings
+public abstract class CmsComponent<T, T2> : ViewComponent
+    where T : CmsSettings
+    where T2 : Enum
 {
     protected ILogger Logger;
     protected IStringReplacementsService StringReplacementsService;
@@ -32,6 +34,11 @@ public abstract class CmsComponent<T> : ViewComponent where T : CmsSettings
     protected IDatabaseConnection DatabaseConnection;
     protected IAccountsService AccountsService;
     protected IComponentsService ComponentsService;
+
+    /// <summary>
+    /// Whether the component should be ran in legacy mode. This reads and writes the old Wiser1 JSON settings.
+    /// </summary>
+    public T2 LegacyMode { get; set; }
 
     /// <summary>
     /// Settings For the component that are used in the CMS.
@@ -69,7 +76,7 @@ public abstract class CmsComponent<T> : ViewComponent where T : CmsSettings
     public abstract void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null);
 
     /// <summary>
-    /// Get the correct settings JSON.
+    /// Get the correct settings JSON. If legacy mode than legacy object else the normal object is serialized.
     /// </summary>
     public abstract string GetSettingsJson();
 
@@ -87,6 +94,7 @@ public abstract class CmsComponent<T> : ViewComponent where T : CmsSettings
         {
             method = componentInstanceType.GetMethod($"{callMethod}Async", BindingFlags.Public | BindingFlags.Instance);
         }
+
         if (method == null)
         {
             Logger.LogTrace($"Called GclComponent.gcl with componentId '{ComponentId}' and methodName '{callMethod}', but this method does not exist.");
@@ -153,7 +161,7 @@ public abstract class CmsComponent<T> : ViewComponent where T : CmsSettings
 
         if (method.ReturnType.BaseType == typeof(Task))
         {
-            result = await (dynamic)method.Invoke(this, BindingFlags.Public | BindingFlags.Instance, null, parameterValues.ToArray(), Thread.CurrentThread.CurrentCulture);
+            result = await ((dynamic) method.Invoke(this, BindingFlags.Public | BindingFlags.Instance, null, parameterValues.ToArray(), Thread.CurrentThread.CurrentCulture))!;
         }
         else
         {
@@ -234,7 +242,6 @@ public abstract class CmsComponent<T> : ViewComponent where T : CmsSettings
 
         if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
         {
-
             queryToUse = StringReplacementsService.DoReplacements(queryToUse, ExtraDataForReplacements, true);
         }
 

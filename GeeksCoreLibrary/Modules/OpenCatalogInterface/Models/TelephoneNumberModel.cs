@@ -2,15 +2,15 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="TelephoneNumber")]
+[XmlRoot(ElementName = "TelephoneNumber")]
 public class TelephoneNumberModel
 {
-    [XmlElement(ElementName="CountryCode")]
+    [XmlElement(ElementName = "CountryCode")]
     public CountryCodeModel CountryCode { get; set; }
 
-    [XmlElement(ElementName="AreaOrCityCode")]
+    [XmlElement(ElementName = "AreaOrCityCode")]
     public string AreaOrCityCode { get; set; }
 
-    [XmlElement(ElementName="Number")]
+    [XmlElement(ElementName = "Number")]
     public string Number { get; set; }
 }

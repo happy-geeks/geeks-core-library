@@ -51,12 +51,14 @@ public class ItemFilesService(
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("itemId", finalItemId);
         databaseConnection.AddParameter("propertyName", propertyName);
-        var getImageResult = await databaseConnection.GetAsync($@"
-                SELECT content_type, content, content_url, protected
-                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                WHERE item_id = ?itemId AND property_name = ?propertyName
-                ORDER BY ordering ASC, id ASC
-                LIMIT {fileNumber - 1},1", skipCache: true);
+        var getImageResult = await databaseConnection.GetAsync($"""
+                                                                
+                                                                                SELECT content_type, content, content_url, protected
+                                                                                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
+                                                                                WHERE item_id = ?itemId AND property_name = ?propertyName
+                                                                                ORDER BY ordering ASC, id ASC
+                                                                                LIMIT {fileNumber - 1},1
+                                                                """, skipCache: true);
 
         if (!ValidateQueryResult(getImageResult, encryptedItemId))
         {
@@ -92,12 +94,14 @@ public class ItemFilesService(
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("itemLinkId", finalItemLinkId);
         databaseConnection.AddParameter("propertyName", propertyName);
-        var getImageResult = await databaseConnection.GetAsync($@"
-                SELECT content_type, content, content_url, protected
-                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
-                ORDER BY ordering ASC, id ASC
-                LIMIT {fileNumber - 1},1", skipCache: true);
+        var getImageResult = await databaseConnection.GetAsync($"""
+                                                                
+                                                                                SELECT content_type, content, content_url, protected
+                                                                                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
+                                                                                WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
+                                                                                ORDER BY ordering ASC, id ASC
+                                                                                LIMIT {fileNumber - 1},1
+                                                                """, skipCache: true);
 
         if (!ValidateQueryResult(getImageResult, encryptedItemLinkId))
         {
@@ -132,10 +136,12 @@ public class ItemFilesService(
 
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("fileId", finalItemId);
-        var getImageResult = await databaseConnection.GetAsync($@"
-                SELECT content_type, content, content_url, protected
-                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                WHERE id = ?fileId", skipCache: true);
+        var getImageResult = await databaseConnection.GetAsync($"""
+                                                                
+                                                                                SELECT content_type, content, content_url, protected
+                                                                                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
+                                                                                WHERE id = ?fileId
+                                                                """, skipCache: true);
 
         if (!ValidateQueryResult(getImageResult, encryptedItemId))
         {
@@ -229,12 +235,14 @@ public class ItemFilesService(
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("itemId", finalItemId);
         databaseConnection.AddParameter("propertyName", propertyName);
-        var getFileResult = await databaseConnection.GetAsync($@"
-                SELECT content, content_url, protected
-                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                WHERE item_id = ?itemId AND property_name = ?propertyName
-                ORDER BY ordering ASC, id ASC
-                LIMIT {fileNumber - 1},1", skipCache: true);
+        var getFileResult = await databaseConnection.GetAsync($"""
+                                                               
+                                                                               SELECT content, content_url, protected
+                                                                               FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
+                                                                               WHERE item_id = ?itemId AND property_name = ?propertyName
+                                                                               ORDER BY ordering ASC, id ASC
+                                                                               LIMIT {fileNumber - 1},1
+                                                               """, skipCache: true);
 
         if (!ValidateQueryResult(getFileResult, encryptedItemId))
         {
@@ -271,12 +279,14 @@ public class ItemFilesService(
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("itemLinkId", finalItemLinkId);
         databaseConnection.AddParameter("propertyName", propertyName);
-        var getFileResult = await databaseConnection.GetAsync($@"
-                SELECT content, content_url, protected
-                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
-                ORDER BY ordering ASC, id ASC
-                LIMIT {fileNumber - 1},1", skipCache: true);
+        var getFileResult = await databaseConnection.GetAsync($"""
+                                                               
+                                                                               SELECT content, content_url, protected
+                                                                               FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
+                                                                               WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
+                                                                               ORDER BY ordering ASC, id ASC
+                                                                               LIMIT {fileNumber - 1},1
+                                                               """, skipCache: true);
 
         if (!ValidateQueryResult(getFileResult, encryptedItemLinkId))
         {
@@ -312,10 +322,12 @@ public class ItemFilesService(
 
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("fileId", finalItemId);
-        var getFileResult = await databaseConnection.GetAsync($@"
-                SELECT content, content_url, protected
-                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                WHERE id = ?fileId", skipCache: true);
+        var getFileResult = await databaseConnection.GetAsync($"""
+                                                               
+                                                                               SELECT content, content_url, protected
+                                                                               FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
+                                                                               WHERE id = ?fileId
+                                                               """, skipCache: true);
 
         if (!ValidateQueryResult(getFileResult, encryptedItemId))
         {
@@ -620,6 +632,7 @@ public class ItemFilesService(
                 {
                     imageQuality = 80;
                 }
+
                 break;
             case ".tif":
                 imageFormat = MagickFormat.Tif;

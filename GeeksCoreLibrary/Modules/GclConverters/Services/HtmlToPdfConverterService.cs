@@ -122,6 +122,7 @@ public class HtmlToPdfConverterService(
         {
             settings.Header = await objectsService.FindSystemObjectByDomainNameAsync("pdf_header_text");
         }
+
         if (!String.IsNullOrWhiteSpace(settings.Header))
         {
             converter.PdfDocumentOptions.HeaderTemplate = settings.Header;
@@ -132,6 +133,7 @@ public class HtmlToPdfConverterService(
         {
             settings.Footer = await objectsService.FindSystemObjectByDomainNameAsync("pdf_footer_text");
         }
+
         if (!String.IsNullOrWhiteSpace(settings.Footer))
         {
             converter.PdfDocumentOptions.FooterTemplate = settings.Footer;
@@ -276,7 +278,7 @@ public class HtmlToPdfConverterService(
                 }
                 else if (String.Equals(key, HtmlTemplateConstants.PdfOrientationPropertyName) && Int32.TryParse(value, out var orientation))
                 {
-                    pdfSettings.Orientation = (PdfPageOrientation)orientation;
+                    pdfSettings.Orientation = (PdfPageOrientation) orientation;
                 }
                 else if (String.Equals(key, HtmlTemplateConstants.PdfFileNamePropertyName))
                 {
@@ -312,7 +314,7 @@ public class HtmlToPdfConverterService(
             }
             else if (String.Equals(key, HtmlTemplateConstants.PdfOrientationPropertyName) && Int32.TryParse(value, out var orientation) && !pdfSettings.Orientation.HasValue)
             {
-                pdfSettings.Orientation = (PdfPageOrientation)orientation;
+                pdfSettings.Orientation = (PdfPageOrientation) orientation;
             }
             else if (String.Equals(key, HtmlTemplateConstants.PdfFileNamePropertyName) && String.IsNullOrWhiteSpace(pdfSettings.FileName))
             {
@@ -336,12 +338,14 @@ public class HtmlToPdfConverterService(
 
         databaseConnection.AddParameter("itemId", itemId);
         databaseConnection.AddParameter("propertyName", backgroundPropertyName);
-        var getImageResult = await databaseConnection.GetAsync($@"
-                SELECT content, file_name
-                FROM `{WiserTableNames.WiserItemFile}`
-                WHERE item_id = ?itemId AND property_name = ?propertyName
-                ORDER BY id
-                LIMIT 1");
+        var getImageResult = await databaseConnection.GetAsync($"""
+                                                                
+                                                                                SELECT content, file_name
+                                                                                FROM `{WiserTableNames.WiserItemFile}`
+                                                                                WHERE item_id = ?itemId AND property_name = ?propertyName
+                                                                                ORDER BY id
+                                                                                LIMIT 1
+                                                                """);
 
         // Return null if there's no row.
         if (getImageResult.Rows.Count == 0)

@@ -187,14 +187,16 @@ public class FilterCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Filter items query",
         Description = "Query to generate the filters. Query must select all filter-items of all filter-groups.",
-        DeveloperRemarks = @"<p>Place the variable {filters} after the last JOIN to exclude values when filtered. Also place the variable {filtersWhere} on the position where the 'where part' should be inserted. Use same aliasses as in the product overview query. Also use alias 'filterName' for wiser_itemdetail table with detail 'filtername'.</p>
-                                <p>Query must contain the following columns:</p>
-                                <ul>
-                                    <li>filtergroup (mandatory) - The name (seo friendly syntax) of the filter group to which the item belongs</li>
-                                    <li>filtervalue (mandatory) - The value (seo friendly syntax) on which the customer filters.</li>
-                                    <li>count (optional) - The total number of items which matches to the filter value.</li>
-                                    <li>itemdetail_... (multiple / optional) - Extra information for use in the template, like the normal name of an item of an image.</li>                                    
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>Place the variable {filters} after the last JOIN to exclude values when filtered. Also place the variable {filtersWhere} on the position where the 'where part' should be inserted. Use same aliasses as in the product overview query. Also use alias 'filterName' for wiser_itemdetail table with detail 'filtername'.</p>
+                                                           <p>Query must contain the following columns:</p>
+                                                           <ul>
+                                                               <li>filtergroup (mandatory) - The name (seo friendly syntax) of the filter group to which the item belongs</li>
+                                                               <li>filtervalue (mandatory) - The value (seo friendly syntax) on which the customer filters.</li>
+                                                               <li>count (optional) - The total number of items which matches to the filter value.</li>
+                                                               <li>itemdetail_... (multiple / optional) - Extra information for use in the template, like the normal name of an item of an image.</li>                                    
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.DataSource,
         GroupName = CmsAttributes.CmsGroupName.CustomSql,
         TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
@@ -247,7 +249,6 @@ public class FilterCmsSettingsModel : CmsSettings
         DisplayOrder = 20
     )]
     public string SearchKeys { get; set; }
-
 
     #endregion
 }

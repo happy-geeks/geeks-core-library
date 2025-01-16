@@ -35,7 +35,7 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
     /// </summary>
     public async Task Invoke(HttpContext context, IServiceProvider serviceProvider)
     {
-        var databaseConnection = (IDatabaseConnection)serviceProvider.GetService(typeof(IDatabaseConnection));
+        var databaseConnection = (IDatabaseConnection) serviceProvider.GetService(typeof(IDatabaseConnection));
         var logId = await LogRequestAsync(context, databaseConnection, serviceProvider);
 
         if (!GclSettings.RequestLoggingOptions.LogResponseBody)
@@ -71,7 +71,7 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
     /// <returns>The ID of the user or 0 if the user is not authenticated.</returns>
     protected virtual async Task<ulong> GetUserIdAsync(HttpContext context, IServiceProvider serviceProvider)
     {
-        var accountsService = (IAccountsService)serviceProvider.GetService(typeof(IAccountsService));
+        var accountsService = (IAccountsService) serviceProvider.GetService(typeof(IAccountsService));
         var user = await accountsService!.GetUserDataFromCookieAsync();
         return user.UserId;
     }
@@ -133,7 +133,7 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
         {
             case JTokenType.Object:
             {
-                foreach (var jsonProperty in ((JObject)jsonObject).Properties())
+                foreach (var jsonProperty in ((JObject) jsonObject).Properties())
                 {
                     // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
                     switch (jsonProperty.Value.Type)

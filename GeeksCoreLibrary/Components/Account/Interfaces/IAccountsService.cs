@@ -105,7 +105,7 @@ public interface IAccountsService
     /// <param name="userId">The ID of the user that is attempting to login.</param>
     /// <param name="extraDataForReplacements"></param>
     /// <param name="settings"></param>
-    Task SaveLoginAttemptAsync(bool success, ulong userId, Dictionary<string,string> extraDataForReplacements, AccountCmsSettingsModel settings);
+    Task SaveLoginAttemptAsync(bool success, ulong userId, Dictionary<string, string> extraDataForReplacements, AccountCmsSettingsModel settings);
 
     /// <summary>
     /// Do all default login replacements on a SQL template and adds the variables to the <see cproperty="SystemConnection"/>.

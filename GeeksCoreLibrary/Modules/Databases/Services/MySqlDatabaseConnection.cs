@@ -94,8 +94,8 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
         this.gclSettings = gclSettings.Value;
 
         instanceId = Guid.NewGuid();
-        connectionStringForReading = String.IsNullOrWhiteSpace(this.gclSettings.ConnectionString) ? null : new MySqlConnectionStringBuilder { ConnectionString = this.gclSettings.ConnectionString };
-        connectionStringForWriting = String.IsNullOrWhiteSpace(this.gclSettings.ConnectionStringForWriting) ? null : new MySqlConnectionStringBuilder { ConnectionString = this.gclSettings.ConnectionStringForWriting };
+        connectionStringForReading = String.IsNullOrWhiteSpace(this.gclSettings.ConnectionString) ? null : new MySqlConnectionStringBuilder {ConnectionString = this.gclSettings.ConnectionString};
+        connectionStringForWriting = String.IsNullOrWhiteSpace(this.gclSettings.ConnectionStringForWriting) ? null : new MySqlConnectionStringBuilder {ConnectionString = this.gclSettings.ConnectionStringForWriting};
         sshSettingsForReading = this.gclSettings.DatabaseSshSettings;
         sshSettingsForWriting = this.gclSettings.DatabaseSshSettingsForWriting;
 
@@ -107,6 +107,7 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
 
             connectionStringForReading.ConvertZeroDateTime = true;
         }
+
         if (connectionStringForWriting != null)
         {
             connectionStringForWriting.Database = branchesService.GetDatabaseNameFromCookie() ?? connectionStringForWriting.Database;
@@ -331,7 +332,7 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
 
         query.Append("; SELECT LAST_INSERT_ID()");
         var result = await GetAsync(query.ToString(), useWritingConnectionIfAvailable: useWritingConnectionIfAvailable);
-        return (T)Convert.ChangeType(result.Rows[0][0], typeof(T));
+        return (T) Convert.ChangeType(result.Rows[0][0], typeof(T));
     }
 
     /// <inheritdoc />
@@ -615,7 +616,7 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
                 connectionStringForWriting.Port = localPort;
             }
 
-            ConnectionForWriting = new MySqlConnection { ConnectionString = connectionStringForWriting.ConnectionString };
+            ConnectionForWriting = new MySqlConnection {ConnectionString = connectionStringForWriting.ConnectionString};
             createdNewConnection = true;
         }
 
@@ -897,20 +898,22 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
                 httpMethod = httpContextAccessor.HttpContext.Request.Method;
             }
 
-            if(commandToUse.Parameters.Contains("gclConnectionOpened")) commandToUse.Parameters.Remove("gclConnectionOpened");
-            if(commandToUse.Parameters.Contains("gclConnectionUrl")) commandToUse.Parameters.Remove("gclConnectionUrl");
-            if(commandToUse.Parameters.Contains("gclConnectionHttpMethod")) commandToUse.Parameters.Remove("gclConnectionHttpMethod");
-            if(commandToUse.Parameters.Contains("gclConnectionInstanceId")) commandToUse.Parameters.Remove("gclConnectionInstanceId");
-            if(commandToUse.Parameters.Contains("gclConnectionType")) commandToUse.Parameters.Remove("gclConnectionType");
+            if (commandToUse.Parameters.Contains("gclConnectionOpened")) commandToUse.Parameters.Remove("gclConnectionOpened");
+            if (commandToUse.Parameters.Contains("gclConnectionUrl")) commandToUse.Parameters.Remove("gclConnectionUrl");
+            if (commandToUse.Parameters.Contains("gclConnectionHttpMethod")) commandToUse.Parameters.Remove("gclConnectionHttpMethod");
+            if (commandToUse.Parameters.Contains("gclConnectionInstanceId")) commandToUse.Parameters.Remove("gclConnectionInstanceId");
+            if (commandToUse.Parameters.Contains("gclConnectionType")) commandToUse.Parameters.Remove("gclConnectionType");
             commandToUse.Parameters.AddWithValue("gclConnectionOpened", DateTime.Now);
             commandToUse.Parameters.AddWithValue("gclConnectionUrl", url);
             commandToUse.Parameters.AddWithValue("gclConnectionHttpMethod", httpMethod);
             commandToUse.Parameters.AddWithValue("gclConnectionInstanceId", instanceId);
             commandToUse.Parameters.AddWithValue("gclConnectionType", isWriteConnection ? "write" : "read");
 
-            commandToUse.CommandText = $@"INSERT INTO {Constants.DatabaseConnectionLogTableName} (opened, url, http_method, database_service_instance_id, type)
-VALUES (?gclConnectionOpened, ?gclConnectionUrl, ?gclConnectionHttpMethod, ?gclConnectionInstanceId, ?gclConnectionType);
-SELECT LAST_INSERT_ID();";
+            commandToUse.CommandText = $"""
+                                        INSERT INTO {Constants.DatabaseConnectionLogTableName} (opened, url, http_method, database_service_instance_id, type)
+                                        VALUES (?gclConnectionOpened, ?gclConnectionUrl, ?gclConnectionHttpMethod, ?gclConnectionInstanceId, ?gclConnectionType);
+                                        SELECT LAST_INSERT_ID();
+                                        """;
             await using var reader = await commandToUse.ExecuteReaderAsync();
             var id = !await reader.ReadAsync() ? 0 : (Int32.TryParse(Convert.ToString(reader.GetValue(0)), out var tempId) ? tempId : 0);
 
@@ -952,7 +955,7 @@ SELECT LAST_INSERT_ID();";
 
             await using var commandToUse = new MySqlCommand("", !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString) ? ConnectionForWriting : ConnectionForReading);
 
-            if (commandToUse.Connection is { State: ConnectionState.Closed })
+            if (commandToUse.Connection is {State: ConnectionState.Closed})
             {
                 await commandToUse.Connection.OpenAsync();
             }
@@ -1090,7 +1093,7 @@ SELECT LAST_INSERT_ID();";
         {
             authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(sshSettings.PrivateKeyPath, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));
         }
-        else if (sshSettings.PrivateKeyBytes is { Length: > 0 })
+        else if (sshSettings.PrivateKeyBytes is {Length: > 0})
         {
             using var privateKeyStream = new MemoryStream(sshSettings.PrivateKeyBytes);
             authenticationMethods.Add(new PrivateKeyAuthenticationMethod(sshSettings.Username, new PrivateKeyFile(privateKeyStream, String.IsNullOrEmpty(sshSettings.PrivateKeyPassphrase) ? null : sshSettings.PrivateKeyPassphrase)));

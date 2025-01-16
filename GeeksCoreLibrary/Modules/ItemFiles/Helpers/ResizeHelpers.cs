@@ -28,7 +28,7 @@ public static class ResizeHelpers
     /// <param name="height">The desired height in pixels.</param>
     public static void Stretch(IMagickImage<byte> sourceBitmap, uint width, uint height)
     {
-        var size = new MagickGeometry(width, height) { IgnoreAspectRatio = true };
+        var size = new MagickGeometry(width, height) {IgnoreAspectRatio = true};
         sourceBitmap.Resize(size);
     }
 
@@ -45,7 +45,7 @@ public static class ResizeHelpers
         var biggest = Math.Max(width, height);
 
         // First resize the image.
-        var size = new MagickGeometry(biggest, biggest) { FillArea = true };
+        var size = new MagickGeometry(biggest, biggest) {FillArea = true};
         sourceBitmap.Resize(size);
 
         // Now crop the image.

@@ -35,7 +35,7 @@ public class CachedRedirectService(IAppCache cache, IRedirectService redirectSer
     }
 
     /// <inheritdoc />
-    public  Task<string> GetMainDomainForRedirectAsync()
+    public Task<string> GetMainDomainForRedirectAsync()
     {
         return redirectService.GetMainDomainForRedirectAsync();
     }

@@ -22,14 +22,16 @@ public class SeoService(IDatabaseConnection databaseConnection, IObjectsService 
         var result = new PageMetaDataModel();
         databaseConnection.AddParameter("url", pageUri.AbsolutePath);
 
-        var query = $@"SELECT
-	                        seo.id,
-	                        detail.`key`,
-	                        CONCAT_WS('', detail.`value`, detail.long_value) AS `value`
-                        FROM {WiserTableNames.WiserItem} AS seo
-                        JOIN {WiserTableNames.WiserItemDetail} AS url ON url.item_id = seo.id AND url.`key` = 'url' AND url.`value` = ?url
-                        JOIN {WiserTableNames.WiserItemDetail} AS detail ON detail.item_id = seo.id
-                        WHERE seo.entity_type = 'seo'";
+        var query = $"""
+                     SELECT
+                     	                        seo.id,
+                     	                        detail.`key`,
+                     	                        CONCAT_WS('', detail.`value`, detail.long_value) AS `value`
+                                             FROM {WiserTableNames.WiserItem} AS seo
+                                             JOIN {WiserTableNames.WiserItemDetail} AS url ON url.item_id = seo.id AND url.`key` = 'url' AND url.`value` = ?url
+                                             JOIN {WiserTableNames.WiserItemDetail} AS detail ON detail.item_id = seo.id
+                                             WHERE seo.entity_type = 'seo'
+                     """;
 
         var dataTable = await databaseConnection.GetAsync(query);
         if (dataTable.Rows.Count == 0)
@@ -148,10 +150,12 @@ public class SeoService(IDatabaseConnection databaseConnection, IObjectsService 
             {
                 urlElement.Add(new XElement(ns + "lastmod", dataRow["lastmodified"].ToString()));
             }
+
             if (hasFrequenceColumn && !dataRow.IsNull("frequence"))
             {
                 urlElement.Add(new XElement(ns + "changefreq", dataRow["frequence"].ToString()));
             }
+
             if (hasPriorityColumn && !dataRow.IsNull("priority"))
             {
                 urlElement.Add(new XElement(ns + "priority", dataRow["priority"].ToString()));
@@ -218,14 +222,17 @@ public class SeoService(IDatabaseConnection databaseConnection, IObjectsService 
                 {
                     imageElement.Add(new XElement(nsImage + "caption", dataRow.Field<string>("caption")));
                 }
+
                 if (hasGeoLocationColumn && !dataRow.IsNull("geo_location"))
                 {
                     imageElement.Add(new XElement(nsImage + "geo_location", dataRow.Field<string>("geo_location")));
                 }
+
                 if (hasTitleColumn && !dataRow.IsNull("title"))
                 {
                     imageElement.Add(new XElement(nsImage + "title", dataRow.Field<string>("title")));
                 }
+
                 if (hasLicenseColumn && !dataRow.IsNull("license"))
                 {
                     imageElement.Add(new XElement(nsImage + "license", dataRow.Field<string>("license")));

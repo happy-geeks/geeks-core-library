@@ -202,6 +202,7 @@ public class CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelper
         {
             databaseName = databaseConnection.ConnectedDatabase;
         }
+
         cache.Remove($"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}");
 
         return true;

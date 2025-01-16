@@ -2,9 +2,9 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="BillTo")]
+[XmlRoot(ElementName = "BillTo")]
 public class BillToModel
 {
-    [XmlElement(ElementName="Address")]
+    [XmlElement(ElementName = "Address")]
     public AddressModel Address { get; set; }
 }

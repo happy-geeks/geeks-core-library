@@ -7,6 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.HealthChecks.Services;
+
 public class DatabaseHealthService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings)
     : IHealthCheck
 {

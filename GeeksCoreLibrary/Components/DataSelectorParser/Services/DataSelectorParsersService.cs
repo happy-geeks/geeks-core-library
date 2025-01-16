@@ -63,7 +63,7 @@ public class DataSelectorParsersService(ILogger<DataSelectorParsersService> logg
             return null;
         }
 
-        if (dataSelectorResult is not { HasValues: true })
+        if (dataSelectorResult is not {HasValues: true})
         {
             logger.LogDebug("Data selector returned an empty result.");
             return null;

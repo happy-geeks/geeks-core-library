@@ -2,12 +2,12 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Sender")]
+[XmlRoot(ElementName = "Sender")]
 public class SenderModel
 {
-    [XmlElement(ElementName="Credential")]
+    [XmlElement(ElementName = "Credential")]
     public CredentialModel Credential { get; set; }
 
-    [XmlElement(ElementName="UserAgent")]
+    [XmlElement(ElementName = "UserAgent")]
     public string UserAgent { get; set; }
 }

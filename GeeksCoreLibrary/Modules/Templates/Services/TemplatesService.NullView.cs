@@ -9,9 +9,14 @@ public class NullView : IView
 {
     public static readonly NullView Instance = new();
     public string Path => String.Empty;
+
     public Task RenderAsync(ViewContext context)
     {
-        if (context == null) { throw new ArgumentNullException(nameof(context)); }
+        if (context == null)
+        {
+            throw new ArgumentNullException(nameof(context));
+        }
+
         return Task.CompletedTask;
     }
 }

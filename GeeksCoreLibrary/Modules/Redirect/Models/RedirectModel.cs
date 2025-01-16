@@ -8,7 +8,7 @@ public class RedirectModel
     public string OldUrl { get; set; }
 
     /// <summary>
-    /// The URL to redirect to.
+    /// The URL to redirect to. 
     /// </summary>
     public string NewUrl { get; set; }
 

@@ -100,59 +100,61 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             throw new ArgumentNullException(nameof(orderProcessId));
         }
 
-        var query = @$"SELECT 
-                                orderProcess.id,
-	                            IFNULL(titleSeo.value, orderProcess.title) AS name,
-                                IFNULL(fixedUrl.value, '/payment.html') AS fixedUrl,
-                                COUNT(step.id) AS amountOfSteps,
-                                emailAddressField.value AS emailAddressField,
-                                merchantEmailAddressField.value AS merchantEmailAddressField,
-                                IF(statusUpdateTemplate.value IS NULL OR statusUpdateTemplate.value = '', '0', statusUpdateTemplate.value) AS statusUpdateTemplate,
-                                IF(statusUpdateWebShopTemplate.value IS NULL OR statusUpdateWebShopTemplate.value = '', '0', statusUpdateWebShopTemplate.value) AS statusUpdateWebShopTemplate,
-                                IF(statusUpdateAttachmentTemplate.value IS NULL OR statusUpdateAttachmentTemplate.value = '', '0', statusUpdateAttachmentTemplate.value) AS statusUpdateAttachmentTemplate,
-                                IF(clearBasketOnConfirmationPage.value IS NULL OR clearBasketOnConfirmationPage.value = '', '1', clearBasketOnConfirmationPage.value) AS clearBasketOnConfirmationPage,
-	                            CONCAT_WS('', header.value, header.long_value) AS header,
-	                            CONCAT_WS('', footer.value, footer.long_value) AS footer,
-                                CONCAT_WS('', template.value, template.long_value) AS template,
-                                IFNULL(basketToConceptOrderMethod.`value`, 0) AS basketToConceptOrderMethod,
-                                IF(measurementProtocolActive.`value` = 1, TRUE, FALSE) AS measurementProtocolActive,
-                                CONCAT_WS('', measurementProtocolItemJson.`value`, measurementProtocolItemJson.long_value) AS measurementProtocolItemJson,
-                                CONCAT_WS('', measurementProtocolBeginCheckoutJson.`value`, measurementProtocolBeginCheckoutJson.long_value) AS measurementProtocolBeginCheckoutJson,
-                                CONCAT_WS('', measurementProtocolAddPaymentInfoJson.`value`, measurementProtocolAddPaymentInfoJson.long_value) AS measurementProtocolAddPaymentInfoJson,
-                                CONCAT_WS('', measurementProtocolPurchaseJson.`value`, measurementProtocolPurchaseJson.long_value) AS measurementProtocolPurchaseJson,
-                                measurementProtocolMeasurementId.`value` AS measurementProtocolMeasurementId,
-                                measurementProtocolApiSecret.`value` AS measurementProtocolApiSecret
-                            FROM {WiserTableNames.WiserItem} AS orderProcess
-                            JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
-                            JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS fixedUrl ON fixedUrl.item_id = orderProcess.id AND fixedUrl.`key` = '{Constants.OrderProcessUrlProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS titleSeo ON titleSeo.item_id = orderProcess.id AND titleSeo.`key` = '{CoreConstants.SeoTitlePropertyName}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS emailAddressField ON emailAddressField.item_id = orderProcess.id AND emailAddressField.`key` = '{Constants.OrderProcessEmailAddressFieldProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS merchantEmailAddressField ON merchantEmailAddressField.item_id = orderProcess.id AND merchantEmailAddressField.`key` = '{Constants.OrderProcessMerchantEmailAddressFieldProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateTemplate ON statusUpdateTemplate.item_id = orderProcess.id AND statusUpdateTemplate.`key` = '{Constants.OrderProcessStatusUpdateTemplateProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateWebShopTemplate ON statusUpdateWebShopTemplate.item_id = orderProcess.id AND statusUpdateWebShopTemplate.`key` = '{Constants.OrderProcessStatusUpdateWebShopTemplateProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateAttachmentTemplate ON statusUpdateAttachmentTemplate.item_id = orderProcess.id AND statusUpdateAttachmentTemplate.`key` = '{Constants.OrderProcessStatusUpdateAttachmentTemplateProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS clearBasketOnConfirmationPage ON clearBasketOnConfirmationPage.item_id = orderProcess.id AND clearBasketOnConfirmationPage.`key` = '{Constants.OrderProcessClearBasketOnConfirmationPageProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS header ON header.item_id = orderProcess.id AND header.`key` = '{Constants.OrderProcessHeaderProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS footer ON footer.item_id = orderProcess.id AND footer.`key` = '{Constants.OrderProcessFooterProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS template ON template.item_id = orderProcess.id AND template.`key` = '{Constants.OrderProcessTemplateProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS basketToConceptOrderMethod ON basketToConceptOrderMethod.item_id = orderProcess.id AND basketToConceptOrderMethod.`key` = '{Constants.OrderProcessBasketToConceptOrderMethodProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolActive ON measurementProtocolActive.item_id = orderProcess.id AND measurementProtocolActive.`key` = '{Constants.MeasurementProtocolActiveProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolItemJson ON measurementProtocolItemJson.item_id = orderProcess.id AND measurementProtocolItemJson.`key` = '{Constants.MeasurementProtocolItemJsonProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolBeginCheckoutJson ON measurementProtocolBeginCheckoutJson.item_id = orderProcess.id AND measurementProtocolBeginCheckoutJson.`key` = '{Constants.MeasurementProtocolBeginCheckoutJsonProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolAddPaymentInfoJson ON measurementProtocolAddPaymentInfoJson.item_id = orderProcess.id AND measurementProtocolAddPaymentInfoJson.`key` = '{Constants.MeasurementProtocolAddPaymentInfoJsonProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolPurchaseJson ON measurementProtocolPurchaseJson.item_id = orderProcess.id AND measurementProtocolPurchaseJson.`key` = '{Constants.MeasurementProtocolPurchaseJsonProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolMeasurementId ON measurementProtocolMeasurementId.item_id = orderProcess.id AND measurementProtocolMeasurementId.`key` = '{Constants.MeasurementProtocolMeasurementIdProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolApiSecret ON measurementProtocolApiSecret.item_id = orderProcess.id AND measurementProtocolApiSecret.`key` = '{Constants.MeasurementProtocolApiSecretProperty}'
-                            WHERE orderProcess.id = ?id
-                            AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
-                            AND orderProcess.published_environment >= ?publishedEnvironment
-                            GROUP BY orderProcess.id
-                            LIMIT 1";
+        var query = $"""
+                     SELECT 
+                                                     orderProcess.id,
+                     	                            IFNULL(titleSeo.value, orderProcess.title) AS name,
+                                                     IFNULL(fixedUrl.value, '/payment.html') AS fixedUrl,
+                                                     COUNT(step.id) AS amountOfSteps,
+                                                     emailAddressField.value AS emailAddressField,
+                                                     merchantEmailAddressField.value AS merchantEmailAddressField,
+                                                     IF(statusUpdateTemplate.value IS NULL OR statusUpdateTemplate.value = '', '0', statusUpdateTemplate.value) AS statusUpdateTemplate,
+                                                     IF(statusUpdateWebShopTemplate.value IS NULL OR statusUpdateWebShopTemplate.value = '', '0', statusUpdateWebShopTemplate.value) AS statusUpdateWebShopTemplate,
+                                                     IF(statusUpdateAttachmentTemplate.value IS NULL OR statusUpdateAttachmentTemplate.value = '', '0', statusUpdateAttachmentTemplate.value) AS statusUpdateAttachmentTemplate,
+                                                     IF(clearBasketOnConfirmationPage.value IS NULL OR clearBasketOnConfirmationPage.value = '', '1', clearBasketOnConfirmationPage.value) AS clearBasketOnConfirmationPage,
+                     	                            CONCAT_WS('', header.value, header.long_value) AS header,
+                     	                            CONCAT_WS('', footer.value, footer.long_value) AS footer,
+                                                     CONCAT_WS('', template.value, template.long_value) AS template,
+                                                     IFNULL(basketToConceptOrderMethod.`value`, 0) AS basketToConceptOrderMethod,
+                                                     IF(measurementProtocolActive.`value` = 1, TRUE, FALSE) AS measurementProtocolActive,
+                                                     CONCAT_WS('', measurementProtocolItemJson.`value`, measurementProtocolItemJson.long_value) AS measurementProtocolItemJson,
+                                                     CONCAT_WS('', measurementProtocolBeginCheckoutJson.`value`, measurementProtocolBeginCheckoutJson.long_value) AS measurementProtocolBeginCheckoutJson,
+                                                     CONCAT_WS('', measurementProtocolAddPaymentInfoJson.`value`, measurementProtocolAddPaymentInfoJson.long_value) AS measurementProtocolAddPaymentInfoJson,
+                                                     CONCAT_WS('', measurementProtocolPurchaseJson.`value`, measurementProtocolPurchaseJson.long_value) AS measurementProtocolPurchaseJson,
+                                                     measurementProtocolMeasurementId.`value` AS measurementProtocolMeasurementId,
+                                                     measurementProtocolApiSecret.`value` AS measurementProtocolApiSecret
+                                                 FROM {WiserTableNames.WiserItem} AS orderProcess
+                                                 JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
+                                                 JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS fixedUrl ON fixedUrl.item_id = orderProcess.id AND fixedUrl.`key` = '{Constants.OrderProcessUrlProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS titleSeo ON titleSeo.item_id = orderProcess.id AND titleSeo.`key` = '{CoreConstants.SeoTitlePropertyName}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS emailAddressField ON emailAddressField.item_id = orderProcess.id AND emailAddressField.`key` = '{Constants.OrderProcessEmailAddressFieldProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS merchantEmailAddressField ON merchantEmailAddressField.item_id = orderProcess.id AND merchantEmailAddressField.`key` = '{Constants.OrderProcessMerchantEmailAddressFieldProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateTemplate ON statusUpdateTemplate.item_id = orderProcess.id AND statusUpdateTemplate.`key` = '{Constants.OrderProcessStatusUpdateTemplateProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateWebShopTemplate ON statusUpdateWebShopTemplate.item_id = orderProcess.id AND statusUpdateWebShopTemplate.`key` = '{Constants.OrderProcessStatusUpdateWebShopTemplateProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS statusUpdateAttachmentTemplate ON statusUpdateAttachmentTemplate.item_id = orderProcess.id AND statusUpdateAttachmentTemplate.`key` = '{Constants.OrderProcessStatusUpdateAttachmentTemplateProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS clearBasketOnConfirmationPage ON clearBasketOnConfirmationPage.item_id = orderProcess.id AND clearBasketOnConfirmationPage.`key` = '{Constants.OrderProcessClearBasketOnConfirmationPageProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS header ON header.item_id = orderProcess.id AND header.`key` = '{Constants.OrderProcessHeaderProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS footer ON footer.item_id = orderProcess.id AND footer.`key` = '{Constants.OrderProcessFooterProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS template ON template.item_id = orderProcess.id AND template.`key` = '{Constants.OrderProcessTemplateProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS basketToConceptOrderMethod ON basketToConceptOrderMethod.item_id = orderProcess.id AND basketToConceptOrderMethod.`key` = '{Constants.OrderProcessBasketToConceptOrderMethodProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolActive ON measurementProtocolActive.item_id = orderProcess.id AND measurementProtocolActive.`key` = '{Constants.MeasurementProtocolActiveProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolItemJson ON measurementProtocolItemJson.item_id = orderProcess.id AND measurementProtocolItemJson.`key` = '{Constants.MeasurementProtocolItemJsonProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolBeginCheckoutJson ON measurementProtocolBeginCheckoutJson.item_id = orderProcess.id AND measurementProtocolBeginCheckoutJson.`key` = '{Constants.MeasurementProtocolBeginCheckoutJsonProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolAddPaymentInfoJson ON measurementProtocolAddPaymentInfoJson.item_id = orderProcess.id AND measurementProtocolAddPaymentInfoJson.`key` = '{Constants.MeasurementProtocolAddPaymentInfoJsonProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolPurchaseJson ON measurementProtocolPurchaseJson.item_id = orderProcess.id AND measurementProtocolPurchaseJson.`key` = '{Constants.MeasurementProtocolPurchaseJsonProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolMeasurementId ON measurementProtocolMeasurementId.item_id = orderProcess.id AND measurementProtocolMeasurementId.`key` = '{Constants.MeasurementProtocolMeasurementIdProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS measurementProtocolApiSecret ON measurementProtocolApiSecret.item_id = orderProcess.id AND measurementProtocolApiSecret.`key` = '{Constants.MeasurementProtocolApiSecretProperty}'
+                                                 WHERE orderProcess.id = ?id
+                                                 AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
+                                                 AND orderProcess.published_environment >= ?publishedEnvironment
+                                                 GROUP BY orderProcess.id
+                                                 LIMIT 1
+                     """;
 
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("id", orderProcessId);
-        databaseConnection.AddParameter("publishedEnvironment", (int)gclSettings.Environment);
+        databaseConnection.AddParameter("publishedEnvironment", (int) gclSettings.Environment);
         var dataTable = await databaseConnection.GetAsync(query);
         if (dataTable.Rows.Count == 0)
         {
@@ -195,17 +197,19 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
     /// <inheritdoc />
     public async Task<OrderProcessSettingsModel> GetOrderProcessViaFixedUrlAsync(IOrderProcessesService orderProcessesService, string fixedUrl)
     {
-        var query = @$"SELECT orderProcess.id
-                            FROM {WiserTableNames.WiserItem} AS orderProcess
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS fixedUrl ON fixedUrl.item_id = orderProcess.id AND fixedUrl.`key` = '{Constants.OrderProcessUrlProperty}'
-                            WHERE orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
-                            AND orderProcess.published_environment >= ?publishedEnvironment
-                            AND IFNULL(fixedUrl.value, '/payment.html') = ?fixedUrl
-                            LIMIT 1";
+        var query = $"""
+                     SELECT orderProcess.id
+                                                 FROM {WiserTableNames.WiserItem} AS orderProcess
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS fixedUrl ON fixedUrl.item_id = orderProcess.id AND fixedUrl.`key` = '{Constants.OrderProcessUrlProperty}'
+                                                 WHERE orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
+                                                 AND orderProcess.published_environment >= ?publishedEnvironment
+                                                 AND IFNULL(fixedUrl.value, '/payment.html') = ?fixedUrl
+                                                 LIMIT 1
+                     """;
 
         databaseConnection.ClearParameters();
         databaseConnection.AddParameter("fixedUrl", fixedUrl);
-        databaseConnection.AddParameter("publishedEnvironment", (int)gclSettings.Environment);
+        databaseConnection.AddParameter("publishedEnvironment", (int) gclSettings.Environment);
         var dataTable = await databaseConnection.GetAsync(query);
         if (dataTable.Rows.Count == 0)
         {
@@ -225,93 +229,95 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
 
         var results = new List<OrderProcessStepModel>();
 
-        var query = $@"SELECT
-	                        # Step
-	                        step.id AS stepId,
-	                        step.title AS stepTitle,
-                            stepType.value AS stepType,
-	                        CONCAT_WS('', stepTemplate.value, stepTemplate.long_value) AS stepTemplate,
-	                        CONCAT_WS('', stepHeader.value, stepHeader.long_value) AS stepHeader,
-	                        CONCAT_WS('', stepFooter.value, stepFooter.long_value) AS stepFooter,
-                            stepConfirmButtonText.value AS stepConfirmButtonText,
-                            previousStepLinkText.value AS previousStepLinkText,
-                            stepRedirectUrl.value AS stepRedirectUrl,
-                            IF(stepHideInProgress.value = '1', TRUE, FALSE) AS stepHideInProgress,
-	                        
-	                        # Group
-	                        fieldGroup.id AS groupId,
-	                        fieldGroup.title AS groupTitle,
-	                        groupType.value AS groupType,
-	                        CONCAT_WS('', groupHeader.value, groupHeader.long_value) AS groupHeader,
-	                        CONCAT_WS('', groupFooter.value, groupFooter.long_value) AS groupFooter,
-	                        groupCssClass.value AS groupCssClass,
-	                        
-	                        # Field
-	                        field.id AS fieldId,
-	                        field.title AS fieldTitle,
-	                        fieldFormId.value AS fieldFormId,
-	                        fieldLabel.value AS fieldLabel,
-	                        fieldPlaceholder.value AS fieldPlaceholder,
-	                        fieldType.value AS fieldType,
-	                        fieldInputType.value AS fieldInputType,
-	                        fieldMandatory.value AS fieldMandatory,
-	                        fieldPattern.value AS fieldPattern,
-	                        fieldVisible.value AS fieldVisible,
-	                        fieldErrorMessage.value AS fieldErrorMessage,
-                            fieldCssClass.value AS fieldCssClass,
-                            fieldSaveTo.value AS fieldSaveTo,
-                            fieldRequiresUniqueValue.value AS fieldRequiresUniqueValue,
-                            fieldTabIndex.value AS fieldTabIndex,
-
-                            # Field values
-	                        IF(NULLIF(fieldValues.`key`, '') IS NULL AND NULLIF(fieldValues.value, '') IS NULL, NULL, JSON_OBJECTAGG(IFNULL(fieldValues.`key`, ''), IFNULL(fieldValues.value, ''))) AS fieldValues
-                        FROM {WiserTableNames.WiserItem} AS orderProcess
-
-                        # Step
-                        JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
-                        JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepType ON stepType.item_id = step.id AND stepType.`key` = '{Constants.StepTypeProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepTemplate ON stepTemplate.item_id = step.id AND stepTemplate.`key` = '{Constants.StepTemplateProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepHeader ON stepHeader.item_id = step.id AND stepHeader.`key` = '{Constants.StepHeaderProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepFooter ON stepFooter.item_id = step.id AND stepFooter.`key` = '{Constants.StepFooterProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepConfirmButtonText ON stepConfirmButtonText.item_id = step.id AND stepConfirmButtonText.`key` = '{Constants.StepConfirmButtonTextProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS previousStepLinkText ON previousStepLinkText.item_id = step.id AND previousStepLinkText.`key` = '{Constants.StepPreviousStepLinkTextProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepRedirectUrl ON stepRedirectUrl.item_id = step.id AND stepRedirectUrl.`key` = '{Constants.StepRedirectUrlProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepHideInProgress ON stepHideInProgress.item_id = step.id AND stepHideInProgress.`key` = '{Constants.StepHideInProgressProperty}'
-
-                        # Group
-                        LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToGroup ON linkToGroup.destination_item_id = step.id AND linkToGroup.type = {Constants.GroupToStepLinkType}
-                        LEFT JOIN {WiserTableNames.WiserItem} AS fieldGroup ON fieldGroup.id = linkToGroup.item_id AND fieldGroup.entity_type = '{Constants.GroupEntityType}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupType ON groupType.item_id = fieldGroup.id AND groupType.`key` = '{Constants.GroupTypeProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupHeader ON groupHeader.item_id = fieldGroup.id AND groupHeader.`key` = '{Constants.GroupHeaderProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupFooter ON groupFooter.item_id = fieldGroup.id AND groupFooter.`key` = '{Constants.GroupFooterProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupCssClass ON groupCssClass.item_id = fieldGroup.id AND groupCssClass.`key` = '{Constants.GroupCssClassProperty}'
-
-                        # Fields
-                        LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToField ON linkToField.destination_item_id = fieldGroup.id AND linkToField.type = {Constants.FieldToGroupLinkType}
-                        LEFT JOIN {WiserTableNames.WiserItem} AS field ON field.id = linkToField.item_id AND field.entity_type = '{Constants.FormFieldEntityType}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldFormId ON fieldFormId.item_id = field.id AND fieldFormId.`key` = '{Constants.FieldIdProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldLabel ON fieldLabel.item_id = field.id AND fieldLabel.`key` = '{Constants.FieldLabelProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldPlaceholder ON fieldPlaceholder.item_id = field.id AND fieldPlaceholder.`key` = '{Constants.FieldPlaceholderProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldType ON fieldType.item_id = field.id AND fieldType.`key` = '{Constants.FieldTypeProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldInputType ON fieldInputType.item_id = field.id AND fieldInputType.`key` = '{Constants.FieldInputTypeProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldMandatory ON fieldMandatory.item_id = field.id AND fieldMandatory.`key` = '{Constants.FieldMandatoryProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldPattern ON fieldPattern.item_id = field.id AND fieldPattern.`key` = '{Constants.FieldValidationPatternProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldVisible ON fieldVisible.item_id = field.id AND fieldVisible.`key` = '{Constants.FieldVisibilityProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldErrorMessage ON fieldErrorMessage.item_id = field.id AND fieldErrorMessage.`key` = '{Constants.FieldErrorMessageProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldCssClass ON fieldCssClass.item_id = field.id AND fieldCssClass.`key` = '{Constants.FieldCssClassProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldSaveTo ON fieldSaveTo.item_id = field.id AND fieldSaveTo.`key` = '{Constants.FieldSaveToProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldRequiresUniqueValue ON fieldRequiresUniqueValue.item_id = field.id AND fieldRequiresUniqueValue.`key` = '{Constants.FieldRequiresUniqueValueProperty}'
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldTabIndex ON fieldTabIndex.item_id = field.id AND fieldTabIndex.`key` = '{Constants.FieldTabIndexProperty}'
-                        
-                        # Field values
-                        LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldValues ON fieldValues.item_id = field.id AND fieldValues.groupname = '{Constants.FieldValuesGroupName}'
-
-                        WHERE orderProcess.id = ?id
-                        AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
-
-                        GROUP BY step.id, fieldGroup.id, field.id
-                        ORDER BY linkToStep.ordering ASC, linkToGroup.ordering ASC, linkToField.ordering ASC";
+        var query = $"""
+                     SELECT
+                     	                        # Step
+                     	                        step.id AS stepId,
+                     	                        step.title AS stepTitle,
+                                                 stepType.value AS stepType,
+                     	                        CONCAT_WS('', stepTemplate.value, stepTemplate.long_value) AS stepTemplate,
+                     	                        CONCAT_WS('', stepHeader.value, stepHeader.long_value) AS stepHeader,
+                     	                        CONCAT_WS('', stepFooter.value, stepFooter.long_value) AS stepFooter,
+                                                 stepConfirmButtonText.value AS stepConfirmButtonText,
+                                                 previousStepLinkText.value AS previousStepLinkText,
+                                                 stepRedirectUrl.value AS stepRedirectUrl,
+                                                 IF(stepHideInProgress.value = '1', TRUE, FALSE) AS stepHideInProgress,
+                     	                        
+                     	                        # Group
+                     	                        fieldGroup.id AS groupId,
+                     	                        fieldGroup.title AS groupTitle,
+                     	                        groupType.value AS groupType,
+                     	                        CONCAT_WS('', groupHeader.value, groupHeader.long_value) AS groupHeader,
+                     	                        CONCAT_WS('', groupFooter.value, groupFooter.long_value) AS groupFooter,
+                     	                        groupCssClass.value AS groupCssClass,
+                     	                        
+                     	                        # Field
+                     	                        field.id AS fieldId,
+                     	                        field.title AS fieldTitle,
+                     	                        fieldFormId.value AS fieldFormId,
+                     	                        fieldLabel.value AS fieldLabel,
+                     	                        fieldPlaceholder.value AS fieldPlaceholder,
+                     	                        fieldType.value AS fieldType,
+                     	                        fieldInputType.value AS fieldInputType,
+                     	                        fieldMandatory.value AS fieldMandatory,
+                     	                        fieldPattern.value AS fieldPattern,
+                     	                        fieldVisible.value AS fieldVisible,
+                     	                        fieldErrorMessage.value AS fieldErrorMessage,
+                                                 fieldCssClass.value AS fieldCssClass,
+                                                 fieldSaveTo.value AS fieldSaveTo,
+                                                 fieldRequiresUniqueValue.value AS fieldRequiresUniqueValue,
+                                                 fieldTabIndex.value AS fieldTabIndex,
+                     
+                                                 # Field values
+                     	                        IF(NULLIF(fieldValues.`key`, '') IS NULL AND NULLIF(fieldValues.value, '') IS NULL, NULL, JSON_OBJECTAGG(IFNULL(fieldValues.`key`, ''), IFNULL(fieldValues.value, ''))) AS fieldValues
+                                             FROM {WiserTableNames.WiserItem} AS orderProcess
+                     
+                                             # Step
+                                             JOIN {WiserTableNames.WiserItemLink} AS linkToStep ON linkToStep.destination_item_id = orderProcess.id AND linkToStep.type = {Constants.StepToProcessLinkType}
+                                             JOIN {WiserTableNames.WiserItem} AS step ON step.id = linkToStep.item_id AND step.entity_type = '{Constants.StepEntityType}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepType ON stepType.item_id = step.id AND stepType.`key` = '{Constants.StepTypeProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepTemplate ON stepTemplate.item_id = step.id AND stepTemplate.`key` = '{Constants.StepTemplateProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepHeader ON stepHeader.item_id = step.id AND stepHeader.`key` = '{Constants.StepHeaderProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepFooter ON stepFooter.item_id = step.id AND stepFooter.`key` = '{Constants.StepFooterProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepConfirmButtonText ON stepConfirmButtonText.item_id = step.id AND stepConfirmButtonText.`key` = '{Constants.StepConfirmButtonTextProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS previousStepLinkText ON previousStepLinkText.item_id = step.id AND previousStepLinkText.`key` = '{Constants.StepPreviousStepLinkTextProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepRedirectUrl ON stepRedirectUrl.item_id = step.id AND stepRedirectUrl.`key` = '{Constants.StepRedirectUrlProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS stepHideInProgress ON stepHideInProgress.item_id = step.id AND stepHideInProgress.`key` = '{Constants.StepHideInProgressProperty}'
+                     
+                                             # Group
+                                             LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToGroup ON linkToGroup.destination_item_id = step.id AND linkToGroup.type = {Constants.GroupToStepLinkType}
+                                             LEFT JOIN {WiserTableNames.WiserItem} AS fieldGroup ON fieldGroup.id = linkToGroup.item_id AND fieldGroup.entity_type = '{Constants.GroupEntityType}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupType ON groupType.item_id = fieldGroup.id AND groupType.`key` = '{Constants.GroupTypeProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupHeader ON groupHeader.item_id = fieldGroup.id AND groupHeader.`key` = '{Constants.GroupHeaderProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupFooter ON groupFooter.item_id = fieldGroup.id AND groupFooter.`key` = '{Constants.GroupFooterProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS groupCssClass ON groupCssClass.item_id = fieldGroup.id AND groupCssClass.`key` = '{Constants.GroupCssClassProperty}'
+                     
+                                             # Fields
+                                             LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToField ON linkToField.destination_item_id = fieldGroup.id AND linkToField.type = {Constants.FieldToGroupLinkType}
+                                             LEFT JOIN {WiserTableNames.WiserItem} AS field ON field.id = linkToField.item_id AND field.entity_type = '{Constants.FormFieldEntityType}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldFormId ON fieldFormId.item_id = field.id AND fieldFormId.`key` = '{Constants.FieldIdProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldLabel ON fieldLabel.item_id = field.id AND fieldLabel.`key` = '{Constants.FieldLabelProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldPlaceholder ON fieldPlaceholder.item_id = field.id AND fieldPlaceholder.`key` = '{Constants.FieldPlaceholderProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldType ON fieldType.item_id = field.id AND fieldType.`key` = '{Constants.FieldTypeProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldInputType ON fieldInputType.item_id = field.id AND fieldInputType.`key` = '{Constants.FieldInputTypeProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldMandatory ON fieldMandatory.item_id = field.id AND fieldMandatory.`key` = '{Constants.FieldMandatoryProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldPattern ON fieldPattern.item_id = field.id AND fieldPattern.`key` = '{Constants.FieldValidationPatternProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldVisible ON fieldVisible.item_id = field.id AND fieldVisible.`key` = '{Constants.FieldVisibilityProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldErrorMessage ON fieldErrorMessage.item_id = field.id AND fieldErrorMessage.`key` = '{Constants.FieldErrorMessageProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldCssClass ON fieldCssClass.item_id = field.id AND fieldCssClass.`key` = '{Constants.FieldCssClassProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldSaveTo ON fieldSaveTo.item_id = field.id AND fieldSaveTo.`key` = '{Constants.FieldSaveToProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldRequiresUniqueValue ON fieldRequiresUniqueValue.item_id = field.id AND fieldRequiresUniqueValue.`key` = '{Constants.FieldRequiresUniqueValueProperty}'
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldTabIndex ON fieldTabIndex.item_id = field.id AND fieldTabIndex.`key` = '{Constants.FieldTabIndexProperty}'
+                                             
+                                             # Field values
+                                             LEFT JOIN {WiserTableNames.WiserItemDetail} AS fieldValues ON fieldValues.item_id = field.id AND fieldValues.groupname = '{Constants.FieldValuesGroupName}'
+                     
+                                             WHERE orderProcess.id = ?id
+                                             AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
+                     
+                                             GROUP BY step.id, fieldGroup.id, field.id
+                                             ORDER BY linkToStep.ordering ASC, linkToGroup.ordering ASC, linkToField.ordering ASC
+                     """;
 
         databaseConnection.AddParameter("id", orderProcessId);
         var dataTable = await databaseConnection.GetAsync(query);
@@ -482,49 +488,51 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             throw new ArgumentNullException(nameof(orderProcessId));
         }
 
-        var query = $@"SELECT
-                                paymentMethod.id AS paymentMethodId,
-                                paymentMethod.title AS paymentMethodTitle,
-                                paymentServiceProvider.id AS paymentServiceProviderId,
-                                paymentServiceProvider.title AS paymentServiceProviderTitle,
-                                paymentServiceProviderType.`value` AS paymentServiceProviderType,
-                                CAST(paymentMethodFee.value AS DECIMAL(65,30)) AS paymentMethodFee,
-                                paymentMethodVisibility.`value` AS paymentMethodVisibility,
-                                paymentMethodExternalName.`value` AS paymentMethodExternalName,
-                                CAST(paymentMethodMinimalAmount.value AS DECIMAL(65,30)) AS paymentMethodMinimalAmount,
-                                CAST(paymentMethodMaximumAmount.value AS DECIMAL(65,30)) AS paymentMethodMaximumAmount,
-                                IF(paymentMethodUseMinimalAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMinimalAmount,
-                                IF(paymentMethodUseMaximumAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMaximumAmount,
-
-                                paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
-                                paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
-                            FROM {WiserTableNames.WiserItem} AS orderProcess
-
-                            # Payment method
-                            JOIN {WiserTableNames.WiserItemLink} AS paymentMethodLink ON paymentMethodLink.destination_item_id = orderProcess.id AND paymentMethodLink.type = {Constants.PaymentMethodToOrderProcessLinkType}
-                            JOIN {WiserTableNames.WiserItem} AS paymentMethod ON paymentMethod.id = paymentMethodLink.item_id AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}' AND paymentMethod.published_environment & ?environment != 0
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
-
-                            # PSP
-                            JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
-                            JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderType ON paymentServiceProviderType.item_id = paymentServiceProvider.id AND paymentServiceProviderType.`key` = '{Constants.PaymentServiceProviderTypeProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
-
-                            WHERE orderProcess.id = ?id
-                            AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'";
+        var query = $"""
+                     SELECT
+                                                     paymentMethod.id AS paymentMethodId,
+                                                     paymentMethod.title AS paymentMethodTitle,
+                                                     paymentServiceProvider.id AS paymentServiceProviderId,
+                                                     paymentServiceProvider.title AS paymentServiceProviderTitle,
+                                                     paymentServiceProviderType.`value` AS paymentServiceProviderType,
+                                                     CAST(paymentMethodFee.value AS DECIMAL(65,30)) AS paymentMethodFee,
+                                                     paymentMethodVisibility.`value` AS paymentMethodVisibility,
+                                                     paymentMethodExternalName.`value` AS paymentMethodExternalName,
+                                                     CAST(paymentMethodMinimalAmount.value AS DECIMAL(65,30)) AS paymentMethodMinimalAmount,
+                                                     CAST(paymentMethodMaximumAmount.value AS DECIMAL(65,30)) AS paymentMethodMaximumAmount,
+                                                     IF(paymentMethodUseMinimalAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMinimalAmount,
+                                                     IF(paymentMethodUseMaximumAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMaximumAmount,
+                     
+                                                     paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
+                                                     paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
+                                                     paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
+                                                 FROM {WiserTableNames.WiserItem} AS orderProcess
+                     
+                                                 # Payment method
+                                                 JOIN {WiserTableNames.WiserItemLink} AS paymentMethodLink ON paymentMethodLink.destination_item_id = orderProcess.id AND paymentMethodLink.type = {Constants.PaymentMethodToOrderProcessLinkType}
+                                                 JOIN {WiserTableNames.WiserItem} AS paymentMethod ON paymentMethod.id = paymentMethodLink.item_id AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}' AND paymentMethod.published_environment & ?environment != 0
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
+                     
+                                                 # PSP
+                                                 JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
+                                                 JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderType ON paymentServiceProviderType.item_id = paymentServiceProvider.id AND paymentServiceProviderType.`key` = '{Constants.PaymentServiceProviderTypeProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
+                     
+                                                 WHERE orderProcess.id = ?id
+                                                 AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
+                     """;
 
         databaseConnection.AddParameter("id", orderProcessId);
-        databaseConnection.AddParameter("environment", (int)gclSettings.Environment);
+        databaseConnection.AddParameter("environment", (int) gclSettings.Environment);
         var dataTable = await databaseConnection.GetAsync(query);
         var results = new List<PaymentMethodSettingsModel>();
         foreach (DataRow dataRow in dataTable.Rows)
@@ -625,12 +633,14 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                 databaseConnection.AddParameter("entityType", saveLocation.EntityType);
                 databaseConnection.AddParameter("propertyName", saveLocation.PropertyName);
                 databaseConnection.AddParameter("value", field.Value);
-                var query = $@"SELECT NULL
-                                FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS detail ON detail.item_id = item.id AND detail.`key` = ?propertyName AND (detail.value = ?value OR detail.long_value = ?value)
-                                WHERE item.entity_type = ?entityType
-                                {idsClause}
-                                LIMIT 1";
+                var query = $"""
+                             SELECT NULL
+                                                             FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
+                                                             JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS detail ON detail.item_id = item.id AND detail.`key` = ?propertyName AND (detail.value = ?value OR detail.long_value = ?value)
+                                                             WHERE item.entity_type = ?entityType
+                                                             {idsClause}
+                                                             LIMIT 1
+                             """;
 
                 var dataTable = await databaseConnection.GetAsync(query);
                 isValid = dataTable.Rows.Count == 0;
@@ -659,42 +669,44 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             throw new ArgumentNullException(nameof(paymentMethodId));
         }
 
-        var query = $@"SELECT 
-                                paymentMethod.id AS paymentMethodId,
-                                paymentMethod.title AS paymentMethodTitle,
-                                paymentServiceProvider.id AS paymentServiceProviderId,
-                                paymentServiceProvider.title AS paymentServiceProviderTitle,
-                                paymentServiceProviderType.`value` AS paymentServiceProviderType,
-                                CAST(paymentMethodFee.value AS decimal(65,30)) AS paymentMethodFee,
-                                paymentMethodVisibility.`value` AS paymentMethodVisibility,
-                                paymentMethodExternalName.`value` AS paymentMethodExternalName,
-                                CAST(paymentMethodMinimalAmount.value AS decimal(65,30)) AS paymentMethodMinimalAmount,
-                                CAST(paymentMethodMaximumAmount.value AS decimal(65,30)) AS paymentMethodMaximumAmount,
-                                CAST(IFNULL(paymentMethodUseMinimalAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMinimalAmount,
-                                CAST(IFNULL(paymentMethodUseMaximumAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMaximumAmount,
-
-                                paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
-                                paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
-                            FROM {WiserTableNames.WiserItem} AS paymentMethod
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
-
-                            # PSP
-                            JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
-                            JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderType ON paymentServiceProviderType.item_id = paymentServiceProvider.id AND paymentServiceProviderType.`key` = '{Constants.PaymentServiceProviderTypeProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
-                            LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
-
-                            WHERE paymentMethod.id = ?id
-                            AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'";
+        var query = $"""
+                     SELECT 
+                                                     paymentMethod.id AS paymentMethodId,
+                                                     paymentMethod.title AS paymentMethodTitle,
+                                                     paymentServiceProvider.id AS paymentServiceProviderId,
+                                                     paymentServiceProvider.title AS paymentServiceProviderTitle,
+                                                     paymentServiceProviderType.`value` AS paymentServiceProviderType,
+                                                     CAST(paymentMethodFee.value AS decimal(65,30)) AS paymentMethodFee,
+                                                     paymentMethodVisibility.`value` AS paymentMethodVisibility,
+                                                     paymentMethodExternalName.`value` AS paymentMethodExternalName,
+                                                     CAST(paymentMethodMinimalAmount.value AS decimal(65,30)) AS paymentMethodMinimalAmount,
+                                                     CAST(paymentMethodMaximumAmount.value AS decimal(65,30)) AS paymentMethodMaximumAmount,
+                                                     CAST(IFNULL(paymentMethodUseMinimalAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMinimalAmount,
+                                                     CAST(IFNULL(paymentMethodUseMaximumAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMaximumAmount,
+                     
+                                                     paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
+                                                     paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
+                                                     paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
+                                                 FROM {WiserTableNames.WiserItem} AS paymentMethod
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
+                     
+                                                 # PSP
+                                                 JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
+                                                 JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderType ON paymentServiceProviderType.item_id = paymentServiceProvider.id AND paymentServiceProviderType.`key` = '{Constants.PaymentServiceProviderTypeProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
+                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
+                     
+                                                 WHERE paymentMethod.id = ?id
+                                                 AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'
+                     """;
 
         databaseConnection.AddParameter("id", paymentMethodId);
         var dataTable = await databaseConnection.GetAsync(query);
@@ -837,7 +849,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             else
             {
                 var basketUser = (await wiserItemsService.GetLinkedItemDetailsAsync(shoppingBaskets.First().Main.Id, ShoppingBasket.Models.Constants.BasketToUserLinkType, Account.Models.Constants.DefaultEntityType, reverse: true, skipPermissionsCheck: true)).FirstOrDefault();
-                userDetails = basketUser ?? new WiserItemModel { EntityType = Account.Models.Constants.DefaultEntityType };
+                userDetails = basketUser ?? new WiserItemModel {EntityType = Account.Models.Constants.DefaultEntityType};
                 loggedInUser.UserId = userDetails.Id;
             }
 
@@ -933,6 +945,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                 {
                     beforeOutResult.ActionData = failUrl;
                 }
+
                 if (String.IsNullOrWhiteSpace(beforeOutResult.ErrorMessage))
                 {
                     beforeOutResult.ErrorMessage = "Custom code in PaymentRequestBeforeOutAsync returned an unsuccessful result.";
@@ -958,7 +971,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                     }
 
                     var couponItem = await wiserItemsService.GetItemDetailsAsync(couponItemId, skipPermissionsCheck: true);
-                    if (couponItem is not { Id: > 0 })
+                    if (couponItem is not {Id: > 0})
                     {
                         continue;
                     }
@@ -1265,6 +1278,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             main.SetDetail(Constants.PaymentCompleteProperty, result);
             await shoppingBasketsService.SaveAsync(main, lines, basketSettings);
         }
+
         return result;
     }
 
@@ -1354,7 +1368,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
     {
         // We do nothing here. This function is meant to overwrite in projects so custom code snippets can be executed.
         // Use the decorator pattern to create an overwrite of IOrderProcessesService and then add custom code in this snippet.
-        return Task.FromResult(new PaymentRequestResult { Successful = true });
+        return Task.FromResult(new PaymentRequestResult {Successful = true});
     }
 
     /// <inheritdoc />
@@ -1385,9 +1399,9 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             Fee = fee,
             Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("paymentMethodVisibility") ?? "Always"),
             ExternalName = dataRow.Field<string>("paymentMethodExternalName"),
-            UseMinimalAmountCheck =  Convert.ToBoolean(dataRow.Field<long>(Constants.PaymentMethodUseMinimalAmountProperty)),
-            UseMaximumAmountCheck =  Convert.ToBoolean(dataRow.Field<long>(Constants.PaymentMethodUseMaximumAmountProperty)),
-            MinimalAmountCheck =  minimalAmountProperty,
+            UseMinimalAmountCheck = Convert.ToBoolean(dataRow.Field<long>(Constants.PaymentMethodUseMinimalAmountProperty)),
+            UseMaximumAmountCheck = Convert.ToBoolean(dataRow.Field<long>(Constants.PaymentMethodUseMaximumAmountProperty)),
+            MinimalAmountCheck = minimalAmountProperty,
             MaximumAmountCheck = maximumAmountProperty,
             PaymentServiceProvider = new PaymentServiceProviderSettingsModel
             {
@@ -1534,9 +1548,9 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
     /// <returns>The new URLs.</returns>
     private (string FailUrl, string SuccessUrl, string PendingUrl) BuildUrls(OrderProcessSettingsModel orderProcessSettings, List<OrderProcessStepModel> steps)
     {
-        var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
-        var successUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
-        var pendingUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) { Path = orderProcessSettings.FixedUrl };
+        var failUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) {Path = orderProcessSettings.FixedUrl};
+        var successUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) {Path = orderProcessSettings.FixedUrl};
+        var pendingUrl = new UriBuilder(HttpContextHelpers.GetBaseUri(httpContextAccessor?.HttpContext)) {Path = orderProcessSettings.FixedUrl};
 
         var failUrlQueryString = HttpUtility.ParseQueryString(failUrl.Query);
         failUrlQueryString[Constants.ErrorFromPaymentOutRequestKey] = "true";

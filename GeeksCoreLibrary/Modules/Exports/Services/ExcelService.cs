@@ -132,7 +132,7 @@ public class ExcelService : IExcelService, IScopedService
         }
         else // One letter column.
         {
-            columnName = ((char)(columnIndex + 65)).ToString();
+            columnName = ((char) (columnIndex + 65)).ToString();
         }
 
         return columnName;
@@ -156,7 +156,7 @@ public class ExcelService : IExcelService, IScopedService
 
         for (var i = 0; i < columnNameCharArray.Length; i++)
         {
-            columnIndex += (columnNameCharArray[i] - 64) * (int)Math.Pow(26, columnNameCharArray.Length - i - 1);
+            columnIndex += (columnNameCharArray[i] - 64) * (int) Math.Pow(26, columnNameCharArray.Length - i - 1);
         }
 
         return columnIndex;

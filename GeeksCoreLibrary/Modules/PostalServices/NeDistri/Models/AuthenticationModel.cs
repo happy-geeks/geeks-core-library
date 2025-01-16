@@ -6,12 +6,12 @@ public class AuthenticationModel
     /// Login name
     /// </summary>
     public string Login { get; set; }
-    
+
     /// <summary>
     /// Random Nonce to make each authentication request unique
     /// </summary>
     public string Nonce { get; set; }
-    
+
     /// <summary>
     /// Lifetime of the requested JWT token
     /// </summary>

@@ -34,12 +34,13 @@ internal class FilterAggregationSettingsModel
     [DefaultValue(Constants.TemplateSummaryFilterGroupItem)]
     internal string TemplateSummaryFilterGroupItem { get; set; }
 
-    [DefaultValue(@"SELECT f.*, COUNT(f.product_id) AS count
-                         FROM `wiser_filter_aggregation_{languageCode}` f
-                         {filters}
-                         WHERE f.category_id={categoryId} {filterGroup}
-                         GROUP BY f.filtergroup,f.filtervalue
-                         ORDER BY f.filtergroup,f.filtervalue")]
-    internal  string FilterItemsQuery { get; set; }
-
+    [DefaultValue("""
+                  SELECT f.*, COUNT(f.product_id) AS count
+                                           FROM `wiser_filter_aggregation_{languageCode}` f
+                                           {filters}
+                                           WHERE f.category_id={categoryId} {filterGroup}
+                                           GROUP BY f.filtergroup,f.filtervalue
+                                           ORDER BY f.filtergroup,f.filtervalue
+                  """)]
+    internal string FilterItemsQuery { get; set; }
 }

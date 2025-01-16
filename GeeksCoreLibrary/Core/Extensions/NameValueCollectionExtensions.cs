@@ -43,6 +43,7 @@ public static class NameValueCollectionExtensions
                 }
             }
         }
+
         return stringBuilder.ToString(0, stringBuilder.Length - 1);
     }
 }

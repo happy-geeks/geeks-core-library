@@ -20,7 +20,7 @@ public class ProductBannerModel
     /// <summary>
     /// Gets or sets the ID of the banner item.
     /// </summary>
-    public ulong ItemId { get;set; }
+    public ulong ItemId { get; set; }
 
     /// <summary>
     /// Gets or sets the name of the banner item.

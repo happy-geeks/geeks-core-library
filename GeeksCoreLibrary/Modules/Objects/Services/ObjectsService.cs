@@ -72,10 +72,12 @@ public class ObjectsService : IObjectsService, IScopedService
             {
                 finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false).Split('.')[0]}");
             }
+
             if (String.IsNullOrEmpty(finalResult))
             {
                 finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.IndexOfLanguagePartInUrl)}");
             }
+
             if (String.IsNullOrEmpty(finalResult))
             {
                 finalResult = await GetSystemObjectValueAsync(objectKey);
@@ -88,10 +90,12 @@ public class ObjectsService : IObjectsService, IScopedService
             {
                 finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.IndexOfLanguagePartInUrl)}");
             }
+
             if (String.IsNullOrEmpty(finalResult))
             {
                 finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false).Split('.')[0]}");
             }
+
             if (String.IsNullOrEmpty(finalResult))
             {
                 finalResult = await GetSystemObjectValueAsync($"{objectKey}_{domain}");

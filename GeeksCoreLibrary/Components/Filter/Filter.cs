@@ -23,7 +23,7 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Components.Filter;
 
-public class Filter : CmsComponent<FilterCmsSettingsModel>
+public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes>
 {
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly IObjectsService objectsService;
@@ -89,7 +89,7 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
         Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<FilterCmsSettingsModel>(settingsJson);
         if (forcedComponentMode.HasValue && Settings != null)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
     }
 
@@ -111,7 +111,7 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
         ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
         else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
         {
@@ -193,6 +193,7 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
                     {
                         continue;
                     }
+
                     set404 = true;
                     break;
                 }
@@ -399,6 +400,7 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
             {
                 filterValueColumn = "filteritem";
             }
+
             if (!row.Table.Columns.Contains(filterGroupColumn))
             {
                 filterGroupColumn = "filtergroupseo";
@@ -472,13 +474,13 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
                 {
                     replaceData = new Dictionary<string, string>
                     {
-                        { "name_seo", previousFilterGroup.Group.ConvertToSeo() },
-                        { "name_cf", previousFilterGroup.Group.CapitalizeFirst() },
-                        { "name", previousFilterGroup.Group },
-                        { "items", groupHtml.ToString() },
-                        { "type", previousFilterType },
-                        { "typename", previousFilterType },
-                        { "count", previousFilterGroup.Items.Count.ToString() }
+                        {"name_seo", previousFilterGroup.Group.ConvertToSeo()},
+                        {"name_cf", previousFilterGroup.Group.CapitalizeFirst()},
+                        {"name", previousFilterGroup.Group},
+                        {"items", groupHtml.ToString()},
+                        {"type", previousFilterType},
+                        {"typename", previousFilterType},
+                        {"count", previousFilterGroup.Items.Count.ToString()}
                     };
                     filterGroup.AddExtraPropertiesToList(replaceData);
 
@@ -499,13 +501,13 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
                 {
                     replaceData = new Dictionary<string, string>
                     {
-                        { "name_seo", previousFilterGroup.Group.ConvertToSeo() },
-                        { "name_cf", previousFilterGroup.Group.CapitalizeFirst() },
-                        { "name", previousFilterGroup.Group },
-                        { "items", groupHtml.ToString() },
-                        { "type", previousFilterType },
-                        { "typename", previousFilterType },
-                        { "count", previousFilterGroup.Items.Count.ToString() }
+                        {"name_seo", previousFilterGroup.Group.ConvertToSeo()},
+                        {"name_cf", previousFilterGroup.Group.CapitalizeFirst()},
+                        {"name", previousFilterGroup.Group},
+                        {"items", groupHtml.ToString()},
+                        {"type", previousFilterType},
+                        {"typename", previousFilterType},
+                        {"count", previousFilterGroup.Items.Count.ToString()}
                     };
                     filterGroup.AddExtraPropertiesToList(replaceData);
 
@@ -525,13 +527,13 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
         {
             replaceData = new Dictionary<string, string>
             {
-                { "name_seo", previousFilterGroup.Group.ConvertToSeo() },
-                { "name_cf", previousFilterGroup.Group.CapitalizeFirst() },
-                { "name", previousFilterGroup.Group },
-                { "items", groupHtml.ToString() },
-                { "type", previousFilterType },
-                { "typename", previousFilterType },
-                { "count", previousFilterGroup.Items.Count.ToString() }
+                {"name_seo", previousFilterGroup.Group.ConvertToSeo()},
+                {"name_cf", previousFilterGroup.Group.CapitalizeFirst()},
+                {"name", previousFilterGroup.Group},
+                {"items", groupHtml.ToString()},
+                {"type", previousFilterType},
+                {"typename", previousFilterType},
+                {"count", previousFilterGroup.Items.Count.ToString()}
             };
             previousFilterGroup?.AddExtraPropertiesToList(replaceData);
 
@@ -562,13 +564,13 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
 
                 replaceData = new Dictionary<string, string>
                 {
-                    { "name_seo", tempName.ConvertToSeo() },
-                    { "name_cf", tempName.CapitalizeFirst() },
-                    { "name", tempName },
-                    { "itemdetail_name", tempName },
-                    { "groupname", tempGroup },
-                    { "group", !String.IsNullOrEmpty(f.QueryString) ? f.QueryString : f.NameSeo },
-                    { "url", CreateFilterUrl(filterGroups, f.NameSeo, selectedFilterItem) }
+                    {"name_seo", tempName.ConvertToSeo()},
+                    {"name_cf", tempName.CapitalizeFirst()},
+                    {"name", tempName},
+                    {"itemdetail_name", tempName},
+                    {"groupname", tempGroup},
+                    {"group", !String.IsNullOrEmpty(f.QueryString) ? f.QueryString : f.NameSeo},
+                    {"url", CreateFilterUrl(filterGroups, f.NameSeo, selectedFilterItem)}
                 };
 
                 foreach (var item in f.Items)
@@ -585,7 +587,7 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
                     }
                 }
 
-                if (f.FilterType== FilterGroup.FilterGroupType.Slider)
+                if (f.FilterType == FilterGroup.FilterGroupType.Slider)
                 {
                     filterItemFound = true;
                 }
@@ -597,14 +599,15 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
                     summaryGroupItems.Append(summaryItem);
                 }
             }
+
             WriteToTrace($"2 - CreateFilterURL({f.NameSeo}, , False)");
 
             replaceData = new Dictionary<string, string>
             {
-                { "groupname", tempGroup },
-                { "group", f.NameSeo },
-                { "selectedvalues", summaryGroupItems.ToString() },
-                { "url", CreateFilterUrl(filterGroups, f.NameSeo, "") }
+                {"groupname", tempGroup},
+                {"group", f.NameSeo},
+                {"selectedvalues", summaryGroupItems.ToString()},
+                {"url", CreateFilterUrl(filterGroups, f.NameSeo, "")}
             };
 
             var summaryGroupHtml = StringReplacementsService.DoReplacements(Settings.TemplateSummaryFilterGroup, replaceData);
@@ -619,8 +622,8 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
 
             replaceData = new Dictionary<string, string>
             {
-                { "items", summaryGroups.ToString() },
-                { "url", CreateFilterUrl(filterGroups, "", "") }
+                {"items", summaryGroups.ToString()},
+                {"url", CreateFilterUrl(filterGroups, "", "")}
             };
 
             var templateSummaryHtml = StringReplacementsService.DoReplacements(Settings.TemplateSummary, replaceData);
@@ -714,6 +717,7 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
                     {
                         tr.Append('&');
                     }
+
                     tr.Append(p.UrlEncode());
                     tr.Append('=');
                     tr.Append(parameterList[p]?.HtmlDecode().UrlEncode());
@@ -812,12 +816,12 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
 
                             replaceData = new Dictionary<string, string>
                             {
-                                { "name_seo", tempValueSeo },
-                                { "name_cf", tempValue.CapitalizeFirst() },
-                                { "name", tempValue },
-                                { "count", filterGroup.Items[k].Count.ToString() },
-                                { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value, true) },
-                                { "querystring", filterGroup.QueryString }
+                                {"name_seo", tempValueSeo},
+                                {"name_cf", tempValue.CapitalizeFirst()},
+                                {"name", tempValue},
+                                {"count", filterGroup.Items[k].Count.ToString()},
+                                {"url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value, true)},
+                                {"querystring", filterGroup.QueryString}
                             };
 
                             if (filterGroup.Items[k].ItemDetails != null)
@@ -839,12 +843,12 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
 
                             replaceData = new Dictionary<string, string>
                             {
-                                { "name_seo", tempValueSeo },
-                                { "name_cf", tempValue.CapitalizeFirst() },
-                                { "name", tempValue },
-                                { "count", filterGroup.Items[k].Count.ToString() },
-                                { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value, true) },
-                                { "querystring", filterGroup.QueryString }
+                                {"name_seo", tempValueSeo},
+                                {"name_cf", tempValue.CapitalizeFirst()},
+                                {"name", tempValue},
+                                {"count", filterGroup.Items[k].Count.ToString()},
+                                {"url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value, true)},
+                                {"querystring", filterGroup.QueryString}
                             };
 
                             if (filterGroup.Items[k].ItemDetails != null)
@@ -889,12 +893,12 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
 
                             replaceData = new Dictionary<string, string>
                             {
-                                { "name_seo", tempValueSeo },
-                                { "name_cf", tempValue.CapitalizeFirst() },
-                                { "name", tempValue },
-                                { "count", filterGroup.Items[k].Count.ToString() },
-                                { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value) },
-                                { "querystring", filterGroup.QueryString }
+                                {"name_seo", tempValueSeo},
+                                {"name_cf", tempValue.CapitalizeFirst()},
+                                {"name", tempValue},
+                                {"count", filterGroup.Items[k].Count.ToString()},
+                                {"url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value)},
+                                {"querystring", filterGroup.QueryString}
                             };
 
                             if (filterGroup.Items[k].ItemDetails != null)
@@ -916,13 +920,13 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
 
                             replaceData = new Dictionary<string, string>
                             {
-                                { "name_seo", tempValueSeo },
-                                { "name_cf", tempValue.CapitalizeFirst() },
-                                { "name", tempValue },
-                                { "count", filterGroup.Items[k].Count.ToString() },
-                                { "group", filterGroup.NameSeo },
-                                { "url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value) },
-                                { "querystring", filterGroup.QueryString }
+                                {"name_seo", tempValueSeo},
+                                {"name_cf", tempValue.CapitalizeFirst()},
+                                {"name", tempValue},
+                                {"count", filterGroup.Items[k].Count.ToString()},
+                                {"group", filterGroup.NameSeo},
+                                {"url", CreateFilterUrl(filterGroups, filterGroup.GetParamKey(), filterGroup.Items[k].Value)},
+                                {"querystring", filterGroup.QueryString}
                             };
 
                             if (filterGroup.Items[k].ItemDetails != null)
@@ -987,13 +991,13 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
 
                     replaceData = new Dictionary<string, string>
                     {
-                        { "minValue", filterGroup.MinValue.ToString(CultureInfo.InvariantCulture) },
-                        { "maxValue", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture) },
-                        { "selectedMin", selectedMinValue.ToString(CultureInfo.InvariantCulture) },
-                        { "selectedMax", selectedMaxValue.ToString(CultureInfo.InvariantCulture) },
-                        { "filterName", filterGroup.Name },
-                        { "filterNameSeo", filterGroup.NameSeo },
-                        { "querystring", filterGroup.QueryString }
+                        {"minValue", filterGroup.MinValue.ToString(CultureInfo.InvariantCulture)},
+                        {"maxValue", filterGroup.MaxValue.ToString(CultureInfo.InvariantCulture)},
+                        {"selectedMin", selectedMinValue.ToString(CultureInfo.InvariantCulture)},
+                        {"selectedMax", selectedMaxValue.ToString(CultureInfo.InvariantCulture)},
+                        {"filterName", filterGroup.Name},
+                        {"filterNameSeo", filterGroup.NameSeo},
+                        {"querystring", filterGroup.QueryString}
                     };
 
                     var tempTemplate = !String.IsNullOrEmpty(filterGroup.ItemTemplate) ? filterGroup.ItemTemplate : Settings.TemplateSlider;
@@ -1014,13 +1018,13 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
             {
                 replaceData = new Dictionary<string, string>
                 {
-                    { "name_seo", filterGroup.NameSeo },
-                    { "name_cf", filterGroup.Name.CapitalizeFirst() },
-                    { "name", filterGroup.Name },
-                    { "querystring", !String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo },
-                    { "items", filterHtml.ToString() },
-                    { "type", filterGroup.FilterType.ToString("D") },
-                    { "typename", filterGroup.FilterType.ToString("G") }
+                    {"name_seo", filterGroup.NameSeo},
+                    {"name_cf", filterGroup.Name.CapitalizeFirst()},
+                    {"name", filterGroup.Name},
+                    {"querystring", !String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo},
+                    {"items", filterHtml.ToString()},
+                    {"type", filterGroup.FilterType.ToString("D")},
+                    {"typename", filterGroup.FilterType.ToString("G")}
                 };
 
                 filterGroup.AddExtraPropertiesToList(replaceData);
@@ -1039,14 +1043,14 @@ public class Filter : CmsComponent<FilterCmsSettingsModel>
             {
                 replaceData = new Dictionary<string, string>
                 {
-                    { "name_seo", filterGroupNameSeo },
-                    { "name_cf", filterGroupName.CapitalizeFirst() },
-                    { "name", filterGroupName },
-                    { "querystring", !String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo },
-                    { "items", filterHtml.ToString() },
-                    { "type", filterGroup.FilterType.ToString("D") },
-                    { "typename", filterGroup.FilterType.ToString("G") },
-                    { "count", filterGroup.Items.Count.ToString() }
+                    {"name_seo", filterGroupNameSeo},
+                    {"name_cf", filterGroupName.CapitalizeFirst()},
+                    {"name", filterGroupName},
+                    {"querystring", !String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo},
+                    {"items", filterHtml.ToString()},
+                    {"type", filterGroup.FilterType.ToString("D")},
+                    {"typename", filterGroup.FilterType.ToString("G")},
+                    {"count", filterGroup.Items.Count.ToString()}
                 };
 
                 filterGroup.AddExtraPropertiesToList(replaceData);

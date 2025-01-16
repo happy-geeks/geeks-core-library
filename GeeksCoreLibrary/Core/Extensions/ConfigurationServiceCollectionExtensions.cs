@@ -139,6 +139,7 @@ public static class ConfigurationServiceCollectionExtensions
         builder.HandleStartupFunctions();
         return builder;
     }
+
     /// <summary>
     /// Handle and execute some functions that are needed to be done during startup of the application.
     /// Don't call this method if you're already calling UseGclMiddleware, because this is called inside that.
@@ -257,10 +258,7 @@ public static class ConfigurationServiceCollectionExtensions
                 services.AddControllersWithViews().AddNewtonsoftJson();
                 // the call to AddControllersWithViews() (or AddMvc() for that matter) will always call AddAntiforgery() no matter what, so DisableXsrfProtection might need another look
                 // setting the XFrameOptions setting here as well makes sure this setting will always work no matter what happens with DisableXsrfProtection
-                services.AddAntiforgery(options =>
-                {
-                    options.SuppressXFrameOptionsHeader = gclSettings.SuppressXFrameOptionHeader;
-                });
+                services.AddAntiforgery(options => { options.SuppressXFrameOptionsHeader = gclSettings.SuppressXFrameOptionHeader; });
             }
 
             // Let MVC know about the GCL controllers.
@@ -290,15 +288,22 @@ public static class ConfigurationServiceCollectionExtensions
         // Enable session.
         if (isWeb)
         {
-            services.AddSession(options =>
-            {
-                options.IdleTimeout = TimeSpan.FromMinutes(30);
-            });
+            services.AddSession(options => { options.IdleTimeout = TimeSpan.FromMinutes(30); });
         }
 
         // Manual additions.
         services.AddHttpContextAccessor();
         services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
+
+        // Templates service.
+        if (gclSettings.UseLegacyWiser1TemplateModule)
+        {
+            services.AddScoped<ITemplatesService, LegacyTemplatesService>();
+        }
+        else
+        {
+            services.AddScoped<ITemplatesService, TemplatesService>();
+        }
 
         // Configure automatic scanning of classes for dependency injection.
         services.Scan(scan => scan
@@ -352,7 +357,15 @@ public static class ConfigurationServiceCollectionExtensions
         services.Decorate<IBarcodesService, CachedBarcodesService>();
         services.Decorate<IAmazonS3Service, CachedAmazonS3Service>();
         services.Decorate<IAmazonSecretsManagerService, CachedAmazonSecretsManagerService>();
-        services.Decorate<ITemplatesService, CachedTemplatesService>();
+
+        if (gclSettings.UseLegacyWiser1TemplateModule)
+        {
+            services.Decorate<ITemplatesService, LegacyCachedTemplatesService>();
+        }
+        else
+        {
+            services.Decorate<ITemplatesService, CachedTemplatesService>();
+        }
 
         return services;
     }

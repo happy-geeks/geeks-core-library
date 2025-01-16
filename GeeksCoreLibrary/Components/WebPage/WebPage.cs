@@ -21,7 +21,7 @@ using Microsoft.AspNetCore.Http;
 namespace GeeksCoreLibrary.Components.WebPage;
 
 [ViewComponent(Name = "WebPage")]
-public class WebPage : CmsComponent<WebPageCmsSettingsModel>
+public class WebPage : CmsComponent<WebPageCmsSettingsModel, WebPage.ComponentModes>
 {
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly IPagesService pagesService;
@@ -72,7 +72,7 @@ public class WebPage : CmsComponent<WebPageCmsSettingsModel>
         ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
         else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
         {
@@ -168,7 +168,7 @@ public class WebPage : CmsComponent<WebPageCmsSettingsModel>
         Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<WebPageCmsSettingsModel>(settingsJson);
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
 
         HandleDefaultSettingsFromComponentMode();

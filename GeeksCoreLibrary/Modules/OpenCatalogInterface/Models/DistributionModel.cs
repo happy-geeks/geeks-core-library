@@ -2,12 +2,12 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Distribution")]
+[XmlRoot(ElementName = "Distribution")]
 public class DistributionModel
 {
-    [XmlElement(ElementName="Accounting")]
+    [XmlElement(ElementName = "Accounting")]
     public AccountingModel Accounting { get; set; }
 
-    [XmlElement(ElementName="Charge")]
+    [XmlElement(ElementName = "Charge")]
     public ChargeModel Charge { get; set; }
 }

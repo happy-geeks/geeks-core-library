@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using FluentAssertions;
 using GeeksCoreLibrary.Core.Extensions;
+using GeeksCoreLibrary.Core.Models;
 using NUnit.Framework;
 
 namespace GeeksCoreLibrary.Tests.Core.Extensions;
@@ -293,62 +294,62 @@ public class StringExtensionsTests
         return new object[][]
         {
             // Simple strings with one variable.
-            new object[] {
+            [
                 "simple=test",
                 false,
                 false,
                 new Dictionary<string, string>
                 {
-                    { "simple", "test" }
+                    {"simple", "test"}
                 }
-            },
-            new object[] {
+            ],
+            [
                 "simple=test",
                 true,
                 false,
                 new Dictionary<string, string>
                 {
-                    { "0000_simple", "test" }
+                    {"0000_simple", "test"}
                 }
-            },
-            new object[] {
+            ],
+            [
                 "simple=test&simple=test2",
                 false,
                 false,
                 new Dictionary<string, string>
                 {
-                    { "simple", "test2" }
+                    {"simple", "test2"}
                 }
-            },
-            new object[] {
+            ],
+            [
                 "simple=test&simple=test2",
                 false,
                 true,
                 new Dictionary<string, string>
                 {
-                    { "simple", "test" }
+                    {"simple", "test"}
                 }
-            },
-            new object[] {
+            ],
+            [
                 "simple=test&simple2=test2",
                 false,
                 true,
                 new Dictionary<string, string>
                 {
-                    { "simple", "test" },
-                    { "simple2", "test2" }
+                    {"simple", "test"},
+                    {"simple2", "test2"}
                 }
-            },
-            new object[] {
+            ],
+            [
                 "simple=test&simple2=test2",
                 true,
                 true,
                 new Dictionary<string, string>
                 {
-                    { "0000_simple", "test" },
-                    { "0001_simple2", "test2" }
+                    {"0000_simple", "test"},
+                    {"0001_simple2", "test2"}
                 }
-            }
+            ]
         };
     }
 }

@@ -62,7 +62,7 @@ public class WiserItemFilesMiddleware(RequestDelegate next, ILogger<RewriteUrlTo
         var matchResult = urlRegex.Match(path);
         if (!matchResult.Success)
         {
-            urlRegex =  new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<encryptedId>.+?)(?:\/(?<fileType>itemlink|direct|name))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            urlRegex = new Regex(@"(?:image\/wiser[0-9]?\/)(?:(?<type>[^\/]+)\/)?(?<encryptedId>.+?)(?:\/(?<fileType>itemlink|direct|name))?\/(?<propertyName>[^\/]+)(?:\/(?<resizeMode>normal|stretch|crop|fill)(?:-(?<anchorPosition>center|top|bottom|left|right|topleft|topright|bottomright|bottomleft))?)?(?:\/(?<preferredWidth>\d+)\/(?<preferredHeight>\d+))?(?:\/(?<fileNumber>\d+))?\/(?<fileName>.+?\..+)", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
             matchResult = urlRegex.Match(path);
             if (!matchResult.Success)
             {
@@ -77,12 +77,12 @@ public class WiserItemFilesMiddleware(RequestDelegate next, ILogger<RewriteUrlTo
                         return;
                     }
                 }
-                
-                context.Request.Path = "/wiser-file.gcl";    
+
+                context.Request.Path = "/wiser-file.gcl";
             }
             else
             {
-                context.Request.Path = "/wiser-image.gcl";    
+                context.Request.Path = "/wiser-image.gcl";
             }
         }
         else

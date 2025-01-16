@@ -13,8 +13,9 @@ public interface IFiltersService
     /// <param name="givenFilterGroups">Give filter groups ik known. Otherwise this function will get the filter groups.</param>
     /// <param name="productJoinPart">Join part for join on product-id in aggregation table</param>
     /// <param name="categoryJoinPart">Join part for join on category-id in aggregation table</param>
+    /// <param name="forActiveFilter">The currently active filter.</param>
     /// <returns>A <see cref="string"/> containing the joins.</returns>
-    Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart= "", string forActiveFilter = "");
+    Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart = "", string forActiveFilter = "");
 
     /// <summary>
     /// Function returns the filters keys from the GCLFilters parameter, which is used for search engine friendly URLs in combination with dynamic filters

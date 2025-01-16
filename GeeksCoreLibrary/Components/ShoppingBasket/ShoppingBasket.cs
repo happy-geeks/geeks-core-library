@@ -36,7 +36,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket;
     PrettyName = "Shopping Basket",
     Description = "Component for handling shopping baskets on a website, such as rendering the basket, adding products, removing products, etc."
 )]
-public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel>
+public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, ShoppingBasket.ComponentModes>
 {
     private readonly IShoppingBasketsService shoppingBasketsService;
     private readonly IWebHostEnvironment webHostEnvironment;
@@ -112,7 +112,13 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel>
         /// <summary>
         /// For emailing the basket.
         /// </summary>
-        Email = 9
+        Email = 9,
+
+        /// <summary>
+        /// For JCL baskets that should run with the GCL code.
+        /// </summary>
+        [CmsEnum(HideInCms = true)]
+        Legacy = 10
     }
 
     public enum PriceTypes
@@ -297,6 +303,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel>
         {
             replacementData["shippingcosts"] = await shoppingBasketsService.CalculateShippingCostsAsync(Main, Lines, Settings);
         }
+
         if (output.Contains("{paymentmethodcosts}"))
         {
             replacementData["paymentmethodcosts"] = await shoppingBasketsService.CalculatePaymentMethodCostsAsync(Main, Lines, Settings);
@@ -347,15 +354,15 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel>
 
             var additionalReplacementData = new Dictionary<string, object>
             {
-                { "BasketLineStockActionMessage", basketLineStockActionMessage },
-                { "BasketLineValidityMessage", basketLineValidityMessage }
+                {"BasketLineStockActionMessage", basketLineStockActionMessage},
+                {"BasketLineValidityMessage", basketLineValidityMessage}
             };
 
             // Replace extra data first.
-            if (extraData is { Count: > 0 })
+            if (extraData is {Count: > 0})
             {
                 // The "couponExcludedItems" entry is a special case.
-                if (extraData.ContainsKey("couponExcludedItems") && extraData["couponExcludedItems"] is JArray { Count: > 0 } couponExcludedItemsArray)
+                if (extraData.ContainsKey("couponExcludedItems") && extraData["couponExcludedItems"] is JArray {Count: > 0} couponExcludedItemsArray)
                 {
                     StringReplacementsService.FillStringByClassList(couponExcludedItemsArray, template, true, "couponExcludedItemsRepeat");
                 }
@@ -384,10 +391,16 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel>
     {
         ComponentId = dynamicContent.Id;
         ExtraDataForReplacements = extraData;
+        if (dynamicContent.Name is "JuiceControlLibrary.ShoppingBasket")
+        {
+            // Force component mode to Legacy mode if it was created through the JCL.
+            Settings.ComponentMode = ComponentModes.Legacy;
+        }
+
         ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
         else if (!String.IsNullOrWhiteSpace(dynamicContent.ComponentMode))
         {
@@ -445,8 +458,11 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel>
             case ComponentModes.Email:
                 resultHtml.Append(await HandleEmailModeAsync());
                 break;
+            case ComponentModes.Legacy:
+                resultHtml.Append(await HandleLegacyModeAsync());
+                break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(Settings.ComponentMode), Settings.ComponentMode.ToString(), null);
+                throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'InvokeAsync'.");
         }
 
         if (String.IsNullOrWhiteSpace(Settings.TemplateJavaScript))
@@ -581,7 +597,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel>
     {
         var (html, contentItemId, pdfDocumentOptions) = await GetDocumentTemplateHtmlAsync();
         var pdfBackgroundPropertyName = await objectsService.FindSystemObjectByDomainNameAsync("pdf_backgroundpropertyname");
-        var pdfFileResult = await htmlToPdfConverterService.ConvertHtmlStringToPdfAsync(new HtmlToPdfRequestModel { Html = html, ItemId = contentItemId, BackgroundPropertyName = pdfBackgroundPropertyName, DocumentOptions = pdfDocumentOptions });
+        var pdfFileResult = await htmlToPdfConverterService.ConvertHtmlStringToPdfAsync(new HtmlToPdfRequestModel {Html = html, ItemId = contentItemId, BackgroundPropertyName = pdfBackgroundPropertyName, DocumentOptions = pdfDocumentOptions});
 
         return pdfFileResult;
     }
@@ -639,20 +655,20 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel>
         var addCouponResult = await shoppingBasketsService.AddCouponToBasketAsync(Main, Lines, Settings);
         var replacementData = new Dictionary<string, object>
         {
-            { "couponSuccess", addCouponResult.Valid ? "1" : "0" },
-            { "addCouponResult", addCouponResult.ResultCode.ToString("G") }
+            {"couponSuccess", addCouponResult.Valid ? "1" : "0"},
+            {"addCouponResult", addCouponResult.ResultCode.ToString("G")}
         };
 
         // Add the excluded items as a JArray.
         var excludedItems = new JArray();
-        if (addCouponResult.ExcludedItems is { Count: > 0 })
+        if (addCouponResult.ExcludedItems is {Count: > 0})
         {
             foreach (var excludedItem in addCouponResult.ExcludedItems)
             {
                 var obj = new JObject
                 {
-                    { "ItemId", excludedItem.ItemId },
-                    { "Name", excludedItem.Name }
+                    {"ItemId", excludedItem.ItemId},
+                    {"Name", excludedItem.Name}
                 };
 
                 excludedItems.Add(obj);
@@ -735,6 +751,83 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel>
         return await GetRenderedBasketAsync();
     }
 
+    /// <summary>
+    /// Handles the Legacy component mode, which basically mimics the JCL ShoppingBasket.
+    /// </summary>
+    /// <returns></returns>
+    public async Task<string> HandleLegacyModeAsync()
+    {
+        // Check mode request variable.
+        var mode = HttpContextHelpers.GetRequestValue(HttpContext, "mode");
+        if (!String.IsNullOrWhiteSpace(mode))
+        {
+            switch (mode)
+            {
+                case "printbasket":
+                    return await HandlePrintModeAsync();
+                case "generatepdf":
+                    return await HandleGeneratePdfModeAsync();
+                case "emailbasket":
+                    return await HandleEmailModeAsync();
+            }
+        }
+
+        // Check other request variables ("additem", "deleteproductbyid", etc.).
+        if (!String.IsNullOrWhiteSpace(HttpContextHelpers.GetRequestValue(HttpContext, "additem")) || !String.IsNullOrWhiteSpace(HttpContextHelpers.GetRequestValue(HttpContext, "additems")))
+        {
+            await HandleAddItemsModeAsync();
+        }
+
+        var removeItemRequest = HttpContextHelpers.GetRequestValue(HttpContext, "deleteproductbyid");
+        if (!String.IsNullOrWhiteSpace(removeItemRequest))
+        {
+            await HandleRemoveItemsModeAsync();
+        }
+
+        if (Settings.HandleRequest)
+        {
+            // Check if the quantity of an item (or quantities of multiple items) should be changed.
+            if (mode == "aantallenaangepast")
+            {
+                foreach (var key in Request.Query.Keys.Where(key => key.StartsWith("aantal_", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var id = key[7..];
+                    var quantity = Convert.ToInt32(Request.Query[key].First());
+                    await shoppingBasketsService.UpdateBasketLineQuantityAsync(Main, Lines, Settings, id, quantity);
+                }
+
+                if (Request.HasFormContentType)
+                {
+                    foreach (var key in Request.Form.Keys.Where(key => key.StartsWith("aantal_", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var id = key[7..];
+                        var quantity = Convert.ToInt32(Request.Form[key].First());
+                        await shoppingBasketsService.UpdateBasketLineQuantityAsync(Main, Lines, Settings, id, quantity);
+                    }
+                }
+            }
+
+            // Handle potential coupon.
+            await shoppingBasketsService.AddCouponToBasketAsync(Main, Lines, Settings);
+        }
+
+        if (Settings.ClearContentsOnLoad)
+        {
+            // Clear the contents (does NOT create a new basket).
+            await ClearContentsAsync();
+        }
+
+        if (Settings.ResetOnLoad)
+        {
+            // Reset the basket (creates a new basket).
+            await ResetAsync();
+        }
+
+        await shoppingBasketsService.RecalculateVariablesAsync(Main, Lines, Settings);
+
+        return await GetRenderedBasketAsync();
+    }
+
     private string DoDefaultShoppingBasketHtmlReplacements(string template)
     {
         return template.Replace("{contentId}", ComponentId.ToString(), StringComparison.OrdinalIgnoreCase).Replace("{basketId}", Main.Id.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -752,17 +845,31 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel>
             return;
         }
 
-        Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<ShoppingBasketCmsSettingsModel>(settingsJson);
-        if (forcedComponentMode.HasValue && Settings != null)
+        if (Settings.ComponentMode == ComponentModes.Legacy)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<ShoppingBasketLegacySettingsModel>(settingsJson)?.ToSettingsModel();
+            // Parsing the settings will set the component mode to Render, so force it back to Legacy here.
+            if (Settings != null)
+            {
+                Settings.ComponentMode = ComponentModes.Legacy;
+            }
+        }
+        else
+        {
+            Settings = Newtonsoft.Json.JsonConvert.DeserializeObject<ShoppingBasketCmsSettingsModel>(settingsJson);
+            if (forcedComponentMode.HasValue && Settings != null)
+            {
+                Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
+            }
         }
     }
 
     /// <inheritdoc />
     public override string GetSettingsJson()
     {
-        return Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
+        return Settings.ComponentMode == ComponentModes.Legacy
+            ? Newtonsoft.Json.JsonConvert.SerializeObject(new ShoppingBasketLegacySettingsModel().FromSettingsModel(Settings))
+            : Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
     }
 
     #endregion

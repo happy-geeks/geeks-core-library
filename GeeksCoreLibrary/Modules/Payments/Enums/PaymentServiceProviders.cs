@@ -7,6 +7,7 @@ public enum PaymentServiceProviders
     Buckaroo,
     MultiSafepay,
     CM,
+
     /// <summary>
     /// This used to be called RaboOmnikassa, but Rabobank changed the name in 2022.
     /// </summary>

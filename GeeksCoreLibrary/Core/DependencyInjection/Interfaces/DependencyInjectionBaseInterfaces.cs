@@ -3,14 +3,14 @@
 /// <summary>
 /// Use this for services that should be recreated every time they are injected.
 /// </summary>
-public interface ITransientService {}
+public interface ITransientService;
 
 /// <summary>
 /// Use this for services that should be created once per request.
 /// </summary>
-public interface IScopedService {}
+public interface IScopedService;
 
 /// <summary>
 /// Use this for services that should be created only once during the life time of the application.
 /// </summary>
-public interface ISingletonService {}
+public interface ISingletonService;

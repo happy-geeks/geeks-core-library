@@ -30,6 +30,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             id = value;
         }
     }
@@ -51,6 +52,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             originalItemId = value;
         }
     }
@@ -89,6 +91,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             encryptedId = value;
         }
     }
@@ -110,6 +113,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             parentItemId = value;
         }
     }
@@ -129,6 +133,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             uniqueUuid = value;
         }
     }
@@ -147,6 +152,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             ordering = value;
         }
     }
@@ -165,6 +171,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             moduleId = value;
         }
     }
@@ -184,6 +191,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             publishedEnvironment = value;
         }
     }
@@ -202,6 +210,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             readOnly = value;
         }
     }
@@ -220,6 +229,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             removed = value;
         }
     }
@@ -238,6 +248,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             title = value;
         }
     }
@@ -256,6 +267,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             addedOn = value;
         }
     }
@@ -274,6 +286,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             addedBy = value;
         }
     }
@@ -292,6 +305,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             changedOn = value;
         }
     }
@@ -310,6 +324,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             changedBy = value;
         }
     }
@@ -328,6 +343,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             entityType = value;
         }
     }
@@ -347,6 +363,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             json = value;
         }
     }
@@ -365,6 +382,7 @@ public class WiserItemModel
             {
                 Changed = true;
             }
+
             jsonLastProcessedDate = value;
         }
     }

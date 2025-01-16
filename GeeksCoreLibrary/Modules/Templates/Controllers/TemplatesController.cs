@@ -55,6 +55,7 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
             {
                 Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "id"), out templateId);
             }
+
             logger.LogDebug($"GetAsync content from HTML template, templateName: '{templateName}', templateId: '{templateId}'.");
 
             if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
@@ -156,7 +157,7 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
                     }
                     else
                     {
-                        pagesService.SetPageSeoData("","", "", "", noIndex, noFollow);
+                        pagesService.SetPageSeoData("", "", "", "", noIndex, noFollow);
                     }
 
                     break;
@@ -199,7 +200,7 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
             var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(context, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
             if (removeSvgUrlsFromIcons)
             {
-                var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                var regex = new Regex("""<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href="([^>"]*)#(?:[^>"]*)"(?:[^>]*)>""", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 foreach (Match match in regex.Matches(newBodyHtml))
                 {
                     if (!String.IsNullOrEmpty(match.Groups[1].Value))

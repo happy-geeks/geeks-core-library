@@ -22,10 +22,13 @@ public class GeoLocationController(IGeoLocationService geoLocationService) : Con
     [Route("/addressinfo.jcl")]
     [HttpGet]
     public async Task<IActionResult> GetAddressInfoAsync(
-        [Required(ErrorMessage = "ZIP code is required."), RegularExpression(@"^\d{4}\s*(?:[a-zA-Z]{2})?$", ErrorMessage = "Invalid ZIP code.")] string zipCode,
-        [Required(ErrorMessage = "House number is required.")] string houseNumber,
+        [Required(ErrorMessage = "ZIP code is required."), RegularExpression(@"^\d{4}\s*(?:[a-zA-Z]{2})?$", ErrorMessage = "Invalid ZIP code.")]
+        string zipCode,
+        [Required(ErrorMessage = "House number is required.")]
+        string houseNumber,
         string houseNumberAddition = "",
-        [RegularExpression("^(nl|be)$", ErrorMessage = "Country code must be either 'nl' or 'be'.")] string country = "nl")
+        [RegularExpression("^(nl|be)$", ErrorMessage = "Country code must be either 'nl' or 'be'.")]
+        string country = "nl")
     {
         if (!ModelState.IsValid)
         {

@@ -14,6 +14,7 @@ public class RepeaterCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Component mode",
         Description = "The current component mode the component should run in",
+        DeveloperRemarks = "Legacy components (ML)Simplemenu/ProductModule is now just Repeater",
         DisplayOrder = 10,
         HideInCms = true,
         ReadOnlyInCms = true
@@ -70,7 +71,7 @@ public class RepeaterCmsSettingsModel : CmsSettings
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.Templates,
         DisplayOrder = 10,
-        ComponentMode = "Repeater",
+        ComponentMode = "NonLegacy",
         HideInCms = false,
         ReadOnlyInCms = false
     )]
@@ -96,17 +97,19 @@ public class RepeaterCmsSettingsModel : CmsSettings
     [CmsProperty(
         PrettyName = "Product banner template",
         Description = "The HTML template for a product banner.",
-        DeveloperRemarks = @"<p>This only works for single level repeaters</p><p>You can use the following variables here:</p>
-                                <ul>
-                                    <li>{ItemId}</li>
-                                    <li>{Name}</li>
-                                    <li>{Content}</li>
-                                    <li>{LanguageCode}</li>
-                                    <li>{BannerSize}</li>
-                                    <li>{BaseUrl}</li>
-                                    <li>{UrlContains}</li>
-                                    <li>{Position}</li>
-                                </ul>",
+        DeveloperRemarks = """
+                           <p>This only works for single level repeaters</p><p>You can use the following variables here:</p>
+                                                           <ul>
+                                                               <li>{ItemId}</li>
+                                                               <li>{Name}</li>
+                                                               <li>{Content}</li>
+                                                               <li>{LanguageCode}</li>
+                                                               <li>{BannerSize}</li>
+                                                               <li>{BaseUrl}</li>
+                                                               <li>{UrlContains}</li>
+                                                               <li>{Position}</li>
+                                                           </ul>
+                           """,
         TabName = CmsAttributes.CmsTabName.Layout,
         GroupName = CmsAttributes.CmsGroupName.AdvancedTemplates,
         DisplayOrder = 30,

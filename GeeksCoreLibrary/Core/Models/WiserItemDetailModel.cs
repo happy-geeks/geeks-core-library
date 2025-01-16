@@ -19,6 +19,7 @@ public class WiserItemDetailModel
             {
                 Changed = true;
             }
+
             id = value;
         }
     }
@@ -56,6 +57,7 @@ public class WiserItemDetailModel
             {
                 Changed = true;
             }
+
             languageCode = value;
         }
     }
@@ -74,6 +76,7 @@ public class WiserItemDetailModel
             {
                 Changed = true;
             }
+
             groupName = value;
         }
     }
@@ -92,6 +95,7 @@ public class WiserItemDetailModel
             {
                 Changed = true;
             }
+
             key = value;
         }
     }
@@ -110,6 +114,7 @@ public class WiserItemDetailModel
             {
                 Changed = true;
             }
+
             val = value;
         }
     }
@@ -128,6 +133,7 @@ public class WiserItemDetailModel
             {
                 Changed = true;
             }
+
             isLinkProperty = value;
         }
     }
@@ -146,6 +152,7 @@ public class WiserItemDetailModel
             {
                 Changed = true;
             }
+
             itemLinkId = value;
         }
     }
@@ -170,6 +177,7 @@ public class WiserItemDetailModel
             {
                 Changed = true;
             }
+
             readOnly = value;
         }
     }

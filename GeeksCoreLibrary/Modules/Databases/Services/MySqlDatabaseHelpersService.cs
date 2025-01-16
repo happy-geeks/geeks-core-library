@@ -42,6 +42,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
             databaseName = databaseConnection.ConnectedDatabase;
         }
+
         databaseConnection.AddParameter("columnName", columnName);
 
         var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` LIKE ?columnName");
@@ -56,6 +57,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
             databaseName = databaseConnection.ConnectedDatabase;
         }
+
         var dataTable = await databaseConnection.GetAsync($"SHOW COLUMNS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
         return dataTable.Rows.Cast<DataRow>().Select(dataRow => dataRow.Field<string>("Field")).ToList();
     }
@@ -121,6 +123,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
             databaseName = databaseConnection.ConnectedDatabase;
         }
+
         await databaseConnection.ExecuteAsync($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` DROP COLUMN `{columnName.ToMySqlSafeValue(false)}`");
     }
 
@@ -132,6 +135,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
             databaseName = databaseConnection.ConnectedDatabase;
         }
+
         var queryBuilder = new StringBuilder($"CREATE TABLE IF NOT EXISTS `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
         if (primaryKeys != null && primaryKeys.Any())
         {
@@ -207,6 +211,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
             databaseName = databaseConnection.ConnectedDatabase;
         }
+
         var dataTable = await databaseConnection.GetAsync($"SHOW KEYS FROM `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}` WHERE KEY_NAME = 'PRIMARY'");
         var primaryKeyIsChanged = dataTable.Rows.Count != primaryKeys.Count || dataTable.Rows.Cast<DataRow>().Any(d => !primaryKeys.Any(p => p.Name.Equals(d.Field<string>("column_name"))));
         if (!primaryKeyIsChanged)
@@ -253,6 +258,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
             databaseName = databaseConnection.ConnectedDatabase;
         }
+
         await databaseConnection.ExecuteAsync($"DROP {(isTemporaryTable ? "TEMPORARY" : "")} TABLE IF EXISTS `{databaseName.ToMySqlSafeValue(false)}`.`{tableName.ToMySqlSafeValue(false)}`");
     }
 
@@ -265,10 +271,12 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
         {
             sourceDatabaseName = databaseConnection.ConnectedDatabase;
         }
+
         if (String.IsNullOrWhiteSpace(destinationDatabaseName))
         {
             destinationDatabaseName = databaseConnection.ConnectedDatabase;
         }
+
         await databaseConnection.ExecuteAsync($"CREATE TABLE `{destinationDatabaseName.ToMySqlSafeValue(false)}`.`{newTableName.ToMySqlSafeValue(false)}` LIKE `{sourceDatabaseName.ToMySqlSafeValue(false)}`.`{tableToDuplicate.ToMySqlSafeValue(false)}`");
         if (!includeData)
         {
@@ -291,6 +299,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
             databaseName = databaseConnection.ConnectedDatabase;
         }
+
         var oldIndexes = new Dictionary<string, List<(string Name, List<string> Columns)>>();
 
         foreach (var index in indexes.Where(index => !String.IsNullOrWhiteSpace(index.Name) && index.Fields != null && index.Fields.Any()))
@@ -420,6 +429,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             await databaseConnection.EnsureOpenConnectionForReadingAsync();
             databaseName = databaseConnection.ConnectedDatabase;
         }
+
         var dataTable = await databaseConnection.GetAsync($"SELECT name, last_update FROM `{databaseName.ToMySqlSafeValue(false)}`.`{WiserTableNames.WiserTableChanges}`");
         if (dataTable.Rows.Count == 0)
         {
@@ -563,9 +573,11 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             // Update wiser_table_changes.
             databaseConnection.AddParameter("tableName", tableName);
             databaseConnection.AddParameter("lastUpdate", DateTime.Now);
-            await databaseConnection.ExecuteAsync($@"INSERT INTO `{databaseName.ToMySqlSafeValue(false)}`.`{WiserTableNames.WiserTableChanges}` (name, last_update) 
-VALUES (?tableName, ?lastUpdate) 
-ON DUPLICATE KEY UPDATE last_update = VALUES(last_update)");
+            await databaseConnection.ExecuteAsync($"""
+                                                   INSERT INTO `{databaseName.ToMySqlSafeValue(false)}`.`{WiserTableNames.WiserTableChanges}` (name, last_update) 
+                                                   VALUES (?tableName, ?lastUpdate) 
+                                                   ON DUPLICATE KEY UPDATE last_update = VALUES(last_update)
+                                                   """);
             changesMade = true;
         }
 
@@ -588,12 +600,14 @@ ON DUPLICATE KEY UPDATE last_update = VALUES(last_update)");
         }
 
         databaseConnection.AddParameter("schema", databaseName);
-        var tablesData = await databaseConnection.GetAsync($@"
-                SELECT TABLE_NAME
-                FROM information_schema.`TABLES`
-                WHERE TABLE_SCHEMA = ?schema
-                {viewsPart}
-                ORDER BY TABLE_NAME");
+        var tablesData = await databaseConnection.GetAsync($"""
+                                                            
+                                                                            SELECT TABLE_NAME
+                                                                            FROM information_schema.`TABLES`
+                                                                            WHERE TABLE_SCHEMA = ?schema
+                                                                            {viewsPart}
+                                                                            ORDER BY TABLE_NAME
+                                                            """);
 
         return new List<string>(tablesData.Rows.Cast<DataRow>().Select(dataRow => dataRow.Field<string>("TABLE_NAME")));
     }

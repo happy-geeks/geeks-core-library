@@ -49,43 +49,48 @@ public class PagesService(
         string headerRegexCheck;
         Template template;
 
-        var joinPart = "";
-        var whereClause = new List<string>();
-        if (gclSettings.Environment == Environments.Development)
+        if (!gclSettings.UseLegacyWiser1TemplateModule)
         {
-            joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
-        }
-        else
-        {
-            whereClause.Add($"(template.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}");
-        }
-
-        whereClause.Add($"template.template_type = {(int)TemplateTypes.Html}");
-        whereClause.Add("template.removed = 0");
-        whereClause.Add("template.is_default_header = 1");
-
-        var query = $@"
-            SELECT template.template_id, template.default_header_footer_regex
-            FROM `{WiserTableNames.WiserTemplate}` AS template
-            {joinPart}
-            WHERE {String.Join(" AND ", whereClause)}
-            GROUP BY template.template_id";
-
-        var globalHeaders = await databaseConnection.GetAsync(query);
-        foreach (DataRow globalHeaderDataRow in globalHeaders.Rows)
-        {
-            headerRegexCheck = globalHeaderDataRow.Field<string>("default_header_footer_regex");
-            if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
+            var joinPart = "";
+            var whereClause = new List<string>();
+            if (gclSettings.Environment == Environments.Development)
             {
-                continue;
+                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+            }
+            else
+            {
+                whereClause.Add($"(template.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}");
             }
 
-            headerTemplateId = globalHeaderDataRow.IsNull("template_id") ? 0 : globalHeaderDataRow.Field<int>("template_id");
-            template = await templatesService.GetTemplateAsync(headerTemplateId);
-            javascriptTemplates.AddRange(template.JavascriptTemplates);
-            cssTemplates.AddRange(template.CssTemplates);
-            logger.LogDebug($"Default header template loaded: '{headerTemplateId}'");
-            return template.Content;
+            whereClause.Add($"template.template_type = {(int) TemplateTypes.Html}");
+            whereClause.Add("template.removed = 0");
+            whereClause.Add("template.is_default_header = 1");
+
+            var query = $"""
+                         
+                                         SELECT template.template_id, template.default_header_footer_regex
+                                         FROM `{WiserTableNames.WiserTemplate}` AS template
+                                         {joinPart}
+                                         WHERE {String.Join(" AND ", whereClause)}
+                                         GROUP BY template.template_id
+                         """;
+
+            var globalHeaders = await databaseConnection.GetAsync(query);
+            foreach (DataRow globalHeaderDataRow in globalHeaders.Rows)
+            {
+                headerRegexCheck = globalHeaderDataRow.Field<string>("default_header_footer_regex");
+                if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
+                {
+                    continue;
+                }
+
+                headerTemplateId = globalHeaderDataRow.IsNull("template_id") ? 0 : globalHeaderDataRow.Field<int>("template_id");
+                template = await templatesService.GetTemplateAsync(headerTemplateId);
+                javascriptTemplates.AddRange(template.JavascriptTemplates);
+                cssTemplates.AddRange(template.CssTemplates);
+                logger.LogDebug($"Default header template loaded: '{headerTemplateId}'");
+                return template.Content;
+            }
         }
 
         // Try system objects method.
@@ -114,43 +119,48 @@ public class PagesService(
         string headerRegexCheck;
         Template template;
 
-        var joinPart = "";
-        var whereClause = new List<string>();
-        if (gclSettings.Environment == Environments.Development)
+        if (!gclSettings.UseLegacyWiser1TemplateModule)
         {
-            joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
-        }
-        else
-        {
-            whereClause.Add($"(template.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}");
-        }
-
-        whereClause.Add($"template.template_type = {(int)TemplateTypes.Html}");
-        whereClause.Add("template.removed = 0");
-        whereClause.Add("template.is_default_footer = 1");
-
-        var query = $@"
-            SELECT template.template_id, template.default_header_footer_regex
-            FROM `{WiserTableNames.WiserTemplate}` AS template
-            {joinPart}
-            WHERE {String.Join(" AND ", whereClause)}
-            GROUP BY template.template_id";
-
-        var globalFooters = await databaseConnection.GetAsync(query);
-        foreach (DataRow globalFooterDataRow in globalFooters.Rows)
-        {
-            headerRegexCheck = globalFooterDataRow.Field<string>("default_header_footer_regex");
-            if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
+            var joinPart = "";
+            var whereClause = new List<string>();
+            if (gclSettings.Environment == Environments.Development)
             {
-                continue;
+                joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+            }
+            else
+            {
+                whereClause.Add($"(template.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}");
             }
 
-            footerTemplateId = globalFooterDataRow.IsNull("template_id") ? 0 : globalFooterDataRow.Field<int>("template_id");
-            template = await templatesService.GetTemplateAsync(footerTemplateId);
-            javascriptTemplates.AddRange(template.JavascriptTemplates);
-            cssTemplates.AddRange(template.CssTemplates);
-            logger.LogDebug($"Default footer template loaded: '{footerTemplateId}'");
-            return template.Content;
+            whereClause.Add($"template.template_type = {(int) TemplateTypes.Html}");
+            whereClause.Add("template.removed = 0");
+            whereClause.Add("template.is_default_footer = 1");
+
+            var query = $"""
+                         
+                                         SELECT template.template_id, template.default_header_footer_regex
+                                         FROM `{WiserTableNames.WiserTemplate}` AS template
+                                         {joinPart}
+                                         WHERE {String.Join(" AND ", whereClause)}
+                                         GROUP BY template.template_id
+                         """;
+
+            var globalFooters = await databaseConnection.GetAsync(query);
+            foreach (DataRow globalFooterDataRow in globalFooters.Rows)
+            {
+                headerRegexCheck = globalFooterDataRow.Field<string>("default_header_footer_regex");
+                if (!String.IsNullOrWhiteSpace(url) && !String.IsNullOrWhiteSpace(headerRegexCheck) && !Regex.IsMatch(url, headerRegexCheck, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
+                {
+                    continue;
+                }
+
+                footerTemplateId = globalFooterDataRow.IsNull("template_id") ? 0 : globalFooterDataRow.Field<int>("template_id");
+                template = await templatesService.GetTemplateAsync(footerTemplateId);
+                javascriptTemplates.AddRange(template.JavascriptTemplates);
+                cssTemplates.AddRange(template.CssTemplates);
+                logger.LogDebug($"Default footer template loaded: '{footerTemplateId}'");
+                return template.Content;
+            }
         }
 
         // Try system objects method.
@@ -446,7 +456,7 @@ public class PagesService(
         }
 
         // Check if some component is adding external JavaScript libraries to the page.
-        var externalScripts = externalJavascript.Select(ej => new JavaScriptResourceModel { Uri = new Uri(ej.Uri.OriginalString, UriKind.RelativeOrAbsolute), Hash = ej.Hash }).ToList();
+        var externalScripts = externalJavascript.Select(ej => new JavaScriptResourceModel {Uri = new Uri(ej.Uri.OriginalString, UriKind.RelativeOrAbsolute), Hash = ej.Hash}).ToList();
         foreach (var externalScript in externalScripts.Where(externalScript => !externalScript.Uri.IsAbsoluteUri))
         {
             // Turn relative URI into absolute.
@@ -703,7 +713,7 @@ public class PagesService(
         }
 
         // Some keys are preserved (in other words, the underscores in these keys shouldn't be replaced with colons).
-        var preservedKeys = new[] { "site_name", "secure_url", "release_date", "published_time", "modified_time", "expiration_time", "first_name", "last_name" };
+        var preservedKeys = new[] {"site_name", "secure_url", "release_date", "published_time", "modified_time", "expiration_time", "first_name", "last_name"};
         var componentSeoData = httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] as PageMetaDataModel ?? new PageMetaDataModel();
         foreach (var openGraphItem in openGraphValues)
         {
@@ -744,28 +754,30 @@ public class PagesService(
         });
 
         viewModel.Javascript.PageInlineHeadJavascript ??= [];
-        viewModel.Javascript.PageInlineHeadJavascript.Add($@"function gclExecuteReCaptcha(action) {{
-	return new Promise((resolve, reject) => {{
-		if (!grecaptcha || !grecaptcha.ready) {{
-			reject(""grecaptcha not defined!"");
-			return;
-		}}
+        viewModel.Javascript.PageInlineHeadJavascript.Add($$"""
+                                                            function gclExecuteReCaptcha(action) {
+                                                            	return new Promise((resolve, reject) => {
+                                                            		if (!grecaptcha || !grecaptcha.ready) {
+                                                            			reject("grecaptcha not defined!");
+                                                            			return;
+                                                            		}
+                                                            
+                                                            		grecaptcha.ready(() => {
+                                                            			try {
+                                                            				grecaptcha.execute("{{reCaptchaSiteKey}}", {action: action}).then((token) => {
+                                                            					resolve(token);
+                                                            				}).catch((error) => {
+                                                            					reject(error);
+                                                            				});
+                                                            			} catch (exception) {
+                                                            				reject(exception);
+                                                            			}
+                                                            		});
+                                                            	});
+                                                            }
 
-		grecaptcha.ready(() => {{
-			try {{
-				grecaptcha.execute(""{reCaptchaSiteKey}"", {{action: action}}).then((token) => {{
-					resolve(token);
-				}}).catch((error) => {{
-					reject(error);
-				}});
-			}} catch (exception) {{
-				reject(exception);
-			}}
-		}});
-	}});
-}}
-
-gclExecuteReCaptcha(""Page_load"")");
+                                                            gclExecuteReCaptcha("Page_load")
+                                                            """);
     }
 
     /// <summary>
@@ -852,6 +864,7 @@ gclExecuteReCaptcha(""Page_load"")");
         {
             viewModel.GoogleAnalytics.InlineHeadJavaScript = inlineHeadJavaScript.ToString();
         }
+
         if (inlineBodyNoScript.Length > 0)
         {
             viewModel.GoogleAnalytics.InlineBodyNoScript = inlineBodyNoScript.ToString();

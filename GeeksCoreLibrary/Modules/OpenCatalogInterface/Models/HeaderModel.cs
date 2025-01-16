@@ -2,15 +2,15 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Header")]
+[XmlRoot(ElementName = "Header")]
 public class HeaderModel
 {
-    [XmlElement(ElementName="From")]
+    [XmlElement(ElementName = "From")]
     public FromModel From { get; set; }
 
-    [XmlElement(ElementName="To")]
+    [XmlElement(ElementName = "To")]
     public ToModel To { get; set; }
 
-    [XmlElement(ElementName="Sender")]
+    [XmlElement(ElementName = "Sender")]
     public SenderModel Sender { get; set; }
 }

@@ -11,7 +11,6 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Extensions;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Models;
-using GeeksCoreLibrary.Modules.Templates.Services;
 using LazyCache;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
@@ -104,10 +103,12 @@ public class CachedObjectsService(
             {
                 finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostName.Split('.')[0]}");
             }
+
             if (String.IsNullOrEmpty(finalResult))
             {
                 finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{urlPrefix}");
             }
+
             if (String.IsNullOrEmpty(finalResult))
             {
                 finalResult = await GetSystemObjectValueAsync(objectKey);
@@ -120,10 +121,12 @@ public class CachedObjectsService(
             {
                 finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{urlPrefix}");
             }
+
             if (String.IsNullOrEmpty(finalResult))
             {
                 finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostName.Split('.')[0]}");
             }
+
             if (String.IsNullOrEmpty(finalResult))
             {
                 finalResult = await GetSystemObjectValueAsync($"{objectKey}_{domain}");

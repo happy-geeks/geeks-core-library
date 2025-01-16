@@ -26,7 +26,7 @@ public class DataSelectorController(IDataSelectorsService dataSelectorsService) 
 
         if (statusCode != HttpStatusCode.OK)
         {
-            return StatusCode((int)statusCode, error);
+            return StatusCode((int) statusCode, error);
         }
 
         return Json(result);
@@ -55,7 +55,7 @@ public class DataSelectorController(IDataSelectorsService dataSelectorsService) 
 
         if (statusCode != HttpStatusCode.OK)
         {
-            return StatusCode((int)statusCode, error);
+            return StatusCode((int) statusCode, error);
         }
 
         if (data.ToExcel.HasValue && data.ToExcel.Value)
@@ -65,7 +65,7 @@ public class DataSelectorController(IDataSelectorsService dataSelectorsService) 
 
             if (statusCode != HttpStatusCode.OK)
             {
-                return StatusCode((int)statusCode, error);
+                return StatusCode((int) statusCode, error);
             }
 
             return File(excelResult.FileContents, excelResult.ContentType);
@@ -78,7 +78,7 @@ public class DataSelectorController(IDataSelectorsService dataSelectorsService) 
 
             if (statusCode != HttpStatusCode.OK)
             {
-                return StatusCode((int)statusCode, error);
+                return StatusCode((int) statusCode, error);
             }
 
             return File(pdfResult.FileContents, pdfResult.ContentType);

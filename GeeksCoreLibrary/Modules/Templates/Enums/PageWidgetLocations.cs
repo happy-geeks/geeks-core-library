@@ -9,18 +9,18 @@ public enum PageWidgetLocations
     /// Load the snippet at the top of the header element of the page.
     /// </summary>
     HeaderTop,
-    
+
     /// <summary>
     /// Load the snippet at the bottom of the header element of the page.
     /// This is the default.
     /// </summary>
     HeaderBottom,
-    
+
     /// <summary>
     /// Load the snippet at the top of the body element of the page.
     /// </summary>
     BodyTop,
-    
+
     /// <summary>
     /// Load the snippet at the bottom of the body element of the page.
     /// </summary>

@@ -129,7 +129,7 @@ public class OrderProcessesController(
         var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase);
 
         var contentToWrite = new StringBuilder();
-        var url = (string)context.Items[Modules.Templates.Models.Constants.OriginalPathAndQueryStringKey];
+        var url = (string) context.Items[Modules.Templates.Models.Constants.OriginalPathAndQueryStringKey];
 
         // Header template.
         if (ombouw)
@@ -214,7 +214,7 @@ public class OrderProcessesController(
             Id = 1,
             SettingsJson = JsonConvert.SerializeObject(orderProcessCmsSettings)
         };
-        var htmlContent = await viewComponentHelper.InvokeAsync("OrderProcess", new { dynamicContent, callMethod = "", forcedComponentMode = (int?)componentMode });
+        var htmlContent = await viewComponentHelper.InvokeAsync("OrderProcess", new {dynamicContent, callMethod = "", forcedComponentMode = (int?) componentMode});
 
         await using var stringWriter = new StringWriter();
         htmlContent.WriteTo(stringWriter, HtmlEncoder.Default);

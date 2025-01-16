@@ -17,8 +17,10 @@ public class FilterGroup
     {
         [CmsEnum(PrettyName = "Single select")]
         SingleSelect = 5,
+
         [CmsEnum(PrettyName = "Multi select")]
         MultiSelect = 2,
+
         [CmsEnum(PrettyName = "Slider")]
         Slider = 3
     }
@@ -94,6 +96,7 @@ public class FilterGroup
             {
                 output.Add(rule.Split('~')[0], rule.Split('~')[1]);
             }
+
             return output;
         }
     }
@@ -158,6 +161,7 @@ public class FilterGroup
                 {
                     MaxValue = Math.Ceiling(decimalValue);
                 }
+
                 if (Math.Floor(decimalValue) < MinValue)
                 {
                     MinValue = Math.Floor(decimalValue);

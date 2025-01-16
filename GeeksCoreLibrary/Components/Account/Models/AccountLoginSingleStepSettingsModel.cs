@@ -10,70 +10,72 @@ internal class AccountLoginSingleStepSettingsModel
     [DefaultValue(Constants.CookieName)]
     internal string CookieName { get; set; }
 
-    [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
-<div id='GclAccountContainer{contentId}'>
-    <jform id='GclLoginForm{contentId}' method='POST'>
-        <div class='formPanel'>
-            <h2>Inloggen</h2>
-            {error}
-            [if({stepNumber}=1)]
-            <div class='formRow'>
-                <label for='email{contentId}'>E-mailadres</label>
-                <input type='email' name='{emailAddressFieldName}' id='email{contentId}'>
-            </div>
-            <div class='formRow passwordRow'>
-                <label for='password{contentId}'>Wachtwoord</label>
-                <input type='password' name='{passwordFieldName}' class='password' id='password{contentId}'>
-                <ins class='icon-eye-show'></ins>
-            </div>
-            [endif]
-            [if({stepNumber}=3)]
-            <div class='formRow'>
-                <img class='qrCode' alt='AuthenticationCode' src='{googleAuthenticationQrImageUrl}'>
-            </div>
-            <div class='formRow passwordRow'>
-                <label for='googleAuthenticationPin{contentId}'>Scan de QR code met de google authenticator app en toets de code in</label>
-                <input type='password' name='googleAuthenticationPin' id='googleAuthenticationPin{contentId}' class='password'>
-                <ins class='icon-eye-show'></ins>
-                <input type='hidden' name='googleAuthenticationVerificationId' value='{googleAuthenticationVerificationId}' />
-            </div>
-            [endif]
-            [if({stepNumber}=4)]
-            <div class='formRow passwordRow'>
-                <label for='googleAuthenticationPin{contentId}'>Toets uw pincode in</label>
-                <input type='password' name='googleAuthenticationPin' id='googleAuthenticationPin{contentId}' class='password'>
-                <ins class='icon-eye-show'></ins>
-                <input type='hidden' name='googleAuthenticationVerificationId' value='{googleAuthenticationVerificationId}' />
-            </div>
-            [endif]
-            <div class='formRow'>
-                <button type='submit' class='btn btnSend'>Inloggen</button>
-            </div>
-            [if({stepNumber}=1)]
-            <div class='formRow center'>
-                <a href='#' id='GclResetPasswordLink{contentId}'>Wachtwoord vergeten?</a>
-            </div>
-            [endif]
-        </div>
-
-        [if({stepNumber}=1)]
-        <div class='formPanel'>
-            <h2><span>Nieuw bij {siteName}?</span></h2>
-            
-            <div class='formRow'>
-                <button type='button' class='btn btnBack'>Maak een account</button>
-            </div>
-        </div>
-        [endif]
-    </jform>
-    [if({stepNumber}=1)]
-    <!-- TODO Still in development.
-    <jform id='GclExternalLoginForm{contentId}' method='POST'>
-        <button type='submit' name='externalLogin' value='Google'>Inloggen via Google</button>
-    </jform>
-    -->
-    [endif]
-</div>")]
+    [DefaultValue("""
+                  <!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+                  <div id='GclAccountContainer{contentId}'>
+                      <jform id='GclLoginForm{contentId}' method='POST'>
+                          <div class='formPanel'>
+                              <h2>Inloggen</h2>
+                              {error}
+                              [if({stepNumber}=1)]
+                              <div class='formRow'>
+                                  <label for='email{contentId}'>E-mailadres</label>
+                                  <input type='email' name='{emailAddressFieldName}' id='email{contentId}'>
+                              </div>
+                              <div class='formRow passwordRow'>
+                                  <label for='password{contentId}'>Wachtwoord</label>
+                                  <input type='password' name='{passwordFieldName}' class='password' id='password{contentId}'>
+                                  <ins class='icon-eye-show'></ins>
+                              </div>
+                              [endif]
+                              [if({stepNumber}=3)]
+                              <div class='formRow'>
+                                  <img class='qrCode' alt='AuthenticationCode' src='{googleAuthenticationQrImageUrl}'>
+                              </div>
+                              <div class='formRow passwordRow'>
+                                  <label for='googleAuthenticationPin{contentId}'>Scan de QR code met de google authenticator app en toets de code in</label>
+                                  <input type='password' name='googleAuthenticationPin' id='googleAuthenticationPin{contentId}' class='password'>
+                                  <ins class='icon-eye-show'></ins>
+                                  <input type='hidden' name='googleAuthenticationVerificationId' value='{googleAuthenticationVerificationId}' />
+                              </div>
+                              [endif]
+                              [if({stepNumber}=4)]
+                              <div class='formRow passwordRow'>
+                                  <label for='googleAuthenticationPin{contentId}'>Toets uw pincode in</label>
+                                  <input type='password' name='googleAuthenticationPin' id='googleAuthenticationPin{contentId}' class='password'>
+                                  <ins class='icon-eye-show'></ins>
+                                  <input type='hidden' name='googleAuthenticationVerificationId' value='{googleAuthenticationVerificationId}' />
+                              </div>
+                              [endif]
+                              <div class='formRow'>
+                                  <button type='submit' class='btn btnSend'>Inloggen</button>
+                              </div>
+                              [if({stepNumber}=1)]
+                              <div class='formRow center'>
+                                  <a href='#' id='GclResetPasswordLink{contentId}'>Wachtwoord vergeten?</a>
+                              </div>
+                              [endif]
+                          </div>
+                  
+                          [if({stepNumber}=1)]
+                          <div class='formPanel'>
+                              <h2><span>Nieuw bij {siteName}?</span></h2>
+                              
+                              <div class='formRow'>
+                                  <button type='button' class='btn btnBack'>Maak een account</button>
+                              </div>
+                          </div>
+                          [endif]
+                      </jform>
+                      [if({stepNumber}=1)]
+                      <!-- TODO Still in development.
+                      <jform id='GclExternalLoginForm{contentId}' method='POST'>
+                          <button type='submit' name='externalLogin' value='Google'>Inloggen via Google</button>
+                      </jform>
+                      -->
+                      [endif]
+                  </div>
+                  """)]
     internal string Template { get; }
 
     [DefaultValue(Constants.DefaultLoginSuccessTemplate)]
@@ -136,23 +138,25 @@ internal class AccountLoginSingleStepSettingsModel
     [DefaultValue(Constants.DefaultLoginQuery)]
     internal string LoginQuery { get; }
 
-    [DefaultValue(@"SELECT
-    account.id,
-    IFNULL(linkToMainAccount.mainAccountId, 0) AS mainAccountId,
-    role.value AS role
-FROM wiser_item AS account
+    [DefaultValue("""
+                  SELECT
+                      account.id,
+                      IFNULL(linkToMainAccount.mainAccountId, 0) AS mainAccountId,
+                      role.value AS role
+                  FROM wiser_item AS account
 
-LEFT JOIN wiser_itemdetail AS role ON role.item_id = account.id AND role.`key` = ?roleFieldName
+                  LEFT JOIN wiser_itemdetail AS role ON role.item_id = account.id AND role.`key` = ?roleFieldName
 
-LEFT JOIN (
-	SELECT mainAccount.id AS mainAccountId, linkToMainAccount.item_id AS subAccountId
-	FROM wiser_item AS mainAccount
-	JOIN wiser_itemlink AS linkToMainAccount ON linkToMainAccount.destination_item_id = mainAccount.id AND linkToMainAccount.type = ?subAccountLinkTypeNumber
-	WHERE mainAccount.entity_type = ?entityType
-) AS linkToMainAccount ON linkToMainAccount.subAccountId = account.id
+                  LEFT JOIN (
+                  	SELECT mainAccount.id AS mainAccountId, linkToMainAccount.item_id AS subAccountId
+                  	FROM wiser_item AS mainAccount
+                  	JOIN wiser_itemlink AS linkToMainAccount ON linkToMainAccount.destination_item_id = mainAccount.id AND linkToMainAccount.type = ?subAccountLinkTypeNumber
+                  	WHERE mainAccount.entity_type = ?entityType
+                  ) AS linkToMainAccount ON linkToMainAccount.subAccountId = account.id
 
-WHERE account.id = ?userId
-AND account.entity_type IN(?entityType, ?subAccountEntityType)")]
+                  WHERE account.id = ?userId
+                  AND account.entity_type IN(?entityType, ?subAccountEntityType)
+                  """)]
     internal string AutoLoginQuery { get; }
 
     [DefaultValue(Constants.DefaultSaveLoginQuery)]

@@ -29,7 +29,7 @@ namespace GeeksCoreLibrary.Components.Repeater;
     Description = "Read and parse repeated data",
     DeveloperRemarks = ""
 )]
-public class Repeater : CmsComponent<RepeaterCmsSettingsModel>
+public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyComponentMode>
 {
     private readonly IRepeatersService repeatersService;
     private readonly IFiltersService filtersService;
@@ -44,6 +44,14 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel>
         Languages,
         OrderHistory,
         Favorites
+    }
+
+    public enum LegacyComponentMode
+    {
+        NonLegacy,
+        SimpleMenu,
+        MlSimpleMenu,
+        ProductModule
     }
 
     public enum DataSource
@@ -98,18 +106,57 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel>
     /// <inheritdoc />
     public override void ParseSettingsJson(string settingsJson, int? forcedComponentMode = null)
     {
-        Settings = JsonConvert.DeserializeObject<RepeaterCmsSettingsModel>(settingsJson);
+        /*
+         * If the component is in legacy mode, there is a conversion needed for the settings.
+         * The component always works with the normal settings object but saves and stores from the legacy model if in legacy mode
+         */
+        Settings = LegacyMode switch
+        {
+            LegacyComponentMode.NonLegacy => JsonConvert.DeserializeObject<RepeaterCmsSettingsModel>(settingsJson),
+            LegacyComponentMode.SimpleMenu => JsonConvert.DeserializeObject<SimpleMenuLegacySettingsModel>(settingsJson)?.ToSettingsModel(),
+            LegacyComponentMode.MlSimpleMenu => JsonConvert.DeserializeObject<MlSimpleMenuLegacySettingsModel>(settingsJson)?.ToSettingsModel(),
+            LegacyComponentMode.ProductModule => JsonConvert.DeserializeObject<ProductModuleLegacySettingsModel>(settingsJson)?.ToSettingsModel(),
+            _ => throw new ArgumentOutOfRangeException(nameof(LegacyMode), LegacyMode, null)
+        };
 
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
     }
 
     /// <inheritdoc />
     public override string GetSettingsJson()
     {
-        return JsonConvert.SerializeObject(Settings);
+        /*
+         * If the component is in legacy mode, there is a conversion needed for the settings.
+         * The component always works with the normal settings object but saves and stores from the legacy model if in legacy mode
+         */
+        return LegacyMode switch
+        {
+            LegacyComponentMode.NonLegacy => JsonConvert.SerializeObject(Settings),
+            LegacyComponentMode.SimpleMenu => JsonConvert.SerializeObject(new SimpleMenuLegacySettingsModel().FromSettingModel(Settings)),
+            LegacyComponentMode.MlSimpleMenu => JsonConvert.SerializeObject(new MlSimpleMenuLegacySettingsModel().FromSettingModel(Settings)),
+            LegacyComponentMode.ProductModule => JsonConvert.SerializeObject(new ProductModuleLegacySettingsModel().FromSettingModel(Settings)),
+            _ => throw new ArgumentOutOfRangeException(nameof(LegacyMode), LegacyMode, null)
+        };
+    }
+
+    /// <summary>
+    /// Converts the dynamic content name from easy_dynamiccontent (freefield1) to <see cref="LegacyComponentMode"/>.
+    /// </summary>
+    /// <param name="dynamicContentName">The value of freefield1 from easy_dynamiccontent.</param>
+    /// <returns>The parsed <see cref="LegacyComponentMode"/>.</returns>
+    public static LegacyComponentMode ParseComponentMode(string dynamicContentName)
+    {
+        return dynamicContentName switch
+        {
+            "Repeater" => LegacyComponentMode.NonLegacy,
+            "JuiceControlLibrary.MLSimpleMenu" => LegacyComponentMode.MlSimpleMenu,
+            "JuiceControlLibrary.SimpleMenu" => LegacyComponentMode.SimpleMenu,
+            "JuiceControlLibrary.ProductModule" => LegacyComponentMode.ProductModule,
+            _ => throw new ArgumentOutOfRangeException(nameof(dynamicContentName), dynamicContentName, null),
+        };
     }
 
     #endregion
@@ -120,12 +167,13 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel>
     public override async Task<HtmlString> InvokeAsync(DynamicContent dynamicContent, string callMethod, int? forcedComponentMode, Dictionary<string, string> extraData)
     {
         ComponentId = dynamicContent.Id;
+        LegacyMode = ParseComponentMode(dynamicContent.Name);
         ExtraDataForReplacements = extraData;
         ParseSettingsJson(dynamicContent.SettingsJson, forcedComponentMode);
 
         if (forcedComponentMode.HasValue)
         {
-            Settings.ComponentMode = (ComponentModes)forcedComponentMode.Value;
+            Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }
 
         HandleDefaultSettingsFromComponentMode();
@@ -150,9 +198,9 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel>
         // Replacement data for some generic values.
         var genericReplacements = new Dictionary<string, string>
         {
-            { "volgnr", "1" },
-            { "rowindex", "0" },
-            { "resultcount", parsedData.Rows.Count.ToString() }
+            {"volgnr", "1"},
+            {"rowindex", "0"},
+            {"resultcount", parsedData.Rows.Count.ToString()}
         };
         string templateHtml;
 
@@ -252,6 +300,7 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel>
                 {
                     query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart.ToString(), StringComparison.OrdinalIgnoreCase);
                 }
+
                 if (query.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
                 {
                     query = Regex.Replace(query, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart.ToString());
@@ -355,10 +404,10 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel>
             // Replacement data for some generic values.
             var genericReplacements = new Dictionary<string, string>
             {
-                { "volgnr", (index + 1).ToString() },
-                { "rowindex", index.ToString() },
-                { "resultcount", data.Rows.Count.ToString() },
-                { "uniqueResultCount", data.Rows.Count.ToString() }
+                {"volgnr", (index + 1).ToString()},
+                {"rowindex", index.ToString()},
+                {"resultcount", data.Rows.Count.ToString()},
+                {"uniqueResultCount", data.Rows.Count.ToString()}
             };
             string templateHtml;
 
@@ -527,10 +576,10 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel>
             // Replacement data for some generic values.
             var genericReplacements = new Dictionary<string, string>
             {
-                { "volgnr", (index + 1).ToString() },
-                { "rowindex", index.ToString() },
-                { "resultcount", data.Rows.Count.ToString() },
-                { "uniqueResultCount", columnIds.Count.ToString() }
+                {"volgnr", (index + 1).ToString()},
+                {"rowindex", index.ToString()},
+                {"resultcount", data.Rows.Count.ToString()},
+                {"uniqueResultCount", columnIds.Count.ToString()}
             };
             string templateHtml;
 

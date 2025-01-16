@@ -87,14 +87,14 @@ public static class StringExtensions
         // Some characters need remapping because they don't have a "normal" equivalent.
         var specialCharacterMappings = new SortedList<char, string>
         {
-            { 'ß', "ss" },
-            { 'æ', "ae" },
-            { 'ð', "d" },
-            { 'ø', "o" },
-            { 'þ', "th" },
-            { 'đ', "d" },
-            { 'ł', "l" },
-            { 'œ', "oe" }
+            {'ß', "ss"},
+            {'æ', "ae"},
+            {'ð', "d"},
+            {'ø', "o"},
+            {'þ', "th"},
+            {'đ', "d"},
+            {'ł', "l"},
+            {'œ', "oe"}
         };
 
         // Array of characters that should be left intact.
@@ -146,6 +146,7 @@ public static class StringExtensions
                         stringBuilder.Append('-');
                         prevDash = true;
                     }
+
                     break;
             }
         }
@@ -717,6 +718,7 @@ public static class StringExtensions
                 key = counter.ToString("0000") + "_" + key;
                 counter += 1;
             }
+
             if (parameterList.ContainsKey(key))
             {
                 if (!useFirstEntryIfExist)
