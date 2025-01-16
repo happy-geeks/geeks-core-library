@@ -30,7 +30,6 @@ public class CachedObjectsService(
     IHttpContextAccessor httpContextAccessor = null)
     : IObjectsService
 {
-    private readonly IReplacementsMediator replacementsMediator = replacementsMediator;
     private readonly GclSettings gclSettings = gclSettings.Value;
 
     private readonly string hostName = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false);
