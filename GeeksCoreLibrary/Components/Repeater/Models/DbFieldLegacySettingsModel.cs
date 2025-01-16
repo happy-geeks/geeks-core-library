@@ -18,8 +18,6 @@ public class DbFieldLegacySettingsModel : CmsSettingsLegacy
 
     public string RandomVeldNamen { get; set; }
 
-    public string SQLQuery { get; set; }
-
     /// <summary>
     /// Convert FROM Legacy TO regular
     /// </summary>

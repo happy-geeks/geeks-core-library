@@ -1366,7 +1366,7 @@ public class WiserItemsService : IWiserItemsService, IScopedService
                     throw;
                 }
             }
-            catch (Exception exp)
+            catch
             {
                 if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.RollbackTransactionAsync();
                 throw;
@@ -3799,7 +3799,7 @@ public class WiserItemsService : IWiserItemsService, IScopedService
     }
 
     /// <inheritcDoc />
-    public async Task<string> ReplaceRelativeImagesToAbsoluteAsync(string input, string imagesDomain)
+    public Task<string> ReplaceRelativeImagesToAbsoluteAsync(string input, string imagesDomain)
     {
         var output = input;
 
@@ -3831,7 +3831,7 @@ public class WiserItemsService : IWiserItemsService, IScopedService
             output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
         }
 
-        return output;
+        return Task.FromResult(output);
     }
 
     /// <inheritdoc />

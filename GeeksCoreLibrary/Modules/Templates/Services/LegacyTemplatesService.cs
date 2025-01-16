@@ -34,6 +34,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using Template = GeeksCoreLibrary.Modules.Templates.Models.Template;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 namespace GeeksCoreLibrary.Modules.Templates.Services;
 
 /// <summary>

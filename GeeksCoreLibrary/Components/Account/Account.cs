@@ -1154,7 +1154,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
     /// Handle everything for logging in for cXML punch out (OCI).
     /// </summary>
     /// <returns></returns>
-    private async Task HandleCXmlPunchOutLoginModeAsync()
+    private Task HandleCXmlPunchOutLoginModeAsync()
     {
         throw new NotImplementedException();
         /*var httpContext = HttpContext;
