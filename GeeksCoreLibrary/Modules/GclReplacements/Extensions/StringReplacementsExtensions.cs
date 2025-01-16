@@ -330,7 +330,7 @@ public static class StringReplacementsExtensions
             throw new ArgumentOutOfRangeException(nameof(representation), representation, null);
         }
 
-        return StringHelpers.HashValue(input, new HashSettingsModel() {Algorithm = hashAlgorithm, Representation = hashRepresentation});
+        return StringHelpers.HashValue(input, new HashSettingsModel {Algorithm = hashAlgorithm, Representation = hashRepresentation});
     }
 
     /// <summary>

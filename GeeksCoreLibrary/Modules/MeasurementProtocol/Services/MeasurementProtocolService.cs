@@ -44,7 +44,7 @@ public class MeasurementProtocolService(IShoppingBasketsService shoppingBasketsS
             return;
         }
 
-        var replaceData = new Dictionary<string, object>()
+        var replaceData = new Dictionary<string, object>
         {
             {"payment_method", dataTable.Rows[0].Field<string>("title")}
         };
@@ -57,7 +57,7 @@ public class MeasurementProtocolService(IShoppingBasketsService shoppingBasketsS
     {
         var tax = await shoppingBasketsService.GetPriceAsync(shoppingBasket, shoppingBasketLines, shoppingBasketSettings, ShoppingBasket.PriceTypes.VatOnly);
 
-        var replaceData = new Dictionary<string, object>()
+        var replaceData = new Dictionary<string, object>
         {
             {"tax_price", tax},
             {"transaction_id", transactionId}
@@ -102,7 +102,7 @@ public class MeasurementProtocolService(IShoppingBasketsService shoppingBasketsS
         var eventModel = JsonConvert.DeserializeObject<EventModel>(result);
         eventModel.Params.Items = items;
 
-        var requestData = new MeasurementProtocolRequestModel()
+        var requestData = new MeasurementProtocolRequestModel
         {
             ClientId = clientId,
             Events = [eventModel]

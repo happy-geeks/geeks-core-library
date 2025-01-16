@@ -42,7 +42,7 @@ public class NeDistriController(INeDistriService neDistriService, ILogger<NeDist
                 return BadRequest($"The coliAmount in position {i + 1} is invalid.");
             }
 
-            labelRules.Add(new LabelRule()
+            labelRules.Add(new LabelRule
             {
                 LabelType = types[i],
                 ColiAmount = coliAmount

@@ -531,7 +531,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
             from = !String.IsNullOrWhiteSpace(smtpSettings.SenderName) ? $"{smtpSettings.SenderName} <{smtpSettings.SenderEmailAddress}>" : smtpSettings.SenderEmailAddress;
         }
 
-        var requestBody = new SmtPeterRequestModel()
+        var requestBody = new SmtPeterRequestModel
         {
             From = from,
             To = [..communication.Receivers.Select(x => String.IsNullOrWhiteSpace(x.DisplayName) ? x.Address : $"{x.DisplayName} <{x.Address}>")],
@@ -548,7 +548,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
 
             foreach (var attachment in attachments)
             {
-                requestBody.Attachments.Add(new SmtPeterRquestAttachmentModel()
+                requestBody.Attachments.Add(new SmtPeterRquestAttachmentModel
                 {
                     Data = Convert.ToBase64String(attachment.FileBytes),
                     Name = attachment.FileName
@@ -658,7 +658,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
     /// <inheritdoc />
     public async Task<int> SendSmsAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null)
     {
-        return await SendSmsAsync(new SingleCommunicationModel()
+        return await SendSmsAsync(new SingleCommunicationModel
         {
             Receivers = receivers,
             Content = body,
@@ -801,7 +801,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
     /// <inheritdoc />
     public async Task<int> SendWhatsAppAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null)
     {
-        return await SendWhatsAppAsync(new SingleCommunicationModel()
+        return await SendWhatsAppAsync(new SingleCommunicationModel
         {
             Receivers = receivers,
             Content = body,

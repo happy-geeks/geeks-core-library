@@ -23,7 +23,7 @@ public class WtsHealthService(IDatabaseConnection databaseConnection, IHttpConte
         var countWarningAsError = !String.IsNullOrWhiteSpace(httpContext.Request.Query["countWarningAsError"].ToString()) && Convert.ToBoolean(httpContext.Request.Query["countWarningAsError"]);
         int? runningLongerThanMinutes = String.IsNullOrWhiteSpace(httpContext.Request.Query["runningLongerThanMinutes"].ToString()) ? null : Convert.ToInt32(httpContext.Request.Query["runningLongerThanMinutes"]);
 
-        var conditions = new List<string>()
+        var conditions = new List<string>
         {
             "TRUE" // Always add true to the conditions to avoid empty conditions
         };

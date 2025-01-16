@@ -2312,7 +2312,7 @@ public class ShoppingBasketsService(
                 await languagesService.GetLanguageCodeAsync();
             }
 
-            var queryReplacements = new Dictionary<string, string>()
+            var queryReplacements = new Dictionary<string, string>
             {
                 {"quantity", "1"},
                 {"itemid", freeProductId.ToString()},

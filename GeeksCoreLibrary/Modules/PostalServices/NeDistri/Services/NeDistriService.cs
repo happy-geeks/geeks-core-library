@@ -177,7 +177,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
 
         foreach (var label in labels.Where(label => label.ColiAmount >= 1))
         {
-            ruleModelList.Add(new RuleModel()
+            ruleModelList.Add(new RuleModel
             {
                 Unit = label.LabelType,
                 Amount = label.ColiAmount
@@ -243,7 +243,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
         var request = new RestRequest("/api/v1/auth", Method.Post);
 
         // Add the authentication signature to our request
-        request.AddHeaders(new List<KeyValuePair<string, string>>()
+        request.AddHeaders(new List<KeyValuePair<string, string>>
         {
             new("Signature", signature)
         });
@@ -284,7 +284,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
             lastname = $"{lastNamePrefix} {lastname}";
         }
 
-        return new AddressModel()
+        return new AddressModel
         {
             Address = $"{street} {houseNumber}{houseNumberAddition}",
             Country = countrycode,

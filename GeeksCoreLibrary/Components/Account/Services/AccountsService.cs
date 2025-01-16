@@ -511,7 +511,7 @@ public class AccountsService(
         // That's because if we use ServiceProvider to retrieve it we gonna lose the database connection scope, and here we need it to be the same
         var wiserItemsService = ActivatorUtilities.CreateInstance<WiserItemsService>(serviceProvider, databaseConnection);
 
-        var detail = new WiserItemDetailModel()
+        var detail = new WiserItemDetailModel
         {
             Key = String.IsNullOrWhiteSpace(settings.GoogleClientIdFieldName) ? Constants.DefaultGoogleCidFieldName : settings.GoogleClientIdFieldName,
             Value = googleClientId

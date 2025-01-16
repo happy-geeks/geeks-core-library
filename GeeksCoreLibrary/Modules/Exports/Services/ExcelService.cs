@@ -55,7 +55,7 @@ public class ExcelService : IExcelService, IScopedService
             }
 
             // Add filters on the columns.
-            var autoFilter = new AutoFilter()
+            var autoFilter = new AutoFilter
             {
                 Reference = StringValue.FromString($"A1:{GetColumnNameFromIndex(rowColumnNames.Count - 1)}{currentRow - 1}")
             };
