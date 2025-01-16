@@ -18,307 +18,209 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Constants = GeeksCoreLibrary.Components.Filter.Models.Constants;
 
-namespace GeeksCoreLibrary.Components.Filter.Services
-{
-    public class FiltersService(
-        IDatabaseConnection databaseConnection,
-        IObjectsService objectsService,
-        ILogger<FiltersService> logger,
-        ILanguagesService languagesService,
-        IEntityTypesService entityTypesService,
-        IHttpContextAccessor httpContextAccessor = null)
-        : IFiltersService, IScopedService
-    {
-        /// <inheritdoc />
-        public async Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart = "", string forActiveFilter = "")
-        {
-            var httpContext = httpContextAccessor?.HttpContext;
+namespace GeeksCoreLibrary.Components.Filter.Services;
 
-            if (httpContext == null)
+public class FiltersService(
+    IDatabaseConnection databaseConnection,
+    IObjectsService objectsService,
+    ILogger<FiltersService> logger,
+    ILanguagesService languagesService,
+    IEntityTypesService entityTypesService,
+    IHttpContextAccessor httpContextAccessor = null)
+    : IFiltersService, IScopedService
+{
+    /// <inheritdoc />
+    public async Task<QueryPartModel> GetFilterQueryPartAsync(bool forFilterItemsQuery = false, Dictionary<string, FilterGroup> givenFilterGroups = null, string productJoinPart = "", string categoryJoinPart = "", string forActiveFilter = "")
+    {
+        var httpContext = httpContextAccessor?.HttpContext;
+
+        if (httpContext == null)
+        {
+            throw new Exception("HttpContext is null.");
+        }
+
+        try
+        {
+            var output = new QueryPartModel();
+            var filters = new SortedList<string, string>();
+            var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring");
+            var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2", defaultResult: "0")).Equals("1");
+            var filterParametersToExclude = (await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude", defaultResult: "templateid,pagenr,gclid,_ga")).Split(",").ToList();
+
+            // Make sure that the language code is filled.
+            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
             {
-                throw new Exception("HttpContext is null.");
+                // This function fills the property "CurrentLanguageCode".
+                await languagesService.GetLanguageCodeAsync();
+            }
+
+            databaseConnection.AddParameter("sql_currentLanguageCode", languagesService.CurrentLanguageCode);
+
+            // Get a list of filters from the URL
+            if (!String.IsNullOrEmpty(filterParameter))
+            {
+                foreach (var item in GetFiltersByParameter(filterParameter))
+                {
+                    filters.Add(item.Key, item.Value);
+                }
+            }
+
+            if (String.IsNullOrEmpty(filterParameter) || filterParameterMixedMode)
+            {
+                foreach (var key in httpContext.Request.Query.Keys)
+                {
+                    if (String.IsNullOrWhiteSpace(key))
+                    {
+                        continue;
+                    }
+
+                    if (filters.TryGetValue(key, out var filter))
+                    {
+                        if (!String.IsNullOrEmpty(filter))
+                        {
+                            // Skip if already defined in case of mixed mode
+                            continue;
+                        }
+                    }
+
+                    if (!filterParametersToExclude.Contains(key, StringComparer.OrdinalIgnoreCase))
+                    {
+                        filters.Add(key, httpContext.Request.Query[key]);
+                    }
+                }
             }
 
             try
             {
-                var output = new QueryPartModel();
-                var filters = new SortedList<string, string>();
-                var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring");
-                var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2", defaultResult: "0")).Equals("1");
-                var filterParametersToExclude = (await objectsService.FindSystemObjectByDomainNameAsync("filterparameterstoexclude", defaultResult: "templateid,pagenr,gclid,_ga")).Split(",").ToList();
+                Dictionary<string, FilterGroup> filterGroups;
+                var filterConnectionPart = await objectsService.FindSystemObjectByDomainNameAsync("filterconnectionpart", "i.id");
+                var filterConnectionParts = new List<FilterConnectionPart>();
 
-                // Make sure that the language code is filled.
-                if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+                if (givenFilterGroups is {Count: > 0})
                 {
-                    // This function fills the property "CurrentLanguageCode".
-                    await languagesService.GetLanguageCodeAsync();
+                    filterGroups = givenFilterGroups;
+                }
+                else
+                {
+                    filterGroups = await GetFilterGroupsAsync();
                 }
 
-                databaseConnection.AddParameter("sql_currentLanguageCode", languagesService.CurrentLanguageCode);
-
-                // Get a list of filters from the URL
-                if (!String.IsNullOrEmpty(filterParameter))
+                // Add the filters with a custom join part if the query-part is for the filteritemsquery
+                if (forFilterItemsQuery)
                 {
-                    foreach (var item in GetFiltersByParameter(filterParameter))
+                    foreach (var filterGroup in filterGroups.Where(filterGroup => !String.IsNullOrEmpty(filterGroup.Value.CustomJoin)).Where(filterGroup => !filters.ContainsKey(filterGroup.Value.NameSeo)))
                     {
-                        filters.Add(item.Key, item.Value);
+                        // Abuse value to force LEFT JOIN.
+                        filters.Add(filterGroup.Value.NameSeo, "LEFT JOIN");
                     }
                 }
 
-                if (String.IsNullOrEmpty(filterParameter) || filterParameterMixedMode)
+                // Add the different entity names with the corresponding connection parts to the list.
+                if (filterConnectionPart.Contains(';'))
                 {
-                    foreach (var key in httpContext.Request.Query.Keys)
+                    foreach (var value in filterConnectionPart.Split('~'))
                     {
-                        if (String.IsNullOrWhiteSpace(key))
+                        var splitValue = value.Split(';');
+                        filterConnectionParts.Add(splitValue.Length > 2
+                            ? new FilterConnectionPart(splitValue[0], splitValue[1], String.Equals(splitValue[2], "linkdetail", StringComparison.OrdinalIgnoreCase))
+                            : new FilterConnectionPart(splitValue[0], splitValue[1], false));
+                    }
+                }
+
+                // Build JOINS.
+                var filterCounter = 0;
+                var filterCount = 0;
+                foreach (var filterName in filters.Keys)
+                {
+                    if (filterName.StartsWith("utm_", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (String.IsNullOrEmpty(filterParameter) && filterParametersToExclude.Contains(filterName, StringComparer.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var filterNameFromGroup = filterName;
+                    var filterValues = filters[filterName];
+                    var isAdvancedFilter = false;
+
+                    FilterGroup filterGroup = null;
+                    if (filterGroups != null && filterGroups.TryGetValue(filterName, out var value))
+                    {
+                        filterGroup = value;
+                        filterNameFromGroup = filterGroup.NameSeo;
+                    }
+
+                    if (filterGroup == null || String.IsNullOrEmpty(filterValues))
+                    {
+                        continue;
+                    }
+
+                    var tablePrefix = await entityTypesService.GetTablePrefixForEntityAsync(filterGroup.EntityName);
+                    var connectedEntityTablePrefix = await entityTypesService.GetTablePrefixForEntityAsync(filterGroup.ConnectedEntity);
+
+                    if (!String.IsNullOrEmpty(filterGroup.AdvancedFilter))
+                    {
+                        foreach (var filter in filterGroup.GetAdvancedFilters.Where(filter => filterValues.Split(Constants.ValueSplitter).Contains(filter.Key, StringComparer.OrdinalIgnoreCase)))
                         {
-                            continue;
+                            output.JoinPart.AppendLine(filter.Value);
                         }
 
-                        if (filters.TryGetValue(key, out var filter))
+                        isAdvancedFilter = true;
+                    }
+                    else if (!String.IsNullOrEmpty(filterGroup.CustomJoin))
+                    {
+                        if (forFilterItemsQuery)
                         {
-                            if (!String.IsNullOrEmpty(filter))
+                            if (filterValues == "LEFT JOIN")
                             {
-                                // Skip if already defined in case of mixed mode
-                                continue;
+                                output.JoinPart.Append("LEFT ");
+                            }
+
+                            if (!String.IsNullOrEmpty(filterGroup.CustomSelect))
+                            {
+                                var customSelectSplit = filterGroup.CustomSelect.Split("{select}");
+                                output.SelectPartStart.Append(customSelectSplit[0]);
+                                if (customSelectSplit.Length > 1)
+                                {
+                                    output.SelectPartEnd.Append(filterGroup.CustomSelect.Split("{select}")[1]);
+                                }
                             }
                         }
-
-                        if (!filterParametersToExclude.Contains(key, StringComparer.OrdinalIgnoreCase))
-                        {
-                            filters.Add(key, httpContext.Request.Query[key]);
-                        }
-                    }
-                }
-
-                try
-                {
-                    Dictionary<string, FilterGroup> filterGroups;
-                    var filterConnectionPart = await objectsService.FindSystemObjectByDomainNameAsync("filterconnectionpart", "i.id");
-                    var filterConnectionParts = new List<FilterConnectionPart>();
-
-                    if (givenFilterGroups is {Count: > 0})
-                    {
-                        filterGroups = givenFilterGroups;
+                        output.JoinPart.AppendLine(filterGroup.CustomJoin);
+                        isAdvancedFilter = true;
                     }
                     else
                     {
-                        filterGroups = await GetFilterGroupsAsync();
-                    }
-
-                    // Add the filters with a custom join part if the query-part is for the filteritemsquery
-                    if (forFilterItemsQuery)
-                    {
-                        foreach (var filterGroup in filterGroups.Where(filterGroup => !String.IsNullOrEmpty(filterGroup.Value.CustomJoin)).Where(filterGroup => !filters.ContainsKey(filterGroup.Value.NameSeo)))
+                        var filterConnectionPartIsLinkType = false;
+                        var filterConnectionPartObject = filterConnectionParts.FirstOrDefault(x => x.TypeName == filterGroup.EntityName);
+                        if (filterConnectionPartObject != null)
                         {
-                            // Abuse value to force LEFT JOIN.
-                            filters.Add(filterGroup.Value.NameSeo, "LEFT JOIN");
-                        }
-                    }
-
-                    // Add the different entity names with the corresponding connection parts to the list.
-                    if (filterConnectionPart.Contains(';'))
-                    {
-                        foreach (var value in filterConnectionPart.Split('~'))
-                        {
-                            var splitValue = value.Split(';');
-                            filterConnectionParts.Add(splitValue.Length > 2
-                                ? new FilterConnectionPart(splitValue[0], splitValue[1], String.Equals(splitValue[2], "linkdetail", StringComparison.OrdinalIgnoreCase))
-                                : new FilterConnectionPart(splitValue[0], splitValue[1], false));
-                        }
-                    }
-
-                    // Build JOINS.
-                    var filterCounter = 0;
-                    var filterCount = 0;
-                    foreach (var filterName in filters.Keys)
-                    {
-                        if (filterName.StartsWith("utm_", StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
+                            filterConnectionPart = filterConnectionPartObject.JoinPart;
+                            filterConnectionPartIsLinkType = filterConnectionPartObject.IsLinkType;
                         }
 
-                        if (String.IsNullOrEmpty(filterParameter) && filterParametersToExclude.Contains(filterName, StringComparer.OrdinalIgnoreCase))
+                        if (filterGroup.IsGroupFilter && filterValues.Contains(Constants.ValueSplitter))
                         {
-                            continue;
-                        }
-
-                        var filterNameFromGroup = filterName;
-                        var filterValues = filters[filterName];
-                        var isAdvancedFilter = false;
-
-                        FilterGroup filterGroup = null;
-                        if (filterGroups != null && filterGroups.TryGetValue(filterName, out var value))
-                        {
-                            filterGroup = value;
-                            filterNameFromGroup = filterGroup.NameSeo;
-                        }
-
-                        if (filterGroup == null || String.IsNullOrEmpty(filterValues))
-                        {
-                            continue;
-                        }
-
-                        var tablePrefix = await entityTypesService.GetTablePrefixForEntityAsync(filterGroup.EntityName);
-                        var connectedEntityTablePrefix = await entityTypesService.GetTablePrefixForEntityAsync(filterGroup.ConnectedEntity);
-
-                        if (!String.IsNullOrEmpty(filterGroup.AdvancedFilter))
-                        {
-                            foreach (var filter in filterGroup.GetAdvancedFilters.Where(filter => filterValues.Split(Constants.ValueSplitter).Contains(filter.Key, StringComparer.OrdinalIgnoreCase)))
-                            {
-                                output.JoinPart.AppendLine(filter.Value);
-                            }
-
-                            isAdvancedFilter = true;
-                        }
-                        else if (!String.IsNullOrEmpty(filterGroup.CustomJoin))
-                        {
-                            if (forFilterItemsQuery)
-                            {
-                                if (filterValues == "LEFT JOIN")
-                                {
-                                    output.JoinPart.Append("LEFT ");
-                                }
-
-                                if (!String.IsNullOrEmpty(filterGroup.CustomSelect))
-                                {
-                                    var customSelectSplit = filterGroup.CustomSelect.Split("{select}");
-                                    output.SelectPartStart.Append(customSelectSplit[0]);
-                                    if (customSelectSplit.Length > 1)
-                                    {
-                                        output.SelectPartEnd.Append(filterGroup.CustomSelect.Split("{select}")[1]);
-                                    }
-                                }
-                            }
-                            output.JoinPart.AppendLine(filterGroup.CustomJoin);
-                            isAdvancedFilter = true;
-                        }
-                        else
-                        {
-                            var filterConnectionPartIsLinkType = false;
-                            var filterConnectionPartObject = filterConnectionParts.FirstOrDefault(x => x.TypeName == filterGroup.EntityName);
-                            if (filterConnectionPartObject != null)
-                            {
-                                filterConnectionPart = filterConnectionPartObject.JoinPart;
-                                filterConnectionPartIsLinkType = filterConnectionPartObject.IsLinkType;
-                            }
-
-                            if (filterGroup.IsGroupFilter && filterValues.Contains(Constants.ValueSplitter))
-                            {
-                                foreach (var filterValue in filterValues.Split(Constants.ValueSplitter))
-                                {
-                                    if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
-                                    {
-                                        output.JoinPart.Append("LEFT ");
-
-                                        if (!String.IsNullOrEmpty(filterGroup.QueryString))
-                                        {
-                                            output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
-                                        }
-                                        else
-                                        {
-                                            output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR filterName.`value`={filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
-                                        }
-                                    }
-
-                                    if (filterConnectionPartIsLinkType)
-                                    {
-                                        if (filterGroup.IsMultiLanguage)
-                                        {
-                                            output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
-                                        }
-                                        else
-                                        {
-                                            output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
-                                        }
-                                    }
-                                    else if (filterGroup.IsMultiLanguage)
-                                    {
-                                        output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
-                                    }
-                                    else
-                                    {
-                                        output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
-                                    }
-
-                                    var joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValue, filterGroup, false);
-                                    if (joinPart != "")
-                                    {
-                                        output.JoinPart.Append($"AND {joinPart}");
-                                    }
-                                    output.JoinPart.AppendLine();
-
-                                    filterCounter++;
-                                    // So the AppendFilterJoinPart will not be called and the filterCounter will not be increased.
-                                    isAdvancedFilter = true;
-                                }
-                            }
-                            else
+                            foreach (var filterValue in filterValues.Split(Constants.ValueSplitter))
                             {
                                 if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
                                 {
-                                    if (!filterGroup.UseAggregationTable)
-                                    {
-                                        output.JoinPart.Append("LEFT ");
-                                    }
-                                    if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity))
-                                    {
-                                        if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityProperty))
-                                        {
-                                            if (!String.IsNullOrEmpty(filterGroup.QueryString))
-                                            {
-                                                output.WherePart.Append($"AND (fi{filterCounter}d.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
-                                            }
-                                            else
-                                            {
-                                                output.WherePart.Append($"AND (fi{filterCounter}d.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
-                                            }
+                                    output.JoinPart.Append("LEFT ");
 
-                                        }
-                                        else if (!String.IsNullOrEmpty(filterGroup.QueryString))
-                                        {
-                                            output.WherePart.Append($"AND (fi{filterCounter}i.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
-                                        }
-
-                                        else
-                                        {
-                                            output.WherePart.Append($"AND (fi{filterCounter}i.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
-                                        }
-
-                                    }
-                                    else if (!String.IsNullOrEmpty(filterGroup.QueryString))
+                                    if (!String.IsNullOrEmpty(filterGroup.QueryString))
                                     {
                                         output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
                                     }
-
                                     else
                                     {
-                                        output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
+                                        output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR filterName.`value`={filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
                                     }
-
                                 }
 
-                                if (filterGroup.UseAggregationTable)
-                                {
-                                    if (forFilterItemsQuery)
-                                    {
-                                        if (filterGroup.GetParamKey() != forActiveFilter) //Don't include the JOIN of the filter for which the query - part is requested
-                                        {
-                                            // Join to table with alias "f" in FilterItemsQuery
-                                            output.JoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : $"_{languagesService.CurrentLanguageCode.ToMySqlSafeValue(false)}")}` f{filterCounter} ON f{filterCounter}.category_id = f.category_id AND f{filterCounter}.product_id = f.product_id ");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // Join to product-part and category-part given to function (from variable in overview query)
-                                        output.JoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : $"_{languagesService.CurrentLanguageCode.ToMySqlSafeValue(false)}")}` f{filterCounter} ON f{filterCounter}.category_id = {categoryJoinPart} AND f{filterCounter}.product_id = {productJoinPart} ");
-                                    }
-
-                                }
-                                else if (String.Equals(filterNameFromGroup, "itemtitle", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItem} fi{filterCounter} ON fi{filterCounter}.id = {filterConnectionPart} ");
-                                }
-                                else if (filterConnectionPartIsLinkType)
+                                if (filterConnectionPartIsLinkType)
                                 {
                                     if (filterGroup.IsMultiLanguage)
                                     {
@@ -328,11 +230,6 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                     {
                                         output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
                                     }
-
-                                }
-                                else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
-                                {
-                                    output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLink} fi{filterCounter}l ON fi{filterCounter}l.destination_item_id = {filterConnectionPart} "); // AND fi{filterCounter}l.type=800
                                 }
                                 else if (filterGroup.IsMultiLanguage)
                                 {
@@ -342,138 +239,241 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                                 {
                                     output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
                                 }
-                            }
-                        }
 
-                        if (!isAdvancedFilter)
-                        {
-                            string joinPart;
-                            if (filterGroup != null && ((!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType) && !filterGroup.UseAggregationTable) || (filterGroup.UseAggregationTable && forFilterItemsQuery && (filterGroup.GetParamKey() == forActiveFilter)) == false))
-                            {
-                                joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValues, filterGroup, false, filterGroup.UseAggregationTable);
+                                var joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValue, filterGroup, false);
                                 if (joinPart != "")
                                 {
                                     output.JoinPart.Append($"AND {joinPart}");
                                 }
+                                output.JoinPart.AppendLine();
+
+                                filterCounter++;
+                                // So the AppendFilterJoinPart will not be called and the filterCounter will not be increased.
+                                isAdvancedFilter = true;
+                            }
+                        }
+                        else
+                        {
+                            if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
+                            {
+                                if (!filterGroup.UseAggregationTable)
+                                {
+                                    output.JoinPart.Append("LEFT ");
+                                }
+                                if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity))
+                                {
+                                    if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityProperty))
+                                    {
+                                        if (!String.IsNullOrEmpty(filterGroup.QueryString))
+                                        {
+                                            output.WherePart.Append($"AND (fi{filterCounter}d.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
+                                        }
+                                        else
+                                        {
+                                            output.WherePart.Append($"AND (fi{filterCounter}d.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
+                                        }
+
+                                    }
+                                    else if (!String.IsNullOrEmpty(filterGroup.QueryString))
+                                    {
+                                        output.WherePart.Append($"AND (fi{filterCounter}i.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
+                                    }
+
+                                    else
+                                    {
+                                        output.WherePart.Append($"AND (fi{filterCounter}i.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
+                                    }
+
+                                }
+                                else if (!String.IsNullOrEmpty(filterGroup.QueryString))
+                                {
+                                    output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR queryString .`value` = {filterGroup.QueryString.ToMySqlSafeValue(true)}){Environment.NewLine}");
+                                }
+
+                                else
+                                {
+                                    output.WherePart.Append($"AND (fi{filterCounter}.id IS NOT NULL OR filterName.`value` = {filterNameFromGroup.ToMySqlSafeValue(true)}){Environment.NewLine}");
+                                }
+
                             }
 
-                            output.JoinPart.AppendLine();
+                            if (filterGroup.UseAggregationTable)
+                            {
+                                if (forFilterItemsQuery)
+                                {
+                                    if (filterGroup.GetParamKey() != forActiveFilter) //Don't include the JOIN of the filter for which the query - part is requested
+                                    {
+                                        // Join to table with alias "f" in FilterItemsQuery
+                                        output.JoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : $"_{languagesService.CurrentLanguageCode.ToMySqlSafeValue(false)}")}` f{filterCounter} ON f{filterCounter}.category_id = f.category_id AND f{filterCounter}.product_id = f.product_id ");
+                                    }
+                                }
+                                else
+                                {
+                                    // Join to product-part and category-part given to function (from variable in overview query)
+                                    output.JoinPart.Append($"JOIN `wiser_filter_aggregation{(String.IsNullOrEmpty(languagesService.CurrentLanguageCode) ? "" : $"_{languagesService.CurrentLanguageCode.ToMySqlSafeValue(false)}")}` f{filterCounter} ON f{filterCounter}.category_id = {categoryJoinPart} AND f{filterCounter}.product_id = {productJoinPart} ");
+                                }
 
-                            // Handle join and join part if detail value is item-id.
-                            if (filterGroup != null && !String.IsNullOrEmpty(filterGroup.ConnectedEntity) && !filterGroup.UseAggregationTable)
+                            }
+                            else if (String.Equals(filterNameFromGroup, "itemtitle", StringComparison.OrdinalIgnoreCase))
+                            {
+                                output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItem} fi{filterCounter} ON fi{filterCounter}.id = {filterConnectionPart} ");
+                            }
+                            else if (filterConnectionPartIsLinkType)
+                            {
+                                if (filterGroup.IsMultiLanguage)
+                                {
+                                    output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                }
+                                else
+                                {
+                                    output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLinkDetail} fi{filterCounter} ON fi{filterCounter}.itemlink_id = {filterConnectionPart} ");
+                                }
+
+                            }
+                            else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
+                            {
+                                output.JoinPart.Append($"JOIN {WiserTableNames.WiserItemLink} fi{filterCounter}l ON fi{filterCounter}l.destination_item_id = {filterConnectionPart} "); // AND fi{filterCounter}l.type=800
+                            }
+                            else if (filterGroup.IsMultiLanguage)
+                            {
+                                output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON (fi{filterCounter}.language_code = ?sql_currentLanguageCode OR fi{filterCounter}.language_code = '') AND fi{filterCounter}.item_id = {filterConnectionPart} ");
+                            }
+                            else
+                            {
+                                output.JoinPart.Append($"JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter} ON fi{filterCounter}.item_id = {filterConnectionPart} ");
+                            }
+                        }
+                    }
+
+                    if (!isAdvancedFilter)
+                    {
+                        string joinPart;
+                        if (filterGroup != null && ((!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType) && !filterGroup.UseAggregationTable) || (filterGroup.UseAggregationTable && forFilterItemsQuery && (filterGroup.GetParamKey() == forActiveFilter)) == false))
+                        {
+                            joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValues, filterGroup, false, filterGroup.UseAggregationTable);
+                            if (joinPart != "")
+                            {
+                                output.JoinPart.Append($"AND {joinPart}");
+                            }
+                        }
+
+                        output.JoinPart.AppendLine();
+
+                        // Handle join and join part if detail value is item-id.
+                        if (filterGroup != null && !String.IsNullOrEmpty(filterGroup.ConnectedEntity) && !filterGroup.UseAggregationTable)
+                        {
+                            if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
+                            {
+                                output.JoinPart.Append("LEFT ");
+                            }
+
+                            output.JoinPart.Append($"JOIN {connectedEntityTablePrefix}{WiserTableNames.WiserItem} fi{filterCounter}i ON fi{filterCounter}i.entity_type = {filterGroup.ConnectedEntity.ToMySqlSafeValue(true)} ");
+
+                            if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
+                            {
+                                output.JoinPart.Append($"AND fi{filterCounter}i.id = fi{filterCounter}l.item_id ");
+                            }
+                            else if (filterGroup.SingleConnectedItem)
+                            {
+                                // For singleselect inputtypes, single id in wiser_itemdetail.
+                                output.JoinPart.Append($"AND fi{filterCounter}i.id = fi{filterCounter}.`value` ");
+                            }
+                            else
+                            {
+                                // For multiselect inputtypes, multiple id's in wiser_itemdetail.
+                                output.JoinPart.Append($"AND FIND_IN_SET(fi{filterCounter}i.id, fi{filterCounter}.`value`) ");
+                            }
+
+                            if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityProperty))
                             {
                                 if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
                                 {
                                     output.JoinPart.Append("LEFT ");
                                 }
 
-                                output.JoinPart.Append($"JOIN {connectedEntityTablePrefix}{WiserTableNames.WiserItem} fi{filterCounter}i ON fi{filterCounter}i.entity_type = {filterGroup.ConnectedEntity.ToMySqlSafeValue(true)} ");
-
-                                if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityLinkType))
+                                output.JoinPart.Append($"JOIN {connectedEntityTablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter}d ON fi{filterCounter}d.item_id = fi{filterCounter}i.id AND fi{filterCounter}d.`key` = '{filterGroup.ConnectedEntityProperty.ToMySqlSafeValue(false)}{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}' ");
+                                if (filterGroup.IsMultiLanguage)
                                 {
-                                    output.JoinPart.Append($"AND fi{filterCounter}i.id = fi{filterCounter}l.item_id ");
-                                }
-                                else if (filterGroup.SingleConnectedItem)
-                                {
-                                    // For singleselect inputtypes, single id in wiser_itemdetail.
-                                    output.JoinPart.Append($"AND fi{filterCounter}i.id = fi{filterCounter}.`value` ");
+                                    output.JoinPart.Append($"AND fi{filterCounter}d.language_code = ?sql_currentLanguageCode ");
                                 }
                                 else
                                 {
-                                    // For multiselect inputtypes, multiple id's in wiser_itemdetail.
-                                    output.JoinPart.Append($"AND FIND_IN_SET(fi{filterCounter}i.id, fi{filterCounter}.`value`) ");
+                                    output.JoinPart.Append($"AND fi{filterCounter}d.language_code = '' ");
                                 }
-
-                                if (!String.IsNullOrEmpty(filterGroup.ConnectedEntityProperty))
-                                {
-                                    if (!filterGroup.IsGroupFilter && forFilterItemsQuery)
-                                    {
-                                        output.JoinPart.Append("LEFT ");
-                                    }
-
-                                    output.JoinPart.Append($"JOIN {connectedEntityTablePrefix}{WiserTableNames.WiserItemDetail} fi{filterCounter}d ON fi{filterCounter}d.item_id = fi{filterCounter}i.id AND fi{filterCounter}d.`key` = '{filterGroup.ConnectedEntityProperty.ToMySqlSafeValue(false)}{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}' ");
-                                    if (filterGroup.IsMultiLanguage)
-                                    {
-                                        output.JoinPart.Append($"AND fi{filterCounter}d.language_code = ?sql_currentLanguageCode ");
-                                    }
-                                    else
-                                    {
-                                        output.JoinPart.Append($"AND fi{filterCounter}d.language_code = '' ");
-                                    }
-                                }
-
-                                joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValues, filterGroup, true);
-                                if (joinPart != "")
-                                {
-                                    output.JoinPart.Append($"AND {joinPart}");
-                                }
-                                output.JoinPart.AppendLine();
                             }
 
-                            filterCounter++;
+                            joinPart = AppendFilterJoinPart(filterCounter, filterNameFromGroup, filterValues, filterGroup, true);
+                            if (joinPart != "")
+                            {
+                                output.JoinPart.Append($"AND {joinPart}");
+                            }
+                            output.JoinPart.AppendLine();
                         }
 
-                        if (filterCount == 0)
-                        {
-                            filterCount = 1;
-                        }
+                        filterCounter++;
+                    }
+
+                    if (filterCount == 0)
+                    {
+                        filterCount = 1;
                     }
                 }
-                catch (Exception exception)
-                {
-                    throw new Exception($"Error on GetFilterQueryPart. Message: {exception}");
-                }
-
-                return output;
-
             }
             catch (Exception exception)
             {
-                logger.LogError($"Filter - Exception occurred in GetFilterQueryPart: {exception}");
-                return new QueryPartModel();
+                throw new Exception($"Error on GetFilterQueryPart. Message: {exception}");
             }
+
+            return output;
+
         }
-
-        /// <inheritdoc />
-        public Dictionary<string, string> GetFiltersByParameter(string filterParameter)
+        catch (Exception exception)
         {
-            var filters = new Dictionary<string, string>();
-            var filterParameterRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, filterParameter);
+            logger.LogError($"Filter - Exception occurred in GetFilterQueryPart: {exception}");
+            return new QueryPartModel();
+        }
+    }
 
-            if (String.IsNullOrEmpty(filterParameterRequest))
-            {
-                return filters;
-            }
+    /// <inheritdoc />
+    public Dictionary<string, string> GetFiltersByParameter(string filterParameter)
+    {
+        var filters = new Dictionary<string, string>();
+        var filterParameterRequest = HttpContextHelpers.GetRequestValue(httpContextAccessor?.HttpContext, filterParameter);
 
-            foreach (var filter in filterParameterRequest.Split("/"))
-            {
-                if (String.IsNullOrEmpty(filter))
-                {
-                    continue;
-                }
-
-
-                if (filter.Contains('-'))
-                {
-                    filters.Add(filter.Split("-")[0], filter[(filter.IndexOf('-') + 1)..]);
-                }
-                else
-                {
-                    filters.Add(filter, "");
-                }
-            }
-
+        if (String.IsNullOrEmpty(filterParameterRequest))
+        {
             return filters;
         }
 
-        /// <inheritdoc />
-        public async Task<Dictionary<string, FilterGroup>> GetFilterGroupsAsync(ulong categoryId = 0, string extraFilterProperties = "")
+        foreach (var filter in filterParameterRequest.Split("/"))
         {
-            var languageCode = await languagesService.GetLanguageCodeAsync();
-            var result = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
-            var filtersToItemType = Int32.Parse(await objectsService.FindSystemObjectByDomainNameAsync("filtertoitemtype", "6001"));
+            if (String.IsNullOrEmpty(filter))
+            {
+                continue;
+            }
 
-            var w2FiltersQuery = $@"SELECT 
+
+            if (filter.Contains('-'))
+            {
+                filters.Add(filter.Split("-")[0], filter[(filter.IndexOf('-') + 1)..]);
+            }
+            else
+            {
+                filters.Add(filter, "");
+            }
+        }
+
+        return filters;
+    }
+
+    /// <inheritdoc />
+    public async Task<Dictionary<string, FilterGroup>> GetFilterGroupsAsync(ulong categoryId = 0, string extraFilterProperties = "")
+    {
+        var languageCode = await languagesService.GetLanguageCodeAsync();
+        var result = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
+        var filtersToItemType = Int32.Parse(await objectsService.FindSystemObjectByDomainNameAsync("filtertoitemtype", "6001"));
+
+        var w2FiltersQuery = $@"SELECT 
                                 filterstoitem.id AS filterstoitemid,   
 	                            IFNULL(NULLIF(name.`value`,''),filters.title) AS filtername,
                                 property.`value` AS filternameseo,                                    
@@ -543,267 +543,266 @@ namespace GeeksCoreLibrary.Components.Filter.Services
                             WHERE filters.entity_type = 'filter'
                             ORDER BY filterstoitem.ordering ASC, filterstoparent.ordering ASC";
 
-            // Add extra joins and select-parts if extra properties are necessary for use in template
-            if (!String.IsNullOrEmpty(extraFilterProperties))
+        // Add extra joins and select-parts if extra properties are necessary for use in template
+        if (!String.IsNullOrEmpty(extraFilterProperties))
+        {
+            var selectPart = new StringBuilder(",");
+            var joinPart = new StringBuilder();
+            foreach (var extraFilterProperty in extraFilterProperties.Split(',', StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries))
             {
-                var selectPart = new StringBuilder(",");
-                var joinPart = new StringBuilder();
-                foreach (var extraFilterProperty in extraFilterProperties.Split(',', StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries))
-                {
-                    selectPart.Append($"`{extraFilterProperty}`.`value` AS `{extraFilterProperty}`,");
-                    joinPart.AppendLine($"LEFT JOIN {WiserTableNames.WiserItemDetail} AS `{extraFilterProperty}` ON `{extraFilterProperty}`.item_id = filters.id AND `{extraFilterProperty}`.`key` = '{extraFilterProperty}' {GetLanguageQueryPart(extraFilterProperty, languageCode)}");
-                }
-                w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", selectPart.ToString().TrimEnd(','));
-                w2FiltersQuery = w2FiltersQuery.Replace("{joinPart}", joinPart.ToString());
+                selectPart.Append($"`{extraFilterProperty}`.`value` AS `{extraFilterProperty}`,");
+                joinPart.AppendLine($"LEFT JOIN {WiserTableNames.WiserItemDetail} AS `{extraFilterProperty}` ON `{extraFilterProperty}`.item_id = filters.id AND `{extraFilterProperty}`.`key` = '{extraFilterProperty}' {GetLanguageQueryPart(extraFilterProperty, languageCode)}");
+            }
+            w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", selectPart.ToString().TrimEnd(','));
+            w2FiltersQuery = w2FiltersQuery.Replace("{joinPart}", joinPart.ToString());
+        }
+        else
+        {
+            w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", "");
+            w2FiltersQuery = w2FiltersQuery.Replace("{joinPart}", "");
+        }
+
+        databaseConnection.ClearParameters();
+        databaseConnection.AddParameter("lang_id", languageCode);
+        databaseConnection.AddParameter("category_id", categoryId > 0 ? categoryId : 0);
+        databaseConnection.AddParameter("filtertoitemtype", filtersToItemType);
+
+        var dataTable = await databaseConnection.GetAsync(w2FiltersQuery);
+        var ignoreNotLinkedFilters = dataTable.Rows.Cast<DataRow>().Any(row => !row.IsNull("filterstoitemid"));
+
+        // LEFT JOIN to filterstoitem because category id is always present for getting filter items from aggregation table
+        // filterstoitem.id is checked in code below. If this column has a value for one or more filters, then the filters where filterstoitem.id IS NULL are ignored
+        // The aggregation table ensures that only filters that apply to the relevant category are shown
+
+        foreach (DataRow row in dataTable.Rows)
+        {
+            // Skip filter which is not connected to category (check in code above)
+            if (ignoreNotLinkedFilters && row.IsNull("filterstoitemid"))
+            {
+                continue;
+            }
+
+            // If URL not matches with regex, then skip this filter
+            if (dataTable.Columns.Contains("urlregex") && !String.IsNullOrEmpty(row["urlregex"].ToString()) && !System.Text.RegularExpressions.Regex.IsMatch(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString(), row["urlregex"].ToString()))
+            {
+                continue;
+            }
+
+            FilterGroup filterGroup;
+            var filterName = row.Field<string>("filtername");
+            var filterGroupNameSeo = !dataTable.Columns.Contains("filtergroupnameseo") ? "" : row.Field<string>("filtergroupnameseo");
+            if (!String.IsNullOrWhiteSpace(filterGroupNameSeo))
+            {
+                filterGroup = new FilterGroup(filterName, filterGroupNameSeo);
+                filterGroup.IsGroupFilter = true;
             }
             else
             {
-                w2FiltersQuery = w2FiltersQuery.Replace("{selectPart}", "");
-                w2FiltersQuery = w2FiltersQuery.Replace("{joinPart}", "");
+                var filterSeoName = row.Field<string>("filternameseo");
+                filterGroup = !String.IsNullOrEmpty(filterSeoName) ? new FilterGroup(filterName, filterSeoName) : new FilterGroup(filterName);
             }
 
-            databaseConnection.ClearParameters();
-            databaseConnection.AddParameter("lang_id", languageCode);
-            databaseConnection.AddParameter("category_id", categoryId > 0 ? categoryId : 0);
-            databaseConnection.AddParameter("filtertoitemtype", filtersToItemType);
-
-            var dataTable = await databaseConnection.GetAsync(w2FiltersQuery);
-            var ignoreNotLinkedFilters = dataTable.Rows.Cast<DataRow>().Any(row => !row.IsNull("filterstoitemid"));
-
-            // LEFT JOIN to filterstoitem because category id is always present for getting filter items from aggregation table
-            // filterstoitem.id is checked in code below. If this column has a value for one or more filters, then the filters where filterstoitem.id IS NULL are ignored
-            // The aggregation table ensures that only filters that apply to the relevant category are shown
-
-            foreach (DataRow row in dataTable.Rows)
+            var filterType = row.Field<string>("filtertype");
+            if (Int32.TryParse(filterType, out var filterTypeAsNumber))
             {
-                // Skip filter which is not connected to category (check in code above)
-                if (ignoreNotLinkedFilters && row.IsNull("filterstoitemid"))
+                filterGroup.FilterType = (FilterGroup.FilterGroupType)filterTypeAsNumber;
+            }
+            else
+            {
+                filterGroup.FilterType = (FilterGroup.FilterGroupType)Enum.Parse(typeof(FilterGroup.FilterGroupType), filterType);
+            }
+
+            filterGroup.ShowCount = !row.IsNull("showcount") && Convert.ToBoolean(row["showcount"]);
+            filterGroup.HideInSummary = row.Field<string>("hideinsummary") == "1";
+            filterGroup.FilterOnSeoValue = row.Field<string>("filteronseovalue") == "1";
+            filterGroup.SingleConnectedItem = row.Field<string>("singleconnecteditem") == "1";
+            var filterGroupColumnName = row.Field<string>("columnname");
+            filterGroup.ColumnName = String.IsNullOrWhiteSpace(filterGroupColumnName) ? filterGroup.Name : filterGroupColumnName;
+
+            // The "classes" columns was added later, so check for its availability.
+            filterGroup.Classes = row.GetValueIfColumnExists("classes", "");
+
+            // The "entity" columns property added later, so check for its availability.
+            filterGroup.EntityName = row.GetValueIfColumnExists("entity", "");
+
+            // Match value can be used in combination with Wiser group filters to give the value on which the detail must match when the filter is selected.
+            filterGroup.MatchValue = row.GetValueIfColumnExists("matchValue", filterGroup.MatchValue);
+
+            // Advanced filter to give values and join statements.
+            filterGroup.AdvancedFilter = row.GetValueIfColumnExists("advancedfilter", filterGroup.AdvancedFilter);
+
+            filterGroup.CustomJoin = row.GetValueIfColumnExists("customjoin", filterGroup.CustomJoin);
+            filterGroup.CustomSelect = row.GetValueIfColumnExists("customselect", filterGroup.CustomSelect);
+            filterGroup.Group = row.GetValueIfColumnExists("group", filterGroup.Group);
+            filterGroup.ConnectedEntity = row.GetValueIfColumnExists("connectedentity", filterGroup.ConnectedEntity);
+            filterGroup.ConnectedEntityProperty = row.GetValueIfColumnExists("connectedentityproperty", filterGroup.ConnectedEntityProperty);
+            filterGroup.ConnectedEntityLinkType = row.GetValueIfColumnExists("connectedentitylinktype", filterGroup.ConnectedEntityLinkType);
+            filterGroup.IsMultiLanguage = row.GetValueIfColumnExists("ismultilanguage", filterGroup.IsMultiLanguage ? "1" : "0") == "1";
+            filterGroup.QueryString = row.GetValueIfColumnExists("querystring", filterGroup.QueryString);
+            filterGroup.MinimumItemsRequired = Int32.Parse(row.GetValueIfColumnExists("minimumitemsrequired", filterGroup.MinimumItemsRequired.ToString()));
+            filterGroup.UseAggregationTable = row.GetValueIfColumnExists("useaggregationtable", filterGroup.UseAggregationTable ? "1" : "0") == "1";
+            filterGroup.GroupTemplate = row.GetValueIfColumnExists("grouptemplate", filterGroup.GroupTemplate);
+            filterGroup.ItemTemplate = row.GetValueIfColumnExists("itemtemplate", filterGroup.ItemTemplate);
+            filterGroup.SelectedItemTemplate = row.GetValueIfColumnExists("selecteditemtemplate", filterGroup.SelectedItemTemplate);
+
+            // Extra properties on filter level for use in templates
+            if (!String.IsNullOrEmpty(extraFilterProperties))
+            {
+                filterGroup.ExtraProperties = new SortedList<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var extraFilterProperty in extraFilterProperties.Split(',', StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries).Where(p => !filterGroup.ExtraProperties.ContainsKey(p)))
                 {
-                    continue;
+                    filterGroup.ExtraProperties.Add(extraFilterProperty, row.IsNull(extraFilterProperty) ? "" : row[extraFilterProperty].ToString());
                 }
+            }
 
-                // If URL not matches with regex, then skip this filter
-                if (dataTable.Columns.Contains("urlregex") && !String.IsNullOrEmpty(row["urlregex"].ToString()) && !System.Text.RegularExpressions.Regex.IsMatch(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString(), row["urlregex"].ToString()))
+            result.TryAdd(!String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo, filterGroup);
+        }
+
+        return result;
+    }
+
+    private static string GetLanguageQueryPart(string columnName, string languageCode)
+    {
+        if (String.IsNullOrWhiteSpace(languageCode) || languageCode == "0")
+        {
+            return $"AND `{columnName}`.language_code = ''";
+        }
+
+        return $"AND (`{columnName}`.language_code = '' OR `{columnName}`.language_code = '{languageCode}')";
+    }
+
+    private static string AppendFilterJoinPart(int filterCounter, string filterName, string filterValue, FilterGroup filterGroup, bool forItemPart, bool forAggregationTable = false)
+    {
+        if (filterGroup is null)
+        {
+            return String.Empty;
+        }
+
+        var splitFilterValue = filterValue.Split('-');
+        var filterValueIsNumber = Int32.TryParse(filterValue, out var filterValueAsNumber);
+        var output = "";
+
+        if (filterGroup.FilterType == FilterGroup.FilterGroupType.Slider)
+        {
+            if (forAggregationTable)
+            {
+                if (filterValueIsNumber)
                 {
-                    continue;
+                    // One (minimum) value.
+                    output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue < {filterValueAsNumber}";
                 }
-
-                FilterGroup filterGroup;
-                var filterName = row.Field<string>("filtername");
-                var filterGroupNameSeo = !dataTable.Columns.Contains("filtergroupnameseo") ? "" : row.Field<string>("filtergroupnameseo");
-                if (!String.IsNullOrWhiteSpace(filterGroupNameSeo))
+                else if (splitFilterValue.Length == 2 && Int32.TryParse(splitFilterValue[0], out var minValue) && Int32.TryParse(splitFilterValue[1], out var maxValue))
                 {
-                    filterGroup = new FilterGroup(filterName, filterGroupNameSeo);
-                    filterGroup.IsGroupFilter = true;
+                    // Two values (min and max).
+                    output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue >= {minValue} AND f{filterCounter}.filtervalue <= {maxValue}";
                 }
-                else
+            }
+            else
+            {
+                if (filterValueIsNumber)
                 {
-                    var filterSeoName = row.Field<string>("filternameseo");
-                    filterGroup = !String.IsNullOrEmpty(filterSeoName) ? new FilterGroup(filterName, filterSeoName) : new FilterGroup(filterName);
+                    // One (minimum) value.
+                    output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND REPLACE(fi{filterCounter}.`value`,',','.') < {filterValueAsNumber})";
                 }
-
-                var filterType = row.Field<string>("filtertype");
-                if (Int32.TryParse(filterType, out var filterTypeAsNumber))
+                else if (splitFilterValue.Length == 2 && Int32.TryParse(splitFilterValue[0], out var minValue) && Int32.TryParse(splitFilterValue[1], out var maxValue))
                 {
-                    filterGroup.FilterType = (FilterGroup.FilterGroupType)filterTypeAsNumber;
+                    // Two values (min and max).
+                    output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` >= {minValue} AND fi{filterCounter}.`value` <= {maxValue})";
                 }
-                else
+            }
+        }
+        else if (!String.IsNullOrWhiteSpace(filterValue))
+        {
+            // Get the value query part (in case of a Wiser 2 group filter)
+            var valueQueryPart = $"AND fi{filterCounter}.`value` != '' AND fi{filterCounter}.`value` != '0'";
+            if (filterGroup.IsGroupFilter)
+            {
+                if (!String.IsNullOrEmpty(filterGroup.MatchValue))
                 {
-                    filterGroup.FilterType = (FilterGroup.FilterGroupType)Enum.Parse(typeof(FilterGroup.FilterGroupType), filterType);
-                }
-
-                filterGroup.ShowCount = !row.IsNull("showcount") && Convert.ToBoolean(row["showcount"]);
-                filterGroup.HideInSummary = row.Field<string>("hideinsummary") == "1";
-                filterGroup.FilterOnSeoValue = row.Field<string>("filteronseovalue") == "1";
-                filterGroup.SingleConnectedItem = row.Field<string>("singleconnecteditem") == "1";
-                var filterGroupColumnName = row.Field<string>("columnname");
-                filterGroup.ColumnName = String.IsNullOrWhiteSpace(filterGroupColumnName) ? filterGroup.Name : filterGroupColumnName;
-
-                // The "classes" columns was added later, so check for its availability.
-                filterGroup.Classes = row.GetValueIfColumnExists("classes", "");
-
-                // The "entity" columns property added later, so check for its availability.
-                filterGroup.EntityName = row.GetValueIfColumnExists("entity", "");
-
-                // Match value can be used in combination with Wiser group filters to give the value on which the detail must match when the filter is selected.
-                filterGroup.MatchValue = row.GetValueIfColumnExists("matchValue", filterGroup.MatchValue);
-
-                // Advanced filter to give values and join statements.
-                filterGroup.AdvancedFilter = row.GetValueIfColumnExists("advancedfilter", filterGroup.AdvancedFilter);
-
-                filterGroup.CustomJoin = row.GetValueIfColumnExists("customjoin", filterGroup.CustomJoin);
-                filterGroup.CustomSelect = row.GetValueIfColumnExists("customselect", filterGroup.CustomSelect);
-                filterGroup.Group = row.GetValueIfColumnExists("group", filterGroup.Group);
-                filterGroup.ConnectedEntity = row.GetValueIfColumnExists("connectedentity", filterGroup.ConnectedEntity);
-                filterGroup.ConnectedEntityProperty = row.GetValueIfColumnExists("connectedentityproperty", filterGroup.ConnectedEntityProperty);
-                filterGroup.ConnectedEntityLinkType = row.GetValueIfColumnExists("connectedentitylinktype", filterGroup.ConnectedEntityLinkType);
-                filterGroup.IsMultiLanguage = row.GetValueIfColumnExists("ismultilanguage", filterGroup.IsMultiLanguage ? "1" : "0") == "1";
-                filterGroup.QueryString = row.GetValueIfColumnExists("querystring", filterGroup.QueryString);
-                filterGroup.MinimumItemsRequired = Int32.Parse(row.GetValueIfColumnExists("minimumitemsrequired", filterGroup.MinimumItemsRequired.ToString()));
-                filterGroup.UseAggregationTable = row.GetValueIfColumnExists("useaggregationtable", filterGroup.UseAggregationTable ? "1" : "0") == "1";
-                filterGroup.GroupTemplate = row.GetValueIfColumnExists("grouptemplate", filterGroup.GroupTemplate);
-                filterGroup.ItemTemplate = row.GetValueIfColumnExists("itemtemplate", filterGroup.ItemTemplate);
-                filterGroup.SelectedItemTemplate = row.GetValueIfColumnExists("selecteditemtemplate", filterGroup.SelectedItemTemplate);
-
-                // Extra properties on filter level for use in templates
-                if (!String.IsNullOrEmpty(extraFilterProperties))
-                {
-                    filterGroup.ExtraProperties = new SortedList<string, string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var extraFilterProperty in extraFilterProperties.Split(',', StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries).Where(p => !filterGroup.ExtraProperties.ContainsKey(p)))
+                    if (filterGroup.MatchValue.Contains('~'))
                     {
-                        filterGroup.ExtraProperties.Add(extraFilterProperty, row.IsNull(extraFilterProperty) ? "" : row[extraFilterProperty].ToString());
+                        valueQueryPart = $"AND fi{filterCounter}.`value` IN ({filterGroup.MatchValue.ToMySqlSafeValue(true).Replace("~", "','")})";
+                    }
+                    else
+                    {
+                        valueQueryPart = $"AND fi{filterCounter}.`value` = {filterGroup.MatchValue.ToMySqlSafeValue(true)}";
                     }
                 }
-
-                result.TryAdd(!String.IsNullOrEmpty(filterGroup.QueryString) ? filterGroup.QueryString : filterGroup.NameSeo, filterGroup);
             }
 
-            return result;
-        }
-
-        private static string GetLanguageQueryPart(string columnName, string languageCode)
-        {
-            if (String.IsNullOrWhiteSpace(languageCode) || languageCode == "0")
+            if (filterValue.Contains(Constants.ValueSplitter))
             {
-                return $"AND `{columnName}`.language_code = ''";
+                // multiple values selected
+                if (forAggregationTable)
+                {
+                    output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")})";
+                }
+                else if (filterGroup.IsGroupFilter)
+                {
+                    output = $"(fi{filterCounter}.groupname = {filterName.ToMySqlSafeValue(true)} AND  (fi{filterCounter}.`key` IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")}) {valueQueryPart}))";
+                }
+                else if (filterName == "itemtitle")
+                {
+                    output = $"(fi{filterCounter}.title IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")}))";
+                }
+                else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) && forItemPart)
+                {
+                    if (String.IsNullOrEmpty(filterGroup.ConnectedEntityProperty))
+                    {
+                        output = $"(fi{filterCounter}i.title IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")}))";
+                    }
+                    else
+                    {
+                        output = $"(fi{filterCounter}d.`value` IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")}))";
+                    }
+                }
+                else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) && !forItemPart)
+                {
+                    output = $"(fi{filterCounter}.`key` = CONCAT('{filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}'))";
+                }
+                else
+                {
+                    output = $"(fi{filterCounter}.`key` = CONCAT('{filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}') AND (fi{filterCounter}.`value` IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")})))";
+                }
             }
-
-            return $"AND (`{columnName}`.language_code = '' OR `{columnName}`.language_code = '{languageCode}')";
-        }
-
-        private static string AppendFilterJoinPart(int filterCounter, string filterName, string filterValue, FilterGroup filterGroup, bool forItemPart, bool forAggregationTable = false)
-        {
-            if (filterGroup is null)
-            {
-                return String.Empty;
-            }
-
-            var splitFilterValue = filterValue.Split('-');
-            var filterValueIsNumber = Int32.TryParse(filterValue, out var filterValueAsNumber);
-            var output = "";
-
-            if (filterGroup.FilterType == FilterGroup.FilterGroupType.Slider)
+            else // single value selected
             {
                 if (forAggregationTable)
                 {
-                    if (filterValueIsNumber)
+                    output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue = {filterValue.ToMySqlSafeValue(true)}";
+                }
+                else if (filterGroup.IsGroupFilter)
+                {
+                    output = $"(fi{filterCounter}.groupname = {filterName.ToMySqlSafeValue(true)} AND (fi{filterCounter}.`key` = {filterValue.ToMySqlSafeValue(true)} {valueQueryPart}))";
+                }
+                else if (filterName == "itemtitle")
+                {
+                    output = $"(fi{filterCounter}.title = {filterValue.ToMySqlSafeValue(true)})";
+                }
+                else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) && forItemPart)
+                {
+                    if (String.IsNullOrEmpty(filterGroup.ConnectedEntityProperty))
                     {
-                        // One (minimum) value.
-                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue < {filterValueAsNumber}";
+                        output = $"(fi{filterCounter}i.title = {filterValue.ToMySqlSafeValue(true)})";
                     }
-                    else if (splitFilterValue.Length == 2 && Int32.TryParse(splitFilterValue[0], out var minValue) && Int32.TryParse(splitFilterValue[1], out var maxValue))
+                    else
                     {
-                        // Two values (min and max).
-                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue >= {minValue} AND f{filterCounter}.filtervalue <= {maxValue}";
+                        output = $"(fi{filterCounter}d.`value` = {filterValue.ToMySqlSafeValue(true)})";
                     }
+                }
+                else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) && !forItemPart)
+                {
+                    output = $"(fi{filterCounter}.`key` = CONCAT({filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}')";
                 }
                 else
                 {
-                    if (filterValueIsNumber)
-                    {
-                        // One (minimum) value.
-                        output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND REPLACE(fi{filterCounter}.`value`,',','.') < {filterValueAsNumber})";
-                    }
-                    else if (splitFilterValue.Length == 2 && Int32.TryParse(splitFilterValue[0], out var minValue) && Int32.TryParse(splitFilterValue[1], out var maxValue))
-                    {
-                        // Two values (min and max).
-                        output = $"(fi{filterCounter}.`key` = {filterName.ToMySqlSafeValue(true)} AND fi{filterCounter}.`value` >= {minValue} AND fi{filterCounter}.`value` <= {maxValue})";
-                    }
+                    // if the filter name is genericFilter dont add it to the join statement, we want all items with the name, but there is no group
+                    var filterNamePart = filterName == "genericFilter" ? "TRUE" : $"fi{filterCounter}.`key` = CONCAT({filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}')  ";
+                    output = $"({filterNamePart} AND (fi{filterCounter}.`value` = {filterValue.ToMySqlSafeValue(true)}))";
                 }
             }
-            else if (!String.IsNullOrWhiteSpace(filterValue))
-            {
-                // Get the value query part (in case of a Wiser 2 group filter)
-                var valueQueryPart = $"AND fi{filterCounter}.`value` != '' AND fi{filterCounter}.`value` != '0'";
-                if (filterGroup.IsGroupFilter)
-                {
-                    if (!String.IsNullOrEmpty(filterGroup.MatchValue))
-                    {
-                        if (filterGroup.MatchValue.Contains('~'))
-                        {
-                            valueQueryPart = $"AND fi{filterCounter}.`value` IN ({filterGroup.MatchValue.ToMySqlSafeValue(true).Replace("~", "','")})";
-                        }
-                        else
-                        {
-                            valueQueryPart = $"AND fi{filterCounter}.`value` = {filterGroup.MatchValue.ToMySqlSafeValue(true)}";
-                        }
-                    }
-                }
-
-                if (filterValue.Contains(Constants.ValueSplitter))
-                {
-                    // multiple values selected
-                    if (forAggregationTable)
-                    {
-                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")})";
-                    }
-                    else if (filterGroup.IsGroupFilter)
-                    {
-                        output = $"(fi{filterCounter}.groupname = {filterName.ToMySqlSafeValue(true)} AND  (fi{filterCounter}.`key` IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")}) {valueQueryPart}))";
-                    }
-                    else if (filterName == "itemtitle")
-                    {
-                        output = $"(fi{filterCounter}.title IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")}))";
-                    }
-                    else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) && forItemPart)
-                    {
-                        if (String.IsNullOrEmpty(filterGroup.ConnectedEntityProperty))
-                        {
-                            output = $"(fi{filterCounter}i.title IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")}))";
-                        }
-                        else
-                        {
-                            output = $"(fi{filterCounter}d.`value` IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")}))";
-                        }
-                    }
-                    else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) && !forItemPart)
-                    {
-                        output = $"(fi{filterCounter}.`key` = CONCAT('{filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}'))";
-                    }
-                    else
-                    {
-                        output = $"(fi{filterCounter}.`key` = CONCAT('{filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}') AND (fi{filterCounter}.`value` IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")})))";
-                    }
-                }
-                else // single value selected
-                {
-                    if (forAggregationTable)
-                    {
-                        output = $"f{filterCounter}.filtergroup = {filterGroup.GetParamKey().ToMySqlSafeValue(true)} AND f{filterCounter}.filtervalue = {filterValue.ToMySqlSafeValue(true)}";
-                    }
-                    else if (filterGroup.IsGroupFilter)
-                    {
-                        output = $"(fi{filterCounter}.groupname = {filterName.ToMySqlSafeValue(true)} AND (fi{filterCounter}.`key` = {filterValue.ToMySqlSafeValue(true)} {valueQueryPart}))";
-                    }
-                    else if (filterName == "itemtitle")
-                    {
-                        output = $"(fi{filterCounter}.title = {filterValue.ToMySqlSafeValue(true)})";
-                    }
-                    else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) && forItemPart)
-                    {
-                        if (String.IsNullOrEmpty(filterGroup.ConnectedEntityProperty))
-                        {
-                            output = $"(fi{filterCounter}i.title = {filterValue.ToMySqlSafeValue(true)})";
-                        }
-                        else
-                        {
-                            output = $"(fi{filterCounter}d.`value` = {filterValue.ToMySqlSafeValue(true)})";
-                        }
-                    }
-                    else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) && !forItemPart)
-                    {
-                        output = $"(fi{filterCounter}.`key` = CONCAT({filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}')";
-                    }
-                    else
-                    {
-                        // if the filter name is genericFilter dont add it to the join statement, we want all items with the name, but there is no group
-                        var filterNamePart = filterName == "genericFilter" ? "TRUE" : $"fi{filterCounter}.`key` = CONCAT({filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}')  ";
-                        output = $"({filterNamePart} AND (fi{filterCounter}.`value` = {filterValue.ToMySqlSafeValue(true)}))";
-                    }
-                }
-            }
-
-            return output;
         }
+
+        return output;
     }
 }

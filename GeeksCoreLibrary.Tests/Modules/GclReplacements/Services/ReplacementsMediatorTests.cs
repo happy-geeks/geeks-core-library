@@ -6,6 +6,7 @@ using FluentAssertions;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Services;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
@@ -59,6 +60,7 @@ public class ReplacementsMediatorTests
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     private IReplacementsMediator replacementsMediator;
     private Mock<IDatabaseConnection> databaseConnectionMock;
+    private Mock<IHttpContextAccessor> httpContextAccessorMock;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
     [SetUp]
@@ -66,9 +68,10 @@ public class ReplacementsMediatorTests
     {
         // Create mocks.
         databaseConnectionMock = new Mock<IDatabaseConnection>();
+        httpContextAccessorMock = new Mock<IHttpContextAccessor>();
 
         // Create the service that we're testing.
-        replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object);
+        replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object, httpContextAccessorMock.Object);
     }
 
     [Test]

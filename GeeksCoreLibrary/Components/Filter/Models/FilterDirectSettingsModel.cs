@@ -1,40 +1,40 @@
 using System.ComponentModel;
 
-namespace GeeksCoreLibrary.Components.Filter.Models
+namespace GeeksCoreLibrary.Components.Filter.Models;
+
+internal class FilterDirectSettingsModel
 {
-    internal class FilterDirectSettingsModel
-    {
-        [DefaultValue(Constants.TemplateFull)]
-        internal string TemplateFull { get; set; }
+    [DefaultValue(Constants.TemplateFull)]
+    internal string TemplateFull { get; set; }
 
-        [DefaultValue(Constants.TemplateFilterGroup)]
-        internal string TemplateFilterGroup { get; set; }
+    [DefaultValue(Constants.TemplateFilterGroup)]
+    internal string TemplateFilterGroup { get; set; }
 
-        [DefaultValue(Constants.TemplateSingleSelectItem)]
-        internal string TemplateSingleSelectItem { get; set; }
+    [DefaultValue(Constants.TemplateSingleSelectItem)]
+    internal string TemplateSingleSelectItem { get; set; }
 
-        [DefaultValue(Constants.TemplateSingleSelectItemSelected)]
-        internal string TemplateSingleSelectItemSelected { get; set; }
+    [DefaultValue(Constants.TemplateSingleSelectItemSelected)]
+    internal string TemplateSingleSelectItemSelected { get; set; }
 
-        [DefaultValue(Constants.TemplateMultiSelectItem)]
-        internal string TemplateMultiSelectItem { get; set; }
-        
-        [DefaultValue(Constants.TemplateMultiSelectItemSelected)]
-        internal string TemplateMultiSelectItemSelected { get; set; }
-        
-        [DefaultValue(Constants.TemplateSlider)]
-        internal string TemplateSlider { get; set; }
+    [DefaultValue(Constants.TemplateMultiSelectItem)]
+    internal string TemplateMultiSelectItem { get; set; }
 
-        [DefaultValue(Constants.TemplateSummary)]
-        internal string TemplateSummary { get; set; }
+    [DefaultValue(Constants.TemplateMultiSelectItemSelected)]
+    internal string TemplateMultiSelectItemSelected { get; set; }
 
-        [DefaultValue(Constants.TemplateSummaryFilterGroup)]
-        internal string TemplateSummaryFilterGroup { get; set; }
+    [DefaultValue(Constants.TemplateSlider)]
+    internal string TemplateSlider { get; set; }
 
-        [DefaultValue(Constants.TemplateSummaryFilterGroupItem)]
-        internal string TemplateSummaryFilterGroupItem { get; set; }
+    [DefaultValue(Constants.TemplateSummary)]
+    internal string TemplateSummary { get; set; }
 
-        [DefaultValue(@"SELECT 
+    [DefaultValue(Constants.TemplateSummaryFilterGroup)]
+    internal string TemplateSummaryFilterGroup { get; set; }
+
+    [DefaultValue(Constants.TemplateSummaryFilterGroupItem)]
+    internal string TemplateSummaryFilterGroupItem { get; set; }
+
+    [DefaultValue(@"SELECT 
     IFNULL(queryString.`value`, filters.title) AS filtergroup,
     IFNULL(productPropertyValueNameSeo.`value`, IFNULL(productPropertyValueName.`value`, productPropertyValue.title)) AS filtervalue,    
     IFNULL(productPropertyValueName.`value`, productPropertyValue.title) AS itemdetail_name,
@@ -66,8 +66,7 @@ WHERE filters.entity_type='filter'
 
 GROUP BY filtergroup,filtervalue
 HAVING filtervalue IS NOT NULL 
-ORDER BY ordering, filtervalue")] 
-        internal  string FilterItemsQuery { get; set; }
+ORDER BY ordering, filtervalue")]
+    internal  string FilterItemsQuery { get; set; }
 
-    }
 }

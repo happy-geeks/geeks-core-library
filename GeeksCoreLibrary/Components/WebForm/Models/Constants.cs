@@ -1,8 +1,8 @@
-﻿namespace GeeksCoreLibrary.Components.WebForm.Models
+﻿namespace GeeksCoreLibrary.Components.WebForm.Models;
+
+public static class Constants
 {
-    public static class Constants
-    {
-        internal const string DefaultFormJavaScript = @"async function webFormRequest{contentId}(container, method, postData, extraQueryStringParameters) {
+    internal const string DefaultFormJavaScript = @"async function webFormRequest{contentId}(container, method, postData, extraQueryStringParameters) {
     const url = `/GclComponent.gcl?contentId={contentId}&callMethod=${method}&type=WebForm&ombouw=false${extraQueryStringParameters || ''}`;
 
     const headers = {};
@@ -119,5 +119,4 @@ function addFilesToFormData(fileField, formData) {
 }
 
 initializeWebForm{contentId}();";
-    }
 }

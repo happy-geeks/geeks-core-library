@@ -1,10 +1,10 @@
 ﻿using System.ComponentModel;
 
-namespace GeeksCoreLibrary.Components.WebForm.Models
+namespace GeeksCoreLibrary.Components.WebForm.Models;
+
+internal class WebFormBasicFormSettingsModel
 {
-    internal class WebFormBasicFormSettingsModel
-    {
-        [DefaultValue(@"<!-- There must always be an element with ID GclWebFormContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+    [DefaultValue(@"<!-- There must always be an element with ID GclWebFormContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
 <div id='GclWebFormContainer{contentId}'>
     <jform id='GclWebForm{contentId}' method='POST'>
         <div class='formPanel'>
@@ -19,12 +19,11 @@ namespace GeeksCoreLibrary.Components.WebForm.Models
         </div>
     </jform>
 </div>")]
-        internal string FormHtmlTemplate { get; }
+    internal string FormHtmlTemplate { get; }
 
-        [DefaultValue(Constants.DefaultFormJavaScript)]
-        internal string TemplateJavaScript { get; }
+    [DefaultValue(Constants.DefaultFormJavaScript)]
+    internal string TemplateJavaScript { get; }
 
-        [DefaultValue(0.5)]
-        internal decimal ReCaptchaV3ScoreThreshold { get; }
-    }
+    [DefaultValue(0.5)]
+    internal decimal ReCaptchaV3ScoreThreshold { get; }
 }

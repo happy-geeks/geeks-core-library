@@ -1,10 +1,10 @@
 ﻿using System.ComponentModel;
 
-namespace GeeksCoreLibrary.Components.Account.Models
+namespace GeeksCoreLibrary.Components.Account.Models;
+
+internal class AccountCreateOrUpdateAccountSettingsModel
 {
-    internal class AccountCreateOrUpdateAccountSettingsModel
-    {
-        [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+    [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
 <div id='GclAccountContainer{contentId}'>
     <jform id='GclCreateOrUpdateAccountForm{contentId}' method='POST'>
         <div class='formPanel'>
@@ -30,9 +30,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
         </div>
     </jform>
 </div>")]
-        internal string Template { get; }
+    internal string Template { get; }
 
-        [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+    [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
 <div id='GclAccountContainer{contentId}'>
     [if({isLoggedIn}=true)]
     <p>Jouw account is aangemaakt en je ben automatisch ingelogd.</p>
@@ -40,9 +40,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
     <p>Jouw account is gewijzigd/aangemaakt.</p>
     [endif]
 </div>")]
-        internal string TemplateSuccess { get; }
+    internal string TemplateSuccess { get; }
 
-        [DefaultValue(@"<div class='error'>
+    [DefaultValue(@"<div class='error'>
     [if({errorType}=)]
     <p>{error}</p>
     [endif]
@@ -62,42 +62,42 @@ namespace GeeksCoreLibrary.Components.Account.Models
     <p>Er is een onbekende fout opgetreden. Probeer het a.u.b. nogmaals of neem contact op met ons.</p>
     [endif]
 </div>")]
-        internal string TemplateError { get; }
+    internal string TemplateError { get; }
 
-        [DefaultValue("Nieuw account aangemaakt")]
-        internal string SubjectNewAccountNotificationEmail { get; }
+    [DefaultValue("Nieuw account aangemaakt")]
+    internal string SubjectNewAccountNotificationEmail { get; }
 
-        [DefaultValue(Constants.DefaultNewAccountNotificationsMailBody)]
-        internal string BodyNewAccountNotificationEmail { get; }
+    [DefaultValue(Constants.DefaultNewAccountNotificationsMailBody)]
+    internal string BodyNewAccountNotificationEmail { get; }
 
-        [DefaultValue(Constants.DefaultEntityType)]
-        internal string EntityType { get; }
+    [DefaultValue(Constants.DefaultEntityType)]
+    internal string EntityType { get; }
 
-        [DefaultValue(Constants.DefaultEmailFieldName)]
-        internal string LoginFieldName { get; }
+    [DefaultValue(Constants.DefaultEmailFieldName)]
+    internal string LoginFieldName { get; }
 
-        [DefaultValue(Constants.DefaultPasswordFieldName)]
-        internal string PasswordFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultEmailFieldName)]
-        internal string EmailAddressFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultRoleFieldName)]
-        internal string RoleFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultNewPasswordFieldName)]
-        internal string NewPasswordFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultNewPasswordConfirmationFieldName)]
-        internal string NewPasswordConfirmationFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultGoogleCidFieldName)]
-        internal string GoogleClientIdFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultSubAccountEntityType)]
-        internal string SubAccountEntityType { get; }
+    [DefaultValue(Constants.DefaultPasswordFieldName)]
+    internal string PasswordFieldName { get; }
 
-        [DefaultValue(@"SELECT 
+    [DefaultValue(Constants.DefaultEmailFieldName)]
+    internal string EmailAddressFieldName { get; }
+
+    [DefaultValue(Constants.DefaultRoleFieldName)]
+    internal string RoleFieldName { get; }
+
+    [DefaultValue(Constants.DefaultNewPasswordFieldName)]
+    internal string NewPasswordFieldName { get; }
+
+    [DefaultValue(Constants.DefaultNewPasswordConfirmationFieldName)]
+    internal string NewPasswordConfirmationFieldName { get; }
+
+    [DefaultValue(Constants.DefaultGoogleCidFieldName)]
+    internal string GoogleClientIdFieldName { get; }
+
+    [DefaultValue(Constants.DefaultSubAccountEntityType)]
+    internal string SubAccountEntityType { get; }
+
+    [DefaultValue(@"SELECT 
 	CASE field.inputtype
 		WHEN 'secure-input' THEN 'password'
 		WHEN 'numeric-input' THEN 'number'
@@ -114,18 +114,18 @@ LEFT JOIN wiser_itemdetail AS detail ON detail.`key` = field.property_name AND d
 WHERE field.entity_name = ?entityType
 AND field.inputtype IN ('input', 'secure-input', 'numeric-input')
 ORDER BY field.ordering ASC")]
-        internal string MainQuery { get; }
+    internal string MainQuery { get; }
 
-        [DefaultValue(Constants.DefaultLoginQuery)]
-        internal string LoginQuery { get; }
+    [DefaultValue(Constants.DefaultLoginQuery)]
+    internal string LoginQuery { get; }
 
-        [DefaultValue(Constants.DefaultSaveLoginQuery)]
-        internal string SaveLoginAttemptQuery { get; }
+    [DefaultValue(Constants.DefaultSaveLoginQuery)]
+    internal string SaveLoginAttemptQuery { get; }
 
-        [DefaultValue(Constants.DefaultChangePasswordQuery)]
-        internal string ChangePasswordQuery { get; }
+    [DefaultValue(Constants.DefaultChangePasswordQuery)]
+    internal string ChangePasswordQuery { get; }
 
-        [DefaultValue(@"SELECT 'Dit account bestaat al' AS error
+    [DefaultValue(@"SELECT 'Dit account bestaat al' AS error
 FROM wiser_item AS account
 JOIN wiser_itemdetail AS login ON login.item_id = account.id AND login.`key` = ?loginFieldName
 JOIN wiser_itemdetail AS email ON email.item_id = account.id AND email.`key` = ?emailAddressFieldName
@@ -133,9 +133,9 @@ WHERE account.removed = 0
 AND account.entity_type IN(?entityType, ?subAccountEntityType)
 AND (login.`value` = ?login OR email.`value` = ?emailAddress)
 AND account.id <> ?userId")]
-        internal string CheckIfAccountExistsQuery { get; }
+    internal string CheckIfAccountExistsQuery { get; }
 
-        [DefaultValue(@"SELECT password.value AS password
+    [DefaultValue(@"SELECT password.value AS password
 FROM wiser_item AS account
 
 JOIN wiser_itemdetail AS login ON login.item_id = account.id AND login.`key` = ?loginFieldName
@@ -144,26 +144,25 @@ LEFT JOIN wiser_itemdetail AS password ON password.item_id = account.id AND pass
 WHERE account.entity_type IN(?entityType, ?subAccountEntityType)
 AND account.removed = 0
 AND account.id = ?userId")]
-        internal string ValidatePasswordQuery { get; }
+    internal string ValidatePasswordQuery { get; }
 
-        [DefaultValue(@"INSERT INTO wiser_item (entity_type, moduleid, title, added_by) VALUES (?entityType, 600, ?login, 'website');
+    [DefaultValue(@"INSERT INTO wiser_item (entity_type, moduleid, title, added_by) VALUES (?entityType, 600, ?login, 'website');
 SELECT LAST_INSERT_ID() AS id;")]
-        internal string CreateAccountQuery { get; }
+    internal string CreateAccountQuery { get; }
 
-        [DefaultValue(@"UPDATE wiser_item SET title = ?login, changed_by = 'website' WHERE id = ?userId")]
-        internal string UpdateAccountQuery { get; }
+    [DefaultValue(@"UPDATE wiser_item SET title = ?login, changed_by = 'website' WHERE id = ?userId")]
+    internal string UpdateAccountQuery { get; }
 
-        [DefaultValue(@"INSERT INTO wiser_itemdetail (item_id, `key`, value) VALUES (?userId, ?name, ?value)
+    [DefaultValue(@"INSERT INTO wiser_itemdetail (item_id, `key`, value) VALUES (?userId, ?name, ?value)
 ON DUPLICATE KEY UPDATE value = VALUES(value)")]
-        internal string SetValueInWiserEntityPropertyQuery { get; }
+    internal string SetValueInWiserEntityPropertyQuery { get; }
 
-        [DefaultValue(Constants.DefaultPasswordValidationRegex)]
-        internal string PasswordValidationRegex { get; }
+    [DefaultValue(Constants.DefaultPasswordValidationRegex)]
+    internal string PasswordValidationRegex { get; }
 
-        [DefaultValue(Constants.DefaultAmountOfDaysToRememberCookie)]
-        internal int? AmountOfDaysToRememberCookie { get; }
+    [DefaultValue(Constants.DefaultAmountOfDaysToRememberCookie)]
+    internal int? AmountOfDaysToRememberCookie { get; }
 
-        [DefaultValue(Constants.DefaultLastLoginAttemptFieldName)]
-        internal string LastLoginAttemptFieldName { get; }
-    }
+    [DefaultValue(Constants.DefaultLastLoginAttemptFieldName)]
+    internal string LastLoginAttemptFieldName { get; }
 }

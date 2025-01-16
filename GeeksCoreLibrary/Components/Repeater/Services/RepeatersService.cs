@@ -13,37 +13,37 @@ using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
-namespace GeeksCoreLibrary.Components.Repeater.Services
+namespace GeeksCoreLibrary.Components.Repeater.Services;
+
+public class RepeatersService(
+    IDatabaseConnection databaseConnection,
+    ILanguagesService languagesService,
+    IOptions<GclSettings> gclSettings,
+    IHttpContextAccessor httpContextAccessor = null)
+    : IRepeatersService, IScopedService
 {
-    public class RepeatersService(
-        IDatabaseConnection databaseConnection,
-        ILanguagesService languagesService,
-        IOptions<GclSettings> gclSettings,
-        IHttpContextAccessor httpContextAccessor = null)
-        : IRepeatersService, IScopedService
+    private readonly GclSettings gclSettings = gclSettings.Value;
+
+    /// <inheritdoc />
+    public async Task<List<ProductBannerModel>> GetProductBannersAsync()
     {
-        private readonly GclSettings gclSettings = gclSettings.Value;
-
-        /// <inheritdoc />
-        public async Task<List<ProductBannerModel>> GetProductBannersAsync()
+        if (httpContextAccessor?.HttpContext == null)
         {
-            if (httpContextAccessor?.HttpContext == null)
-            {
-                throw new Exception("HttpContext is not available.");
-            }
+            throw new Exception("HttpContext is not available.");
+        }
 
-            // Make sure the language code has a value.
-            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
-            {
-                // This function fills the property "CurrentLanguageCode".
-                await languagesService.GetLanguageCodeAsync();
-            }
+        // Make sure the language code has a value.
+        if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+        {
+            // This function fills the property "CurrentLanguageCode".
+            await languagesService.GetLanguageCodeAsync();
+        }
 
-            var fullUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).PathAndQuery;
-            databaseConnection.AddParameter("gcl_baseUrl", fullUrl);
-            databaseConnection.AddParameter("gcl_languageCode", languagesService.CurrentLanguageCode ?? "");
-            databaseConnection.AddParameter("gcl_publishedEnvironment", (int)gclSettings.Environment);
-            var dataTable = await databaseConnection.GetAsync($@"
+        var fullUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor.HttpContext).PathAndQuery;
+        databaseConnection.AddParameter("gcl_baseUrl", fullUrl);
+        databaseConnection.AddParameter("gcl_languageCode", languagesService.CurrentLanguageCode ?? "");
+        databaseConnection.AddParameter("gcl_publishedEnvironment", (int)gclSettings.Environment);
+        var dataTable = await databaseConnection.GetAsync($@"
                     SELECT
                         productbanner.id,
                         productbanner.title,
@@ -71,40 +71,39 @@ namespace GeeksCoreLibrary.Components.Repeater.Services
                         AND (start_date.`value` IS NULL OR start_date.`value` = '' OR CONVERT(start_date.`value`, DATETIME) < NOW())
                         AND (end_date.`value` IS NULL OR end_date.`value` = '' OR CONVERT(end_date.`value`, DATETIME) > NOW())");
 
-            var results = new List<ProductBannerModel>();
-            if (dataTable.Rows.Count == 0)
-            {
-                return results;
-            }
-
-            foreach (DataRow dataRow in dataTable.Rows)
-            {
-                var urlContains = dataRow.Field<string>("url_contains");
-                if (!String.IsNullOrWhiteSpace(urlContains) && !urlContains.Split(";").Where(x => !String.IsNullOrWhiteSpace(x)).Any(x => fullUrl.Contains(x, StringComparison.OrdinalIgnoreCase)))
-                {
-                    continue;
-                }
-
-                var productBannerId = dataRow.Field<ulong>("id");
-                if (results.Any(x => x.ItemId == productBannerId))
-                {
-                    continue;
-                }
-
-                results.Add(new ProductBannerModel
-                {
-                    ItemId = productBannerId,
-                    Name = dataRow.Field<string>("title"),
-                    BaseUrl = dataRow.Field<string>("base_url"),
-                    UrlContains = dataRow.Field<string>("url_contains"),
-                    Position = Convert.ToInt32(dataRow["position"]),
-                    Method = (ProductBannerModel.PlacingMethods)Convert.ToInt32(dataRow["method"]),
-                    Content = dataRow.Field<string>("content"),
-                    BannerSize = Convert.ToInt32(dataRow["banner_size"])
-                });
-            }
-
+        var results = new List<ProductBannerModel>();
+        if (dataTable.Rows.Count == 0)
+        {
             return results;
         }
+
+        foreach (DataRow dataRow in dataTable.Rows)
+        {
+            var urlContains = dataRow.Field<string>("url_contains");
+            if (!String.IsNullOrWhiteSpace(urlContains) && !urlContains.Split(";").Where(x => !String.IsNullOrWhiteSpace(x)).Any(x => fullUrl.Contains(x, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            var productBannerId = dataRow.Field<ulong>("id");
+            if (results.Any(x => x.ItemId == productBannerId))
+            {
+                continue;
+            }
+
+            results.Add(new ProductBannerModel
+            {
+                ItemId = productBannerId,
+                Name = dataRow.Field<string>("title"),
+                BaseUrl = dataRow.Field<string>("base_url"),
+                UrlContains = dataRow.Field<string>("url_contains"),
+                Position = Convert.ToInt32(dataRow["position"]),
+                Method = (ProductBannerModel.PlacingMethods)Convert.ToInt32(dataRow["method"]),
+                Content = dataRow.Field<string>("content"),
+                BannerSize = Convert.ToInt32(dataRow["banner_size"])
+            });
+        }
+
+        return results;
     }
 }

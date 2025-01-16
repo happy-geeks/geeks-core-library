@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.Branches.Models
+﻿namespace GeeksCoreLibrary.Modules.Branches.Models;
+
+public class Constants
 {
-    public class Constants
-    {
-        public const string BranchCookieName = "gcl_active_branch";
-    }
+    public const string BranchCookieName = "gcl_active_branch";
 }

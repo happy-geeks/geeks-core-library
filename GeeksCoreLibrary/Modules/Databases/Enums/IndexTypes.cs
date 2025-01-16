@@ -1,9 +1,8 @@
-﻿namespace GeeksCoreLibrary.Modules.Databases.Enums
+﻿namespace GeeksCoreLibrary.Modules.Databases.Enums;
+
+public enum IndexTypes
 {
-    public enum IndexTypes
-    {
-        Normal,
-        Unique,
-        FullText
-    }
+    Normal,
+    Unique,
+    FullText
 }

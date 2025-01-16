@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Core.Models.Pro6PP
+﻿namespace GeeksCoreLibrary.Core.Models.Pro6PP;
+
+public class Pro6PPErrorModel
 {
-    public class Pro6PPErrorModel
-    {
-        public string Message { get; set; }
-    }
+    public string Message { get; set; }
 }

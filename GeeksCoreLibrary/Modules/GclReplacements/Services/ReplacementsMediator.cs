@@ -13,7 +13,10 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Models;
+using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
 
@@ -23,6 +26,7 @@ namespace GeeksCoreLibrary.Modules.GclReplacements.Services;
 public class ReplacementsMediator : IReplacementsMediator, IScopedService
 {
     private readonly IDatabaseConnection databaseConnection;
+    private readonly IHttpContextAccessor httpContextAccessor;
     private readonly Regex logicSnippetRegex;
     private readonly Regex formatterRegex;
     private readonly MethodInfo[] formatters;
@@ -32,9 +36,10 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     /// <summary>
     /// Creates a new instance of <see cref="ReplacementsMediator"/>.
     /// </summary>
-    public ReplacementsMediator(IDatabaseConnection databaseConnection)
+    public ReplacementsMediator(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor)
     {
         this.databaseConnection = databaseConnection;
+        this.httpContextAccessor = httpContextAccessor;
 
         formatters = typeof(StringReplacementsExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public);
 
@@ -645,4 +650,48 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
 
         return Convert.ChangeType(input, type);
     }
+
+        /// <inheritdoc />
+        public string DoHttpRequestReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
+        {
+            if (httpContextAccessor?.HttpContext == null)
+            {
+                return input;
+            }
+
+            // GET variables.
+            if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
+            {
+                input = DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: defaultFormatter);
+            }
+            else
+            {
+                input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: defaultFormatter);
+            }
+
+            // POST variables.
+            if (httpContextAccessor.HttpContext.Request.HasFormContentType)
+            {
+                input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: defaultFormatter);
+            }
+
+            // Cookies.
+            input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: defaultFormatter);
+
+            // Request cache.
+            input = DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery, defaultFormatter: defaultFormatter);
+
+            return input;
+        }
+
+        /// <inheritdoc />
+        public string DoSessionReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
+        {
+            if (httpContextAccessor?.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
+            {
+                return input;
+            }
+
+            return DoReplacements(input, httpContextAccessor.HttpContext.Session, forQuery, defaultFormatter: defaultFormatter);
+        }
 }

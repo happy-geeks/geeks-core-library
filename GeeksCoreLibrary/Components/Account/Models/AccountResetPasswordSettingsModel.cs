@@ -1,10 +1,10 @@
 ﻿using System.ComponentModel;
 
-namespace GeeksCoreLibrary.Components.Account.Models
+namespace GeeksCoreLibrary.Components.Account.Models;
+
+internal class AccountResetPasswordSettingsModel
 {
-    internal class AccountResetPasswordSettingsModel
-    {
-        [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+    [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
 <div id='GclAccountContainer{contentId}'>
     <jform id='GclResetPasswordForm{contentId}' method='POST'>
         <div class='formPanel'>
@@ -41,9 +41,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
         </div>
     </jform>
 </div>")]
-        internal string Template { get; }
+    internal string Template { get; }
 
-        [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+    [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
 <div id='GclAccountContainer{contentId}'>
     [if({user}%{user)]
     <h2>Wachtwoord vergeten</h2>
@@ -57,9 +57,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
     [endif]
     [endif]
 </div>")]
-        internal string TemplateSuccess { get; }
+    internal string TemplateSuccess { get; }
 
-        [DefaultValue(@"<div class='error'>
+    [DefaultValue(@"<div class='error'>
     [if({errorType}=)]
     <p>{error}</p>
     [endif]
@@ -82,75 +82,74 @@ namespace GeeksCoreLibrary.Components.Account.Models
     <p>Er is een onbekende fout opgetreden. Probeer het a.u.b. nogmaals of neem contact op met ons.</p>
     [endif]
 </div>")]
-        internal string TemplateError { get; }
+    internal string TemplateError { get; }
 
-        [DefaultValue(Constants.DefaultLoginJavascript)]
-        internal string TemplateJavaScript { get; }
-        
-        [DefaultValue(Constants.DefaultResetPasswordSubject)]
-        internal string SubjectResetPasswordEmail { get; }
+    [DefaultValue(Constants.DefaultLoginJavascript)]
+    internal string TemplateJavaScript { get; }
 
-        [DefaultValue(Constants.DefaultResetPasswordMailBody)]
-        internal string BodyResetPasswordEmail { get; }
+    [DefaultValue(Constants.DefaultResetPasswordSubject)]
+    internal string SubjectResetPasswordEmail { get; }
 
-        [DefaultValue(Constants.DefaultEntityType)]
-        internal string EntityType { get; }
-        
-        [DefaultValue(Constants.DefaultEmailFieldName)]
-        internal string EmailAddressFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultResetPasswordTokenFieldName)]
-        internal string ResetPasswordTokenFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultResetPasswordExpireDateFieldName)]
-        internal string ResetPasswordExpireDateFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultRoleFieldName)]
-        internal string RoleFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultNewPasswordFieldName)]
-        internal string NewPasswordFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultNewPasswordConfirmationFieldName)]
-        internal string NewPasswordConfirmationFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultGoogleCidFieldName)]
-        internal string GoogleClientIdFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultSubAccountEntityType)]
-        internal string SubAccountEntityType { get; }
+    [DefaultValue(Constants.DefaultResetPasswordMailBody)]
+    internal string BodyResetPasswordEmail { get; }
 
-        [DefaultValue("")]
-        internal string MainQuery { get; }
+    [DefaultValue(Constants.DefaultEntityType)]
+    internal string EntityType { get; }
 
-        [DefaultValue(Constants.DefaultLoginQuery)]
-        internal string LoginQuery { get; }
+    [DefaultValue(Constants.DefaultEmailFieldName)]
+    internal string EmailAddressFieldName { get; }
 
-        [DefaultValue(Constants.DefaultSaveLoginQuery)]
-        internal string SaveLoginAttemptQuery { get; }
+    [DefaultValue(Constants.DefaultResetPasswordTokenFieldName)]
+    internal string ResetPasswordTokenFieldName { get; }
 
-        [DefaultValue(Constants.DefaultSaveResetPasswordValuesQuery)]
-        internal string SaveResetPasswordValuesQuery { get; }
+    [DefaultValue(Constants.DefaultResetPasswordExpireDateFieldName)]
+    internal string ResetPasswordExpireDateFieldName { get; }
 
-        [DefaultValue(Constants.DefaultValidateResetPasswordTokenQuery)]
-        internal string ValidateResetPasswordTokenQueryQuery { get; }
+    [DefaultValue(Constants.DefaultRoleFieldName)]
+    internal string RoleFieldName { get; }
 
-        [DefaultValue(Constants.DefaultChangePasswordQuery)]
-        internal string ChangePasswordQuery { get; }
+    [DefaultValue(Constants.DefaultNewPasswordFieldName)]
+    internal string NewPasswordFieldName { get; }
 
-        [DefaultValue(Constants.DefaultGetUserIdViaEmailAddressQuery)]
-        internal string GetUserIdViaEmailAddressQuery { get; }
+    [DefaultValue(Constants.DefaultNewPasswordConfirmationFieldName)]
+    internal string NewPasswordConfirmationFieldName { get; }
 
-        [DefaultValue(Constants.DefaultAmountOfDaysToRememberCookie)]
-        internal int? AmountOfDaysToRememberCookie { get; }
+    [DefaultValue(Constants.DefaultGoogleCidFieldName)]
+    internal string GoogleClientIdFieldName { get; }
 
-        [DefaultValue(Constants.DefaultResetPasswordTokenValidity)]
-        internal int? ResetPasswordTokenValidity { get; }
+    [DefaultValue(Constants.DefaultSubAccountEntityType)]
+    internal string SubAccountEntityType { get; }
 
-        [DefaultValue(Constants.DefaultGoogleAuthenticatorSiteId)]
-        internal int GoogleAuthenticatorSiteId { get; }
+    [DefaultValue("")]
+    internal string MainQuery { get; }
 
-        [DefaultValue(Constants.DefaultPasswordValidationRegex)]
-        internal string PasswordValidationRegex { get; }
-    }
+    [DefaultValue(Constants.DefaultLoginQuery)]
+    internal string LoginQuery { get; }
+
+    [DefaultValue(Constants.DefaultSaveLoginQuery)]
+    internal string SaveLoginAttemptQuery { get; }
+
+    [DefaultValue(Constants.DefaultSaveResetPasswordValuesQuery)]
+    internal string SaveResetPasswordValuesQuery { get; }
+
+    [DefaultValue(Constants.DefaultValidateResetPasswordTokenQuery)]
+    internal string ValidateResetPasswordTokenQueryQuery { get; }
+
+    [DefaultValue(Constants.DefaultChangePasswordQuery)]
+    internal string ChangePasswordQuery { get; }
+
+    [DefaultValue(Constants.DefaultGetUserIdViaEmailAddressQuery)]
+    internal string GetUserIdViaEmailAddressQuery { get; }
+
+    [DefaultValue(Constants.DefaultAmountOfDaysToRememberCookie)]
+    internal int? AmountOfDaysToRememberCookie { get; }
+
+    [DefaultValue(Constants.DefaultResetPasswordTokenValidity)]
+    internal int? ResetPasswordTokenValidity { get; }
+
+    [DefaultValue(Constants.DefaultGoogleAuthenticatorSiteId)]
+    internal int GoogleAuthenticatorSiteId { get; }
+
+    [DefaultValue(Constants.DefaultPasswordValidationRegex)]
+    internal string PasswordValidationRegex { get; }
 }

@@ -7,46 +7,45 @@ using GeeksCoreLibrary.Modules.Branches.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace GeeksCoreLibrary.Modules.Branches.Services
+namespace GeeksCoreLibrary.Modules.Branches.Services;
+
+/// <inheritdoc cref="IBranchesService"/>
+public class BranchesService(ILogger<BranchesService> logger, IHttpContextAccessor httpContextAccessor = null)
+    : IBranchesService, ITransientService
 {
-    /// <inheritdoc cref="IBranchesService"/>
-    public class BranchesService(ILogger<BranchesService> logger, IHttpContextAccessor httpContextAccessor = null)
-        : IBranchesService, ITransientService
+    /// <inheritdoc />
+    public string GetDatabaseNameFromCookie()
     {
-        /// <inheritdoc />
-        public string GetDatabaseNameFromCookie()
+        if (httpContextAccessor?.HttpContext == null)
         {
-            if (httpContextAccessor?.HttpContext == null)
-            {
-                return null;
-            }
-
-            var cookieValue = httpContextAccessor.HttpContext.Request.Cookies[Constants.BranchCookieName];
-            if (String.IsNullOrWhiteSpace(cookieValue))
-            {
-                return null;
-            }
-
-            try
-            {
-                return cookieValue.DecryptWithAesWithSalt(useSlowerButMoreSecureMethod: true);
-            }
-            catch (Exception exception)
-            {
-                logger.LogWarning(exception, $"Could not decrypt cookie value '{cookieValue}'");
-                return null;
-            }
+            return null;
         }
 
-        /// <inheritdoc />
-        public void SaveDatabaseNameToCookie(string databaseName)
+        var cookieValue = httpContextAccessor.HttpContext.Request.Cookies[Constants.BranchCookieName];
+        if (String.IsNullOrWhiteSpace(cookieValue))
         {
-            if (httpContextAccessor?.HttpContext == null)
-            {
-                return;
-            }
-            
-            HttpContextHelpers.WriteCookie(httpContextAccessor.HttpContext, Constants.BranchCookieName, databaseName.EncryptWithAesWithSalt(useSlowerButMoreSecureMethod: true), isEssential: true);
+            return null;
         }
+
+        try
+        {
+            return cookieValue.DecryptWithAesWithSalt(useSlowerButMoreSecureMethod: true);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, $"Could not decrypt cookie value '{cookieValue}'");
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public void SaveDatabaseNameToCookie(string databaseName)
+    {
+        if (httpContextAccessor?.HttpContext == null)
+        {
+            return;
+        }
+
+        HttpContextHelpers.WriteCookie(httpContextAccessor.HttpContext, Constants.BranchCookieName, databaseName.EncryptWithAesWithSalt(useSlowerButMoreSecureMethod: true), isEssential: true);
     }
 }

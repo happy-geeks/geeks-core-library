@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models
+﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models;
+
+public class DimensionModel
 {
-    public class DimensionModel
-    {
-        public string Weight { get; set; }
-    }
+    public string Weight { get; set; }
 }

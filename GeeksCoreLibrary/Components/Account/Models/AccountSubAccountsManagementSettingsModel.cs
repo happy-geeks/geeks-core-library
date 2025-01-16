@@ -1,10 +1,10 @@
 ﻿using System.ComponentModel;
 
-namespace GeeksCoreLibrary.Components.Account.Models
+namespace GeeksCoreLibrary.Components.Account.Models;
+
+internal class AccountSubAccountsManagementSettingsModel
 {
-    internal class AccountSubAccountsManagementSettingsModel
-    {
-        [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, unless you also overwrite the TemplateJavascript. -->
+	[DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, unless you also overwrite the TemplateJavascript. -->
 <div id='GclAccountContainer{contentId}' class='account-content'>
 	<h1>Subaccounts</h1>
 
@@ -52,9 +52,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
 		</div>
 	</div>
 </div>")]
-        internal string Template { get; }
+	internal string Template { get; }
 
-		[DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+	[DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
 <div id='GclAccountContainer{contentId}'>
     [if({deleteSubAccount{contentId}}>0)]
     <p>Het subaccount is verwijderd.</p>
@@ -62,9 +62,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
     <p>Het subaccount is opgeslagen.</p>
     [endif]
 </div>")]
-		internal string TemplateSuccess { get; }
+	internal string TemplateSuccess { get; }
 
-		[DefaultValue(@"<div class='error'>
+	[DefaultValue(@"<div class='error'>
     [if({errorType}=)]
     <p>{error}</p>
     [endif]
@@ -81,9 +81,9 @@ namespace GeeksCoreLibrary.Components.Account.Models
     <p>Er is een onbekende fout opgetreden. Probeer het a.u.b. nogmaals of neem contact op met ons.</p>
     [endif]
 </div>")]
-		internal string TemplateError { get; }
+	internal string TemplateError { get; }
 
-		[DefaultValue(@"(() => {
+	[DefaultValue(@"(() => {
 	let selectedSubAccount = 0;
 	
 	function setupHttpRequest(container, method, extraQueryStringParameters, selector) {
@@ -220,27 +220,27 @@ namespace GeeksCoreLibrary.Components.Account.Models
 
 	initializeSubAccountsManagement();
 })();")]
-		internal string TemplateJavaScript { get; }
+	internal string TemplateJavaScript { get; }
 
-        [DefaultValue(Constants.DefaultEntityType)]
-        internal string EntityType { get; }
+	[DefaultValue(Constants.DefaultEntityType)]
+	internal string EntityType { get; }
 
-        [DefaultValue("role")]
-        internal string RoleFieldName { get; }
+	[DefaultValue("role")]
+	internal string RoleFieldName { get; }
 
-        [DefaultValue("new-password")]
-        internal string NewPasswordFieldName { get; }
+	[DefaultValue("new-password")]
+	internal string NewPasswordFieldName { get; }
 
-        [DefaultValue("new-password-confirmation")]
-        internal string NewPasswordConfirmationFieldName { get; }
+	[DefaultValue("new-password-confirmation")]
+	internal string NewPasswordConfirmationFieldName { get; }
 
-        [DefaultValue(Constants.DefaultGoogleCidFieldName)]
-        internal string GoogleClientIdFieldName{ get; }
+	[DefaultValue(Constants.DefaultGoogleCidFieldName)]
+	internal string GoogleClientIdFieldName{ get; }
 
-        [DefaultValue("sub-account")]
-        internal string SubAccountEntityType { get; }
+	[DefaultValue("sub-account")]
+	internal string SubAccountEntityType { get; }
 
-        [DefaultValue(@"SELECT
+	[DefaultValue(@"SELECT
 	subAccount.id AS subAccount_id,
 	subAccount.title AS subAccount_name
 FROM wiser_item AS account
@@ -248,39 +248,39 @@ JOIN wiser_itemlink AS subAccountToAccount ON subAccountToAccount.destination_it
 JOIN wiser_item AS subAccount ON subAccount.id = subAccountToAccount.item_id AND subAccount.entity_type = ?subAccountEntityType
 WHERE account.id = ?userId
 AND account.entity_type = ?entityType")]
-        internal string MainQuery { get; }
+	internal string MainQuery { get; }
 
-        [DefaultValue(@"SELECT 'Dit subaccount bestaat al' AS error
+	[DefaultValue(@"SELECT 'Dit subaccount bestaat al' AS error
 FROM wiser_item AS account
 JOIN wiser_itemdetail AS login ON login.item_id = account.id AND login.`key` = ?loginFieldName
 JOIN wiser_itemdetail AS email ON email.item_id = account.id AND email.`key` = ?emailAddressFieldName
 WHERE account.entity_type IN(?entityType, ?subAccountEntityType)
 AND (login.`value` = ?login OR email.`value` = ?emailAddress)
 AND account.id <> ?subAccountId")]
-        internal string CheckIfAccountExistsQuery { get; }
+	internal string CheckIfAccountExistsQuery { get; }
 
-        [DefaultValue(@"INSERT INTO wiser_item (entity_type, moduleid, title, added_by) VALUES (?subAccountEntityType, 600, ?login, 'website');
+	[DefaultValue(@"INSERT INTO wiser_item (entity_type, moduleid, title, added_by) VALUES (?subAccountEntityType, 600, ?login, 'website');
 SET @newSubAccountId = LAST_INSERT_ID();
 SET @ordering = (SELECT IFNULL(MAX(ordering), 0) FROM wiser_itemlink WHERE destination_item_id = ?userId AND type = ?subAccountLinkTypeNumber);
 INSERT INTO wiser_itemlink (item_id, destination_item_id, ordering, type)
 VALUES (@newSubAccountId, ?userId, @ordering + 1, ?subAccountLinkTypeNumber);
 SELECT @newSubAccountId AS id;")]
-        internal string CreateAccountQuery { get; }
+	internal string CreateAccountQuery { get; }
 
-        [DefaultValue(@"UPDATE wiser_item AS subAccount
+	[DefaultValue(@"UPDATE wiser_item AS subAccount
 JOIN wiser_itemlink AS link ON link.item_id = subAccount.id AND link.destination_item_id = ?userId AND link.type = ?subAccountLinkTypeNumber
 SET subAccount.title = ?login, subAccount.changed_by = 'website'
 WHERE subAccount.id = ?subAccountId")]
-        internal string UpdateAccountQuery { get; }
+	internal string UpdateAccountQuery { get; }
 
-        [DefaultValue(@"# TODO")]
-        internal string DeleteAccountQuery { get; }
+	[DefaultValue(@"# TODO")]
+	internal string DeleteAccountQuery { get; }
 
-        [DefaultValue(@"INSERT INTO wiser_itemdetail (item_id, `key`, value) VALUES (?subAccountId, ?name, ?value)
+	[DefaultValue(@"INSERT INTO wiser_itemdetail (item_id, `key`, value) VALUES (?subAccountId, ?name, ?value)
 ON DUPLICATE KEY UPDATE value = VALUES(value)")]
-        internal string SetValueInWiserEntityPropertyQuery { get; }
+	internal string SetValueInWiserEntityPropertyQuery { get; }
 
-        [DefaultValue(@"SELECT 
+	[DefaultValue(@"SELECT 
 	CASE field.inputtype
 		WHEN 'secure-input' THEN 'password'
 		WHEN 'numeric-input' THEN 'number'
@@ -297,9 +297,8 @@ LEFT JOIN wiser_itemdetail AS detail ON detail.`key` = field.property_name AND d
 WHERE field.entity_name = ?subAccountEntityType
 AND field.inputtype IN ('input', 'secure-input', 'numeric-input')
 ORDER BY field.ordering ASC")]
-        internal string GetSubAccountQuery { get; }
+	internal string GetSubAccountQuery { get; }
 
-        [DefaultValue(Constants.DefaultPasswordValidationRegex)]
-        internal string PasswordValidationRegex { get; }
-    }
+	[DefaultValue(Constants.DefaultPasswordValidationRegex)]
+	internal string PasswordValidationRegex { get; }
 }

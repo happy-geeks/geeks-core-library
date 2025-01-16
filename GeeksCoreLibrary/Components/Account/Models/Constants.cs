@@ -1,80 +1,80 @@
-﻿namespace GeeksCoreLibrary.Components.Account.Models
+﻿namespace GeeksCoreLibrary.Components.Account.Models;
+
+public static class Constants
 {
-    public static class Constants
-    {
-        internal const string ComponentIdFormKey = "__account";
+    internal const string ComponentIdFormKey = "__account";
 
-        // Query column names.
-        internal const string PasswordColumn = "password";
-        internal const string LastLoginDateColumn = "lastLoginAttempt";
-        internal const string FailedLoginAttemptsColumn = "failedLoginAttempts";
-        internal const string UserIdColumn = "id";
-        internal const string LoginColumn = "login";
-        internal const string EmailAddressColumn = "email";
-        internal const string MainAccountIdColumn = "mainAccountId";
-        internal const string PropertyNameColumn = "property_name";
-        internal const string RoleIdColumn = "roleId";
+    // Query column names.
+    internal const string PasswordColumn = "password";
+    internal const string LastLoginDateColumn = "lastLoginAttempt";
+    internal const string FailedLoginAttemptsColumn = "failedLoginAttempts";
+    internal const string UserIdColumn = "id";
+    internal const string LoginColumn = "login";
+    internal const string EmailAddressColumn = "email";
+    internal const string MainAccountIdColumn = "mainAccountId";
+    internal const string PropertyNameColumn = "property_name";
+    internal const string RoleIdColumn = "roleId";
 
-        // Table names.
-        internal const string AuthenticationTokensTableName = "gcl_user_auth_token";
+    // Table names.
+    internal const string AuthenticationTokensTableName = "gcl_user_auth_token";
 
-        // Query string keys.
-        internal const string LogoutQueryStringKey = "logoutUser";
-        internal const string UserIdQueryStringKey = "user";
-        internal const string ResetPasswordTokenQueryStringKey = "token";
-        internal const string SelectedSubAccountQueryStringKey = "selectedSubAccount";
-        internal const string DeleteSubAccountQueryStringKey = "deleteSubAccount";
+    // Query string keys.
+    internal const string LogoutQueryStringKey = "logoutUser";
+    internal const string UserIdQueryStringKey = "user";
+    internal const string ResetPasswordTokenQueryStringKey = "token";
+    internal const string SelectedSubAccountQueryStringKey = "selectedSubAccount";
+    internal const string DeleteSubAccountQueryStringKey = "deleteSubAccount";
 
-        // HTML field names.
-        internal const string StepNumberFieldName = "accountStepNumber";
-        internal const string GoogleAuthenticationPinFieldName = "googleAuthenticationPin";
-        internal const string GoogleAuthenticationVerificationIdFieldName = "googleAuthenticationVerificationId";
-        internal const string ExternalLoginButtonOrFieldName = "externalLogin";
+    // HTML field names.
+    internal const string StepNumberFieldName = "accountStepNumber";
+    internal const string GoogleAuthenticationPinFieldName = "googleAuthenticationPin";
+    internal const string GoogleAuthenticationVerificationIdFieldName = "googleAuthenticationVerificationId";
+    internal const string ExternalLoginButtonOrFieldName = "externalLogin";
 
-        // Cookies and sessions.
-        public const string CookieName = "gcl_user_cookie";
-        internal const string GoogleAnalyticsCookieName = "_ga";
-        public const string OciHookUrlCookieName = "gcl_oci_hook_url";
-        public const string CreatedAccountCookieName = "gcl_user_created";
+    // Cookies and sessions.
+    public const string CookieName = "gcl_user_cookie";
+    internal const string GoogleAnalyticsCookieName = "_ga";
+    public const string OciHookUrlCookieName = "gcl_oci_hook_url";
+    public const string CreatedAccountCookieName = "gcl_user_created";
 
-        public const string LoginValueSessionKey = "AccountSavedLogin";
-        public const string UserIdSessionKey = "AccountUserId";
+    public const string LoginValueSessionKey = "AccountSavedLogin";
+    public const string UserIdSessionKey = "AccountUserId";
 
-        public const string UserDataCachingKey = "GCLAccountUser";
+    public const string UserDataCachingKey = "GCLAccountUser";
 
-        #region Default settings
+    #region Default settings
 
-        public const string DefaultEntityType = "account";
-        internal const string DefaultResetPasswordSubject = "Wachtwoord vergeten";
-        internal const string DefaultEmailFieldName = "email";
-        internal const string DefaultPasswordFieldName = "password";
-        internal const string DefaultFailedLoginAttemptsFieldName = "failed-login-attempts";
-        internal const string DefaultLastLoginAttemptFieldName = "last-login-attempt";
-        internal const string DefaultResetPasswordTokenFieldName = "reset-password-token";
-        internal const string DefaultResetPasswordExpireDateFieldName = "reset-password-expire-date";
-        internal const string DefaultRoleFieldName = "role";
-        internal const string DefaultNewPasswordFieldName = "new-password";
-        internal const string DefaultNewPasswordConfirmationFieldName = "new-password-confirmation";
-        internal const string DefaultGoogleCidFieldName = "google-cid";
-        public const string DefaultSubAccountEntityType = "sub-account";
-        internal const string DefaultPunchOutSessionTableName = "punchout_sessions";
-        internal const string DefaultPunchOutSessionQueryStringParameterName = "ociSessionToken";
-        internal const int DefaultAmountOfDaysToRememberCookie = 7;
-        internal const int DefaultMaximumAmountOfFailedLoginAttempts = 25;
-        internal const int DefaultLockoutTime = 60;
-        internal const int DefaultResetPasswordTokenValidity = 7;
-        internal const string DefaultGoogleAuthenticatorSiteId = "WiserGlobal";
-        internal const string DefaultOciUsernameKey = "username";
-        internal const string DefaultOciPasswordKey = "password";
-        internal const string DefaultOciHookUrlKey = "HOOK_URL";
-        internal const string TotpFieldName = "User2FAKey";
-        internal const string DefaultPasswordValidationRegex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$";
+    public const string DefaultEntityType = "account";
+    internal const string DefaultResetPasswordSubject = "Wachtwoord vergeten";
+    internal const string DefaultEmailFieldName = "email";
+    internal const string DefaultPasswordFieldName = "password";
+    internal const string DefaultFailedLoginAttemptsFieldName = "failed-login-attempts";
+    internal const string DefaultLastLoginAttemptFieldName = "last-login-attempt";
+    internal const string DefaultResetPasswordTokenFieldName = "reset-password-token";
+    internal const string DefaultResetPasswordExpireDateFieldName = "reset-password-expire-date";
+    internal const string DefaultRoleFieldName = "role";
+    internal const string DefaultNewPasswordFieldName = "new-password";
+    internal const string DefaultNewPasswordConfirmationFieldName = "new-password-confirmation";
+    internal const string DefaultGoogleCidFieldName = "google-cid";
+    public const string DefaultSubAccountEntityType = "sub-account";
+    internal const string DefaultPunchOutSessionTableName = "punchout_sessions";
+    internal const string DefaultPunchOutSessionQueryStringParameterName = "ociSessionToken";
+    internal const int DefaultAmountOfDaysToRememberCookie = 7;
+    internal const int DefaultMaximumAmountOfFailedLoginAttempts = 25;
+    internal const int DefaultLockoutTime = 60;
+    internal const int DefaultResetPasswordTokenValidity = 7;
+    internal const string DefaultGoogleAuthenticatorSiteId = "WiserGlobal";
+    internal const string DefaultOciUsernameKey = "username";
+    internal const string DefaultOciPasswordKey = "password";
+    internal const string DefaultOciHookUrlKey = "HOOK_URL";
+    internal const string TotpFieldName = "User2FAKey";
+    internal const string DefaultPasswordValidationRegex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$";
 
-        internal const string DefaultLoginMainQuery = @"SELECT account.title
+    internal const string DefaultLoginMainQuery = @"SELECT account.title
 FROM wiser_item AS account
 WHERE account.id = ?userId";
 
-        internal const string DefaultLoginQuery = @"SELECT
+    internal const string DefaultLoginQuery = @"SELECT
     account.id,
     password.value AS password,
     lastLoginAttempt.value AS lastLoginAttempt,
@@ -100,7 +100,7 @@ LEFT JOIN (
 
 WHERE account.entity_type IN(?entityType, ?subAccountEntityType)";
 
-        internal const string DefaultSaveLoginQuery = @"INSERT INTO wiser_itemdetail (item_id, `key`, `value`)
+    internal const string DefaultSaveLoginQuery = @"INSERT INTO wiser_itemdetail (item_id, `key`, `value`)
 VALUES (?userId, ?failedLoginAttemptsFieldName, IF(?success, 0, 1))
 ON DUPLICATE KEY UPDATE `value` = IF(?success, 0, `value` + 1);
 
@@ -108,7 +108,7 @@ INSERT INTO wiser_itemdetail (item_id, `key`, `value`)
 VALUES (?userId, ?lastLoginAttemptFieldName, NOW())
 ON DUPLICATE KEY UPDATE `value` = NOW();";
 
-        internal const string DefaultLoginJavascript = @"function setupHttpRequest{contentId}(container, method, extraQueryStringParameters) {
+    internal const string DefaultLoginJavascript = @"function setupHttpRequest{contentId}(container, method, extraQueryStringParameters) {
     var url = '/GclComponent.gcl?contentId={contentId}&callMethod=' + method + '&ombouw=false&type=Account' + (extraQueryStringParameters || '');
     
     var xhr = new XMLHttpRequest();
@@ -246,7 +246,7 @@ initializeLogoutLink{contentId}();
 initializeResetPasswordLink{contentId}();
 initializeResetPasswordForm{contentId}();";
 
-        internal const string DefaultLoginSuccessTemplate = @"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+    internal const string DefaultLoginSuccessTemplate = @"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
     <div id='GclAccountContainer{contentId}'>
     [if({sentActivationMail}=true)]
     <h2>Account activeren</h2>
@@ -257,7 +257,7 @@ initializeResetPasswordForm{contentId}();";
     [endif]
 </div>";
 
-        internal const string DefaultLoginErrorTemplate = @"<div class='error'>
+    internal const string DefaultLoginErrorTemplate = @"<div class='error'>
     [if({errorType}=InvalidUsernameOrPassword)]
     <p>Je hebt een ongeldige gebruikersnaam of wachtwoord ingevuld.</p>
     [endif]
@@ -287,16 +287,16 @@ initializeResetPasswordForm{contentId}();";
     [endif]
 </div>";
 
-        internal const string DefaultSaveResetPasswordValuesQuery = @"INSERT INTO wiser_itemdetail (item_id, `key`, `value`)
+    internal const string DefaultSaveResetPasswordValuesQuery = @"INSERT INTO wiser_itemdetail (item_id, `key`, `value`)
 VALUES (?userId, ?resetPasswordTokenFieldName, ?resetPasswordToken),
        (?userId, ?resetPasswordExpireDateFieldName, ?resetPasswordExpireDate)
 ON DUPLICATE KEY UPDATE `value` = VALUES(`value`);";
 
-        internal const string DefaultResetPasswordMailBody = @"<p>U kunt een nieuw wachtwoord instellen middels onderstaande link:<p><p><a href='{url}'>{url}</a></p>";
+    internal const string DefaultResetPasswordMailBody = @"<p>U kunt een nieuw wachtwoord instellen middels onderstaande link:<p><p><a href='{url}'>{url}</a></p>";
 
-        internal const string DefaultNewAccountNotificationsMailBody = @"<p>Er is een nieuw account aangemaakt met het e-mailadres '{emailAddress}'.</p>";
+    internal const string DefaultNewAccountNotificationsMailBody = @"<p>Er is een nieuw account aangemaakt met het e-mailadres '{emailAddress}'.</p>";
 
-        internal const string DefaultValidateResetPasswordTokenQuery = @"SELECT login.value AS login
+    internal const string DefaultValidateResetPasswordTokenQuery = @"SELECT login.value AS login
 FROM wiser_item AS account
 JOIN wiser_itemdetail AS token ON token.item_id = account.id AND token.`key` = ?resetPasswordTokenFieldName AND token.value = ?token
 JOIN wiser_itemdetail AS expiration ON token.item_id = account.id AND expiration.`key` = ?resetPasswordExpireDateFieldName AND expiration.value > NOW()
@@ -304,17 +304,16 @@ JOIN wiser_itemdetail AS login ON login.item_id = account.id AND login.`key` = ?
 WHERE account.id = ?userId
 AND account.entity_type IN(?entityType, ?subAccountEntityType)";
 
-        internal const string DefaultChangePasswordQuery = @"INSERT INTO wiser_itemdetail (item_id, `key`, `value`)
+    internal const string DefaultChangePasswordQuery = @"INSERT INTO wiser_itemdetail (item_id, `key`, `value`)
 VALUES (?userId, ?passwordFieldName, ?newPasswordHash),
        (?userId, ?resetPasswordTokenFieldName, ''),
        (?userId, ?resetPasswordExpireDateFieldName, NOW())
 ON DUPLICATE KEY UPDATE `value` = VALUES(`value`);";
 
-        internal const string DefaultGetUserIdViaEmailAddressQuery = @"SELECT account.id AS id
+    internal const string DefaultGetUserIdViaEmailAddressQuery = @"SELECT account.id AS id
 FROM wiser_item AS account
 JOIN wiser_itemdetail AS email ON email.item_id = account.id AND email.`key` = ?emailAddressFieldName AND email.`value` = ?emailAddress
 WHERE account.entity_type IN(?entityType, ?subAccountEntityType)";
 
-        #endregion
-    }
+    #endregion
 }

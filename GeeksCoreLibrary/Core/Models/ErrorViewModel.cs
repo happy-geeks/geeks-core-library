@@ -1,11 +1,10 @@
 using System;
 
-namespace GeeksCoreLibrary.Core.Models
-{
-    public class ErrorViewModel
-    {
-        public string RequestId { get; set; }
+namespace GeeksCoreLibrary.Core.Models;
 
-        public bool ShowRequestId => !String.IsNullOrEmpty(RequestId);
-    }
+public class ErrorViewModel
+{
+    public string RequestId { get; set; }
+
+    public bool ShowRequestId => !String.IsNullOrEmpty(RequestId);
 }

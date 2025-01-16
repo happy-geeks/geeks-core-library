@@ -11,51 +11,47 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace GeeksCoreLibrary.Modules.Payments.Services
+namespace GeeksCoreLibrary.Modules.Payments.Services;
+
+/// <inheritdoc cref="IPaymentServiceProviderService" />
+public class NoPspService(
+    IDatabaseHelpersService databaseHelpersService,
+    IDatabaseConnection databaseConnection,
+    ILogger<NoPspService> logger,
+    IHttpContextAccessor httpContextAccessor = null)
+    : PaymentServiceProviderBaseService(databaseHelpersService,
+        databaseConnection,
+        logger,
+        httpContextAccessor), IPaymentServiceProviderService, IScopedService
 {
-    /// <inheritdoc cref="IPaymentServiceProviderService" />
-    public class NoPspService(
-        IDatabaseHelpersService databaseHelpersService,
-        IDatabaseConnection databaseConnection,
-        ILogger<NoPspService> logger,
-        IHttpContextAccessor httpContextAccessor = null)
-        : PaymentServiceProviderBaseService(databaseHelpersService,
-            databaseConnection,
-            logger,
-            httpContextAccessor), IPaymentServiceProviderService, IScopedService
+    /// <inheritdoc />
+    public Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
     {
-        /// <inheritdoc />
-        public bool LogPaymentActions { get; set; }
-
-        /// <inheritdoc />
-        public Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
+        return Task.FromResult(new PaymentRequestResult
         {
-            return Task.FromResult(new PaymentRequestResult
-            {
-                Successful = true,
-                Action = PaymentRequestActions.Redirect,
-                ActionData = paymentMethodSettings.PaymentServiceProvider.SuccessUrl
-            });
-        }
+            Successful = true,
+            Action = PaymentRequestActions.Redirect,
+            ActionData = paymentMethodSettings.PaymentServiceProvider.SuccessUrl
+        });
+    }
 
-        /// <inheritdoc />
-        public Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
-        {
-            // There is no payment_in call for "No PSP".
-            throw new NotImplementedException();
-        }
+    /// <inheritdoc />
+    public Task<StatusUpdateResult> ProcessStatusUpdateAsync(OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings)
+    {
+        // There is no payment_in call for "No PSP".
+        throw new NotImplementedException();
+    }
 
-        /// <inheritdoc />
-        public Task<PaymentServiceProviderSettingsModel> GetProviderSettingsAsync(PaymentServiceProviderSettingsModel paymentServiceProviderSettings)
-        {
-            return Task.FromResult(paymentServiceProviderSettings);
-        }
+    /// <inheritdoc />
+    public Task<PaymentServiceProviderSettingsModel> GetProviderSettingsAsync(PaymentServiceProviderSettingsModel paymentServiceProviderSettings)
+    {
+        return Task.FromResult(paymentServiceProviderSettings);
+    }
 
-        /// <inheritdoc />
-        public Task<string> GetInvoiceNumberFromRequestAsync()
-        {
-            // Not applicable for "No PSP".
-            return Task.FromResult((string)null);
-        }
+    /// <inheritdoc />
+    public Task<string> GetInvoiceNumberFromRequestAsync()
+    {
+        // Not applicable for "No PSP".
+        return Task.FromResult((string)null);
     }
 }

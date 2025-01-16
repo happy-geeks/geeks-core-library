@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using FluentAssertions;
 using GeeksCoreLibrary.Core.Extensions;
-using GeeksCoreLibrary.Core.Models;
 using NUnit.Framework;
 
 namespace GeeksCoreLibrary.Tests.Core.Extensions;
@@ -15,16 +14,10 @@ public class StringExtensionsTests
     private const string TestEncryptionSalt = "Test456";
     private const string TestValue = "This is a test value";
 
-    private GclSettings gclSettings;
-
     [SetUp]
     public void Setup()
     {
         // Create mocks.
-        gclSettings = new GclSettings
-        {
-            DefaultEncryptionSalt = TestEncryptionSalt
-        };
     }
 
     [Test]

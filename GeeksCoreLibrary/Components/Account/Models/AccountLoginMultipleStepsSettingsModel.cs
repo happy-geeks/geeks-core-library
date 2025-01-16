@@ -1,16 +1,16 @@
 ﻿using System.ComponentModel;
 
-namespace GeeksCoreLibrary.Components.Account.Models
+namespace GeeksCoreLibrary.Components.Account.Models;
+
+/// <summary>
+/// Model with all default settings for the account component with mode LoginSingleStep.
+/// </summary>
+internal class AccountLoginMultipleStepsSettingsModel
 {
-    /// <summary>
-    /// Model with all default settings for the account component with mode LoginSingleStep.
-    /// </summary>
-    internal class AccountLoginMultipleStepsSettingsModel
-    {
-        [DefaultValue(Constants.CookieName)]
-        internal string CookieName { get; set; }
-        
-        [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+    [DefaultValue(Constants.CookieName)]
+    internal string CookieName { get; set; }
+
+    [DefaultValue(@"<!-- There must always be a element with ID GclAccountContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
 <div id='GclAccountContainer{contentId}'>
     <jform id='GclLoginForm{contentId}' method='POST'>
         <div class='formPanel'>
@@ -85,96 +85,95 @@ namespace GeeksCoreLibrary.Components.Account.Models
     </jform>
     [endif]
 </div>")]
-        internal string Template { get; set; }
+    internal string Template { get; set; }
 
-        [DefaultValue(Constants.DefaultLoginSuccessTemplate)]
-        internal string TemplateSuccess { get; }
+    [DefaultValue(Constants.DefaultLoginSuccessTemplate)]
+    internal string TemplateSuccess { get; }
 
-        [DefaultValue(Constants.DefaultLoginErrorTemplate)]
-        internal string TemplateError { get; }
+    [DefaultValue(Constants.DefaultLoginErrorTemplate)]
+    internal string TemplateError { get; }
 
-        [DefaultValue(Constants.DefaultLoginJavascript)]
-        internal string TemplateJavaScript { get; }
+    [DefaultValue(Constants.DefaultLoginJavascript)]
+    internal string TemplateJavaScript { get; }
 
-        [DefaultValue(Constants.DefaultResetPasswordSubject)]
-        internal string SubjectResetPasswordEmail { get; }
+    [DefaultValue(Constants.DefaultResetPasswordSubject)]
+    internal string SubjectResetPasswordEmail { get; }
 
-        [DefaultValue(Constants.DefaultResetPasswordMailBody)]
-        internal string BodyResetPasswordEmail { get; }
+    [DefaultValue(Constants.DefaultResetPasswordMailBody)]
+    internal string BodyResetPasswordEmail { get; }
 
-        [DefaultValue(Constants.DefaultEntityType)]
-        internal string EntityType { get; }
+    [DefaultValue(Constants.DefaultEntityType)]
+    internal string EntityType { get; }
 
-        [DefaultValue(Constants.DefaultEmailFieldName)]
-        internal string LoginFieldName { get; }
+    [DefaultValue(Constants.DefaultEmailFieldName)]
+    internal string LoginFieldName { get; }
 
-        [DefaultValue(Constants.DefaultPasswordFieldName)]
-        internal string PasswordFieldName { get; }
+    [DefaultValue(Constants.DefaultPasswordFieldName)]
+    internal string PasswordFieldName { get; }
 
-        [DefaultValue(Constants.DefaultFailedLoginAttemptsFieldName)]
-        internal string FailedLoginAttemptsFieldName { get; }
+    [DefaultValue(Constants.DefaultFailedLoginAttemptsFieldName)]
+    internal string FailedLoginAttemptsFieldName { get; }
 
-        [DefaultValue(Constants.DefaultLastLoginAttemptFieldName)]
-        internal string LastLoginAttemptFieldName { get; }
+    [DefaultValue(Constants.DefaultLastLoginAttemptFieldName)]
+    internal string LastLoginAttemptFieldName { get; }
 
-        [DefaultValue(Constants.DefaultEmailFieldName)]
-        internal string EmailAddressFieldName { get; }
-        
-        [DefaultValue(Constants.DefaultResetPasswordTokenFieldName)]
-        internal string ResetPasswordTokenFieldName { get; }
+    [DefaultValue(Constants.DefaultEmailFieldName)]
+    internal string EmailAddressFieldName { get; }
 
-        [DefaultValue(Constants.DefaultResetPasswordExpireDateFieldName)]
-        internal string ResetPasswordExpireDateFieldName { get; }
+    [DefaultValue(Constants.DefaultResetPasswordTokenFieldName)]
+    internal string ResetPasswordTokenFieldName { get; }
 
-        [DefaultValue(Constants.DefaultRoleFieldName)]
-        internal string RoleFieldName { get; }
+    [DefaultValue(Constants.DefaultResetPasswordExpireDateFieldName)]
+    internal string ResetPasswordExpireDateFieldName { get; }
 
-        [DefaultValue(Constants.DefaultNewPasswordFieldName)]
-        internal string NewPasswordFieldName { get; }
+    [DefaultValue(Constants.DefaultRoleFieldName)]
+    internal string RoleFieldName { get; }
 
-        [DefaultValue(Constants.DefaultNewPasswordConfirmationFieldName)]
-        internal string NewPasswordConfirmationFieldName { get; }
+    [DefaultValue(Constants.DefaultNewPasswordFieldName)]
+    internal string NewPasswordFieldName { get; }
 
-        [DefaultValue(Constants.DefaultGoogleCidFieldName)]
-        internal string GoogleClientIdFieldName { get; }
+    [DefaultValue(Constants.DefaultNewPasswordConfirmationFieldName)]
+    internal string NewPasswordConfirmationFieldName { get; }
 
-        [DefaultValue(Constants.DefaultSubAccountEntityType)]
-        internal string SubAccountEntityType { get; }
+    [DefaultValue(Constants.DefaultGoogleCidFieldName)]
+    internal string GoogleClientIdFieldName { get; }
 
-        [DefaultValue(Constants.DefaultLoginMainQuery)]
-        internal string MainQuery { get; }
+    [DefaultValue(Constants.DefaultSubAccountEntityType)]
+    internal string SubAccountEntityType { get; }
 
-        [DefaultValue(Constants.DefaultLoginQuery)]
-        internal string LoginQuery { get; }
+    [DefaultValue(Constants.DefaultLoginMainQuery)]
+    internal string MainQuery { get; }
 
-        [DefaultValue(Constants.DefaultSaveLoginQuery)]
-        internal string SaveLoginAttemptQuery { get; }
+    [DefaultValue(Constants.DefaultLoginQuery)]
+    internal string LoginQuery { get; }
 
-        [DefaultValue(Constants.DefaultSaveResetPasswordValuesQuery)]
-        internal string SaveResetPasswordValuesQuery { get; }
+    [DefaultValue(Constants.DefaultSaveLoginQuery)]
+    internal string SaveLoginAttemptQuery { get; }
 
-        [DefaultValue(Constants.DefaultValidateResetPasswordTokenQuery)]
-        internal string ValidateResetPasswordTokenQueryQuery { get; }
+    [DefaultValue(Constants.DefaultSaveResetPasswordValuesQuery)]
+    internal string SaveResetPasswordValuesQuery { get; }
 
-        [DefaultValue(Constants.DefaultChangePasswordQuery)]
-        internal string ChangePasswordQuery { get; }
+    [DefaultValue(Constants.DefaultValidateResetPasswordTokenQuery)]
+    internal string ValidateResetPasswordTokenQueryQuery { get; }
 
-        [DefaultValue(Constants.DefaultGetUserIdViaEmailAddressQuery)]
-        internal string GetUserIdViaEmailAddressQuery { get; }
+    [DefaultValue(Constants.DefaultChangePasswordQuery)]
+    internal string ChangePasswordQuery { get; }
 
-        [DefaultValue(Constants.DefaultAmountOfDaysToRememberCookie)]
-        internal int? AmountOfDaysToRememberCookie { get; }
+    [DefaultValue(Constants.DefaultGetUserIdViaEmailAddressQuery)]
+    internal string GetUserIdViaEmailAddressQuery { get; }
 
-        [DefaultValue(Constants.DefaultMaximumAmountOfFailedLoginAttempts)]
-        internal int? MaximumAmountOfFailedLoginAttempts { get; }
+    [DefaultValue(Constants.DefaultAmountOfDaysToRememberCookie)]
+    internal int? AmountOfDaysToRememberCookie { get; }
 
-        [DefaultValue(Constants.DefaultLockoutTime)]
-        internal int? DefaultLockoutTime { get; }
+    [DefaultValue(Constants.DefaultMaximumAmountOfFailedLoginAttempts)]
+    internal int? MaximumAmountOfFailedLoginAttempts { get; }
 
-        [DefaultValue(Constants.DefaultResetPasswordTokenValidity)]
-        internal int? ResetPasswordTokenValidity { get; }
+    [DefaultValue(Constants.DefaultLockoutTime)]
+    internal int? DefaultLockoutTime { get; }
 
-        [DefaultValue(Constants.DefaultGoogleAuthenticatorSiteId)]
-        internal int GoogleAuthenticatorSiteId { get; }
-    }
+    [DefaultValue(Constants.DefaultResetPasswordTokenValidity)]
+    internal int? ResetPasswordTokenValidity { get; }
+
+    [DefaultValue(Constants.DefaultGoogleAuthenticatorSiteId)]
+    internal int GoogleAuthenticatorSiteId { get; }
 }

@@ -1,42 +1,42 @@
-﻿namespace GeeksCoreLibrary.Components.ShoppingBasket.Models
+﻿namespace GeeksCoreLibrary.Components.ShoppingBasket.Models;
+
+public static class Constants
 {
-    public static class Constants
-    {
-        public const string ConnectedItemIdProperty = "connecteditemid";
-        public const string CouponEntityType = "coupon";
-        public const string BasketLineCouponType = "coupon";
-        public const string BasketEntityType = "basket";
-        public const string BasketLineEntityType = "basketline";
-        /// <summary>
-        /// The property name of a basket line which contains the original price (price without any discounts).
-        /// </summary>
-        public const string OriginalPricePropertyName = "original_price";
-        /// <summary>
-        /// The property name of a coupon basket line that determines if its discount was divided over all products.
-        /// </summary>
-        public const string CouponDividedOverProductsPropertyName = "divided_over_products";
-        /// <summary>
-        /// The discount a product received from a coupon. The code of the coupon will be appended to this property name.
-        /// </summary>
-        public const string ProductCouponDiscountPropertyNamePrefix = "coupon_discount_";
-        public const int BasketToUserLinkType = 5010;
-        public const int BasketLineToBasketLinkType = 5002;
-        public const int ProductToOrderLineLinkType = 5030;
+    public const string ConnectedItemIdProperty = "connecteditemid";
+    public const string CouponEntityType = "coupon";
+    public const string BasketLineCouponType = "coupon";
+    public const string BasketEntityType = "basket";
+    public const string BasketLineEntityType = "basketline";
+    /// <summary>
+    /// The property name of a basket line which contains the original price (price without any discounts).
+    /// </summary>
+    public const string OriginalPricePropertyName = "original_price";
+    /// <summary>
+    /// The property name of a coupon basket line that determines if its discount was divided over all products.
+    /// </summary>
+    public const string CouponDividedOverProductsPropertyName = "divided_over_products";
+    /// <summary>
+    /// The discount a product received from a coupon. The code of the coupon will be appended to this property name.
+    /// </summary>
+    public const string ProductCouponDiscountPropertyNamePrefix = "coupon_discount_";
+    public const int BasketToUserLinkType = 5010;
+    public const int BasketLineToBasketLinkType = 5002;
+    public const int ProductToOrderLineLinkType = 5030;
 
-        #region Default settings
+    #region Default settings
 
-        internal const string DefaultCookieName = "shoppingBasket";
-        internal const int DefaultCookieAgeInDays = 7;
-        internal const string DefaultQuantityPropertyName = "quantity";
-        internal const string DefaultFactorPropertyName = "factor";
-        internal const string DefaultPricePropertyName = "price";
-        internal const string DefaultIncludesVatPropertyName = "includesvat";
-        internal const string DefaultVatRatePropertyName = "vatrate";
-        internal const string DefaultDiscountPropertyName = "discount";
-        internal const string DefaultItemExcludedFromDiscountPropertyName = "no_discount";
-        internal const int DefaultMaxItemQuantity = 100;
+    internal const string DefaultCookieName = "shoppingBasket";
+    internal const int DefaultCookieAgeInDays = 7;
+    internal const string DefaultQuantityPropertyName = "quantity";
+    internal const string DefaultFactorPropertyName = "factor";
+    internal const string DefaultPricePropertyName = "price";
+    internal const string DefaultIncludesVatPropertyName = "includesvat";
+    internal const string DefaultVatRatePropertyName = "vatrate";
+    internal const string DefaultDiscountPropertyName = "discount";
+    internal const string DefaultItemExcludedFromDiscountPropertyName = "no_discount";
+    internal const int DefaultMaxItemQuantity = 100;
 
-        internal const string DefaultTemplate = @"<!-- There must always be an element with ID GclShoppingBasketContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+    internal const string DefaultTemplate = @"<!-- There must always be an element with ID GclShoppingBasketContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
 <div id=""GclShoppingBasketContainer{contentId}"">
     <h2>Mijn winkelwagen</h2>
     {repeat:lines}
@@ -48,7 +48,7 @@
     <div>Totaal: {price~all~In_VAT_In_Discount}</div>
 </div>";
 
-        internal const string DefaultTemplatePrint = @"<!-- There must always be an element with ID GclShoppingBasketContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
+    internal const string DefaultTemplatePrint = @"<!-- There must always be an element with ID GclShoppingBasketContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->
 <div id=""GclShoppingBasketContainer{contentId}"">
     <h2>Mijn winkelwagen</h2>
     {repeat:lines}
@@ -60,7 +60,7 @@
     <div>Totaal: {price~all~In_VAT_In_Discount}</div>
 </div>";
 
-        internal const string DefaultTemplateJavaScript = @"function setupHttpRequest{contentId}_{basketId}(container, method, contentType, extraQueryStringParameters) {
+    internal const string DefaultTemplateJavaScript = @"function setupHttpRequest{contentId}_{basketId}(container, method, contentType, extraQueryStringParameters) {
     const url = '/GclComponent.gcl?contentId={contentId}&callMethod=' + method + '&ombouw=false&type=ShoppingBasket' + (extraQueryStringParameters || '');
 
     const xhr = new XMLHttpRequest();
@@ -147,6 +147,5 @@ function initializeBasket{contentId}_{basketId}() {
 
 initializeBasket{contentId}_{basketId}();";
 
-        #endregion
-    }
+    #endregion
 }

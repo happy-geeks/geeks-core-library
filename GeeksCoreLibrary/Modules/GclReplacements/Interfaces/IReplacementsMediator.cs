@@ -164,4 +164,22 @@ public interface IReplacementsMediator
     /// <param name="formatterString">The name of the formatter.</param>
     /// <returns>A <see cref="StringReplacementMethod"/> object containing information about the method and variables.</returns>
     StringReplacementMethod GetFormatterMethod(string formatterString);
+
+    /// <summary>
+    /// Performs replacements based on data available in the HTTP request, such as query and form values.
+    /// </summary>
+    /// <param name="input"></param>
+    /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+    /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
+    /// <returns></returns>
+    string DoHttpRequestReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode");
+
+    /// <summary>
+    /// Performs replacements based on data available in the session.
+    /// </summary>
+    /// <param name="input"></param>
+    /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
+    /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
+    /// <returns></returns>
+    string DoSessionReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode");
 }

@@ -14,7 +14,7 @@ public static class CompressionHelpers
     /// <param name="outFolder">The output folder where the Zip file will be extracted to.</param>
     /// <param name="password">The password that the Zip file was encrypted with.</param>
     /// <returns></returns>
-    public static bool ExtractZipFile(string zipFilePath, string outFolder, String password = null)
+    public static bool ExtractZipFile(string zipFilePath, string outFolder, string password = null)
     {
         ZipFile zipFile = null;
 

@@ -2,21 +2,21 @@
 using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
 
-namespace GeeksCoreLibrary.Components.Account.Models
+namespace GeeksCoreLibrary.Components.Account.Models;
+
+public class AccountCmsSettingsModel : CmsSettings
 {
-    public class AccountCmsSettingsModel : CmsSettings
-    {
-        public Account.ComponentModes ComponentMode { get; set; } = Account.ComponentModes.LoginSingleStep;
+    public Account.ComponentModes ComponentMode { get; set; } = Account.ComponentModes.LoginSingleStep;
 
-        #region Tab Layout properties
+    #region Tab Layout properties
 
-        /// <summary>
-        /// The main HTML template for the selected mode.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Template",
-            Description = "The main HTML template for the selected mode.",
-            DeveloperRemarks = @"<p>You can use the following variables here:</p>
+    /// <summary>
+    /// The main HTML template for the selected mode.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Template",
+        Description = "The main HTML template for the selected mode.",
+        DeveloperRemarks = @"<p>You can use the following variables here:</p>
                                 <ul>
                                     <li><strong>{error}:</strong> Put this in the position of where you want to show any potential errors, such as invalid credentials. This variable will be replaced by the value of the property 'TemplateError'.</li>
                                     <li><strong>{success}:</strong> Put this in the position of where you want to show any success message. If you leave out this variable, the GCL will return ONLY the TemplateSuccess after a successful action, otherwise this variable will be replaced by the value of the property 'TemplateSuccess'.</li>
@@ -35,35 +35,35 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                 </ul>
                                 <p>For creating and updating accounts, it's possible to loop through all the fields that you return from your query by using '{repeat:fields}{/repeat:fields}' and adding the HTML for a single field between those replacements.</p>
                                 <p>For SubAccountsManagement, you can loop through all sub accounts by using '{repeat:subAccounts}{/repeat:subAccounts}' and through all fields of an account by using '{repeat:fields}{/repeat:fields}', and adding the HTML for a single field between those replacements. You can also use the variable '{selectedSubAccount}' if you need to do something with the ID of the selected sub account, or the variable '{amountOfSubAccounts}' if you need to check how many sub accounts the user has..</p>",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.Templates,
-            TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 10
-        )]
-        public string Template { get; set; }
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.Templates,
+        TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
+        DisplayOrder = 10
+    )]
+    public string Template { get; set; }
 
-        /// <summary>
-        /// The HTML template that will be shown after a successful action.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Template success",
-            Description = "The HTML template that will be shown after a successful action.",
-            DeveloperRemarks = @"<p>When using one of the login modes, this template will be used if someone is already logged in. So you can add a logout link in this template.</p>
+    /// <summary>
+    /// The HTML template that will be shown after a successful action.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Template success",
+        Description = "The HTML template that will be shown after a successful action.",
+        DeveloperRemarks = @"<p>When using one of the login modes, this template will be used if someone is already logged in. So you can add a logout link in this template.</p>
                                 <p>You can use the variable '{logoutUrl}' for adding a logout link. The variable '{sentActivationMail}' will contain 'true' if the user attempted to login with an account that hasn't been activated yet, then an e-mail will be sent to the user to activate it. You can also use any values from the 'MainQuery' as variables in here.</p>",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.Templates,
-            TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 20
-        )]
-        public string TemplateSuccess { get; set; }
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.Templates,
+        TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
+        DisplayOrder = 20
+    )]
+    public string TemplateSuccess { get; set; }
 
-        /// <summary>
-        /// The HTML template that will be shown after a failed action.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Template error",
-            Description = "The HTML template that will be shown after a failed action.",
-            DeveloperRemarks = @"<p>You can use the variable '{errorType}' to check which error was thrown. We have the following error types available, based on the chosen component mode:</p>
+    /// <summary>
+    /// The HTML template that will be shown after a failed action.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Template error",
+        Description = "The HTML template that will be shown after a failed action.",
+        DeveloperRemarks = @"<p>You can use the variable '{errorType}' to check which error was thrown. We have the following error types available, based on the chosen component mode:</p>
                                 <h2>All modes:</h2>
                                 <ul>
                                     <li><strong>Server:</strong> This is any exception that occurred on the server. The actual exception will be written to the logs.</li>
@@ -91,377 +91,377 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li>PasswordNotSecure</li> 
                                     <li>OldPasswordInvalid</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.Templates,
-            TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 30
-        )]
-        public string TemplateError { get; set; }
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.Templates,
+        TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
+        DisplayOrder = 30
+    )]
+    public string TemplateError { get; set; }
 
-        /// <summary>
-        /// If this component requires any javascript, you can write that here.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Template JavaScript",
-            Description = "If this component requires any javascript, you can write that here.",
-            DeveloperRemarks = "This javascript will always be added, whether an action was successful or not.",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.Templates,
-            TextEditorType = CmsAttributes.CmsTextEditorType.JsEditor,
-            DisplayOrder = 40
-        )]
-        public string TemplateJavaScript { get; set; }
+    /// <summary>
+    /// If this component requires any javascript, you can write that here.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Template JavaScript",
+        Description = "If this component requires any javascript, you can write that here.",
+        DeveloperRemarks = "This javascript will always be added, whether an action was successful or not.",
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.Templates,
+        TextEditorType = CmsAttributes.CmsTextEditorType.JsEditor,
+        DisplayOrder = 40
+    )]
+    public string TemplateJavaScript { get; set; }
 
-        #endregion
+    #endregion
 
-        #region E-mail properties
+    #region E-mail properties
 
-        /// <summary>
-        /// The subject for the e-mail that will be sent to the user when they request a new password.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Subject for reset password email",
-            Description = "The subject for the e-mail that will be sent to the user when they request a new password.",
-            DeveloperRemarks = "If your query of 'QueryPasswordForgottenEmail' returns a subject, then this property will be ignored.",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.MailTemplate,
-            DisplayOrder = 10,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
-        )]
-        public string SubjectResetPasswordEmail { get; set; }
+    /// <summary>
+    /// The subject for the e-mail that will be sent to the user when they request a new password.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Subject for reset password email",
+        Description = "The subject for the e-mail that will be sent to the user when they request a new password.",
+        DeveloperRemarks = "If your query of 'QueryPasswordForgottenEmail' returns a subject, then this property will be ignored.",
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.MailTemplate,
+        DisplayOrder = 10,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+    )]
+    public string SubjectResetPasswordEmail { get; set; }
 
-        /// <summary>
-        /// The HTML body for the e-mail that will be sent to the user when they request a new password. Make sure that you use the variable '{url}', which will be replaced by the URL to the reset password page.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Body for reset password email",
-            Description = "The HTML body for the e-mail that will be sent to the user when they request a new password. Make sure that you use the variable '{url}', which will be replaced by the URL to the reset password page.",
-            DeveloperRemarks = "If your query of 'QueryPasswordForgottenEmail' returns a body, then this property will be ignored.",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.MailTemplate,
-            TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 20,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
-        )]
-        public string BodyResetPasswordEmail { get; set; }
+    /// <summary>
+    /// The HTML body for the e-mail that will be sent to the user when they request a new password. Make sure that you use the variable '{url}', which will be replaced by the URL to the reset password page.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Body for reset password email",
+        Description = "The HTML body for the e-mail that will be sent to the user when they request a new password. Make sure that you use the variable '{url}', which will be replaced by the URL to the reset password page.",
+        DeveloperRemarks = "If your query of 'QueryPasswordForgottenEmail' returns a body, then this property will be ignored.",
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.MailTemplate,
+        TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
+        DisplayOrder = 20,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+    )]
+    public string BodyResetPasswordEmail { get; set; }
 
-        /// <summary>
-        /// The query that returns the subject, body and sender for the password forgotten e-mail.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Query for password forgotten email",
-            Description = "The query that returns the subject, body and sender for the password forgotten e-mail.",
-            DeveloperRemarks = @"<p>For this to work, you need to make sure that the query returns the following columns: subject, body, senderName and senderEmail.</p>
+    /// <summary>
+    /// The query that returns the subject, body and sender for the password forgotten e-mail.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Query for password forgotten email",
+        Description = "The query that returns the subject, body and sender for the password forgotten e-mail.",
+        DeveloperRemarks = @"<p>For this to work, you need to make sure that the query returns the following columns: subject, body, senderName and senderEmail.</p>
                                 <p>You can use the variable '?userId' or '{userId}' if you want to get a template that is based on the user.</p>
                                 <p>Make sure your body contains the variable '{url}', otherwise the user will have no way to actually reset their password.</p>",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.MailTemplate,
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
-            DisplayOrder = 30,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
-        )]
-        public string QueryPasswordForgottenEmail { get; set; }
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.MailTemplate,
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
+        DisplayOrder = 30,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+    )]
+    public string QueryPasswordForgottenEmail { get; set; }
 
-        /// <summary>
-        /// The query that returns the subject, body and sender for the notification e-mail.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Query notification email",
-            Description = "The query that returns the subject, body and sender for the notification e-mail.",
-            DeveloperRemarks = @"<p>For this to work, you need to make sure that the query returns the following columns: subject, body, senderName and senderEmail.</p>
+    /// <summary>
+    /// The query that returns the subject, body and sender for the notification e-mail.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Query notification email",
+        Description = "The query that returns the subject, body and sender for the notification e-mail.",
+        DeveloperRemarks = @"<p>For this to work, you need to make sure that the query returns the following columns: subject, body, senderName and senderEmail.</p>
                                  <p>You can use the variable '?userId' or '{userId}' if you want to get a template that is based on the user.</p>",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.MailTemplate,
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
-            DisplayOrder = 70,
-            ComponentMode = "CreateOrUpdateAccount"
-        )]
-        public string QueryNotificationEmail { get; set; }
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.MailTemplate,
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
+        DisplayOrder = 70,
+        ComponentMode = "CreateOrUpdateAccount"
+    )]
+    public string QueryNotificationEmail { get; set; }
 
-        /// <summary>
-        /// The e-mail address(es) that should receive notifications when a new account is created. You can add multiple e-mail addresses by separating them by a semicolon (;).
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Notifications receiver",
-            Description = "The e-mail address(es) that should receive notifications when a new account is created. You can add multiple e-mail addresses by separating them by a semicolon (;).",
-            DeveloperRemarks = "Make sure you also enable the option 'SendNotificationsForNewAccounts' to use this.",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.MailTemplate,
-            DisplayOrder = 80,
-            ComponentMode = "CreateOrUpdateAccount"
-        )]
-        public string NotificationsReceiver { get; set; }
+    /// <summary>
+    /// The e-mail address(es) that should receive notifications when a new account is created. You can add multiple e-mail addresses by separating them by a semicolon (;).
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Notifications receiver",
+        Description = "The e-mail address(es) that should receive notifications when a new account is created. You can add multiple e-mail addresses by separating them by a semicolon (;).",
+        DeveloperRemarks = "Make sure you also enable the option 'SendNotificationsForNewAccounts' to use this.",
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.MailTemplate,
+        DisplayOrder = 80,
+        ComponentMode = "CreateOrUpdateAccount"
+    )]
+    public string NotificationsReceiver { get; set; }
 
-        /// <summary>
-        /// BCC e-mail address for notifications of new accounts, in case the website owners also want to see when a new account is created.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Notifications BCC",
-            Description = "BCC e-mail address for notifications of new accounts, in case the website owners also want to see when a new account is created.",
-            DeveloperRemarks = "Make sure you also enable the option 'SendNotificationsForNewAccounts' to use this.",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.MailTemplate,
-            DisplayOrder = 90,
-            ComponentMode = "CreateOrUpdateAccount"
-        )]
-        public string NotificationsBcc { get; set; }
+    /// <summary>
+    /// BCC e-mail address for notifications of new accounts, in case the website owners also want to see when a new account is created.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Notifications BCC",
+        Description = "BCC e-mail address for notifications of new accounts, in case the website owners also want to see when a new account is created.",
+        DeveloperRemarks = "Make sure you also enable the option 'SendNotificationsForNewAccounts' to use this.",
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.MailTemplate,
+        DisplayOrder = 90,
+        ComponentMode = "CreateOrUpdateAccount"
+    )]
+    public string NotificationsBcc { get; set; }
 
-        /// <summary>
-        /// The subject for the e-mail that will be sent to admins when someone creates a new account on the website.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Subject for new account notification email",
-            Description = "The subject for the e-mail that will be sent to admins when someone creates a new account on the website.",
-            DeveloperRemarks = "You can use any values that are in the form for creating an account and '{userId}' as replacement.",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.MailTemplate,
-            DisplayOrder = 100,
-            ComponentMode = "CreateOrUpdateAccount"
-        )]
-        public string SubjectNewAccountNotificationEmail { get; set; }
+    /// <summary>
+    /// The subject for the e-mail that will be sent to admins when someone creates a new account on the website.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Subject for new account notification email",
+        Description = "The subject for the e-mail that will be sent to admins when someone creates a new account on the website.",
+        DeveloperRemarks = "You can use any values that are in the form for creating an account and '{userId}' as replacement.",
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.MailTemplate,
+        DisplayOrder = 100,
+        ComponentMode = "CreateOrUpdateAccount"
+    )]
+    public string SubjectNewAccountNotificationEmail { get; set; }
 
-        /// <summary>
-        /// The HTML body for the e-mail that will be sent to admins when someone creates a new account on the website.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Body for new account notification email",
-            Description = "The HTML body for the e-mail that will be sent to admins when someone creates a new account on the website.",
-            DeveloperRemarks = "You can use any values that are in the form for creating an account and '{userId}' as replacement.",
-            TabName = CmsAttributes.CmsTabName.Layout,
-            GroupName = CmsAttributes.CmsGroupName.MailTemplate,
-            TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
-            DisplayOrder = 110,
-            ComponentMode = "CreateOrUpdateAccount"
-        )]
-        public string BodyNewAccountNotificationEmail { get; set; }
+    /// <summary>
+    /// The HTML body for the e-mail that will be sent to admins when someone creates a new account on the website.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Body for new account notification email",
+        Description = "The HTML body for the e-mail that will be sent to admins when someone creates a new account on the website.",
+        DeveloperRemarks = "You can use any values that are in the form for creating an account and '{userId}' as replacement.",
+        TabName = CmsAttributes.CmsTabName.Layout,
+        GroupName = CmsAttributes.CmsGroupName.MailTemplate,
+        TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor,
+        DisplayOrder = 110,
+        ComponentMode = "CreateOrUpdateAccount"
+    )]
+    public string BodyNewAccountNotificationEmail { get; set; }
 
-        #endregion
+    #endregion
 
-        #region Tab datasource properties
+    #region Tab datasource properties
 
-        /// <summary>
-        /// The Wiser entity type that is used for users that need to be able to login on the website.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Entity type",
-            Description = "The Wiser entity type that is used for users that need to be able to login on the website.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 10
-        )]
-        public string EntityType { get; set; }
+    /// <summary>
+    /// The Wiser entity type that is used for users that need to be able to login on the website.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Entity type",
+        Description = "The Wiser entity type that is used for users that need to be able to login on the website.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 10
+    )]
+    public string EntityType { get; set; }
 
-        /// <summary>
-        /// The field/property name that contains the value users login with, such as e-mail address or username. This should be the same in the HTML as in wiser_entityproperty.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Login field name",
-            Description = "The field/property name that contains the value users login with, such as e-mail address or username. This should be the same in the HTML as in wiser_entityproperty.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 20
-        )]
-        public string LoginFieldName { get; set; }
+    /// <summary>
+    /// The field/property name that contains the value users login with, such as e-mail address or username. This should be the same in the HTML as in wiser_entityproperty.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Login field name",
+        Description = "The field/property name that contains the value users login with, such as e-mail address or username. This should be the same in the HTML as in wiser_entityproperty.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 20
+    )]
+    public string LoginFieldName { get; set; }
 
-        /// <summary>
-        /// The Wiser field/property name that contains the SHA512 hashed password of the user. This should be the same in the HTML as in wiser_entityproperty.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Password field name",
-            Description = "The Wiser field/property name that contains the SHA512 hashed password of the user. This should be the same in the HTML as in wiser_entityproperty.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 30
-        )]
-        public string PasswordFieldName { get; set; }
+    /// <summary>
+    /// The Wiser field/property name that contains the SHA512 hashed password of the user. This should be the same in the HTML as in wiser_entityproperty.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Password field name",
+        Description = "The Wiser field/property name that contains the SHA512 hashed password of the user. This should be the same in the HTML as in wiser_entityproperty.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 30
+    )]
+    public string PasswordFieldName { get; set; }
 
-        /// <summary>
-        /// The Wiser field/property name that should be used to remember the amount of failed login attempts of a user.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Failed login attempts field name",
-            Description = "The Wiser field/property name that should be used to remember the amount of failed login attempts of a user.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 40,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
-        )]
-        public string FailedLoginAttemptsFieldName { get; set; }
+    /// <summary>
+    /// The Wiser field/property name that should be used to remember the amount of failed login attempts of a user.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Failed login attempts field name",
+        Description = "The Wiser field/property name that should be used to remember the amount of failed login attempts of a user.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 40,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+    )]
+    public string FailedLoginAttemptsFieldName { get; set; }
 
-        /// <summary>
-        /// The Wiser field/property name that should be used to remember the date and time of the user's last login attempt.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Last login attempt field name",
-            Description = "The Wiser field/property name that should be used to remember the date and time of the user's last login attempt.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 50,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
-        )]
-        public string LastLoginAttemptFieldName { get; set; }
+    /// <summary>
+    /// The Wiser field/property name that should be used to remember the date and time of the user's last login attempt.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Last login attempt field name",
+        Description = "The Wiser field/property name that should be used to remember the date and time of the user's last login attempt.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 50,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+    )]
+    public string LastLoginAttemptFieldName { get; set; }
 
-        /// <summary>
-        /// The Wiser field/property name where the user's e-mail address is saved. This can be the same as 'LoginFieldName', if you use e-mail address for logging in.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Email address field name",
-            Description = "The Wiser field/property name where the user's e-mail address is saved. This can be the same as 'LoginFieldName', if you use e-mail address for logging in.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 60
-        )]
-        public string EmailAddressFieldName { get; set; }
+    /// <summary>
+    /// The Wiser field/property name where the user's e-mail address is saved. This can be the same as 'LoginFieldName', if you use e-mail address for logging in.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Email address field name",
+        Description = "The Wiser field/property name where the user's e-mail address is saved. This can be the same as 'LoginFieldName', if you use e-mail address for logging in.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 60
+    )]
+    public string EmailAddressFieldName { get; set; }
 
-        /// <summary>
-        /// The Wiser field/property name that should be used to save the date and time that the reset token will expire.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Reset password expire date field name",
-            Description = "The Wiser field/property name that should be used to save the date and time that the reset token will expire.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 80,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
-        )]
-        public string ResetPasswordTokenFieldName { get; set; }
+    /// <summary>
+    /// The Wiser field/property name that should be used to save the date and time that the reset token will expire.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Reset password expire date field name",
+        Description = "The Wiser field/property name that should be used to save the date and time that the reset token will expire.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 80,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+    )]
+    public string ResetPasswordTokenFieldName { get; set; }
 
-        /// <summary>
-        /// The Wiser field/property name that should be used to save the date and time that the reset token will expire.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Reset password expire date field name",
-            Description = "The Wiser field/property name that should be used to save the date and time that the reset token will expire.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 80,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
-        )]
-        public string ResetPasswordExpireDateFieldName { get; set; }
+    /// <summary>
+    /// The Wiser field/property name that should be used to save the date and time that the reset token will expire.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Reset password expire date field name",
+        Description = "The Wiser field/property name that should be used to save the date and time that the reset token will expire.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 80,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+    )]
+    public string ResetPasswordExpireDateFieldName { get; set; }
 
-        /// <summary>
-        /// The Wiser field/property name that contains the role of the user.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Role field name",
-            Description = "The Wiser field/property name that contains the role of the user.",
-            DeveloperRemarks = "Leave empty if you don't use roles.",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 85
-        )]
-        public string RoleFieldName { get; set; }
+    /// <summary>
+    /// The Wiser field/property name that contains the role of the user.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Role field name",
+        Description = "The Wiser field/property name that contains the role of the user.",
+        DeveloperRemarks = "Leave empty if you don't use roles.",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 85
+    )]
+    public string RoleFieldName { get; set; }
 
-        /// <summary>
-        /// The name of the field where the user has to enter their password new password, when they want to change it.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "New password field name",
-            Description = "The name of the field where the user has to enter their password new password, when they want to change it.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 90
-        )]
-        public string NewPasswordFieldName { get; set; }
+    /// <summary>
+    /// The name of the field where the user has to enter their password new password, when they want to change it.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "New password field name",
+        Description = "The name of the field where the user has to enter their password new password, when they want to change it.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 90
+    )]
+    public string NewPasswordFieldName { get; set; }
 
-        /// <summary>
-        /// The name of the field where the user has to enter their new password a second time, for confirmation, in places where they can change their password.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "New password confirmation field name",
-            Description = "The name of the field where the user has to enter their new password a second time, for confirmation, in places where they can change their password.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 100
-        )]
-        public string NewPasswordConfirmationFieldName { get; set; }
+    /// <summary>
+    /// The name of the field where the user has to enter their new password a second time, for confirmation, in places where they can change their password.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "New password confirmation field name",
+        Description = "The name of the field where the user has to enter their new password a second time, for confirmation, in places where they can change their password.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 100
+    )]
+    public string NewPasswordConfirmationFieldName { get; set; }
 
-        /// <summary>
-        /// The name of the Wiser property/field where the Client ID for Google Analytics should be saved.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Google client ID field name",
-            Description = "The name of the Wiser property/field where the Client ID for Google Analytics should be saved.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 100
-        )]
-        public string GoogleClientIdFieldName { get; set; }
+    /// <summary>
+    /// The name of the Wiser property/field where the Client ID for Google Analytics should be saved.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Google client ID field name",
+        Description = "The name of the Wiser property/field where the Client ID for Google Analytics should be saved.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 100
+    )]
+    public string GoogleClientIdFieldName { get; set; }
 
-        /// <summary>
-        /// The entity type for sub accounts
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Sub account entity type",
-            Description = "The entity type for sub accounts",
-            DeveloperRemarks = "Only applicable for websites that use sub accounts.",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Common,
-            DisplayOrder = 10
-        )]
-        public string SubAccountEntityType { get; set; }
+    /// <summary>
+    /// The entity type for sub accounts
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Sub account entity type",
+        Description = "The entity type for sub accounts",
+        DeveloperRemarks = "Only applicable for websites that use sub accounts.",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Common,
+        DisplayOrder = 10
+    )]
+    public string SubAccountEntityType { get; set; }
 
-        /// <summary>
-        /// The type number that should be used for linking a sub account to a main account.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Sub account link type number",
-            Description = "The type number that should be used for linking a sub account to a main account.",
-            DeveloperRemarks = "Only applicable for websites that use sub accounts.",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Common,
-            DisplayOrder = 20
-        )]
-        public int SubAccountLinkTypeNumber { get; set; }
+    /// <summary>
+    /// The type number that should be used for linking a sub account to a main account.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Sub account link type number",
+        Description = "The type number that should be used for linking a sub account to a main account.",
+        DeveloperRemarks = "Only applicable for websites that use sub accounts.",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Common,
+        DisplayOrder = 20
+    )]
+    public int SubAccountLinkTypeNumber { get; set; }
 
-        /// <summary>
-        /// The data table name for the session variables for OCI cXML punch out to store in.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Punch-Out session store table",
-            Description = "The data table name for the session variables for OCI cXML punch out to store in.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomDatabase,
-            TextEditorType = CmsAttributes.CmsTextEditorType.TextField,
-            DisplayOrder = 10,
-            ComponentMode = "CXmlPunchOutLogin,CXmlPunchOutContinueSession"
-        )]
-        public string PunchOutSessionTable { get; set; }
+    /// <summary>
+    /// The data table name for the session variables for OCI cXML punch out to store in.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Punch-Out session store table",
+        Description = "The data table name for the session variables for OCI cXML punch out to store in.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomDatabase,
+        TextEditorType = CmsAttributes.CmsTextEditorType.TextField,
+        DisplayOrder = 10,
+        ComponentMode = "CXmlPunchOutLogin,CXmlPunchOutContinueSession"
+    )]
+    public string PunchOutSessionTable { get; set; }
 
-        /// <summary>
-        /// The query string parameter name where the session token will be stored in.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Punch-Out session query string parameter",
-            Description = "The query string parameter name where the session token will be stored in.",
-            DeveloperRemarks = "For OCI.",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomDatabase,
-            TextEditorType = CmsAttributes.CmsTextEditorType.TextField,
-            DisplayOrder = 20,
-            ComponentMode = "CXmlPunchOutLogin,CXmlPunchOutContinueSession"
-        )]
-        public string PunchOutSessionQueryStringParameterName { get; set; }
+    /// <summary>
+    /// The query string parameter name where the session token will be stored in.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Punch-Out session query string parameter",
+        Description = "The query string parameter name where the session token will be stored in.",
+        DeveloperRemarks = "For OCI.",
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomDatabase,
+        TextEditorType = CmsAttributes.CmsTextEditorType.TextField,
+        DisplayOrder = 20,
+        ComponentMode = "CXmlPunchOutLogin,CXmlPunchOutContinueSession"
+    )]
+    public string PunchOutSessionQueryStringParameterName { get; set; }
 
-        /// <summary>
-        /// The main query for the selected component mode.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Main query",
-            Description = "The main query for the selected component mode.",
-            DeveloperRemarks = @"<p>You can use the variable '?userId' or '{userId}' if you need the ID of the logged in user in the query.</p>
+    /// <summary>
+    /// The main query for the selected component mode.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Main query",
+        Description = "The main query for the selected component mode.",
+        DeveloperRemarks = @"<p>You can use the variable '?userId' or '{userId}' if you need the ID of the logged in user in the query.</p>
                                 <p>For all login modes, this is the query that gets user information to show in the success template. </p>
                                 <p>For reset password mode, this needs to return the columns 'id', so we can verify that the e-mail address exists. You can use the following variables in this query, for mode ResetPassword:</p>
                                 <ul>
@@ -486,20 +486,20 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
                                     <li><strong>{subAccountLinkTypeNumber} or ?subAccountLinkTypeNumber:</strong> The value of the property in this component with the same name.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 10,
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string MainQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 10,
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string MainQuery { get; set; }
 
-        /// <summary>
-        /// The query that gets the hashed password and login, to check whether a login is successful.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Login Query",
-            Description = "The query that gets the ID and hashed password of the user that is trying to login, to check if it can login.",
-            DeveloperRemarks = @"<p>Please make sure to only check for items with the correct entity type and username/e-mail address.</p>
+    /// <summary>
+    /// The query that gets the hashed password and login, to check whether a login is successful.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Login Query",
+        Description = "The query that gets the ID and hashed password of the user that is trying to login, to check if it can login.",
+        DeveloperRemarks = @"<p>Please make sure to only check for items with the correct entity type and username/e-mail address.</p>
                                 <p>You can use any fields in the query that you add to the HTML.</p>
                                 <p>Also make sure the query returns at least the following columns:</p>
                                 <ul>
@@ -521,42 +521,42 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
                                     <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
-            DisplayOrder = 20,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword,CreateOrUpdateAccount"
-        )]
-        public string LoginQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
+        DisplayOrder = 20,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword,CreateOrUpdateAccount"
+    )]
+    public string LoginQuery { get; set; }
 
-        /// <summary>
-        /// The query for saving a login attempt, whether is was successful or not.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Save login attempt query",
-            Description = "The query for saving a login attempt, whether is was successful or not.",
-            DeveloperRemarks = @"<p>You can also use the following default variables (but they are not mandatory to use, except for userId, if you use a custom query):<p>
+    /// <summary>
+    /// The query for saving a login attempt, whether is was successful or not.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Save login attempt query",
+        Description = "The query for saving a login attempt, whether is was successful or not.",
+        DeveloperRemarks = @"<p>You can also use the following default variables (but they are not mandatory to use, except for userId, if you use a custom query):<p>
                                 <ul>
                                     <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
                                     <li><strong>{success} or ?success:</strong> This will contain TRUE if the login attempt was successful, or FALSE if it wasn't.</li>
                                     <li><strong>{failedLoginAttemptsFieldName} or ?failedLoginAttemptsFieldName:</strong> The value of the property in this component with the same name.</li>
                                     <li><strong>{lastLoginAttemptFieldName} or ?lastLoginAttemptFieldName:</strong> The value of the property in this component with the same name.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 30,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,CreateOrUpdateAccount",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string SaveLoginAttemptQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 30,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,CreateOrUpdateAccount",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string SaveLoginAttemptQuery { get; set; }
 
-        /// <summary>
-        /// The query for saving information for resetting a user's password.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Save reset password values query",
-            Description = "The query for saving information for resetting a user's password.",
-            DeveloperRemarks = @"<p>You can also use the following default variables in your query:<p>
+    /// <summary>
+    /// The query for saving information for resetting a user's password.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Save reset password values query",
+        Description = "The query for saving information for resetting a user's password.",
+        DeveloperRemarks = @"<p>You can also use the following default variables in your query:<p>
                                 <ul>
                                     <li><strong>{userId} or ?userId:</strong> Required: The ID of the user.</li>
                                     <li><strong>{resetPasswordToken} or ?resetPasswordToken:</strong> Required: The newly generated token that will be sent in the e-mail to the user.</li>
@@ -564,21 +564,21 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{resetPasswordExpireDate} or ?resetPasswordExpireDate:</strong> Required: The date and time that the reset token will expire.</li>
                                     <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> Optional: The Wiser field/property name for the above value.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 40,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string SaveResetPasswordValuesQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 40,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string SaveResetPasswordValuesQuery { get; set; }
 
-        /// <summary>
-        /// The query for validating the reset password token of a user.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Validate reset password token query",
-            Description = "The query for validating the reset password token of a user.",
-            DeveloperRemarks = @"<p>The query should return the column 'login' with the username or e-mail address (whichever you use for logging in users). It should return a row if the token is valid or nothing if it's not valid.</p>
+    /// <summary>
+    /// The query for validating the reset password token of a user.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Validate reset password token query",
+        Description = "The query for validating the reset password token of a user.",
+        DeveloperRemarks = @"<p>The query should return the column 'login' with the username or e-mail address (whichever you use for logging in users). It should return a row if the token is valid or nothing if it's not valid.</p>
                                 <p>You can also use the following default variables:<p>
                                 <ul>
                                     <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
@@ -588,21 +588,21 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{loginFieldName} or ?loginFieldName:</strong> Optional: The Wiser field name where the value is stored that the user logins with (ie username or e-mail).</li>
                                     <li><strong>{entityType} or ?entityType:</strong> The entity type that is set in this component, in the property 'EntityType'.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 50,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string ValidateResetPasswordTokenQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 50,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string ValidateResetPasswordTokenQuery { get; set; }
 
-        /// <summary>
-        /// The query for changing the user's password.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Change password query",
-            Description = "The query for changing the user's password",
-            DeveloperRemarks = @"<p>Make sure that this query updates the password and also that it clears the reset password token, so that the reset password link will be invalidated.</p>
+    /// <summary>
+    /// The query for changing the user's password.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Change password query",
+        Description = "The query for changing the user's password",
+        DeveloperRemarks = @"<p>Make sure that this query updates the password and also that it clears the reset password token, so that the reset password link will be invalidated.</p>
                                 <p>You can also use the following default variables:<p>
                                 <ul>
                                     <li><strong>{userId} or ?userId:</strong> The ID of the user.</li>
@@ -611,21 +611,21 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{resetPasswordTokenFieldName} or ?resetPasswordTokenFieldName:</strong> The Wiser property name that is used to save the reset password token.</li>
                                     <li><strong>{resetPasswordExpireDateFieldName} or ?resetPasswordExpireDateFieldName:</strong> The Wiser property name that is used to save the expire date of the reset password token.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 55,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword,CreateOrUpdateAccount",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string ChangePasswordQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 55,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword,CreateOrUpdateAccount",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string ChangePasswordQuery { get; set; }
 
-        /// <summary>
-        /// The query for getting the user ID from an e-mail address.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Get user id via email address query",
-            Description = "The query for getting the user ID from an e-mail address",
-            DeveloperRemarks = @"<p>Make sure that this query returns a column named 'id', which contains the ID of the user, or no results if the user doesn't exist.</p>
+    /// <summary>
+    /// The query for getting the user ID from an e-mail address.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Get user id via email address query",
+        Description = "The query for getting the user ID from an e-mail address",
+        DeveloperRemarks = @"<p>Make sure that this query returns a column named 'id', which contains the ID of the user, or no results if the user doesn't exist.</p>
                                 <p>You can also use the following default variables:<p>
                                 <ul>
                                     <li><strong>{emailAddressFieldName} or ?emailAddressFieldName:</strong> The Wiser property name that is used to save the e-mail address of the user.</li>
@@ -634,22 +634,22 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{emailAddressAesEncrypted} or ?emailAddressAesEncrypted:</strong> The e-mail address that the user entered, encrypted using the EncryptWithAes function.</li>
                                     <li><strong>{entityType} or ?entityType:</strong> The Wiser entity type that is used for users that can login on the website.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 60,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string GetUserIdViaEmailAddressQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 60,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string GetUserIdViaEmailAddressQuery { get; set; }
 
-        /// <summary>
-        /// The query for checking whether an account already exists, while creating or updating an account.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Check if account exists query",
-            Description = "The query for checking whether an account already exists, while creating or updating an account.",
-            DeveloperRemarks =
-                @"<p>Make sure that this query returns anything (this can be NULL, as long as it returns a row) if the user exists, or no results if the user doesn't exist. You can also return a custom error message in any column and use that column as variable in the TemplateError.</p>
+    /// <summary>
+    /// The query for checking whether an account already exists, while creating or updating an account.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Check if account exists query",
+        Description = "The query for checking whether an account already exists, while creating or updating an account.",
+        DeveloperRemarks =
+            @"<p>Make sure that this query returns anything (this can be NULL, as long as it returns a row) if the user exists, or no results if the user doesn't exist. You can also return a custom error message in any column and use that column as variable in the TemplateError.</p>
                                 <p>Also make sure that you exclude the logged in user in your check, like the default query does, so that they don't get an error when they change something in their account.</p>
                                 <p>You can also use the following default variables:<p>
                                 <ul>
@@ -659,21 +659,21 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{login} or ?login:</strong> The value that the user entered in the HTML field with the same name as the value in the property 'loginFieldName'.</li>
                                     <li><strong>{entityType} or ?entityType:</strong> The Wiser entity type that is used for users that can login on the website.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 70,
-            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string CheckIfAccountExistsQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 70,
+        ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string CheckIfAccountExistsQuery { get; set; }
 
-        /// <summary>
-        /// The query for getting the logged in user's password hash, so we can validate it. This is required when the user wants to change their password.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Validate password query",
-            Description = "The query for getting the logged in user's password hash, so we can validate it. This is required when the user wants to change their password.",
-            DeveloperRemarks = @"<p>Please make sure to only check for items with the correct entity type and user ID.</p>
+    /// <summary>
+    /// The query for getting the logged in user's password hash, so we can validate it. This is required when the user wants to change their password.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Validate password query",
+        Description = "The query for getting the logged in user's password hash, so we can validate it. This is required when the user wants to change their password.",
+        DeveloperRemarks = @"<p>Please make sure to only check for items with the correct entity type and user ID.</p>
                                 <p>Also make sure the query returns at least the following columns:</p>
                                 <ul>
                                     <li><strong>password:</strong> The password should contain a SHA512 hash with salt, generated by the GCL.</li>
@@ -683,37 +683,37 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{userId} or ?userId:</strong> The ID of the logged in user.</li>
                                     <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 80,
-            ComponentMode = "CreateOrUpdateAccount",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string ValidatePasswordQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 80,
+        ComponentMode = "CreateOrUpdateAccount",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string ValidatePasswordQuery { get; set; }
 
-        /// <summary>
-        /// The query for creating a new account.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Create account query",
-            Description = "The query for creating a new (sub) account",
-            DeveloperRemarks = @"<p>Make sure this query returns a column named 'id', which contains the ID of the newly created user. You can also use any value in the submitted form as a variable.<p>
+    /// <summary>
+    /// The query for creating a new account.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Create account query",
+        Description = "The query for creating a new (sub) account",
+        DeveloperRemarks = @"<p>Make sure this query returns a column named 'id', which contains the ID of the newly created user. You can also use any value in the submitted form as a variable.<p>
                                 <p>When the mode is set to 'SubAccountsManagement', this query will be used for creating a new sub account.</p>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 80,
-            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string CreateAccountQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 80,
+        ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string CreateAccountQuery { get; set; }
 
-        /// <summary>
-        /// The query for updating a(n) (sub) account.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Update account query",
-            Description = "The query for updating a(n) (sub) account",
-            DeveloperRemarks = @"<p>You can also use any value in the submitted form as a variable and {userId} or ?userId for the ID of the logged in User.<p>
+    /// <summary>
+    /// The query for updating a(n) (sub) account.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Update account query",
+        Description = "The query for updating a(n) (sub) account",
+        DeveloperRemarks = @"<p>You can also use any value in the submitted form as a variable and {userId} or ?userId for the ID of the logged in User.<p>
                                 <p>When the mode is set to 'SubAccountsManagement', this query will be used for updating a sub account. <strong>Make sure that you check whether the sub account belongs to the logged in user!</strong></p>
                                 <p>You can also use the following variables then:</p>
                                 <ul>
@@ -723,21 +723,21 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{userId} or ?userId:</strong> The ID of the logged in user (the main account)</li>
                                     <li><strong>{subAccountLinkTypeNumber} or ?subAccountLinkTypeNumber:</strong> The value of the component property with the same name.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 90,
-            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string UpdateAccountQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 90,
+        ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string UpdateAccountQuery { get; set; }
 
-        /// <summary>
-        /// The query for deleting a(n) (sub) account.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Delete account query",
-            Description = "The query for deleting a(n) (sub) account",
-            DeveloperRemarks = @"<p>You can use the variable {userId} or ?userId for the ID of the logged in User.<p>
+    /// <summary>
+    /// The query for deleting a(n) (sub) account.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Delete account query",
+        Description = "The query for deleting a(n) (sub) account",
+        DeveloperRemarks = @"<p>You can use the variable {userId} or ?userId for the ID of the logged in User.<p>
                                 <p>When the mode is set to 'SubAccountsManagement', this query will be used for updating a sub account. <strong>Make sure that you check whether the sub account belongs to the logged in user!</strong></p>
                                 <p>You can also use the following variables then:</p>
                                 <ul>
@@ -747,21 +747,21 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{userId} or ?userId:</strong> The ID of the logged in user (the main account)</li>
                                     <li><strong>{subAccountLinkTypeNumber} or ?subAccountLinkTypeNumber:</strong> The value of the component property with the same name.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 100,
-            ComponentMode = "SubAccountsManagement",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string DeleteAccountQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 100,
+        ComponentMode = "SubAccountsManagement",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string DeleteAccountQuery { get; set; }
 
-        /// <summary>
-        /// The query for inserting/updating a value for a Wiser property/field. This query will be executed for every submitted field in the form, which was originally on the page.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Set value in Wiser entity property query",
-            Description = "The query for inserting/updating a value for a Wiser property/field. <strong>This query will be executed for every submitted field in the form that was originally on the page.</strong>",
-            DeveloperRemarks = @"<p>Leave this property empty if you're not using the Wiser data model, or if you're using a custom create/update query that already sets all values correctly.<p>
+    /// <summary>
+    /// The query for inserting/updating a value for a Wiser property/field. This query will be executed for every submitted field in the form, which was originally on the page.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Set value in Wiser entity property query",
+        Description = "The query for inserting/updating a value for a Wiser property/field. <strong>This query will be executed for every submitted field in the form that was originally on the page.</strong>",
+        DeveloperRemarks = @"<p>Leave this property empty if you're not using the Wiser data model, or if you're using a custom create/update query that already sets all values correctly.<p>
                                 <p>You can use the following variables:</p>
                                 <ul>
                                     <li><strong>{value} or ?value:</strong> The submitted value</li>
@@ -769,42 +769,42 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{userId} or ?userId:</strong> The ID of the logged in or newly created user</li>
                                     <li><strong>{subAccountId} or ?subAccountId:</strong> (When mode is 'SubAccountsManagement'.) The ID selected sub account. Will be 0 if no sub account has been selected.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 110,
-            ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string SetValueInWiserEntityPropertyQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 110,
+        ComponentMode = "CreateOrUpdateAccount,SubAccountsManagement",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string SetValueInWiserEntityPropertyQuery { get; set; }
 
-        /// <summary>
-        /// The query for inserting/updating a value for a Wiser property/field. This query will be executed for every submitted field in the form, which was originally on the page.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Get sub account query",
-            Description = "The query for getting all values and fields for a sub account. If you use the default HTML template, this query should return a row for each field that needs to be shown on the page. If you use custom HTML, this query can return whatever you need in that HTML.",
-            DeveloperRemarks = @"<p>You can use the following variables:</p>
+    /// <summary>
+    /// The query for inserting/updating a value for a Wiser property/field. This query will be executed for every submitted field in the form, which was originally on the page.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Get sub account query",
+        Description = "The query for getting all values and fields for a sub account. If you use the default HTML template, this query should return a row for each field that needs to be shown on the page. If you use custom HTML, this query can return whatever you need in that HTML.",
+        DeveloperRemarks = @"<p>You can use the following variables:</p>
                                 <ul>
                                     <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The entity type that is used for sub accounts.</li>
                                     <li><strong>{subAccountId} or ?subAccountId:</strong> The ID selected sub account. Will be 0 if no sub account has been selected.</li>
                                     <li><strong>{entityType} or ?entityType:</strong> The entity type that is used for sub accounts.</li>
                                     <li><strong>{userId} or ?userId:</strong> The ID of the logged user</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 120,
-            ComponentMode = "SubAccountsManagement",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string GetSubAccountQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 120,
+        ComponentMode = "SubAccountsManagement",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string GetSubAccountQuery { get; set; }
 
-        /// <summary>
-        /// The query that will determine the roles for a new or existing account.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Account roles Query",
-            Description = "The query that will determine the roles for a new or existing account.",
-            DeveloperRemarks = @"<p>Please note that any roles returned by this query are absolute, meaning that the account will only receive the roles returned by this query, and any roles it was previously assigned that are not in the result will be removed.</p>
+    /// <summary>
+    /// The query that will determine the roles for a new or existing account.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Account roles Query",
+        Description = "The query that will determine the roles for a new or existing account.",
+        DeveloperRemarks = @"<p>Please note that any roles returned by this query are absolute, meaning that the account will only receive the roles returned by this query, and any roles it was previously assigned that are not in the result will be removed.</p>
                                 <p>Make sure the query returns at least the following columns:</p>
                                 <ul>
                                     <li><strong>roleId:</strong> The ID of a role in wiser_roles.</li>
@@ -814,21 +814,21 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{userId} or ?userId:</strong> The ID of the account/user being updated.</li>
                                 </ul>
                                 <p>You can use any value in the submitted form as a variable.</p>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.CustomSql,
-            DisplayOrder = 130,
-            ComponentMode = "CreateOrUpdateAccount",
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
-        )]
-        public string AccountRolesQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.CustomSql,
+        DisplayOrder = 130,
+        ComponentMode = "CreateOrUpdateAccount",
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor
+    )]
+    public string AccountRolesQuery { get; set; }
 
-        /// <summary>
-        /// The query that validates an ID for auto login via Wiser.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Auto login Query",
-            Description = "The query that validates an ID for auto login via Wiser.",
-            DeveloperRemarks = @"<p>Please make sure to only check for items with the correct entity type(s).</p>
+    /// <summary>
+    /// The query that validates an ID for auto login via Wiser.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Auto login Query",
+        Description = "The query that validates an ID for auto login via Wiser.",
+        DeveloperRemarks = @"<p>Please make sure to only check for items with the correct entity type(s).</p>
                                 <p>Also make sure the query returns at least the following columns:</p>
                                 <ul>
                                     <li><strong>id:</strong> The item ID of the user in wiser_item.</li>
@@ -844,408 +844,407 @@ namespace GeeksCoreLibrary.Components.Account.Models
                                     <li><strong>{entityType} or ?entityType:</strong> The value of the property in this component with the same name.</li>
                                     <li><strong>{subAccountEntityType} or ?subAccountEntityType:</strong> The value of the property in this component with the same name.</li>
                                 </ul>",
-            TabName = CmsAttributes.CmsTabName.DataSource,
-            GroupName = CmsAttributes.CmsGroupName.Wiser,
-            TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
-            DisplayOrder = 10,
-            ComponentMode = "LoginSingleStep"
-        )]
-        public string AutoLoginQuery { get; set; }
+        TabName = CmsAttributes.CmsTabName.DataSource,
+        GroupName = CmsAttributes.CmsGroupName.Wiser,
+        TextEditorType = CmsAttributes.CmsTextEditorType.QueryEditor,
+        DisplayOrder = 10,
+        ComponentMode = "LoginSingleStep"
+    )]
+    public string AutoLoginQuery { get; set; }
 
-        #endregion
+    #endregion
 
-        #region Tab Behavior properties
+    #region Tab Behavior properties
 
-        /// <summary>
-        /// This is the amount of time the user will stay logged in on the website.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Amount of days to remember cookie",
-            Description = "This is the amount of time the user will stay logged in on the website.",
-            DeveloperRemarks = "Set to 0 if the cookie needs to be deleted when the user closes the browser.",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 10,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
-        )]
-        public int? AmountOfDaysToRememberCookie { get; set; }
+    /// <summary>
+    /// This is the amount of time the user will stay logged in on the website.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Amount of days to remember cookie",
+        Description = "This is the amount of time the user will stay logged in on the website.",
+        DeveloperRemarks = "Set to 0 if the cookie needs to be deleted when the user closes the browser.",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 10,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+    )]
+    public int? AmountOfDaysToRememberCookie { get; set; }
 
-        /// <summary>
-        /// The name of the remember me checkbox. Only enter a value if you want to add a checkbox for the user to indicate whether or not they want to stay logged in after closing the browser.
-        /// </summary>
-        [CmsProperty(
-            PrettyName="Remember me checkbox name",
-            Description="The name of the remember me checkbox. Only enter a value if you want to add a checkbox for the user to indicate whether or not they want to stay logged in after closing the browser.",
-            DeveloperRemarks="You need to add the HTML for the checkbox yourself, to the main template. Example:<br>&lt;input type=&quot;checkbox&quot; name=&quot;rememberMe&quot; id=&quot;rememberMe&quot; value=&quot;0&quot; /&gt;<br>&lt;label for=&quot;rememberMe&quot;&gt;Stay logged in&lt;/label&gt;",
-            TabName=CmsAttributes.CmsTabName.Behavior,
-            GroupName=CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder=15,
-            ComponentMode="LoginSingleStep,LoginMultipleSteps"
-            )]
-        public string RememberMeCheckboxName { get; set; }
+    /// <summary>
+    /// The name of the remember me checkbox. Only enter a value if you want to add a checkbox for the user to indicate whether or not they want to stay logged in after closing the browser.
+    /// </summary>
+    [CmsProperty(
+        PrettyName="Remember me checkbox name",
+        Description="The name of the remember me checkbox. Only enter a value if you want to add a checkbox for the user to indicate whether or not they want to stay logged in after closing the browser.",
+        DeveloperRemarks="You need to add the HTML for the checkbox yourself, to the main template. Example:<br>&lt;input type=&quot;checkbox&quot; name=&quot;rememberMe&quot; id=&quot;rememberMe&quot; value=&quot;0&quot; /&gt;<br>&lt;label for=&quot;rememberMe&quot;&gt;Stay logged in&lt;/label&gt;",
+        TabName=CmsAttributes.CmsTabName.Behavior,
+        GroupName=CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder=15,
+        ComponentMode="LoginSingleStep,LoginMultipleSteps"
+    )]
+    public string RememberMeCheckboxName { get; set; }
 
-        /// <summary>
-        /// When the user exceeds this number, they will not be able to login for the amount of time set in <see cref="DefaultLockoutTime" />.
-        /// Set to 0 to disable this functionality.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Maximum amount of failed login attempts",
-            Description = "When the user exceeds this number, they will not be able to login for the amount of time set in 'DefaultLockoutTime'.",
-            DeveloperRemarks = "Set to 0 to disable this functionality.",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 20,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
-        )]
-        public int? MaximumAmountOfFailedLoginAttempts { get; set; }
+    /// <summary>
+    /// When the user exceeds this number, they will not be able to login for the amount of time set in <see cref="DefaultLockoutTime" />.
+    /// Set to 0 to disable this functionality.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Maximum amount of failed login attempts",
+        Description = "When the user exceeds this number, they will not be able to login for the amount of time set in 'DefaultLockoutTime'.",
+        DeveloperRemarks = "Set to 0 to disable this functionality.",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 20,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+    )]
+    public int? MaximumAmountOfFailedLoginAttempts { get; set; }
 
-        /// <summary>
-        /// The amount of time (in minutes) that the user needs to wait before being able to attempt another login, after exceeding the maximum amount of failed login attempts.
-        /// Set to 0 to disable this functionality.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Default lockout time",
-            Description = "The amount of time (in minutes) that the user needs to wait before being able to attempt another login, after exceeding the maximum amount of failed login attempts.",
-            DeveloperRemarks = "Set to 0 to disable this functionality.",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 30,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
-        )]
-        public int? DefaultLockoutTime { get; set; }
+    /// <summary>
+    /// The amount of time (in minutes) that the user needs to wait before being able to attempt another login, after exceeding the maximum amount of failed login attempts.
+    /// Set to 0 to disable this functionality.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Default lockout time",
+        Description = "The amount of time (in minutes) that the user needs to wait before being able to attempt another login, after exceeding the maximum amount of failed login attempts.",
+        DeveloperRemarks = "Set to 0 to disable this functionality.",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 30,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+    )]
+    public int? DefaultLockoutTime { get; set; }
 
-        /// <summary>
-        /// This is the amount of time the user will stay logged in on the website.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Reset password token validity",
-            Description = "This is the amount of time (in days) a reset password token will stay valid, before the user has to request a new one.",
-            DeveloperRemarks = "Set to 0 if the token should stay valid forever (until the user changed their password).",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 40,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
-        )]
-        public int? ResetPasswordTokenValidity { get; set; }
+    /// <summary>
+    /// This is the amount of time the user will stay logged in on the website.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Reset password token validity",
+        Description = "This is the amount of time (in days) a reset password token will stay valid, before the user has to request a new one.",
+        DeveloperRemarks = "Set to 0 if the token should stay valid forever (until the user changed their password).",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 40,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+    )]
+    public int? ResetPasswordTokenValidity { get; set; }
 
-        /// <summary>
-        /// The URL to the reset password page. Leave empty to use the current page.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Reset password url",
-            Description = "The URL to the reset password page. Leave empty to use the current page.",
-            DeveloperRemarks = @"<p>This will be used in the e-mail that the user received after indicating they want to reset their password.
+    /// <summary>
+    /// The URL to the reset password page. Leave empty to use the current page.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Reset password url",
+        Description = "The URL to the reset password page. Leave empty to use the current page.",
+        DeveloperRemarks = @"<p>This will be used in the e-mail that the user received after indicating they want to reset their password.
                                 This can be a relative url such as '/reset-password/' or an absolute URL such as 'https://google.com/reset-password/'.</p>
                                 <p>The required query string parameters will be automatically added to this URL, you don't need to add place holders for them.
                                 That URL will then be used to replace the variable '{url}' in the e-mail body.</p>",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 50,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
-        )]
-        public string ResetPasswordUrl { get; set; }
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 50,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword"
+    )]
+    public string ResetPasswordUrl { get; set; }
 
-        /// <summary>
-        /// After the user successfully did certain actions, such as resetting their password or creating an account, log them in automatically.
-        /// </summary>
-        [DefaultValue(true),
-         CmsProperty(
-             PrettyName = "Auto login user after action",
-             Description = "After the user successfully did certain actions, such as resetting their password or creating an account, log them in automatically.",
-             DeveloperRemarks = "",
-             TabName = CmsAttributes.CmsTabName.Behavior,
-             GroupName = CmsAttributes.CmsGroupName.Basic,
-             DisplayOrder = 60,
-             ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword,CreateOrUpdateAccount"
-         )]
-        public bool AutoLoginUserAfterAction { get; set; } = true;
+    /// <summary>
+    /// After the user successfully did certain actions, such as resetting their password or creating an account, log them in automatically.
+    /// </summary>
+    [DefaultValue(true),
+     CmsProperty(
+         PrettyName = "Auto login user after action",
+         Description = "After the user successfully did certain actions, such as resetting their password or creating an account, log them in automatically.",
+         DeveloperRemarks = "",
+         TabName = CmsAttributes.CmsTabName.Behavior,
+         GroupName = CmsAttributes.CmsGroupName.Basic,
+         DisplayOrder = 60,
+         ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword,CreateOrUpdateAccount"
+     )]
+    public bool AutoLoginUserAfterAction { get; set; } = true;
 
-        /// <summary>
-        /// After the user successfully did certain actions, such as resetting their password or creating an account, redirect them to an URL.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Redirect user after action",
-            Description = "After the user successfully did certain actions, such as resetting their password or creating an account, redirect them to an URL.",
-            DeveloperRemarks = "Leave empty for no redirect. The redirect will only happen if the action was successful.",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 65,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword,CreateOrUpdateAccount"
-        )]
-        public string RedirectAfterAction { get; set; }
+    /// <summary>
+    /// After the user successfully did certain actions, such as resetting their password or creating an account, redirect them to an URL.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Redirect user after action",
+        Description = "After the user successfully did certain actions, such as resetting their password or creating an account, redirect them to an URL.",
+        DeveloperRemarks = "Leave empty for no redirect. The redirect will only happen if the action was successful.",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 65,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps,ResetPassword,CreateOrUpdateAccount"
+    )]
+    public string RedirectAfterAction { get; set; }
 
-        /// <summary>
-        /// If the user leaves a field empty when submitting it, ignore it so that empty values will never be saved.
-        /// </summary>
-        [DefaultValue(true),
-         CmsProperty(
-             PrettyName = "Ignore empty values",
-             Description = "If the user leaves a field empty when submitting it, ignore it so that empty values will never be saved.",
-             DeveloperRemarks = "",
-             TabName = CmsAttributes.CmsTabName.Behavior,
-             GroupName = CmsAttributes.CmsGroupName.Basic,
-             DisplayOrder = 70,
-             ComponentMode = "CreateOrUpdateAccount"
-         )]
-        public bool IgnoreEmptyValues { get; set; } = true;
+    /// <summary>
+    /// If the user leaves a field empty when submitting it, ignore it so that empty values will never be saved.
+    /// </summary>
+    [DefaultValue(true),
+     CmsProperty(
+         PrettyName = "Ignore empty values",
+         Description = "If the user leaves a field empty when submitting it, ignore it so that empty values will never be saved.",
+         DeveloperRemarks = "",
+         TabName = CmsAttributes.CmsTabName.Behavior,
+         GroupName = CmsAttributes.CmsGroupName.Basic,
+         DisplayOrder = 70,
+         ComponentMode = "CreateOrUpdateAccount"
+     )]
+    public bool IgnoreEmptyValues { get; set; } = true;
 
-        /// <summary>
-        /// If this s set to true, the user must enter their current password to be allowed to change their login.
-        /// </summary>
-        [DefaultValue(true),
-         CmsProperty(
-             PrettyName = "Require current password for changing login",
-             Description = "If this s set to true, the user must enter their current password to be allowed to change their login.",
-             DeveloperRemarks = "",
-             TabName = CmsAttributes.CmsTabName.Behavior,
-             GroupName = CmsAttributes.CmsGroupName.Basic,
-             DisplayOrder = 80,
-             ComponentMode = "CreateOrUpdateAccount"
-         )]
-        public bool RequireCurrentPasswordForChangingLogin { get; set; } = true;
-        
-        /// <summary>
-        /// If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.
-        /// </summary>
-        [DefaultValue(true),
-         CmsProperty(
-             PrettyName = "Allow empty password",
-             Description = "If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.",
-             DeveloperRemarks = "",
-             TabName = CmsAttributes.CmsTabName.Behavior,
-             GroupName = CmsAttributes.CmsGroupName.Basic,
-             DisplayOrder = 90,
-             ComponentMode = "CreateOrUpdateAccount"
-         )]
-        public bool RequireCurrentPasswordForChangingPassword { get; set; } = true;
+    /// <summary>
+    /// If this s set to true, the user must enter their current password to be allowed to change their login.
+    /// </summary>
+    [DefaultValue(true),
+     CmsProperty(
+         PrettyName = "Require current password for changing login",
+         Description = "If this s set to true, the user must enter their current password to be allowed to change their login.",
+         DeveloperRemarks = "",
+         TabName = CmsAttributes.CmsTabName.Behavior,
+         GroupName = CmsAttributes.CmsGroupName.Basic,
+         DisplayOrder = 80,
+         ComponentMode = "CreateOrUpdateAccount"
+     )]
+    public bool RequireCurrentPasswordForChangingLogin { get; set; } = true;
 
-        /// <summary>
-        /// If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.
-        /// </summary>
-        [CmsProperty(
-            PrettyName="Allow empty password",
-            Description="If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.",
-            DeveloperRemarks="",
-            TabName=CmsAttributes.CmsTabName.Behavior,
-            GroupName=CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder=95,
-            ComponentMode="CreateOrUpdateAccount"
-        )]
-        public bool AllowEmptyPassword { get;set; }
+    /// <summary>
+    /// If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.
+    /// </summary>
+    [DefaultValue(true),
+     CmsProperty(
+         PrettyName = "Allow empty password",
+         Description = "If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.",
+         DeveloperRemarks = "",
+         TabName = CmsAttributes.CmsTabName.Behavior,
+         GroupName = CmsAttributes.CmsGroupName.Basic,
+         DisplayOrder = 90,
+         ComponentMode = "CreateOrUpdateAccount"
+     )]
+    public bool RequireCurrentPasswordForChangingPassword { get; set; } = true;
 
-        /// <summary>
-        /// If this s set to true, a notification will be sent to the e-mail address(es) entered in 'NotificationsReceiver' whenever someone creates a new account via this component.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Send notifications for new accounts",
-            Description = "If this s set to true, a notification will be sent to the e-mail address(es) entered in 'NotificationsReceiver' whenever someone creates a new account via this component.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Basic,
-            DisplayOrder = 100,
-            ComponentMode = "CreateOrUpdateAccount"
-        )]
-        public bool SendNotificationsForNewAccounts { get; set; }
+    /// <summary>
+    /// If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.
+    /// </summary>
+    [CmsProperty(
+        PrettyName="Allow empty password",
+        Description="If this is set to true, an user can be created without a password. This should only be used in a checkout process, so the user can place an order without creating an account.",
+        DeveloperRemarks="",
+        TabName=CmsAttributes.CmsTabName.Behavior,
+        GroupName=CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder=95,
+        ComponentMode="CreateOrUpdateAccount"
+    )]
+    public bool AllowEmptyPassword { get;set; }
 
-        /// <summary>
-        /// Enable this option to force users to login with 2FA, by using Google Authenticator.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Enable Google authenticator",
-            Description = "Enable this option to force users to login with 2FA, by using Google Authenticator.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Common,
-            DisplayOrder = 10,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
-        )]
-        public bool EnableGoogleAuthenticator { get; set; }
+    /// <summary>
+    /// If this s set to true, a notification will be sent to the e-mail address(es) entered in 'NotificationsReceiver' whenever someone creates a new account via this component.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Send notifications for new accounts",
+        Description = "If this s set to true, a notification will be sent to the e-mail address(es) entered in 'NotificationsReceiver' whenever someone creates a new account via this component.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Basic,
+        DisplayOrder = 100,
+        ComponentMode = "CreateOrUpdateAccount"
+    )]
+    public bool SendNotificationsForNewAccounts { get; set; }
 
-        /// <summary>
-        /// Enable this option to force users to login with 2FA, by using Google Authenticator.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Google authenticator site id",
-            Description = "If the option 'Enable Google authenticator' is enabled, you need to enter a value here to use as the site ID for Google Authenticator.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Common,
-            DisplayOrder = 20,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
-        )]
-        public string GoogleAuthenticatorSiteId { get; set; }
+    /// <summary>
+    /// Enable this option to force users to login with 2FA, by using Google Authenticator.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Enable Google authenticator",
+        Description = "Enable this option to force users to login with 2FA, by using Google Authenticator.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Common,
+        DisplayOrder = 10,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+    )]
+    public bool EnableGoogleAuthenticator { get; set; }
 
-        /// <summary>
-        /// Enable users to login via an OCI environment.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Enable OCI login",
-            Description = "Enable users to login via an OCI environment.",
-            DeveloperRemarks = "Only enable this option if the customer actually wants this!",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Common,
-            DisplayOrder = 30,
-            ComponentMode = "LoginSingleStep"
-        )]
-        public bool EnableOciLogin { get; set; }
+    /// <summary>
+    /// Enable this option to force users to login with 2FA, by using Google Authenticator.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Google authenticator site id",
+        Description = "If the option 'Enable Google authenticator' is enabled, you need to enter a value here to use as the site ID for Google Authenticator.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Common,
+        DisplayOrder = 20,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+    )]
+    public string GoogleAuthenticatorSiteId { get; set; }
 
-        /// <summary>
-        /// The key in the query string or POST variable that will contain the username of the user that is logging in via OCI.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "OCI username key",
-            Description = "The key in the query string or POST variable that will contain the username of the user that is logging in via OCI.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Common,
-            DisplayOrder = 40,
-            ComponentMode = "LoginSingleStep,CXmlPunchOutLogin"
-        )]
-        public string OciUsernameKey { get; set; }
+    /// <summary>
+    /// Enable users to login via an OCI environment.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Enable OCI login",
+        Description = "Enable users to login via an OCI environment.",
+        DeveloperRemarks = "Only enable this option if the customer actually wants this!",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Common,
+        DisplayOrder = 30,
+        ComponentMode = "LoginSingleStep"
+    )]
+    public bool EnableOciLogin { get; set; }
 
-        /// <summary>
-        /// The key in the query string or POST variable that will contain the password of the user that is logging in via OCI.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "OCI password key",
-            Description = "The key in the query string or POST variable that will contain the password of the user that is logging in via OCI.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Common,
-            DisplayOrder = 50,
-            ComponentMode = "LoginSingleStep,CXmlPunchOutLogin"
-        )]
-        public string OciPasswordKey { get; set; }
+    /// <summary>
+    /// The key in the query string or POST variable that will contain the username of the user that is logging in via OCI.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "OCI username key",
+        Description = "The key in the query string or POST variable that will contain the username of the user that is logging in via OCI.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Common,
+        DisplayOrder = 40,
+        ComponentMode = "LoginSingleStep,CXmlPunchOutLogin"
+    )]
+    public string OciUsernameKey { get; set; }
 
-        /// <summary>
-        /// The key in the query string or POST variable that will contain the hook URL for OCI.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "OCI hook URL key",
-            Description = "The key in the query string or POST variable that will contain the hook URL for OCI.",
-            DeveloperRemarks = "The hook URL is the URL that we need to send the order too when the user places an order.",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Common,
-            DisplayOrder = 60,
-            ComponentMode = "LoginSingleStep,CXmlPunchOutLogin"
-        )]
-        public string OciHookUrlKey { get; set; }
+    /// <summary>
+    /// The key in the query string or POST variable that will contain the password of the user that is logging in via OCI.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "OCI password key",
+        Description = "The key in the query string or POST variable that will contain the password of the user that is logging in via OCI.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Common,
+        DisplayOrder = 50,
+        ComponentMode = "LoginSingleStep,CXmlPunchOutLogin"
+    )]
+    public string OciPasswordKey { get; set; }
 
-        /// <summary>
-        /// Enable users to login via Wiser.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Enable Wiser login",
-            Description = "Enable users to login via Wiser.",
-            DeveloperRemarks = "Only enable this option if the customer actually wants this!",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Wiser,
-            DisplayOrder = 10,
-            ComponentMode = "LoginSingleStep"
-        )]
-        public bool EnableWiserLogin { get; set; }
+    /// <summary>
+    /// The key in the query string or POST variable that will contain the hook URL for OCI.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "OCI hook URL key",
+        Description = "The key in the query string or POST variable that will contain the hook URL for OCI.",
+        DeveloperRemarks = "The hook URL is the URL that we need to send the order too when the user places an order.",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Common,
+        DisplayOrder = 60,
+        ComponentMode = "LoginSingleStep,CXmlPunchOutLogin"
+    )]
+    public string OciHookUrlKey { get; set; }
 
-        /// <summary>
-        /// The key in the query string or POST variable that will contain the encrypted ID of the user, for logging in via Wiser.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Wiser login user ID key",
-            Description = "The key in the query string or POST variable that will contain the encrypted ID of the user, for logging in via Wiser.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Wiser,
-            DisplayOrder = 20,
-            ComponentMode = "LoginSingleStep"
-        )]
-        public string WiserLoginUserIdKey { get; set; }
+    /// <summary>
+    /// Enable users to login via Wiser.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Enable Wiser login",
+        Description = "Enable users to login via Wiser.",
+        DeveloperRemarks = "Only enable this option if the customer actually wants this!",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Wiser,
+        DisplayOrder = 10,
+        ComponentMode = "LoginSingleStep"
+    )]
+    public bool EnableWiserLogin { get; set; }
 
-        /// <summary>
-        /// The key in the query string or POST variable that will contain the validation token, for logging in via Wiser.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Wiser login token key",
-            Description = "The key in the query string or POST variable that will contain the validation token, for logging in via Wiser.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Wiser,
-            DisplayOrder = 30,
-            ComponentMode = "LoginSingleStep"
-        )]
-        public string WiserLoginTokenKey { get; set; }
+    /// <summary>
+    /// The key in the query string or POST variable that will contain the encrypted ID of the user, for logging in via Wiser.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Wiser login user ID key",
+        Description = "The key in the query string or POST variable that will contain the encrypted ID of the user, for logging in via Wiser.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Wiser,
+        DisplayOrder = 20,
+        ComponentMode = "LoginSingleStep"
+    )]
+    public string WiserLoginUserIdKey { get; set; }
 
-        /// <summary>
-        /// The validation token, for logging in via Wiser. The same token should be used in Wiser, in the button for logging in as that user.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Wiser login token",
-            Description = "The validation token, for logging in via Wiser. The same token should be used in Wiser, in the button for logging in as that user.",
-            DeveloperRemarks = "Please generate a unique token for every Happy Horizon customer. The longer this string is, the better (but it still needs to fit in an URL). Use passwordgenerator.net or something similar to generate your token.",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Wiser,
-            DisplayOrder = 40,
-            ComponentMode = "LoginSingleStep"
-        )]
-        public string WiserLoginToken { get; set; }
+    /// <summary>
+    /// The key in the query string or POST variable that will contain the validation token, for logging in via Wiser.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Wiser login token key",
+        Description = "The key in the query string or POST variable that will contain the validation token, for logging in via Wiser.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Wiser,
+        DisplayOrder = 30,
+        ComponentMode = "LoginSingleStep"
+    )]
+    public string WiserLoginTokenKey { get; set; }
 
-        /// <summary>
-        /// A regex for validating the password of the user. This will be done server side and optionally client side too.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Password validation regex",
-            Description = "A regex for validating the password of the user. This will be done server side and optionally client side too.",
-            DeveloperRemarks = @"If you want to use this for client side validation in your custom HTML, you can add the property 'pattern=""{PasswordValidationRegex}""' to your password field(s).",
-            TabName = CmsAttributes.CmsTabName.Behavior,
-            GroupName = CmsAttributes.CmsGroupName.Advanced,
-            DisplayOrder = 10,
-            ComponentMode = "ResetPassword,CreateOrUpdateAccount,SubAccountsManagement"
-        )]
-        public string PasswordValidationRegex { get; set; }
+    /// <summary>
+    /// The validation token, for logging in via Wiser. The same token should be used in Wiser, in the button for logging in as that user.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Wiser login token",
+        Description = "The validation token, for logging in via Wiser. The same token should be used in Wiser, in the button for logging in as that user.",
+        DeveloperRemarks = "Please generate a unique token for every Happy Horizon customer. The longer this string is, the better (but it still needs to fit in an URL). Use passwordgenerator.net or something similar to generate your token.",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Wiser,
+        DisplayOrder = 40,
+        ComponentMode = "LoginSingleStep"
+    )]
+    public string WiserLoginToken { get; set; }
 
-        #endregion
+    /// <summary>
+    /// A regex for validating the password of the user. This will be done server side and optionally client side too.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Password validation regex",
+        Description = "A regex for validating the password of the user. This will be done server side and optionally client side too.",
+        DeveloperRemarks = @"If you want to use this for client side validation in your custom HTML, you can add the property 'pattern=""{PasswordValidationRegex}""' to your password field(s).",
+        TabName = CmsAttributes.CmsTabName.Behavior,
+        GroupName = CmsAttributes.CmsGroupName.Advanced,
+        DisplayOrder = 10,
+        ComponentMode = "ResetPassword,CreateOrUpdateAccount,SubAccountsManagement"
+    )]
+    public string PasswordValidationRegex { get; set; }
 
-        #region Tab Developer properties
-        
-        /// <summary>
-        /// Set cookie name if multiple account components with different accounts are used on the same page.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Cookie name",
-            Description = "Set cookie name if multiple account components with different accounts are used on the same page.",
-            TabName = CmsAttributes.CmsTabName.Developer,
-            GroupName = CmsAttributes.CmsGroupName.Advanced,
-            DisplayOrder = 5,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
-        )]
-        public string CookieName { get; set; }
-        
-        /// <summary>
-        /// You can enter a comma separated list of cookie names to delete after the user logs out.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Cookies to delete after logout",
-            Description = "You can enter a comma separated list of cookie names to delete after the user logs out.",
-            DeveloperRemarks = "The cookie that is used in this component will always be deleted, not matter what you enter here.",
-            TabName = CmsAttributes.CmsTabName.Developer,
-            GroupName = CmsAttributes.CmsGroupName.Advanced,
-            DisplayOrder = 10,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
-        )]
-        public string CookiesToDeleteAfterLogout { get; set; }
+    #endregion
 
-        /// <summary>
-        /// You can enter a comma separated list of session keys to delete after the user logs out.
-        /// </summary>
-        [CmsProperty(
-            PrettyName = "Session keys delete after logout",
-            Description = "You can enter a comma separated list of session keys to delete after the user logs out.",
-            DeveloperRemarks = "",
-            TabName = CmsAttributes.CmsTabName.Developer,
-            GroupName = CmsAttributes.CmsGroupName.Advanced,
-            DisplayOrder = 20,
-            ComponentMode = "LoginSingleStep,LoginMultipleSteps"
-        )]
-        public string SessionKeysToDeleteAfterLogout { get; set; }
+    #region Tab Developer properties
 
-        #endregion
-    }
+    /// <summary>
+    /// Set cookie name if multiple account components with different accounts are used on the same page.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Cookie name",
+        Description = "Set cookie name if multiple account components with different accounts are used on the same page.",
+        TabName = CmsAttributes.CmsTabName.Developer,
+        GroupName = CmsAttributes.CmsGroupName.Advanced,
+        DisplayOrder = 5,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+    )]
+    public string CookieName { get; set; }
+
+    /// <summary>
+    /// You can enter a comma separated list of cookie names to delete after the user logs out.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Cookies to delete after logout",
+        Description = "You can enter a comma separated list of cookie names to delete after the user logs out.",
+        DeveloperRemarks = "The cookie that is used in this component will always be deleted, not matter what you enter here.",
+        TabName = CmsAttributes.CmsTabName.Developer,
+        GroupName = CmsAttributes.CmsGroupName.Advanced,
+        DisplayOrder = 10,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+    )]
+    public string CookiesToDeleteAfterLogout { get; set; }
+
+    /// <summary>
+    /// You can enter a comma separated list of session keys to delete after the user logs out.
+    /// </summary>
+    [CmsProperty(
+        PrettyName = "Session keys delete after logout",
+        Description = "You can enter a comma separated list of session keys to delete after the user logs out.",
+        DeveloperRemarks = "",
+        TabName = CmsAttributes.CmsTabName.Developer,
+        GroupName = CmsAttributes.CmsGroupName.Advanced,
+        DisplayOrder = 20,
+        ComponentMode = "LoginSingleStep,LoginMultipleSteps"
+    )]
+    public string SessionKeysToDeleteAfterLogout { get; set; }
+
+    #endregion
 }
