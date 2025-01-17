@@ -71,7 +71,7 @@
         <PackageReference Include="ZXing.Net" Version="0.16.9"/>
         <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.15"/>
         <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1" Condition="$([MSBuild]::IsOsPlatform('Windows'))"/>
-        <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.0.1" Condition="$([MSBuild]::IsOsPlatform('Linux'))"/>
+        <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" Condition="$([MSBuild]::IsOsPlatform('Linux'))"/>
     </ItemGroup>
 
     <ItemGroup>
