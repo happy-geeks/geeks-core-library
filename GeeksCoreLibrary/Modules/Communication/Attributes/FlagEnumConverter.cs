@@ -15,7 +15,7 @@ public class FlagEnumConverter : StringEnumConverter
             return;
         }
 
-        var enumValue = (Enum)value;
+        var enumValue = (Enum) value;
 
         writer.WriteValue(Convert.ToInt32(enumValue));
     }

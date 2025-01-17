@@ -1,10 +1,9 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 
-namespace GeeksCoreLibrary.Core.Interfaces
+namespace GeeksCoreLibrary.Core.Interfaces;
+
+public interface IScopedProcessingService
 {
-    public interface IScopedProcessingService
-    {
-        Task DoWorkAsync(CancellationToken stoppingToken);
-    }
+    Task DoWorkAsync(CancellationToken stoppingToken);
 }

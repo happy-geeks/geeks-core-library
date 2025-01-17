@@ -1,10 +1,9 @@
-﻿namespace GeeksCoreLibrary.Components.OrderProcess.Enums
+﻿namespace GeeksCoreLibrary.Components.OrderProcess.Enums;
+
+public enum OrderProcessStepTypes
 {
-    public enum OrderProcessStepTypes
-    {
-        GroupsAndFields,
-        Summary,
-        OrderConfirmation,
-        OrderPending
-    }
+    GroupsAndFields,
+    Summary,
+    OrderConfirmation,
+    OrderPending
 }

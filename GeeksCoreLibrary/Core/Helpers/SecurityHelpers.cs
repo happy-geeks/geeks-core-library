@@ -23,7 +23,7 @@ public static class SecurityHelpers
             {
                 rng.GetBytes(uintBuffer);
                 var num = BitConverter.ToUInt32(uintBuffer, 0);
-                result.Append(valid[(int)(num % (uint)valid.Length)]);
+                result.Append(valid[(int) (num % (uint) valid.Length)]);
             }
         }
 

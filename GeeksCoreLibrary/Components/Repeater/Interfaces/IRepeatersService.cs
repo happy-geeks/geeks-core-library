@@ -2,14 +2,13 @@
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Repeater.Models;
 
-namespace GeeksCoreLibrary.Components.Repeater.Interfaces
+namespace GeeksCoreLibrary.Components.Repeater.Interfaces;
+
+public interface IRepeatersService
 {
-    public interface IRepeatersService
-    {
-        /// <summary>
-        /// Gets all product banners. These are static banners that should be places in certain positions in the results of a repeater.
-        /// </summary>
-        /// <returns></returns>
-        Task<List<ProductBannerModel>> GetProductBannersAsync();
-    }
+    /// <summary>
+    /// Gets all product banners. These are static banners that should be places in certain positions in the results of a repeater.
+    /// </summary>
+    /// <returns></returns>
+    Task<List<ProductBannerModel>> GetProductBannersAsync();
 }

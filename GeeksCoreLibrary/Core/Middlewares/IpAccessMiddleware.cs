@@ -9,17 +9,8 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Core.Middlewares;
 
-public class IpAccessMiddleware
+public class IpAccessMiddleware(ILogger<IpAccessMiddleware> logger, RequestDelegate next)
 {
-    private readonly RequestDelegate next;
-    private readonly ILogger<IpAccessMiddleware> logger;
-
-    public IpAccessMiddleware(ILogger<IpAccessMiddleware> logger, RequestDelegate next)
-    {
-        this.logger = logger;
-        this.next = next;
-    }
-
     /// <summary>
     /// Invoke the middleware.
     /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
@@ -39,7 +30,7 @@ public class IpAccessMiddleware
         if (!String.IsNullOrEmpty(blockedIps) && blockedIps.Split(';').Contains(userIp))
         {
             logger.LogDebug("Ip blocked: found in blacklist");
-            context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+            context.Response.StatusCode = (int) HttpStatusCode.Forbidden;
             return;
         }
 
@@ -47,7 +38,7 @@ public class IpAccessMiddleware
         if (!String.IsNullOrEmpty(whiteListedIps) && !whiteListedIps.Split(';').Contains(userIp))
         {
             logger.LogDebug("Ip blocked: not found in whitelist");
-            context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+            context.Response.StatusCode = (int) HttpStatusCode.Forbidden;
             return;
         }
 

@@ -16,10 +16,10 @@ public class ImportDataModel
     /// <summary>
     /// Gets or sets the item link import models.
     /// </summary>
-    public List<ItemLinkImportModel> Links { get; set; } = new List<ItemLinkImportModel>();
+    public List<ItemLinkImportModel> Links { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the wiser item file models.
     /// </summary>
-    public List<WiserItemFileModel> Files { get; set; } = new List<WiserItemFileModel>();
+    public List<WiserItemFileModel> Files { get; set; } = [];
 }

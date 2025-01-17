@@ -2,9 +2,9 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="UnitPrice")]
+[XmlRoot(ElementName = "UnitPrice")]
 public class UnitPriceModel
 {
-    [XmlElement(ElementName="Money")]
+    [XmlElement(ElementName = "Money")]
     public MoneyModel Money { get; set; }
 }

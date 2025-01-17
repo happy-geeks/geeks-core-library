@@ -1,13 +1,12 @@
-﻿namespace GeeksCoreLibrary.Modules.Payments.Enums.AfterPay
+﻿namespace GeeksCoreLibrary.Modules.Payments.Enums.AfterPay;
+
+public enum OrderItemTypes
 {
-    public enum OrderItemTypes
-    {
-        PhysicalArticle,
-        DigitalArticle,
-        GiftCard,
-        Discount,
-        ShippingFee,
-        Surcharge,
-        Info
-    }
+    PhysicalArticle,
+    DigitalArticle,
+    GiftCard,
+    Discount,
+    ShippingFee,
+    Surcharge,
+    Info
 }

@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models
+﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models;
+
+public class BarcodeResponseModel
 {
-    public class BarcodeResponseModel
-    {
-        public string Barcode { get; set; }
-    }
+    public string Barcode { get; set; }
 }

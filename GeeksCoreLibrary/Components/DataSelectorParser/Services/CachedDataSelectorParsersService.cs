@@ -11,44 +11,31 @@ using LazyCache;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
-namespace GeeksCoreLibrary.Components.DataSelectorParser.Services
+namespace GeeksCoreLibrary.Components.DataSelectorParser.Services;
+
+public class CachedDataSelectorParsersService(IOptions<GclSettings> gclSettings, IDataSelectorParsersService dataSelectorParsersService, IAppCache cache, ICacheService cacheService, IBranchesService branchesService)
+    : IDataSelectorParsersService
 {
-    public class CachedDataSelectorParsersService : IDataSelectorParsersService
+    private readonly GclSettings gclSettings = gclSettings.Value;
+
+    /// <inheritdoc />
+    public async Task<JToken> GetDataSelectorResponseAsync(string dataSelectorId = null, string dataSelectorJson = null)
     {
-        private readonly GclSettings gclSettings;
-        private readonly IDataSelectorParsersService dataSelectorParsersService;
-        private readonly IAppCache cache;
-        private readonly ICacheService cacheService;
-        private readonly IBranchesService branchesService;
-
-        public CachedDataSelectorParsersService(IOptions<GclSettings> gclSettings, IDataSelectorParsersService dataSelectorParsersService, IAppCache cache, ICacheService cacheService, IBranchesService branchesService)
+        if (String.IsNullOrWhiteSpace(dataSelectorId) && String.IsNullOrWhiteSpace(dataSelectorJson))
         {
-            this.gclSettings = gclSettings.Value;
-            this.dataSelectorParsersService = dataSelectorParsersService;
-            this.cache = cache;
-            this.cacheService = cacheService;
-            this.branchesService = branchesService;
+            return null;
         }
 
-        /// <inheritdoc />
-        public async Task<JToken> GetDataSelectorResponseAsync(string dataSelectorId = null, string dataSelectorJson = null)
-        {
-            if (String.IsNullOrWhiteSpace(dataSelectorId) && String.IsNullOrWhiteSpace(dataSelectorJson))
+        var cacheName = new StringBuilder();
+        cacheName.Append("GCLDataSelectorParser_");
+        cacheName.Append(!String.IsNullOrWhiteSpace(dataSelectorId) ? dataSelectorId : dataSelectorJson.ToSha512Simple());
+        cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
+        return await cache.GetOrAddAsync(
+            cacheName.ToString(),
+            async cacheEntry =>
             {
-                return null;
-            }
-
-            var cacheName = new StringBuilder();
-            cacheName.Append("GCLDataSelectorParser_");
-            cacheName.Append(!String.IsNullOrWhiteSpace(dataSelectorId) ? dataSelectorId : dataSelectorJson.ToSha512Simple());
-            cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
-            return await cache.GetOrAddAsync(
-                cacheName.ToString(),
-                async cacheEntry =>
-                {
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultDataSelectorParsersCacheDuration;
-                    return await dataSelectorParsersService.GetDataSelectorResponseAsync(dataSelectorId, dataSelectorJson);
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.DataSelectors));
-        }
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultDataSelectorParsersCacheDuration;
+                return await dataSelectorParsersService.GetDataSelectorResponseAsync(dataSelectorId, dataSelectorJson);
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.DataSelectors));
     }
 }

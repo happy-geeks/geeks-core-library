@@ -7,14 +7,9 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Amazon.Services;
 
-public class AmazonSecretsManagerService : IAmazonSecretsManagerService, IScopedService
+public class AmazonSecretsManagerService(IOptions<GclSettings> gclSettings) : IAmazonSecretsManagerService, IScopedService
 {
-    private readonly GclSettings gclSettings;
-
-    public AmazonSecretsManagerService(IOptions<GclSettings> gclSettings)
-    {
-        this.gclSettings = gclSettings.Value;
-    }
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
     public async Task<string> GetSshPrivateKeyFromAwsSecretsManagerAsync()

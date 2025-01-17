@@ -2,27 +2,27 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="ItemDetail")]
+[XmlRoot(ElementName = "ItemDetail")]
 public class ItemDetailModel
 {
-    [XmlElement(ElementName="UnitPrice")]
+    [XmlElement(ElementName = "UnitPrice")]
     public UnitPriceModel UnitPrice { get; set; }
 
-    [XmlElement(ElementName="Description")]
+    [XmlElement(ElementName = "Description")]
     public DescriptionModel Description { get; set; }
 
-    [XmlElement(ElementName="UnitOfMeasure")]
+    [XmlElement(ElementName = "UnitOfMeasure")]
     public string UnitOfMeasure { get; set; }
 
-    [XmlElement(ElementName="Classification")]
+    [XmlElement(ElementName = "Classification")]
     public ClassificationModel Classification { get; set; }
 
-    [XmlElement(ElementName="ManufacturerPartID")]
+    [XmlElement(ElementName = "ManufacturerPartID")]
     public string ManufacturerPartId { get; set; }
 
-    [XmlElement(ElementName="ManufacturerName")]
+    [XmlElement(ElementName = "ManufacturerName")]
     public string ManufacturerName { get; set; }
 
-    [XmlElement(ElementName="URL")]
+    [XmlElement(ElementName = "URL")]
     public string Url { get; set; }
 }

@@ -8,18 +8,9 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Core.Middlewares;
 
-public class AddCacheHeaderValueMiddleware
+public class AddCacheHeaderValueMiddleware(RequestDelegate next, ILogger<AddCacheHeaderValueMiddleware> logger, IOptions<GclSettings> gclSettings)
 {
-    private readonly RequestDelegate next;
-    private readonly ILogger<AddCacheHeaderValueMiddleware> logger;
-    private readonly GclSettings gclSettings;
-
-    public AddCacheHeaderValueMiddleware(RequestDelegate next, ILogger<AddCacheHeaderValueMiddleware> logger, IOptions<GclSettings> gclSettings)
-    {
-        this.next = next;
-        this.logger = logger;
-        this.gclSettings = gclSettings.Value;
-    }
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <summary>
     /// Invoke the middleware.

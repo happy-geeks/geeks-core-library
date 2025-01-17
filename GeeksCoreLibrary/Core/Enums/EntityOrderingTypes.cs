@@ -9,6 +9,7 @@ public enum EntityOrderingTypes
     /// Order items via the ordering column of wiser_itemlink or wiser_item.
     /// </summary>
     LinkOrdering,
+
     /// <summary>
     /// Order items via the title column of wiser_item.
     /// </summary>

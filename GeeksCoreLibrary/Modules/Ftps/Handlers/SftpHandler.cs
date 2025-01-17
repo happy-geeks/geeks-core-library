@@ -22,20 +22,20 @@ public class SftpHandler : IFtpHandler, IScopedService
         // Use SSH or username/password if none is set.
         if (!String.IsNullOrWhiteSpace(ftpSettings.SshPrivateKeyPath))
         {
-            authenticationMethods = new AuthenticationMethod[]
-            {
+            authenticationMethods =
+            [
                 new PrivateKeyAuthenticationMethod(ftpSettings.User, new PrivateKeyFile[]
                 {
                     new(ftpSettings.SshPrivateKeyPath, ftpSettings.SshPrivateKeyPassphrase)
                 })
-            };
+            ];
         }
         else
         {
-            authenticationMethods = new AuthenticationMethod[]
-            {
+            authenticationMethods =
+            [
                 new PasswordAuthenticationMethod(ftpSettings.User, ftpSettings.Password)
-            };
+            ];
         }
 
         var connectionInfo = new ConnectionInfo(ftpSettings.Host, ftpSettings.Port, ftpSettings.User, authenticationMethods);
@@ -62,7 +62,7 @@ public class SftpHandler : IFtpHandler, IScopedService
             return Task.FromResult(true);
         }
 
-        foreach(var file in Directory.GetFiles(fromPath))
+        foreach (var file in Directory.GetFiles(fromPath))
         {
             // Fix upload path, make dynamic with file name.
             using var stream = File.OpenRead(file);
@@ -137,7 +137,7 @@ public class SftpHandler : IFtpHandler, IScopedService
         client.Delete(filePath);
         return true;
     }
-    
+
     /// <inheritdoc />
     public async Task<bool> MoveFileAsync(string fromPath, string toPath)
     {

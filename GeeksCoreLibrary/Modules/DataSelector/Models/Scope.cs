@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.DataSelector.Models
+﻿namespace GeeksCoreLibrary.Modules.DataSelector.Models;
+
+public class Scope
 {
-    public class Scope
-    {
-        public ScopeRow[] ScopeRows { get; set; }
-    }
+    public ScopeRow[] ScopeRows { get; set; }
 }

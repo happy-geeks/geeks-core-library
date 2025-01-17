@@ -2,9 +2,9 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="ShipTo")]
+[XmlRoot(ElementName = "ShipTo")]
 public class ShipToModel
 {
-    [XmlElement(ElementName="Address")]
+    [XmlElement(ElementName = "Address")]
     public AddressModel Address { get; set; }
 }

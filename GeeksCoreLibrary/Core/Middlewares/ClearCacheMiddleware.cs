@@ -13,17 +13,8 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Core.Middlewares;
 
-public class ClearCacheMiddleware
+public class ClearCacheMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrderProcessMiddleware> logger)
 {
-    private readonly RequestDelegate next;
-    private readonly ILogger<RewriteUrlToOrderProcessMiddleware> logger;
-
-    public ClearCacheMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrderProcessMiddleware> logger)
-    {
-        this.next = next;
-        this.logger = logger;
-    }
-
     /// <summary>
     /// Invoke the middleware.
     /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.

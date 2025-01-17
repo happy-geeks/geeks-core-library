@@ -7,16 +7,11 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.HealthChecks.Services;
-public class DatabaseHealthService : IHealthCheck
-{
-    private readonly IDatabaseConnection databaseConnection;
-    private readonly GclSettings gclSettings;
 
-    public DatabaseHealthService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings)
-    {
-        this.databaseConnection = databaseConnection;
-        this.gclSettings = gclSettings.Value;
-    }
+public class DatabaseHealthService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings)
+    : IHealthCheck
+{
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,

@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.ItemFiles.Models
+﻿namespace GeeksCoreLibrary.Modules.ItemFiles.Models;
+
+public static class Constants
 {
-    public static class Constants
-    {
-        public const string DefaultFilesDirectory = "contentfiles";
-    }
+    public const string DefaultFilesDirectory = "contentfiles";
 }

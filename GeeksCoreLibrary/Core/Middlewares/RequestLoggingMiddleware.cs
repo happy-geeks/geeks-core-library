@@ -17,11 +17,11 @@ using Newtonsoft.Json.Linq;
 namespace GeeksCoreLibrary.Core.Middlewares;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public class RequestLoggingMiddleware
+public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger, IOptions<GclSettings> gclSettings)
 {
-    protected readonly RequestDelegate Next;
-    protected readonly ILogger<RequestLoggingMiddleware> Logger;
-    protected readonly GclSettings GclSettings;
+    protected readonly RequestDelegate Next = next;
+    protected readonly ILogger<RequestLoggingMiddleware> Logger = logger;
+    protected readonly GclSettings GclSettings = gclSettings.Value;
 
     /// <summary>
     /// The table that should be used to save the logs in.
@@ -29,20 +29,13 @@ public class RequestLoggingMiddleware
     /// </summary>
     protected virtual string LogTableName => WiserTableNames.GclRequestLog;
 
-    public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger, IOptions<GclSettings> gclSettings)
-    {
-        Next = next;
-        Logger = logger;
-        GclSettings = gclSettings.Value;
-    }
-
     /// <summary>
     /// Invoke the middleware.
     /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
     /// </summary>
     public async Task Invoke(HttpContext context, IServiceProvider serviceProvider)
     {
-        var databaseConnection = (IDatabaseConnection)serviceProvider.GetService(typeof(IDatabaseConnection));
+        var databaseConnection = (IDatabaseConnection) serviceProvider.GetService(typeof(IDatabaseConnection));
         var logId = await LogRequestAsync(context, databaseConnection, serviceProvider);
 
         if (!GclSettings.RequestLoggingOptions.LogResponseBody)
@@ -78,7 +71,7 @@ public class RequestLoggingMiddleware
     /// <returns>The ID of the user or 0 if the user is not authenticated.</returns>
     protected virtual async Task<ulong> GetUserIdAsync(HttpContext context, IServiceProvider serviceProvider)
     {
-        var accountsService = (IAccountsService)serviceProvider.GetService(typeof(IAccountsService));
+        var accountsService = (IAccountsService) serviceProvider.GetService(typeof(IAccountsService));
         var user = await accountsService!.GetUserDataFromCookieAsync();
         return user.UserId;
     }
@@ -140,7 +133,7 @@ public class RequestLoggingMiddleware
         {
             case JTokenType.Object:
             {
-                foreach (var jsonProperty in ((JObject)jsonObject).Properties())
+                foreach (var jsonProperty in ((JObject) jsonObject).Properties())
                 {
                     // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
                     switch (jsonProperty.Value.Type)

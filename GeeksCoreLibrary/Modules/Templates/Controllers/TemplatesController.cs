@@ -27,550 +27,530 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 
-namespace GeeksCoreLibrary.Modules.Templates.Controllers
+namespace GeeksCoreLibrary.Modules.Templates.Controllers;
+
+[Area("Templates")]
+public class TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IBranchesService branchesService, IOptions<GclSettings> gclSettings)
+    : Controller
 {
-    [Area("Templates")]
-    public class TemplatesController : Controller
+    private readonly GclSettings gclSettings = gclSettings.Value;
+
+    [Route("template.gcl")]
+    [Route("template.jcl")]
+    public async Task<IActionResult> Template()
     {
-        private readonly ILogger<TemplatesController> logger;
-        private readonly ITemplatesService templatesService;
-        private readonly IPagesService pagesService;
-        private readonly IDataSelectorsService dataSelectorsService;
-        private readonly IWiserItemsService wiserItemsService;
-        private readonly IStringReplacementsService stringReplacementsService;
-        private readonly IObjectsService objectsService;
-        private readonly IBranchesService branchesService;
-        private readonly GclSettings gclSettings;
+        var error = "";
+        var startTime = DateTime.Now;
+        var stopWatch = new Stopwatch();
+        var logRenderingOfTemplate = false;
+        var templateId = 0;
+        var templateVersion = 0;
 
-        public TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IBranchesService branchesService, IOptions<GclSettings> gclSettings)
+        try
         {
-            this.logger = logger;
-            this.templatesService = templatesService;
-            this.pagesService = pagesService;
-            this.dataSelectorsService = dataSelectorsService;
-            this.wiserItemsService = wiserItemsService;
-            this.stringReplacementsService = stringReplacementsService;
-            this.objectsService = objectsService;
-            this.branchesService = branchesService;
-            this.gclSettings = gclSettings.Value;
-        }
-
-        [Route("template.gcl")]
-        [Route("template.jcl")]
-        public async Task<IActionResult> Template()
-        {
-            var error = "";
-            var startTime = DateTime.Now;
-            var stopWatch = new Stopwatch();
-            var logRenderingOfTemplate = false;
-            var templateId = 0;
-            var templateVersion = 0;
-
-            try
+            var context = HttpContext;
+            var templateName = HttpContextHelpers.GetRequestValue(context, "templatename");
+            _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
+            if (templateId <= 0)
             {
-                var context = HttpContext;
-                var templateName = HttpContextHelpers.GetRequestValue(context, "templatename");
-                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
-                if (templateId <= 0)
-                {
-                    Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "id"), out templateId);
-                }
-                logger.LogDebug($"GetAsync content from HTML template, templateName: '{templateName}', templateId: '{templateId}'.");
+                _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "id"), out templateId);
+            }
 
-                if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
+            logger.LogDebug($"GetAsync content from HTML template, templateName: '{templateName}', templateId: '{templateId}'.");
+
+            if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
+            {
+                return NotFound();
+            }
+
+            var javascriptTemplates = new List<int>();
+            var cssTemplates = new List<int>();
+            var externalJavascript = new List<PageResourceModel>();
+            var externalCss = new List<PageResourceModel>();
+            var contentTemplate = await templatesService.GetTemplateAsync(templateId, templateName);
+
+            templateId = contentTemplate.Id;
+            templateVersion = contentTemplate.Version;
+            logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
+            if (logRenderingOfTemplate)
+            {
+                stopWatch.Start();
+            }
+
+            javascriptTemplates.AddRange(contentTemplate.JavascriptTemplates);
+            cssTemplates.AddRange(contentTemplate.CssTemplates);
+
+            if (contentTemplate.Id <= 0)
+            {
+                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+                if (!contentTemplate.LoginRequired)
                 {
+                    // Login not required; return 404 (Not Found).
                     return NotFound();
                 }
 
-                var javascriptTemplates = new List<int>();
-                var cssTemplates = new List<int>();
-                var externalJavascript = new List<PageResourceModel>();
-                var externalCss = new List<PageResourceModel>();
-                var contentTemplate = await templatesService.GetTemplateAsync(templateId, templateName);
-
-                templateId = contentTemplate.Id;
-                templateVersion = contentTemplate.Version;
-                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
-                if (logRenderingOfTemplate)
+                if (contentTemplate.Type == TemplateTypes.Html && !String.IsNullOrWhiteSpace(contentTemplate.LoginRedirectUrl))
                 {
-                    stopWatch.Start();
+                    // Login required and a redirect URL is set; return redirect.
+                    var redirectUrl = await stringReplacementsService.DoAllReplacementsAsync(contentTemplate.LoginRedirectUrl);
+                    return Redirect(redirectUrl);
                 }
 
-                javascriptTemplates.AddRange(contentTemplate.JavascriptTemplates);
-                cssTemplates.AddRange(contentTemplate.CssTemplates);
+                // Return unauthorized.
+                return Unauthorized();
+            }
 
-                if (contentTemplate.Id <= 0)
-                {
-                    // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
-                    if (!contentTemplate.LoginRequired)
+            var useGeneralLayout = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase) && !contentTemplate.IsPartial;
+            switch (contentTemplate.Type)
+            {
+                case TemplateTypes.Js:
+                    return Content(contentTemplate.Content, "application/javascript");
+                case TemplateTypes.Scss:
+                case TemplateTypes.Css:
+                    return Content(contentTemplate.Content, "text/css");
+                case TemplateTypes.Query:
+                    var jsonResult = await templatesService.GetJsonResponseFromQueryAsync((QueryTemplate) contentTemplate);
+                    return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
+                case TemplateTypes.Normal:
+                case TemplateTypes.Unknown:
+                    return Content(contentTemplate.Content, "text/plain");
+                case TemplateTypes.Html:
+                    // Execute the pre load query before any replacements are being done and before any dynamic components are handled.
+                    var hasResults = await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(contentTemplate);
+                    if (contentTemplate.ReturnNotFoundWhenPreLoadQueryHasNoData && !hasResults)
                     {
-                        // Login not required; return 404 (Not Found).
                         return NotFound();
                     }
 
-                    if (contentTemplate.Type == TemplateTypes.Html && !String.IsNullOrWhiteSpace(contentTemplate.LoginRedirectUrl))
+                    var noIndex = contentTemplate.RobotsNoIndex;
+                    var noFollow = contentTemplate.RobotsNoFollow;
+
+                    // Set SEO and Open Graph information.
+                    if (HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
                     {
-                        // Login required and a redirect URL is set; return redirect.
-                        var redirectUrl = await stringReplacementsService.DoAllReplacementsAsync(contentTemplate.LoginRedirectUrl);
-                        return Redirect(redirectUrl);
-                    }
+                        var dataRow = (DataRow) HttpContext.Items[Constants.TemplatePreLoadQueryResultKey];
 
-                    // Return unauthorized.
-                    return Unauthorized();
-                }
+                        if (dataRow != null)
+                        {
+                            var seoTitle = dataRow.GetValueIfColumnExists<string>("SEOtitle");
+                            var seoDescription = dataRow.GetValueIfColumnExists<string>("SEOdescription");
+                            var seoKeyWords = dataRow.GetValueIfColumnExists<string>("SEOkeywords");
+                            var seoCanonical = dataRow.GetValueIfColumnExists<string>("SEOcanonical");
+                            var robots = dataRow.GetValueIfColumnExists<string>("SEOrobots");
 
-                var useGeneralLayout = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase) && !contentTemplate.IsPartial;
-                switch (contentTemplate.Type)
-                {
-                    case TemplateTypes.Js:
-                        return Content(contentTemplate.Content, "application/javascript");
-                    case TemplateTypes.Scss:
-                    case TemplateTypes.Css:
-                        return Content(contentTemplate.Content, "text/css");
-                    case TemplateTypes.Query:
-                        var jsonResult = await templatesService.GetJsonResponseFromQueryAsync((QueryTemplate) contentTemplate);
-                        return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
-                    case TemplateTypes.Normal:
-                    case TemplateTypes.Unknown:
-                        return Content(contentTemplate.Content, "text/plain");
-                    case TemplateTypes.Html:
-                        // Execute the pre load query before any replacements are being done and before any dynamic components are handled.
-                        var hasResults = await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(contentTemplate);
-                        if (contentTemplate.ReturnNotFoundWhenPreLoadQueryHasNoData && !hasResults)
-                        {
-                            return NotFound();
-                        }
-                        
-                        var noIndex = contentTemplate.RobotsNoIndex;
-                        var noFollow = contentTemplate.RobotsNoFollow;
-                            
-                        // Set SEO and Open Graph information.
-                        if (HttpContext.Items.ContainsKey(Constants.TemplatePreLoadQueryResultKey))
-                        {
-                            var dataRow = (DataRow) HttpContext.Items[Constants.TemplatePreLoadQueryResultKey];
-                            
-                            if (dataRow != null)
+                            if (dataRow.Table.Columns.Contains("noindex"))
                             {
-                                var seoTitle = dataRow.GetValueIfColumnExists<string>("SEOtitle");
-                                var seoDescription = dataRow.GetValueIfColumnExists<string>("SEOdescription");
-                                var seoKeyWords = dataRow.GetValueIfColumnExists<string>("SEOkeywords");
-                                var seoCanonical = dataRow.GetValueIfColumnExists<string>("SEOcanonical");
-                                var robots = dataRow.GetValueIfColumnExists<string>("SEOrobots");
-
-                                if (dataRow.Table.Columns.Contains("noindex"))
-                                {
-                                    noIndex = Convert.ToBoolean(dataRow.GetValueIfColumnExists("noindex"));
-                                }
-                                
-                                if (dataRow.Table.Columns.Contains("nofollow"))
-                                {
-                                    noFollow = Convert.ToBoolean(dataRow.GetValueIfColumnExists("nofollow"));
-                                }
-                                
-                                pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
-
-                                // Add Open Graph data.
-                                var openGraphValues = dataRow.Table.Columns.Cast<DataColumn>().Where(c => c.ColumnName.StartsWith("opengraph_", StringComparison.OrdinalIgnoreCase)).ToDictionary(c => c.ColumnName, c => Convert.ToString(dataRow[c]));
-                                pagesService.SetOpenGraphData(openGraphValues);
+                                noIndex = Convert.ToBoolean(dataRow.GetValueIfColumnExists("noindex"));
                             }
+
+                            if (dataRow.Table.Columns.Contains("nofollow"))
+                            {
+                                noFollow = Convert.ToBoolean(dataRow.GetValueIfColumnExists("nofollow"));
+                            }
+
+                            pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
+
+                            // Add Open Graph data.
+                            var openGraphValues = dataRow.Table.Columns.Cast<DataColumn>().Where(c => c.ColumnName.StartsWith("opengraph_", StringComparison.OrdinalIgnoreCase)).ToDictionary(c => c.ColumnName, c => Convert.ToString(dataRow[c]));
+                            pagesService.SetOpenGraphData(openGraphValues);
                         }
-                        else
-                        {
-                            pagesService.SetPageSeoData("","", "", "", noIndex, noFollow);
-                        }
-
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(contentTemplate.Type), contentTemplate.Type.ToString(), null);
-                }
-
-                var contentToWrite = new StringBuilder();
-                var url = (string) context.Items[Constants.OriginalPathAndQueryStringKey];
-
-                // Header template.
-                if (useGeneralLayout)
-                {
-                    contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates));
-                }
-
-                // Content template.
-                contentToWrite.Append(contentTemplate.Content);
-
-                // Footer template.
-                if (useGeneralLayout)
-                {
-                    contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates));
-                }
-
-                var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString(), templateType: contentTemplate.Type);
-                newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
-                newBodyHtml = await wiserItemsService.ReplaceAllEntityBlocksAsync(newBodyHtml);
-
-                // Make relative image URls absolute to allow the template to show images when the HTML is placed inside another website.
-                var useAbsoluteImageUrls = String.Equals(HttpContextHelpers.GetRequestValue(context, "absoluteImageUrls"), "true", StringComparison.OrdinalIgnoreCase);
-                if (useAbsoluteImageUrls)
-                {
-                    var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
-                    newBodyHtml = await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(newBodyHtml, imagesDomain);
-                }
-
-                // Remove the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website.
-                // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
-                var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(context, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
-                if (removeSvgUrlsFromIcons)
-                {
-                    var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                    foreach (Match match in regex.Matches(newBodyHtml))
-                    {
-                        if (!String.IsNullOrEmpty(match.Groups[1].Value))
-                        {
-                            newBodyHtml = newBodyHtml.Replace(match.Groups[1].Value, "");
-                        }
-                    }
-                }
-
-                var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml, templateId, useGeneralLayout);
-
-                if (!useGeneralLayout)
-                {
-                    // Check if the page has any CSS or JS to load. If so, return the view model so the view can load the CSS and JS.
-                    if (externalCss.Count > 0 || cssTemplates.Count > 0 || externalJavascript.Count > 0 || javascriptTemplates.Count > 0)
-                    {
-                        return View(viewModel);
                     }
                     else
                     {
-                        return Content(newBodyHtml, "text/html");
+                        pagesService.SetPageSeoData("", "", "", "", noIndex, noFollow);
                     }
-                }
 
-                // If a component set the status code to a 4xx status code, then return that actual status code
-                // here too, so the StatusCodePagesWithReExecute middleware can handle the showing of custom error pages.
-                if (Response.StatusCode is >= 400 and <= 499)
-                {
-                    return StatusCode(Response.StatusCode);
-                }
-
-                // If we still have no page title, just use the name of the template.
-                if (String.IsNullOrWhiteSpace(viewModel.MetaData.PageTitle))
-                {
-                    viewModel.MetaData.PageTitle = contentTemplate.Name;
-                }
-
-                var branchDatabase = branchesService.GetDatabaseNameFromCookie();
-                if (!String.IsNullOrWhiteSpace(branchDatabase))
-                {
-                    viewModel.MetaData.PageTitle = $"BRANCH {branchDatabase} - {viewModel.MetaData.PageTitle}";
-                }
-
-                return View(viewModel);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.Type), contentTemplate.Type.ToString(), null);
             }
-            catch (Exception exception)
+
+            var contentToWrite = new StringBuilder();
+            var url = (string) context.Items[Constants.OriginalPathAndQueryStringKey];
+
+            // Header template.
+            if (useGeneralLayout)
             {
-                logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
-                error = exception.ToString();
-
-                if (gclSettings.Environment == Environments.Live)
-                {
-                    // When in production, don't show the exception to the user, but show a generic error message.
-                    return StatusCode(StatusCodes.Status500InternalServerError);
-                }
-
-                return new ContentResult
-                {
-                    StatusCode = StatusCodes.Status500InternalServerError,
-                    Content = $"<pre>{exception}</pre>",
-                    ContentType = "text/html"
-                };
+                contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates));
             }
-            finally
+
+            // Content template.
+            contentToWrite.Append(contentTemplate.Content);
+
+            // Footer template.
+            if (useGeneralLayout)
             {
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Stop();
-                    var endTime = DateTime.Now;
-                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
-                }
+                contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates));
             }
-        }
 
-        [Route("json.gcl")]
-        [Route("json.jcl")]
-        public async Task<IActionResult> JsonAsync()
-        {
-            var error = "";
-            var startTime = DateTime.Now;
-            var stopWatch = new Stopwatch();
-            var logRenderingOfTemplate = false;
-            var templateId = 0;
-            var templateVersion = 0;
+            var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString(), templateType: contentTemplate.Type);
+            newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
+            newBodyHtml = await wiserItemsService.ReplaceAllEntityBlocksAsync(newBodyHtml);
 
-            try
+            // Make relative image URls absolute to allow the template to show images when the HTML is placed inside another website.
+            var useAbsoluteImageUrls = String.Equals(HttpContextHelpers.GetRequestValue(context, "absoluteImageUrls"), "true", StringComparison.OrdinalIgnoreCase);
+            if (useAbsoluteImageUrls)
             {
-                var context = HttpContext;
-                var templateName = HttpContextHelpers.GetRequestValue(context, "templatename");
-                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
-                logger.LogDebug($"JsonAsync content from query template, templateName: '{templateName}', templateId: '{templateId}'.");
+                var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
+                newBodyHtml = await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(newBodyHtml, imagesDomain);
+            }
 
-                if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
+            // Remove the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website.
+            // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
+            var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(context, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
+            if (removeSvgUrlsFromIcons)
+            {
+                var regex = new Regex("""<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href="([^>"]*)#(?:[^>"]*)"(?:[^>]*)>""", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                foreach (Match match in regex.Matches(newBodyHtml))
                 {
-                    throw new ArgumentException("No template specified.");
-                }
-
-                var result = (QueryTemplate) await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Query);
-                if (result.Id <= 0)
-                {
-                    // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login, or that the templates requires a role the user doesn't have.
-                    if (result.LoginRequired)
+                    if (!String.IsNullOrEmpty(match.Groups[1].Value))
                     {
-                        return Unauthorized();
-                    }
-
-                    return NotFound();
-                }
-
-                templateId = result.Id;
-                templateVersion = result.Version;
-                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Start();
-                }
-
-                var jsonResult = await templatesService.GetJsonResponseFromQueryAsync(result);
-
-                return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
-            }
-            catch (Exception exception)
-            {
-                logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
-                error = exception.ToString();
-
-                if (gclSettings.Environment == Environments.Live)
-                {
-                    // When in production, don't show the exception to the user, but show a generic error message.
-                    return StatusCode(StatusCodes.Status500InternalServerError);
-                }
-
-                return StatusCode(StatusCodes.Status500InternalServerError, exception);
-            }
-            finally
-            {
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Stop();
-                    var endTime = DateTime.Now;
-                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
-                }
-            }
-        }
-
-        [Route("routine.gcl")]
-        public async Task<IActionResult> RoutineAsync()
-        {
-            var error = "";
-            var startTime = DateTime.Now;
-            var stopWatch = new Stopwatch();
-            var logRenderingOfTemplate = false;
-            var templateId = 0;
-            var templateVersion = 0;
-
-            try
-            {
-                var context = HttpContext;
-                var templateName = HttpContextHelpers.GetRequestValue(context, "templateName");
-                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out templateId);
-                logger.LogDebug($"JsonAsync content from query template, templateName: '{templateName}', templateId: '{templateId}'.");
-
-                if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
-                {
-                    throw new ArgumentException("No template specified.");
-                }
-
-                var result = (RoutineTemplate) await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Routine);
-                if (result.Id <= 0)
-                {
-                    // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
-                    if (result.LoginRequired)
-                    {
-                        return Unauthorized();
-                    }
-
-                    return NotFound();
-                }
-
-                templateId = result.Id;
-                templateVersion = result.Version;
-                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Start();
-                }
-
-                var jsonResult = await templatesService.GetJsonResponseFromRoutineAsync(result);
-
-                return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
-            }
-            catch (Exception exception)
-            {
-                logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
-                error = exception.ToString();
-
-                if (gclSettings.Environment == Environments.Live)
-                {
-                    // When in production, don't show the exception to the user, but show a generic error message.
-                    return StatusCode(StatusCodes.Status500InternalServerError);
-                }
-
-                return StatusCode(StatusCodes.Status500InternalServerError, exception);
-            }
-            finally
-            {
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Stop();
-                    var endTime = DateTime.Now;
-                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
-                }
-            }
-        }
-
-        [Route("GclComponent.gcl")]
-        [Route("component.gcl")]
-        [Route("jclcomponent.jcl")]
-        [HttpPost, HttpGet]
-        public async Task<IActionResult> Component(string type, int? componentMode = null, string callMethod = null)
-        {
-            var componentId = 0;
-            try
-            {
-                if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, $"__{type}"), out componentId) || componentId <= 0)
-                {
-                    if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, "componentId"), out componentId) || componentId <= 0)
-                    {
-                        if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, "contentId"), out componentId) || componentId <= 0)
-                        {
-                            return Content("<!-- No component ID found -->", "text/html");
-                        }
+                        newBodyHtml = newBodyHtml.Replace(match.Groups[1].Value, "");
                     }
                 }
-
-                var result = await templatesService.GenerateDynamicContentHtmlAsync(componentId, componentMode, callMethod);
-                var resultObject = result as (object Data, ViewDataDictionary ViewData)?;
-
-                return result switch
-                {
-                    null => Content("", "text/html"),
-                    string resultString => Content(resultString, "text/html"),
-                    _ => Content(JsonConvert.SerializeObject(!resultObject.HasValue ? result : resultObject.Value.Data), "application/json")
-                };
             }
-            catch (Exception exception)
+
+            var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml, templateId, useGeneralLayout);
+
+            if (!useGeneralLayout)
             {
-                logger.LogCritical(exception, $"{Constants.DynamicComponentRenderingError} '{componentId}'");
-
-                if (gclSettings.Environment == Environments.Live)
+                // Check if the page has any CSS or JS to load. If so, return the view model so the view can load the CSS and JS.
+                if (externalCss.Count > 0 || cssTemplates.Count > 0 || externalJavascript.Count > 0 || javascriptTemplates.Count > 0)
                 {
-                    // When in production, don't show the exception to the user, but show a generic error message.
-                    return StatusCode(StatusCodes.Status500InternalServerError);
+                    return View(viewModel);
                 }
-
-                return new ContentResult
+                else
                 {
-                    StatusCode = StatusCodes.Status500InternalServerError,
-                    Content = exception.ToString(),
-                    ContentType = "text/html"
-                };
+                    return Content(newBodyHtml, "text/html");
+                }
+            }
+
+            // If a component set the status code to a 4xx status code, then return that actual status code
+            // here too, so the StatusCodePagesWithReExecute middleware can handle the showing of custom error pages.
+            if (Response.StatusCode is >= 400 and <= 499)
+            {
+                return StatusCode(Response.StatusCode);
+            }
+
+            // If we still have no page title, just use the name of the template.
+            if (String.IsNullOrWhiteSpace(viewModel.MetaData.PageTitle))
+            {
+                viewModel.MetaData.PageTitle = contentTemplate.Name;
+            }
+
+            var branchDatabase = branchesService.GetDatabaseNameFromCookie();
+            if (!String.IsNullOrWhiteSpace(branchDatabase))
+            {
+                viewModel.MetaData.PageTitle = $"BRANCH {branchDatabase} - {viewModel.MetaData.PageTitle}";
+            }
+
+            return View(viewModel);
+        }
+        catch (Exception exception)
+        {
+            logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
+            error = exception.ToString();
+
+            if (gclSettings.Environment == Environments.Live)
+            {
+                // When in production, don't show the exception to the user, but show a generic error message.
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            return new ContentResult
+            {
+                StatusCode = StatusCodes.Status500InternalServerError,
+                Content = $"<pre>{exception}</pre>",
+                ContentType = "text/html"
+            };
+        }
+        finally
+        {
+            if (logRenderingOfTemplate)
+            {
+                stopWatch.Stop();
+                var endTime = DateTime.Now;
+                await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
             }
         }
+    }
 
-        [Route("partial.gcl")]
-        [Route("partial.jcl")]
-        public async Task<IActionResult> Partial()
+    [Route("json.gcl")]
+    [Route("json.jcl")]
+    public async Task<IActionResult> JsonAsync()
+    {
+        var error = "";
+        var startTime = DateTime.Now;
+        var stopWatch = new Stopwatch();
+        var logRenderingOfTemplate = false;
+        var templateId = 0;
+        var templateVersion = 0;
+
+        try
         {
-            var error = "";
-            var startTime = DateTime.Now;
-            var stopWatch = new Stopwatch();
-            var logRenderingOfTemplate = false;
-            var templateId = 0;
-            var templateVersion = 0;
+            var context = HttpContext;
+            var templateName = HttpContextHelpers.GetRequestValue(context, "templatename");
+            _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
+            logger.LogDebug($"JsonAsync content from query template, templateName: '{templateName}', templateId: '{templateId}'.");
 
-            try
+            if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
             {
-                var context = HttpContext;
-                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out templateId);
-                var partialTemplateName = HttpContextHelpers.GetRequestValue(context, "partialName");
+                throw new ArgumentException("No template specified.");
+            }
 
-                if (String.IsNullOrWhiteSpace(partialTemplateName) && templateId <= 0)
-                {
-                    return NotFound();
-                }
-
-                // Get the template and replace the dynamic content.
-                var template = await templatesService.GetTemplateAsync(templateId);
-
-                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
-                if (template.Id <= 0 && template.LoginRequired)
+            var result = (QueryTemplate) await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Query);
+            if (result.Id <= 0)
+            {
+                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login, or that the templates requires a role the user doesn't have.
+                if (result.LoginRequired)
                 {
                     return Unauthorized();
                 }
 
-                templateId = template.Id;
-                templateVersion = template.Version;
-                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Start();
-                }
-
-                var templateContent = template.Content;
-                templateContent = await templatesService.HandleIncludesAsync(templateContent, templateType: TemplateTypes.Html);
-                templateContent = await templatesService.ReplaceAllDynamicContentAsync(templateContent);
-                templateContent = await dataSelectorsService.ReplaceAllDataSelectorsAsync(templateContent);
-                templateContent = await wiserItemsService.ReplaceAllEntityBlocksAsync(templateContent);
-
-                // Parse the html to get the partial template part.
-                var htmlDocument = new HtmlDocument();
-                htmlDocument.LoadHtml(templateContent);
-                var partialTemplateContent = htmlDocument.DocumentNode.SelectSingleNode($"//div[@data-type='partial-template'][@data-name='{partialTemplateName}']")?.InnerHtml;
-
-                return String.IsNullOrWhiteSpace(partialTemplateContent)
-                    ? Content("The specified partial template can't be found on the current page", "text/html")
-                    : Content(partialTemplateContent, "text/html");
+                return NotFound();
             }
-            catch (Exception exception)
+
+            templateId = result.Id;
+            templateVersion = result.Version;
+            logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
+            if (logRenderingOfTemplate)
             {
-                logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
-                error = exception.ToString();
-
-                if (gclSettings.Environment == Environments.Live)
-                {
-                    // When in production, don't show the exception to the user, but show a generic error message.
-                    return StatusCode(StatusCodes.Status500InternalServerError);
-                }
-
-                return new ContentResult
-                {
-                    StatusCode = StatusCodes.Status500InternalServerError,
-                    Content = exception.ToString(),
-                    ContentType = "text/html"
-                };
+                stopWatch.Start();
             }
-            finally
-            {
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Stop();
-                    var endTime = DateTime.Now;
-                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
-                }
-            }
+
+            var jsonResult = await templatesService.GetJsonResponseFromQueryAsync(result);
+
+            return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
         }
-
-        [HttpGet, Route("template/{templateId:int}/")]
-        public async Task<TemplateDataModel> TemplateData(int templateId)
+        catch (Exception exception)
         {
-            return await this.templatesService.GetTemplateDataAsync(templateId);
+            logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
+            error = exception.ToString();
+
+            if (gclSettings.Environment == Environments.Live)
+            {
+                // When in production, don't show the exception to the user, but show a generic error message.
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            return StatusCode(StatusCodes.Status500InternalServerError, exception);
         }
+        finally
+        {
+            if (logRenderingOfTemplate)
+            {
+                stopWatch.Stop();
+                var endTime = DateTime.Now;
+                await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+            }
+        }
+    }
+
+    [Route("routine.gcl")]
+    public async Task<IActionResult> RoutineAsync()
+    {
+        var error = "";
+        var startTime = DateTime.Now;
+        var stopWatch = new Stopwatch();
+        var logRenderingOfTemplate = false;
+        var templateId = 0;
+        var templateVersion = 0;
+
+        try
+        {
+            var context = HttpContext;
+            var templateName = HttpContextHelpers.GetRequestValue(context, "templateName");
+            _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out templateId);
+            logger.LogDebug($"JsonAsync content from query template, templateName: '{templateName}', templateId: '{templateId}'.");
+
+            if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
+            {
+                throw new ArgumentException("No template specified.");
+            }
+
+            var result = (RoutineTemplate) await templatesService.GetTemplateAsync(templateId, templateName, TemplateTypes.Routine);
+            if (result.Id <= 0)
+            {
+                // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+                if (result.LoginRequired)
+                {
+                    return Unauthorized();
+                }
+
+                return NotFound();
+            }
+
+            templateId = result.Id;
+            templateVersion = result.Version;
+            logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
+            if (logRenderingOfTemplate)
+            {
+                stopWatch.Start();
+            }
+
+            var jsonResult = await templatesService.GetJsonResponseFromRoutineAsync(result);
+
+            return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
+        }
+        catch (Exception exception)
+        {
+            logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
+            error = exception.ToString();
+
+            if (gclSettings.Environment == Environments.Live)
+            {
+                // When in production, don't show the exception to the user, but show a generic error message.
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            return StatusCode(StatusCodes.Status500InternalServerError, exception);
+        }
+        finally
+        {
+            if (logRenderingOfTemplate)
+            {
+                stopWatch.Stop();
+                var endTime = DateTime.Now;
+                await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+            }
+        }
+    }
+
+    [Route("GclComponent.gcl")]
+    [Route("component.gcl")]
+    [Route("jclcomponent.jcl")]
+    [HttpPost, HttpGet]
+    public async Task<IActionResult> Component(string type, int? componentMode = null, string callMethod = null)
+    {
+        var componentId = 0;
+        try
+        {
+            if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, $"__{type}"), out componentId) || componentId <= 0)
+            {
+                if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, "componentId"), out componentId) || componentId <= 0)
+                {
+                    if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, "contentId"), out componentId) || componentId <= 0)
+                    {
+                        return Content("<!-- No component ID found -->", "text/html");
+                    }
+                }
+            }
+
+            var result = await templatesService.GenerateDynamicContentHtmlAsync(componentId, componentMode, callMethod);
+            var resultObject = result as (object Data, ViewDataDictionary ViewData)?;
+
+            return result switch
+            {
+                null => Content("", "text/html"),
+                string resultString => Content(resultString, "text/html"),
+                _ => Content(JsonConvert.SerializeObject(!resultObject.HasValue ? result : resultObject.Value.Data), "application/json")
+            };
+        }
+        catch (Exception exception)
+        {
+            logger.LogCritical(exception, $"{Constants.DynamicComponentRenderingError} '{componentId}'");
+
+            if (gclSettings.Environment == Environments.Live)
+            {
+                // When in production, don't show the exception to the user, but show a generic error message.
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            return new ContentResult
+            {
+                StatusCode = StatusCodes.Status500InternalServerError,
+                Content = exception.ToString(),
+                ContentType = "text/html"
+            };
+        }
+    }
+
+    [Route("partial.gcl")]
+    [Route("partial.jcl")]
+    public async Task<IActionResult> Partial()
+    {
+        var error = "";
+        var startTime = DateTime.Now;
+        var stopWatch = new Stopwatch();
+        var logRenderingOfTemplate = false;
+        var templateId = 0;
+        var templateVersion = 0;
+
+        try
+        {
+            var context = HttpContext;
+            _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out templateId);
+            var partialTemplateName = HttpContextHelpers.GetRequestValue(context, "partialName");
+
+            if (String.IsNullOrWhiteSpace(partialTemplateName) && templateId <= 0)
+            {
+                return NotFound();
+            }
+
+            // Get the template and replace the dynamic content.
+            var template = await templatesService.GetTemplateAsync(templateId);
+
+            // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
+            if (template.Id <= 0 && template.LoginRequired)
+            {
+                return Unauthorized();
+            }
+
+            templateId = template.Id;
+            templateVersion = template.Version;
+            logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
+            if (logRenderingOfTemplate)
+            {
+                stopWatch.Start();
+            }
+
+            var templateContent = template.Content;
+            templateContent = await templatesService.HandleIncludesAsync(templateContent, templateType: TemplateTypes.Html);
+            templateContent = await templatesService.ReplaceAllDynamicContentAsync(templateContent);
+            templateContent = await dataSelectorsService.ReplaceAllDataSelectorsAsync(templateContent);
+            templateContent = await wiserItemsService.ReplaceAllEntityBlocksAsync(templateContent);
+
+            // Parse the html to get the partial template part.
+            var htmlDocument = new HtmlDocument();
+            htmlDocument.LoadHtml(templateContent);
+            var partialTemplateContent = htmlDocument.DocumentNode.SelectSingleNode($"//div[@data-type='partial-template'][@data-name='{partialTemplateName}']")?.InnerHtml;
+
+            return String.IsNullOrWhiteSpace(partialTemplateContent)
+                ? Content("The specified partial template can't be found on the current page", "text/html")
+                : Content(partialTemplateContent, "text/html");
+        }
+        catch (Exception exception)
+        {
+            logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
+            error = exception.ToString();
+
+            if (gclSettings.Environment == Environments.Live)
+            {
+                // When in production, don't show the exception to the user, but show a generic error message.
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            return new ContentResult
+            {
+                StatusCode = StatusCodes.Status500InternalServerError,
+                Content = exception.ToString(),
+                ContentType = "text/html"
+            };
+        }
+        finally
+        {
+            if (logRenderingOfTemplate)
+            {
+                stopWatch.Stop();
+                var endTime = DateTime.Now;
+                await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+            }
+        }
+    }
+
+    [HttpGet, Route("template/{templateId:int}/")]
+    public async Task<TemplateDataModel> TemplateData(int templateId)
+    {
+        return await templatesService.GetTemplateDataAsync(templateId);
     }
 }

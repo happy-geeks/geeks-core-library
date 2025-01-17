@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models
+﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models;
+
+public class GenerateShippingLabelRequestModel
 {
-    public class GenerateShippingLabelRequestModel
-    {
-        public string EncryptedOrderId { get; set; }
-    }
+    public string EncryptedOrderId { get; set; }
 }

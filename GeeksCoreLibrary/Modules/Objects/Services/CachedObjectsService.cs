@@ -7,231 +7,216 @@ using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Extensions;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Models;
-using GeeksCoreLibrary.Modules.Templates.Services;
 using LazyCache;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
-namespace GeeksCoreLibrary.Modules.Objects.Services
+namespace GeeksCoreLibrary.Modules.Objects.Services;
+
+public class CachedObjectsService(
+    IObjectsService objectsService,
+    IAppCache cache,
+    IOptions<GclSettings> gclSettings,
+    IDatabaseConnection databaseConnection,
+    ICacheService cacheService,
+    IBranchesService branchesService,
+    IReplacementsMediator replacementsMediator,
+    IHttpContextAccessor httpContextAccessor = null)
+    : IObjectsService
 {
-    public class CachedObjectsService : IObjectsService
+    private readonly GclSettings gclSettings = gclSettings.Value;
+
+    private readonly string hostName = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false);
+    private readonly string hostNameIncludingTestWww = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true, includePort: false);
+    private readonly string urlPrefix = HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.Value.IndexOfLanguagePartInUrl);
+
+    /// <summary>
+    /// Get all objects from the database and load them into the caching object
+    /// </summary>
+    private async Task<Dictionary<string, SettingObject>> CacheObjectsAsync()
     {
-        private readonly IObjectsService objectsService;
-        private readonly IAppCache cache;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly ICacheService cacheService;
-        private readonly GclSettings gclSettings;
-        private readonly IBranchesService branchesService;
+        var cacheName = $"SettingObjects_{branchesService.GetDatabaseNameFromCookie()}";
+        return await cache.GetOrAddAsync(cacheName, GetAllObjects, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Objects));
 
-        private readonly string hostName;
-        private readonly string hostNameIncludingTestWww;
-        private readonly string urlPrefix;
-
-        public CachedObjectsService(IObjectsService objectsService,
-            IAppCache cache,
-            IOptions<GclSettings> gclSettings,
-            IDatabaseConnection databaseConnection,
-            ICacheService cacheService,
-            IBranchesService branchesService,
-            IHttpContextAccessor httpContextAccessor = null)
+        async Task<Dictionary<string, SettingObject>> GetAllObjects(ICacheEntry cacheEntry)
         {
-            this.objectsService = objectsService;
-            this.cache = cache;
-            this.databaseConnection = databaseConnection;
-            this.httpContextAccessor = httpContextAccessor;
-            this.cacheService = cacheService;
-            this.gclSettings = gclSettings.Value;
-            this.branchesService = branchesService;
+            cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultObjectsCacheDuration;
 
-            hostName = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includePort: false);
-            hostNameIncludingTestWww = HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, includingTestWww: true, includePort: false);
-            urlPrefix = HttpContextHelpers.GetUrlPrefix(httpContextAccessor?.HttpContext, gclSettings.Value.IndexOfLanguagePartInUrl);
+            var objects = new Dictionary<string, SettingObject>(StringComparer.OrdinalIgnoreCase);
+
+            await using var reader = await databaseConnection.GetReaderAsync(@"SELECT `key`, `value`, `description`, `typenr` FROM easy_objects WHERE active = 1");
+            while (await reader.ReadAsync())
+            {
+                objects.Add($"{reader.GetString(reader.GetOrdinal("key"))}{reader.GetInt32(reader.GetOrdinal("typenr"))}", reader.ToObjectModel());
+            }
+
+            return objects;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<string> FindSystemObjectByDomainNameAsync(string objectKey, string defaultResult = "", string overrideDomain = "", bool searchFromSpecificToGeneral = true, bool stripAllLowerLevelDomains = false, bool throwErrorIfEmpty = false)
+    {
+        // TODO: This is the exact same code as ObjectsService.FindSystemObjectByDomainNameAsync, how can we prevent that?
+        // TODO: The problem is that the function "GetSystemObjectValueAsync" is different in both implementations, so it needs to call the correct one.
+        string finalResult;
+        var domain = overrideDomain;
+        if (String.IsNullOrEmpty(domain))
+        {
+            domain = hostName;
         }
 
-        /// <summary>
-        /// Get all objects from the database and load them into the caching object
-        /// </summary>
-        private async Task<Dictionary<string, SettingObject>> CacheObjectsAsync()
+        if (searchFromSpecificToGeneral)
         {
-            var cacheName = $"SettingObjects_{branchesService.GetDatabaseNameFromCookie()}";
-            return await cache.GetOrAddAsync(cacheName, GetAllObjects, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Objects));
+            // By passing an empty list to the testDomains parameters, no test domains will be checked.
+            finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, [], true)}");
 
-            async Task<Dictionary<string, SettingObject>> GetAllObjects(ICacheEntry cacheEntry)
+            if (String.IsNullOrEmpty(finalResult))
             {
-                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultObjectsCacheDuration;
-
-                var objects = new Dictionary<string, SettingObject>(StringComparer.OrdinalIgnoreCase);
-
-                await using var reader = await databaseConnection.GetReaderAsync(@"SELECT `key`, `value`, `description`, `typenr` FROM easy_objects WHERE active = 1");
-                while (await reader.ReadAsync())
-                {
-                    objects.Add($"{reader.GetString(reader.GetOrdinal("key"))}{reader.GetInt32(reader.GetOrdinal("typenr"))}", reader.ToObjectModel());
-                }
-
-                return objects;
-            }
-        }
-
-        /// <inheritdoc />
-        public async Task<string> FindSystemObjectByDomainNameAsync(string objectKey, string defaultResult = "", string overrideDomain = "", bool searchFromSpecificToGeneral = true, bool stripAllLowerLevelDomains = false, bool throwErrorIfEmpty = false)
-        {
-            // TODO: This is the exact same code as ObjectsService.FindSystemObjectByDomainNameAsync, how can we prevent that?
-            // TODO: The problem is that the function "GetSystemObjectValueAsync" is different in both implementations, so it needs to call the correct one.
-            string finalResult;
-            var domain = overrideDomain;
-            if (String.IsNullOrEmpty(domain))
-            {
-                domain = hostName;
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostNameIncludingTestWww}");
             }
 
-            if (searchFromSpecificToGeneral)
+            if (String.IsNullOrEmpty(finalResult))
             {
-                // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true)}");
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{domain}");
 
-                if (String.IsNullOrEmpty(finalResult))
+                if (stripAllLowerLevelDomains && String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostNameIncludingTestWww}");
-                }
-
-                if (String.IsNullOrEmpty(finalResult))
-                {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{domain}");
-
-                    if (stripAllLowerLevelDomains && String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
+                    while (domain.Contains(".") && String.IsNullOrEmpty(finalResult))
                     {
-                        while (domain.Contains(".") && String.IsNullOrEmpty(finalResult))
-                        {
-                            domain = domain[(domain.IndexOf(".", StringComparison.Ordinal) + 1)..];
-                            finalResult = await GetSystemObjectValueAsync($"{objectKey}_{domain}");
-                        }
-                    }
-                    else if (!String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
-                    {
-                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostName}");
+                        domain = domain[(domain.IndexOf(".", StringComparison.Ordinal) + 1)..];
+                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{domain}");
                     }
                 }
-
-                if (String.IsNullOrEmpty(finalResult))
+                else if (!String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostName.Split('.')[0]}");
-                }
-                if (String.IsNullOrEmpty(finalResult))
-                {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{urlPrefix}");
-                }
-                if (String.IsNullOrEmpty(finalResult))
-                {
-                    finalResult = await GetSystemObjectValueAsync(objectKey);
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostName}");
                 }
             }
-            else
+
+            if (String.IsNullOrEmpty(finalResult))
+            {
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostName.Split('.')[0]}");
+            }
+
+            if (String.IsNullOrEmpty(finalResult))
+            {
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{urlPrefix}");
+            }
+
+            if (String.IsNullOrEmpty(finalResult))
             {
                 finalResult = await GetSystemObjectValueAsync(objectKey);
-                if (String.IsNullOrEmpty(finalResult))
-                {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{urlPrefix}");
-                }
-                if (String.IsNullOrEmpty(finalResult))
-                {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostName.Split('.')[0]}");
-                }
-                if (String.IsNullOrEmpty(finalResult))
-                {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{domain}");
+            }
+        }
+        else
+        {
+            finalResult = await GetSystemObjectValueAsync(objectKey);
+            if (String.IsNullOrEmpty(finalResult))
+            {
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_url_{urlPrefix}");
+            }
 
-                    if (stripAllLowerLevelDomains && String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
+            if (String.IsNullOrEmpty(finalResult))
+            {
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostName.Split('.')[0]}");
+            }
+
+            if (String.IsNullOrEmpty(finalResult))
+            {
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{domain}");
+
+                if (stripAllLowerLevelDomains && String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
+                {
+                    while (domain.Contains(".") && String.IsNullOrEmpty(finalResult))
                     {
-                        while (domain.Contains(".") && String.IsNullOrEmpty(finalResult))
-                        {
-                            domain = domain[(domain.IndexOf(".", StringComparison.Ordinal) + 1)..];
-                            finalResult = await GetSystemObjectValueAsync($"{objectKey}_{domain}");
-                        }
-                    }
-                    else if (!String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
-                    {
-                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostName}");
+                        domain = domain[(domain.IndexOf(".", StringComparison.Ordinal) + 1)..];
+                        finalResult = await GetSystemObjectValueAsync($"{objectKey}_{domain}");
                     }
                 }
-
-                if (String.IsNullOrEmpty(finalResult))
+                else if (!String.IsNullOrEmpty(overrideDomain) && String.IsNullOrEmpty(finalResult))
                 {
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostNameIncludingTestWww}");
-                }
-
-                if (String.IsNullOrEmpty(finalResult))
-                {
-                    // By passing an empty list to the testDomains parameters, no test domains will be checked.
-                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, new List<string>(), true)}");
+                    finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostName}");
                 }
             }
 
-            if (finalResult != null && finalResult.Contains("{"))
+            if (String.IsNullOrEmpty(finalResult))
             {
-                finalResult = LegacyTemplatesService.DoHttpContextReplacements(finalResult, httpContextAccessor?.HttpContext);
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{hostNameIncludingTestWww}");
             }
 
-            if (!String.IsNullOrEmpty(finalResult))
+            if (String.IsNullOrEmpty(finalResult))
             {
-                return finalResult;
+                // By passing an empty list to the testDomains parameters, no test domains will be checked.
+                finalResult = await GetSystemObjectValueAsync($"{objectKey}_{HttpContextHelpers.GetHostName(httpContextAccessor?.HttpContext, [], true)}");
             }
+        }
 
-            if (throwErrorIfEmpty)
-            {
-                throw new Exception($"System object {objectKey} not found");
-            }
+        if (finalResult != null && finalResult.Contains("{"))
+        {
+            finalResult = replacementsMediator.DoHttpRequestReplacements(finalResult);
+        }
 
-            finalResult = defaultResult;
-
+        if (!String.IsNullOrEmpty(finalResult))
+        {
             return finalResult;
         }
 
-        /// <inheritdoc />
-        public async Task<string> GetObjectValueAsync(string key, int typeNumber = -100)
+        if (throwErrorIfEmpty)
         {
-            var cachedObjects = await CacheObjectsAsync();
+            throw new Exception($"System object {objectKey} not found");
+        }
 
-            if (typeNumber == -100)
+        finalResult = defaultResult;
+
+        return finalResult;
+    }
+
+    /// <inheritdoc />
+    public async Task<string> GetObjectValueAsync(string key, int typeNumber = -100)
+    {
+        var cachedObjects = await CacheObjectsAsync();
+
+        if (typeNumber == -100)
+        {
+            foreach (var currentKey in cachedObjects.Keys)
             {
-                foreach (var currentKey in cachedObjects.Keys)
+                if (!currentKey.StartsWith(key))
                 {
-                    if (!currentKey.StartsWith(key))
-                    {
-                        continue;
-                    }
-
-                    return cachedObjects[currentKey].Value;
+                    continue;
                 }
+
+                return cachedObjects[currentKey].Value;
             }
-            else if (cachedObjects.TryGetValue(key + typeNumber, out var item))
-            {
-                return item.Value;
-            }
-
-            return "";
         }
-
-        /// <inheritdoc />
-        public Task<string> GetSystemObjectValueAsync(string key)
+        else if (cachedObjects.TryGetValue(key + typeNumber, out var item))
         {
-            return GetObjectValueAsync(key, -1);
+            return item.Value;
         }
 
-        /// <inheritdoc />
-        public async Task SetObjectValueAsync(string key, string value, int typeNumber, bool saveHistory = true)
-        {
-            await objectsService.SetObjectValueAsync(key, value, typeNumber, saveHistory);
-        }
+        return "";
+    }
 
-        /// <inheritdoc />
-        public async Task SetSystemObjectValueAsync(string key, string value, bool saveHistory = true)
-        {
-            await SetObjectValueAsync(key, value, -1, saveHistory);
-        }
+    /// <inheritdoc />
+    public Task<string> GetSystemObjectValueAsync(string key)
+    {
+        return GetObjectValueAsync(key, -1);
+    }
+
+    /// <inheritdoc />
+    public async Task SetObjectValueAsync(string key, string value, int typeNumber, bool saveHistory = true)
+    {
+        await objectsService.SetObjectValueAsync(key, value, typeNumber, saveHistory);
+    }
+
+    /// <inheritdoc />
+    public async Task SetSystemObjectValueAsync(string key, string value, bool saveHistory = true)
+    {
+        await SetObjectValueAsync(key, value, -1, saveHistory);
     }
 }

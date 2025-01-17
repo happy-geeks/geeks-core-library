@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.Payments.Enums
+﻿namespace GeeksCoreLibrary.Modules.Payments.Enums;
+
+public enum PaymentRequestActions
 {
-    public enum PaymentRequestActions
-    {
-        Redirect
-    }
+    Redirect
 }

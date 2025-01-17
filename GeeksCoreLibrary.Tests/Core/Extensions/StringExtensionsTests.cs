@@ -15,16 +15,10 @@ public class StringExtensionsTests
     private const string TestEncryptionSalt = "Test456";
     private const string TestValue = "This is a test value";
 
-    private GclSettings gclSettings;
-
     [SetUp]
     public void Setup()
     {
         // Create mocks.
-        gclSettings = new GclSettings
-        {
-            DefaultEncryptionSalt = TestEncryptionSalt
-        };
     }
 
     [Test]
@@ -300,62 +294,62 @@ public class StringExtensionsTests
         return new object[][]
         {
             // Simple strings with one variable.
-            new object[] {
+            [
                 "simple=test",
                 false,
                 false,
                 new Dictionary<string, string>
                 {
-                    { "simple", "test" }
+                    {"simple", "test"}
                 }
-            },
-            new object[] {
+            ],
+            [
                 "simple=test",
                 true,
                 false,
                 new Dictionary<string, string>
                 {
-                    { "0000_simple", "test" }
+                    {"0000_simple", "test"}
                 }
-            },
-            new object[] {
+            ],
+            [
                 "simple=test&simple=test2",
                 false,
                 false,
                 new Dictionary<string, string>
                 {
-                    { "simple", "test2" }
+                    {"simple", "test2"}
                 }
-            },
-            new object[] {
+            ],
+            [
                 "simple=test&simple=test2",
                 false,
                 true,
                 new Dictionary<string, string>
                 {
-                    { "simple", "test" }
+                    {"simple", "test"}
                 }
-            },
-            new object[] {
+            ],
+            [
                 "simple=test&simple2=test2",
                 false,
                 true,
                 new Dictionary<string, string>
                 {
-                    { "simple", "test" },
-                    { "simple2", "test2" }
+                    {"simple", "test"},
+                    {"simple2", "test2"}
                 }
-            },
-            new object[] {
+            ],
+            [
                 "simple=test&simple2=test2",
                 true,
                 true,
                 new Dictionary<string, string>
                 {
-                    { "0000_simple", "test" },
-                    { "0001_simple2", "test2" }
+                    {"0000_simple", "test"},
+                    {"0001_simple2", "test2"}
                 }
-            }
+            ]
         };
     }
 }

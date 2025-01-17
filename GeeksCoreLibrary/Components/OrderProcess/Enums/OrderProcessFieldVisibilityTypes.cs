@@ -1,9 +1,8 @@
-﻿namespace GeeksCoreLibrary.Components.OrderProcess.Enums
+﻿namespace GeeksCoreLibrary.Components.OrderProcess.Enums;
+
+public enum OrderProcessFieldVisibilityTypes
 {
-    public enum OrderProcessFieldVisibilityTypes
-    {
-        WhenNotLoggedIn,
-        WhenLoggedIn,
-        Always
-    }
+    WhenNotLoggedIn,
+    WhenLoggedIn,
+    Always
 }

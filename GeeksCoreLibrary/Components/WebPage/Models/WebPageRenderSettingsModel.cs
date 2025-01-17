@@ -1,10 +1,9 @@
 ﻿using System.ComponentModel;
 
-namespace GeeksCoreLibrary.Components.WebPage.Models
+namespace GeeksCoreLibrary.Components.WebPage.Models;
+
+internal class WebPageRenderSettingsModel
 {
-    internal class WebPageRenderSettingsModel
-    {
-        [DefaultValue(5)]
-        internal int SearchNumberOfLevels { get; }
-    }
+    [DefaultValue(5)]
+    internal int SearchNumberOfLevels { get; }
 }

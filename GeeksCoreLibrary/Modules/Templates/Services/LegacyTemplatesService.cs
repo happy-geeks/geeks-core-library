@@ -24,7 +24,6 @@ using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -35,367 +34,376 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using Template = GeeksCoreLibrary.Modules.Templates.Models.Template;
 
-namespace GeeksCoreLibrary.Modules.Templates.Services
+#pragma warning disable CS0618 // Type or member is obsolete
+namespace GeeksCoreLibrary.Modules.Templates.Services;
+
+/// <summary>
+/// This class provides template caching, template replacements and rendering
+/// for all types of templates, like CSS, JS, Query's and HTML templates.
+/// </summary>
+public class LegacyTemplatesService : ITemplatesService
 {
+    private readonly GclSettings gclSettings;
+    private readonly ILogger<LegacyTemplatesService> logger;
+    private readonly IDatabaseConnection databaseConnection;
+    private readonly IStringReplacementsService stringReplacementsService;
+    private readonly IHttpContextAccessor httpContextAccessor;
+    private readonly IViewComponentHelper viewComponentHelper;
+    private readonly ITempDataProvider tempDataProvider;
+    private readonly IActionContextAccessor actionContextAccessor;
+    private readonly IWebHostEnvironment webHostEnvironment;
+    private readonly IObjectsService objectsService;
+    private readonly ILanguagesService languagesService;
+    private readonly IFiltersService filtersService;
+    private readonly IAccountsService accountsService;
+    private readonly IHttpClientService httpClientService;
+
     /// <summary>
-    /// This class provides template caching, template replacements and rendering
-    /// for all types of templates, like CSS, JS, Query's and HTML templates.
+    /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
     /// </summary>
-    public class LegacyTemplatesService : ITemplatesService
+    public LegacyTemplatesService(ILogger<LegacyTemplatesService> logger,
+        IOptions<GclSettings> gclSettings,
+        IDatabaseConnection databaseConnection,
+        IStringReplacementsService stringReplacementsService,
+        IFiltersService filtersService,
+        IObjectsService objectsService,
+        ILanguagesService languagesService,
+        IAccountsService accountsService,
+        IHttpClientService httpClientService,
+        IHttpContextAccessor httpContextAccessor = null,
+        IActionContextAccessor actionContextAccessor = null,
+        IWebHostEnvironment webHostEnvironment = null,
+        IViewComponentHelper viewComponentHelper = null,
+        ITempDataProvider tempDataProvider = null)
     {
-        private readonly GclSettings gclSettings;
-        private readonly ILogger<LegacyTemplatesService> logger;
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IStringReplacementsService stringReplacementsService;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IViewComponentHelper viewComponentHelper;
-        private readonly ITempDataProvider tempDataProvider;
-        private readonly IActionContextAccessor actionContextAccessor;
-        private readonly IWebHostEnvironment webHostEnvironment;
-        private readonly IObjectsService objectsService;
-        private readonly ILanguagesService languagesService;
-        private readonly IFiltersService filtersService;
-        private readonly IAccountsService accountsService;
-        private readonly IHttpClientService httpClientService;
+        this.gclSettings = gclSettings.Value;
+        this.logger = logger;
+        this.databaseConnection = databaseConnection;
+        this.stringReplacementsService = stringReplacementsService;
+        this.httpContextAccessor = httpContextAccessor;
+        this.viewComponentHelper = viewComponentHelper;
+        this.tempDataProvider = tempDataProvider;
+        this.actionContextAccessor = actionContextAccessor;
+        this.webHostEnvironment = webHostEnvironment;
+        this.filtersService = filtersService;
+        this.objectsService = objectsService;
+        this.languagesService = languagesService;
+        this.accountsService = accountsService;
+        this.httpClientService = httpClientService;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of <see cref="LegacyTemplatesService"/>.
-        /// </summary>
-        public LegacyTemplatesService(ILogger<LegacyTemplatesService> logger,
-            IOptions<GclSettings> gclSettings,
-            IDatabaseConnection databaseConnection,
-            IStringReplacementsService stringReplacementsService,
-            IFiltersService filtersService,
-            IObjectsService objectsService,
-            ILanguagesService languagesService,
-            IAccountsService accountsService,
-            IHttpClientService httpClientService,
-            IHttpContextAccessor httpContextAccessor = null,
-            IActionContextAccessor actionContextAccessor = null,
-            IWebHostEnvironment webHostEnvironment = null,
-            IViewComponentHelper viewComponentHelper = null,
-            ITempDataProvider tempDataProvider = null)
+    /// <inheritdoc />
+    public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true, bool skipPermissions = false)
+    {
+        if (id <= 0 && String.IsNullOrEmpty(name))
         {
-            this.gclSettings = gclSettings.Value;
-            this.logger = logger;
-            this.databaseConnection = databaseConnection;
-            this.stringReplacementsService = stringReplacementsService;
-            this.httpContextAccessor = httpContextAccessor;
-            this.viewComponentHelper = viewComponentHelper;
-            this.tempDataProvider = tempDataProvider;
-            this.actionContextAccessor = actionContextAccessor;
-            this.webHostEnvironment = webHostEnvironment;
-            this.filtersService = filtersService;
-            this.objectsService = objectsService;
-            this.languagesService = languagesService;
-            this.accountsService = accountsService;
-            this.httpClientService = httpClientService;
+            throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
         }
 
-        /// <inheritdoc />
-        public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true, bool skipPermissions = false)
+        var joinPart = gclSettings.Environment switch
         {
-            if (id <= 0 && String.IsNullOrEmpty(name))
-            {
-                throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
-            }
+            Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+            Environments.Acceptance => " AND t.isacceptance=1 ",
+            Environments.Test => " AND t.istest=1 ",
+            Environments.Live => " AND t.islive=1 ",
+            _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
+        };
 
-            var joinPart = gclSettings.Environment switch
-            {
-                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
-                Environments.Acceptance => " AND t.isacceptance=1 ",
-                Environments.Test => " AND t.istest=1 ",
-                Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
-            };
+        var whereClause = new List<string>();
 
-            var whereClause = new List<string>();
+        var useTypeFilter = false;
 
-            var useTypeFilter = false;
-
-            if (id > 0)
-            {
-                databaseConnection.AddParameter("id", id);
-                whereClause.Add("i.id = ?id");
-            }
-            else
-            {
-                databaseConnection.AddParameter("name", name);
-                whereClause.Add("i.name = ?name");
-                useTypeFilter = type.HasValue;
-            }
-
-            if (parentId > 0)
-            {
-                databaseConnection.AddParameter("parentId", parentId);
-                whereClause.Add(" AND ip.id = ?parentId");
-            }
-            else if (!String.IsNullOrWhiteSpace(parentName))
-            {
-                databaseConnection.AddParameter("parentName", parentName);
-                whereClause.Add(" AND ip.name = ?parentName");
-            }
-
-            if (useTypeFilter && type.Value != TemplateTypes.Unknown)
-            {
-                switch (type.Value)
-                {
-                    case TemplateTypes.Query:
-                        // Query templates don't have a type.
-                        whereClause.Add("(t.templatetype IS NULL OR t.templatetype = '')");
-                        whereClause.Add("COALESCE(ippppp.`name`, ipppp.`name`, ippp.`name`, ipp.`name`, ip.`name`) = 'QUERY'");
-                        break;
-                    case TemplateTypes.Routine:
-                        databaseConnection.AddParameter("templateType1", "FUNCTION");
-                        databaseConnection.AddParameter("templateType2", "PROCEDURE");
-                        whereClause.Add("t.templatetype IN (?templateType1, ?templateType2)");
-                        break;
-                    default:
-                        databaseConnection.AddParameter("templateType", type.Value.ToString("G").ToLowerInvariant());
-                        whereClause.Add("t.templatetype = ?templateType");
-                        break;
-                }
-            }
-
-            var query = $@"SELECT
-                            COALESCE(ippppp.name, ipppp.name, ippp.name, ipp.name, ip.name) AS root_name, 
-                            ip.`name` AS parent_name, 
-                            ip.id AS parent_id,
-                            i.`name` AS template_name,
-                            t.templatetype AS template_type,
-                            i.volgnr AS ordering,
-                            ip.volgnr AS parent_ordering,
-                            i.id AS template_id,
-                            t.csstemplates AS css_templates,
-                            t.jstemplates AS javascript_templates,
-                            t.loadalways AS load_always,
-                            t.lastchanged AS changed_on,
-                            t.externalfiles AS external_files,
-                            {(includeContent ? "t.html_obfuscated, t.html_minified AS template_data_minified, t.html AS template_data, t.template," : "")}
-                            t.urlregex AS url_regex,
-                            t.usecache AS use_cache,
-                            t.cacheminutes AS cache_minutes,
-                            1 AS cache_location,
-                            t.cacheregex AS cache_regex,
-                            t.useobfuscate AS use_obfuscate,
-                            t.defaulttemplate AS wiser_cdn_files,
-                            t.pagemode AS insert_mode,
-                            t.groupingCreateObjectInsteadOfArray AS grouping_create_object_instead_of_array,
-                            t.groupingKeyColumnName AS grouping_key_column_name,
-                            t.groupingValueColumnName AS grouping_value_column_name,
-                            t.groupingkey AS grouping_key,
-                            t.groupingprefix AS grouping_prefix,
-                            t.issecure AS login_required,
-                            t.version
-                        FROM easy_items i 
-                        JOIN easy_templates t ON t.itemid = i.id
-                        {joinPart}
-                        LEFT JOIN easy_items ip ON ip.id = i.parent_id
-                        LEFT JOIN easy_items ipp ON ipp.id = ip.parent_id
-                        LEFT JOIN easy_items ippp ON ippp.id = ipp.parent_id
-                        LEFT JOIN easy_items ipppp ON ipppp.id = ippp.parent_id
-                        LEFT JOIN easy_items ippppp ON ippppp.id = ipppp.parent_id
-                        WHERE i.moduleid = 143 
-                        AND i.published = 1
-                        AND i.deleted <= 0
-                        AND t.deleted <= 0
-                        AND {String.Join(" AND ", whereClause)}
-                        ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
-
-            Template result;
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
-            {
-                result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type, legacy: true) : new Template();
-            }
-
-            // Check login requirement.
-            if (!result.Type.InList(TemplateTypes.Html, TemplateTypes.Query) || !result.LoginRequired)
-            {
-                // No login required; return template.
-                return result;
-            }
-
-            var emptyTemplate = new Template
-            {
-                Type = result.Type,
-                LoginRequired = true,
-                LoginRedirectUrl = await objectsService.FindSystemObjectByDomainNameAsync("defaultloginurl", "/")
-            };
-
-            if (httpContextAccessor?.HttpContext == null)
-            {
-                // No context available; return empty template without doing a login check.
-                return emptyTemplate;
-            }
-
-            // Check current login.
-            var userData = await accountsService.GetUserDataFromCookieAsync();
-            return userData is { UserId: > 0 } ? result : emptyTemplate;
+        if (id > 0)
+        {
+            databaseConnection.AddParameter("id", id);
+            whereClause.Add("i.id = ?id");
+        }
+        else
+        {
+            databaseConnection.AddParameter("name", name);
+            whereClause.Add("i.name = ?name");
+            useTypeFilter = type.HasValue;
         }
 
-        /// <inheritdoc />
-        public async Task<Template> GetTemplateContentAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "")
+        if (parentId > 0)
         {
-            if (id <= 0 && String.IsNullOrEmpty(name))
-            {
-                throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
-            }
-
-            var joinPart = gclSettings.Environment switch
-            {
-                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
-                Environments.Acceptance => " AND t.isacceptance=1 ",
-                Environments.Test => " AND t.istest=1 ",
-                Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
-            };
-
-            var whereClause = new List<string>();
-
-            var useTypeFilter = false;
-
-            if (id > 0)
-            {
-                databaseConnection.AddParameter("id", id);
-                whereClause.Add("i.id = ?id");
-            }
-            else
-            {
-                databaseConnection.AddParameter("name", name);
-                whereClause.Add("i.name = ?name");
-                useTypeFilter = type.HasValue;
-            }
-
-            if (parentId > 0)
-            {
-                databaseConnection.AddParameter("parentId", parentId);
-                whereClause.Add(" AND ip.id = ?parentId");
-            }
-            else if (!String.IsNullOrWhiteSpace(parentName))
-            {
-                databaseConnection.AddParameter("parentName", parentName);
-                whereClause.Add(" AND ip.name = ?parentName");
-            }
-
-            if (useTypeFilter && type.Value != TemplateTypes.Unknown)
-            {
-                switch (type.Value)
-                {
-                    case TemplateTypes.Query:
-                        // Query templates don't have a type.
-                        whereClause.Add("(t.templatetype IS NULL OR t.templatetype = '')");
-                        whereClause.Add("COALESCE(ippppp.`name`, ipppp.`name`, ippp.`name`, ipp.`name`, ip.`name`) = 'QUERY'");
-                        break;
-                    case TemplateTypes.Routine:
-                        databaseConnection.AddParameter("templateType1", "FUNCTION");
-                        databaseConnection.AddParameter("templateType2", "PROCEDURE");
-                        whereClause.Add("t.templatetype IN (?templateType1, ?templateType2)");
-                        break;
-                    default:
-                        databaseConnection.AddParameter("templateType", type.Value.ToString("G").ToLowerInvariant());
-                        whereClause.Add("t.templatetype = ?templateType");
-                        break;
-                }
-            }
-
-            var query = $@"SELECT
-                            i.`name` AS template_name,
-                            i.id AS template_id,
-                            t.html_minified AS template_data_minified, 
-                            t.html AS template_data, 
-                            t.template
-                        FROM easy_items i 
-                        JOIN easy_templates t ON t.itemid = i.id
-                        {joinPart}
-                        LEFT JOIN easy_items ip ON ip.id = i.parent_id
-                        WHERE i.moduleid = 143 
-                        AND i.published = 1
-                        AND i.deleted <= 0
-                        AND t.deleted <= 0
-                        AND {String.Join(" AND ", whereClause)}";
-
-            var dataTable = await databaseConnection.GetAsync(query);
-            if (dataTable.Rows.Count == 0)
-            {
-                return new Template();
-            }
-
-            var firstRow = dataTable.Rows[0];
-            var contentMinified = firstRow.Field<string>("template_data_minified");
-            var content = firstRow.Field<string>("template_data");
-            return new Template
-            {
-                Id = firstRow.Field<int>("template_id"),
-                Name = firstRow.Field<string>("template_name"),
-                Content = String.IsNullOrEmpty(contentMinified) ? content : contentMinified
-            };
+            databaseConnection.AddParameter("parentId", parentId);
+            whereClause.Add(" AND ip.id = ?parentId");
+        }
+        else if (!String.IsNullOrWhiteSpace(parentName))
+        {
+            databaseConnection.AddParameter("parentName", parentName);
+            whereClause.Add(" AND ip.name = ?parentName");
         }
 
-        /// <inheritdoc />
-        public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+        if (useTypeFilter && type.Value != TemplateTypes.Unknown)
         {
-            if (id <= 0 && String.IsNullOrEmpty(name))
+            switch (type.Value)
             {
-                throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
+                case TemplateTypes.Query:
+                    // Query templates don't have a type.
+                    whereClause.Add("(t.templatetype IS NULL OR t.templatetype = '')");
+                    whereClause.Add("COALESCE(ippppp.`name`, ipppp.`name`, ippp.`name`, ipp.`name`, ip.`name`) = 'QUERY'");
+                    break;
+                case TemplateTypes.Routine:
+                    databaseConnection.AddParameter("templateType1", "FUNCTION");
+                    databaseConnection.AddParameter("templateType2", "PROCEDURE");
+                    whereClause.Add("t.templatetype IN (?templateType1, ?templateType2)");
+                    break;
+                default:
+                    databaseConnection.AddParameter("templateType", type.Value.ToString("G").ToLowerInvariant());
+                    whereClause.Add("t.templatetype = ?templateType");
+                    break;
             }
+        }
 
-            var joinPart = gclSettings.Environment switch
-            {
-                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
-                Environments.Acceptance => " AND t.isacceptance=1 ",
-                Environments.Test => " AND t.istest=1 ",
-                Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
-            };
+        var query = $"""
+                     SELECT
+                                                 COALESCE(ippppp.name, ipppp.name, ippp.name, ipp.name, ip.name) AS root_name, 
+                                                 ip.`name` AS parent_name, 
+                                                 ip.id AS parent_id,
+                                                 i.`name` AS template_name,
+                                                 t.templatetype AS template_type,
+                                                 i.volgnr AS ordering,
+                                                 ip.volgnr AS parent_ordering,
+                                                 i.id AS template_id,
+                                                 t.csstemplates AS css_templates,
+                                                 t.jstemplates AS javascript_templates,
+                                                 t.loadalways AS load_always,
+                                                 t.lastchanged AS changed_on,
+                                                 t.externalfiles AS external_files,
+                                                 {(includeContent ? "t.html_obfuscated, t.html_minified AS template_data_minified, t.html AS template_data, t.template," : "")}
+                                                 t.urlregex AS url_regex,
+                                                 t.usecache AS use_cache,
+                                                 t.cacheminutes AS cache_minutes,
+                                                 1 AS cache_location,
+                                                 t.cacheregex AS cache_regex,
+                                                 t.useobfuscate AS use_obfuscate,
+                                                 t.defaulttemplate AS wiser_cdn_files,
+                                                 t.pagemode AS insert_mode,
+                                                 t.groupingCreateObjectInsteadOfArray AS grouping_create_object_instead_of_array,
+                                                 t.groupingKeyColumnName AS grouping_key_column_name,
+                                                 t.groupingValueColumnName AS grouping_value_column_name,
+                                                 t.groupingkey AS grouping_key,
+                                                 t.groupingprefix AS grouping_prefix,
+                                                 t.issecure AS login_required,
+                                                 t.version
+                                             FROM easy_items i 
+                                             JOIN easy_templates t ON t.itemid = i.id
+                                             {joinPart}
+                                             LEFT JOIN easy_items ip ON ip.id = i.parent_id
+                                             LEFT JOIN easy_items ipp ON ipp.id = ip.parent_id
+                                             LEFT JOIN easy_items ippp ON ippp.id = ipp.parent_id
+                                             LEFT JOIN easy_items ipppp ON ipppp.id = ippp.parent_id
+                                             LEFT JOIN easy_items ippppp ON ippppp.id = ipppp.parent_id
+                                             WHERE i.moduleid = 143 
+                                             AND i.published = 1
+                                             AND i.deleted <= 0
+                                             AND t.deleted <= 0
+                                             AND {String.Join(" AND ", whereClause)}
+                                             ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr
+                     """;
 
-            string whereClause;
-            if (id > 0)
+        Template result;
+        await using (var reader = await databaseConnection.GetReaderAsync(query))
+        {
+            result = await reader.ReadAsync() ? await reader.ToTemplateModelAsync(type, legacy: true) : new Template();
+        }
+
+        // Check login requirement.
+        if (!result.Type.InList(TemplateTypes.Html, TemplateTypes.Query) || !result.LoginRequired)
+        {
+            // No login required; return template.
+            return result;
+        }
+
+        var emptyTemplate = new Template
+        {
+            Type = result.Type,
+            LoginRequired = true,
+            LoginRedirectUrl = await objectsService.FindSystemObjectByDomainNameAsync("defaultloginurl", "/")
+        };
+
+        if (httpContextAccessor?.HttpContext == null)
+        {
+            // No context available; return empty template without doing a login check.
+            return emptyTemplate;
+        }
+
+        // Check current login.
+        var userData = await accountsService.GetUserDataFromCookieAsync();
+        return userData is {UserId: > 0} ? result : emptyTemplate;
+    }
+
+    /// <inheritdoc />
+    public async Task<Template> GetTemplateContentAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "")
+    {
+        if (id <= 0 && String.IsNullOrEmpty(name))
+        {
+            throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
+        }
+
+        var joinPart = gclSettings.Environment switch
+        {
+            Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+            Environments.Acceptance => " AND t.isacceptance=1 ",
+            Environments.Test => " AND t.istest=1 ",
+            Environments.Live => " AND t.islive=1 ",
+            _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
+        };
+
+        var whereClause = new List<string>();
+
+        var useTypeFilter = false;
+
+        if (id > 0)
+        {
+            databaseConnection.AddParameter("id", id);
+            whereClause.Add("i.id = ?id");
+        }
+        else
+        {
+            databaseConnection.AddParameter("name", name);
+            whereClause.Add("i.name = ?name");
+            useTypeFilter = type.HasValue;
+        }
+
+        if (parentId > 0)
+        {
+            databaseConnection.AddParameter("parentId", parentId);
+            whereClause.Add(" AND ip.id = ?parentId");
+        }
+        else if (!String.IsNullOrWhiteSpace(parentName))
+        {
+            databaseConnection.AddParameter("parentName", parentName);
+            whereClause.Add(" AND ip.name = ?parentName");
+        }
+
+        if (useTypeFilter && type.Value != TemplateTypes.Unknown)
+        {
+            switch (type.Value)
             {
-                databaseConnection.AddParameter("id", id);
-                whereClause = "i.id = ?id";
+                case TemplateTypes.Query:
+                    // Query templates don't have a type.
+                    whereClause.Add("(t.templatetype IS NULL OR t.templatetype = '')");
+                    whereClause.Add("COALESCE(ippppp.`name`, ipppp.`name`, ippp.`name`, ipp.`name`, ip.`name`) = 'QUERY'");
+                    break;
+                case TemplateTypes.Routine:
+                    databaseConnection.AddParameter("templateType1", "FUNCTION");
+                    databaseConnection.AddParameter("templateType2", "PROCEDURE");
+                    whereClause.Add("t.templatetype IN (?templateType1, ?templateType2)");
+                    break;
+                default:
+                    databaseConnection.AddParameter("templateType", type.Value.ToString("G").ToLowerInvariant());
+                    whereClause.Add("t.templatetype = ?templateType");
+                    break;
             }
-            else
-            {
-                databaseConnection.AddParameter("name", name);
-                whereClause = "i.name = ?name";
-            }
+        }
 
-            if (parentId > 0)
-            {
-                databaseConnection.AddParameter("parentId", parentId);
-                whereClause += " AND ip.id = ?parentId";
-            }
-            else if (!String.IsNullOrWhiteSpace(parentName))
-            {
-                databaseConnection.AddParameter("parentName", parentName);
-                whereClause = " AND ip.name = ?parentName";
-            }
+        var query = $"""
+                     SELECT
+                                                 i.`name` AS template_name,
+                                                 i.id AS template_id,
+                                                 t.html_minified AS template_data_minified, 
+                                                 t.html AS template_data, 
+                                                 t.template
+                                             FROM easy_items i 
+                                             JOIN easy_templates t ON t.itemid = i.id
+                                             {joinPart}
+                                             LEFT JOIN easy_items ip ON ip.id = i.parent_id
+                                             WHERE i.moduleid = 143 
+                                             AND i.published = 1
+                                             AND i.deleted <= 0
+                                             AND t.deleted <= 0
+                                             AND {String.Join(" AND ", whereClause)}
+                     """;
 
-            var query = $@"SELECT
-                            i.`name` AS template_name,
-                            i.id AS template_id,
-                            t.usecache AS use_cache,
-                            t.cacheminutes AS cache_minutes,
-                            t.cacheregex AS cache_regex,
-                            CASE t.templatetype
-                                WHEN 'html' THEN 1
-                                WHEN 'css' THEN 2
-                                WHEN 'scss' THEN 3
-                                WHEN 'js' THEN 4
-                                ELSE 0
-                            END AS template_type
-                        FROM easy_items i 
-                        JOIN easy_templates t ON i.id=t.itemid
-                        {joinPart}
-                        WHERE i.moduleid = 143 
-                        AND i.published = 1
-                        AND i.deleted <= 0
-                        AND t.deleted <= 0
-                        AND {whereClause}
-                        LIMIT 1";
+        var dataTable = await databaseConnection.GetAsync(query);
+        if (dataTable.Rows.Count == 0)
+        {
+            return new Template();
+        }
 
-            var dataTable = await databaseConnection.GetAsync(query);
-            var result = dataTable.Rows.Count == 0 ? new Template() : new Template
+        var firstRow = dataTable.Rows[0];
+        var contentMinified = firstRow.Field<string>("template_data_minified");
+        var content = firstRow.Field<string>("template_data");
+        return new Template
+        {
+            Id = firstRow.Field<int>("template_id"),
+            Name = firstRow.Field<string>("template_name"),
+            Content = String.IsNullOrEmpty(contentMinified) ? content : contentMinified
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+    {
+        if (id <= 0 && String.IsNullOrEmpty(name))
+        {
+            throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
+        }
+
+        var joinPart = gclSettings.Environment switch
+        {
+            Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+            Environments.Acceptance => " AND t.isacceptance=1 ",
+            Environments.Test => " AND t.istest=1 ",
+            Environments.Live => " AND t.islive=1 ",
+            _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
+        };
+
+        string whereClause;
+        if (id > 0)
+        {
+            databaseConnection.AddParameter("id", id);
+            whereClause = "i.id = ?id";
+        }
+        else
+        {
+            databaseConnection.AddParameter("name", name);
+            whereClause = "i.name = ?name";
+        }
+
+        if (parentId > 0)
+        {
+            databaseConnection.AddParameter("parentId", parentId);
+            whereClause += " AND ip.id = ?parentId";
+        }
+        else if (!String.IsNullOrWhiteSpace(parentName))
+        {
+            databaseConnection.AddParameter("parentName", parentName);
+            whereClause = " AND ip.name = ?parentName";
+        }
+
+        var query = $"""
+                     SELECT
+                                                 i.`name` AS template_name,
+                                                 i.id AS template_id,
+                                                 t.usecache AS use_cache,
+                                                 t.cacheminutes AS cache_minutes,
+                                                 t.cacheregex AS cache_regex,
+                                                 CASE t.templatetype
+                                                     WHEN 'html' THEN 1
+                                                     WHEN 'css' THEN 2
+                                                     WHEN 'scss' THEN 3
+                                                     WHEN 'js' THEN 4
+                                                     ELSE 0
+                                                 END AS template_type
+                                             FROM easy_items i 
+                                             JOIN easy_templates t ON i.id=t.itemid
+                                             {joinPart}
+                                             WHERE i.moduleid = 143 
+                                             AND i.published = 1
+                                             AND i.deleted <= 0
+                                             AND t.deleted <= 0
+                                             AND {whereClause}
+                                             LIMIT 1
+                     """;
+
+        var dataTable = await databaseConnection.GetAsync(query);
+        var result = dataTable.Rows.Count == 0
+            ? new Template()
+            : new Template
             {
                 Id = dataTable.Rows[0].Field<int>("template_id"),
                 Name = dataTable.Rows[0].Field<string>("template_name"),
@@ -403,1255 +411,1227 @@ namespace GeeksCoreLibrary.Modules.Templates.Services
                 CachingMode = dataTable.Rows[0].Field<TemplateCachingModes>("use_cache"),
                 CachingLocation = TemplateCachingLocations.OnDisk,
                 CachingRegex = dataTable.Rows[0].Field<string>("cache_regex"),
-                Type = (TemplateTypes)Convert.ToInt32(dataTable.Rows[0]["template_type"])
+                Type = (TemplateTypes) Convert.ToInt32(dataTable.Rows[0]["template_type"])
             };
 
-            return result;
+        return result;
+    }
+
+    /// <inheritdoc />
+    public Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc />
+    public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
+    {
+        var joinPart = gclSettings.Environment switch
+        {
+            Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+            Environments.Test => " AND t.istest=1 ",
+            Environments.Acceptance => " AND t.isacceptance=1 ",
+            Environments.Live => " AND t.islive=1 ",
+            _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
+        };
+
+        var query = $"""
+                     SELECT MAX(t.lastchanged) AS lastChanged
+                                             FROM easy_items i 
+                                             JOIN easy_templates t ON i.id = t.itemid
+                                             {joinPart}
+                                             WHERE i.moduleid = 143 
+                                             AND i.published = 1
+                                             AND i.deleted <= 0
+                                             AND t.deleted <= 0
+                                             AND t.loadalways > 0
+                                             AND t.templatetype = ?templateType
+                     """;
+
+        databaseConnection.AddParameter("templateType", templateType.ToString());
+        await using var reader = await databaseConnection.GetReaderAsync(query);
+        if (!await reader.ReadAsync())
+        {
+            return null;
         }
 
-        /// <inheritdoc />
-        public Task<int> GetTemplateIdFromNameAsync(string name, TemplateTypes type)
+        var ordinal = reader.GetOrdinal("lastChanged");
+        DateTime? result = await reader.IsDBNullAsync(ordinal) ? null : reader.GetDateTime(ordinal);
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
+    {
+        var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss
+            ? $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')"
+            : $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'";
+
+        var pageModeQueryPart = $"t.pagemode = {(int) byInsertMode}";
+
+        var joinPart = gclSettings.Environment switch
         {
-            throw new NotImplementedException();
-        }
+            Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+            Environments.Test => " AND t.istest=1 ",
+            Environments.Acceptance => " AND t.isacceptance=1 ",
+            Environments.Live => " AND t.islive=1 ",
+            _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
+        };
 
-        /// <inheritdoc />
-        public async Task<DateTime?> GetGeneralTemplateLastChangedDateAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
+        var query = $"""
+                     SELECT
+                                                 IFNULL(ippppp.name, IFNULL(ipppp.name, IFNULL(ippp.name, IFNULL(ipp.name, ip.name)))) as root_name, 
+                                                 ip.`name` AS parent_name, 
+                                                 ip.id AS parent_id,
+                                                 i.`name` AS template_name,
+                                                 t.templatetype AS template_type,
+                                                 i.volgnr AS ordering,
+                                                 ip.volgnr AS parent_ordering,
+                                                 i.id AS template_id,
+                                                 t.csstemplates AS css_templates,
+                                                 t.jstemplates AS javascript_templates,
+                                                 t.loadalways AS load_always,
+                                                 t.lastchanged AS changed_on,
+                                                 t.externalfiles AS external_files,
+                                                 t.html_obfuscated,
+                                                 t.html_minified AS template_data_minified,
+                                                 t.html AS template_data,
+                                                 t.template,
+                                                 t.urlregex AS url_regex,
+                                                 t.usecache AS use_cache,
+                                                 t.cacheminutes AS cache_minutes,
+                                                 1 AS cache_location,
+                                                 t.cacheregex AS cache_regex,
+                                                 t.useobfuscate AS use_obfuscate,
+                                                 t.defaulttemplate AS wiser_cdn_files,
+                                                 t.pagemode AS insert_mode,
+                                                 t.groupingCreateObjectInsteadOfArray AS grouping_create_object_instead_of_array,
+                                                 t.groupingKeyColumnName AS grouping_key_column_name,
+                                                 t.groupingValueColumnName AS grouping_value_column_name,
+                                                 t.groupingkey AS grouping_key,
+                                                 t.groupingprefix AS grouping_prefix,
+                                                 t.version
+                                             FROM easy_items i 
+                                             JOIN easy_templates t ON i.id = t.itemid
+                                             {joinPart}
+                                             LEFT JOIN easy_items ip ON i.parent_id = ip.id
+                                             LEFT JOIN easy_items ipp ON ip.parent_id = ipp.id
+                                             LEFT JOIN easy_items ippp ON ipp.parent_id = ippp.id
+                                             LEFT JOIN easy_items ipppp ON ippp.parent_id = ipppp.id
+                                             LEFT JOIN easy_items ippppp ON ipppp.parent_id = ippppp.id
+                                             WHERE i.moduleid = 143 
+                                             AND i.published = 1
+                                             AND i.deleted <= 0
+                                             AND t.deleted <= 0
+                                             AND t.loadalways > 0
+                                             AND {templateTypeQueryPart}
+                                             AND {pageModeQueryPart}
+                                             ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr
+                     """;
+
+        var result = new TemplateResponse();
+        var resultBuilder = new StringBuilder();
+        var idsLoaded = new List<int>();
+        var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
+
+        await using (var reader = await databaseConnection.GetReaderAsync(query))
         {
-            var joinPart = gclSettings.Environment switch
-            {
-                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
-                Environments.Test => " AND t.istest=1 ",
-                Environments.Acceptance => " AND t.isacceptance=1 ",
-                Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
-            };
-
-            var query = $@"SELECT MAX(t.lastchanged) AS lastChanged
-                        FROM easy_items i 
-                        JOIN easy_templates t ON i.id = t.itemid
-                        {joinPart}
-                        WHERE i.moduleid = 143 
-                        AND i.published = 1
-                        AND i.deleted <= 0
-                        AND t.deleted <= 0
-                        AND t.loadalways > 0
-                        AND t.templatetype = ?templateType";
-
-            databaseConnection.AddParameter("templateType", templateType.ToString());
-            await using var reader = await databaseConnection.GetReaderAsync(query);
-            if (!await reader.ReadAsync())
-            {
-                return null;
-            }
-
-            var ordinal = reader.GetOrdinal("lastChanged");
-            DateTime? result = await reader.IsDBNullAsync(ordinal) ? null : reader.GetDateTime(ordinal);
-            return result;
-        }
-
-        /// <inheritdoc />
-        public async Task<TemplateResponse> GetGeneralTemplateValueAsync(TemplateTypes templateType, ResourceInsertModes byInsertMode = ResourceInsertModes.Standard)
-        {
-            var templateTypeQueryPart = templateType is TemplateTypes.Css or TemplateTypes.Scss
-                ? $"t.templatetype IN ('{TemplateTypes.Css.ToString().ToMySqlSafeValue(false)}', '{TemplateTypes.Scss.ToString().ToMySqlSafeValue(false)}')"
-                : $"t.templatetype = '{templateType.ToString().ToMySqlSafeValue(false)}'";
-
-            var pageModeQueryPart = $"t.pagemode = {(int)byInsertMode}";
-
-            var joinPart = gclSettings.Environment switch
-            {
-                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
-                Environments.Test => " AND t.istest=1 ",
-                Environments.Acceptance => " AND t.isacceptance=1 ",
-                Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
-            };
-
-            var query = $@"SELECT
-                            IFNULL(ippppp.name, IFNULL(ipppp.name, IFNULL(ippp.name, IFNULL(ipp.name, ip.name)))) as root_name, 
-                            ip.`name` AS parent_name, 
-                            ip.id AS parent_id,
-                            i.`name` AS template_name,
-                            t.templatetype AS template_type,
-                            i.volgnr AS ordering,
-                            ip.volgnr AS parent_ordering,
-                            i.id AS template_id,
-                            t.csstemplates AS css_templates,
-                            t.jstemplates AS javascript_templates,
-                            t.loadalways AS load_always,
-                            t.lastchanged AS changed_on,
-                            t.externalfiles AS external_files,
-                            t.html_obfuscated,
-                            t.html_minified AS template_data_minified,
-                            t.html AS template_data,
-                            t.template,
-                            t.urlregex AS url_regex,
-                            t.usecache AS use_cache,
-                            t.cacheminutes AS cache_minutes,
-                            1 AS cache_location,
-                            t.cacheregex AS cache_regex,
-                            t.useobfuscate AS use_obfuscate,
-                            t.defaulttemplate AS wiser_cdn_files,
-                            t.pagemode AS insert_mode,
-                            t.groupingCreateObjectInsteadOfArray AS grouping_create_object_instead_of_array,
-                            t.groupingKeyColumnName AS grouping_key_column_name,
-                            t.groupingValueColumnName AS grouping_value_column_name,
-                            t.groupingkey AS grouping_key,
-                            t.groupingprefix AS grouping_prefix,
-                            t.version
-                        FROM easy_items i 
-                        JOIN easy_templates t ON i.id = t.itemid
-                        {joinPart}
-                        LEFT JOIN easy_items ip ON i.parent_id = ip.id
-                        LEFT JOIN easy_items ipp ON ip.parent_id = ipp.id
-                        LEFT JOIN easy_items ippp ON ipp.parent_id = ippp.id
-                        LEFT JOIN easy_items ipppp ON ippp.parent_id = ipppp.id
-                        LEFT JOIN easy_items ippppp ON ipppp.parent_id = ippppp.id
-                        WHERE i.moduleid = 143 
-                        AND i.published = 1
-                        AND i.deleted <= 0
-                        AND t.deleted <= 0
-                        AND t.loadalways > 0
-                        AND {templateTypeQueryPart}
-                        AND {pageModeQueryPart}
-                        ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
-
-            var result = new TemplateResponse();
-            var resultBuilder = new StringBuilder();
-            var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
-
-            await using (var reader = await databaseConnection.GetReaderAsync(query))
-            {
-                while (await reader.ReadAsync())
-                {
-                    var template = await reader.ToTemplateModelAsync(legacy: true);
-                    await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
-                }
-            }
-
-            result.Content = resultBuilder.ToString();
-
-            if (result.LastChangeDate == DateTime.MinValue)
-            {
-                result.LastChangeDate = DateTime.Now;
-            }
-
-            if (templateType is TemplateTypes.Css or TemplateTypes.Scss)
-            {
-                result.Content = CssHelpers.MoveImportStatementsToTop(result.Content);
-            }
-
-            return result;
-        }
-
-        /// <inheritdoc />
-        public async Task<List<Template>> GetTemplatesAsync(ICollection<int> templateIds, bool includeContent)
-        {
-            var results = new List<Template>();
-            databaseConnection.AddParameter("includeContent", includeContent);
-
-            var joinPart = gclSettings.Environment switch
-            {
-                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
-                Environments.Test => " AND t.istest=1 ",
-                Environments.Acceptance => " AND t.isacceptance=1 ",
-                Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
-            };
-
-            var query = $@"SELECT
-                            IFNULL(ippppp.name, IFNULL(ipppp.name, IFNULL(ippp.name, IFNULL(ipp.name, ip.name)))) as root_name, 
-                            ip.`name` AS parent_name, 
-                            ip.id AS parent_id,
-                            i.`name` AS template_name,
-                            t.templatetype AS template_type,
-                            i.volgnr AS ordering,
-                            ip.volgnr AS parent_ordering,
-                            i.id AS template_id,
-                            t.csstemplates AS css_templates,
-                            t.jstemplates AS javascript_templates,
-                            t.loadalways AS load_always,
-                            t.lastchanged AS changed_on,
-                            t.externalfiles AS external_files,
-                            IF(?includeContent, t.html_obfuscated, '') AS html_obfuscated,
-                            IF(?includeContent, t.html_minified, '') AS template_data_minified,
-                            IF(?includeContent, t.html, '') AS template_data,
-                            IF(?includeContent, t.template, '') AS template,
-                            t.urlregex AS url_regex,
-                            t.usecache AS use_cache,
-                            t.cacheminutes AS cache_minutes,
-                            1 AS cache_location,
-                            t.cacheregex AS cache_regex,
-                            t.useobfuscate AS use_obfuscate,
-                            t.defaulttemplate AS wiser_cdn_files,
-                            t.pagemode AS insert_mode,
-                            t.groupingCreateObjectInsteadOfArray AS grouping_create_object_instead_of_array,
-                            t.groupingKeyColumnName AS grouping_key_column_name,
-                            t.groupingValueColumnName AS grouping_value_column_name,
-                            t.groupingkey AS grouping_key,
-                            t.groupingprefix AS grouping_prefix,
-                            t.version
-                        FROM easy_items i 
-                        JOIN easy_templates t ON i.id = t.itemid
-                        {joinPart}
-                        LEFT JOIN easy_items ip ON i.parent_id = ip.id
-                        LEFT JOIN easy_items ipp ON ip.parent_id = ipp.id
-                        LEFT JOIN easy_items ippp ON ipp.parent_id = ippp.id
-                        LEFT JOIN easy_items ipppp ON ippp.parent_id = ipppp.id
-                        LEFT JOIN easy_items ippppp ON ipppp.parent_id = ippppp.id
-                        WHERE i.id IN ({String.Join(",", templateIds)})
-                        AND i.moduleid = 143 
-                        AND i.published = 1
-                        AND i.deleted <= 0
-                        AND t.deleted <= 0
-                        AND t.loadalways > 0
-                        ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr";
-
-            await using var reader = await databaseConnection.GetReaderAsync(query);
             while (await reader.ReadAsync())
             {
                 var template = await reader.ToTemplateModelAsync(legacy: true);
-                results.Add(template);
+                await AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
             }
-
-            return results;
         }
 
-        /// <inheritdoc />
-        public async Task<TemplateResponse> GetCombinedTemplateValueAsync(ICollection<int> templateIds, TemplateTypes templateType)
+        result.Content = resultBuilder.ToString();
+
+        if (result.LastChangeDate == DateTime.MinValue)
         {
-            return await GetCombinedTemplateValueAsync(this, templateIds, templateType);
+            result.LastChangeDate = DateTime.Now;
         }
 
-        /// <inheritdoc />
-        public async Task<TemplateResponse> GetCombinedTemplateValueAsync(ITemplatesService templatesService, ICollection<int> templateIds, TemplateTypes templateType)
+        if (templateType is TemplateTypes.Css or TemplateTypes.Scss)
         {
-            var result = new TemplateResponse();
-            var resultBuilder = new StringBuilder();
-            var idsLoaded = new List<int>();
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
-            var templates = await templatesService.GetTemplatesAsync(templateIds, true);
-
-            foreach (var template in templates.Where(t => t.Type == templateType))
-            {
-                await templatesService.AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
-            }
-
-            result.Content = resultBuilder.ToString();
-
-            if (result.LastChangeDate == DateTime.MinValue)
-            {
-                result.LastChangeDate = DateTime.Now;
-            }
-
-            if (templateType == TemplateTypes.Css)
-            {
-                result.Content = CssHelpers.MoveImportStatementsToTop(result.Content);
-            }
-
-            return result;
+            result.Content = CssHelpers.MoveImportStatementsToTop(result.Content);
         }
 
-        /// <inheritdoc />
-        public async Task AddTemplateToResponseAsync(ICollection<int> idsLoaded, Template template, string currentUrl, StringBuilder resultBuilder, TemplateResponse templateResponse)
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<Template>> GetTemplatesAsync(ICollection<int> templateIds, bool includeContent)
+    {
+        var results = new List<Template>();
+        databaseConnection.AddParameter("includeContent", includeContent);
+
+        var joinPart = gclSettings.Environment switch
         {
-            if (idsLoaded.Contains(template.Id))
-            {
-                // Make sure that we don't add the same template twice.
-                return;
-            }
+            Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+            Environments.Test => " AND t.istest=1 ",
+            Environments.Acceptance => " AND t.isacceptance=1 ",
+            Environments.Live => " AND t.islive=1 ",
+            _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
+        };
 
-            if (!template.Type.InList(TemplateTypes.Css, TemplateTypes.Scss, TemplateTypes.Js) && !String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
-            {
-                // Skip this template if it has an URL regex and that regex does not match the current URL.
-                // This is skipped for CSS, SCSS and JS templates, otherwise they might exclude themselves when the
-                // request URL is for the CSS/JS templates (e.g.: "/css/gclcss_123.css").
-                return;
-            }
+        var query = $"""
+                     SELECT
+                                                 IFNULL(ippppp.name, IFNULL(ipppp.name, IFNULL(ippp.name, IFNULL(ipp.name, ip.name)))) as root_name, 
+                                                 ip.`name` AS parent_name, 
+                                                 ip.id AS parent_id,
+                                                 i.`name` AS template_name,
+                                                 t.templatetype AS template_type,
+                                                 i.volgnr AS ordering,
+                                                 ip.volgnr AS parent_ordering,
+                                                 i.id AS template_id,
+                                                 t.csstemplates AS css_templates,
+                                                 t.jstemplates AS javascript_templates,
+                                                 t.loadalways AS load_always,
+                                                 t.lastchanged AS changed_on,
+                                                 t.externalfiles AS external_files,
+                                                 IF(?includeContent, t.html_obfuscated, '') AS html_obfuscated,
+                                                 IF(?includeContent, t.html_minified, '') AS template_data_minified,
+                                                 IF(?includeContent, t.html, '') AS template_data,
+                                                 IF(?includeContent, t.template, '') AS template,
+                                                 t.urlregex AS url_regex,
+                                                 t.usecache AS use_cache,
+                                                 t.cacheminutes AS cache_minutes,
+                                                 1 AS cache_location,
+                                                 t.cacheregex AS cache_regex,
+                                                 t.useobfuscate AS use_obfuscate,
+                                                 t.defaulttemplate AS wiser_cdn_files,
+                                                 t.pagemode AS insert_mode,
+                                                 t.groupingCreateObjectInsteadOfArray AS grouping_create_object_instead_of_array,
+                                                 t.groupingKeyColumnName AS grouping_key_column_name,
+                                                 t.groupingValueColumnName AS grouping_value_column_name,
+                                                 t.groupingkey AS grouping_key,
+                                                 t.groupingprefix AS grouping_prefix,
+                                                 t.version
+                                             FROM easy_items i 
+                                             JOIN easy_templates t ON i.id = t.itemid
+                                             {joinPart}
+                                             LEFT JOIN easy_items ip ON i.parent_id = ip.id
+                                             LEFT JOIN easy_items ipp ON ip.parent_id = ipp.id
+                                             LEFT JOIN easy_items ippp ON ipp.parent_id = ippp.id
+                                             LEFT JOIN easy_items ipppp ON ippp.parent_id = ipppp.id
+                                             LEFT JOIN easy_items ippppp ON ipppp.parent_id = ippppp.id
+                                             WHERE i.id IN ({String.Join(",", templateIds)})
+                                             AND i.moduleid = 143 
+                                             AND i.published = 1
+                                             AND i.deleted <= 0
+                                             AND t.deleted <= 0
+                                             AND t.loadalways > 0
+                                             ORDER BY ippppp.volgnr, ipppp.volgnr, ippp.volgnr, ipp.volgnr, ip.volgnr, i.volgnr
+                     """;
 
-            idsLoaded.Add(template.Id);
-
-            // Get files from Wiser CDN.
-            if (template.WiserCdnFiles.Any())
-            {
-                resultBuilder.AppendLine(await GetWiserCdnFilesAsync(template.WiserCdnFiles));
-            }
-
-            // Get the template contents.
-            resultBuilder.AppendLine(template.Content);
-
-            // Get the change date.
-            if (template.LastChanged > templateResponse.LastChangeDate)
-            {
-                templateResponse.LastChangeDate = template.LastChanged;
-            }
-
-            // Get any external files that we need to load.
-            templateResponse.ExternalFiles.AddRange(template.ExternalFiles);
+        await using var reader = await databaseConnection.GetReaderAsync(query);
+        while (await reader.ReadAsync())
+        {
+            var template = await reader.ToTemplateModelAsync(legacy: true);
+            results.Add(template);
         }
 
-        /// <inheritdoc />
-        public async Task<string> GetWiserCdnFilesAsync(ICollection<string> fileNames)
+        return results;
+    }
+
+    /// <inheritdoc />
+    public async Task<TemplateResponse> GetCombinedTemplateValueAsync(ICollection<int> templateIds, TemplateTypes templateType)
+    {
+        return await GetCombinedTemplateValueAsync(this, templateIds, templateType);
+    }
+
+    /// <inheritdoc />
+    public async Task<TemplateResponse> GetCombinedTemplateValueAsync(ITemplatesService templatesService, ICollection<int> templateIds, TemplateTypes templateType)
+    {
+        var result = new TemplateResponse();
+        var resultBuilder = new StringBuilder();
+        var idsLoaded = new List<int>();
+        var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
+        var templates = await templatesService.GetTemplatesAsync(templateIds, true);
+
+        foreach (var template in templates.Where(t => t.Type == templateType))
         {
-            if (fileNames == null)
-            {
-                throw new ArgumentNullException(nameof(fileNames));
-            }
-
-            if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
-            {
-                return "";
-            }
-
-            var enumerable = fileNames.ToList();
-            if (!enumerable.Any())
-            {
-                return "";
-            }
-
-            var resultBuilder = new StringBuilder();
-            foreach (var fileName in enumerable.Where(fileName => !String.IsNullOrWhiteSpace(fileName)))
-            {
-                var extension = Path.GetExtension(fileName).ToLowerInvariant();
-                var directory = extension switch
-                {
-                    ".js" => "scripts",
-                    _ => extension.Substring(1)
-                };
-
-                var localDirectory = Path.Combine(webHostEnvironment.WebRootPath, directory);
-                if (!Directory.Exists(localDirectory))
-                {
-                    Directory.CreateDirectory(localDirectory);
-                }
-
-                var fileLocation = Path.Combine(localDirectory, fileName);
-                if (!File.Exists(fileLocation))
-                {
-                    await using var readStream = await httpClientService.Client.GetStreamAsync(new Uri($"https://app.wiser.nl/{directory}/cdn/{fileName}"));
-                    await using var writeStream = File.Create(fileLocation);
-                    await readStream.CopyToAsync(writeStream);
-                }
-
-                resultBuilder.AppendLine(await File.ReadAllTextAsync(fileLocation));
-            }
-
-            return resultBuilder.ToString();
+            await templatesService.AddTemplateToResponseAsync(idsLoaded, template, currentUrl, resultBuilder, result);
         }
 
-        /// <inheritdoc />
-        public async Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
+        result.Content = resultBuilder.ToString();
+
+        if (result.LastChangeDate == DateTime.MinValue)
         {
-            return await DoReplacesAsync(this, input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery, templateType, handleVariableDefaults);
+            result.LastChangeDate = DateTime.Now;
         }
 
-        /// <inheritdoc />
-        public async Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
+        if (templateType == TemplateTypes.Css)
         {
-            // Input cannot be empty.
-            if (String.IsNullOrEmpty(input))
+            result.Content = CssHelpers.MoveImportStatementsToTop(result.Content);
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task AddTemplateToResponseAsync(ICollection<int> idsLoaded, Template template, string currentUrl, StringBuilder resultBuilder, TemplateResponse templateResponse)
+    {
+        if (idsLoaded.Contains(template.Id))
+        {
+            // Make sure that we don't add the same template twice.
+            return;
+        }
+
+        if (!template.Type.InList(TemplateTypes.Css, TemplateTypes.Scss, TemplateTypes.Js) && !String.IsNullOrWhiteSpace(template.UrlRegex) && !Regex.IsMatch(currentUrl, template.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
+        {
+            // Skip this template if it has an URL regex and that regex does not match the current URL.
+            // This is skipped for CSS, SCSS and JS templates, otherwise they might exclude themselves when the
+            // request URL is for the CSS/JS templates (e.g.: "/css/gclcss_123.css").
+            return;
+        }
+
+        idsLoaded.Add(template.Id);
+
+        // Get files from Wiser CDN.
+        if (template.WiserCdnFiles.Any())
+        {
+            resultBuilder.AppendLine(await GetWiserCdnFilesAsync(template.WiserCdnFiles));
+        }
+
+        // Get the template contents.
+        resultBuilder.AppendLine(template.Content);
+
+        // Get the change date.
+        if (template.LastChanged > templateResponse.LastChangeDate)
+        {
+            templateResponse.LastChangeDate = template.LastChanged;
+        }
+
+        // Get any external files that we need to load.
+        templateResponse.ExternalFiles.AddRange(template.ExternalFiles);
+    }
+
+    /// <inheritdoc />
+    public async Task<string> GetWiserCdnFilesAsync(ICollection<string> fileNames)
+    {
+        if (fileNames == null)
+        {
+            throw new ArgumentNullException(nameof(fileNames));
+        }
+
+        if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
+        {
+            return "";
+        }
+
+        var enumerable = fileNames.ToList();
+        if (!enumerable.Any())
+        {
+            return "";
+        }
+
+        var resultBuilder = new StringBuilder();
+        foreach (var fileName in enumerable.Where(fileName => !String.IsNullOrWhiteSpace(fileName)))
+        {
+            var extension = Path.GetExtension(fileName).ToLowerInvariant();
+            var directory = extension switch
             {
-                return input;
+                ".js" => "scripts",
+                _ => extension.Substring(1)
+            };
+
+            var localDirectory = Path.Combine(webHostEnvironment.WebRootPath, directory);
+            if (!Directory.Exists(localDirectory))
+            {
+                Directory.CreateDirectory(localDirectory);
             }
 
-            // Start with normal string replacements, because includes can contain variables in a query string, which need to be replaced first.
-            if (handleStringReplacements)
+            var fileLocation = Path.Combine(localDirectory, fileName);
+            if (!File.Exists(fileLocation))
             {
-                input = await stringReplacementsService.DoAllReplacementsAsync(input, dataRow, handleRequest, false, removeUnknownVariables, forQuery, handleVariableDefaults: handleVariableDefaults);
+                await using var readStream = await httpClientService.Client.GetStreamAsync(new Uri($"https://app.wiser.nl/{directory}/cdn/{fileName}"));
+                await using var writeStream = File.Create(fileLocation);
+                await readStream.CopyToAsync(writeStream);
             }
 
-            // HTML and mail templates.
-            // Note: The string replacements service cannot handle the replacing of templates, because that would cause the StringReplacementsService to need
-            // the TemplatesService, which in turn needs the StringReplacementsService, creating a circular dependency.
-            input = await templatesService.HandleIncludesAsync(input, forQuery: forQuery, templateType: templateType, handleVariableDefaults: handleVariableDefaults);
-            input = await templatesService.HandleImageTemplating(input);
+            resultBuilder.AppendLine(await File.ReadAllTextAsync(fileLocation));
+        }
 
-            // Replace dynamic content.
-            if (handleDynamicContent && !forQuery)
-            {
-                input = await templatesService.ReplaceAllDynamicContentAsync(input);
-            }
+        return resultBuilder.ToString();
+    }
 
-            if (evaluateLogicSnippets)
-            {
-                input = stringReplacementsService.EvaluateTemplate(input);
-            }
+    /// <inheritdoc />
+    public async Task<string> DoReplacesAsync(string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
+    {
+        return await DoReplacesAsync(this, input, handleStringReplacements, handleDynamicContent, evaluateLogicSnippets, dataRow, handleRequest, removeUnknownVariables, forQuery, templateType, handleVariableDefaults);
+    }
 
+    /// <inheritdoc />
+    public async Task<string> DoReplacesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, bool handleDynamicContent = true, bool evaluateLogicSnippets = true, DataRow dataRow = null, bool handleRequest = true, bool removeUnknownVariables = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
+    {
+        // Input cannot be empty.
+        if (String.IsNullOrEmpty(input))
+        {
             return input;
         }
 
-        /// <inheritdoc />
-        public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "")
+        // Start with normal string replacements, because includes can contain variables in a query string, which need to be replaced first.
+        if (handleStringReplacements)
         {
-            var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser/<item_id>/<filetype>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
-
-            imageUrlTemplate = imageUrlTemplate.Replace("<item_id>", itemId);
-            imageUrlTemplate = imageUrlTemplate.Replace("<filename>", filename);
-            imageUrlTemplate = imageUrlTemplate.Replace("<type>", type);
-            imageUrlTemplate = imageUrlTemplate.Replace("<width>", width);
-            imageUrlTemplate = imageUrlTemplate.Replace("<height>", height);
-
-            // Remove file type if not specified.
-            if (String.IsNullOrWhiteSpace(fileType))
-            {
-                imageUrlTemplate = imageUrlTemplate.Replace("<filetype>/", "");
-            }
-
-            // Remove number if not specified.
-            if (number == 0)
-            {
-                imageUrlTemplate = imageUrlTemplate.Replace("<number>/", "");
-            }
-
-            // Remove resize mode if not specified.
-            if (String.IsNullOrWhiteSpace(resizeMode))
-            {
-                imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>/", "");
-            }
-
-            imageUrlTemplate = imageUrlTemplate.Replace("<filetype>", fileType);
-            imageUrlTemplate = imageUrlTemplate.Replace("<number>", number.ToString());
-            imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>", resizeMode);
-
-            return imageUrlTemplate;
+            input = await stringReplacementsService.DoAllReplacementsAsync(input, dataRow, handleRequest, false, removeUnknownVariables, forQuery, handleVariableDefaults: handleVariableDefaults);
         }
 
-        /// <inheritdoc />
-        public async Task<string> HandleImageTemplating(string input)
+        // HTML and mail templates.
+        // Note: The string replacements service cannot handle the replacing of templates, because that would cause the StringReplacementsService to need
+        // the TemplatesService, which in turn needs the StringReplacementsService, creating a circular dependency.
+        input = await templatesService.HandleIncludesAsync(input, forQuery: forQuery, templateType: templateType, handleVariableDefaults: handleVariableDefaults);
+        input = await templatesService.HandleImageTemplating(input);
+
+        // Replace dynamic content.
+        if (handleDynamicContent && !forQuery)
         {
-            if (String.IsNullOrWhiteSpace(input))
-            {
-                return input;
-            }
+            input = await templatesService.ReplaceAllDynamicContentAsync(input);
+        }
 
-            var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            foreach (Match m in imageTemplatingRegex.Matches(input))
-            {
-                var replacementParameters = m.Groups[1].Value.Split(":");
-                var outputBuilder = new StringBuilder();
-                var imageIndex = 0;
-                var resizeMode = "";
-                var propertyName = "";
-                var imageAltTag = "";
-                var fileType = "";
-                var fallbackImageExtension = "jpg";
-                var parameters = replacementParameters[0].Split(",");
-                var imageItemIdOrFilename = parameters[0];
-                var output = "";
+        if (evaluateLogicSnippets)
+        {
+            input = stringReplacementsService.EvaluateTemplate(input);
+        }
 
-                // Only get the parameter if specified in the templating variable
-                if (parameters.Length > 1)
-                {
-                    propertyName = parameters[1].Trim();
-                }
+        return input;
+    }
 
-                if (parameters.Length > 2)
-                {
-                    fallbackImageExtension = parameters[2].Trim();
-                }
+    /// <inheritdoc />
+    public async Task<string> GenerateImageUrl(string itemId, string type, int number, string filename = "", string width = "0", string height = "0", string resizeMode = "", string fileType = "")
+    {
+        var imageUrlTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_url_template", "/image/wiser/<item_id>/<filetype>/<type>/<resizemode>/<width>/<height>/<number>/<filename>");
 
-                if (parameters.Length > 3)
-                {
-                    imageIndex = Int32.Parse(parameters[3].Trim());
-                }
+        imageUrlTemplate = imageUrlTemplate.Replace("<item_id>", itemId);
+        imageUrlTemplate = imageUrlTemplate.Replace("<filename>", filename);
+        imageUrlTemplate = imageUrlTemplate.Replace("<type>", type);
+        imageUrlTemplate = imageUrlTemplate.Replace("<width>", width);
+        imageUrlTemplate = imageUrlTemplate.Replace("<height>", height);
 
-                if (parameters.Length > 4)
-                {
-                    resizeMode = parameters[4].Trim();
-                }
+        // Remove file type if not specified.
+        if (String.IsNullOrWhiteSpace(fileType))
+        {
+            imageUrlTemplate = imageUrlTemplate.Replace("<filetype>/", "");
+        }
 
-                if (parameters.Length > 5)
-                {
-                    imageAltTag = parameters[5].Trim();
-                }
+        // Remove number if not specified.
+        if (number == 0)
+        {
+            imageUrlTemplate = imageUrlTemplate.Replace("<number>/", "");
+        }
 
-                if (parameters.Length > 6)
-                {
-                    fileType = parameters[6].Trim();
-                }
+        // Remove resize mode if not specified.
+        if (String.IsNullOrWhiteSpace(resizeMode))
+        {
+            imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>/", "");
+        }
 
-                imageIndex = imageIndex == 0 ? 1 : imageIndex;
+        imageUrlTemplate = imageUrlTemplate.Replace("<filetype>", fileType);
+        imageUrlTemplate = imageUrlTemplate.Replace("<number>", number.ToString());
+        imageUrlTemplate = imageUrlTemplate.Replace("<resizemode>", resizeMode);
 
-                // Get the image from the database
-                databaseConnection.AddParameter("itemId", imageItemIdOrFilename);
-                databaseConnection.AddParameter("filename", imageItemIdOrFilename);
-                databaseConnection.AddParameter("propertyName", propertyName);
+        return imageUrlTemplate;
+    }
 
-                var queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
-                var dataTable = await databaseConnection.GetAsync(@$"SELECT * FROM `{WiserTableNames.WiserItemFile}` WHERE {queryWherePart} AND IF(?propertyName = '', 1=1, property_name = ?propertyName) AND content_type LIKE 'image%' ORDER BY id ASC");
-
-                if (dataTable.Rows.Count == 0)
-                {
-                    input = input.Replace(m.Value, $"<img src=\"/img/noimg.png\" />", StringComparison.OrdinalIgnoreCase);
-                    continue;
-                }
-
-                if (imageIndex > dataTable.Rows.Count)
-                {
-                    input = input.Replace(m.Value, "specified image index out of bound", StringComparison.OrdinalIgnoreCase);
-                    continue;
-                }
-
-                // Get various values from the table
-                var imageItemId = Convert.ToString(dataTable.Rows[imageIndex - 1]["item_id"]);
-                var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
-                var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
-                var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
-                var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
-                var totalItems = items.Count;
-                var index = 1;
-
-                if (items.Count == 0)
-                {
-                    input = input.Replace(m.Value, "no image set(s) specified, you must at least specify one set", StringComparison.OrdinalIgnoreCase);
-                    continue;
-                }
-
-                foreach (Match s in items)
-                {
-                    var imageTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_template", "<figure><picture>{images}</picture></figure>");
-
-                    // Get the specified parameters from the regex match
-                    parameters = s.Value.Split(":")[1].Split("(");
-                    var imageParameters = parameters[1].Replace(")", "").Split("x");
-                    var imageViewportParameter = parameters[0];
-
-                    if (String.IsNullOrWhiteSpace(imageViewportParameter))
-                    {
-                        input = input.Replace(m.Value, "no viewport parameter specified", StringComparison.OrdinalIgnoreCase);
-                        continue;
-                    }
-
-                    var imageWidth = Convert.ToInt32(imageParameters[0]);
-                    var imageHeight = Convert.ToInt32(imageParameters[1]);
-                    var imageWidth2X = (imageWidth * 2).ToString();
-                    var imageHeight2X = (imageHeight * 2).ToString();
-
-                    outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-webp-2x} 2x, {image-url-webp}"" type=""image/webp"" />");
-                    outputBuilder.Append(@"<source media=""(min-width: {min-width}px)"" srcset=""{image-url-alt-2x} 2x, {image-url-alt}"" type=""{image-type-alt}"" />");
-
-                    outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
-                    outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
-                    outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode, fileType));
-                    outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode, fileType));
-                    outputBuilder.Replace("{image-type-alt}", FileSystemHelpers.GetMediaTypeByExtension(fallbackImageExtension));
-                    outputBuilder.Replace("{min-width}", imageViewportParameter);
-
-                    // If last item, than add the default image
-                    if (index == totalItems)
-                    {
-                        outputBuilder.Append("<img width=\"{image_width}\" height=\"{image_height}\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
-                        outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
-                        outputBuilder.Replace("{image_width}", imageWidth.ToString());
-                        outputBuilder.Replace("{image_height}", imageHeight.ToString());
-                    }
-
-                    imageTemplate = imageTemplate.Replace("{images}", outputBuilder.ToString());
-                    imageTemplate = imageTemplate.Replace("{image_alt}", (String.IsNullOrWhiteSpace(imageAltTag) ? imageFilename : imageAltTag));
-
-                    output = imageTemplate;
-
-                    index += 1;
-                }
-
-                // Replace the image in the template
-                input = input.Replace(m.Value, output, StringComparison.OrdinalIgnoreCase);
-            }
-
+    /// <inheritdoc />
+    public async Task<string> HandleImageTemplating(string input)
+    {
+        if (String.IsNullOrWhiteSpace(input))
+        {
             return input;
         }
 
-        /// <inheritdoc />
-        public async Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
+        var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+        foreach (Match m in imageTemplatingRegex.Matches(input))
         {
-            return await HandleIncludesAsync(this, input, handleStringReplacements, dataRow, handleRequest, forQuery, templateType, handleVariableDefaults);
-        }
+            var replacementParameters = m.Groups[1].Value.Split(":");
+            var outputBuilder = new StringBuilder();
+            var imageIndex = 0;
+            var resizeMode = "";
+            var propertyName = "";
+            var imageAltTag = "";
+            var fileType = "";
+            var fallbackImageExtension = "jpg";
+            var parameters = replacementParameters[0].Split(",");
+            var imageItemIdOrFilename = parameters[0];
+            var output = "";
 
-        /// <inheritdoc />
-        public async Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
-        {
-            if (String.IsNullOrWhiteSpace(input))
+            // Only get the parameter if specified in the templating variable
+            if (parameters.Length > 1)
             {
-                return input;
+                propertyName = parameters[1].Trim();
             }
 
-            const int max = 10;
-            var counter = 0;
-
-            // We use a while loop here because it's possible to to include a template that has another include, so we might have to replace them multiple times.
-            while (counter < max && (input.Contains("<[", StringComparison.Ordinal) || input.Contains("[include", StringComparison.Ordinal)))
+            if (parameters.Length > 2)
             {
-                counter += 1;
-                var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                foreach (Match m in inclusionsRegex.Matches(input))
-                {
-                    var templateName = m.Groups[1].Value;
-                    if (templateName.Contains("{"))
-                    {
-                        // Make sure replaces for the template name are done
-                        templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery, handleVariableDefaults: handleVariableDefaults);
-                    }
-
-                    // Replace templates (syntax is <[templateName]> or <[parentFolder\templateName]>
-                    if (templateName.Contains("\\"))
-                    {
-                        // Contains a parent
-                        var split = templateName.Split('\\');
-                        var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
-                        var templateContent = template.Content;
-                        if (handleStringReplacements)
-                        {
-                            templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
-                        }
-
-                        input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
-                    }
-                    else
-                    {
-                        var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
-                        var templateContent = template.Content;
-                        if (handleStringReplacements)
-                        {
-                            templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
-                        }
-
-                        input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
-                    }
-                }
-
-                inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                foreach (Match m in inclusionsRegex.Matches(input))
-                {
-                    var templateName = m.Groups[1].Value;
-                    var queryString = m.Groups[3].Value.Replace("&amp;", "&");
-                    if (templateName.Contains("{"))
-                    {
-                        // Make sure replaces for the template name are done
-                        templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery, handleVariableDefaults: handleVariableDefaults);
-                    }
-
-                    // Replace templates (syntax is [include[templateName]] or [include[parentFolder\templateName]] or [include[templateName?x=y]]
-                    if (templateName.Contains("\\"))
-                    {
-                        // Contains a parent
-                        var split = templateName.Split('\\');
-                        var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
-                        var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
-                        var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
-                        if (handleStringReplacements)
-                        {
-                            content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
-                        }
-
-                        if (!String.IsNullOrWhiteSpace(queryString))
-                        {
-                            content = content.Replace("<img src=\"/preview_image.aspx", $"<img data=\"{queryString}\" src=\"/preview_image.aspx");
-                        }
-
-                        input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
-                    }
-                    else
-                    {
-                        var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
-                        var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
-                        var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
-                        if (handleStringReplacements)
-                        {
-                            content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
-                        }
-
-                        if (!String.IsNullOrWhiteSpace(queryString))
-                        {
-                            content = content.Replace("<img src=\"/preview_image.aspx", $"<img data=\"{queryString}\" src=\"/preview_image.aspx");
-                        }
-
-                        input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
-                    }
-                }
+                fallbackImageExtension = parameters[2].Trim();
             }
 
-            return input;
-        }
-
-        /// <inheritdoc />
-        public async Task<DynamicContent> GetDynamicContentData(int contentId)
-        {
-            string query = null;
-            var templateVersionPart = "";
-            switch (gclSettings.Environment)
+            if (parameters.Length > 3)
             {
-                case Environments.Development:
-                    // Always get the latest version on development.
-                    query = @"SELECT 
-                                d.filledvariables, 
-                                d.freefield1,
-                                d.type,
-                                d.version
-                            FROM easy_dynamiccontent d
-                            JOIN (SELECT id, MAX(version) AS version FROM easy_dynamiccontent GROUP BY id) d2 ON d2.id = d.id AND d2.version = d.version
-                            WHERE d.id = ?contentId";
-                    break;
-                case Environments.Test:
-                    templateVersionPart = "AND t.istest = 1";
-                    break;
-                case Environments.Acceptance:
-                    templateVersionPart = "AND t.isacceptance = 1";
-                    break;
-                case Environments.Live:
-                    templateVersionPart = "AND t.islive = 1";
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null);
+                imageIndex = Int32.Parse(parameters[3].Trim());
             }
 
-            query ??= $@"SELECT 
-                            d.filledvariables, 
-                            d.freefield1,
-                            d.type,
-                            d.version
-                        FROM easy_dynamiccontent d
-                        JOIN easy_templates t ON t.itemid = d.itemid AND t.version = d.version {templateVersionPart}
-                        WHERE d.id = ?contentId
+            if (parameters.Length > 4)
+            {
+                resizeMode = parameters[4].Trim();
+            }
 
-                        UNION
+            if (parameters.Length > 5)
+            {
+                imageAltTag = parameters[5].Trim();
+            }
 
-                        SELECT 
-                            d.filledvariables, 
-                            d.freefield1,
-                            d.type,
-                            d.version
-                        FROM easy_dynamiccontent d
-                        WHERE d.version = 1 
-                        AND d.itemid = 0
-                        AND d.id = ?contentId";
+            if (parameters.Length > 6)
+            {
+                fileType = parameters[6].Trim();
+            }
 
-            databaseConnection.AddParameter("contentId", contentId);
-            var dataTable = await databaseConnection.GetAsync(query);
+            imageIndex = imageIndex == 0 ? 1 : imageIndex;
+
+            // Get the image from the database
+            databaseConnection.AddParameter("itemId", imageItemIdOrFilename);
+            databaseConnection.AddParameter("filename", imageItemIdOrFilename);
+            databaseConnection.AddParameter("propertyName", propertyName);
+
+            var queryWherePart = Int64.TryParse(imageItemIdOrFilename, out _) ? "item_id = ?itemId" : "file_name = ?filename";
+            var dataTable = await databaseConnection.GetAsync(@$"SELECT * FROM `{WiserTableNames.WiserItemFile}` WHERE {queryWherePart} AND IF(?propertyName = '', 1=1, property_name = ?propertyName) AND content_type LIKE 'image%' ORDER BY id ASC");
+
             if (dataTable.Rows.Count == 0)
             {
-                return null;
+                input = input.Replace(m.Value, $"<img src=\"/img/noimg.png\" />", StringComparison.OrdinalIgnoreCase);
+                continue;
             }
 
-            return new DynamicContent
+            if (imageIndex > dataTable.Rows.Count)
             {
-                Id = contentId,
-                Name = dataTable.Rows[0].Field<string>("freefield1"),
-                SettingsJson = dataTable.Rows[0].Field<string>("filledvariables"),
-                Version = dataTable.Rows[0].Field<int>("version")
-            };
-        }
-
-        /// <inheritdoc />
-        public async Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
-        {
-            if (String.IsNullOrWhiteSpace(dynamicContent?.Name) || String.IsNullOrWhiteSpace(dynamicContent?.SettingsJson))
-            {
-                return "";
+                input = input.Replace(m.Value, "specified image index out of bound", StringComparison.OrdinalIgnoreCase);
+                continue;
             }
 
-            if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+            // Get various values from the table
+            var imageItemId = Convert.ToString(dataTable.Rows[imageIndex - 1]["item_id"]);
+            var imageFilename = dataTable.Rows[imageIndex - 1].Field<string>("file_name");
+            var imagePropertyType = dataTable.Rows[imageIndex - 1].Field<string>("property_name");
+            var imageFilenameWithoutExt = Path.GetFileNameWithoutExtension(imageFilename);
+            var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
+            var totalItems = items.Count;
+            var index = 1;
+
+            if (items.Count == 0)
             {
-                throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+                input = input.Replace(m.Value, "no image set(s) specified, you must at least specify one set", StringComparison.OrdinalIgnoreCase);
+                continue;
             }
 
-            string viewComponentName;
-            switch (dynamicContent.Name)
+            foreach (Match s in items)
             {
-                case "JuiceControlLibrary.MLSimpleMenu":
-                case "JuiceControlLibrary.SimpleMenu":
-                case "JuiceControlLibrary.ProductModule":
-                {
-                    viewComponentName = "Repeater";
-                    break;
-                }
-                case "JuiceControlLibrary.AccountWiser2":
-                {
-                    viewComponentName = "Account";
-                    break;
-                }
-                case "JuiceControlLibrary.ShoppingBasket":
-                {
-                    viewComponentName = "ShoppingBasket";
-                    break;
-                }
-                case "JuiceControlLibrary.WebPage":
-                {
-                    viewComponentName = "WebPage";
-                    break;
-                }
-                case "JuiceControlLibrary.Pagination":
-                {
-                    viewComponentName = "Pagination";
-                    break;
-                }
-                case "JuiceControlLibrary.DynamicFilter":
-                {
-                    viewComponentName = "Filter";
-                    break;
-                }
-                case "JuiceControlLibrary.Sendform":
-                {
-                    viewComponentName = "WebForm";
-                    break;
-                }
-                case "JuiceControlLibrary.Configurator":
-                {
-                    viewComponentName = "Configurator";
-                    break;
-                }
-                case "JuiceControlLibrary.DataSelectorParser":
-                {
-                    viewComponentName = "DataSelectorParser";
-                    break;
-                }
-                default:
-                    return $"<!-- Dynamic content type '{dynamicContent.Name}' not supported yet. Content ID: {dynamicContent.Id} -->";
-            }
+                var imageTemplate = await objectsService.FindSystemObjectByDomainNameAsync("image_template", "<figure><picture>{images}</picture></figure>");
 
-            // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
-            var viewContext = new ViewContext(
-                actionContextAccessor.ActionContext,
-                NullView.Instance,
-                new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
-                new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
-                TextWriter.Null,
-                new HtmlHelperOptions());
+                // Get the specified parameters from the regex match
+                parameters = s.Value.Split(":")[1].Split("(");
+                var imageParameters = parameters[1].Replace(")", "").Split("x");
+                var imageViewportParameter = parameters[0];
 
-            // Set the context in the ViewComponentHelper, so that the ViewComponents that we use actually have the proper context.
-            (viewComponentHelper as IViewContextAware)?.Contextualize(viewContext);
-
-            // Dynamically invoke the correct ViewComponent.
-            var component = await viewComponentHelper.InvokeAsync(viewComponentName, new { dynamicContent, callMethod, forcedComponentMode, extraData });
-
-            // If there is a InvokeMethodResult, it means this that a specific method on a specific component was called via /gclcomponent.gcl
-            // and we only want to return the results of that method, instead of rendering the entire component.
-            if (viewContext.TempData.ContainsKey("InvokeMethodResult") && viewContext.TempData["InvokeMethodResult"] != null)
-            {
-                return (viewContext.TempData["InvokeMethodResult"], viewContext.ViewData);
-            }
-
-            await using var stringWriter = new StringWriter();
-            component.WriteTo(stringWriter, HtmlEncoder.Default);
-            var html = stringWriter.ToString();
-            return html;
-        }
-
-        /// <inheritdoc />
-        public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
-        {
-            var dynamicContent = await GetDynamicContentData(componentId);
-            return await GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-        }
-
-        /// <inheritdoc />
-        public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
-        {
-            return await ReplaceAllDynamicContentAsync(this, template, componentOverrides);
-        }
-
-        /// <inheritdoc />
-        public async Task<string> ReplaceAllDynamicContentAsync(ITemplatesService templatesService, string template, List<DynamicContent> componentOverrides = null)
-        {
-            if (String.IsNullOrWhiteSpace(template))
-            {
-                return template;
-            }
-
-            // TODO: Test the speed of this and see if it's better run a while loop on string.Contains("contentid=") instead of the regular expression.
-            // Timeout on the regular expression to prevent denial of service attacks.
-            var regEx = new Regex(@"<img[^>]*?(?:data=['""](?<data>.*?)['""][^>]*?)?contentid=['""](?<contentid>\d+)['""][^>]*?/?>", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
-
-            var matches = regEx.Matches(template);
-            foreach (Match match in matches)
-            {
-                if (!match.Success)
+                if (String.IsNullOrWhiteSpace(imageViewportParameter))
                 {
+                    input = input.Replace(m.Value, "no viewport parameter specified", StringComparison.OrdinalIgnoreCase);
                     continue;
                 }
 
-                if (!Int32.TryParse(match.Groups["contentid"].Value, out var contentId) || contentId <= 0)
+                var imageWidth = Convert.ToInt32(imageParameters[0]);
+                var imageHeight = Convert.ToInt32(imageParameters[1]);
+                var imageWidth2X = (imageWidth * 2).ToString();
+                var imageHeight2X = (imageHeight * 2).ToString();
+
+                outputBuilder.Append("""<source media="(min-width: {min-width}px)" srcset="{image-url-webp-2x} 2x, {image-url-webp}" type="image/webp" />""");
+                outputBuilder.Append("""<source media="(min-width: {min-width}px)" srcset="{image-url-alt-2x} 2x, {image-url-alt}" type="{image-type-alt}" />""");
+
+                outputBuilder.Replace("{image-url-webp}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                outputBuilder.Replace("{image-url-alt}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                outputBuilder.Replace("{image-url-webp-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth2X, imageHeight2X, resizeMode, fileType));
+                outputBuilder.Replace("{image-url-alt-2x}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.{fallbackImageExtension}", imageWidth2X, imageHeight2X, resizeMode, fileType));
+                outputBuilder.Replace("{image-type-alt}", FileSystemHelpers.GetMediaTypeByExtension(fallbackImageExtension));
+                outputBuilder.Replace("{min-width}", imageViewportParameter);
+
+                // If last item, than add the default image
+                if (index == totalItems)
                 {
-                    logger.LogWarning($"Found dynamic content with invalid contentId of '{match.Groups["contentid"].Value}', so ignoring it.");
-                    continue;
+                    outputBuilder.Append("<img width=\"{image_width}\" height=\"{image_height}\" loading=\"lazy\" src=\"{default_image_link}\" alt=\"{image_alt}\">");
+                    outputBuilder.Replace("{default_image_link}", await GenerateImageUrl(imageItemId, imagePropertyType, imageIndex, $"{imageFilenameWithoutExt}.webp", imageWidth.ToString(), imageHeight.ToString(), resizeMode, fileType));
+                    outputBuilder.Replace("{image_width}", imageWidth.ToString());
+                    outputBuilder.Replace("{image_height}", imageHeight.ToString());
                 }
 
-                try
+                imageTemplate = imageTemplate.Replace("{images}", outputBuilder.ToString());
+                imageTemplate = imageTemplate.Replace("{image_alt}", (String.IsNullOrWhiteSpace(imageAltTag) ? imageFilename : imageAltTag));
+
+                output = imageTemplate;
+
+                index += 1;
+            }
+
+            // Replace the image in the template
+            input = input.Replace(m.Value, output, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return input;
+    }
+
+    /// <inheritdoc />
+    public async Task<string> HandleIncludesAsync(string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
+    {
+        return await HandleIncludesAsync(this, input, handleStringReplacements, dataRow, handleRequest, forQuery, templateType, handleVariableDefaults);
+    }
+
+    /// <inheritdoc />
+    public async Task<string> HandleIncludesAsync(ITemplatesService templatesService, string input, bool handleStringReplacements = true, DataRow dataRow = null, bool handleRequest = true, bool forQuery = false, TemplateTypes? templateType = null, bool handleVariableDefaults = true)
+    {
+        if (String.IsNullOrWhiteSpace(input))
+        {
+            return input;
+        }
+
+        const int max = 10;
+        var counter = 0;
+
+        // We use a while loop here because it's possible to to include a template that has another include, so we might have to replace them multiple times.
+        while (counter < max && (input.Contains("<[", StringComparison.Ordinal) || input.Contains("[include", StringComparison.Ordinal)))
+        {
+            counter += 1;
+            var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            foreach (Match m in inclusionsRegex.Matches(input))
+            {
+                var templateName = m.Groups[1].Value;
+                if (templateName.Contains("{"))
                 {
-                    var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
-                    var html = await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
-                    template = template.Replace(match.Value, (string)html);
+                    // Make sure replaces for the template name are done
+                    templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery, handleVariableDefaults: handleVariableDefaults);
                 }
-                catch (Exception exception)
+
+                // Replace templates (syntax is <[templateName]> or <[parentFolder\templateName]>
+                if (templateName.Contains("\\"))
                 {
-                    logger.LogError($"An error while generating component with id '{contentId}': {exception}");
-                    var errorOnPage = $"An error occurred while generating component with id '{contentId}'";
-                    if (gclSettings.Environment == Environments.Development || gclSettings.Environment == Environments.Test)
+                    // Contains a parent
+                    var split = templateName.Split('\\');
+                    var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
+                    var templateContent = template.Content;
+                    if (handleStringReplacements)
                     {
-                        errorOnPage += $": {exception.Message}";
+                        templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
                     }
 
-                    template = template.Replace(match.Value, errorOnPage);
+                    input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
+                    var templateContent = template.Content;
+                    if (handleStringReplacements)
+                    {
+                        templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
+                    }
+
+                    input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
                 }
             }
 
+            inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            foreach (Match m in inclusionsRegex.Matches(input))
+            {
+                var templateName = m.Groups[1].Value;
+                var queryString = m.Groups[3].Value.Replace("&amp;", "&");
+                if (templateName.Contains("{"))
+                {
+                    // Make sure replaces for the template name are done
+                    templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery, handleVariableDefaults: handleVariableDefaults);
+                }
+
+                // Replace templates (syntax is [include[templateName]] or [include[parentFolder\templateName]] or [include[templateName?x=y]]
+                if (templateName.Contains("\\"))
+                {
+                    // Contains a parent
+                    var split = templateName.Split('\\');
+                    var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
+                    var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
+                    var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
+                    if (handleStringReplacements)
+                    {
+                        content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
+                    }
+
+                    if (!String.IsNullOrWhiteSpace(queryString))
+                    {
+                        content = content.Replace("<img src=\"/preview_image.aspx", $"<img data=\"{queryString}\" src=\"/preview_image.aspx");
+                    }
+
+                    input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
+                    var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
+                    var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
+                    if (handleStringReplacements)
+                    {
+                        content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
+                    }
+
+                    if (!String.IsNullOrWhiteSpace(queryString))
+                    {
+                        content = content.Replace("<img src=\"/preview_image.aspx", $"<img data=\"{queryString}\" src=\"/preview_image.aspx");
+                    }
+
+                    input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+        }
+
+        return input;
+    }
+
+    /// <inheritdoc />
+    public async Task<DynamicContent> GetDynamicContentData(int contentId)
+    {
+        string query = null;
+        var templateVersionPart = "";
+        switch (gclSettings.Environment)
+        {
+            case Environments.Development:
+                // Always get the latest version on development.
+                query = """
+                        SELECT 
+                                                        d.filledvariables, 
+                                                        d.freefield1,
+                                                        d.type,
+                                                        d.version
+                                                    FROM easy_dynamiccontent d
+                                                    JOIN (SELECT id, MAX(version) AS version FROM easy_dynamiccontent GROUP BY id) d2 ON d2.id = d.id AND d2.version = d.version
+                                                    WHERE d.id = ?contentId
+                        """;
+                break;
+            case Environments.Test:
+                templateVersionPart = "AND t.istest = 1";
+                break;
+            case Environments.Acceptance:
+                templateVersionPart = "AND t.isacceptance = 1";
+                break;
+            case Environments.Live:
+                templateVersionPart = "AND t.islive = 1";
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null);
+        }
+
+        query ??= $"""
+                   SELECT 
+                                               d.filledvariables, 
+                                               d.freefield1,
+                                               d.type,
+                                               d.version
+                                           FROM easy_dynamiccontent d
+                                           JOIN easy_templates t ON t.itemid = d.itemid AND t.version = d.version {templateVersionPart}
+                                           WHERE d.id = ?contentId
+                   
+                                           UNION
+                   
+                                           SELECT 
+                                               d.filledvariables, 
+                                               d.freefield1,
+                                               d.type,
+                                               d.version
+                                           FROM easy_dynamiccontent d
+                                           WHERE d.version = 1 
+                                           AND d.itemid = 0
+                                           AND d.id = ?contentId
+                   """;
+
+        databaseConnection.AddParameter("contentId", contentId);
+        var dataTable = await databaseConnection.GetAsync(query);
+        if (dataTable.Rows.Count == 0)
+        {
+            return null;
+        }
+
+        return new DynamicContent
+        {
+            Id = contentId,
+            Name = dataTable.Rows[0].Field<string>("freefield1"),
+            SettingsJson = dataTable.Rows[0].Field<string>("filledvariables"),
+            Version = dataTable.Rows[0].Field<int>("version")
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+    {
+        if (String.IsNullOrWhiteSpace(dynamicContent?.Name) || String.IsNullOrWhiteSpace(dynamicContent?.SettingsJson))
+        {
+            return "";
+        }
+
+        if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+        {
+            throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+        }
+
+        string viewComponentName;
+        switch (dynamicContent.Name)
+        {
+            case "JuiceControlLibrary.MLSimpleMenu":
+            case "JuiceControlLibrary.SimpleMenu":
+            case "JuiceControlLibrary.ProductModule":
+            {
+                viewComponentName = "Repeater";
+                break;
+            }
+            case "JuiceControlLibrary.AccountWiser2":
+            {
+                viewComponentName = "Account";
+                break;
+            }
+            case "JuiceControlLibrary.ShoppingBasket":
+            {
+                viewComponentName = "ShoppingBasket";
+                break;
+            }
+            case "JuiceControlLibrary.WebPage":
+            {
+                viewComponentName = "WebPage";
+                break;
+            }
+            case "JuiceControlLibrary.Pagination":
+            {
+                viewComponentName = "Pagination";
+                break;
+            }
+            case "JuiceControlLibrary.DynamicFilter":
+            {
+                viewComponentName = "Filter";
+                break;
+            }
+            case "JuiceControlLibrary.Sendform":
+            {
+                viewComponentName = "WebForm";
+                break;
+            }
+            case "JuiceControlLibrary.Configurator":
+            {
+                viewComponentName = "Configurator";
+                break;
+            }
+            case "JuiceControlLibrary.DataSelectorParser":
+            {
+                viewComponentName = "DataSelectorParser";
+                break;
+            }
+            default:
+                return $"<!-- Dynamic content type '{dynamicContent.Name}' not supported yet. Content ID: {dynamicContent.Id} -->";
+        }
+
+        // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
+        var viewContext = new ViewContext(
+            actionContextAccessor.ActionContext,
+            NullView.Instance,
+            new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
+            new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
+            TextWriter.Null,
+            new HtmlHelperOptions());
+
+        // Set the context in the ViewComponentHelper, so that the ViewComponents that we use actually have the proper context.
+        (viewComponentHelper as IViewContextAware)?.Contextualize(viewContext);
+
+        // Dynamically invoke the correct ViewComponent.
+        var component = await viewComponentHelper.InvokeAsync(viewComponentName, new {dynamicContent, callMethod, forcedComponentMode, extraData});
+
+        // If there is a InvokeMethodResult, it means this that a specific method on a specific component was called via /gclcomponent.gcl
+        // and we only want to return the results of that method, instead of rendering the entire component.
+        if (viewContext.TempData.ContainsKey("InvokeMethodResult") && viewContext.TempData["InvokeMethodResult"] != null)
+        {
+            return (viewContext.TempData["InvokeMethodResult"], viewContext.ViewData);
+        }
+
+        await using var stringWriter = new StringWriter();
+        component.WriteTo(stringWriter, HtmlEncoder.Default);
+        var html = stringWriter.ToString();
+        return html;
+    }
+
+    /// <inheritdoc />
+    public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
+    {
+        var dynamicContent = await GetDynamicContentData(componentId);
+        return await GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+    }
+
+    /// <inheritdoc />
+    public async Task<string> ReplaceAllDynamicContentAsync(string template, List<DynamicContent> componentOverrides = null)
+    {
+        return await ReplaceAllDynamicContentAsync(this, template, componentOverrides);
+    }
+
+    /// <inheritdoc />
+    public async Task<string> ReplaceAllDynamicContentAsync(ITemplatesService templatesService, string template, List<DynamicContent> componentOverrides = null)
+    {
+        if (String.IsNullOrWhiteSpace(template))
+        {
             return template;
         }
 
-        /// <inheritdoc />
-        public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false, bool childItemsMustHaveId = false)
+        // TODO: Test the speed of this and see if it's better run a while loop on string.Contains("contentid=") instead of the regular expression.
+        // Timeout on the regular expression to prevent denial of service attacks.
+        var regEx = new Regex("""<img[^>]*?(?:data=['"](?<data>.*?)['"][^>]*?)?contentid=['"](?<contentid>\d+)['"][^>]*?/?>""", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
+
+        var matches = regEx.Matches(template);
+        foreach (Match match in matches)
         {
-            var query = queryTemplate?.Content;
-            if (String.IsNullOrWhiteSpace(query))
+            if (!match.Success)
             {
-                return null;
+                continue;
             }
 
-            queryTemplate.GroupingSettings ??= new QueryGroupingSettings();
-            query = await DoReplacesAsync(query, true, false, true, null, true, false, true, TemplateTypes.Query);
-            if (query.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
+            if (!Int32.TryParse(match.Groups["contentid"].Value, out var contentId) || contentId <= 0)
             {
-                query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart.ToString(), StringComparison.OrdinalIgnoreCase);
+                logger.LogWarning($"Found dynamic content with invalid contentId of '{match.Groups["contentid"].Value}', so ignoring it.");
+                continue;
             }
 
-            var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            var pusherMatches = pusherRegex.Matches(query);
-            foreach (Match match in pusherMatches)
+            try
             {
-                query = query.Replace(match.Value, "");
+                var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
+                var html = await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
+                template = template.Replace(match.Value, (string) html);
             }
-
-            if (recursive)
+            catch (Exception exception)
             {
-                queryTemplate.GroupingSettings.GroupingColumn = "id";
+                logger.LogError($"An error while generating component with id '{contentId}': {exception}");
+                var errorOnPage = $"An error occurred while generating component with id '{contentId}'";
+                if (gclSettings.Environment == Environments.Development || gclSettings.Environment == Environments.Test)
+                {
+                    errorOnPage += $": {exception.Message}";
+                }
+
+                template = template.Replace(match.Value, errorOnPage);
             }
-
-            var dataTable = await databaseConnection.GetAsync(query, skipCache: queryTemplate.CachingMinutes < 0);
-            var result = dataTable.Rows.Count == 0 ? new JArray() : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
-
-            if (pusherMatches.Any())
-            {
-                throw new NotImplementedException("Pusher messages not yet implemented");
-            }
-
-            return result;
         }
 
-        /// <inheritdoc />
-        public Task<JArray> GetJsonResponseFromRoutineAsync(RoutineTemplate routineTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false)
+        return template;
+    }
+
+    /// <inheritdoc />
+    public async Task<JArray> GetJsonResponseFromQueryAsync(QueryTemplate queryTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false, bool recursive = false, bool childItemsMustHaveId = false)
+    {
+        var query = queryTemplate?.Content;
+        if (String.IsNullOrWhiteSpace(query))
         {
-            throw new NotImplementedException("Legacy templates don't support executing routines.");
+            return null;
         }
 
-        /// <inheritdoc />
-        public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+        queryTemplate.GroupingSettings ??= new QueryGroupingSettings();
+        query = await DoReplacesAsync(query, true, false, true, null, true, false, true, TemplateTypes.Query);
+        if (query.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
         {
-            return await GetTemplateDataAsync(this, id, name, parentId, parentName);
+            query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart.ToString(), StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <inheritdoc />
-        public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "")
+        var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+        var pusherMatches = pusherRegex.Matches(query);
+        foreach (Match match in pusherMatches)
         {
-            var template = await templatesService.GetTemplateAsync(id, name, TemplateTypes.Html, parentId, parentName);
-            var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
+            query = query.Replace(match.Value, "");
+        }
 
-            var cssStringBuilder = new StringBuilder();
-            var jsStringBuilder = new StringBuilder();
-            var externalCssFilesList = new List<PageResourceModel>();
-            var externalJavaScriptFilesList = new List<PageResourceModel>();
-            foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
+        if (recursive)
+        {
+            queryTemplate.GroupingSettings.GroupingColumn = "id";
+        }
+
+        var dataTable = await databaseConnection.GetAsync(query, skipCache: queryTemplate.CachingMinutes < 0);
+        var result = dataTable.Rows.Count == 0 ? [] : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
+
+        if (pusherMatches.Any())
+        {
+            throw new NotImplementedException("Pusher messages not yet implemented");
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
+    public Task<JArray> GetJsonResponseFromRoutineAsync(RoutineTemplate routineTemplate, string encryptionKey = null, bool skipNullValues = false, bool allowValueDecryption = false)
+    {
+        throw new NotImplementedException("Legacy templates don't support executing routines.");
+    }
+
+    /// <inheritdoc />
+    public async Task<TemplateDataModel> GetTemplateDataAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+    {
+        return await GetTemplateDataAsync(this, id, name, parentId, parentName);
+    }
+
+    /// <inheritdoc />
+    public async Task<TemplateDataModel> GetTemplateDataAsync(ITemplatesService templatesService, int id = 0, string name = "", int parentId = 0, string parentName = "")
+    {
+        var template = await templatesService.GetTemplateAsync(id, name, TemplateTypes.Html, parentId, parentName);
+        var currentUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
+
+        var cssStringBuilder = new StringBuilder();
+        var jsStringBuilder = new StringBuilder();
+        var externalCssFilesList = new List<PageResourceModel>();
+        var externalJavaScriptFilesList = new List<PageResourceModel>();
+        foreach (var templateId in template.CssTemplates.Concat(template.JavascriptTemplates))
+        {
+            var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
+
+            // Validate the template regex, if it has one.
+            if (!String.IsNullOrWhiteSpace(linkedTemplate.UrlRegex) && !String.IsNullOrWhiteSpace(currentUrl) && !Regex.IsMatch(currentUrl, linkedTemplate.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
             {
-                var linkedTemplate = await templatesService.GetTemplateAsync(templateId);
+                continue;
+            }
 
-                // Validate the template regex, if it has one.
-                if (!String.IsNullOrWhiteSpace(linkedTemplate.UrlRegex) && !String.IsNullOrWhiteSpace(currentUrl) && !Regex.IsMatch(currentUrl, linkedTemplate.UrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)))
+            (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
+            (linkedTemplate.Type == TemplateTypes.Css ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
+        }
+
+        return new TemplateDataModel
+        {
+            Content = template.Content,
+            LinkedCss = cssStringBuilder.ToString(),
+            LinkedJavascript = jsStringBuilder.ToString(),
+            ExternalCssFiles = externalCssFilesList,
+            ExternalJavaScriptFiles = externalJavaScriptFilesList
+        };
+    }
+
+    /// <inheritdoc />
+    public Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+    {
+        // Do nothing here, this functionality is not supported for old/legacy the templates module.
+        return Task.FromResult(true);
+    }
+
+    /// <inheritdoc />
+    public Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
+    {
+        // Do nothing here, this functionality is not supported for old/legacy the templates module.
+        return Task.FromResult(true);
+    }
+
+    /// <inheritdoc />
+    public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
+    {
+        var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
+        var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
+        switch (contentTemplate.CachingMode)
+        {
+            case TemplateCachingModes.ServerSideCaching:
+                break;
+            case TemplateCachingModes.ServerSideCachingPerUrl:
+                cacheFileName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
+                break;
+            case TemplateCachingModes.ServerSideCachingPerUrlAndQueryString:
+                cacheFileName.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
+                break;
+            case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
+                cacheFileName.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
+                break;
+            case TemplateCachingModes.NoCaching:
+                return "";
+            default:
+                throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingMode), contentTemplate.CachingMode.ToString(), null);
+        }
+
+        // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
+        var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (cookieCacheDeviation.Length > 0)
+        {
+            var requestCookies = httpContextAccessor?.HttpContext?.Request.Cookies;
+            foreach (var cookieName in cookieCacheDeviation)
+            {
+                if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
                 {
                     continue;
                 }
 
-                (linkedTemplate.Type == TemplateTypes.Css ? cssStringBuilder : jsStringBuilder).Append(linkedTemplate.Content);
-                (linkedTemplate.Type == TemplateTypes.Css ? externalCssFilesList : externalJavaScriptFilesList).AddRange(linkedTemplate.ExternalFiles);
+                var combinedCookiePart = $"{cookieName}:{cookieValue}";
+                cacheFileName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
             }
-
-            return new TemplateDataModel
-            {
-                Content = template.Content,
-                LinkedCss = cssStringBuilder.ToString(),
-                LinkedJavascript = jsStringBuilder.ToString(),
-                ExternalCssFiles = externalCssFilesList,
-                ExternalJavaScriptFiles = externalJavaScriptFilesList
-            };
         }
 
-        /// <inheritdoc />
-        public Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(Template template)
+        // Make sure the language code has a value.
+        if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
         {
-            // Do nothing here, this functionality is not supported for old/legacy the templates module.
-            return Task.FromResult(true);
+            // This function fills the property "CurrentLanguageCode".
+            await languagesService.GetLanguageCodeAsync();
         }
 
-        /// <inheritdoc />
-        public Task<bool> ExecutePreLoadQueryAndRememberResultsAsync(ITemplatesService templatesService, Template template)
+        // And finally add the language code to the file name.
+        if (!String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
         {
-            // Do nothing here, this functionality is not supported for old/legacy the templates module.
-            return Task.FromResult(true);
+            cacheFileName.Append($"_{languagesService.CurrentLanguageCode}");
         }
 
-        /// <inheritdoc />
-        public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
+        if (String.IsNullOrEmpty(extension))
         {
-            var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
-            var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");
-            switch (contentTemplate.CachingMode)
-            {
-                case TemplateCachingModes.ServerSideCaching:
-                    break;
-                case TemplateCachingModes.ServerSideCachingPerUrl:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
-                    break;
-                case TemplateCachingModes.ServerSideCachingPerUrlAndQueryString:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
-                    break;
-                case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
-                    cacheFileName.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
-                    break;
-                case TemplateCachingModes.NoCaching:
-                    return "";
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(contentTemplate.CachingMode), contentTemplate.CachingMode.ToString(), null);
-            }
-
-            // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
-            var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (cookieCacheDeviation.Length > 0)
-            {
-                var requestCookies = httpContextAccessor?.HttpContext?.Request.Cookies;
-                foreach (var cookieName in cookieCacheDeviation)
-                {
-                    if (requestCookies == null || !requestCookies.TryGetValue(cookieName, out var cookieValue))
-                    {
-                        continue;
-                    }
-
-                    var combinedCookiePart = $"{cookieName}:{cookieValue}";
-                    cacheFileName.Append($"_{Uri.EscapeDataString(combinedCookiePart.ToSha512Simple())}");
-                }
-            }
-
-            // Make sure the language code has a value.
-            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
-            {
-                // This function fills the property "CurrentLanguageCode".
-                await languagesService.GetLanguageCodeAsync();
-            }
-
-            // And finally add the language code to the file name.
-            if (!String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
-            {
-                cacheFileName.Append($"_{languagesService.CurrentLanguageCode}");
-            }
-
-            if (String.IsNullOrEmpty(extension))
-            {
-                return cacheFileName.ToString();
-            }
-
-            if (!extension.StartsWith("."))
-            {
-                extension = $".{extension}";
-            }
-
-            cacheFileName.Append(extension);
-
             return cacheFileName.ToString();
         }
 
-        /// <inheritdoc />
-        public Task<List<Template>> GetTemplateUrlsAsync()
+        if (!extension.StartsWith("."))
         {
-            // Return an empty result here. This functionality is not made for legacy templates.
-            return Task.FromResult(new List<Template>());
+            extension = $".{extension}";
         }
 
-        /// <inheritdoc />
-        public Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
+        cacheFileName.Append(extension);
+
+        return cacheFileName.ToString();
+    }
+
+    /// <inheritdoc />
+    public Task<List<Template>> GetTemplateUrlsAsync()
+    {
+        // Return an empty result here. This functionality is not made for legacy templates.
+        return Task.FromResult(new List<Template>());
+    }
+
+    /// <inheritdoc />
+    public Task<bool> ComponentRenderingShouldBeLoggedAsync(int componentId)
+    {
+        // Return an empty result here. This functionality is not made for legacy templates.
+        return Task.FromResult(false);
+    }
+
+    /// <inheritdoc />
+    public Task<bool> TemplateRenderingShouldBeLoggedAsync(int templateId)
+    {
+        // Return an empty result here. This functionality is not made for legacy templates.
+        return Task.FromResult(false);
+    }
+
+    /// <inheritdoc />
+    public Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "")
+    {
+        // Return an empty result here. This functionality is not made for legacy templates.
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+    {
+        // Return an empty result here. This functionality is not made for legacy templates.
+        return Task.FromResult(new List<PageWidgetModel>());
+    }
+
+    /// <inheritdoc />
+    public Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
+    {
+        // Return an empty result here. This functionality is not made for legacy templates.
+        return Task.FromResult(new List<PageWidgetModel>());
+    }
+
+    /// <inheritdoc />
+    public Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
+    {
+        // Return an empty result here. This functionality is not made for legacy templates.
+        return Task.FromResult(new List<PageWidgetModel>());
+    }
+
+    /// <inheritdoc />
+    public async Task<Template> CheckTemplatePermissionsAsync(Template template)
+    {
+        if (!template.LoginRequired)
         {
-            // Return an empty result here. This functionality is not made for legacy templates.
-            return Task.FromResult(false);
+            return template;
         }
 
-        /// <inheritdoc />
-        public Task<bool> TemplateRenderingShouldBeLoggedAsync(int templateId)
+        var emptyTemplate = new Template
         {
-            // Return an empty result here. This functionality is not made for legacy templates.
-            return Task.FromResult(false);
+            Type = template.Type,
+            LoginRequired = true,
+            LoginRedirectUrl = template.LoginRedirectUrl,
+            LoginRoles = template.LoginRoles
+        };
+
+        var userData = await accountsService.GetUserDataFromCookieAsync();
+
+        return userData is {UserId: > 0} ? template : emptyTemplate;
+    }
+
+    /// <inheritdoc />
+    public async Task<Template> GetTemplatePermissionSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
+    {
+        if (id <= 0 && String.IsNullOrEmpty(name))
+        {
+            throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
         }
 
-        /// <inheritdoc />
-        public Task AddTemplateOrComponentRenderingLogAsync(int componentId, int templateId, int version, DateTime startTime, DateTime endTime, long timeTaken, string error = "")
+        var joinPart = gclSettings.Environment switch
         {
-            // Return an empty result here. This functionality is not made for legacy templates.
-            return Task.CompletedTask;
+            Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
+            Environments.Acceptance => " AND t.isacceptance=1 ",
+            Environments.Test => " AND t.istest=1 ",
+            Environments.Live => " AND t.islive=1 ",
+            _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
+        };
+
+        string whereClause;
+        if (id > 0)
+        {
+            databaseConnection.AddParameter("id", id);
+            whereClause = "i.id = ?id";
+        }
+        else
+        {
+            databaseConnection.AddParameter("name", name);
+            whereClause = "i.name = ?name";
         }
 
-        /// <inheritdoc />
-        public Task<List<PageWidgetModel>> GetGlobalPageWidgetsAsync()
+        if (parentId > 0)
         {
-            // Return an empty result here. This functionality is not made for legacy templates.
-            return Task.FromResult(new List<PageWidgetModel>());
+            databaseConnection.AddParameter("parentId", parentId);
+            whereClause += " AND ip.id = ?parentId";
+        }
+        else if (!String.IsNullOrWhiteSpace(parentName))
+        {
+            databaseConnection.AddParameter("parentName", parentName);
+            whereClause = " AND ip.name = ?parentName";
         }
 
-        /// <inheritdoc />
-        public Task<List<PageWidgetModel>> GetPageWidgetsAsync(int templateId, bool includeGlobalSnippets = true)
-        {
-            // Return an empty result here. This functionality is not made for legacy templates.
-            return Task.FromResult(new List<PageWidgetModel>());
-        }
+        var query = $"""
+                     SELECT
+                                                 i.`name` AS template_name,
+                                                 i.id AS template_id,
+                                                 t.issecure,
+                                                 CASE t.templatetype
+                                                     WHEN 'html' THEN 1
+                                                     WHEN 'css' THEN 2
+                                                     WHEN 'scss' THEN 3
+                                                     WHEN 'js' THEN 4
+                                                     ELSE 0
+                                                 END AS template_type
+                                             FROM easy_items i 
+                                             JOIN easy_templates t ON i.id=t.itemid
+                                             {joinPart}
+                                             WHERE i.moduleid = 143 
+                                             AND i.published = 1
+                                             AND i.deleted <= 0
+                                             AND t.deleted <= 0
+                                             AND {whereClause}
+                                             LIMIT 1
+                     """;
 
-        /// <inheritdoc />
-        public Task<List<PageWidgetModel>> GetPageWidgetsAsync(ITemplatesService templatesService, int templateId, bool includeGlobalSnippets = true)
-        {
-            // Return an empty result here. This functionality is not made for legacy templates.
-            return Task.FromResult(new List<PageWidgetModel>());
-        }
-
-        /// <inheritdoc />
-        public async Task<Template> CheckTemplatePermissionsAsync(Template template)
-        {
-            if (!template.LoginRequired)
-            {
-                return template;
-            }
-
-            var emptyTemplate = new Template
-            {
-                Type = template.Type,
-                LoginRequired = true,
-                LoginRedirectUrl = template.LoginRedirectUrl,
-                LoginRoles = template.LoginRoles
-            };
-
-            var userData = await accountsService.GetUserDataFromCookieAsync();
-
-            return userData is { UserId: > 0 } ? template : emptyTemplate;
-        }
-
-        /// <inheritdoc />
-        public async Task<Template> GetTemplatePermissionSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
-        {
-            if (id <= 0 && String.IsNullOrEmpty(name))
-            {
-                throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
-            }
-
-            var joinPart = gclSettings.Environment switch
-            {
-                Environments.Development => " JOIN (SELECT itemid, max(version) AS maxversion FROM easy_templates GROUP BY itemid) v ON t.itemid = v.itemid AND t.version = v.maxversion ",
-                Environments.Acceptance => " AND t.isacceptance=1 ",
-                Environments.Test => " AND t.istest=1 ",
-                Environments.Live => " AND t.islive=1 ",
-                _ => throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment.ToString(), null)
-            };
-
-            string whereClause;
-            if (id > 0)
-            {
-                databaseConnection.AddParameter("id", id);
-                whereClause = "i.id = ?id";
-            }
-            else
-            {
-                databaseConnection.AddParameter("name", name);
-                whereClause = "i.name = ?name";
-            }
-
-            if (parentId > 0)
-            {
-                databaseConnection.AddParameter("parentId", parentId);
-                whereClause += " AND ip.id = ?parentId";
-            }
-            else if (!String.IsNullOrWhiteSpace(parentName))
-            {
-                databaseConnection.AddParameter("parentName", parentName);
-                whereClause = " AND ip.name = ?parentName";
-            }
-
-            var query = $@"SELECT
-                            i.`name` AS template_name,
-                            i.id AS template_id,
-                            t.issecure,
-                            CASE t.templatetype
-                                WHEN 'html' THEN 1
-                                WHEN 'css' THEN 2
-                                WHEN 'scss' THEN 3
-                                WHEN 'js' THEN 4
-                                ELSE 0
-                            END AS template_type
-                        FROM easy_items i 
-                        JOIN easy_templates t ON i.id=t.itemid
-                        {joinPart}
-                        WHERE i.moduleid = 143 
-                        AND i.published = 1
-                        AND i.deleted <= 0
-                        AND t.deleted <= 0
-                        AND {whereClause}
-                        LIMIT 1";
-
-            var dataTable = await databaseConnection.GetAsync(query);
-            var result = dataTable.Rows.Count == 0 ? new Template() : new Template
+        var dataTable = await databaseConnection.GetAsync(query);
+        var result = dataTable.Rows.Count == 0
+            ? new Template()
+            : new Template
             {
                 Id = dataTable.Rows[0].Field<int>("template_id"),
                 Name = dataTable.Rows[0].Field<string>("template_name"),
                 LoginRequired = dataTable.Rows[0].Field<bool>("issecure"),
-                LoginRoles = new List<int>(),
+                LoginRoles = [],
                 LoginRedirectUrl = String.Empty,
-                Type = (TemplateTypes)Convert.ToInt32(dataTable.Rows[0]["template_type"])
+                Type = (TemplateTypes) Convert.ToInt32(dataTable.Rows[0]["template_type"])
             };
 
-            return result;
-        }
-
-        /// <summary>
-        /// Do all replacement which have to do with request, session or cookie.
-        /// Only use this function if you can't add ITemplatesService via dependency injection, otherwise you should use the non static functions <see cref="IStringReplacementsService.DoSessionReplacements" /> and <see cref="IStringReplacementsService.DoHttpRequestReplacements"/>.
-        /// </summary>
-        /// <param name="input">The input string.</param>
-        /// <param name="httpContext"></param>
-        public static string DoHttpContextReplacements(string input, HttpContext httpContext)
-        {
-            // Querystring replaces.
-            foreach (var key in httpContext.Request.Query.Keys)
-            {
-                input = input.Replace($"{{{key}}}", httpContext.Request.Query[key], StringComparison.OrdinalIgnoreCase);
-            }
-
-            // Form replaces.
-            if (httpContext.Request.HasFormContentType)
-            {
-                foreach (var variable in httpContext.Request.Form.Keys)
-                {
-                    input = input.Replace($"{{{variable}}}", httpContext.Request.Form[variable], StringComparison.OrdinalIgnoreCase);
-                }
-            }
-
-            // Session replaces.
-            if (httpContext?.Features.Get<ISessionFeature>() != null && httpContext.Session.IsAvailable)
-            {
-                foreach (var variable in httpContext.Session.Keys)
-                {
-                    input = input.Replace($"{{{variable}}}", httpContext.Session.GetString(variable), StringComparison.OrdinalIgnoreCase);
-                }
-            }
-
-            // Cookie replaces.
-            foreach (var key in httpContext.Request.Cookies.Keys)
-            {
-                input = input.Replace($"{{{key}}}", httpContext.Request.Cookies[key], StringComparison.OrdinalIgnoreCase);
-            }
-
-            return input;
-        }
+        return result;
     }
 }

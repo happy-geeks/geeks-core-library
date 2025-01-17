@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.DataSelector.Models
+﻿namespace GeeksCoreLibrary.Modules.DataSelector.Models;
+
+public class Connection
 {
-    public class Connection
-    {
-        public ConnectionRow[] ConnectionRows { get; set; }
-    }
+    public ConnectionRow[] ConnectionRows { get; set; }
 }

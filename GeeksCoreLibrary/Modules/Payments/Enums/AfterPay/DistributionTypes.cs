@@ -1,9 +1,8 @@
-﻿namespace GeeksCoreLibrary.Modules.Payments.Enums.AfterPay
+﻿namespace GeeksCoreLibrary.Modules.Payments.Enums.AfterPay;
+
+public enum DistributionTypes
 {
-    public enum DistributionTypes
-    {
-        Paper,
-        Email,
-        Sms
-    }
+    Paper,
+    Email,
+    Sms
 }

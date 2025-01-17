@@ -6,7 +6,7 @@ public class SmtPeterRquestAttachmentModel
     /// Gets or sets the Base64 encoded bytes of the file.
     /// </summary>
     public string Data { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the name of the file.
     /// </summary>

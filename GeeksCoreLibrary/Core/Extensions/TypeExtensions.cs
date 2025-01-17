@@ -1,14 +1,13 @@
 ﻿using System;
 
-namespace GeeksCoreLibrary.Core.Extensions
+namespace GeeksCoreLibrary.Core.Extensions;
+
+public static class TypeExtensions
 {
-    public static class TypeExtensions
+    public static object GetDefaultValue(this Type type)
     {
-        public static object GetDefaultValue(this Type type)
-        {
-            return type.IsValueType
-                ? Activator.CreateInstance(type)
-                : null;
-        }
+        return type.IsValueType
+            ? Activator.CreateInstance(type)
+            : null;
     }
 }

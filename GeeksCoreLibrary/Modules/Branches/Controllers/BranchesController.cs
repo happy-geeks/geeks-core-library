@@ -3,31 +3,22 @@ using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GeeksCoreLibrary.Modules.Branches.Controllers
+namespace GeeksCoreLibrary.Modules.Branches.Controllers;
+
+[Area("Branches")]
+[Route("branches")]
+public class BranchesController(IBranchesService branchesService, IDatabaseHelpersService databaseHelpersService)
+    : Controller
 {
-    [Area("Branches")]
-    [Route("branches")]
-    public class BranchesController : Controller
+    [HttpGet("{dataBaseName}")]
+    public async Task<IActionResult> SwitchToBranchAsync(string databaseName)
     {
-        private readonly IBranchesService branchesService;
-        private readonly IDatabaseHelpersService databaseHelpersService;
-
-        public BranchesController(IBranchesService branchesService, IDatabaseHelpersService databaseHelpersService)
+        if (!await databaseHelpersService.DatabaseExistsAsync(databaseName))
         {
-            this.branchesService = branchesService;
-            this.databaseHelpersService = databaseHelpersService;
+            return NotFound($"Database / branch with name '{databaseName}' does not exist.");
         }
 
-        [HttpGet("{dataBaseName}")]
-        public async Task<IActionResult> SwitchToBranchAsync(string databaseName)
-        {
-            if (!await databaseHelpersService.DatabaseExistsAsync(databaseName))
-            {
-                return NotFound($"Database / branch with name '{databaseName}' does not exist.");
-            }
-
-            branchesService.SaveDatabaseNameToCookie(databaseName);
-            return Redirect("/");
-        }
+        branchesService.SaveDatabaseNameToCookie(databaseName);
+        return Redirect("/");
     }
 }

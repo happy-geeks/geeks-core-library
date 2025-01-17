@@ -27,7 +27,7 @@ public interface IFtpHandler
     /// <param name="fromPath">The full path to the file from where it will be uploaded, if for all files the full path to the folder to upload.</param>
     /// <returns>Returns if upload was successful.</returns>
     Task<bool> UploadAsync(bool allFilesInFolder, string uploadPath, string fromPath);
-    
+
     /// <summary>
     /// Upload a file to an FTP server from bytes.
     /// </summary>
@@ -59,7 +59,7 @@ public interface IFtpHandler
     /// <param name="filePath">The full path to the file to delete.</param>
     /// <returns>Returns if the file has been deleted.</returns>
     Task<bool> DeleteFileAsync(bool allFilesInFolder, string filePath);
-    
+
     /// <summary>
     /// Move a file on the FTP server.
     /// </summary>

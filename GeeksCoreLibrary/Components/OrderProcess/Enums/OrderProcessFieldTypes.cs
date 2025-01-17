@@ -1,11 +1,10 @@
-﻿namespace GeeksCoreLibrary.Components.OrderProcess.Enums
+﻿namespace GeeksCoreLibrary.Components.OrderProcess.Enums;
+
+public enum OrderProcessFieldTypes
 {
-    public enum OrderProcessFieldTypes
-    {
-        Input,
-        Radio,
-        Select,
-        Checkbox,
-        Textarea
-    }
+    Input,
+    Radio,
+    Select,
+    Checkbox,
+    Textarea
 }

@@ -11,7 +11,7 @@ public class GclQueryException : Exception
     /// Gets or sets the query that was being executed when the exception was thrown.
     /// </summary>
     public string Query { get; }
-    
+
     /// <summary>
     /// Create a new <see cref="GclQueryException"/> with only a message and the executed query.
     /// </summary>
@@ -21,7 +21,7 @@ public class GclQueryException : Exception
     {
         Query = query;
     }
-    
+
     /// <summary>
     /// Create a new <see cref="GclQueryException"/> with a message, the executed query and an inner exception to include an existing exception.
     /// </summary>

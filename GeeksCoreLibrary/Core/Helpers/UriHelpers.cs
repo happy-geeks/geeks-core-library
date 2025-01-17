@@ -18,7 +18,7 @@ public class UriHelpers
         var uri = new Uri(url);
         return AddToQueryString(uri, parameters);
     }
-    
+
     /// <summary>
     /// Add parameters to the query string of an URL.
     /// </summary>

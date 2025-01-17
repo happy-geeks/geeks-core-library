@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.Templates.Models
+﻿namespace GeeksCoreLibrary.Modules.Templates.Models;
+
+public class QueryTemplate : Template
 {
-    public class QueryTemplate : Template
-    {
-        public QueryGroupingSettings GroupingSettings { get; set; } = new();
-    }
+    public QueryGroupingSettings GroupingSettings { get; set; } = new();
 }

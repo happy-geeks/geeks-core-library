@@ -1,9 +1,8 @@
-﻿namespace GeeksCoreLibrary.Modules.Templates.Models
-{
-    public class JavaScriptResourceModel : PageResourceModel
-    {
-        public bool Async { get; set; }
+﻿namespace GeeksCoreLibrary.Modules.Templates.Models;
 
-        public bool Defer { get; set; } = true;
-    }
+public class JavaScriptResourceModel : PageResourceModel
+{
+    public bool Async { get; set; }
+
+    public bool Defer { get; set; } = true;
 }

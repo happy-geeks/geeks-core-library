@@ -1,8 +1,7 @@
-﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models
+﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models;
+
+public class LabelModel
 {
-    public class LabelModel
-    {
-        public string Content { get; set; }
-        public string Labeltype { get; set; }
-    }
+    public string Content { get; set; }
+    public string Labeltype { get; set; }
 }

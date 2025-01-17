@@ -1,9 +1,8 @@
 ﻿using GeeksCoreLibrary.Modules.Payments.Enums;
 
-namespace GeeksCoreLibrary.Modules.Payments.Interfaces
+namespace GeeksCoreLibrary.Modules.Payments.Interfaces;
+
+public interface IPaymentServiceProviderServiceFactory
 {
-    public interface IPaymentServiceProviderServiceFactory
-    {
-        IPaymentServiceProviderService GetPaymentServiceProviderService(PaymentServiceProviders paymentServiceProvider);
-    }
+    IPaymentServiceProviderService GetPaymentServiceProviderService(PaymentServiceProviders paymentServiceProvider);
 }

@@ -1,10 +1,9 @@
 ﻿using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Models;
 
-namespace GeeksCoreLibrary.Core.Interfaces
+namespace GeeksCoreLibrary.Core.Interfaces;
+
+public interface IGeoLocationService
 {
-    public interface IGeoLocationService
-    {
-        Task<AddressInfoModel> GetAddressInfoAsync(string zipCode, string houseNumber, string houseNumberAddition = "", string country = "");
-    }
+    Task<AddressInfoModel> GetAddressInfoAsync(string zipCode, string houseNumber, string houseNumberAddition = "", string country = "");
 }
