@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using FluentAssertions;
+using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Services;
+using JetBrains.Annotations;
+using Microsoft.Extensions.Options;
 using Moq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
@@ -57,6 +60,8 @@ public class ReplacementsMediatorTests
                                            """;
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    [UsedImplicitly]
+    private IOptions<GclSettings> gclSettingsMock;
     private IReplacementsMediator replacementsMediator;
     private Mock<IDatabaseConnection> databaseConnectionMock;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
@@ -65,6 +70,7 @@ public class ReplacementsMediatorTests
     public void Setup()
     {
         // Create mocks.
+        gclSettingsMock = Options.Create(new GclSettings());
         databaseConnectionMock = new Mock<IDatabaseConnection>();
 
         // Create the service that we're testing.

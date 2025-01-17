@@ -4,6 +4,8 @@ using System.Text;
 using FluentAssertions;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
+using JetBrains.Annotations;
+using Microsoft.Extensions.Options;
 using NUnit.Framework;
 
 namespace GeeksCoreLibrary.Tests.Core.Extensions;
@@ -15,10 +17,19 @@ public class StringExtensionsTests
     private const string TestEncryptionSalt = "Test456";
     private const string TestValue = "This is a test value";
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    [UsedImplicitly]
+    private GclSettings gclSettings;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
     [SetUp]
     public void Setup()
     {
         // Create mocks.
+        gclSettings = new GclSettings
+        {
+            DefaultEncryptionSalt = TestEncryptionSalt
+        };
     }
 
     [Test]
