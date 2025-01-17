@@ -1,12 +1,12 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.ItemFiles.Enums;
 using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
-using Constants = GeeksCoreLibrary.Modules.ItemFiles.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Services;
 
@@ -118,7 +118,7 @@ public class CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFile
             return false;
         }
 
-        var localDirectory = Path.Combine(webHostEnvironment.WebRootPath, Constants.DefaultFilesDirectory);
+        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
         if (!Directory.Exists(localDirectory))
         {
             return false;
@@ -141,7 +141,7 @@ public class CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFile
             return (null, DateTime.MinValue);
         }
 
-        var localDirectory = Path.Combine(webHostEnvironment.WebRootPath, Constants.DefaultFilesDirectory);
+        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);;
         var fileLocation = Path.Combine(localDirectory, localFilename);
 
         var fileBytes = await File.ReadAllBytesAsync(fileLocation);

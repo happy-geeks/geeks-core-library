@@ -84,7 +84,7 @@ public class CacheService : ICacheService, ISingletonService
     /// <inheritdoc />
     public void ClearOutputCache()
     {
-        var outputCacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+        var outputCacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(outputCacheFolder))
         {
             return;

@@ -58,7 +58,7 @@ public class LegacyCachedTemplatesService(
         if (includeContent && cacheSettings.CachingMode != TemplateCachingModes.NoCaching && cacheSettings.CachingMinutes > 0)
         {
             // Get folder and file name.
-            var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+            var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
             var cacheFileName = await GetTemplateOutputCacheFileNameAsync(cacheSettings, cacheSettings.Type.ToString());
 
             switch (cacheSettings.CachingLocation)

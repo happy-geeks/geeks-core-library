@@ -70,7 +70,7 @@ public class ItemFilesService(
         var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
-            logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+            logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
             return (null, DateTime.MinValue);
         }
 
@@ -113,7 +113,7 @@ public class ItemFilesService(
         var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
-            logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+            logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
             return (null, DateTime.MinValue);
         }
 
@@ -153,7 +153,7 @@ public class ItemFilesService(
         var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
-            logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+            logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
             return (null, DateTime.MinValue);
         }
 
@@ -211,7 +211,7 @@ public class ItemFilesService(
         var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
-            logger.LogError($"Could not retrieve image because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+            logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
             return (null, DateTime.MinValue);
         }
 
@@ -254,7 +254,7 @@ public class ItemFilesService(
         var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
-            logger.LogError($"Could not retrieve file because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+            logger.LogError($"Could not retrieve file because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
             return (null, DateTime.MinValue);
         }
 
@@ -298,7 +298,7 @@ public class ItemFilesService(
         var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
-            logger.LogError($"Could not retrieve file because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+            logger.LogError($"Could not retrieve file because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
             return (null, DateTime.MinValue);
         }
 
@@ -339,7 +339,7 @@ public class ItemFilesService(
         var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
-            logger.LogError($"Could not retrieve file because the directory '{Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+            logger.LogError($"Could not retrieve file because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
             return (null, DateTime.MinValue);
         }
 

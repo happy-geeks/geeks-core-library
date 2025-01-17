@@ -2,6 +2,11 @@
 
 public class Constants
 {
+    // File system constants.
+    public const string AppDataDirectoryName = "App_Data";
+    public const string OutputCacheDirectoryName = "OutputCache";
+    public const string FilesCacheDirectoryName = "FilesCache";
+
     // Keys for the JSON object that we need to read, from the "options" column in the table "wiser_entityproperty".
     public const string FieldTypeKey = "_fieldType";
     public const string SaveSeoValueKey = "_alsoSaveSeoValue";

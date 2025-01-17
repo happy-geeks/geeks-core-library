@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Text;
+using GeeksCoreLibrary.Core.Models;
 using Microsoft.AspNetCore.Hosting;
 
 namespace GeeksCoreLibrary.Core.Helpers;
@@ -15,18 +16,18 @@ public static class FileSystemHelpers
             return null;
         }
 
-        var result = Path.Combine(webHostEnvironment.WebRootPath, Modules.ItemFiles.Models.Constants.DefaultFilesDirectory);
+        var result = Path.Combine(webHostEnvironment.ContentRootPath, Constants.AppDataDirectoryName, Constants.FilesCacheDirectoryName);
         return !Directory.Exists(result) ? null : result;
     }
 
-    public static string GetContentCacheFolderPath(IWebHostEnvironment webHostEnvironment)
+    public static string GetOutputCacheDirectory(IWebHostEnvironment webHostEnvironment)
     {
         if (webHostEnvironment == null)
         {
             return null;
         }
 
-        var result = Path.Combine(webHostEnvironment.WebRootPath, "contentcache");
+        var result = Path.Combine(webHostEnvironment.ContentRootPath, Constants.AppDataDirectoryName, Constants.OutputCacheDirectoryName);
         return !Directory.Exists(result) ? null : result;
     }
 

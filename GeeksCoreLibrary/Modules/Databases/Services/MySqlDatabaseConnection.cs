@@ -25,6 +25,7 @@ using Newtonsoft.Json;
 using Renci.SshNet;
 using ConnectionInfo = Renci.SshNet.ConnectionInfo;
 using Constants = GeeksCoreLibrary.Modules.Databases.Models.Constants;
+using CoreConstants = GeeksCoreLibrary.Core.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.Databases.Services;
 
@@ -753,21 +754,21 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     }
 
     /// <summary>
-    /// Checks whether or not the log table (for logging the opening and closing of database connections) exists.
+    /// Checks whether the log table (for logging the opening and closing of database connections) exists.
     /// </summary>
     /// <param name="command">The MySqlCommand to execute the query on to check if the table exists.</param>
     /// <returns>A boolean indicating whether the log table exists or not.</returns>
     private async Task<bool> LogTableExistsAsync(MySqlCommand command)
     {
-        // Simple text file that indicates whether or not the log table exists, so that we don't have to execute an extra query every time.
-        var cacheDirectory = webHostEnvironment == null ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data") : FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
-        var filePath = cacheDirectory == null ? null : Path.Combine(cacheDirectory, String.Format(Constants.LogTableExistsCacheFileName, (ConnectionForWriting ?? ConnectionForReading).Database));
-        if (filePath != null && File.Exists(filePath))
+        // Simple text file that indicates whether the log table exists, so that we don't have to execute an extra query every time.
+        var cacheDirectory = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment) ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, CoreConstants.AppDataDirectoryName, CoreConstants.OutputCacheDirectoryName);
+        var filePath = Path.Combine(cacheDirectory, String.Format(Constants.LogTableExistsCacheFileName, (ConnectionForWriting ?? ConnectionForReading).Database));
+        if (File.Exists(filePath))
         {
             return true;
         }
 
-        if (webHostEnvironment == null && cacheDirectory != null && !Directory.Exists(cacheDirectory))
+        if (webHostEnvironment == null && !Directory.Exists(cacheDirectory))
         {
             try
             {

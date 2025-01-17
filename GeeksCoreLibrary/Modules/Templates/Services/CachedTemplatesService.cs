@@ -79,7 +79,7 @@ public class CachedTemplatesService(
         if (!skipCache && includeContent && cacheSettings.CachingMinutes > 0)
         {
             // Get folder and file name.
-            var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+            var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
             var cacheFileName = await GetTemplateOutputCacheFileNameAsync(cacheSettings, cacheSettings.Type.ToString());
 
             switch (cacheSettings.CachingLocation)
@@ -574,7 +574,7 @@ public class CachedTemplatesService(
                 break;
             case TemplateCachingLocations.OnDisk:
             {
-                var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+                var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
                 if (String.IsNullOrWhiteSpace(cacheFolder))
                 {
                     logger.LogWarning($"Content cache enabled for component '{dynamicContent.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website (on Windows / IIS, this is the user 'IIS_IUSRS' bij default).");
