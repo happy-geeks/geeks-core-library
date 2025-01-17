@@ -25,7 +25,7 @@ public class NoPspService(
         httpContextAccessor), IPaymentServiceProviderService, IScopedService
 {
     /// <inheritdoc />
-    public Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber)
+    public Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> shoppingBaskets, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string localInvoiceNumber)
     {
         return Task.FromResult(new PaymentRequestResult
         {

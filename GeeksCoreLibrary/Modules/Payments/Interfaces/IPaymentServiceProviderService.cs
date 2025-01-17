@@ -23,9 +23,9 @@ public interface IPaymentServiceProviderService
     /// <param name="conceptOrders">A list of one or more (concept) orders that the user is going to pay for.</param>
     /// <param name="userDetails">The details of the user that is going to pay.</param>
     /// <param name="paymentMethodSettings">The payment method that the user selected.</param>
-    /// <param name="invoiceNumber">The invoice number for the order, this will be sent to the PSP.</param>
+    /// <param name="localInvoiceNumber">The invoice number for the order, this will be sent to the PSP.</param>
     /// <returns>A <see cref="PaymentRequestResult"/> with the results of the payment request.</returns>
-    Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string invoiceNumber);
+    Task<PaymentRequestResult> HandlePaymentRequestAsync(ICollection<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, WiserItemModel userDetails, PaymentMethodSettingsModel paymentMethodSettings, string localInvoiceNumber);
 
     /// <summary>
     /// Processes a status update (webhook) from the PSP.
