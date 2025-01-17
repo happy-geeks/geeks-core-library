@@ -50,10 +50,10 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
         {
             var context = HttpContext;
             var templateName = HttpContextHelpers.GetRequestValue(context, "templatename");
-            Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
+            _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
             if (templateId <= 0)
             {
-                Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "id"), out templateId);
+                _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "id"), out templateId);
             }
 
             logger.LogDebug($"GetAsync content from HTML template, templateName: '{templateName}', templateId: '{templateId}'.");
@@ -290,7 +290,7 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
         {
             var context = HttpContext;
             var templateName = HttpContextHelpers.GetRequestValue(context, "templatename");
-            Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
+            _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateid"), out templateId);
             logger.LogDebug($"JsonAsync content from query template, templateName: '{templateName}', templateId: '{templateId}'.");
 
             if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
@@ -360,7 +360,7 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
         {
             var context = HttpContext;
             var templateName = HttpContextHelpers.GetRequestValue(context, "templateName");
-            Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out templateId);
+            _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out templateId);
             logger.LogDebug($"JsonAsync content from query template, templateName: '{templateName}', templateId: '{templateId}'.");
 
             if (String.IsNullOrWhiteSpace(templateName) && templateId <= 0)
@@ -479,7 +479,7 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
         try
         {
             var context = HttpContext;
-            Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out templateId);
+            _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(context, "templateId"), out templateId);
             var partialTemplateName = HttpContextHelpers.GetRequestValue(context, "partialName");
 
             if (String.IsNullOrWhiteSpace(partialTemplateName) && templateId <= 0)

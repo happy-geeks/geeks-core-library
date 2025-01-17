@@ -68,7 +68,7 @@ public class AccountsService(
             // Get the ID of the default user to use for anonymous users (users who are not logged in).
             // This can be used to set permissions for items, so that users who are not logged in cannot get/update/create/delete certain items.
             var defaultAnonymousUserIdValue = await objectsService.FindSystemObjectByDomainNameAsync("defaultAnonymousUserId", "0");
-            UInt64.TryParse(defaultAnonymousUserIdValue, out var defaultAnonymousUserId);
+            _ = UInt64.TryParse(defaultAnonymousUserIdValue, out var defaultAnonymousUserId);
             defaultAnonymousUserModel.MainUserId = defaultAnonymousUserId;
             defaultAnonymousUserModel.UserId = defaultAnonymousUserId;
 

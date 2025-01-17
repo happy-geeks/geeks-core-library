@@ -411,7 +411,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             var request = httpContext?.Request;
 
             ulong userId = 0;
-            Int32.TryParse(HttpContextHelpers.GetRequestValue(httpContext, Constants.StepNumberFieldName), out var stepNumber);
+            _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(httpContext, Constants.StepNumberFieldName), out var stepNumber);
 
             var ociHookUrl = HttpContextHelpers.GetRequestValue(httpContext, Settings.OciHookUrlKey);
             var ociUsername = HttpContextHelpers.GetRequestValue(httpContext, Settings.OciUsernameKey);
@@ -990,7 +990,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                 throw new Exception("User is not logged in!");
             }
 
-            UInt64.TryParse(request.Query[$"{Constants.SelectedSubAccountQueryStringKey}{ComponentId}"], out selectedSubAccount);
+            _ = UInt64.TryParse(request.Query[$"{Constants.SelectedSubAccountQueryStringKey}{ComponentId}"], out selectedSubAccount);
 
             // Add fields to the page.
             var query = AccountsService.SetupAccountQuery(Settings.GetSubAccountQuery, Settings, userData.MainUserId, subAccountId: selectedSubAccount);
@@ -1695,7 +1695,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             try
             {
                 var decryptedId = encryptedUserId.DecryptWithAesWithSalt(withDateTime: true);
-                UInt64.TryParse(decryptedId, out decryptedUserId);
+                _ = UInt64.TryParse(decryptedId, out decryptedUserId);
             }
             catch (Exception exception)
             {
@@ -1755,7 +1755,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         if (accountResult.Columns.Contains(Constants.LastLoginDateColumn))
         {
             DateTime lastLoginDate;
-            DateTime.TryParseExact(accountResult.Rows[0].Field<string>(Constants.LastLoginDateColumn), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out lastLoginDate);
+            _ = DateTime.TryParseExact(accountResult.Rows[0].Field<string>(Constants.LastLoginDateColumn), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out lastLoginDate);
             if (Settings.MaximumAmountOfFailedLoginAttempts > 0 && Settings.DefaultLockoutTime.HasValue && Settings.DefaultLockoutTime.Value > 0 && failedLoginAttempts >= Settings.MaximumAmountOfFailedLoginAttempts && lastLoginDate.AddMinutes(Settings.DefaultLockoutTime.Value) > DateTime.Now)
             {
                 return (Result: LoginResults.TooManyAttempts, UserId: 0, EmailAddress: userEmail);
