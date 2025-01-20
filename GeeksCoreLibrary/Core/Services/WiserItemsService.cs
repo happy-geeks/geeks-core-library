@@ -30,51 +30,21 @@ using Constants = GeeksCoreLibrary.Core.Models.Constants;
 namespace GeeksCoreLibrary.Core.Services;
 
 /// <inheritdoc cref="IWiserItemsService" />
-public class WiserItemsService : IWiserItemsService, IScopedService
+public class WiserItemsService(
+    IDatabaseConnection databaseConnection,
+    IObjectsService objectsService,
+    IStringReplacementsService stringReplacementsService,
+    IDataSelectorsService dataSelectorsService,
+    IDatabaseHelpersService databaseHelpersService,
+    IOptions<GclSettings> gclSettings,
+    ILogger<WiserItemsService> logger,
+    IEntityTypesService entityTypesService,
+    ILinkTypesService linkTypesService)
+    : IWiserItemsService, IScopedService
 {
-    #region Privates
-
-    private readonly IDatabaseConnection databaseConnection;
-
-    private readonly IObjectsService objectsService;
-    private readonly IStringReplacementsService stringReplacementsService;
-    private readonly IDataSelectorsService dataSelectorsService;
-    private readonly IDatabaseHelpersService databaseHelpersService;
-    private readonly ILogger<WiserItemsService> logger;
-    private readonly IEntityTypesService entityTypesService;
-    private readonly ILinkTypesService linkTypesService;
-    private readonly GclSettings gclSettings;
+    private readonly GclSettings gclSettings = gclSettings.Value;
     private const int MaximumLevelsToDuplicate = 25;
 
-    #endregion
-
-    #region Constructor
-
-    /// <summary>
-    /// Creates a new instance of <see cref="WiserItemsService"/>.
-    /// </summary>
-    public WiserItemsService(IDatabaseConnection databaseConnection,
-        IObjectsService objectsService,
-        IStringReplacementsService stringReplacementsService,
-        IDataSelectorsService dataSelectorsService,
-        IDatabaseHelpersService databaseHelpersService,
-        IOptions<GclSettings> gclSettings,
-        ILogger<WiserItemsService> logger,
-        IEntityTypesService entityTypesService,
-        ILinkTypesService linkTypesService)
-    {
-        this.databaseConnection = databaseConnection;
-        this.objectsService = objectsService;
-        this.stringReplacementsService = stringReplacementsService;
-        this.dataSelectorsService = dataSelectorsService;
-        this.databaseHelpersService = databaseHelpersService;
-        this.logger = logger;
-        this.entityTypesService = entityTypesService;
-        this.linkTypesService = linkTypesService;
-        this.gclSettings = gclSettings.Value;
-    }
-
-    #endregion
 
     #region Implemented methods from interface
 
@@ -2504,14 +2474,14 @@ public class WiserItemsService : IWiserItemsService, IScopedService
         }
 
         var itemIdTablePrefix = ""; // The table prefix for the current open item
-            if (linkSettings.UseItemParentId && reverse && !string.IsNullOrEmpty(itemIdEntityType))
-            {
-                // Get the table prefix based on the entity type of the current open item, because when 'reverse' we need to add a join to the wiser_item table of the current open item
-                itemIdTablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
-            }
+        if (linkSettings.UseItemParentId && reverse && !string.IsNullOrEmpty(itemIdEntityType))
+        {
+            // Get the table prefix based on the entity type of the current open item, because when 'reverse' we need to add a join to the wiser_item table of the current open item
+            itemIdTablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
+        }
 
-            var tablePrefix = ""; // The table prefix used in the main query
-            if (!String.IsNullOrEmpty(entityType))
+        var tablePrefix = ""; // The table prefix used in the main query
+        if (!String.IsNullOrEmpty(entityType))
         {
             tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
             databaseConnection.AddParameter("entityType", entityType);
