@@ -8,19 +8,12 @@ using Microsoft.Extensions.Hosting;
 
 namespace GeeksCoreLibrary.Core.Services;
 
-    /// <summary>
-    /// Hosting services that inherit this service class will run in a scoped setting instead of singleton,
-    /// allowing scoped services (such as DatabaseConnection) to be used.
+/// <summary>
+/// Hosting services that inherit this service class will run in a scoped setting instead of singleton,
+/// allowing scoped services (such as DatabaseConnection) to be used.
 /// </summary>
-public class ScopedBackgroundService : BackgroundService
+public class ScopedBackgroundService(IServiceProvider serviceProvider) : BackgroundService
 {
-    private readonly IServiceProvider serviceProvider;
-
-    public ScopedBackgroundService(IServiceProvider serviceProvider)
-    {
-        this.serviceProvider = serviceProvider;
-    }
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await DoWorkAsync(stoppingToken);
