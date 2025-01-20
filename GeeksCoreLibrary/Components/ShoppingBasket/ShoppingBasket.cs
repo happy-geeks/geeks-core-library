@@ -121,7 +121,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
             Legacy = 10,
 
             /// <summary>
-            /// Add property description.
+            /// For creating replacements that counts the number of products and lines and their respective quantities.
             /// </summary>
             [CmsEnum(PrettyName = "Products Count")]
             ProductsCount = 13
@@ -846,7 +846,7 @@ namespace GeeksCoreLibrary.Components.ShoppingBasket
         }
 
         /// <summary>
-        /// Handles the ProductsCount mode, this mode calculates the total amount of products (totalProducts) and the total amount of products including their quantities (totalProductsQuantity).
+        /// Handles the ProductsCount mode, this mode calculates the total amount of products and lines, and the total amount of products and lines including their quantities.
         /// </summary>
         /// <returns></returns>
         public async Task<string> HandleProductsCountModeAsync()
