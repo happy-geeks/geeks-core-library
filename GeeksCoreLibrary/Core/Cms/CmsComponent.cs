@@ -130,14 +130,14 @@ public abstract class CmsComponent<T, T2> : ViewComponent
             foreach (var parameter in methodParameters)
             {
                 var (key, value) = contentObject.FirstOrDefault(p => p.Key.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase));
-                if (parameter.IsOptional && !contentObject.ContainsKey(key))
-                {
-                    parameterValues.Add(parameter.DefaultValue);
-                    continue;
-                }
 
                 if (String.IsNullOrWhiteSpace(key))
                 {
+                    if (parameter.IsOptional)
+                    {
+                        parameterValues.Add(parameter.DefaultValue);
+                    }
+
                     continue;
                 }
 
