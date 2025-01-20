@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Text;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace GeeksCoreLibrary.Core.Helpers;
@@ -20,8 +22,11 @@ public static class XmlHelpers
         }
 
         var serializer = new XmlSerializer(typeof(T));
-        using var reader = new StringReader(xml);
-        return (T) serializer.Deserialize(reader);
+        using var stringReader = new StringReader(xml);
+
+        // Prevents the XmlSerializer from resolving external resources, to mitigate XML External Entity (XXE) vulnerabilities.
+        using var xmlReader = XmlReader.Create(stringReader, new XmlReaderSettings { XmlResolver = null });
+        return (T) serializer.Deserialize(xmlReader);
     }
 
     /// <summary>
@@ -38,8 +43,9 @@ public static class XmlHelpers
         }
 
         var serializer = new XmlSerializer(typeof(T));
-        using var writer = new StringWriter();
-        serializer.Serialize(writer, input);
-        return writer.ToString();
+        var xmlStringBuilder = new StringBuilder();
+        using var xmlWriter = XmlWriter.Create(xmlStringBuilder);
+        serializer.Serialize(xmlWriter, input);
+        return xmlStringBuilder.ToString();
     }
 }
