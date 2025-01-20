@@ -2467,29 +2467,21 @@ public class WiserItemsService(
             databaseConnection.AddParameter("userId", userId);
             permissionsQueryPart = $"""
                                     # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
-                                    	                                    LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-                                    	                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
+                                    LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
+                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
                                     """;
             where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
         }
 
-        var itemIdTablePrefix = ""; // The table prefix for the current open item
-        if (linkSettings.UseItemParentId && reverse && !string.IsNullOrEmpty(itemIdEntityType))
-        {
-            // Get the table prefix based on the entity type of the current open item, because when 'reverse' we need to add a join to the wiser_item table of the current open item
-            itemIdTablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
-        }
+        // The table prefix for the items to get.
+        var tablePrefixForResultItems = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+        // The table prefix for the item of the itemId parameter.
+        var tablePrefixForItemIdItem = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
 
-        var tablePrefix = ""; // The table prefix used in the main query
         if (!String.IsNullOrEmpty(entityType))
         {
-            tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
             databaseConnection.AddParameter("entityType", entityType);
             where.Add("item.entity_type = ?entityType");
-        }
-        else if (!String.IsNullOrEmpty(itemIdEntityType))
-        {
-            tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
         }
 
         databaseConnection.AddParameter("itemId", itemId);
@@ -2502,7 +2494,7 @@ public class WiserItemsService(
         {
             if (reverse)
             {
-                itemLinkJoin = $"JOIN {itemIdTablePrefix}{WiserTableNames.WiserItem} AS linkedItem ON linkedItem.id = ?itemId AND linkedItem.parent_item_id = item.id";
+                itemLinkJoin = $"JOIN {tablePrefixForItemIdItem}{WiserTableNames.WiserItem} AS linkedItem ON linkedItem.id = ?itemId AND linkedItem.parent_item_id = item.id";
             }
             else
             {
@@ -2517,39 +2509,39 @@ public class WiserItemsService(
 
             itemLinkDetailsPart = $"""
                                    
-                                                       UNION ALL
-                                   
-                                                       # Item link details.
-                                                       SELECT 
-                                   	                    item.*,
-                                                           details.groupname,
-                                   	                    details.`key`,	
-                                   	                    CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                                                           details.language_code,
-                                                           link.id AS itemLinkId
-                                                       FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                                       {itemLinkJoin}
-                                                       LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS details ON details.itemlink_id = link.id
-                                                       {permissionsQueryPart}
-                                                       WHERE {String.Join(" AND ", where)}
+                                   UNION ALL
+               
+                                   # Item link details.
+                                   SELECT 
+                                       item.*,
+                                       details.groupname,
+                                   	   details.`key`,	
+                                   	   CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+                                       details.language_code,
+                                       link.id AS itemLinkId
+                                   FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem} AS item
+                                   {itemLinkJoin}
+                                   LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS details ON details.itemlink_id = link.id
+                                   {permissionsQueryPart}
+                                   WHERE {String.Join(" AND ", where)}
                                    """;
         }
 
         var query = $"""
                      # Item details.
-                                             SELECT 
-                     	                        item.*,
-                                                 details.groupname,
-                     	                        details.`key`,	
-                     	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                                                 details.language_code,
-                                                 0 AS itemLinkId
-                                             FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                             {itemLinkJoin}
-                                             LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id
-                                             {permissionsQueryPart}
-                                             WHERE {String.Join(" AND ", where)}
-                                             {itemLinkDetailsPart}
+                     SELECT 
+                     	 item.*,
+                         details.groupname,
+                     	 details.`key`,	
+                     	 CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+                         details.language_code,
+                         0 AS itemLinkId
+                     FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem} AS item
+                     {itemLinkJoin}
+                     LEFT JOIN {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id
+                     {permissionsQueryPart}
+                     WHERE {String.Join(" AND ", where)}
+                     {itemLinkDetailsPart}
                      """;
 
         if (includeDeletedItems)
@@ -2558,7 +2550,7 @@ public class WiserItemsService(
             {
                 if (reverse)
                 {
-                    itemLinkJoin = $"JOIN {itemIdTablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS mainItem ON mainItem.parent_item_id = item.id AND mainItem.id = ?itemId";
+                    itemLinkJoin = $"JOIN {tablePrefixForItemIdItem}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS mainItem ON mainItem.parent_item_id = item.id AND mainItem.id = ?itemId";
                 }
                 else
                 {
@@ -2573,40 +2565,41 @@ public class WiserItemsService(
 
                 itemLinkDetailsPart = $"""
                                        
-                                                               UNION ALL
-                                       
-                                                               # Item link details.
-                                                               SELECT 
-                                       	                        item.*,
-                                                                   details.groupname,
-                                       	                        details.`key`,
-                                       	                        CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                                                                   details.language_code,
-                                                                   link.id AS itemLinkId
-                                                               FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
-                                                               {itemLinkJoin}
-                                                               LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.itemlink_id = link.id
-                                                               {permissionsQueryPart}
-                                                               WHERE {String.Join(" AND ", where)}
+                                       UNION ALL
+               
+                                       # Item link details.
+                                       SELECT 
+                                       	   item.*,
+                                           details.groupname,
+                                       	   details.`key`,
+                                       	   CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+                                           details.language_code,
+                                           link.id AS itemLinkId
+                                       FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+                                       {itemLinkJoin}
+                                       LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.itemlink_id = link.id
+                                       {permissionsQueryPart}
+                                       WHERE {String.Join(" AND ", where)}
                                        """;
             }
 
             query += $"""
                       
-                                                  UNION
-                                                  SELECT 
-                      	                            item.*,
-                                                      details.groupname,
-                      	                            details.`key`,	
-                      	                            CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
-                                                      details.language_code,
-                                                      0 AS itemLinkId
-                                                  FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
-                                                  {itemLinkJoin}
-                                                  LEFT JOIN {tablePrefix}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id
-                                                  {permissionsQueryPart}
-                                                  WHERE {String.Join(" AND ", where)}
-                                                  {itemLinkDetailsPart}
+                      UNION ALL
+                      
+                      SELECT 
+                          item.*,
+                          details.groupname,
+                          details.`key`,	
+                          CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
+                          details.language_code,
+                          0 AS itemLinkId
+                      FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+                      {itemLinkJoin}
+                      LEFT JOIN {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id
+                      {permissionsQueryPart}
+                      WHERE {String.Join(" AND ", where)}
+                      {itemLinkDetailsPart}
                       """;
         }
 
@@ -2653,30 +2646,30 @@ public class WiserItemsService(
             databaseConnection.AddParameter("userId", userId);
             permissionsQueryPart = $"""
                                     # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
-                                    	                                    LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-                                    	                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
+                                    LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
+                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
                                     """;
             where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
         }
 
         var linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkSettings);
-        var tablePrefix = "";
+
+        // The table prefix for the items to get.
+        var tablePrefixForResultItems = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+        // The table prefix for the item of the itemId parameter.
+        var tablePrefixForItemIdItem = await wiserItemsService.GetTablePrefixForEntityAsync(itemIdEntityType);
+
         if (!String.IsNullOrWhiteSpace(entityType))
         {
-            tablePrefix = await GetTablePrefixForEntityAsync(entityType);
             databaseConnection.AddParameter("entityType", entityType);
             where.Add("item.entity_type = ?entityType");
-        }
-        else if (!String.IsNullOrWhiteSpace(itemIdEntityType))
-        {
-            tablePrefix = await GetTablePrefixForEntityAsync(itemIdEntityType);
         }
 
         if (linkSettings.UseItemParentId)
         {
             if (reverse)
             {
-                itemLinkJoin = $"JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linkedItem ON linkedItem.id = ?itemId AND linkedItem.parent_item_id = item.id";
+                itemLinkJoin = $"JOIN {tablePrefixForItemIdItem}{WiserTableNames.WiserItem} AS linkedItem ON linkedItem.id = ?itemId AND linkedItem.parent_item_id = item.id";
             }
             else
             {
@@ -2697,11 +2690,11 @@ public class WiserItemsService(
         databaseConnection.AddParameter("linkType", linkType);
         var query = $"""
                      SELECT item.id
-                                             FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
-                                             {itemLinkJoin}
-                                             {permissionsQueryPart}
-                                             {wherePart}
-                                             ORDER BY item.id DESC;
+                     FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem} AS item
+                     {itemLinkJoin}
+                     {permissionsQueryPart}
+                     {wherePart}
+                     ORDER BY item.id DESC;
                      """;
 
         if (includeDeletedItems)
@@ -2710,7 +2703,7 @@ public class WiserItemsService(
             {
                 if (reverse)
                 {
-                    itemLinkJoin = $"JOIN {tablePrefix}{WiserTableNames.WiserItem} AS linkedItem ON linkedItem.id = ?itemId AND linkedItem.parent_item_id = item.id";
+                    itemLinkJoin = $"JOIN {tablePrefixForItemIdItem}{WiserTableNames.WiserItem} AS linkedItem ON linkedItem.id = ?itemId AND linkedItem.parent_item_id = item.id";
                 }
             }
             else
@@ -2721,13 +2714,14 @@ public class WiserItemsService(
             }
 
             query += $"""
-                      UNION
-                                                  SELECT item.id
-                                                  FROM {tablePrefix}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
-                                                  {itemLinkJoin}
-                                                  {permissionsQueryPart}
-                                                  WHERE {String.Join(" AND ", where)}
-                                                  ORDER BY item.id DESC;
+                      UNION ALL
+
+                      SELECT item.id
+                      FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+                      {itemLinkJoin}
+                      {permissionsQueryPart}
+                      WHERE {String.Join(" AND ", where)}
+                      ORDER BY item.id DESC;
                       """;
         }
 
