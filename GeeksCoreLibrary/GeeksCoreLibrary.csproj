@@ -19,12 +19,12 @@
         <LangVersion>default</LangVersion>
     </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="Core\Cms\Services\**" />
-    <Content Remove="Core\Cms\Services\**" />
-    <EmbeddedResource Remove="Core\Cms\Services\**" />
-    <None Remove="Core\Cms\Services\**" />
-  </ItemGroup>
+    <ItemGroup>
+        <Compile Remove="Core\Cms\Services\**" />
+        <Content Remove="Core\Cms\Services\**" />
+        <EmbeddedResource Remove="Core\Cms\Services\**" />
+        <None Remove="Core\Cms\Services\**" />
+    </ItemGroup>
 
     <ItemGroup>
         <Folder Include="Modules\PostalServices\PostNL\Models\"/>
