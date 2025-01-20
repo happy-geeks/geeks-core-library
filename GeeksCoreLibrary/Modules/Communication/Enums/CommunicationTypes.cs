@@ -1,9 +1,8 @@
-﻿namespace GeeksCoreLibrary.Modules.Communication.Enums
+﻿namespace GeeksCoreLibrary.Modules.Communication.Enums;
+
+public enum CommunicationTypes
 {
-    public enum CommunicationTypes
-    {
-        Email,
-        Sms,
-        WhatsApp
-    }
+    Email,
+    Sms,
+    WhatsApp
 }

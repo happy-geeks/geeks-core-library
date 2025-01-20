@@ -1,18 +1,17 @@
-﻿namespace GeeksCoreLibrary.Modules.Templates.Enums
+﻿namespace GeeksCoreLibrary.Modules.Templates.Enums;
+
+public enum TemplateTypes
 {
-    public enum TemplateTypes
-    {
-        Unknown,
-        Html,
-        Css,
-        Scss,
-        Js,
-        Query,
-        Normal,
-        Directory,
-        Xml,
-        Routine,
-        View,
-        Trigger
-    }
+    Unknown,
+    Html,
+    Css,
+    Scss,
+    Js,
+    Query,
+    Normal,
+    Directory,
+    Xml,
+    Routine,
+    View,
+    Trigger
 }

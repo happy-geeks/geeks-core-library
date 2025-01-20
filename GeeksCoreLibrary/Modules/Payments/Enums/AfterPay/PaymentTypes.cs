@@ -1,11 +1,10 @@
-﻿namespace GeeksCoreLibrary.Modules.Payments.Enums.AfterPay
+﻿namespace GeeksCoreLibrary.Modules.Payments.Enums.AfterPay;
+
+public enum PaymentTypes
 {
-    public enum PaymentTypes
-    {
-        Invoice,
-        Account,
-        Installment,
-        Consolidatedinvoice,
-        DirectDebitInvoice
-    }
+    Invoice,
+    Account,
+    Installment,
+    Consolidatedinvoice,
+    DirectDebitInvoice
 }

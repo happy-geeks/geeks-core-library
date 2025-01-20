@@ -1,13 +1,12 @@
 ﻿using GeeksCoreLibrary.Modules.Branches.Enumerations;
 
-namespace GeeksCoreLibrary.Modules.Branches.Models
+namespace GeeksCoreLibrary.Modules.Branches.Models;
+
+/// <inheritdoc />
+public class SettingMergeSettingsModel : ObjectMergeSettingsModel
 {
-    /// <inheritdoc />
-    public class SettingMergeSettingsModel : ObjectMergeSettingsModel
-    {
-        /// <summary>
-        /// Gets or sets the type of setting to merge.
-        /// </summary>
-        public WiserSettingTypes Type { get; set; }
-    }
+    /// <summary>
+    /// Gets or sets the type of setting to merge.
+    /// </summary>
+    public WiserSettingTypes Type { get; set; }
 }

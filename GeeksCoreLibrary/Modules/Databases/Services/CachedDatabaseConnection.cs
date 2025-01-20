@@ -16,238 +16,224 @@ using LazyCache;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
-namespace GeeksCoreLibrary.Modules.Databases.Services
+namespace GeeksCoreLibrary.Modules.Databases.Services;
+
+public class CachedDatabaseConnection(
+    IDatabaseConnection databaseConnection,
+    IAppCache cache,
+    IOptions<GclSettings> gclSettings,
+    ICacheService cacheService,
+    IBranchesService branchesService,
+    IHttpContextAccessor httpContextAccessor = null)
+    : IDatabaseConnection
 {
-    public class CachedDatabaseConnection : IDatabaseConnection
+    private readonly ConcurrentDictionary<string, object> parameters = new();
+    private readonly GclSettings gclSettings = gclSettings.Value;
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
     {
-        private readonly IDatabaseConnection databaseConnection;
-        private readonly IAppCache cache;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly ICacheService cacheService;
-        private readonly ConcurrentDictionary<string, object> parameters = new();
-        private readonly GclSettings gclSettings;
-        private readonly IBranchesService branchesService;
+        await databaseConnection.DisposeAsync();
+    }
 
-        public CachedDatabaseConnection(IDatabaseConnection databaseConnection,
-            IAppCache cache,
-            IOptions<GclSettings> gclSettings,
-            ICacheService cacheService,
-            IBranchesService branchesService,
-            IHttpContextAccessor httpContextAccessor = null)
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        databaseConnection.Dispose();
+    }
+
+    public DbConnection ConnectionForReading { get; set; }
+    public DbConnection ConnectionForWriting { get; set; }
+
+    /// <inheritdoc />
+    public string ConnectedDatabase => databaseConnection.ConnectedDatabase;
+
+    /// <inheritdoc />
+    public string ConnectedDatabaseForWriting => databaseConnection.ConnectedDatabaseForWriting;
+
+    /// <inheritdoc />
+    public async Task<DbDataReader> GetReaderAsync(string query)
+    {
+        return await databaseConnection.GetReaderAsync(query);
+    }
+
+    /// <inheritdoc />
+    public async Task<DataTable> GetAsync(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
+    {
+        // TODO: This skipCache parameter is temporary, and will be removed once a better solution is found to skip cache.
+        if (skipCache)
         {
-            this.databaseConnection = databaseConnection;
-            this.cache = cache;
-            this.httpContextAccessor = httpContextAccessor;
-            this.cacheService = cacheService;
-            this.gclSettings = gclSettings.Value;
-            this.branchesService = branchesService;
+            return await databaseConnection.GetAsync(query, cleanUp: cleanUp, useWritingConnectionIfAvailable: useWritingConnectionIfAvailable);
         }
 
-        /// <inheritdoc />
-        public async ValueTask DisposeAsync()
+        var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
+        var cacheName = new StringBuilder($"GCL_QUERY_{currentUri.Host}");
+
+        if (gclSettings.MultiLanguageBasedOnUrlSegments && currentUri.Segments.Length > gclSettings.IndexOfLanguagePartInUrl)
         {
-            await databaseConnection.DisposeAsync();
+            cacheName.Append(currentUri.Segments[gclSettings.IndexOfLanguagePartInUrl].Trim('/'));
         }
 
-        /// <inheritdoc />
-        public void Dispose()
+        cacheName.Append(query.ToSha512Simple());
+        foreach (var (key, value) in parameters.OrderBy(item => item.Key))
         {
-            databaseConnection.Dispose();
-        }
-
-        public DbConnection ConnectionForReading { get; set; }
-        public DbConnection ConnectionForWriting { get; set; }
-
-        /// <inheritdoc />
-        public string ConnectedDatabase => databaseConnection.ConnectedDatabase;
-
-        /// <inheritdoc />
-        public string ConnectedDatabaseForWriting => databaseConnection.ConnectedDatabaseForWriting;
-
-        /// <inheritdoc />
-        public async Task<DbDataReader> GetReaderAsync(string query)
-        {
-            return await databaseConnection.GetReaderAsync(query);
-        }
-
-        /// <inheritdoc />
-        public async Task<DataTable> GetAsync(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
-        {
-            // TODO: This skipCache parameter is temporary, and will be removed once a better solution is found to skip cache.
-            if (skipCache)
+            if (!query.Contains($"?{key}", StringComparison.OrdinalIgnoreCase))
             {
+                // Don't include parameters that are not used in the query.
+                continue;
+            }
+
+            cacheName.Append($"{key}={value}");
+        }
+
+        cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
+        return await cache.GetOrAddAsync(cacheName.ToString(),
+            async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                 return await databaseConnection.GetAsync(query, cleanUp: cleanUp, useWritingConnectionIfAvailable: useWritingConnectionIfAvailable);
-            }
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+    }
 
-            var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
-            var cacheName = new StringBuilder($"GCL_QUERY_{currentUri.Host}");
-
-            if (gclSettings.MultiLanguageBasedOnUrlSegments && currentUri.Segments.Length > gclSettings.IndexOfLanguagePartInUrl)
-            {
-                cacheName.Append(currentUri.Segments[gclSettings.IndexOfLanguagePartInUrl].Trim('/'));
-            }
-
-            cacheName.Append(query.ToSha512Simple());
-            foreach (var (key, value) in parameters.OrderBy(item => item.Key))
-            {
-                if (!query.Contains($"?{key}", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Don't include parameters that are not used in the query.
-                    continue;
-                }
-
-                cacheName.Append($"{key}={value}");
-            }
-
-            cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
-            return await cache.GetOrAddAsync(cacheName.ToString(),
-                async cacheEntry =>
-                {
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
-                    return await databaseConnection.GetAsync(query, cleanUp: cleanUp, useWritingConnectionIfAvailable: useWritingConnectionIfAvailable);
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+    /// <inheritdoc />
+    public async Task<string> GetAsJsonAsync(string query, bool formatResult = false, bool skipCache = false)
+    {
+        // TODO: This skipCache parameter is temporary, and will be removed once a better solution is found to skip cache.
+        if (skipCache)
+        {
+            return await databaseConnection.GetAsJsonAsync(query, formatResult);
         }
 
-        /// <inheritdoc />
-        public async Task<string> GetAsJsonAsync(string query, bool formatResult = false, bool skipCache = false)
+        var cacheName = new StringBuilder("GCL_QUERY_");
+
+        var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
+        if (gclSettings.MultiLanguageBasedOnUrlSegments && currentUri.Segments.Length > gclSettings.IndexOfLanguagePartInUrl)
         {
-            // TODO: This skipCache parameter is temporary, and will be removed once a better solution is found to skip cache.
-            if (skipCache)
+            cacheName.Append(currentUri.Segments[gclSettings.IndexOfLanguagePartInUrl].Trim('/'));
+        }
+
+        cacheName.Append(query.ToSha512Simple());
+        foreach (var (key, value) in parameters.OrderBy(item => item.Key))
+        {
+            cacheName.Append($"{key}={value}");
+        }
+
+        cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
+        return await cache.GetOrAddAsync(cacheName.ToString(),
+            async cacheEntry =>
             {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
                 return await databaseConnection.GetAsJsonAsync(query, formatResult);
-            }
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+    }
 
-            var cacheName = new StringBuilder("GCL_QUERY_");
+    /// <inheritdoc />
+    public async Task<int> ExecuteAsync(string query, bool useWritingConnectionIfAvailable = true, bool cleanUp = true)
+    {
+        return await databaseConnection.ExecuteAsync(query, useWritingConnectionIfAvailable);
+    }
 
-            var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
-            if (gclSettings.MultiLanguageBasedOnUrlSegments && currentUri.Segments.Length > gclSettings.IndexOfLanguagePartInUrl)
-            {
-                cacheName.Append(currentUri.Segments[gclSettings.IndexOfLanguagePartInUrl].Trim('/'));
-            }
+    /// <inheritdoc />
+    public async Task<T> InsertOrUpdateRecordBasedOnParametersAsync<T>(string tableName, T id = default, string idColumnName = "id", bool ignoreErrors = false, bool useWritingConnectionIfAvailable = true)
+    {
+        return await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(tableName, id, idColumnName, ignoreErrors, useWritingConnectionIfAvailable);
+    }
 
-            cacheName.Append(query.ToSha512Simple());
-            foreach (var (key, value) in parameters.OrderBy(item => item.Key))
-            {
-                cacheName.Append($"{key}={value}");
-            }
+    /// <inheritdoc />
+    public async Task<long> InsertRecordAsync(string query, bool useWritingConnectionIfAvailable = true)
+    {
+        return await databaseConnection.InsertRecordAsync(query, useWritingConnectionIfAvailable);
+    }
 
-            cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
-            return await cache.GetOrAddAsync(cacheName.ToString(),
-                async cacheEntry =>
-                {
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
-                    return await databaseConnection.GetAsJsonAsync(query, formatResult);
-                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
-        }
+    /// <inheritdoc />
+    public async Task<IDbTransaction> BeginTransactionAsync(bool forceNewTransaction = false)
+    {
+        return await databaseConnection.BeginTransactionAsync(forceNewTransaction);
+    }
 
-        /// <inheritdoc />
-        public async Task<int> ExecuteAsync(string query, bool useWritingConnectionIfAvailable = true, bool cleanUp = true)
+    /// <inheritdoc />
+    public async Task CommitTransactionAsync(bool throwErrorIfNoActiveTransaction = true)
+    {
+        await databaseConnection.CommitTransactionAsync(throwErrorIfNoActiveTransaction);
+    }
+
+    /// <inheritdoc />
+    public async Task RollbackTransactionAsync(bool throwErrorIfNoActiveTransaction = true)
+    {
+        await databaseConnection.RollbackTransactionAsync(throwErrorIfNoActiveTransaction);
+    }
+
+    /// <inheritdoc />
+    public void AddParameter(string key, object value)
+    {
+        databaseConnection.AddParameter(key, value);
+
+        if (parameters.ContainsKey(key))
         {
-            return await databaseConnection.ExecuteAsync(query, useWritingConnectionIfAvailable);
+            parameters.TryRemove(key, out _);
         }
 
-        /// <inheritdoc />
-        public async Task<T> InsertOrUpdateRecordBasedOnParametersAsync<T>(string tableName, T id = default, string idColumnName = "id", bool ignoreErrors = false, bool useWritingConnectionIfAvailable = true)
-        {
-            return await databaseConnection.InsertOrUpdateRecordBasedOnParametersAsync(tableName, id, idColumnName, ignoreErrors, useWritingConnectionIfAvailable);
-        }
+        parameters.TryAdd(key, value);
+    }
 
-        /// <inheritdoc />
-        public async Task<long> InsertRecordAsync(string query, bool useWritingConnectionIfAvailable = true)
-        {
-            return await databaseConnection.InsertRecordAsync(query, useWritingConnectionIfAvailable);
-        }
+    /// <inheritdoc />
+    public void ClearParameters()
+    {
+        databaseConnection.ClearParameters();
+        parameters.Clear();
+    }
 
-        /// <inheritdoc />
-        public async Task<IDbTransaction> BeginTransactionAsync(bool forceNewTransaction = false)
-        {
-            return await databaseConnection.BeginTransactionAsync(forceNewTransaction);
-        }
+    /// <inheritdoc />
+    public string GetDatabaseNameForCaching(bool writeDatabase = false)
+    {
+        return databaseConnection.GetDatabaseNameForCaching(writeDatabase);
+    }
 
-        /// <inheritdoc />
-        public async Task CommitTransactionAsync(bool throwErrorIfNoActiveTransaction = true)
-        {
-            await databaseConnection.CommitTransactionAsync(throwErrorIfNoActiveTransaction);
-        }
+    /// <inheritdoc />
+    public async Task EnsureOpenConnectionForReadingAsync()
+    {
+        await databaseConnection.EnsureOpenConnectionForReadingAsync();
+    }
 
-        /// <inheritdoc />
-        public async Task RollbackTransactionAsync(bool throwErrorIfNoActiveTransaction = true)
-        {
-            await databaseConnection.RollbackTransactionAsync(throwErrorIfNoActiveTransaction);
-        }
+    /// <inheritdoc />
+    public async Task EnsureOpenConnectionForWritingAsync()
+    {
+        await databaseConnection.EnsureOpenConnectionForWritingAsync();
+    }
 
-        /// <inheritdoc />
-        public void AddParameter(string key, object value)
-        {
-            databaseConnection.AddParameter(key, value);
+    /// <inheritdoc />
+    public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting, SshSettings sshSettingsForReading = null, SshSettings sshSettingsForWriting = null)
+    {
+        await databaseConnection.ChangeConnectionStringsAsync(newConnectionStringForReading, newConnectionStringForWriting, sshSettingsForReading, sshSettingsForWriting);
+    }
 
-            if (parameters.ContainsKey(key))
-            {
-                parameters.TryRemove(key, out _);
-            }
+    /// <inheritdoc />
+    public void SetCommandTimeout(int value)
+    {
+        databaseConnection.SetCommandTimeout(value);
+    }
 
-            parameters.TryAdd(key, value);
-        }
+    /// <inheritdoc />
+    public bool HasActiveTransaction()
+    {
+        return databaseConnection.HasActiveTransaction();
+    }
 
-        /// <inheritdoc />
-        public void ClearParameters()
-        {
-            databaseConnection.ClearParameters();
-            parameters.Clear();
-        }
+    /// <inheritdoc />
+    public DbConnection GetConnectionForReading()
+    {
+        return databaseConnection.GetConnectionForReading();
+    }
 
-        /// <inheritdoc />
-        public string GetDatabaseNameForCaching(bool writeDatabase = false)
-        {
-            return databaseConnection.GetDatabaseNameForCaching(writeDatabase);
-        }
+    /// <inheritdoc />
+    public DbConnection GetConnectionForWriting()
+    {
+        return databaseConnection.GetConnectionForWriting();
+    }
 
-        /// <inheritdoc />
-        public async Task EnsureOpenConnectionForReadingAsync()
-        {
-            await databaseConnection.EnsureOpenConnectionForReadingAsync();
-        }
-
-        /// <inheritdoc />
-        public async Task EnsureOpenConnectionForWritingAsync()
-        {
-            await databaseConnection.EnsureOpenConnectionForWritingAsync();
-        }
-
-        /// <inheritdoc />
-        public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting, SshSettings sshSettingsForReading = null, SshSettings sshSettingsForWriting = null)
-        {
-            await databaseConnection.ChangeConnectionStringsAsync(newConnectionStringForReading, newConnectionStringForWriting, sshSettingsForReading, sshSettingsForWriting);
-        }
-
-        /// <inheritdoc />
-        public void SetCommandTimeout(int value)
-        {
-            databaseConnection.SetCommandTimeout(value);
-        }
-
-        /// <inheritdoc />
-        public bool HasActiveTransaction()
-        {
-            return databaseConnection.HasActiveTransaction();
-        }
-
-        /// <inheritdoc />
-        public DbConnection GetConnectionForReading()
-        {
-            return databaseConnection.GetConnectionForReading();
-        }
-
-        /// <inheritdoc />
-        public DbConnection GetConnectionForWriting()
-        {
-            return databaseConnection.GetConnectionForWriting();
-        }
-
-        /// <inheritdoc />
-        public async Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false)
-        {
-            return await databaseConnection.BulkInsertAsync(dataTable, tableName, useWritingConnectionIfAvailable, useInsertIgnore);
-        }
+    /// <inheritdoc />
+    public async Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false)
+    {
+        return await databaseConnection.BulkInsertAsync(dataTable, tableName, useWritingConnectionIfAvailable, useInsertIgnore);
     }
 }

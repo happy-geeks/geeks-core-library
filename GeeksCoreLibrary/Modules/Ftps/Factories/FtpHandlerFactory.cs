@@ -7,15 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GeeksCoreLibrary.Modules.Ftps.Factories;
 
-public class FtpHandlerFactory : IFtpHandlerFactory, IScopedService
+public class FtpHandlerFactory(IServiceProvider serviceProvider) : IFtpHandlerFactory, IScopedService
 {
-    private readonly IServiceProvider serviceProvider;
-
-    public FtpHandlerFactory(IServiceProvider serviceProvider)
-    {
-        this.serviceProvider = serviceProvider;
-    }
-    
     public IFtpHandler GetFtpHandler(FtpTypes ftpType)
     {
         switch (ftpType)

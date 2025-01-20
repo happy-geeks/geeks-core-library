@@ -39,7 +39,7 @@ public class CachedBarcodesService : IBarcodesService
         if (String.IsNullOrWhiteSpace(cacheBasePath))
         {
             // Log a warning if the directory doesn't exist, and generate a new barcode.
-            logger.LogWarning($"Files cache is enabled but the directory '{ItemFiles.Models.Constants.DefaultFilesDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+            logger.LogWarning($"Files cache is enabled but the directory '{cacheBasePath}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
             fileBytes = barcodesService.GenerateBarcode(input, format, width, height);
             return fileBytes;
         }

@@ -27,15 +27,16 @@ public class CsvService : ICsvService, IScopedService
         };
         using var stringWriter = new StringWriter();
         using var csvWriter = new CsvWriter(stringWriter, config);
-        
+
         data = JsonHelpers.FlattenJsonArray(data);
 
         foreach (var pair in data.Cast<JObject>().First())
         {
             csvWriter.WriteField(pair.Key);
         }
+
         csvWriter.NextRecord();
-        
+
         foreach (JObject row in data)
         {
             foreach (var pair in row)

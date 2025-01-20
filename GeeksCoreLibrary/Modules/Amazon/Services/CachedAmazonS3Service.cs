@@ -8,16 +8,10 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Amazon.Services;
 
-public class CachedAmazonS3Service : IAmazonS3Service
+public class CachedAmazonS3Service(IOptions<GclSettings> gclSettings, IAmazonS3Service amazonS3Service)
+    : IAmazonS3Service
 {
-    private readonly GclSettings gclSettings;
-    private readonly IAmazonS3Service amazonS3Service;
-
-    public CachedAmazonS3Service(IOptions<GclSettings> gclSettings, IAmazonS3Service amazonS3Service)
-    {
-        this.gclSettings = gclSettings.Value;
-        this.amazonS3Service = amazonS3Service;
-    }
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
     public async Task<bool> CreateBucketAsync(string bucketName, AwsSettings awsSettings = null)

@@ -9,65 +9,52 @@ using GeeksCoreLibrary.Modules.Redirect.Models;
 using LazyCache;
 using Microsoft.Extensions.Options;
 
-namespace GeeksCoreLibrary.Modules.Redirect.Services
+namespace GeeksCoreLibrary.Modules.Redirect.Services;
+
+public class CachedRedirectService(IAppCache cache, IRedirectService redirectService, IOptions<GclSettings> gclSettings, ICacheService cacheService, IBranchesService branchesService)
+    : IRedirectService
 {
-    public class CachedRedirectService : IRedirectService
+    private readonly GclSettings gclSettings = gclSettings.Value;
+
+    /// <inheritdoc />
+    public async Task<RedirectModel> GetRedirectAsync(Uri uri)
     {
-        private readonly IAppCache cache;
-        private readonly IRedirectService redirectService;
-        private readonly ICacheService cacheService;
-        private readonly GclSettings gclSettings;
-        private readonly IBranchesService branchesService;
+        var cacheName = $"Redirect_{uri}_{branchesService.GetDatabaseNameFromCookie()}";
+        return await cache.GetOrAddAsync(cacheName,
+            async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultRedirectModuleCacheDuration;
+                return await redirectService.GetRedirectAsync(uri);
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Redirects));
+    }
 
-        public CachedRedirectService(IAppCache cache, IRedirectService redirectService, IOptions<GclSettings> gclSettings, ICacheService cacheService, IBranchesService branchesService)
-        {
-            this.cache = cache;
-            this.redirectService = redirectService;
-            this.cacheService = cacheService;
-            this.gclSettings = gclSettings.Value;
-            this.branchesService = branchesService;
-        }
+    /// <inheritdoc />
+    public Task<bool> RedirectModuleIsEnabledAsync()
+    {
+        return redirectService.RedirectModuleIsEnabledAsync();
+    }
 
-        /// <inheritdoc />
-        public async Task<RedirectModel> GetRedirectAsync(Uri uri)
-        {
-            var cacheName = $"Redirect_{uri}_{branchesService.GetDatabaseNameFromCookie()}";
-            return await cache.GetOrAddAsync(cacheName,
-                 async cacheEntry =>
-                 {
-                     cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultRedirectModuleCacheDuration;
-                     return await redirectService.GetRedirectAsync(uri);
-                 }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Redirects));
-        }
+    /// <inheritdoc />
+    public Task<string> GetMainDomainForRedirectAsync()
+    {
+        return redirectService.GetMainDomainForRedirectAsync();
+    }
 
-        /// <inheritdoc />
-        public Task<bool> RedirectModuleIsEnabledAsync()
-        {
-            return redirectService.RedirectModuleIsEnabledAsync();
-        }
+    /// <inheritdoc />
+    public Task<bool> ShouldRedirectToUrlWithTrailingSlashAsync()
+    {
+        return redirectService.ShouldRedirectToUrlWithTrailingSlashAsync();
+    }
 
-        /// <inheritdoc />
-        public  Task<string> GetMainDomainForRedirectAsync()
-        {
-            return redirectService.GetMainDomainForRedirectAsync();
-        }
+    /// <inheritdoc />
+    public Task<bool> ShouldRedirectToLowerCaseUrlAsync()
+    {
+        return redirectService.ShouldRedirectToLowerCaseUrlAsync();
+    }
 
-        /// <inheritdoc />
-        public Task<bool> ShouldRedirectToUrlWithTrailingSlashAsync()
-        {
-            return redirectService.ShouldRedirectToUrlWithTrailingSlashAsync();
-        }
-
-        /// <inheritdoc />
-        public Task<bool> ShouldRedirectToLowerCaseUrlAsync()
-        {
-            return redirectService.ShouldRedirectToLowerCaseUrlAsync();
-        }
-
-        /// <inheritdoc />
-        public Task<bool> ShouldRedirectToHttpsAsync()
-        {
-            return redirectService.ShouldRedirectToHttpsAsync();
-        }
+    /// <inheritdoc />
+    public Task<bool> ShouldRedirectToHttpsAsync()
+    {
+        return redirectService.ShouldRedirectToHttpsAsync();
     }
 }

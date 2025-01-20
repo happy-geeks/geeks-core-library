@@ -9,6 +9,7 @@ public enum ParcelType
     /// Standard parcel
     /// </summary>
     Standard,
+
     /// <summary>
     /// Mailbox parcel
     /// </summary>

@@ -1,10 +1,9 @@
 ﻿using System.ComponentModel;
 
-namespace GeeksCoreLibrary.Components.Repeater.Models
+namespace GeeksCoreLibrary.Components.Repeater.Models;
+
+class RepeaterRepeaterSettingsModel
 {
-    class RepeaterRepeaterSettingsModel
-    {
-        [DefaultValue(true)]
-        internal string bannerBannerUsesProductBlockSpace { get; set; }
-    }
+    [DefaultValue(true)]
+    internal string bannerBannerUsesProductBlockSpace { get; set; }
 }

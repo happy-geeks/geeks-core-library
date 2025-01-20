@@ -21,16 +21,14 @@ using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 using RestSharp;
 using RestSharp.Authenticators;
-
 using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.PostalServices.NeDistri.Services;
 
-public class NeDistriService : INeDistriService, IScopedService
+public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsService wiserItemsService, ILogger<NeDistriService> logger)
+    : INeDistriService, IScopedService
 {
-    private readonly GclSettings gclSettings;
-    private readonly IWiserItemsService wiserItemsService;
-    private readonly ILogger<NeDistriService> logger;
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     private readonly JsonSerializerSettings jsonSettings = new()
     {
@@ -40,13 +38,6 @@ public class NeDistriService : INeDistriService, IScopedService
         },
         Formatting = Formatting.Indented
     };
-
-    public NeDistriService( IOptions<GclSettings> gclSettings, IWiserItemsService wiserItemsService, ILogger<NeDistriService> logger)
-    {
-        this.gclSettings = gclSettings.Value;
-        this.wiserItemsService = wiserItemsService;
-        this.logger = logger;
-    }
 
     /// <inheritdoc />
     public async Task<string> GenerateShippingLabelAsync(string encryptedOrderIds, IEnumerable<LabelRule> labels, int? userCode, OrderType orderType)
@@ -146,7 +137,7 @@ public class NeDistriService : INeDistriService, IScopedService
     private List<ulong> DecryptOrderIds(string encryptedOrderIds)
     {
         var orderIds = new List<ulong>();
-        foreach (var encryptedId in encryptedOrderIds.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+        foreach (var encryptedId in encryptedOrderIds.Split([','], StringSplitOptions.RemoveEmptyEntries))
         {
             string decryptedOrderId;
             try
@@ -155,7 +146,7 @@ public class NeDistriService : INeDistriService, IScopedService
             }
             catch (Exception e)
             {
-                logger.LogError(e,"Something went wrong when decrypting order id in NeDistriService");
+                logger.LogError(e, "Something went wrong when decrypting order id in NeDistriService");
                 throw;
             }
 
@@ -186,7 +177,7 @@ public class NeDistriService : INeDistriService, IScopedService
 
         foreach (var label in labels.Where(label => label.ColiAmount >= 1))
         {
-            ruleModelList.Add(new RuleModel()
+            ruleModelList.Add(new RuleModel
             {
                 Unit = label.LabelType,
                 Amount = label.ColiAmount
@@ -208,7 +199,7 @@ public class NeDistriService : INeDistriService, IScopedService
 
         var restRequest = new RestRequest("/api/v1/order", Method.Post);
         restRequest.AddStringBody(createOrderRequestBody, DataFormat.Json);
-        
+
         var createOrderResponse = await restClient.ExecuteAsync(restRequest);
         if (createOrderResponse.ErrorException != null)
         {
@@ -252,7 +243,7 @@ public class NeDistriService : INeDistriService, IScopedService
         var request = new RestRequest("/api/v1/auth", Method.Post);
 
         // Add the authentication signature to our request
-        request.AddHeaders(new List<KeyValuePair<string, string>>()
+        request.AddHeaders(new List<KeyValuePair<string, string>>
         {
             new("Signature", signature)
         });
@@ -292,7 +283,8 @@ public class NeDistriService : INeDistriService, IScopedService
         {
             lastname = $"{lastNamePrefix} {lastname}";
         }
-        return new AddressModel()
+
+        return new AddressModel
         {
             Address = $"{street} {houseNumber}{houseNumberAddition}",
             Country = countrycode,

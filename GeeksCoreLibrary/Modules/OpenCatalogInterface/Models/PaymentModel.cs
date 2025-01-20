@@ -2,9 +2,9 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="Payment")]
+[XmlRoot(ElementName = "Payment")]
 public class PaymentModel
 {
-    [XmlElement(ElementName="PCard")]
+    [XmlElement(ElementName = "PCard")]
     public PCardModel PCard { get; set; }
 }

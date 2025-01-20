@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Enums;
+using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using GeeksCoreLibrary.Modules.Payments.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -14,6 +14,7 @@ namespace GeeksCoreLibrary.Modules.Payments.Services;
 
 public class PaymentServiceProviderBaseService
 {
+    /// <inheritdoc cref="IPaymentServiceProviderService.LogPaymentActions" />
     public bool LogPaymentActions { get; set; }
 
     private readonly IDatabaseHelpersService databaseHelpersService;
@@ -103,7 +104,7 @@ public class PaymentServiceProviderBaseService
     {
         try
         {
-            await databaseHelpersService.CheckAndUpdateTablesAsync(new List<string> {Constants.PaymentServiceProviderLogTableName});
+            await databaseHelpersService.CheckAndUpdateTablesAsync([Constants.PaymentServiceProviderLogTableName]);
 
             databaseConnection.ClearParameters();
             databaseConnection.AddParameter("payment_service_provider", paymentServiceProvider.ToString("G"));

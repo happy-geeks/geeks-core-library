@@ -9,17 +9,9 @@ namespace GeeksCoreLibrary.Modules.Barcodes.Controllers;
 
 [Area("Barcodes")]
 [Route("barcodes")]
-public class BarcodesController : Controller
+public class BarcodesController(ILogger<BarcodesController> logger, IBarcodesService barcodesService)
+    : Controller
 {
-    private readonly ILogger<BarcodesController> logger;
-    private readonly IBarcodesService barcodesService;
-
-    public BarcodesController(ILogger<BarcodesController> logger, IBarcodesService barcodesService)
-    {
-        this.logger = logger;
-        this.barcodesService = barcodesService;
-    }
-
     /// <summary>
     /// Generates a new barcode as a PNG image. This also supports QR codes.
     /// </summary>

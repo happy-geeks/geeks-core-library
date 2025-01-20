@@ -9,17 +9,9 @@ using Microsoft.Extensions.Logging;
 namespace GeeksCoreLibrary.Modules.PostalServices.NeDistri.Controllers;
 
 [Route("/postal-services/ne-distri")]
-public class NeDistriController : Controller
+public class NeDistriController(INeDistriService neDistriService, ILogger<NeDistriController> logger)
+    : Controller
 {
-    private readonly INeDistriService neDistriService;
-    private readonly ILogger<NeDistriController> logger;
-
-    public NeDistriController(INeDistriService neDistriService, ILogger<NeDistriController> logger)
-    {
-        this.neDistriService = neDistriService;
-        this.logger = logger;
-    }
-    
     /// <summary>
     /// Generate shipping label for the given order
     /// </summary>
@@ -42,15 +34,15 @@ public class NeDistriController : Controller
         }
 
         var labelRules = new List<LabelRule>();
-        
+
         for (var i = 0; i < types.Length; i++)
         {
             if (!Int32.TryParse(coliAmounts[i], out var coliAmount))
             {
-                return BadRequest($"The coliAmount in position {i+1} is invalid.");
+                return BadRequest($"The coliAmount in position {i + 1} is invalid.");
             }
-            
-            labelRules.Add(new LabelRule()
+
+            labelRules.Add(new LabelRule
             {
                 LabelType = types[i],
                 ColiAmount = coliAmount

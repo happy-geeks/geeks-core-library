@@ -2,9 +2,9 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="To")]
+[XmlRoot(ElementName = "To")]
 public class ToModel
 {
-    [XmlElement(ElementName="Credential")]
+    [XmlElement(ElementName = "Credential")]
     public CredentialModel Credential { get; set; }
 }

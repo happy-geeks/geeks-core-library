@@ -1,86 +1,85 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
+        <OutputType>Library</OutputType>
+        <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Version>5.0.2501.2</Version>
+        <Company>Happy Horizon B.V.</Company>
+        <Description>Our base/core library that we use for most of our other projects.</Description>
+        <AssemblyVersion>5.0.2501.2</AssemblyVersion>
+        <FileVersion>5.0.2501.2</FileVersion>
+        <PackageDescription>Geeks Core Library</PackageDescription>
+        <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <Authors>Happy Horizon B.V.</Authors>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+        <LangVersion>default</LangVersion>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-    <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
-    <OutputType>Library</OutputType>
-    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>4.4.1</Version>
-    <Company>Happy Horizon B.V.</Company>
-    <Description>Our base/core library that we use for most of our other projects.</Description>
-    <AssemblyVersion>4.4.1.0</AssemblyVersion>
-    <FileVersion>4.4.1.0</FileVersion>
-    <PackageDescription>Geeks Core Library</PackageDescription>
-    <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
-	<RepositoryType>git</RepositoryType>
-	<Authors>Happy Horizon B.V.</Authors>
-	<PackageLicenseFile>LICENSE</PackageLicenseFile>
-	<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-	<LangVersion>default</LangVersion>
-  </PropertyGroup>
+    <ItemGroup>
+        <Compile Remove="Core\Cms\Services\**"/>
+        <Content Remove="Core\Cms\Services\**"/>
+        <EmbeddedResource Remove="Core\Cms\Services\**"/>
+        <None Remove="Core\Cms\Services\**"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="Core\Cms\Services\**" />
-    <Content Remove="Core\Cms\Services\**" />
-    <EmbeddedResource Remove="Core\Cms\Services\**" />
-    <None Remove="Core\Cms\Services\**" />
-  </ItemGroup>
+    <ItemGroup>
+        <Folder Include="Modules\PostalServices\PostNL\Models\"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Modules\PostalServices\PostNL\Models\" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="9.0.0"/>
+        <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0"/>
+        <PackageReference Include="AWSSDK.S3" Version="3.7.412.1" />
+        <PackageReference Include="AWSSDK.SecretsManager" Version="3.7.400.81" />
+        <PackageReference Include="CM.Text" Version="2.11.0"/>
+        <PackageReference Include="CsvHelper" Version="33.0.1"/>
+        <PackageReference Include="DocumentFormat.OpenXml" Version="3.2.0"/>
+        <PackageReference Include="FluentFTP" Version="52.0.0"/>
+        <PackageReference Include="GoogleAuthenticator" Version="3.2.0"/>
+        <PackageReference Include="HtmlAgilityPack" Version="1.11.72"/>
+        <PackageReference Include="JetBrains.Annotations" Version="2024.3.0"/>
+        <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0"/>
+        <PackageReference Include="Magick.NET-Q8-x64" Version="14.4.0"/>
+        <PackageReference Include="MailKit" Version="4.9.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.1"/>
+        <PackageReference Include="MySqlConnector" Version="2.4.0"/>
+        <PackageReference Include="PDFsharp" Version="6.1.1"/>
+        <PackageReference Include="RestSharp" Version="112.1.0"/>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
+        <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="112.1.0"/>
+        <PackageReference Include="Scrutor" Version="6.0.1"/>
+        <PackageReference Include="SharpZipLib" Version="1.4.2"/>
+        <PackageReference Include="SSH.NET" Version="2024.2.0"/>
+        <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0"/>
+        <PackageReference Include="System.Globalization" Version="4.3.0"/>
+        <PackageReference Include="System.IO.FileSystem" Version="4.3.0"/>
+        <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.3.0"/>
+        <PackageReference Include="System.Net.Primitives" Version="4.3.1"/>
+        <PackageReference Include="System.Runtime" Version="4.3.1"/>
+        <PackageReference Include="System.Runtime.Extensions" Version="4.3.1"/>
+        <PackageReference Include="System.Threading" Version="4.3.0"/>
+        <PackageReference Include="Twilio" Version="7.8.2"/>
+        <PackageReference Include="WebMarkupMin.AspNetCoreLatest" Version="2.18.1"/>
+        <PackageReference Include="ZXing.Net" Version="0.16.9"/>
+        <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.15"/>
+        <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1" Condition="$([MSBuild]::IsOsPlatform('Windows'))"/>
+        <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" Condition="$([MSBuild]::IsOsPlatform('Linux'))"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="7.0.0" />
-    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="7.1.0" />
-    <PackageReference Include="AWSSDK.S3" Version="3.7.410.7" />
-    <PackageReference Include="AWSSDK.SecretsManager" Version="3.7.400.64" />
-    <PackageReference Include="CM.Text" Version="2.9.0" />
-    <PackageReference Include="CsvHelper" Version="33.0.1" />
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.2.0" />
-    <PackageReference Include="FluentFTP" Version="51.0.0" />
-    <PackageReference Include="GoogleAuthenticator" Version="3.2.0" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.71" />
-    <PackageReference Include="JetBrains.Annotations" Version="2024.2.0" />
-    <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
-    <PackageReference Include="Magick.NET-Q8-x64" Version="13.10.0" />
-    <PackageReference Include="MailKit" Version="4.7.1.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="7.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
-    <PackageReference Include="MySqlConnector" Version="2.3.7" />
-    <PackageReference Include="PDFsharp" Version="6.1.1" />
-    <PackageReference Include="RestSharp" Version="112.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="111.4.1" />
-    <PackageReference Include="Scrutor" Version="4.2.2" />
-    <PackageReference Include="SharpZipLib" Version="1.4.2" />
-    <PackageReference Include="SSH.NET" Version="2024.1.0" />
-    <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0" />
-    <PackageReference Include="System.Globalization" Version="4.3.0" />
-    <PackageReference Include="System.IO.FileSystem" Version="4.3.0" />
-    <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.3.0" />
-    <PackageReference Include="System.Net.Primitives" Version="4.3.1" />
-    <PackageReference Include="System.Runtime" Version="4.3.1" />
-    <PackageReference Include="System.Runtime.Extensions" Version="4.3.1" />
-    <PackageReference Include="System.Threading" Version="4.3.0" />
-    <PackageReference Include="Twilio" Version="7.0.0" />
-    <PackageReference Include="WebMarkupMin.AspNetCore7" Version="2.17.0" />
-    <PackageReference Include="ZXing.Net" Version="0.16.9" />
-    <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.14" />
-	<PackageReference Include="EvoPdf.Chromium.Windows" Version="11.0.1" Condition="$([MSBuild]::IsOsPlatform('Windows'))" />
-	<PackageReference Include="EvoPdf.Chromium.Linux" Version="11.0.1" Condition="$([MSBuild]::IsOsPlatform('Linux'))" />
-  </ItemGroup>
+    <ItemGroup>
+        <None Include="..\LICENSE">
+            <Pack>True</Pack>
+            <PackagePath></PackagePath>
+        </None>
+    </ItemGroup>
 
-  <ItemGroup>
-    <None Include="..\LICENSE">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </None>
-  </ItemGroup>
-
-  <Target Name="Pack"></Target>
+    <Target Name="Pack"></Target>
 </Project>

@@ -9,7 +9,7 @@ public class LabelRule
     /// Gets or sets the labeltype
     /// </summary>
     public string LabelType { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the amount of colis of this labeltype
     /// </summary>

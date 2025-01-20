@@ -6,7 +6,7 @@ public class CacheControlRuleSettingsModel
     /// Gets or sets the file path that requires a specific cache-control header.
     /// </summary>
     public string FilePath { get; set; }
-        
+
     /// <summary>
     /// Gets or sets the cache-control header value to be applied to the specified file path.
     /// </summary>

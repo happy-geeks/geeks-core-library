@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
+    <meta charset="utf-8"/>
     <title>@(Model.MetaData.PageTitle + Model.MetaData.GlobalPageTitleSuffix)</title>
     @await RenderSectionAsync("MetaData", false)
     @await RenderSectionAsync("HeaderTopWidgets", false)
@@ -14,7 +14,8 @@
     @await RenderSectionAsync("HeaderBottomWidgets", false)
 </head>
 <body>
-<input type="hidden" id="RequestVerificationToken" name="RequestVerificationToken" value="@Xsrf.GetAndStoreTokens(Context).RequestToken">
+<input type="hidden" id="RequestVerificationToken" name="RequestVerificationToken"
+       value="@Xsrf.GetAndStoreTokens(Context).RequestToken">
 @await RenderSectionAsync("BodyTopWidgets", false)
 @await RenderSectionAsync("BodyGoogleAnalyticsScripts", false)
 @RenderBody()

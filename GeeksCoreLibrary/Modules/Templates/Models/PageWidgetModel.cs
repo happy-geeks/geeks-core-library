@@ -12,7 +12,7 @@ public class PageWidgetModel
     /// Gets or sets the location of where the snippet should be added to the page.
     /// </summary>
     public PageWidgetLocations Location { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the HTML of the snippet.
     /// </summary>

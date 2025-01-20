@@ -12,8 +12,8 @@ namespace GeeksCoreLibrary.Core.Helpers;
 
 public static class HttpContextHelpers
 {
-    public static readonly List<string> GclMiddleWarePages = new()
-    {
+    public static readonly List<string> GclMiddleWarePages =
+    [
         "/webpage.gcl",
         "/template.gcl",
         "/wiser-image.gcl",
@@ -26,7 +26,7 @@ public static class HttpContextHelpers
         "/health",
         "/health/wts",
         "/health/database"
-    };
+    ];
 
     /// <summary>
     /// Get the hostname from the current request. Some examples:
@@ -69,7 +69,7 @@ public static class HttpContextHelpers
             return String.Empty;
         }
 
-        testDomains ??= GclSettings.Current.TestDomains?.ToList() ?? new List<string>();
+        testDomains ??= GclSettings.Current.TestDomains?.ToList() ?? [];
 
         string hostname;
         if (httpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)

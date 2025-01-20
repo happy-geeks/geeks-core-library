@@ -6,7 +6,7 @@ public class BarcodeModel
     /// Gets or sets the barcode follow number for this collo
     /// </summary>
     public int ColiNumber { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the barcode
     /// </summary>

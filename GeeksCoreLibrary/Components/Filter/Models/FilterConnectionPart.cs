@@ -1,16 +1,8 @@
-﻿namespace GeeksCoreLibrary.Components.Filter.Models
-{
-    public class FilterConnectionPart
-    {
-        public FilterConnectionPart(string typeName, string joinPart, bool isLinkType)
-        {
-            TypeName = typeName;
-            JoinPart = joinPart;
-            IsLinkType = isLinkType;
-        }
+﻿namespace GeeksCoreLibrary.Components.Filter.Models;
 
-        public string TypeName { get; set; } 
-        public string JoinPart { get; set; } 
-        public bool IsLinkType { get; set; }
-    }
+public class FilterConnectionPart(string typeName, string joinPart, bool isLinkType)
+{
+    public string TypeName { get; set; } = typeName;
+    public string JoinPart { get; set; } = joinPart;
+    public bool IsLinkType { get; set; } = isLinkType;
 }

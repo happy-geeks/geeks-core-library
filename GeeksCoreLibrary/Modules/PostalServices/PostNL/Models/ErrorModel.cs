@@ -1,8 +1,7 @@
-﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models
+﻿namespace GeeksCoreLibrary.Modules.PostalServices.PostNL.Models;
+
+public class ErrorModel
 {
-    public class ErrorModel
-    {
-        public string Code { get; set; }
-        public string Description { get; set; }
-    }
+    public string Code { get; set; }
+    public string Description { get; set; }
 }

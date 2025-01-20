@@ -2,12 +2,12 @@
 
 namespace GeeksCoreLibrary.Modules.OpenCatalogInterface.Models;
 
-[XmlRoot(ElementName="ItemID")]
+[XmlRoot(ElementName = "ItemID")]
 public class ItemIdModel
 {
-    [XmlElement(ElementName="SupplierPartID")]
+    [XmlElement(ElementName = "SupplierPartID")]
     public int SupplierPartId { get; set; }
 
-    [XmlElement(ElementName="SupplierPartAuxiliaryID")]
+    [XmlElement(ElementName = "SupplierPartAuxiliaryID")]
     public string SupplierPartAuxiliaryId { get; set; }
 }

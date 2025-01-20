@@ -31,26 +31,30 @@ public class RolesService : IRolesService, ITransientService
         string query;
         if (includePermissions)
         {
-            query = $@"SELECT 
-    role.id, 
-    role.role_name,
-    permission.item_id,
-    permission.entity_property_id,
-    permission.module_id,
-    permission.permissions,
-	permission.endpoint_url,
-	permission.endpoint_http_method
-FROM {WiserTableNames.WiserRoles} AS role 
-LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = role.id
-ORDER BY role_name ASC";
+            query = $"""
+                     SELECT 
+                         role.id, 
+                         role.role_name,
+                         permission.item_id,
+                         permission.entity_property_id,
+                         permission.module_id,
+                         permission.permissions,
+                     	permission.endpoint_url,
+                     	permission.endpoint_http_method
+                     FROM {WiserTableNames.WiserRoles} AS role 
+                     LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = role.id
+                     ORDER BY role_name ASC
+                     """;
         }
         else
         {
-            query = $@"SELECT
-    id,
-    role_name
-FROM {WiserTableNames.WiserRoles}
-ORDER BY role_name ASC";
+            query = $"""
+                     SELECT
+                         id,
+                         role_name
+                     FROM {WiserTableNames.WiserRoles}
+                     ORDER BY role_name ASC
+                     """;
         }
 
         var dataTable = await databaseConnection.GetAsync(query);
@@ -76,13 +80,13 @@ ORDER BY role_name ASC";
                 continue;
             }
 
-            role.Permissions ??= new List<PermissionModel>();
+            role.Permissions ??= [];
             role.Permissions.Add(new PermissionModel
             {
                 ItemId = Convert.ToUInt64(dataRow["item_id"]),
                 ModuleId = dataRow.Field<int>("module_id"),
                 EntityPropertyId = dataRow.Field<int>("entity_property_id"),
-                Permissions = (AccessRights)dataRow.Field<int>("permissions"),
+                Permissions = (AccessRights) dataRow.Field<int>("permissions"),
                 EndpointUrl = dataRow.Field<string>("endpoint_url"),
                 EndpointHttpMethod = new HttpMethod(dataRow.Field<string>("endpoint_http_method"))
             });

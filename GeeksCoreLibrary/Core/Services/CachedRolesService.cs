@@ -11,24 +11,10 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Core.Services;
 
-public class CachedRolesService : IRolesService
+public class CachedRolesService(IRolesService rolesService, IAppCache cache, ICacheService cacheService, IOptions<GclSettings> gclSettings, ILogger<CachedRolesService> logger, IBranchesService branchesService)
+    : IRolesService
 {
-    private readonly IRolesService rolesService;
-    private readonly IAppCache cache;
-    private readonly ICacheService cacheService;
-    private readonly GclSettings gclSettings;
-    private readonly ILogger<CachedRolesService> logger;
-    private readonly IBranchesService branchesService;
-
-    public CachedRolesService(IRolesService rolesService, IAppCache cache, ICacheService cacheService, IOptions<GclSettings> gclSettings, ILogger<CachedRolesService> logger, IBranchesService branchesService)
-    {
-        this.rolesService = rolesService;
-        this.cache = cache;
-        this.cacheService = cacheService;
-        this.gclSettings = gclSettings.Value;
-        this.logger = logger;
-        this.branchesService = branchesService;
-    }
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
     public async Task<List<RoleModel>> GetRolesAsync(bool includePermissions = false)

@@ -10,16 +10,10 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace GeeksCoreLibrary.Modules.HealthChecks.Services;
 
-public class WtsHealthService : IHealthCheck
+public class WtsHealthService(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor)
+    : IHealthCheck
 {
-    private readonly IDatabaseConnection databaseConnection;
-    private readonly HttpContext httpContext;
-
-    public WtsHealthService(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor)
-    {
-        this.databaseConnection = databaseConnection;
-        httpContext = httpContextAccessor.HttpContext;
-    }
+    private readonly HttpContext httpContext = httpContextAccessor.HttpContext;
 
     /// <inheritdoc />
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new CancellationToken())
@@ -29,7 +23,7 @@ public class WtsHealthService : IHealthCheck
         var countWarningAsError = !String.IsNullOrWhiteSpace(httpContext.Request.Query["countWarningAsError"].ToString()) && Convert.ToBoolean(httpContext.Request.Query["countWarningAsError"]);
         int? runningLongerThanMinutes = String.IsNullOrWhiteSpace(httpContext.Request.Query["runningLongerThanMinutes"].ToString()) ? null : Convert.ToInt32(httpContext.Request.Query["runningLongerThanMinutes"]);
 
-        var conditions = new List<string>()
+        var conditions = new List<string>
         {
             "TRUE" // Always add true to the conditions to avoid empty conditions
         };
@@ -74,6 +68,7 @@ public class WtsHealthService : IHealthCheck
                     {
                         errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} should have started more than 5 minutes ago");
                     }
+
                     break;
                 }
                 case "running":
@@ -86,6 +81,7 @@ public class WtsHealthService : IHealthCheck
                             errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} has been running for longer than {runningLongerThanMinutes.Value} minutes");
                         }
                     }
+
                     break;
                 case "stopped":
                     errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} is stopped");
@@ -109,6 +105,7 @@ public class WtsHealthService : IHealthCheck
                     {
                         errors.Add($"Service {row.Field<string>("configuration")} with time ID {row.Field<int>("time_id")} should have started more than 5 minutes ago");
                     }
+
                     break;
                 }
                 default:

@@ -1,8 +1,7 @@
-﻿namespace GeeksCoreLibrary.Components.OrderProcess.Enums
+﻿namespace GeeksCoreLibrary.Components.OrderProcess.Enums;
+
+public enum OrderProcessGroupTypes
 {
-    public enum OrderProcessGroupTypes
-    {
-        Fields,
-        PaymentMethods
-    }
+    Fields,
+    PaymentMethods
 }

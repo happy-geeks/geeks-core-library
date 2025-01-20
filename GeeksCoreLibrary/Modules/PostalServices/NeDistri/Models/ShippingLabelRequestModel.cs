@@ -9,17 +9,17 @@ public class ShippingLabelRequestModel
     /// Comma seperated list of order ids
     /// </summary>
     public string EncryptedOrderIds { get; set; }
-    
+
     /// <summary>
     /// Type of label. This is the string that will get send as label type to NE Distriservice
     /// </summary>
     public string LabelType { get; set; }
-    
+
     /// <summary>
     /// Colli amount in a comma seperated string
     /// </summary>
     public string ColliAmount { get; set; }
-    
+
     /// <summary>
     /// User code to use in case a login has multiple users attached to it
     /// </summary>

@@ -12,7 +12,7 @@ public class LastProcessedModel
     /// Gets or sets the type of communication (ie E-mail, SMS etc).
     /// </summary>
     public CommunicationTypes Type { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the date and time that this communication has been processed last.
     /// </summary>

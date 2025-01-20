@@ -28,7 +28,7 @@ public class FtpSettings
     /// Gets or sets the password to login with.
     /// </summary>
     public string Password { get; set; }
-    
+
     /// <summary>
     /// Gets or sets if a passive connection needs to be used.
     /// </summary>

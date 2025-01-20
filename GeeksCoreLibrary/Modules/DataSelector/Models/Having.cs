@@ -1,7 +1,6 @@
-﻿namespace GeeksCoreLibrary.Modules.DataSelector.Models
+﻿namespace GeeksCoreLibrary.Modules.DataSelector.Models;
+
+public class Having
 {
-    public class Having
-    {
-        public HavingRow[] HavingRows;
-    }
+    public HavingRow[] HavingRows;
 }

@@ -12,7 +12,7 @@ public enum OrderProcessBasketToConceptOrderMethods
     /// When they start a payment for the second time, another concept order will be created from the updated basket, to make sure that they will pay for the new price.
     /// </summary>
     CreateCopy,
-    
+
     /// <summary>
     /// This will change the entity type of the basket to that of a concept order.
     /// This is meant for websites that can have huge baskets with hundreds or thousands of basket lines, because those would take a long time to make copies of.
