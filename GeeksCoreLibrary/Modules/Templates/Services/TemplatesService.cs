@@ -26,7 +26,6 @@ using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -44,65 +43,27 @@ namespace GeeksCoreLibrary.Modules.Templates.Services;
 /// This class provides template caching, template replacements and rendering
 /// for all types of templates, like CSS, JS, Query's and HTML templates.
 /// </summary>
-public class TemplatesService : ITemplatesService
+public class TemplatesService(
+    ILogger<TemplatesService> logger,
+    IOptions<GclSettings> gclSettings,
+    IDatabaseConnection databaseConnection,
+    IStringReplacementsService stringReplacementsService,
+    IFiltersService filtersService,
+    IObjectsService objectsService,
+    ILanguagesService languagesService,
+    IAccountsService accountsService,
+    IDatabaseHelpersService databaseHelpersService,
+    IReplacementsMediator replacementsMediator,
+    IHttpClientService httpClientService,
+    IBranchesService branchesService,
+    IHttpContextAccessor httpContextAccessor = null,
+    IActionContextAccessor actionContextAccessor = null,
+    IViewComponentHelper viewComponentHelper = null,
+    IWebHostEnvironment webHostEnvironment = null,
+    ITempDataProvider tempDataProvider = null)
+    : ITemplatesService
 {
-    private readonly GclSettings gclSettings;
-    private readonly ILogger<TemplatesService> logger;
-    private readonly IDatabaseConnection databaseConnection;
-    private readonly IStringReplacementsService stringReplacementsService;
-    private readonly IHttpContextAccessor httpContextAccessor;
-    private readonly IViewComponentHelper viewComponentHelper;
-    private readonly ITempDataProvider tempDataProvider;
-    private readonly IActionContextAccessor actionContextAccessor;
-    private readonly IWebHostEnvironment webHostEnvironment;
-    private readonly IObjectsService objectsService;
-    private readonly ILanguagesService languagesService;
-    private readonly IFiltersService filtersService;
-    private readonly IAccountsService accountsService;
-    private readonly IDatabaseHelpersService databaseHelpersService;
-    private readonly IReplacementsMediator replacementsMediator;
-    private readonly IHttpClientService httpClientService;
-        private readonly IBranchesService branchesService;
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="TemplatesService"/>.
-    /// </summary>
-    public TemplatesService(ILogger<TemplatesService> logger,
-        IOptions<GclSettings> gclSettings,
-        IDatabaseConnection databaseConnection,
-        IStringReplacementsService stringReplacementsService,
-        IFiltersService filtersService,
-        IObjectsService objectsService,
-        ILanguagesService languagesService,
-        IAccountsService accountsService,
-        IDatabaseHelpersService databaseHelpersService,
-        IReplacementsMediator replacementsMediator,
-        IHttpClientService httpClientService,
-        IBranchesService branchesService,
-            IHttpContextAccessor httpContextAccessor = null,
-            IActionContextAccessor actionContextAccessor = null,
-            IViewComponentHelper viewComponentHelper = null,
-            IWebHostEnvironment webHostEnvironment = null,
-            ITempDataProvider tempDataProvider = null)
-        {
-            this.gclSettings = gclSettings.Value;
-            this.logger = logger;
-            this.databaseConnection = databaseConnection;
-            this.stringReplacementsService = stringReplacementsService;
-            this.httpContextAccessor = httpContextAccessor;
-            this.viewComponentHelper = viewComponentHelper;
-            this.tempDataProvider = tempDataProvider;
-            this.actionContextAccessor = actionContextAccessor;
-            this.webHostEnvironment = webHostEnvironment;
-            this.filtersService = filtersService;
-            this.objectsService = objectsService;
-            this.languagesService = languagesService;
-            this.accountsService = accountsService;
-            this.databaseHelpersService = databaseHelpersService;
-            this.replacementsMediator = replacementsMediator;
-            this.httpClientService = httpClientService;
-            this.branchesService = branchesService;
-        }
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
     public async Task<Template> GetTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool includeContent = true, bool skipPermissions = false)
@@ -1699,17 +1660,17 @@ public class TemplatesService : ITemplatesService
             cacheUrl.Append(originalUri.Query.ToLowerInvariant());
         }
 
-            if (useAbsoluteImageUrls && !originalUri.Query.Contains("useAbsoluteImageUrls=true", StringComparison.OrdinalIgnoreCase))
-            {
-                cacheUrl.Append("useAbsoluteImageUrls");
-            }
+        if (useAbsoluteImageUrls && !originalUri.Query.Contains("useAbsoluteImageUrls=true", StringComparison.OrdinalIgnoreCase))
+        {
+            cacheUrl.Append("useAbsoluteImageUrls");
+        }
 
         if (removeSvgUrlsFromIcons && !originalUri.Query.Contains("removeSvgUrlsFromIcons=true", StringComparison.OrdinalIgnoreCase))
-            {
-                cacheUrl.Append("removeSvgUrlsFromIcons");
-            }
+        {
+            cacheUrl.Append("removeSvgUrlsFromIcons");
+        }
 
-            cacheFileName.Append(Uri.EscapeDataString(cacheUrl.ToString().ToSha512Simple()));
+        cacheFileName.Append(Uri.EscapeDataString(cacheUrl.ToString().ToSha512Simple()));
 
         // If the caching should deviate based on certain cookies, then the names and values of those cookies should be added to the file name.
         var cookieCacheDeviation = (await objectsService.FindSystemObjectByDomainNameAsync("contentcaching_cookie_deviation")).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -1756,10 +1717,10 @@ public class TemplatesService : ITemplatesService
 
         cacheFileName.Append($"_{branchesService.GetDatabaseNameFromCookie()}");
 
-            if (String.IsNullOrEmpty(extension))
-            {
-                return cacheFileName.ToString();
-            }
+        if (String.IsNullOrEmpty(extension))
+        {
+            return cacheFileName.ToString();
+        }
 
         if (!extension.StartsWith("."))
         {

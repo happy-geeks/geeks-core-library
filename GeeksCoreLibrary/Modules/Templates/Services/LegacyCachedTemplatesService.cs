@@ -1,25 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
-using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
-using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using LazyCache;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
@@ -27,16 +21,13 @@ using Newtonsoft.Json.Linq;
 namespace GeeksCoreLibrary.Modules.Templates.Services;
 
 public class LegacyCachedTemplatesService(
-    ILogger<LegacyCachedTemplatesService> logger,
     ITemplatesService templatesService,
     IAppCache cache,
     IOptions<GclSettings> gclSettings,
-    IDatabaseConnection databaseConnection,
     ICacheService cacheService,
     IBranchesService branchesService,
     IObjectsService objectsService,
-    IHttpContextAccessor httpContextAccessor = null,
-    IWebHostEnvironment webHostEnvironment = null)
+    IHttpContextAccessor httpContextAccessor = null)
     : ITemplatesService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
@@ -49,8 +40,8 @@ public class LegacyCachedTemplatesService(
             throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
         }
 
-            // Cache the template settings in memory.
-            var cacheName = $"Template_{id}_{name}_{parentId}_{parentName}_{includeContent}_{branchesService.GetDatabaseNameFromCookie()}{await GetContentCachingCookieDeviationSuffixAsync()}";
+        // Cache the template settings in memory.
+        var cacheName = $"Template_{id}_{name}_{parentId}_{parentName}_{includeContent}_{branchesService.GetDatabaseNameFromCookie()}{await GetContentCachingCookieDeviationSuffixAsync()}";
 
         var template = await cache.GetOrAddAsync(cacheName,
             async cacheEntry =>
@@ -59,7 +50,7 @@ public class LegacyCachedTemplatesService(
                 return await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, includeContent);
             }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
 
-            return ObjectCloner.ObjectCloner.DeepClone(template);
+        return ObjectCloner.ObjectCloner.DeepClone(template);
     }
 
     /// <inheritdoc />
@@ -189,24 +180,24 @@ public class LegacyCachedTemplatesService(
         return templatesService.HandleImageTemplating(input);
     }
 
-        /// <inheritdoc />
-        public async Task<DynamicContent> GetDynamicContentData(int contentId)
+    /// <inheritdoc />
+    public async Task<DynamicContent> GetDynamicContentData(int contentId)
+    {
+        if (contentId <= 0)
         {
-            if (contentId <= 0)
-            {
-                throw new ArgumentNullException($"The parameter {nameof(contentId)} must contain a value");
-            }
+            throw new ArgumentNullException($"The parameter {nameof(contentId)} must contain a value");
+        }
 
         var cacheName = $"DynamicContentData_{contentId}_{branchesService.GetDatabaseNameFromCookie()}";
 
-            return await cache.GetOrAddAsync(cacheName,
-                async cacheEntry =>
-                {
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-                    return await templatesService.GetDynamicContentData(contentId);
-                },
-                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
-        }
+        return await cache.GetOrAddAsync(cacheName,
+            async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                return await templatesService.GetDynamicContentData(contentId);
+            },
+            cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+    }
 
     /// <inheritdoc />
     public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)

@@ -42,87 +42,89 @@ public class PagesService(
     IRedirectService redirectService,
     ILanguagesService languagesService,
     IDatabaseConnection databaseConnection,
+    IDataSelectorsService dataSelectorsService,
+    IWiserItemsService wiserItemsService,
     IHttpContextAccessor httpContextAccessor = null)
     : IPagesService, IScopedService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
-        public async Task<Template> GetRenderedTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool skipPermissions = false, string templateContent = null, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
-        {
-            var template = await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, templateContent == null, skipPermissions);
+    public async Task<Template> GetRenderedTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool skipPermissions = false, string templateContent = null, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
+    {
+        var template = await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, templateContent == null, skipPermissions);
 
-            // If a content is provided, we don't need to do any replacements.
-            if (templateContent != null)
+        // If a content is provided, we don't need to do any replacements.
+        if (templateContent != null)
+        {
+            template.Content = templateContent;
+            return template;
+        }
+
+        var error = "";
+        var startTime = DateTime.Now;
+        var stopWatch = new Stopwatch();
+        var logRenderingOfTemplate = false;
+
+        try
+        {
+            logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(template.Id);
+            if (logRenderingOfTemplate)
             {
-                template.Content = templateContent;
-                return template;
+                stopWatch.Start();
             }
 
-            var error = "";
-            var startTime = DateTime.Now;
-            var stopWatch = new Stopwatch();
-            var logRenderingOfTemplate = false;
+            template.Content = await templatesService.DoReplacesAsync(template.Content, templateType: template.Type);
+            template.Content = await dataSelectorsService.ReplaceAllDataSelectorsAsync(template.Content);
+            template.Content = await wiserItemsService.ReplaceAllEntityBlocksAsync(template.Content);
 
-            try
+            // Make relative image URls absolute to allow the template to show images when the HTML is placed inside another website.
+            if (useAbsoluteImageUrls)
             {
-                logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(template.Id);
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Start();
-                }
+                var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
+                template.Content = await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(template.Content, imagesDomain);
+            }
 
-                template.Content = await templatesService.DoReplacesAsync(template.Content, templateType: template.Type);
-                template.Content = await dataSelectorsService.ReplaceAllDataSelectorsAsync(template.Content);
-                template.Content = await wiserItemsService.ReplaceAllEntityBlocksAsync(template.Content);
-
-                // Make relative image URls absolute to allow the template to show images when the HTML is placed inside another website.
-                if (useAbsoluteImageUrls)
+            // Remove the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website.
+            // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
+            if (removeSvgUrlsFromIcons)
+            {
+                var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+                foreach (Match match in regex.Matches(template.Content))
                 {
-                    var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
-                    template.Content = await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(template.Content, imagesDomain);
-                }
-
-                // Remove the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website.
-                // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
-                if (removeSvgUrlsFromIcons)
-                {
-                    var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                    foreach (Match match in regex.Matches(template.Content))
+                    if (!String.IsNullOrEmpty(match.Groups[1].Value))
                     {
-                        if (!String.IsNullOrEmpty(match.Groups[1].Value))
-                        {
-                            template.Content = template.Content.Replace(match.Groups[1].Value, "");
-                        }
+                        template.Content = template.Content.Replace(match.Groups[1].Value, "");
                     }
                 }
+            }
 
-                return template;
-            }
-            catch (Exception exception)
-            {
-                error = exception.ToString();
-                throw;
-            }
-            finally
-            {
-                if (logRenderingOfTemplate)
-                {
-                    stopWatch.Stop();
-                    var endTime = DateTime.Now;
-                    await templatesService.AddTemplateOrComponentRenderingLogAsync(0, template.Id, template.Version, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
-                }
-            }
+            return template;
         }
-
-        /// <inheritdoc />
-    public async Task<string> GetGlobalHeader(string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
+        catch (Exception exception)
         {
-            return await GetGlobalHeader(this, url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls, removeSvgUrlsFromIcons);
+            error = exception.ToString();
+            throw;
         }
+        finally
+        {
+            if (logRenderingOfTemplate)
+            {
+                stopWatch.Stop();
+                var endTime = DateTime.Now;
+                await templatesService.AddTemplateOrComponentRenderingLogAsync(0, template.Id, template.Version, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
+            }
+        }
+    }
 
-        /// <inheritdoc />
-        public async Task<string> GetGlobalHeader(IPagesService service, string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
+    /// <inheritdoc />
+    public async Task<string> GetGlobalHeader(string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
+    {
+        return await GetGlobalHeader(this, url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls, removeSvgUrlsFromIcons);
+    }
+
+    /// <inheritdoc />
+    public async Task<string> GetGlobalHeader(IPagesService service, string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
     {
         int headerTemplateId;
         string headerRegexCheck;
@@ -193,12 +195,12 @@ public class PagesService(
 
     /// <inheritdoc />
     public async Task<string> GetGlobalFooter(string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
-        {
-            return await GetGlobalFooter(this, url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls, removeSvgUrlsFromIcons);
-        }
+    {
+        return await GetGlobalFooter(this, url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls, removeSvgUrlsFromIcons);
+    }
 
-        /// <inheritdoc />
-        public async Task<string> GetGlobalFooter(IPagesService service, string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
+    /// <inheritdoc />
+    public async Task<string> GetGlobalFooter(IPagesService service, string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
     {
         int footerTemplateId;
         string headerRegexCheck;

@@ -37,7 +37,6 @@ public class CachedTemplatesService(
     IOptions<GclSettings> gclSettings,
     IDatabaseConnection databaseConnection,
     ICacheService cacheService,
-    IObjectsService objectsService,
     ILanguagesService languagesService,
     IBranchesService branchesService,
     IHttpContextAccessor httpContextAccessor = null,
@@ -54,12 +53,12 @@ public class CachedTemplatesService(
             throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
         }
 
-            // Make sure the language code has a value.
-            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
-            {
-                // This function fills the property "CurrentLanguageCode".
-                await languagesService.GetLanguageCodeAsync();
-            }
+        // Make sure the language code has a value.
+        if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+        {
+            // This function fills the property "CurrentLanguageCode".
+            await languagesService.GetLanguageCodeAsync();
+        }
 
         // Cache the template settings in memory.
         var cacheName = $"Template_{languagesService.CurrentLanguageCode ?? ""}_{id}_{name}_{parentId}_{parentName}_{includeContent}_{branchesService.GetDatabaseNameFromCookie()}";
@@ -71,7 +70,7 @@ public class CachedTemplatesService(
             },
             cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
 
-            return ObjectCloner.ObjectCloner.DeepClone(template);
+        return ObjectCloner.ObjectCloner.DeepClone(template);
     }
 
     /// <inheritdoc />
@@ -240,24 +239,24 @@ public class CachedTemplatesService(
             cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
     }
 
-        /// <inheritdoc />
-        public async Task<DynamicContent> GetDynamicContentData(int contentId)
+    /// <inheritdoc />
+    public async Task<DynamicContent> GetDynamicContentData(int contentId)
+    {
+        if (contentId <= 0)
         {
-            if (contentId <= 0)
-            {
-                throw new ArgumentNullException($"The parameter {nameof(contentId)} must contain a value");
-            }
-
-            var cacheName = $"DynamicContentData_{contentId}_{branchesService.GetDatabaseNameFromCookie()}";
-
-            return await cache.GetOrAddAsync(cacheName,
-                async cacheEntry =>
-                {
-                    cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-                    return await templatesService.GetDynamicContentData(contentId);
-                },
-                cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+            throw new ArgumentNullException($"The parameter {nameof(contentId)} must contain a value");
         }
+
+        var cacheName = $"DynamicContentData_{contentId}_{branchesService.GetDatabaseNameFromCookie()}";
+
+        return await cache.GetOrAddAsync(cacheName,
+            async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                return await templatesService.GetDynamicContentData(contentId);
+            },
+            cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+    }
 
     /// <inheritdoc />
     public async Task<object> GenerateDynamicContentHtmlAsync(int componentId, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
@@ -280,12 +279,12 @@ public class CachedTemplatesService(
             return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
         }
 
-            // Make sure the language code has a value.
-            if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
-            {
-                // This function fills the property "CurrentLanguageCode".
-                await languagesService.GetLanguageCodeAsync();
-            }
+        // Make sure the language code has a value.
+        if (String.IsNullOrWhiteSpace(languagesService.CurrentLanguageCode))
+        {
+            // This function fills the property "CurrentLanguageCode".
+            await languagesService.GetLanguageCodeAsync();
+        }
 
         var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
         var cacheName = new StringBuilder($"dynamicContent_{languagesService.CurrentLanguageCode ?? ""}_{dynamicContent.Id}_");
@@ -356,33 +355,33 @@ public class CachedTemplatesService(
         }
 
         cacheName.Append($"_{branchesService.GetDatabaseNameFromCookie()}");
-            cacheName.Append($"_{callMethod}");
+        cacheName.Append($"_{callMethod}");
 
-            string html = null;
-            var addedToCache = false;
-            switch (settings.CachingLocation)
+        string html = null;
+        var addedToCache = false;
+        switch (settings.CachingLocation)
+        {
+            case TemplateCachingLocations.InMemory:
             {
-                case TemplateCachingLocations.InMemory:
+                html = (string) await cache.GetOrAddAsync(cacheName.ToString(),
+                    async cacheEntry =>
+                    {
+                        addedToCache = true;
+                        cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
+                        return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                    },
+                    cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                break;
+            }
+            case TemplateCachingLocations.OnDisk:
+            {
+                var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
+                if (String.IsNullOrWhiteSpace(cacheFolder))
                 {
-                    html = (string) await cache.GetOrAddAsync(cacheName.ToString(),
-                        async cacheEntry =>
-                        {
-                            addedToCache = true;
-                            cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
-                            return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-                        },
-                        cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
-                    break;
+                    logger.LogWarning($"Content cache enabled for component '{dynamicContent.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website (on Windows / IIS, this is the user 'IIS_IUSRS' bij default).");
                 }
-                case TemplateCachingLocations.OnDisk:
+                else
                 {
-                    var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
-                    if (String.IsNullOrWhiteSpace(cacheFolder))
-                    {
-                        logger.LogWarning($"Content cache enabled for component '{dynamicContent.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website (on Windows / IIS, this is the user 'IIS_IUSRS' bij default).");
-                    }
-                    else
-                    {
                     var fileName = $"{cacheName}.html";
                     var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
@@ -428,11 +427,11 @@ public class CachedTemplatesService(
         if (addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
         {
             cache.GetOrAdd(cacheName.ToString(),
-                    cacheEntry =>
-                    {
-                        cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes == 0 ? gclSettings.DefaultSeoModuleCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
-                        return componentSeoData;
-                    }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Seo));
+                cacheEntry =>
+                {
+                    cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes == 0 ? gclSettings.DefaultSeoModuleCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
+                    return componentSeoData;
+                }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Seo));
         }
         else if (!addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] == null)
         {

@@ -12,7 +12,6 @@ using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
@@ -21,7 +20,6 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
-using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Options;
@@ -30,7 +28,15 @@ using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 namespace GeeksCoreLibrary.Modules.Templates.Controllers;
 
 [Area("Templates")]
-public class TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IBranchesService branchesService, IOptions<GclSettings> gclSettings)
+public class TemplatesController(
+    ILogger<TemplatesController> logger,
+    ITemplatesService templatesService,
+    IPagesService pagesService,
+    IDataSelectorsService dataSelectorsService,
+    IWiserItemsService wiserItemsService,
+    IStringReplacementsService stringReplacementsService,
+    IBranchesService branchesService,
+    IOptions<GclSettings> gclSettings)
     : Controller
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
@@ -59,25 +65,25 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
             }
 
             var useAbsoluteImageUrls = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "absoluteImageUrls"), "true", StringComparison.OrdinalIgnoreCase);
-                var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
+            var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
 
-                var javascriptTemplates = new List<int>();
-                var cssTemplates = new List<int>();
-                var externalJavascript = new List<PageResourceModel>();
-                var externalCss = new List<PageResourceModel>();
-                var contentTemplate = await pagesService.GetRenderedTemplateAsync(templateId, templateName, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons);
+            var javascriptTemplates = new List<int>();
+            var cssTemplates = new List<int>();
+            var externalJavascript = new List<PageResourceModel>();
+            var externalCss = new List<PageResourceModel>();
+            var contentTemplate = await pagesService.GetRenderedTemplateAsync(templateId, templateName, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons);
 
             templateId = contentTemplate.Id;
 
-                javascriptTemplates.AddRange(contentTemplate.JavascriptTemplates);
-                cssTemplates.AddRange(contentTemplate.CssTemplates);
+            javascriptTemplates.AddRange(contentTemplate.JavascriptTemplates);
+            cssTemplates.AddRange(contentTemplate.CssTemplates);
 
             if (contentTemplate.Id <= 0)
             {
                 // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
                 if (!contentTemplate.LoginRequired)
                 {
-                    // Login not required; return 404 (Not Found).
+                    // Login isn't required; return 404 (Not Found).
                     return NotFound();
                 }
 
@@ -175,7 +181,7 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
                 contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons));
             }
 
-                var newBodyHtml = contentToWrite.ToString();
+            var newBodyHtml = contentToWrite.ToString();
 
             var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml, templateId, useGeneralLayout);
 
@@ -186,10 +192,8 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
                 {
                     return View(viewModel);
                 }
-                else
-                {
-                    return Content(newBodyHtml, "text/html");
-                }
+
+                return Content(newBodyHtml, "text/html");
             }
 
             // If a component set the status code to a 4xx status code, then return that actual status code
@@ -211,11 +215,11 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
                 viewModel.MetaData.PageTitle = $"BRANCH {branchDatabase} - {viewModel.MetaData.PageTitle}";
             }
 
-                return View(viewModel);
-            }
-            catch (Exception exception)
-            {
-                logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
+            return View(viewModel);
+        }
+        catch (Exception exception)
+        {
+            logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
 
             if (gclSettings.Environment == Environments.Live)
             {
@@ -223,14 +227,14 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-                return new ContentResult
-                {
-                    StatusCode = StatusCodes.Status500InternalServerError,
-                    Content = $"<pre>{exception}</pre>",
-                    ContentType = "text/html"
-                };
-            }
+            return new ContentResult
+            {
+                StatusCode = StatusCodes.Status500InternalServerError,
+                Content = $"<pre>{exception}</pre>",
+                ContentType = "text/html"
+            };
         }
+    }
 
     [Route("json.gcl")]
     [Route("json.jcl")]

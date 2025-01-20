@@ -18,7 +18,9 @@ public interface IPagesService
     /// <param name="parentName">Optional: The name of the parent of template to get.</param>
     /// <param name="skipPermissions">Optional: Whether to skip the check if the user has the permissions to see the template</param>
     /// <param name="templateContent">The content of the template to use instead of retrieving it. If a value has been given, no replacements will be done.</param>
-    /// <returns></returns>
+    /// <param name="useAbsoluteImageUrls">Whether to force all URLs for images to be absolute. This will add the main domain from the settings to all image URLs that are not absolute yet.</param>
+    /// <param name="removeSvgUrlsFromIcons">Whether to remove SVG URLs from all icons. If true, this removes the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website. To use this functionality, the content of the SVG needs to be placed in the HTML, xlink can only load URLs from the same domain, protocol and port.</param>
+    /// <returns>The template, with all replacements done.</returns>
     Task<Template> GetRenderedTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool skipPermissions = false, string templateContent = null, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
 
     /// <summary>
@@ -27,6 +29,8 @@ public interface IPagesService
     /// <param name="url">The current URL of the page, to check the header regex and see if the header might need to be skipped for this page.</param>
     /// <param name="javascriptTemplates">A list of javascript templates. Any javascript templates that are linked to the header, will be added to this list.</param>
     /// <param name="cssTemplates">A list of css templates. Any css templates that are linked to the header, will be added to this list.</param>
+    /// <param name="useAbsoluteImageUrls">Whether to force all URLs for images to be absolute. This will add the main domain from the settings to all image URLs that are not absolute yet.</param>
+    /// <param name="removeSvgUrlsFromIcons">Whether to remove SVG URLs from all icons. If true, this removes the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website. To use this functionality, the content of the SVG needs to be placed in the HTML, xlink can only load URLs from the same domain, protocol and port.</param>
     /// <returns>The string with the entire header HTML.</returns>
     Task<string> GetGlobalHeader(string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
 
@@ -37,6 +41,8 @@ public interface IPagesService
     /// <param name="url">The current URL of the page, to check the header regex and see if the header might need to be skipped for this page.</param>
     /// <param name="javascriptTemplates">A list of javascript templates. Any javascript templates that are linked to the header, will be added to this list.</param>
     /// <param name="cssTemplates">A list of css templates. Any css templates that are linked to the header, will be added to this list.</param>
+    /// <param name="useAbsoluteImageUrls">Whether to force all URLs for images to be absolute. This will add the main domain from the settings to all image URLs that are not absolute yet.</param>
+    /// <param name="removeSvgUrlsFromIcons">Whether to remove SVG URLs from all icons. If true, this removes the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website. To use this functionality, the content of the SVG needs to be placed in the HTML, xlink can only load URLs from the same domain, protocol and port.</param>
     /// <returns>The string with the entire header HTML.</returns>
     Task<string> GetGlobalHeader(IPagesService service, string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
 
@@ -46,6 +52,8 @@ public interface IPagesService
     /// <param name="url">The current URL of the page, to check the footer regex and see if the footer might need to be skipped for this page.</param>
     /// <param name="javascriptTemplates">A list of javascript templates. Any javascript templates that are linked to the footer, will be added to this list.</param>
     /// <param name="cssTemplates">A list of css templates. Any css templates that are linked to the footer, will be added to this list.</param>
+    /// <param name="useAbsoluteImageUrls">Whether to force all URLs for images to be absolute. This will add the main domain from the settings to all image URLs that are not absolute yet.</param>
+    /// <param name="removeSvgUrlsFromIcons">Whether to remove SVG URLs from all icons. If true, this removes the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website. To use this functionality, the content of the SVG needs to be placed in the HTML, xlink can only load URLs from the same domain, protocol and port.</param>
     /// <returns>The string with the entire footer HTML.</returns>
     Task<string> GetGlobalFooter(string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
 
@@ -56,6 +64,8 @@ public interface IPagesService
     /// <param name="url">The current URL of the page, to check the footer regex and see if the footer might need to be skipped for this page.</param>
     /// <param name="javascriptTemplates">A list of javascript templates. Any javascript templates that are linked to the footer, will be added to this list.</param>
     /// <param name="cssTemplates">A list of css templates. Any css templates that are linked to the footer, will be added to this list.</param>
+    /// <param name="useAbsoluteImageUrls">Whether to force all URLs for images to be absolute. This will add the main domain from the settings to all image URLs that are not absolute yet.</param>
+    /// <param name="removeSvgUrlsFromIcons">Whether to remove SVG URLs from all icons. If true, this removes the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website. To use this functionality, the content of the SVG needs to be placed in the HTML, xlink can only load URLs from the same domain, protocol and port.</param>
     /// <returns>The string with the entire footer HTML.</returns>
     Task<string> GetGlobalFooter(IPagesService service, string url, List<int> javascriptTemplates, List<int> cssTemplates, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
 

@@ -7,15 +7,8 @@ namespace GeeksCoreLibrary.Modules.OAuth.Controllers;
 
 [Area("OAuth")]
 [Route("oauth")]
-public class OAuthController : Controller
+public class OAuthController(IOAuthService oAuthService) : Controller
 {
-    private readonly IOAuthService oAuthService;
-
-    public OAuthController(IOAuthService oAuthService)
-    {
-        this.oAuthService = oAuthService;
-    }
-
     [HttpGet("handle-callback")]
     public async Task<IActionResult> HandleCallbackAsync(string apiName, string code)
     {

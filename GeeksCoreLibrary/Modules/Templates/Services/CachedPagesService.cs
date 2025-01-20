@@ -8,7 +8,6 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
-using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -16,42 +15,24 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.ViewModels;
 using LazyCache;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services;
 
-public class CachedPagesService : IPagesService
+public class CachedPagesService(
+    ILogger<CachedPagesService> logger,
+    IPagesService pagesService,
+    ITemplatesService templatesService,
+    IAppCache cache,
+    IOptions<GclSettings> gclSettings,
+    ICacheService cacheService,
+    ILanguagesService languagesService,
+    IWebHostEnvironment webHostEnvironment = null)
+    : IPagesService
 {
-    private readonly ILogger<CachedPagesService> logger;
-    private readonly IPagesService pagesService;
-    private readonly ITemplatesService templatesService;
-    private readonly IAppCache cache;
-    private readonly GclSettings gclSettings;
-    private readonly ICacheService cacheService;
-    private readonly ILanguagesService languagesService;
-    private readonly IWebHostEnvironment webHostEnvironment;
-
-    public CachedPagesService(ILogger<CachedPagesService> logger,
-        IPagesService pagesService,
-        ITemplatesService templatesService,
-        IAppCache cache,
-        IOptions<GclSettings> gclSettings,
-        ICacheService cacheService,
-        ILanguagesService languagesService,
-        IWebHostEnvironment webHostEnvironment = null)
-    {
-        this.logger = logger;
-        this.pagesService = pagesService;
-        this.templatesService = templatesService;
-        this.cache = cache;
-        this.gclSettings = gclSettings.Value;
-        this.cacheService = cacheService;
-        this.languagesService = languagesService;
-        this.webHostEnvironment = webHostEnvironment;
-    }
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
     public async Task<Template> GetRenderedTemplateAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "", bool skipPermissions = false, string templateContent = null, bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
@@ -82,7 +63,7 @@ public class CachedPagesService : IPagesService
         if (cachingMinutes > 0)
         {
             // Get folder and file name.
-            var cacheFolder = FileSystemHelpers.GetContentCacheFolderPath(webHostEnvironment);
+            var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
             var cacheFileName = await templatesService.GetTemplateOutputCacheFileNameAsync(cacheSettings, cacheSettings.Type.ToString(), useAbsoluteImageUrls, removeSvgUrlsFromIcons);
 
             switch (cacheSettings.CachingLocation)
@@ -98,6 +79,7 @@ public class CachedPagesService : IPagesService
                     {
                         return ObjectCloner.ObjectCloner.DeepClone(await templatesService.CheckTemplatePermissionsAsync(cachedTemplate));
                     }
+
                     break;
                 }
                 case TemplateCachingLocations.OnDisk:
@@ -114,7 +96,7 @@ public class CachedPagesService : IPagesService
 
                         // Check if a cache file already exists and if it hasn't expired yet.
                         var fileInfo = new FileInfo(fullCachePath);
-                        if (fileInfo.Directory is { Exists: false })
+                        if (fileInfo.Directory is {Exists: false})
                         {
                             fileInfo.Directory.Create();
                         }
