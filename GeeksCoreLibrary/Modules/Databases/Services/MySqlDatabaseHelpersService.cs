@@ -479,7 +479,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             tableDefinition ??= WiserTableDefinitions.TablesToUpdate.FirstOrDefault(t => String.Equals(t.Name, tableName, StringComparison.OrdinalIgnoreCase));
             if (tableDefinition == null)
             {
-                logger.LogWarning($"Called CheckAndUpdateTablesAsync with a table that doesn't exist ('{tableName}').");
+                logger.LogInformation($"Called CheckAndUpdateTablesAsync with a table that doesn't exist ('{tableName}').");
                 continue;
             }
 
