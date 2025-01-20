@@ -123,7 +123,13 @@ public class CachedShoppingBasketsService(IOptions<GclSettings> gclSettings, IAp
     {
         return await shoppingBasketsService.LoadAsync(settings, itemId, encryptedItemId, connectToAccount, recursiveCall, includeLines, basketToUserLinkType);
     }
-
+    
+    /// <inheritdoc />
+    public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)> LoadAsync(ShoppingBasketCmsSettingsModel settings, bool fillSpecificDetails, ulong itemId = 0, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, int basketToUserLinkType = Constants.BasketToUserLinkType)
+    {
+        return await shoppingBasketsService.LoadAsync(settings, fillSpecificDetails, itemId, encryptedItemId, connectToAccount, recursiveCall, basketToUserLinkType);
+    }
+    
     /// <inheritdoc />
     public async Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
     {

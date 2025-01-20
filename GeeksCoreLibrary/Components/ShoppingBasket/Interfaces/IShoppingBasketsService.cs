@@ -157,6 +157,11 @@ public interface IShoppingBasketsService
     Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines, string BasketLineValidityMessage, string BasketLineStockActionMessage)> LoadAsync(ShoppingBasketCmsSettingsModel settings, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, bool includeLines = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
     /// <summary>
+    /// Overload the LoadAsync method and loads a basket from the database without the specific details.
+    /// </summary>
+    Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)> LoadAsync(ShoppingBasketCmsSettingsModel settings, bool fillSpecificDetails, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, int basketToUserLinkType = Constants.BasketToUserLinkType);
+    
+    /// <summary>
     /// Saves the current basket to the database.
     /// </summary>
     Task<WiserItemModel> SaveAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
