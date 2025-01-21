@@ -81,11 +81,11 @@ public class SftpHandler : IFtpHandler, IScopedService
     }
 
     /// <inheritdoc />
-    public async Task<bool> DownloadAsync(bool allFilesInFolder, string downloadPath, string writePath)
+    public async Task<bool> DownloadAsync(bool allFilesInFolder, string downloadPath, string localPath)
     {
         if (!allFilesInFolder)
         {
-            await using var stream = File.OpenWrite(writePath);
+            await using var stream = File.OpenWrite(localPath);
             client.DownloadFile(downloadPath, stream);
             await stream.FlushAsync();
             return true;
@@ -101,12 +101,20 @@ public class SftpHandler : IFtpHandler, IScopedService
         // Combine the name with the path to the folder.
         foreach (var file in filesToDownload)
         {
-            await using var stream = File.OpenWrite(Path.Combine(writePath, file));
+            await using var stream = File.OpenWrite(Path.Combine(localPath, file));
             client.DownloadFile(Path.Combine(downloadPath, file), stream);
             await stream.FlushAsync();
         }
 
         return true;
+    }
+
+    /// <inheritdoc />
+    public Task<byte[]> DownloadAsBytesAsync(string downloadPath)
+    {
+        using var stream = new MemoryStream();
+        client.DownloadFile(downloadPath, stream);
+        return Task.FromResult(stream.ToArray());
     }
 
     /// <inheritdoc />

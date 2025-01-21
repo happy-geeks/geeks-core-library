@@ -53,16 +53,16 @@ public class FtpsHandler : IFtpHandler, IScopedService
     }
 
     /// <inheritdoc />
-    public async Task<bool> DownloadAsync(bool allFilesInFolder, string downloadPath, string writePath)
+    public async Task<bool> DownloadAsync(bool allFilesInFolder, string downloadPath, string localPath)
     {
         if (!allFilesInFolder)
         {
-            return (await client.DownloadFile(writePath, downloadPath)).IsSuccess();
+            return (await client.DownloadFile(localPath, downloadPath)).IsSuccess();
         }
 
         // Get the names of the files that need to be downloaded.
         var filesToDownload = await GetFilesInFolderAsync(downloadPath);
-        if (!filesToDownload.Any())
+        if (filesToDownload.Count == 0)
         {
             return true;
         }
@@ -73,8 +73,14 @@ public class FtpsHandler : IFtpHandler, IScopedService
             filesToDownload[i] = Path.Combine(downloadPath, filesToDownload[i]);
         }
 
-        var downloadCount = await client.DownloadFiles(writePath, filesToDownload);
+        var downloadCount = await client.DownloadFiles(localPath, filesToDownload);
         return downloadCount.Count == filesToDownload.Count;
+    }
+
+    /// <inheritdoc />
+    public async Task<byte[]> DownloadAsBytesAsync(string downloadPath)
+    {
+        return await client.DownloadBytes(downloadPath, 0);
     }
 
     /// <inheritdoc />

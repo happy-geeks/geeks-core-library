@@ -37,13 +37,20 @@ public interface IFtpHandler
     Task<bool> UploadAsync(string uploadPath, byte[] fileBytes);
 
     /// <summary>
-    /// Download a file from an FTP server.
+    /// Download a file from an FTP server to a local hard drive.
     /// </summary>
     /// <param name="allFilesInFolder">If the action applies to all files in the folder.</param>
     /// <param name="downloadPath">The full path to download the file from or the folder path if all files are downloaded.</param>
-    /// <param name="writePath">The full path to write the file to or the folder path if all files are downloaded.</param>
+    /// <param name="localPath">The full path to write the file to or the folder path if all files are downloaded.</param>
     /// <returns>If the file is downloaded.</returns>
-    Task<bool> DownloadAsync(bool allFilesInFolder, string downloadPath, string writePath);
+    Task<bool> DownloadAsync(bool allFilesInFolder, string downloadPath, string localPath);
+
+    /// <summary>
+    /// Download a file from an FTP server to a byte array.
+    /// </summary>
+    /// <param name="downloadPath">The full path to download the file from or the folder path if all files are downloaded.</param>
+    /// <returns>The byte array that contains the file.</returns>
+    Task<byte[]> DownloadAsBytesAsync(string downloadPath);
 
     /// <summary>
     /// Get all names of files in a folder in an FTP server.
