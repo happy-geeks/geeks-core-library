@@ -118,7 +118,13 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
         /// For JCL baskets that should run with the GCL code.
         /// </summary>
         [CmsEnum(HideInCms = true)]
-        Legacy = 10
+        Legacy = 10,
+        
+        /// <summary>
+        /// For creating replacements that counts the number of products and lines and their respective quantities.
+        /// </summary>
+        [CmsEnum(PrettyName = "Products Count")]
+        ProductsCount = 13
     }
 
     public enum PriceTypes
@@ -416,11 +422,20 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
         }
 
         // Load the current basket.
-        var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, Settings.ForcedBasketId);
-        Main = shoppingBasket;
-        Lines = basketLines;
-        basketLineValidityMessage = validityMessage;
-        basketLineStockActionMessage = stockActionMessage;
+        if (Settings.ComponentMode == ComponentModes.ProductsCount)
+        {
+            var (shoppingBasket, basketLines) = await shoppingBasketsService.LoadAsync(Settings, false, Settings.ForcedBasketId);
+            Main = shoppingBasket;
+            Lines = basketLines;
+        }
+        else
+        {
+            var (shoppingBasket, basketLines, validityMessage, stockActionMessage) = await shoppingBasketsService.LoadAsync(Settings, Settings.ForcedBasketId);
+            Main = shoppingBasket;
+            Lines = basketLines;
+            basketLineValidityMessage = validityMessage;
+            basketLineStockActionMessage = stockActionMessage;
+        }
 
         var resultHtml = new StringBuilder();
         switch (Settings.ComponentMode)
@@ -460,6 +475,9 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
                 break;
             case ComponentModes.Legacy:
                 resultHtml.Append(await HandleLegacyModeAsync());
+                break;
+            case ComponentModes.ProductsCount:
+                resultHtml.Append(await HandleProductsCountModeAsync());
                 break;
             default:
                 throw new NotImplementedException($"Unknown or unsupported component mode '{Settings.ComponentMode}' in 'InvokeAsync'.");
@@ -827,6 +845,33 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
 
         return await GetRenderedBasketAsync();
     }
+    
+    /// <summary>
+    /// Handles the ProductsCount mode, this mode calculates the total amount of products and lines, and the total amount of products and lines including their quantities.
+    /// </summary>
+    /// <returns></returns>
+    public async Task<string> HandleProductsCountModeAsync()
+    {
+        var totalProductsQuantity = Lines.Where(line => String.Equals(line.GetDetailValue<string>("type"), "product", StringComparison.OrdinalIgnoreCase)).Sum(line => Convert.ToInt32(line.GetDetailValue<string>("quantity")));
+        var totalProducts = Lines.Count(line => String.Equals(line.GetDetailValue<string>("type"), "product", StringComparison.OrdinalIgnoreCase));
+        var totalQuantities = Lines.Sum(line => Convert.ToInt32(line.GetDetailValue<string>("quantity")));
+        var totalLines = Lines.Count();
+
+        var replacementData = new Dictionary<string, object>
+        {
+            { "totalProducts", totalProducts.ToString() },
+            { "totalProductsQuantity", totalProductsQuantity.ToString() },
+            { "totalLines", totalLines.ToString() },
+            { "totalQuantities", totalQuantities.ToString() }
+        };
+
+        var outputHtml = Settings.Template ?? "";
+        outputHtml = StringReplacementsService.DoReplacements(outputHtml, replacementData);
+        outputHtml = DoDefaultShoppingBasketHtmlReplacements(outputHtml);
+
+        return await TemplatesService.DoReplacesAsync(outputHtml, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables);
+    }
+
 
     private string DoDefaultShoppingBasketHtmlReplacements(string template)
     {
