@@ -31,7 +31,7 @@ public class FtpsHandler : IFtpHandler, IScopedService
     public async Task CloseConnectionAsync()
     {
         await client.Disconnect();
-        client.Dispose();
+        await client.DisposeAsync();
     }
 
     /// <inheritdoc />

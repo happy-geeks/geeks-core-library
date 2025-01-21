@@ -128,13 +128,13 @@ public class SftpHandler : IFtpHandler, IScopedService
             var files = await GetFilesInFolderAsync(filePath);
             foreach (var file in files)
             {
-                client.Delete(Path.Combine(filePath, file));
+                await client.DeleteAsync(Path.Combine(filePath, file));
             }
 
             return true;
         }
 
-        client.Delete(filePath);
+        await client.DeleteAsync(filePath);
         return true;
     }
 
@@ -142,6 +142,6 @@ public class SftpHandler : IFtpHandler, IScopedService
     public async Task<bool> MoveFileAsync(string fromPath, string toPath)
     {
         await client.RenameFileAsync(fromPath, toPath, default);
-        return client.Exists(toPath);
+        return await client.ExistsAsync(toPath);
     }
 }
