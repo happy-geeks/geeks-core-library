@@ -9,6 +9,7 @@ using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Core.Services;
 
@@ -31,20 +32,22 @@ public class RolesService : IRolesService, ITransientService
         string query;
         if (includePermissions)
         {
-            query = $"""
-                     SELECT 
-                         role.id, 
-                         role.role_name,
-                         permission.item_id,
-                         permission.entity_property_id,
-                         permission.module_id,
-                         permission.permissions,
-                     	permission.endpoint_url,
-                     	permission.endpoint_http_method
-                     FROM {WiserTableNames.WiserRoles} AS role 
-                     LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = role.id
-                     ORDER BY role_name ASC
-                     """;
+            query = $$"""
+                      SELECT 
+                          role.id, 
+                          role.role_name,
+                          user_role.ip_addresses,
+                          permission.item_id,
+                          permission.entity_property_id,
+                          permission.module_id,
+                          permission.permissions,
+                      	permission.endpoint_url,
+                      	permission.endpoint_http_method
+                      FROM {{WiserTableNames.WiserRoles}} AS role 
+                      LEFT JOIN {{WiserTableNames.WiserUserRoles}} AS user_role ON user_role.role_id = role.id
+                      LEFT JOIN {{WiserTableNames.WiserPermission}} AS permission ON permission.role_id = role.id
+                      ORDER BY role_name ASC
+                      """;
         }
         else
         {
@@ -69,7 +72,8 @@ public class RolesService : IRolesService, ITransientService
                 role = new RoleModel
                 {
                     Id = roleId,
-                    Name = dataRow.Field<string>("role_name")
+                    Name = dataRow.Field<string>("role_name"),
+                    IpAddresses = dataRow.IsNull("ip_addresses") ? null : JsonConvert.DeserializeObject<List<string>>(dataRow.Field<string>("ip_addresses"))
                 };
 
                 results.Add(role);

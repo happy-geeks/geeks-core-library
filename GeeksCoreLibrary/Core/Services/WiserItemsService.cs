@@ -15,6 +15,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Exceptions;
+using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
@@ -22,6 +23,7 @@ using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.ItemFiles.Models;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
@@ -39,7 +41,8 @@ public class WiserItemsService(
     IOptions<GclSettings> gclSettings,
     ILogger<WiserItemsService> logger,
     IEntityTypesService entityTypesService,
-    ILinkTypesService linkTypesService)
+    ILinkTypesService linkTypesService,
+    IHttpContextAccessor httpContextAccessor)
     : IWiserItemsService, IScopedService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
@@ -2012,6 +2015,7 @@ public class WiserItemsService(
         // If someone is not logged in, they will have no permissions by default. If someone is logged in, then they have all permissions by default.
         var defaultPermissions = userId == 0 ? AccessRights.Nothing : AccessRights.Read | AccessRights.Create | AccessRights.Update | AccessRights.Delete;
         var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+        var userIp = HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext);
 
         // First check permissions based on module ID.
         var permissionsQuery = $"""
@@ -2019,11 +2023,12 @@ public class WiserItemsService(
                                                                     FROM {WiserTableNames.WiserUserRoles} AS user_role
                                                                     JOIN {tablePrefix}{WiserTableNames.WiserItem} AS item ON item.id = ?itemId AND item.moduleid > 0
                                                                     LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.module_id = item.moduleid
-                                                                    WHERE user_role.user_id = ?userId
+                                                                    WHERE user_role.user_id = ?userId AND (user_role.ip_addresses IS NULL OR JSON_CONTAINS(user_role.ip_addresses, JSON_QUOTE(?userIp)))
                                 """;
 
         databaseConnection.AddParameter("itemId", itemId);
         databaseConnection.AddParameter("userId", userId);
+        databaseConnection.AddParameter("userIp", userIp);
         var dataTable = await databaseConnection.GetAsync(permissionsQuery, true);
 
         var modulePermissionsFound = false;
@@ -2067,7 +2072,7 @@ public class WiserItemsService(
                             SELECT permission.permissions
                                                             FROM {WiserTableNames.WiserUserRoles} AS user_role
                                                             LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.item_id = ?itemId
-                                                            WHERE user_role.user_id = ?userId
+                                                            WHERE user_role.user_id = ?userId AND (user_role.ip_addresses IS NULL OR JSON_CONTAINS(user_role.ip_addresses, JSON_QUOTE(?userIp)))
                             """;
         dataTable = await databaseConnection.GetAsync(permissionsQuery, true);
 
