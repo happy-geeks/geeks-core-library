@@ -1756,7 +1756,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         {
             DateTime lastLoginDate;
             _ = DateTime.TryParseExact(accountResult.Rows[0].Field<string>(Constants.LastLoginDateColumn), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out lastLoginDate);
-            if (Settings.MaximumAmountOfFailedLoginAttempts > 0 && Settings.DefaultLockoutTime.HasValue && Settings.DefaultLockoutTime.Value > 0 && failedLoginAttempts >= Settings.MaximumAmountOfFailedLoginAttempts && lastLoginDate.AddMinutes(Settings.DefaultLockoutTime.Value) > DateTime.Now)
+            if (Settings.MaximumAmountOfFailedLoginAttempts > 0 && Settings.DefaultLockoutTime is > 0 && failedLoginAttempts >= Settings.MaximumAmountOfFailedLoginAttempts && lastLoginDate.AddMinutes(Settings.DefaultLockoutTime.Value) > DateTime.Now)
             {
                 return (Result: LoginResults.TooManyAttempts, UserId: 0, EmailAddress: userEmail);
             }

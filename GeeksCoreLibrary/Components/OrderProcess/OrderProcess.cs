@@ -203,7 +203,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
         var httpContext = HttpContext;
         var response = httpContext?.Response;
         var request = httpContext?.Request;
-        var isPostBack = request is {HasFormContentType: true} && request.Form.Count > 0 && request.Form[Constants.ComponentIdFormKey].ToString() == ComponentId.ToString();
+        var isPostBack = request is {HasFormContentType: true, Form.Count: > 0} && request.Form[Constants.ComponentIdFormKey].ToString() == ComponentId.ToString();
         var fieldErrorsOccurred = false;
         string resultHtml = null;
 

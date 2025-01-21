@@ -228,7 +228,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
         }
 
         // Process connections recursive.
-        if (itemsRequest.Selector?.Connections != null && itemsRequest.Selector.Connections.Length > 0)
+        if (itemsRequest.Selector?.Connections is {Length: > 0})
         {
             itemsRequest.WhereLink.Add(" AND ");
             await ProcessConnectionsAsync(itemsRequest, itemsRequest.Selector.Connections, "ilc1.id");
@@ -716,7 +716,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
         }
 
         // Handle grouping.
-        if (itemsRequest.Selector?.GroupBy != null && itemsRequest.Selector.GroupBy.Length > 0)
+        if (itemsRequest.Selector?.GroupBy is {Length: > 0})
         {
             queryBuilder.AppendLine("GROUP BY");
             for (var i = 0; i < itemsRequest.Selector.GroupBy.Length; i++)
@@ -731,7 +731,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
         }
 
         // Handle having.
-        if (itemsRequest.Selector?.Having != null && itemsRequest.Selector.Having.Length > 0)
+        if (itemsRequest.Selector?.Having is {Length: > 0})
         {
             var havingPart = new StringBuilder();
 
