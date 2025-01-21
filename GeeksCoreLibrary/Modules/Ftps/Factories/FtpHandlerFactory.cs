@@ -11,14 +11,11 @@ public class FtpHandlerFactory(IServiceProvider serviceProvider) : IFtpHandlerFa
 {
     public IFtpHandler GetFtpHandler(FtpTypes ftpType)
     {
-        switch (ftpType)
+        return ftpType switch
         {
-            case FtpTypes.Ftps:
-                return serviceProvider.GetRequiredService<FtpsHandler>();
-            case FtpTypes.Sftp:
-                return serviceProvider.GetRequiredService<SftpHandler>();
-            default:
-                throw new NotImplementedException($"FTP type '{ftpType}' is not yet implemented.");
-        }
+            FtpTypes.Ftps => serviceProvider.GetRequiredService<FtpsHandler>(),
+            FtpTypes.Sftp => serviceProvider.GetRequiredService<SftpHandler>(),
+            _ => throw new ArgumentOutOfRangeException(nameof(ftpType), ftpType.ToString(), null)
+        };
     }
 }
