@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -15,7 +16,9 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Html;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 
 namespace GeeksCoreLibrary.Components.Pagination;
 
@@ -422,14 +425,14 @@ public class Pagination : CmsComponent<PaginationCmsSettingsModel, Pagination.Co
     {
         var link = Settings.LinkFormat.Replace("{pnr}", pageNumber.ToString()).Replace("{variablename}", Settings.PageNumberVariableName);
 
-        var originalQueryString = HttpContextHelpers.GetOriginalRequestUri(HttpContext)?.Query;
         if (Settings.AddPageQueryStringToLinkFormat)
         {
+            var originalQueryString = HttpContextHelpers.GetOriginalRequestUri(HttpContext)?.Query;
             var queryStringBuilder = HttpUtility.ParseQueryString(originalQueryString ?? "");
-            if (link.Contains("?", StringComparison.Ordinal))
+            if (link.Contains('?', StringComparison.Ordinal))
             {
                 // Link format contains a query string; combine it with the request's query string.
-                var qsIndex = link.IndexOf("?", StringComparison.Ordinal);
+                var qsIndex = link.IndexOf('?');
                 var linkFormatQueryString = HttpUtility.ParseQueryString(link[(qsIndex + 1)..]);
 
                 foreach (var key in linkFormatQueryString.AllKeys)
@@ -437,12 +440,13 @@ public class Pagination : CmsComponent<PaginationCmsSettingsModel, Pagination.Co
                     queryStringBuilder.Set(key, linkFormatQueryString.Get(key));
                 }
 
-                // Strip the query string from the query string (it will be added again afterwards).
+                // Strip the query string from the query string (it will be added again afterward).
                 link = link[..qsIndex];
             }
 
             var newLinkFormat = new StringBuilder(link);
-            newLinkFormat.Append('?').Append(queryStringBuilder);
+            newLinkFormat.Append(QueryString.Create(queryStringBuilder.AllKeys.Select(k => new KeyValuePair<string, StringValues>(k, queryStringBuilder[k]))).ToString());
+
             link = newLinkFormat.ToString();
         }
 
