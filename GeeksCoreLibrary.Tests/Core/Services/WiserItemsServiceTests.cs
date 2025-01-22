@@ -46,11 +46,10 @@ public class WiserItemsServiceTests
         loggerMock = new Mock<ILogger<WiserItemsService>>();
         entityTypesServiceMock = new Mock<IEntityTypesService>();
         linkTypesServiceMock = new Mock<ILinkTypesService>();
-        httpContextAccessorMock = new Mock<IHttpContextAccessor>();
         
 
         // Create the service that we're testing.
-        wiserItemsService = new WiserItemsService(databaseConnectionMock.Object, objectsServiceMock.Object, stringReplacementsServiceMock.Object, dataSelectorsServiceMock.Object, databaseHelpersServiceMock.Object, gclSettingsMock, loggerMock.Object, entityTypesServiceMock.Object, linkTypesServiceMock.Object, httpContextAccessorMock.Object);
+        wiserItemsService = new WiserItemsService(databaseConnectionMock.Object, objectsServiceMock.Object, stringReplacementsServiceMock.Object, dataSelectorsServiceMock.Object, databaseHelpersServiceMock.Object, gclSettingsMock, loggerMock.Object, entityTypesServiceMock.Object, linkTypesServiceMock.Object);
 
         // Setup the mocks.
         databaseConnectionMock.Setup(x => x.GetAsync(It.Is<string>(query => query.Contains("SELECT permission.permissions")), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))

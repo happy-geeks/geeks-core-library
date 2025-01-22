@@ -42,7 +42,7 @@ public class WiserItemsService(
     ILogger<WiserItemsService> logger,
     IEntityTypesService entityTypesService,
     ILinkTypesService linkTypesService,
-    IHttpContextAccessor httpContextAccessor)
+    IHttpContextAccessor httpContextAccessor = null)
     : IWiserItemsService, IScopedService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
