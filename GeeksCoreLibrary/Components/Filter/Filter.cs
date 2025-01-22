@@ -47,12 +47,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
 
     #endregion
 
-    #region Private fields
-
-    //private uint TotalItemCount { get; set; }
-
-    #endregion
-
     #region Constructor
 
     public Filter(ILogger<Filter> logger,
