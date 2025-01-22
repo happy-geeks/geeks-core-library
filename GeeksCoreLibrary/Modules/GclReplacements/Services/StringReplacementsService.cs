@@ -232,21 +232,21 @@ public class StringReplacementsService(
         // GET variables.
         if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
         {
-            input = replacementsMediator.DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: defaultFormatter);
+            input = replacementsMediator.DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: String.Empty, isFromUnsafeSource: true);
         }
         else
         {
-            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: defaultFormatter);
+            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: String.Empty, isFromUnsafeSource: true);
         }
 
         // POST variables.
         if (httpContextAccessor.HttpContext.Request.HasFormContentType)
         {
-            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: defaultFormatter);
+            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: String.Empty, isFromUnsafeSource: true);
         }
 
         // Cookies.
-        input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: defaultFormatter);
+        input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: String.Empty, isFromUnsafeSource: true);
 
         // Request cache.
         input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery, defaultFormatter: defaultFormatter);

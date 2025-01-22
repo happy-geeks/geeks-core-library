@@ -7,6 +7,7 @@ using System.Web;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
+using HtmlAgilityPack;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 
@@ -202,9 +203,9 @@ public static class StringReplacementsExtensions
     /// <returns></returns>
     public static string StripHtml(this string input)
     {
-        var tagRegex = new Regex("<(.|\\n)*?>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-        var scriptRegex = new Regex("<script.*?/script>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
-        return tagRegex.Replace(scriptRegex.Replace(input, ""), "");
+        var htmlDocument = new HtmlDocument();
+        htmlDocument.LoadHtml(input);
+        return htmlDocument.DocumentNode.InnerText;
     }
 
     /// <summary>
