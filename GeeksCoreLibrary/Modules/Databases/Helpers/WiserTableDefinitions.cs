@@ -264,7 +264,7 @@ public class WiserTableDefinitions
         new WiserTableDefinitionModel
         {
             Name = WiserTableNames.WiserTemplate,
-            LastUpdate = new DateTime(2024, 12, 5),
+            LastUpdate = new DateTime(2025, 1, 9),
             Columns =
             [
                 new("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -303,6 +303,7 @@ public class WiserTableDefinitions
                 new("grouping_key", MySqlDbType.VarChar, 50),
                 new("grouping_key_column_name", MySqlDbType.VarChar, 50),
                 new("grouping_value_column_name", MySqlDbType.VarChar, 50),
+                new("query_used_for_redirect", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new("removed", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new("is_scss_include_template", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new("use_in_wiser_html_editors", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
