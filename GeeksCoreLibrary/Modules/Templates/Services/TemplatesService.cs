@@ -151,6 +151,7 @@ public class TemplatesService(
                          template.grouping_value_column_name,
                          template.grouping_key,
                          template.grouping_prefix,
+                         template.query_used_for_redirect,
                          template.pre_load_query,
                          template.return_not_found_when_pre_load_query_has_no_data,
                          template.login_required,
@@ -629,6 +630,7 @@ public class TemplatesService(
                          template.grouping_value_column_name,
                          template.grouping_key,
                          template.grouping_prefix,
+                         template.query_used_for_redirect,
                          template.pre_load_query,
                          template.return_not_found_when_pre_load_query_has_no_data,
                          template.version
@@ -1744,7 +1746,8 @@ public class TemplatesService(
                      SELECT
                      	template.template_id,
                      	template.template_type,
-                     	template.url_regex
+                     	template.url_regex,
+                     	template.query_used_for_redirect
                      FROM {WiserTableNames.WiserTemplate} AS template
                      LEFT JOIN {WiserTableNames.WiserTemplate} AS otherVersion ON otherVersion.template_id = template.template_id AND otherVersion.version > template.version
                      LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -1771,7 +1774,8 @@ public class TemplatesService(
                      SELECT 
                      	template.template_id,
                      	template.template_type,
-                     	template.url_regex
+                     	template.url_regex,
+                     	template.query_used_for_redirect
                      FROM {WiserTableNames.WiserTemplate} AS template
                      LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
                      LEFT JOIN {WiserTableNames.WiserTemplate} AS parent2 ON parent2.template_id = parent1.parent_id AND parent2.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = parent1.parent_id)
@@ -1796,13 +1800,28 @@ public class TemplatesService(
         var results = new List<Template>();
         foreach (DataRow dataRow in dataTable.Rows)
         {
-            results.Add(new Template
-            {
-                Id = dataRow.Field<int>("template_id"),
-                Type = dataRow.Field<TemplateTypes>("template_type"),
-                UrlRegex = dataRow.Field<string>("url_regex")
-            });
-        }
+            TemplateTypes type = dataRow.Field<TemplateTypes>("template_type");
+                switch (type)
+                {
+                    case TemplateTypes.Query:
+                        results.Add(new QueryTemplate
+                        {
+                            Id = dataRow.Field<int>("template_id"),
+                            Type = type,
+                            UrlRegex = dataRow.Field<string>("url_regex"),
+                            UsedForRedirect = dataRow.Field<bool>("query_used_for_redirect")
+                        });
+                        break;
+                    default:
+                        results.Add(new Template
+                        {
+                            Id = dataRow.Field<int>("template_id"),
+                            Type = type,
+                            UrlRegex = dataRow.Field<string>("url_regex")
+                        });
+                        break;
+                }
+            }
 
         return results;
     }
