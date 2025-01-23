@@ -79,7 +79,7 @@ public static class StringReplacementsExtensions
 
         if (String.IsNullOrEmpty(suffix))
         {
-            return input.Substring(0, maxLength);
+            return input[..maxLength];
         }
 
         if (suffix.Length > maxLength)
@@ -87,10 +87,7 @@ public static class StringReplacementsExtensions
             throw new ArgumentException($"The length of the suffix cannot exceed {nameof(maxLength)}.", nameof(suffix));
         }
 
-        var output = new StringBuilder(input.Substring(0, maxLength - suffix.Length));
-        output.Append(suffix);
-
-        return output.ToString();
+        return input[..(maxLength - suffix.Length)] + suffix;
     }
 
     /// <summary>
@@ -140,10 +137,7 @@ public static class StringReplacementsExtensions
         var decimalSeparator = culture.NumberFormat.CurrencyDecimalSeparator;
         var outputParts = output.Split(decimalSeparator);
 
-        var stringBuilder = new StringBuilder();
-        stringBuilder.Append(outputParts[0]).Append($"{decimalSeparator}<sup>").Append(outputParts[1]).Append("</sup>");
-
-        return stringBuilder.ToString();
+        return $"{outputParts[0]}{decimalSeparator}<sup>{outputParts[1]}</sup>";
     }
 
     /// <summary>
@@ -164,11 +158,7 @@ public static class StringReplacementsExtensions
             return input.ToUpper();
         }
 
-        // Use a StringBuilder to optimize string manipulations.
-        var stringBuilder = new StringBuilder(input);
-        stringBuilder.Remove(0, 1);
-        stringBuilder.Insert(0, input[0].ToString().ToUpper());
-        return stringBuilder.ToString();
+        return Char.ToUpper(input[0]) + input[1..];
     }
 
     /// <summary>
@@ -189,11 +179,7 @@ public static class StringReplacementsExtensions
             return input.ToLower();
         }
 
-        // Use a StringBuilder to optimize string manipulations.
-        var stringBuilder = new StringBuilder(input);
-        stringBuilder.Remove(0, 1);
-        stringBuilder.Insert(0, input[0].ToString().ToLower());
-        return stringBuilder.ToString();
+        return Char.ToLower(input[0]) + input[1..];
     }
 
     /// <summary>
@@ -382,8 +368,6 @@ public static class StringReplacementsExtensions
             return String.Empty;
         }
 
-        var url = $"/barcodes/generate?input={Uri.EscapeDataString(input)}&format=qr_code&width={width}&height={height}";
-
-        return url;
+        return $"/barcodes/generate?input={Uri.EscapeDataString(input)}&format=qr_code&width={width}&height={height}";
     }
 }
