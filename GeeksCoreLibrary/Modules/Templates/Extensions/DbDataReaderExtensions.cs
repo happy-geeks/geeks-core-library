@@ -51,7 +51,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
             template.CachingMinutes = await reader.IsDBNullAsync("cache_minutes") ? 0 : await reader.GetFieldValueAsync<int>("cache_minutes");
             template.CachingLocation = !reader.HasColumn("caching_location") || await reader.IsDBNullAsync("caching_location") ? TemplateCachingLocations.InMemory : (TemplateCachingLocations)await reader.GetFieldValueAsync<int>("caching_location");
             template.CachingRegex = reader.GetStringHandleNull("cache_regex");
-            template.RobotsNoIndex = reader.HasColumn("robots_no_index") && Convert.ToBoolean(reader.GetValue("robots_no_index")); 
+            template.RobotsNoIndex = reader.HasColumn("robots_no_index") && Convert.ToBoolean(reader.GetValue("robots_no_index"));
             template.RobotsNoFollow = reader.HasColumn("robots_no_follow") && Convert.ToBoolean(reader.GetValue("robots_no_follow"));
             template.IsPartial = reader.HasColumn("is_partial") && Convert.ToBoolean(reader.GetValue("is_partial"));
             template.Version = reader.GetInt32("version");
@@ -188,6 +188,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Extensions
                     GroupingValueColumnName = reader.GetStringHandleNull("grouping_value_column_name"),
                     GroupingKeyColumnName = reader.GetStringHandleNull("grouping_key_column_name")
                 };
+                queryTemplate.UsedForRedirect = reader.GetBoolean("query_used_for_redirect");
 
                 return queryTemplate;
             }

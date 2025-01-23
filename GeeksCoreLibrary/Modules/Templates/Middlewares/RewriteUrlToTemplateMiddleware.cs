@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -17,6 +18,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Routing.Template;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using Twilio.Http;
 
 namespace GeeksCoreLibrary.Modules.Templates.Middlewares;
 
@@ -136,15 +138,30 @@ public class RewriteUrlToTemplateMiddleware
                 queryString = queryString.Add(matchGroup.Name, matchGroup.Value);
             }
 
-            // Extra query string in the template.
-            queryString = CombineQueryString(queryString, $"?templateId={template.Id}");
-            queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
-
             // Redirect to the correct controller.
             switch (template.Type)
             {
                 case TemplateTypes.Html:
                     context.Request.Path = "/template.gcl";
+                    break;
+                case TemplateTypes.Query when template is QueryTemplate{ UsedForRedirect: true }:
+                    var redirectTo = await RunRedirectQuery(template, queryString, databaseConnection);
+                    if (redirectTo is null)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status404NotFound;
+                        return;
+                    }
+
+                    if (Int32.TryParse(redirectTo, out Int32 templateId))
+                    {
+                        template.Id = templateId;
+                        context.Request.Path = "/template.gcl";
+                    }
+                    else
+                    {
+                        context.Request.Path = redirectTo;
+                        return;
+                    }
                     break;
                 case TemplateTypes.Query:
                     context.Request.Path = "/json.gcl";
@@ -155,6 +172,10 @@ public class RewriteUrlToTemplateMiddleware
                 default:
                     throw new ArgumentOutOfRangeException(nameof(template.Type), template.Type.ToString(), null);
             }
+
+            // Extra query string in the template.
+            queryString = CombineQueryString(queryString, $"?templateId={template.Id}");
+            queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
 
             context.Request.QueryString = queryString;
             break;
@@ -264,16 +285,77 @@ public class RewriteUrlToTemplateMiddleware
             //This is a template or webpage that must be loaded because the value is url|templateid or url|-1*webpageid
             if (Int32.TryParse(urlMatchLastPart.Split('?', '&').First(), out number) && number > 0)
             {
+                var template = await templatesService.GetTemplateAsync(number);
+                if (template is QueryTemplate { UsedForRedirect: true })
+                {
+                    var redirectTo = await RunRedirectQuery(template, queryString, databaseConnection);
+                    if (redirectTo is null)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status404NotFound;
+                        return;
+                    }
+
+                    if (Int32.TryParse(redirectTo, out Int32 templateId))
+                    {
+                        queryString = CombineQueryString(queryString, $"?templateid={templateId}");
+                    }
+                    else
+                    {
+                        context.Request.Path = redirectTo;
+                        return;
+                    }
+                }
+                else
+                {
+                    queryString = CombineQueryString(queryString, $"?templateid={urlMatchLastPart.Replace("?", "&")}");
+                }
+
                 // Extra query string in the template.
-                queryString = CombineQueryString(queryString, $"?templateid={urlMatchLastPart.Replace("?", "&")}");
                 queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
 
-                // It is a template.
                 context.Request.Path = "/template.gcl";
                 context.Request.QueryString = queryString;
                 break;
             }
         }
+    }
+
+    private async Task<string> RunRedirectQuery(Template template, QueryString queryString, IDatabaseConnection databaseConnection)
+    {
+        var queryStringCollection = HttpUtility.ParseQueryString(queryString.ToString());
+        foreach (var key in queryStringCollection.AllKeys)
+        {
+            databaseConnection.AddParameter(key, queryStringCollection[key]);
+        }
+
+        var dataTable = await databaseConnection.GetAsync(template.Content);
+        if (dataTable.Rows.Count != 1)
+            // TODO: log error
+            return null;
+
+        var dataRow = dataTable.Rows[0];
+        string result = null;
+        foreach (DataColumn column in dataTable.Columns)
+        {
+            switch (column.ColumnName.ToLower())
+            {
+                case "templateid":
+                    var id = dataRow.Field<int>(column);
+                    if (id > 0)
+                        result = id.ToString();
+                    break;
+                case "redirecturl":
+                    var url = dataRow.Field<string>(column);
+                    if (!String.IsNullOrWhiteSpace(url))
+                        result = url;
+                    break;
+                default:
+                    queryString.Add(column.ColumnName, dataRow.Field<string>(column));
+                    break;
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
