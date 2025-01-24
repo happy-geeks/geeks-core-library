@@ -5,6 +5,11 @@ namespace GeeksCoreLibrary.Modules.Seo.Models;
 public class PageMetaDataModel
 {
     /// <summary>
+    /// Gets or sets the languageCode of the page.
+    /// </summary>
+    public string LanguageCode { get; set; }
+
+    /// <summary>
     /// Gets or sets the title of the page.
     /// </summary>
     public string PageTitle { get; set; }

@@ -14,6 +14,7 @@ using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Redirect.Interfaces;
 using GeeksCoreLibrary.Modules.Seo.Interfaces;
@@ -36,6 +37,7 @@ public class PagesService(
     ITemplatesService templatesService,
     ISeoService seoService,
     IRedirectService redirectService,
+    ILanguagesService languagesService,
     IDatabaseConnection databaseConnection,
     IHttpContextAccessor httpContextAccessor = null)
     : IPagesService, IScopedService
@@ -616,6 +618,12 @@ public class PagesService(
         if (String.IsNullOrWhiteSpace(viewModel.MetaData.PageTitle) || (!String.IsNullOrWhiteSpace(globalPageTitleSuffix) && !viewModel.MetaData.PageTitle.EndsWith(globalPageTitleSuffix, StringComparison.OrdinalIgnoreCase)))
         {
             viewModel.MetaData.GlobalPageTitleSuffix = globalPageTitleSuffix;
+        }
+
+        // Check if the language code is set, defaulting to the current language if missing.
+        if (String.IsNullOrWhiteSpace(viewModel.MetaData.LanguageCode))
+        {
+            viewModel.MetaData.LanguageCode = languagesService.CurrentLanguageCode;
         }
 
         // Load all Google Analytics related stuff.
