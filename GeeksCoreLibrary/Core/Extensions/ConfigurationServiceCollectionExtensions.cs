@@ -169,7 +169,8 @@ public static class ConfigurationServiceCollectionExtensions
                     WiserTableNames.WiserItemDetail,
                     WiserTableNames.WiserItemFile,
                     WiserTableNames.WiserItemLink,
-                    WiserTableNames.WiserItemLinkDetail
+                    WiserTableNames.WiserItemLinkDetail,
+                    WiserTableNames.WiserUserRoles
                 };
 
                 if (gclSettings.Value.LogOpeningAndClosingOfConnections)

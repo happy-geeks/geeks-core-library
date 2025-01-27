@@ -1086,6 +1086,25 @@ public class WiserTableDefinitions
                 new("groupname", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                 new("target_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0")
             ]
+        },
+
+        // wiser_user_roles
+
+        new WiserTableDefinitionModel
+        {
+            Name = WiserTableNames.WiserUserRoles,
+            LastUpdate = new DateTime(2025, 1, 24),
+            Columns =
+            [
+                new("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                new("user_id", MySqlDbType.UInt64, notNull: true),
+                new("role_id", MySqlDbType.UInt64, notNull: true),
+                new("ip_addresses", MySqlDbType.JSON)
+            ],
+            Indexes =
+            [
+                new(WiserTableNames.WiserUserRoles, "idx_user_id", IndexTypes.Unique, ["user_id", "role_id"])
+            ]
         }
     ];
 }
