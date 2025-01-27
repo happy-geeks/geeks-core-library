@@ -2524,7 +2524,7 @@ public class WiserItemsService(
                                    	   CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
                                        details.language_code,
                                        link.id AS itemLinkId
-                                   FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem} AS item
+                                   FROM {tablePrefixForResultItems}{WiserTableNames.WiserItem} AS item
                                    {itemLinkJoin}
                                    LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} AS details ON details.itemlink_id = link.id
                                    {permissionsQueryPart}
@@ -2541,9 +2541,9 @@ public class WiserItemsService(
                      	 CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
                          details.language_code,
                          0 AS itemLinkId
-                     FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem} AS item
+                     FROM {tablePrefixForResultItems}{WiserTableNames.WiserItem} AS item
                      {itemLinkJoin}
-                     LEFT JOIN {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id
+                     LEFT JOIN {tablePrefixForResultItems}{WiserTableNames.WiserItemDetail} AS details ON details.item_id = item.id
                      {permissionsQueryPart}
                      WHERE {String.Join(" AND ", where)}
                      {itemLinkDetailsPart}
@@ -2580,7 +2580,7 @@ public class WiserItemsService(
                                        	   CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
                                            details.language_code,
                                            link.id AS itemLinkId
-                                       FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+                                       FROM {tablePrefixForResultItems}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
                                        {itemLinkJoin}
                                        LEFT JOIN {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.itemlink_id = link.id
                                        {permissionsQueryPart}
@@ -2599,9 +2599,9 @@ public class WiserItemsService(
                           CONCAT_WS('', details.`value`, details.`long_value`) AS `value`,
                           details.language_code,
                           0 AS itemLinkId
-                      FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+                      FROM {tablePrefixForResultItems}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
                       {itemLinkJoin}
-                      LEFT JOIN {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id
+                      LEFT JOIN {tablePrefixForResultItems}{WiserTableNames.WiserItemDetail}{WiserTableNames.ArchiveSuffix} AS details ON details.item_id = item.id
                       {permissionsQueryPart}
                       WHERE {String.Join(" AND ", where)}
                       {itemLinkDetailsPart}
@@ -2695,7 +2695,7 @@ public class WiserItemsService(
         databaseConnection.AddParameter("linkType", linkType);
         var query = $"""
                      SELECT item.id
-                     FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem} AS item
+                     FROM {tablePrefixForResultItems}{WiserTableNames.WiserItem} AS item
                      {itemLinkJoin}
                      {permissionsQueryPart}
                      {wherePart}
@@ -2722,7 +2722,7 @@ public class WiserItemsService(
                       UNION ALL
 
                       SELECT item.id
-                      FROM {(reverse ? tablePrefixForItemIdItem : tablePrefixForResultItems)}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
+                      FROM {tablePrefixForResultItems}{WiserTableNames.WiserItem}{WiserTableNames.ArchiveSuffix} AS item
                       {itemLinkJoin}
                       {permissionsQueryPart}
                       WHERE {String.Join(" AND ", where)}
