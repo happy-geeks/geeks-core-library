@@ -68,8 +68,8 @@
         <PackageReference Include="System.Threading" Version="4.3.0"/>
         <PackageReference Include="Twilio" Version="7.8.2"/>
         <PackageReference Include="WebMarkupMin.AspNetCoreLatest" Version="2.18.1"/>
-        <PackageReference Include="ZXing.Net" Version="0.16.9"/>
-        <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.15"/>
+        <PackageReference Include="ZXing.Net" Version="0.16.10"/>
+        <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.16"/>
         <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1" Condition="$([MSBuild]::IsOsPlatform('Windows'))"/>
         <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" Condition="$([MSBuild]::IsOsPlatform('Linux'))"/>
     </ItemGroup>
