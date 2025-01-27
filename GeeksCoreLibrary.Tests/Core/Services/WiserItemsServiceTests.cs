@@ -11,7 +11,6 @@ using NUnit.Framework;
 using FluentAssertions;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -30,7 +29,6 @@ public class WiserItemsServiceTests
     private Mock<ILogger<WiserItemsService>> loggerMock;
     private Mock<IEntityTypesService> entityTypesServiceMock;
     private Mock<ILinkTypesService> linkTypesServiceMock;
-    private Mock<IHttpContextAccessor> httpContextAccessorMock;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
     [SetUp]
@@ -46,7 +44,6 @@ public class WiserItemsServiceTests
         loggerMock = new Mock<ILogger<WiserItemsService>>();
         entityTypesServiceMock = new Mock<IEntityTypesService>();
         linkTypesServiceMock = new Mock<ILinkTypesService>();
-        
 
         // Create the service that we're testing.
         wiserItemsService = new WiserItemsService(databaseConnectionMock.Object, objectsServiceMock.Object, stringReplacementsServiceMock.Object, dataSelectorsServiceMock.Object, databaseHelpersServiceMock.Object, gclSettingsMock, loggerMock.Object, entityTypesServiceMock.Object, linkTypesServiceMock.Object);
