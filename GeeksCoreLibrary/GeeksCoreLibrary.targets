@@ -1,0 +1,17 @@
+<Project>
+    <Choose>
+        <!-- Add Windows-specific EvoPDF dependency -->
+        <When Condition="$([MSBuild]::IsOsPlatform('Windows'))">
+            <ItemGroup>
+                <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1"/>
+            </ItemGroup>
+        </When>
+
+        <!-- Add Linux-specific EvoPDF dependency -->
+        <When Condition="$([MSBuild]::IsOsPlatform('Linux'))">
+            <ItemGroup>
+                <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1"/>
+            </ItemGroup>
+        </When>
+    </Choose>
+</Project>

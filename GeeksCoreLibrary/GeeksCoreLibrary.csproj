@@ -5,30 +5,23 @@
         <OutputType>Library</OutputType>
         <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Version>5.0.2501.3</Version>
+        <Version>5.0.2501.4</Version>
         <Company>Happy Horizon B.V.</Company>
         <Description>Our base/core library that we use for most of our other projects.</Description>
-        <AssemblyVersion>5.0.2501.3</AssemblyVersion>
-        <FileVersion>5.0.2501.3</FileVersion>
+        <AssemblyVersion>5.0.2501.4</AssemblyVersion>
+        <FileVersion>5.0.2501.4</FileVersion>
         <PackageDescription>Geeks Core Library</PackageDescription>
         <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <Authors>Happy Horizon B.V.</Authors>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
         <LangVersion>default</LangVersion>
+        <EnablePackageValidation>true</EnablePackageValidation>
+        <IsPackable>true</IsPackable>
+        <IncludeBuildOutput>true</IncludeBuildOutput>
     </PropertyGroup>
-
-    <ItemGroup>
-        <Compile Remove="Core\Cms\Services\**"/>
-        <Content Remove="Core\Cms\Services\**"/>
-        <EmbeddedResource Remove="Core\Cms\Services\**"/>
-        <None Remove="Core\Cms\Services\**"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Modules\PostalServices\PostNL\Models\"/>
-    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="9.0.0"/>
@@ -70,16 +63,28 @@
         <PackageReference Include="WebMarkupMin.AspNetCoreLatest" Version="2.18.1"/>
         <PackageReference Include="ZXing.Net" Version="0.16.9"/>
         <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.15"/>
-        <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1" Condition="$([MSBuild]::IsOsPlatform('Windows'))"/>
-        <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" Condition="$([MSBuild]::IsOsPlatform('Linux'))"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="$([MSBuild]::IsOsPlatform('Windows'))">
+        <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1" />
+    </ItemGroup>
+
+    <ItemGroup Condition="$([MSBuild]::IsOsPlatform('Linux'))">
+        <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <None Include="GeeksCoreLibrary.targets" Pack="true" PackagePath="buildMultiTargeting/" />
     </ItemGroup>
 
     <ItemGroup>
         <None Include="..\LICENSE">
             <Pack>True</Pack>
-            <PackagePath></PackagePath>
+            <PackagePath>.\</PackagePath>
+        </None>
+        <None Include="..\README.md">
+            <Pack>True</Pack>
+            <PackagePath>.\</PackagePath>
         </None>
     </ItemGroup>
-
-    <Target Name="Pack"></Target>
 </Project>
