@@ -1,7 +1,7 @@
 ﻿@model GeeksCoreLibrary.Modules.Templates.ViewModels.PageViewModel
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@Model.MetaData.LanguageCode">
 <head>
     <meta charset="utf-8"/>
     <title>@(Model.MetaData.PageTitle + Model.MetaData.GlobalPageTitleSuffix)</title>
