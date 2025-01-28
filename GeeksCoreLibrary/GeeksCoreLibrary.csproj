@@ -42,7 +42,6 @@
         <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" />
     </ItemGroup>
 
-
     <ItemGroup>
         <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="9.0.0"/>
         <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0"/>
@@ -83,16 +82,6 @@
         <PackageReference Include="WebMarkupMin.AspNetCoreLatest" Version="2.18.1"/>
         <PackageReference Include="ZXing.Net" Version="0.16.10" />
         <PackageReference Include="ZXing.Net.Bindings.Magick" Version="0.16.16" />
-    </ItemGroup>
-
-    <!-- Windows-specific settings -->
-    <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
-        <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1" />
-    </ItemGroup>
-
-    <!-- Linux-specific settings -->
-    <ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
-        <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" />
     </ItemGroup>
 
     <!-- Copy the LICENSE and README.md files to the package -->
