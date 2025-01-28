@@ -21,9 +21,4 @@ public class RoleModel
     /// Gets or sets all permissions for this role.
     /// </summary>
     public List<PermissionModel> Permissions { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the ip addresses of the role.
-    /// </summary>
-    public List<string> IpAddresses { get; set; }
 }
