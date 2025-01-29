@@ -22,6 +22,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
+using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.Account.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.Account.Services;
@@ -435,20 +436,21 @@ public class AccountsService(
     public async Task<List<RoleModel>> GetUserRolesAsync(ulong userId, bool includePermissions = false)
     {
         databaseConnection.AddParameter("userId", userId);
-        var rolesData = await databaseConnection.GetAsync($"SELECT role_id FROM `{WiserTableNames.WiserUserRoles}` WHERE user_id = ?userId");
+        var rolesData = await databaseConnection.GetAsync($"SELECT role_id, ip_addresses FROM `{WiserTableNames.WiserUserRoles}` WHERE user_id = ?userId");
         if (rolesData.Rows.Count == 0)
         {
             return [];
         }
 
         // Turn the retrieved role IDs into a List of integers.
-        var userRoleIds = rolesData.Rows.Cast<DataRow>().Select(dataRow => Convert.ToInt32(dataRow["role_id"])).ToList();
+        var userRoles = rolesData.Rows.Cast<DataRow>().Select(dataRow => (RoleId: Convert.ToInt32(dataRow["role_id"]), IpAddresses: dataRow.IsNull("ip_addresses") ? null : JsonConvert.DeserializeObject<List<string>>(dataRow.Field<string>("ip_addresses")))).ToList();
+        var userIpAddress = HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext);
 
         // Retrieve all rows.
         var roles = await rolesService.GetRolesAsync(includePermissions);
 
         // Filter the roles based on the user's role IDs and return a List of the remaining rows.
-        return roles.Where(role => userRoleIds.Contains(role.Id)).ToList();
+        return roles.Where(role => userRoles.Any(r => r.RoleId == role.Id && r.IpAddresses.Contains(userIpAddress, StringComparer.OrdinalIgnoreCase))).ToList();
     }
 
     /// <inheritdoc />

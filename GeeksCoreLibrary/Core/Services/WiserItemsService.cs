@@ -2020,10 +2020,11 @@ public class WiserItemsService(
         // First check permissions based on module ID.
         var permissionsQuery = $"""
                                 SELECT permission.permissions
-                                                                    FROM {WiserTableNames.WiserUserRoles} AS user_role
-                                                                    JOIN {tablePrefix}{WiserTableNames.WiserItem} AS item ON item.id = ?itemId AND item.moduleid > 0
-                                                                    LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.module_id = item.moduleid
-                                                                    WHERE user_role.user_id = ?userId AND (user_role.ip_addresses IS NULL OR JSON_CONTAINS(user_role.ip_addresses, JSON_QUOTE(?userIp)))
+                                FROM {WiserTableNames.WiserUserRoles} AS user_role
+                                JOIN {tablePrefix}{WiserTableNames.WiserItem} AS item ON item.id = ?itemId AND item.moduleid > 0
+                                LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.module_id = item.moduleid
+                                WHERE user_role.user_id = ?userId
+                                AND (user_role.ip_addresses IS NULL OR JSON_CONTAINS(user_role.ip_addresses, JSON_QUOTE(?userIp)))
                                 """;
 
         databaseConnection.AddParameter("itemId", itemId);
@@ -2070,9 +2071,10 @@ public class WiserItemsService(
         // Then check the permissions for the specific item, they overwrite permissions of the module.
         permissionsQuery = $"""
                             SELECT permission.permissions
-                                                            FROM {WiserTableNames.WiserUserRoles} AS user_role
-                                                            LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.item_id = ?itemId
-                                                            WHERE user_role.user_id = ?userId AND (user_role.ip_addresses IS NULL OR JSON_CONTAINS(user_role.ip_addresses, JSON_QUOTE(?userIp)))
+                            FROM {WiserTableNames.WiserUserRoles} AS user_role
+                            LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.item_id = ?itemId
+                            WHERE user_role.user_id = ?userId
+                            AND (user_role.ip_addresses IS NULL OR JSON_CONTAINS(user_role.ip_addresses, JSON_QUOTE(?userIp)))
                             """;
         dataTable = await databaseConnection.GetAsync(permissionsQuery, true);
 
