@@ -21,6 +21,7 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
+using GeeksCoreLibrary.Modules.ItemFiles.Helpers;
 using GeeksCoreLibrary.Modules.ItemFiles.Models;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
@@ -3477,8 +3478,6 @@ public class WiserItemsService(
         databaseConnection.AddParameter("content", wiserItemFile.Content);
         databaseConnection.AddParameter("contentType", wiserItemFile.ContentType);
         databaseConnection.AddParameter("contentUrl", wiserItemFile.ContentUrl);
-        databaseConnection.AddParameter("width", wiserItemFile.Width);
-        databaseConnection.AddParameter("height", wiserItemFile.Height);
         databaseConnection.AddParameter("fileName", Path.GetFileNameWithoutExtension(wiserItemFile.FileName).ConvertToSeo() + Path.GetExtension(wiserItemFile.FileName)?.ToLowerInvariant());
         databaseConnection.AddParameter("extension", wiserItemFile.Extension);
         databaseConnection.AddParameter("title", wiserItemFile.Title);
@@ -3487,11 +3486,12 @@ public class WiserItemsService(
         databaseConnection.AddParameter("extraData", wiserItemFile.ExtraData == null ? null : JsonConvert.SerializeObject(wiserItemFile.ExtraData));
         databaseConnection.AddParameter("username", username);
         databaseConnection.AddParameter("userId", userId);
-        databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
-        databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+        // This is used in triggers, to enable/disable the tracking of changes in the wiser_history table.
+        databaseConnection.AddParameter("saveHistoryGcl", saveHistory);
+        // This is used in triggers. We always set it to false here, because the WiserItemsService takes care of the parent updates for this.
+        databaseConnection.AddParameter("performParentUpdate", false);
 
         var addItemFileResult = await databaseConnection.GetAsync($"""
-                                                                   
                                                                                    SET @_username = ?username;
                                                                                    SET @_userId = ?userId;
                                                                                    SET @saveHistory = ?saveHistoryGcl;
@@ -3566,11 +3566,7 @@ public class WiserItemsService(
             return result;
         }
 
-        foreach (DataRow dataRow in queryResult.Rows)
-        {
-            var itemFile = DataRowToItemFile(dataRow);
-            result.Add(itemFile);
-        }
+        result.AddRange(queryResult.Rows.Cast<DataRow>().Select(WiserFileHelpers.DataRowToItemFile));
 
         return result;
     }
@@ -4540,33 +4536,6 @@ public class WiserItemsService(
 
         wiserItem.Changed = false;
         return wiserItem;
-    }
-
-    /// <summary>
-    /// Fills an existing <see cref="WiserItemFileModel"/> with data from a <see cref="DataRow"/>.
-    /// </summary>
-    /// <param name="dataRow"></param>
-    public static WiserItemFileModel DataRowToItemFile(DataRow dataRow)
-    {
-        return new WiserItemFileModel
-        {
-            Id = Convert.ToUInt64(dataRow["id"]),
-            AddedBy = dataRow.Field<string>("added_by"),
-            AddedOn = dataRow.Field<DateTime>("added_on"),
-            ItemId = Convert.ToUInt64(dataRow["item_id"]),
-            ItemLinkId = Convert.ToUInt64(dataRow["itemlink_id"]),
-            ContentType = dataRow.Field<string>("content_type"),
-            Content = dataRow.Field<byte[]>("content"),
-            ContentUrl = dataRow.Field<string>("content_url"),
-            Width = Convert.ToInt32(dataRow["width"]),
-            Height = Convert.ToInt32(dataRow["height"]),
-            FileName = dataRow.Field<string>("file_name"),
-            Extension = dataRow.Field<string>("extension"),
-            Title = dataRow.Field<string>("title"),
-            PropertyName = dataRow.Field<string>("property_name"),
-            Protected = dataRow.Field<bool>("protected"),
-            ExtraData = dataRow.IsNull("extra_data") ? null : JsonConvert.DeserializeObject<WiserItemFileExtraDataModel>(dataRow.Field<string>("extra_data")!)
-        };
     }
 
     /// <summary>

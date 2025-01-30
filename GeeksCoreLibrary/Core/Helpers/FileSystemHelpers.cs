@@ -2,14 +2,23 @@
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Models;
 using Microsoft.AspNetCore.Hosting;
 
 namespace GeeksCoreLibrary.Core.Helpers;
 
+/// <summary>
+/// A helper class that contains methods for working with the file system.
+/// </summary>
 public static class FileSystemHelpers
 {
-    public static string GetContentFilesFolderPath(IWebHostEnvironment webHostEnvironment)
+    /// <summary>
+    /// Gets the directory where the file cache is stored.
+    /// </summary>
+    /// <param name="webHostEnvironment">Provides information about the web hosting environment an application is running in.</param>
+    /// <returns>The complete path to the file cache directory if it exists, or <c>null</c> if it doesn't.</returns>
+    public static string GetFileCacheDirectory(IWebHostEnvironment webHostEnvironment)
     {
         if (webHostEnvironment == null)
         {
@@ -20,6 +29,11 @@ public static class FileSystemHelpers
         return !Directory.Exists(result) ? null : result;
     }
 
+    /// <summary>
+    /// Gets the directory where the output cache files are stored.
+    /// </summary>
+    /// <param name="webHostEnvironment">Provides information about the web hosting environment an application is running in.</param>
+    /// <returns>The complete path to the output cache directory if it exists, or <c>null</c> if it doesn't.</returns>
     public static string GetOutputCacheDirectory(IWebHostEnvironment webHostEnvironment)
     {
         if (webHostEnvironment == null)
@@ -31,18 +45,49 @@ public static class FileSystemHelpers
         return !Directory.Exists(result) ? null : result;
     }
 
-    public static string SaveFileToContentFilesFolder(IWebHostEnvironment webHostEnvironment, string filename, byte[] fileBytes)
+    /// <summary>
+    /// Save a file into the file cache on the hard disk.
+    /// </summary>
+    /// <param name="webHostEnvironment">Provides information about the web hosting environment an application is running in.</param>
+    /// <param name="filename">The name of the file to save.</param>
+    /// <param name="fileBytes">The contents of the file to save.</param>
+    /// <returns>The full file path to the newly saved file, or <c>null</c> if it could not be saved.</returns>
+    public static async Task<string> SaveFileToCacheAsync(IWebHostEnvironment webHostEnvironment, string filename, byte[] fileBytes)
     {
         if (webHostEnvironment == null)
         {
             return null;
         }
 
-        var path = Path.Combine(GetContentFilesFolderPath(webHostEnvironment), Path.GetFileName(filename));
-        File.WriteAllBytes(Path.Combine(GetContentFilesFolderPath(webHostEnvironment), Path.GetFileName(filename)), fileBytes);
+        var path = Path.Combine(GetFileCacheDirectory(webHostEnvironment), Path.GetFileName(filename));
+        await File.WriteAllBytesAsync(path, fileBytes);
         return path;
     }
 
+    /// <summary>
+    /// Save a file into the file cache on the hard disk.
+    /// </summary>
+    /// <param name="webHostEnvironment">Provides information about the web hosting environment an application is running in.</param>
+    /// <param name="filename">The name of the file to save.</param>
+    /// <param name="fileBytes">The contents of the file to save.</param>
+    /// <returns>The full file path to the newly saved file, or <c>null</c> if it could not be saved.</returns>
+    public static string SaveFileToCache(IWebHostEnvironment webHostEnvironment, string filename, byte[] fileBytes)
+    {
+        if (webHostEnvironment == null)
+        {
+            return null;
+        }
+
+        var path = Path.Combine(GetFileCacheDirectory(webHostEnvironment), Path.GetFileName(filename));
+        File.WriteAllBytes(path, fileBytes);
+        return path;
+    }
+
+    /// <summary>
+    /// Get the content type of an image, based on its magic number.
+    /// </summary>
+    /// <param name="fileBytes">The file contents.</param>
+    /// <returns>The content type if it was found, otherwise an empty string.</returns>
     public static string GetMediaTypeByMagicNumber(byte[] fileBytes)
     {
         if (fileBytes == null || fileBytes.Length == 0)

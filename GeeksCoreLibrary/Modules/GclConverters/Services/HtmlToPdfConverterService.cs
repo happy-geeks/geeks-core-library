@@ -361,7 +361,7 @@ public class HtmlToPdfConverterService(
             return null;
         }
 
-        var filePath = FileSystemHelpers.SaveFileToContentFilesFolder(webHostEnvironment, filename, content);
+        var filePath = await FileSystemHelpers.SaveFileToCacheAsync(webHostEnvironment, filename, content);
         return filePath.Replace(webHostEnvironment.WebRootPath, "").Replace(@"\", "/");
     }
 }

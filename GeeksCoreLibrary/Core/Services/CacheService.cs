@@ -131,7 +131,7 @@ public class CacheService : ICacheService, ISingletonService
     /// <inheritdoc />
     public void ClearFilesCache()
     {
-        var contentFilesFolder = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+        var contentFilesFolder = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(contentFilesFolder))
         {
             return;
