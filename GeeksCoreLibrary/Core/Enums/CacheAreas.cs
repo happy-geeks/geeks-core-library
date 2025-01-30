@@ -14,5 +14,6 @@ public enum CacheAreas
     DataSelectors,
     Configurators,
     WebPages,
-    AwsSecrets
+    AwsSecrets,
+    Files
 }

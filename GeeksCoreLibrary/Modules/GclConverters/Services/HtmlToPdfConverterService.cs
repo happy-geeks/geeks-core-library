@@ -175,7 +175,7 @@ public class HtmlToPdfConverterService(IObjectsService objectsService, IDatabase
             return null;
         }
 
-        var filePath = await FileSystemHelpers.SaveToPublicFilesDirectoryAsync(webHostEnvironment, filename, content);
+        var filePath = await FileSystemHelpers.SaveFileToCacheAsync(webHostEnvironment, filename, content);
         // ReSharper disable once ConstantConditionalAccessQualifier
         return filePath?.Replace(webHostEnvironment.WebRootPath, "")?.Replace(@"\", "/");
     }

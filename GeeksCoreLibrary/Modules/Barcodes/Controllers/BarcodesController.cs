@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -23,7 +24,7 @@ public class BarcodesController(ILogger<BarcodesController> logger, IBarcodesSer
     /// <returns>The image as a file.</returns>
     [Route("generate")]
     [HttpGet]
-    public IActionResult Barcode(string input, BarcodeFormat format, int width, int height, string downloadFileName = null)
+    public async Task<IActionResult> Barcode(string input, BarcodeFormat format, int width, int height, string downloadFileName = null)
     {
         if (width <= 0 || height <= 0)
         {
@@ -49,7 +50,7 @@ public class BarcodesController(ILogger<BarcodesController> logger, IBarcodesSer
             return BadRequest("The length of the input should be even.");
         }
 
-        var bytes = barcodesService.GenerateBarcode(input, format, width, height);
+        var bytes = await barcodesService.GenerateBarcodeAsync(input, format, width, height);
         return String.IsNullOrWhiteSpace(downloadFileName)
             ? File(bytes, "image/png")
             : File(bytes, "image/png", downloadFileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? downloadFileName : $"{downloadFileName}.png");

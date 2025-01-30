@@ -45,7 +45,7 @@ public class ItemFilesController(ILogger<ItemFilesController> logger, IOptions<G
         switch (fileType?.ToUpperInvariant())
         {
             case "ITEMLINK":
-                Int32.TryParse(type, out var linkType);
+                _ = Int32.TryParse(type, out var linkType);
                 (fileBytes, lastModified) = await itemFilesService.GetWiserItemLinkImageAsync(itemId, propertyName, preferredWidth, preferredHeight, fileName, fileNumber, resizeMode, anchorPosition, encryptedId, linkType);
                 break;
             case "DIRECT":

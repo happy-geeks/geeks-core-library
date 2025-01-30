@@ -736,7 +736,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
 
         if (saveToDisk)
         {
-            FileSystemHelpers.SaveToFileCacheDirectory(webHostEnvironment, filename, pdfFileResult.FileContents);
+            await FileSystemHelpers.SaveToFileCacheDirectoryAsync(webHostEnvironment, filename, pdfFileResult.FileContents);
         }
         else
         {
