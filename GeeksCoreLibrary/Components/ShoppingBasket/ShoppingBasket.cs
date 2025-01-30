@@ -119,7 +119,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
         /// </summary>
         [CmsEnum(HideInCms = true)]
         Legacy = 10,
-        
+
         /// <summary>
         /// For creating replacements that counts the number of products and lines and their respective quantities.
         /// </summary>
@@ -732,7 +732,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
 
         if (saveToDisk)
         {
-            FileSystemHelpers.SaveToFileCacheDirectory(webHostEnvironment, filename, pdfFileResult.FileContents);
+            await FileSystemHelpers.SaveToFileCacheDirectoryAsync(webHostEnvironment, filename, pdfFileResult.FileContents);
         }
         else
         {
@@ -845,7 +845,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
 
         return await GetRenderedBasketAsync();
     }
-    
+
     /// <summary>
     /// Handles the ProductsCount mode, this mode calculates the total amount of products and lines, and the total amount of products and lines including their quantities.
     /// </summary>

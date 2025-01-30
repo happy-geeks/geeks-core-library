@@ -1,4 +1,5 @@
-﻿using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+﻿using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using ImageMagick;
 using ImageMagick.Factories;
@@ -10,6 +11,12 @@ namespace GeeksCoreLibrary.Modules.Barcodes.Services;
 /// <inheritdoc cref="IBarcodesService"/>
 public class BarcodesService : IBarcodesService, IScopedService
 {
+    /// <inheritdoc />
+    public Task<byte[]> GenerateBarcodeAsync(string input, BarcodeFormat format, int width, int height)
+    {
+        return Task.FromResult(GenerateBarcode(input, format, width, height));
+    }
+
     /// <inheritdoc />
     public byte[] GenerateBarcode(string input, BarcodeFormat format, int width, int height)
     {
