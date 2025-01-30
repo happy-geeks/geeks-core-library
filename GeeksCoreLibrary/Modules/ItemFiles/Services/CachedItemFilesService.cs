@@ -1,153 +1,224 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.ItemFiles.Enums;
 using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
+using LazyCache;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Services;
 
-public class CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFilesService itemFilesService, IFileCacheService fileCacheService, IWebHostEnvironment webHostEnvironment = null)
+public class CachedItemFilesService(
+    IOptions<GclSettings> gclSettings,
+    IItemFilesService innerItemFilesService,
+    IBranchesService branchesService,
+    IAppCache cache,
+    ICacheService cacheService,
+    ILogger<CachedItemFilesService> logger,
+    IFileCacheService fileCacheService,
+    IWebHostEnvironment webHostEnvironment = null)
     : IItemFilesService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+    public async Task<WiserItemFileModel> GetFileAsync(FileLookupTypes lookupType, object id, string propertyName = null, string fileName = null, string entityType = null, int linkType = 0, int fileNumber = 1, bool includeContent = true)
     {
-        var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localFilename = $"image_wiser{entityTypePart}_{itemId}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
-        if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0 || !ValidateItemFile(localFilename))
-        {
-            return await itemFilesService.GetWiserItemImageAsync(itemId, propertyName, preferredWidth, preferredHeight, filename, fileNumber, resizeMode, anchorPosition, encryptedItemId, entityType);
-        }
-
-        return await GetFileBytesAsync(localFilename);
+        var cacheName = $"GetFile_{id}_{propertyName}_{fileName}_{entityType}_{linkType}_{fileNumber}_{includeContent}_{branchesService.GetDatabaseNameFromCookie()}";
+        return await cache.GetOrAddAsync(cacheName,
+            async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWebPageCacheDuration;
+                return await innerItemFilesService.GetFileAsync(lookupType, id, propertyName, fileName, entityType, linkType, fileNumber, includeContent);
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Files));
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetResizedImageAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1, uint preferredWidth = 0, uint preferredHeight = 0, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
     {
-        var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
-        var localFilename = $"image_wiser_{itemLinkId}_itemlink{linkTypePart}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
-        if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0 || !ValidateItemFile(localFilename))
+        // Get the file metadata, so we can check if and how we need to cache this file.
+        var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber, false) ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = "Unknown.png"};
+        if (!String.IsNullOrWhiteSpace(fileName))
         {
-            return await itemFilesService.GetWiserItemLinkImageAsync(itemLinkId, propertyName, preferredWidth, preferredHeight, filename, fileNumber, resizeMode, anchorPosition, encryptedItemLinkId, linkType);
+            file.FileName = fileName;
         }
 
-        return await GetFileBytesAsync(localFilename);
+        // Don't cache the file if it's protected, because that means it can contain sensitive information.
+        if (file.Protected)
+        {
+            return await innerItemFilesService.GetResizedImageAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber, preferredWidth, preferredHeight, resizeMode, anchorPosition);
+        }
+
+        var cacheDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
+        if (String.IsNullOrWhiteSpace(cacheDirectory))
+        {
+            logger.LogError($"Could not cache the file because the directory '{cacheDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+            return await innerItemFilesService.GetResizedImageAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber, preferredWidth, preferredHeight, resizeMode, anchorPosition);
+        }
+
+        // Generate the file name for caching.
+        var fileNameParts = new List<string> { "wiser_image" };
+        if (!String.IsNullOrWhiteSpace(entityType))
+        {
+            fileNameParts.Add(entityType);
+        }
+        fileNameParts.Add(file.Id.ToString());
+        fileNameParts.Add(file.PropertyName);
+        fileNameParts.Add(resizeMode.ToString("G"));
+        fileNameParts.Add(anchorPosition.ToString("G"));
+        fileNameParts.Add(preferredWidth.ToString());
+        fileNameParts.Add(preferredHeight.ToString());
+        fileNameParts.Add(Path.GetFileName(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName));
+
+        var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts));
+        var result = await GetFileFromCacheAsync(fileLocation);
+
+        // If the file has been cached and the cache time has not expired yet, return the cached file.
+        if (result.FileBytes != null)
+        {
+            return result;
+        }
+
+        // If the file has not been cached yet, cache it now and then return it.
+        result = await innerItemFilesService.GetResizedImageAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber, preferredWidth, preferredHeight, resizeMode, anchorPosition);
+        if (result.FileBytes == null)
+        {
+            return (null, DateTime.MinValue);
+        }
+
+        await File.WriteAllBytesAsync(fileLocation, result.FileBytes);
+        return result;
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
-        var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localFilename = $"image_wiser{entityTypePart}_{itemId}_direct_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
-        if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0 || !ValidateItemFile(localFilename))
-        {
-            return await itemFilesService.GetWiserDirectImageAsync(itemId, preferredWidth, preferredHeight, filename, resizeMode, anchorPosition, encryptedItemId, entityType);
-        }
-
-        return await GetFileBytesAsync(localFilename);
+        return await GetResizedImageAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, propertyName: propertyName, entityType: entityType, fileNumber: fileNumber, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
     {
-        var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localFilename = $"image_wiser{entityTypePart}_{itemId}_filename_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
-        if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0 || !ValidateItemFile(localFilename))
-        {
-            return await itemFilesService.GetWiserImageByFileNameAsync(itemId, propertyName, preferredWidth, preferredHeight, filename, resizeMode, anchorPosition, encryptedItemId, entityType);
-        }
-
-        return await GetFileBytesAsync(localFilename);
+        return await GetResizedImageAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, propertyName: propertyName, linkType: linkType, fileNumber: fileNumber, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemFileAsync(ulong itemId, string propertyName, string filename, int fileNumber, string encryptedItemId = null, string entityType = null)
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
-        var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localFilename = $"file_wiser2{entityTypePart}_{itemId}_{propertyName}_{fileNumber}_{filename}";
-        if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0 || !ValidateItemFile(localFilename))
-        {
-            return await itemFilesService.GetWiserItemFileAsync(itemId, propertyName, filename, fileNumber, encryptedItemId, entityType);
-        }
-
-        return await GetFileBytesAsync(localFilename);
+        return await GetResizedImageAsync(FileLookupTypes.ItemFileId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string filename, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
+    public async Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
-        var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
-        var localFilename = $"file_wiser2_{itemLinkId}_itemlink{linkTypePart}_{propertyName}_{fileNumber}_{filename}";
-        if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0 || !ValidateItemFile(localFilename))
-        {
-            return await itemFilesService.GetWiserItemLinkFileAsync(itemLinkId, propertyName, filename, fileNumber, encryptedItemLinkId, linkType);
-        }
-
-        return await GetFileBytesAsync(localFilename);
+        return await GetResizedImageAsync(FileLookupTypes.ItemFileName, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectFileAsync(ulong itemId, string filename, string encryptedItemId = null, string entityType = null)
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetParsedFileAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1)
     {
-        var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localFilename = $"file_wiser2{entityTypePart}_{itemId}_direct_{filename}";
-        if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0 || !ValidateItemFile(localFilename))
+        // Get the file metadata, so we can check if and how we need to cache this file.
+        var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber, false) ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = "Unknown.pdf"};
+        if (!String.IsNullOrWhiteSpace(fileName))
         {
-            return await itemFilesService.GetWiserDirectFileAsync(itemId, filename, encryptedItemId, entityType);
+            file.FileName = fileName;
         }
 
-        return await GetFileBytesAsync(localFilename);
+        // Don't cache the file if it's protected, because that means it can contain sensitive information.
+        if (file.Protected)
+        {
+            return await innerItemFilesService.GetParsedFileAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber);
+        }
+
+        var cacheDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
+        if (String.IsNullOrWhiteSpace(cacheDirectory))
+        {
+            logger.LogError($"Could not cache the file because the directory '{cacheDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
+            return await innerItemFilesService.GetParsedFileAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber);
+        }
+
+        // Generate the file name for caching.
+        var fileNameParts = new List<string> { "wiser_file" };
+        if (!String.IsNullOrWhiteSpace(entityType))
+        {
+            fileNameParts.Add(entityType);
+        }
+        fileNameParts.Add(file.Id.ToString());
+        fileNameParts.Add(file.PropertyName);
+        fileNameParts.Add(fileNumber.ToString());
+        fileNameParts.Add(Path.GetFileName(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName));
+
+        var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts));
+        var result = await GetFileFromCacheAsync(fileLocation);
+
+        // If the file has been cached and the cache time has not expired yet, return the cached file.
+        if (result.FileBytes != null)
+        {
+            return result;
+        }
+
+        // If the file has not been cached yet, cache it now and then return it.
+        result = await innerItemFilesService.GetParsedFileAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber);
+        await File.WriteAllBytesAsync(fileLocation, result.FileBytes);
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemFileAsync(ulong itemId, string propertyName, string fileName, int fileNumber, string encryptedItemId = null, string entityType = null)
+    {
+        return await GetParsedFileAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType);
+    }
+
+    /// <inheritdoc />
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string fileName, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
+    {
+        return await GetParsedFileAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, linkType: linkType);
+    }
+
+    /// <inheritdoc />
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectFileAsync(ulong itemId, string fileName, string encryptedItemId = null, string entityType = null)
+    {
+        return await GetParsedFileAsync(FileLookupTypes.ItemFileId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType);
+    }
+
+    /// <inheritdoc />
+    public async Task<(byte[] FileBytes, DateTime LastModified)> HandleImageAsync(WiserItemFileModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+    {
+        return await innerItemFilesService.HandleImageAsync(file, preferredWidth, preferredHeight, resizeMode, anchorPosition);
+    }
+
+    /// <inheritdoc />
+    public async Task<(byte[] FileBytes, DateTime LastModified)> HandleFileAsync(WiserItemFileModel file)
+    {
+        return await innerItemFilesService.HandleFileAsync(file);
     }
 
     /// <summary>
     /// Validates an image. This will check if the image exists, and if the cache time has not expired yet.
     /// </summary>
-    /// <param name="localFilename"></param>
-    /// <returns></returns>
-    private bool ValidateItemFile(string localFilename)
+    /// <param name="fileLocation">The absolute path to the file.</param>
+    /// <returns><c>True</c> if the file can be retrieved from cache, <c>false</c> if it can't.</returns>
+    private async Task<(byte[] FileBytes, DateTime LastModified)> GetFileFromCacheAsync(string fileLocation)
     {
-        if (webHostEnvironment == null)
-        {
-            return false;
-        }
-
-        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
-        if (!Directory.Exists(localDirectory))
-        {
-            return false;
-        }
-
-        var fileLocation = Path.Combine(localDirectory, localFilename);
-        var fileInfo = new FileInfo(fileLocation);
-        return fileInfo.Exists && DateTime.UtcNow.Subtract(fileInfo.LastWriteTimeUtc) <= gclSettings.DefaultItemFileCacheDuration;
-    }
-
-    /// <summary>
-    /// Retrieves a file's bytes from the local content files folder.
-    /// </summary>
-    /// <param name="localFilename"></param>
-    /// <returns></returns>
-    private async Task<(byte[] FileBytes, DateTime LastModified)> GetFileBytesAsync(string localFilename)
-    {
-        if (webHostEnvironment == null)
+        if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0)
         {
             return (null, DateTime.MinValue);
         }
 
-        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);;
-        var fileLocation = Path.Combine(localDirectory, localFilename);
+        var fileInfo = new FileInfo(fileLocation);
+        if (!fileInfo.Exists || DateTime.UtcNow.Subtract(fileInfo.LastWriteTimeUtc) <= gclSettings.DefaultItemFileCacheDuration)
+        {
+            return (null, DateTime.MinValue);
+        }
 
-        var fileBytes = await fileCacheService.GetBytesAsync(fileLocation, gclSettings.DefaultItemFileCacheDuration);
-        var lastModified = File.GetLastWriteTimeUtc(fileLocation);
-
-        return (fileBytes, lastModified);
+        return (await fileCacheService.GetBytesAsync(fileLocation, gclSettings.DefaultItemFileCacheDuration), fileInfo.LastWriteTimeUtc);
     }
 }
