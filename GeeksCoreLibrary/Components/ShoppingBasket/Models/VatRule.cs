@@ -9,7 +9,7 @@ public class VatRule
     /// </summary>
     public int B2B { get; set; } = -1;
 
-    public int VatRate { get; set; } = 1;
+    public int VatRate { get; set; } = Constants.DefaultVatRate;
 
-    public decimal Percentage { get; set; } = 21M;
+    public decimal Percentage { get; set; } = Constants.DefaultVatPercentage;
 }

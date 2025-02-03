@@ -39,6 +39,8 @@ public static class Constants
     internal const string DefaultDiscountPropertyName = "discount";
     internal const string DefaultItemExcludedFromDiscountPropertyName = "no_discount";
     internal const int DefaultMaxItemQuantity = 100;
+    internal const decimal DefaultVatPercentage = 21M;
+    internal const int DefaultVatRate = 1;
 
     internal const string DefaultTemplate = """
                                             <!-- There must always be an element with ID GclShoppingBasketContainer{contentId}, all fields within are sent to the server via ajax, unless you also overwrite the TemplateJavascript. -->

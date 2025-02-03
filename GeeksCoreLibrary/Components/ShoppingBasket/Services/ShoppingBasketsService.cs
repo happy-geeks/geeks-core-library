@@ -2254,22 +2254,21 @@ public class ShoppingBasketsService(
         {
             databaseConnection.ClearParameters();
             var getVatRulesResult = await databaseConnection.GetAsync($"""
-                                                                       
-                                                                                           SELECT
-                                                                                               vatrule.id,
-                                                                                               IFNULL(country.`value`, '') AS country,
-                                                                                               IFNULL(CAST(b2b.value AS SIGNED), 0) AS b2b,
-                                                                                               CAST(COALESCE(vatratecode.value, vatrate.value, 0) AS SIGNED) AS vatrate,
-                                                                                               IFNULL(CAST(percentage.value AS DECIMAL(65,30)), 0) AS percentage
-                                                                                           FROM `{WiserTableNames.WiserItem}` AS vatrule
-                                                                                           LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS country ON country.item_id = vatrule.id AND country.`key` = 'country'
-                                                                                           LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS b2b ON b2b.item_id = vatrule.id AND b2b.`key` = 'b2b'
-                                                                                           LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS vatrate ON vatrate.item_id = vatrule.id AND vatrate.`key` = 'vatrate'
-                                                                                           LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS vatratecode ON vatratecode.item_id = vatrate.`value` AND vatratecode.`key` = 'code'
-                                                                                           LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS percentage ON percentage.item_id = vatrule.id AND percentage.`key` = 'percentage'
-                                                                                           WHERE vatrule.entity_type = 'vatrule'
-                                                                                           ORDER BY country.`value` DESC, b2b.`value` DESC
-                                                                       """, true);
+               SELECT
+                   vatrule.id,
+                   IFNULL(country.`value`, '') AS country,
+                   IFNULL(CAST(b2b.value AS SIGNED), 0) AS b2b,
+                   CAST(COALESCE(vatratecode.value, vatrate.value, {Constants.DefaultVatRate}) AS SIGNED) AS vatrate,
+                   IFNULL(CAST(percentage.value AS DECIMAL(65,30)), {Constants.DefaultVatPercentage}) AS percentage
+               FROM `{WiserTableNames.WiserItem}` AS vatrule
+               LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS country ON country.item_id = vatrule.id AND country.`key` = 'country'
+               LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS b2b ON b2b.item_id = vatrule.id AND b2b.`key` = 'b2b'
+               LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS vatrate ON vatrate.item_id = vatrule.id AND vatrate.`key` = 'vatrate'
+               LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS vatratecode ON vatratecode.item_id = vatrate.`value` AND vatratecode.`key` = 'code'
+               LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS percentage ON percentage.item_id = vatrule.id AND percentage.`key` = 'percentage'
+               WHERE vatrule.entity_type = 'vatrule'
+               ORDER BY country.`value` DESC, b2b.`value` DESC
+               """, true);
 
             foreach (DataRow row in getVatRulesResult.Rows)
             {
@@ -2279,9 +2278,12 @@ public class ShoppingBasketsService(
                 var vatRateValue = row.Field<long>("vatrate");
                 var rulePercentageValue = row.Field<decimal>("percentage");
 
-                if (ruleB2BValue > 0) rule.B2B = Convert.ToInt32(ruleB2BValue);
-                if (vatRateValue > 0) rule.VatRate = Convert.ToInt32(vatRateValue);
-                if (rulePercentageValue > 0) rule.Percentage = rulePercentageValue;
+                if (ruleB2BValue > 0)
+                {
+                    rule.B2B = Convert.ToInt32(ruleB2BValue);
+                }
+                rule.VatRate = Convert.ToInt32(vatRateValue);
+                rule.Percentage = rulePercentageValue;
 
                 vatRules.Add(rule);
             }
@@ -2685,14 +2687,17 @@ public class ShoppingBasketsService(
     /// <inheritdoc />
     public async Task<decimal> GetVatFactorByRateAsync(WiserItemModel shoppingBasket, ShoppingBasketCmsSettingsModel settings, int vatRate)
     {
-        vatFactorsByRate ??= new SortedList<int, decimal>();
+        vatFactorsByRate ??= new();
 
-        if (!vatFactorsByRate.ContainsKey(vatRate))
+        if (vatFactorsByRate.TryGetValue(vatRate, out var vatFactor))
         {
-            vatFactorsByRate.Add(vatRate, (await GetVatRuleByRateAsync(shoppingBasket, settings, vatRate)).Percentage / 100);
+            return vatFactor;
         }
+        
+        vatFactor = (await GetVatRuleByRateAsync(shoppingBasket, settings, vatRate)).Percentage / 100;
+        vatFactorsByRate.Add(vatRate, vatFactor);
 
-        return vatFactorsByRate[vatRate];
+        return vatFactor;
     }
 
     /// <inheritdoc />
